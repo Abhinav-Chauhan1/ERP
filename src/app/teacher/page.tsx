@@ -408,7 +408,7 @@ export default async function TeacherDashboard() {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{assignment.title}</p>
-                        <Badge variant={assignment.status === 'active' ? 'info' : 'success'}>
+                        <Badge variant={assignment.status === 'active' ? 'secondary' : 'outline'}>
                           {assignment.status === 'active' ? 'Active' : 'Completed'}
                         </Badge>
                       </div>

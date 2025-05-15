@@ -212,13 +212,13 @@ export default function MarkAttendancePage() {
                         <td className="py-3 px-4 align-middle text-center">
                           <div className="flex justify-center">
                             {student.attendance?.status === "present" && (
-                              <Badge variant="success" className="capitalize">Present</Badge>
+                              <Badge variant="default" className="capitalize bg-green-500 hover:bg-green-600">Present</Badge>
                             )}
                             {student.attendance?.status === "absent" && (
                               <Badge variant="destructive" className="capitalize">Absent</Badge>
                             )}
                             {student.attendance?.status === "late" && (
-                              <Badge variant="warning" className="capitalize">Late</Badge>
+                              <Badge variant="default" className="capitalize bg-amber-500 hover:bg-amber-600">Late</Badge>
                             )}
                           </div>
                         </td>

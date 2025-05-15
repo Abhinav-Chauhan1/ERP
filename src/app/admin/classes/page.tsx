@@ -1,8 +1,38 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Search, Filter } from "lucide-react";
+import { PlusCircle, Search, Filter, Edit, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 const classesByGrade = [
   { grade: "Grade 1", classes: 4, students: 120, sections: ["A", "B", "C", "D"] },
@@ -61,14 +91,187 @@ const recentClasses = [
   },
 ];
 
+// Academic years for the form
+const academicYears = [
+  { id: "1", name: "2023-2024" },
+  { id: "2", name: "2022-2023" },
+  { id: "3", name: "2024-2025" },
+];
+
+// Sample grades for the form
+const grades = ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
+
+// Schema for class creation/editing
+const classFormSchema = z.object({
+  name: z.string().min(3, "Class name must be at least 3 characters"),
+  academicYearId: z.string({
+    required_error: "Please select an academic year",
+  }),
+  sections: z.number().min(1, "At least one section is required").max(10, "Maximum 10 sections allowed"),
+  grade: z.string({
+    required_error: "Please select a grade",
+  }),
+  streamName: z.string().optional(),
+});
+
 export default function ClassesPage() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<any>(null);
+
+  // Initialize form
+  const form = useForm<z.infer<typeof classFormSchema>>({
+    resolver: zodResolver(classFormSchema),
+    defaultValues: {
+      name: "",
+      sections: 1,
+      streamName: "",
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof classFormSchema>) {
+    console.log("Form submitted:", values);
+    // Here you would normally create/update the class in your database
+    
+    // Reset form and close dialog
+    form.reset();
+    setDialogOpen(false);
+    setEditingClass(null);
+  }
+
+  function handleCreateClass() {
+    form.reset({
+      name: "",
+      sections: 1,
+      streamName: "",
+    });
+    setEditingClass(null);
+    setDialogOpen(true);
+  }
+
+  function handleEditClass(classId: string) {
+    const classToEdit = recentClasses.find(c => c.id === classId);
+    if (classToEdit) {
+      // Populate form with class data
+      form.reset({
+        name: classToEdit.name,
+        academicYearId: "1", // Assuming current year is 2023-2024
+        sections: classToEdit.section === "A" ? 1 : classToEdit.section === "B" ? 2 : 3,
+        grade: classToEdit.name.split(" - ")[0],
+        streamName: classToEdit.name.includes(" - ") ? classToEdit.name.split(" - ")[1] : "",
+      });
+      setEditingClass(classToEdit);
+      setDialogOpen(true);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Class Management</h1>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" /> Create Class
-        </Button>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={handleCreateClass}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Create Class
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{editingClass ? "Edit Class" : "Create New Class"}</DialogTitle>
+              <DialogDescription>
+                {editingClass 
+                  ? "Update the details of the existing class." 
+                  : "Define a new class for student enrollment."}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="academicYearId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Academic Year</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select academic year" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {academicYears.map((year) => (
+                            <SelectItem key={year.id} value={year.id}>
+                              {year.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="grade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Grade</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {grades.map((grade) => (
+                            <SelectItem key={grade} value={grade}>
+                              {grade}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="streamName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stream (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Science, Commerce, Arts" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sections"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Sections</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min={1} 
+                          max={10} 
+                          {...field} 
+                          onChange={e => field.onChange(parseInt(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button type="submit">{editingClass ? "Save Changes" : "Create Class"}</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -155,9 +358,17 @@ export default function ClassesPage() {
                       <td className="py-3 px-4 align-middle">{cls.strength}</td>
                       <td className="py-3 px-4 align-middle text-right">
                         <Link href={`/admin/classes/${cls.id}`}>
-                          <Button variant="ghost" size="sm">View</Button>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4 mr-1" /> View
+                          </Button>
                         </Link>
-                        <Button variant="ghost" size="sm">Edit</Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditClass(cls.id)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
                       </td>
                     </tr>
                   ))}
