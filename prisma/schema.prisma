@@ -192,6 +192,7 @@ model Class {
   subjects        SubjectClass[]
   enrollments     ClassEnrollment[]
   timetableSlots  TimetableSlot[]
+  assignments     AssignmentClass[] // Add this relationship
 }
 
 model ClassSection {
@@ -365,6 +366,29 @@ model Timetable {
   slots           TimetableSlot[]
 }
 
+// Timetable configuration
+model TimetableConfig {
+  id              String          @id @default(cuid())
+  name            String
+  daysOfWeek      String[]        // Array of days, e.g., ["MONDAY", "TUESDAY", ...]
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relationships
+  periods         TimetablePeriod[]
+}
+
+model TimetablePeriod {
+  id              String          @id @default(cuid())
+  name            String          // e.g., "Period 1"
+  startTime       DateTime
+  endTime         DateTime
+  order           Int
+  config          TimetableConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId        String
+}
+
 model TimetableSlot {
   id              String        @id @default(cuid())
   timetable       Timetable     @relation(fields: [timetableId], references: [id])
@@ -420,8 +444,8 @@ model Exam {
   endTime     DateTime
   totalMarks  Float
   passingMarks Float
-  creator     Teacher  @relation(fields: [creatorId], references: [id])
-  creatorId   String
+  creator     Teacher? @relation(fields: [creatorId], references: [id])  // Make relationship optional
+  creatorId   String?  // Make field optional
   instructions String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -466,8 +490,8 @@ model Assignment {
   assignedDate DateTime
   dueDate     DateTime
   totalMarks  Float
-  creator     Teacher  @relation(fields: [creatorId], references: [id])
-  creatorId   String
+  creator     Teacher? @relation(fields: [creatorId], references: [id])  // Make relationship optional
+  creatorId   String?  // Make field optional
   instructions String?
   attachments String?  // URLs to attached files
   createdAt   DateTime @default(now())
@@ -475,6 +499,19 @@ model Assignment {
 
   // Relationships
   submissions AssignmentSubmission[]
+  classes     AssignmentClass[]
+}
+
+model AssignmentClass {
+  id            String    @id @default(cuid())
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId  String
+  class         Class     @relation(fields: [classId], references: [id])
+  classId       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
+
+  @@unique([assignmentId, classId])
 }
 
 model AssignmentSubmission {
@@ -490,7 +527,7 @@ model AssignmentSubmission {
   feedback        String?
   status          SubmissionStatus @default(PENDING)
   createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  updatedAt       DateTime   @default(now())
 
   @@unique([assignmentId, studentId])
 }
@@ -520,7 +557,7 @@ model ReportCard {
   isPublished     Boolean  @default(false)
   publishDate     DateTime?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   @@unique([studentId, termId])
 }
@@ -537,7 +574,7 @@ model StudentAttendance {
   reason          String?      // Reason for absence
   markedBy        String?      // User ID who marked the attendance
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 
   @@unique([studentId, date, sectionId])
 }
@@ -551,7 +588,7 @@ model TeacherAttendance {
   reason          String?      // Reason for absence
   markedBy        String?      // User ID who marked the attendance
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 
   @@unique([teacherId, date])
 }
@@ -577,7 +614,7 @@ model LeaveApplication {
   remarks         String?
   attachments     String?  // URLs to supporting documents
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 }
 
 enum LeaveStatus {
@@ -596,7 +633,7 @@ model FeeType {
   frequency       FeeFrequency @default(ANNUAL)
   isOptional      Boolean  @default(false)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   feeStructures   FeeStructureItem[]
@@ -621,7 +658,7 @@ model FeeStructure {
   validTo         DateTime?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   items           FeeStructureItem[]
@@ -637,7 +674,7 @@ model FeeStructureItem {
   amount          Float
   dueDate         DateTime?
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 
   @@unique([feeStructureId, feeTypeId])
 }
@@ -658,7 +695,7 @@ model FeePayment {
   status          PaymentStatus @default(PENDING)
   remarks         String?
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 }
 
 enum PaymentMethod {
@@ -689,7 +726,7 @@ model Scholarship {
   duration        String?  // e.g., "1 Academic Year"
   fundedBy        String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   recipients      ScholarshipRecipient[]
@@ -706,7 +743,7 @@ model ScholarshipRecipient {
   amount          Float
   status          String     // e.g., "Active", "Expired"
   createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  updatedAt       DateTime   @default(now())
 
   @@unique([scholarshipId, studentId])
 }
@@ -727,7 +764,7 @@ model Expense {
   budgetCategory  Budget?      @relation(fields: [budgetId], references: [id])
   budgetId        String?
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 }
 
 model Budget {
@@ -742,7 +779,7 @@ model Budget {
   endDate         DateTime?
   status          String   @default("Active") // e.g., "Active", "Closed"
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   expenses        Expense[]
@@ -764,7 +801,7 @@ model Payroll {
   status          PaymentStatus @default(PENDING)
   remarks         String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   @@unique([teacherId, month, year])
 }
@@ -782,7 +819,7 @@ model Message {
   readAt          DateTime?
   attachments     String?  // URLs to attached files
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 }
 
 model Announcement {
@@ -797,7 +834,7 @@ model Announcement {
   isActive        Boolean  @default(true)
   attachments     String?  // URLs to attached files
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 }
 
 model Notification {
@@ -811,7 +848,7 @@ model Notification {
   readAt          DateTime?
   link            String?  // Optional link to navigate to
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 }
 
 model ParentMeeting {
@@ -828,7 +865,7 @@ model ParentMeeting {
   location        String?
   notes           String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 }
 
 enum MeetingStatus {
@@ -845,7 +882,7 @@ model DocumentType {
   name            String
   description     String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   documents       Document[]
@@ -866,7 +903,7 @@ model Document {
   isPublic        Boolean      @default(false)
   tags            String?      // Comma-separated tags
   createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  updatedAt       DateTime     @default(now())
 }
 
 // Event management
@@ -885,7 +922,7 @@ model Event {
   isPublic        Boolean  @default(true)
   thumbnail       String?  // URL to event image
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   // Relationships
   participants    EventParticipant[]
@@ -909,7 +946,7 @@ model EventParticipant {
   attended        Boolean  @default(false)
   feedback        String?
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   @@unique([eventId, userId])
 }

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  Clock, CalendarIcon 
+  Clock, CalendarIcon, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -35,109 +37,109 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 
-// Mock data - replace with actual API calls
-const termsData = [
-  {
-    id: "1",
-    name: "Term 1 2023-2024",
-    academicYear: { id: "1", name: "2023-2024" },
-    startDate: new Date("2023-08-15"),
-    endDate: new Date("2023-12-15"),
-    exams: 3,
-    classes: 32
-  },
-  {
-    id: "2",
-    name: "Term 2 2023-2024",
-    academicYear: { id: "1", name: "2023-2024" },
-    startDate: new Date("2023-12-16"),
-    endDate: new Date("2024-03-31"),
-    exams: 2,
-    classes: 32
-  },
-  {
-    id: "3",
-    name: "Term 3 2023-2024",
-    academicYear: { id: "1", name: "2023-2024" },
-    startDate: new Date("2024-04-01"),
-    endDate: new Date("2024-05-31"),
-    exams: 3,
-    classes: 32
-  },
-  {
-    id: "4",
-    name: "Term 1 2022-2023",
-    academicYear: { id: "2", name: "2022-2023" },
-    startDate: new Date("2022-08-16"),
-    endDate: new Date("2022-12-16"),
-    exams: 3,
-    classes: 30
-  },
-];
-
-const academicYearsData = [
-  { id: "1", name: "2023-2024" },
-  { id: "2", name: "2022-2023" },
-  { id: "3", name: "2024-2025" },
-];
-
-const formSchema = z.object({
-  name: z.string().min(5, "Term name must be at least 5 characters"),
-  academicYearId: z.string({
-    required_error: "Please select an academic year",
-  }),
-  startDate: z.date({
-    required_error: "Start date is required",
-  }),
-  endDate: z.date({
-    required_error: "End date is required",
-  }).refine(date => date > new Date(), {
-    message: "End date must be in the future",
-  }),
-});
+// Import schema validation and server actions
+import { termSchema, TermFormValues, termUpdateSchema, TermUpdateFormValues } from "@/lib/schemaValidation/termsSchemaValidation";
+import { 
+  getTerms, 
+  getAcademicYearsForDropdown, 
+  createTerm, 
+  updateTerm, 
+  deleteTerm 
+} from "@/lib/actions/termsActions";
 
 export default function TermsPage() {
-  const [terms, setTerms] = useState(termsData);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialAcademicYearId = searchParams.get('academicYearId');
+  
+  const [terms, setTerms] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<TermFormValues>({
+    resolver: zodResolver(termSchema),
     defaultValues: {
       name: "",
+      academicYearId: initialAcademicYearId || "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Handle form submission - create or update term
-    console.log(values);
+  useEffect(() => {
+    fetchTerms();
+    fetchAcademicYears();
+  }, []);
+
+  async function fetchTerms() {
+    setLoading(true);
+    setError(null);
     
-    const academicYear = academicYearsData.find(y => y.id === values.academicYearId);
-    
-    // For demonstration purposes, let's just add a new item to the state
-    const newTerm = {
-      id: (terms.length + 1).toString(),
-      name: values.name,
-      academicYear: academicYear || { id: "1", name: "Unknown" },
-      startDate: values.startDate,
-      endDate: values.endDate,
-      exams: 0,
-      classes: 0
-    };
-    
-    setTerms([...terms, newTerm]);
-    setDialogOpen(false);
-    form.reset();
+    try {
+      const result = await getTerms();
+      
+      if (result.success) {
+        setTerms(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchAcademicYears() {
+    try {
+      const result = await getAcademicYearsForDropdown();
+      
+      if (result.success) {
+        setAcademicYears(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch academic years");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function onSubmit(values: TermFormValues) {
+    try {
+      let result;
+      
+      if (selectedTermId) {
+        // Update existing term
+        const updateData: TermUpdateFormValues = { ...values, id: selectedTermId };
+        result = await updateTerm(updateData);
+      } else {
+        // Create new term
+        result = await createTerm(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Term ${selectedTermId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedTermId(null);
+        fetchTerms();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEdit(id: string) {
@@ -145,13 +147,22 @@ export default function TermsPage() {
     if (termToEdit) {
       form.reset({
         name: termToEdit.name,
-        academicYearId: termToEdit.academicYear.id,
-        startDate: termToEdit.startDate,
-        endDate: termToEdit.endDate,
+        academicYearId: termToEdit.academicYearId,
+        startDate: new Date(termToEdit.startDate),
+        endDate: new Date(termToEdit.endDate),
       });
       setSelectedTermId(id);
       setDialogOpen(true);
     }
+  }
+
+  function handleAddNew() {
+    form.reset({ 
+      name: "",
+      academicYearId: initialAcademicYearId || "",
+    });
+    setSelectedTermId(null);
+    setDialogOpen(true);
   }
 
   function handleDelete(id: string) {
@@ -159,11 +170,23 @@ export default function TermsPage() {
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedTermId) {
-      setTerms(terms.filter(term => term.id !== selectedTermId));
-      setDeleteDialogOpen(false);
-      setSelectedTermId(null);
+      try {
+        const result = await deleteTerm(selectedTermId);
+        
+        if (result.success) {
+          toast.success("Term deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedTermId(null);
+          fetchTerms();
+        } else {
+          toast.error(result.error || "Failed to delete term");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
 
@@ -181,7 +204,7 @@ export default function TermsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Term
             </Button>
           </DialogTrigger>
@@ -225,9 +248,9 @@ export default function TermsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {academicYearsData.map(year => (
+                          {academicYears.map(year => (
                             <SelectItem key={year.id} value={year.id}>
-                              {year.name}
+                              {year.name} {year.isCurrent && "(Current)"}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -243,34 +266,13 @@ export default function TermsPage() {
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>Start Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className="w-full pl-3 text-left font-normal"
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value}
+                            onSelect={field.onChange}
+                            placeholder="Select start date"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -281,34 +283,17 @@ export default function TermsPage() {
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>End Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className="w-full pl-3 text-left font-normal"
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date()
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value}
+                            onSelect={field.onChange}
+                            placeholder="Select end date"
+                            disabled={(date) => {
+                              const startDate = form.getValues("startDate");
+                              return startDate ? date < startDate : false;
+                            }}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -325,61 +310,91 @@ export default function TermsPage() {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>All Academic Terms</CardTitle>
           <CardDescription>Manage your institution's academic terms</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Term Name</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Academic Year</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Exams</th>
-                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {terms.map((term) => (
-                    <tr key={term.id} className="border-b">
-                      <td className="py-3 px-4 align-middle font-medium">{term.name}</td>
-                      <td className="py-3 px-4 align-middle">{term.academicYear.name}</td>
-                      <td className="py-3 px-4 align-middle">{format(term.startDate, 'MMM d, yyyy')}</td>
-                      <td className="py-3 px-4 align-middle">{format(term.endDate, 'MMM d, yyyy')}</td>
-                      <td className="py-3 px-4 align-middle">
-                        {Math.round((term.endDate.getTime() - term.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
-                      </td>
-                      <td className="py-3 px-4 align-middle">{term.exams}</td>
-                      <td className="py-3 px-4 align-middle text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(term.id)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-red-500"
-                          onClick={() => handleDelete(term.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          </div>
+          ) : terms.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Clock className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium mb-1">No terms found</h3>
+              <p className="text-sm mb-4">Create your first academic term to get started</p>
+              <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Term
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Term Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Academic Year</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Exams</th>
+                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {terms.map((term) => (
+                      <tr key={term.id} className="border-b">
+                        <td className="py-3 px-4 align-middle font-medium">{term.name}</td>
+                        <td className="py-3 px-4 align-middle">
+                          {term.academicYear.name}
+                          {term.academicYear.isCurrent && (
+                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                              Current
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 align-middle">{format(new Date(term.startDate), 'MMM d, yyyy')}</td>
+                        <td className="py-3 px-4 align-middle">{format(new Date(term.endDate), 'MMM d, yyyy')}</td>
+                        <td className="py-3 px-4 align-middle">
+                          {Math.round((new Date(term.endDate).getTime() - new Date(term.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                        </td>
+                        <td className="py-3 px-4 align-middle">{term._count?.exams || 0}</td>
+                        <td className="py-3 px-4 align-middle text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEdit(term.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-red-500"
+                            onClick={() => handleDelete(term.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

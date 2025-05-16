@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  Building2, BookOpen, GraduationCap
+  Building2, BookOpen, GraduationCap,
+  Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -29,123 +31,80 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data - replace with actual API calls
-const departmentsData = [
-  {
-    id: "1",
-    name: "Mathematics",
-    description: "Department of Mathematics and Statistics",
-    subjects: 8,
-    teachers: 5,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "2",
-    name: "Science",
-    description: "Department of Natural Sciences",
-    subjects: 12,
-    teachers: 7,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "3",
-    name: "Languages",
-    description: "Department of Languages and Literature",
-    subjects: 9,
-    teachers: 6,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "4",
-    name: "Social Studies",
-    description: "Department of History and Social Sciences",
-    subjects: 7,
-    teachers: 4,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "5",
-    name: "Physical Education",
-    description: "Department of Physical Education and Sports",
-    subjects: 3,
-    teachers: 3,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "6",
-    name: "Arts",
-    description: "Department of Visual and Performing Arts",
-    subjects: 5,
-    teachers: 4,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "7",
-    name: "Technology",
-    description: "Department of Computer Science and Information Technology",
-    subjects: 6,
-    teachers: 3,
-    createdAt: new Date("2022-06-15")
-  },
-  {
-    id: "8",
-    name: "Vocational Studies",
-    description: "Department of Vocational and Career Education",
-    subjects: 4,
-    teachers: 2,
-    createdAt: new Date("2022-06-15")
-  }
-];
-
-const formSchema = z.object({
-  name: z.string().min(3, "Department name must be at least 3 characters"),
-  description: z.string().optional(),
-});
+// Import schema validation and server actions
+import { departmentSchema, DepartmentFormValues, departmentUpdateSchema, DepartmentUpdateFormValues } from "@/lib/schemaValidation/departmentsSchemaValidation";
+import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "@/lib/actions/departmentsAction";
 
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState(departmentsData);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<DepartmentFormValues>({
+    resolver: zodResolver(departmentSchema),
     defaultValues: {
       name: "",
       description: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Handle form submission - create or update department
-    console.log(values);
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  async function fetchDepartments() {
+    setLoading(true);
+    setError(null);
     
-    if (selectedDepartmentId) {
-      // Update existing department
-      setDepartments(departments.map(dept => 
-        dept.id === selectedDepartmentId 
-          ? { ...dept, name: values.name, description: values.description || "" } 
-          : dept
-      ));
-    } else {
-      // Create new department
-      const newDepartment = {
-        id: (departments.length + 1).toString(),
-        name: values.name,
-        description: values.description || "",
-        subjects: 0,
-        teachers: 0,
-        createdAt: new Date()
-      };
+    try {
+      const result = await getDepartments();
       
-      setDepartments([...departments, newDepartment]);
+      if (result.success) {
+        setDepartments(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    
-    setDialogOpen(false);
-    form.reset();
-    setSelectedDepartmentId(null);
+  }
+
+  async function onSubmit(values: DepartmentFormValues) {
+    try {
+      let result;
+      
+      if (selectedDepartmentId) {
+        // Update existing department
+        const updateData: DepartmentUpdateFormValues = { ...values, id: selectedDepartmentId };
+        result = await updateDepartment(updateData);
+      } else {
+        // Create new department
+        result = await createDepartment(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Department ${selectedDepartmentId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedDepartmentId(null);
+        fetchDepartments();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEdit(id: string) {
@@ -165,11 +124,23 @@ export default function DepartmentsPage() {
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedDepartmentId) {
-      setDepartments(departments.filter(dept => dept.id !== selectedDepartmentId));
-      setDeleteDialogOpen(false);
-      setSelectedDepartmentId(null);
+      try {
+        const result = await deleteDepartment(selectedDepartmentId);
+        
+        if (result.success) {
+          toast.success("Department deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedDepartmentId(null);
+          fetchDepartments();
+        } else {
+          toast.error(result.error || "Failed to delete department");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
 
@@ -249,53 +220,78 @@ export default function DepartmentsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {departments.map((department) => (
-          <Card key={department.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                    <Building2 className="h-5 w-5" />
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {departments.map((department) => (
+            <Card key={department.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-lg">{department.name}</CardTitle>
                   </div>
-                  <CardTitle className="text-lg">{department.name}</CardTitle>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(department.id)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleDelete(department.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <CardDescription>{department.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-green-50 rounded-md text-green-700">
-                    <BookOpen className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Subjects</p>
-                    <p className="text-sm font-medium">{department.subjects}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-purple-50 rounded-md text-purple-700">
-                    <GraduationCap className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Teachers</p>
-                    <p className="text-sm font-medium">{department.teachers}</p>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(department.id)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleDelete(department.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <CardDescription>{department.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-green-50 rounded-md text-green-700">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Subjects</p>
+                      <p className="text-sm font-medium">{department._count?.subjects || 0}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-purple-50 rounded-md text-purple-700">
+                      <GraduationCap className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Teachers</p>
+                      <p className="text-sm font-medium">{department._count?.teachers || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {departments.length === 0 && !loading && (
+        <div className="text-center py-12 text-gray-500">
+          <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+          <h3 className="text-lg font-medium mb-1">No departments found</h3>
+          <p className="text-sm mb-4">Create your first department to get started</p>
+          <Button onClick={handleAddNew}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Department
+          </Button>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

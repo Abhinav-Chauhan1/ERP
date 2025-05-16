@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  Search, Filter, BookOpen, FolderOpen, Users
+  Search, Filter, BookOpen, FolderOpen, Users,
+  AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,243 +37,129 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data - replace with actual API calls
-const subjectsData = [
-  {
-    id: "1",
-    code: "PHY101",
-    name: "Physics",
-    department: "Science",
-    description: "Study of matter, energy, and the interaction between them",
-    hasLabs: true,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 6,
-    classes: 10
-  },
-  {
-    id: "2",
-    code: "CHEM101",
-    name: "Chemistry",
-    department: "Science",
-    description: "Study of composition, structure, properties, and change of matter",
-    hasLabs: true,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 5,
-    classes: 10
-  },
-  {
-    id: "3",
-    code: "BIO101",
-    name: "Biology",
-    department: "Science",
-    description: "Study of living organisms and their interactions",
-    hasLabs: true,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 4,
-    classes: 8
-  },
-  {
-    id: "4",
-    code: "MTH101",
-    name: "Algebra",
-    department: "Mathematics",
-    description: "Study of mathematical symbols and the rules for manipulating these symbols",
-    hasLabs: false,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 8,
-    classes: 15
-  },
-  {
-    id: "5",
-    code: "MTH102",
-    name: "Geometry",
-    department: "Mathematics",
-    description: "Study of shape, size, relative position of figures, and properties of space",
-    hasLabs: false,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 5,
-    classes: 12
-  },
-  {
-    id: "6",
-    code: "MTH103",
-    name: "Statistics",
-    department: "Mathematics",
-    description: "Study of the collection, analysis, interpretation, and presentation of data",
-    hasLabs: false,
-    grades: ["Grade 11", "Grade 12"],
-    teachers: 3,
-    classes: 6
-  },
-  {
-    id: "7",
-    code: "ENG101",
-    name: "English",
-    department: "Languages",
-    description: "Study of language, literature, and composition",
-    hasLabs: false,
-    grades: ["Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 10,
-    classes: 32
-  },
-  {
-    id: "8",
-    code: "SPA101",
-    name: "Spanish",
-    department: "Languages",
-    description: "Study of Spanish language and cultures of Spanish-speaking countries",
-    hasLabs: false,
-    grades: ["Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 4,
-    classes: 16
-  },
-  {
-    id: "9",
-    code: "FRE101",
-    name: "French",
-    department: "Languages",
-    description: "Study of French language and francophone cultures",
-    hasLabs: false,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 3,
-    classes: 8
-  },
-  {
-    id: "10",
-    code: "HIS101",
-    name: "History",
-    department: "Social Studies",
-    description: "Study of past events and their impact on society",
-    hasLabs: false,
-    grades: ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 6,
-    classes: 18
-  },
-  {
-    id: "11",
-    code: "GEO101",
-    name: "Geography",
-    department: "Social Studies",
-    description: "Study of places and the relationships between people and their environments",
-    hasLabs: false,
-    grades: ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 4,
-    classes: 16
-  },
-  {
-    id: "12",
-    code: "CIV101",
-    name: "Civics",
-    department: "Social Studies",
-    description: "Study of the rights and duties of citizenship",
-    hasLabs: false,
-    grades: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    teachers: 3,
-    classes: 10
-  },
-];
-
-// Department data
-const departments = [
-  "Science", 
-  "Mathematics", 
-  "Languages", 
-  "Social Studies", 
-  "Arts", 
-  "Physical Education", 
-  "Technology"
-];
-
-// Grade levels
-const grades = [
-  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-  "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"
-];
-
-// Form schema
-const subjectFormSchema = z.object({
-  code: z.string().min(3, "Subject code must be at least 3 characters"),
-  name: z.string().min(2, "Subject name must be at least 2 characters"),
-  department: z.string({
-    required_error: "Please select a department",
-  }),
-  description: z.string().optional(),
-  hasLabs: z.boolean().default(false),
-  grades: z.array(z.string()).min(1, "Please select at least one grade"),
-});
+// Import schema validation and server actions
+import { subjectSchema, SubjectFormValues } from "@/lib/schemaValidation/subjectsSchemaValidation";
+import { 
+  getSubjects, 
+  getDepartments, 
+  getClasses,
+  createSubject,
+  updateSubject,
+  deleteSubject
+} from "@/lib/actions/subjectsActions";
 
 export default function SubjectsPage() {
-  const [subjects, setSubjects] = useState(subjectsData);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Form handling
-  const form = useForm<z.infer<typeof subjectFormSchema>>({
-    resolver: zodResolver(subjectFormSchema),
+  const form = useForm<SubjectFormValues>({
+    resolver: zodResolver(subjectSchema),
     defaultValues: {
       code: "",
       name: "",
       description: "",
-      hasLabs: false,
-      grades: [],
+      departmentId: "",
+      classIds: [],
     },
   });
 
-  // Filter subjects based on search term and department filter
-  const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = 
-      subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDepartment = departmentFilter === "all" || subject.department === departmentFilter;
-    
-    return matchesSearch && matchesDepartment;
-  });
+  useEffect(() => {
+    fetchSubjects();
+    fetchDepartments();
+    fetchClasses();
+  }, []);
 
-  function onSubmit(values: z.infer<typeof subjectFormSchema>) {
-    if (selectedSubjectId) {
-      // Update existing subject
-      setSubjects(subjects.map(subject => 
-        subject.id === selectedSubjectId 
-          ? { 
-              ...subject, 
-              code: values.code,
-              name: values.name,
-              department: values.department,
-              description: values.description || "",
-              hasLabs: values.hasLabs,
-              grades: values.grades,
-            } 
-          : subject
-      ));
-    } else {
-      // Create new subject
-      const newSubject = {
-        id: String(subjects.length + 1),
-        code: values.code,
-        name: values.name,
-        department: values.department,
-        description: values.description || "",
-        hasLabs: values.hasLabs,
-        grades: values.grades,
-        teachers: 0,
-        classes: 0
-      };
-      
-      setSubjects([...subjects, newSubject]);
-    }
+  async function fetchSubjects() {
+    setLoading(true);
+    setError(null);
     
-    setDialogOpen(false);
-    form.reset();
-    setSelectedSubjectId(null);
+    try {
+      const result = await getSubjects();
+      
+      if (result.success) {
+        setSubjects(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchDepartments() {
+    try {
+      const result = await getDepartments();
+      
+      if (result.success) {
+        setDepartments(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch departments");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function fetchClasses() {
+    try {
+      const result = await getClasses();
+      
+      if (result.success) {
+        setClasses(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch classes");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function onSubmit(values: SubjectFormValues) {
+    try {
+      let result;
+      
+      if (selectedSubjectId) {
+        // Update existing subject
+        result = await updateSubject({ ...values, id: selectedSubjectId });
+      } else {
+        // Create new subject
+        result = await createSubject(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Subject ${selectedSubjectId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedSubjectId(null);
+        fetchSubjects();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEdit(id: string) {
@@ -281,10 +168,9 @@ export default function SubjectsPage() {
       form.reset({
         code: subjectToEdit.code,
         name: subjectToEdit.name,
-        department: subjectToEdit.department,
+        departmentId: subjectToEdit.departmentId,
         description: subjectToEdit.description,
-        hasLabs: subjectToEdit.hasLabs,
-        grades: subjectToEdit.grades,
+        classIds: subjectToEdit.classIds,
       });
       
       setSelectedSubjectId(id);
@@ -292,18 +178,54 @@ export default function SubjectsPage() {
     }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     setSelectedSubjectId(id);
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedSubjectId) {
-      setSubjects(subjects.filter(subject => subject.id !== selectedSubjectId));
-      setDeleteDialogOpen(false);
-      setSelectedSubjectId(null);
+      try {
+        const result = await deleteSubject(selectedSubjectId);
+        
+        if (result.success) {
+          toast.success("Subject deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedSubjectId(null);
+          fetchSubjects();
+        } else {
+          toast.error(result.error || "Failed to delete subject");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
+
+  function handleAddNew() {
+    form.reset({ 
+      code: "", 
+      name: "", 
+      description: "", 
+      departmentId: "", 
+      classIds: [] 
+    });
+    setSelectedSubjectId(null);
+    setDialogOpen(true);
+  }
+
+  // Filter subjects based on search term and department filter
+  const filteredSubjects = subjects.filter(subject => {
+    const matchesSearch = 
+      subject.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesDepartment = departmentFilter === "all" || subject.department === departmentFilter;
+    
+    return matchesSearch && matchesDepartment;
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -319,7 +241,7 @@ export default function SubjectsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
             </Button>
           </DialogTrigger>
@@ -364,11 +286,14 @@ export default function SubjectsPage() {
                 </div>
                 <FormField
                   control={form.control}
-                  name="department"
+                  name="departmentId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select department" />
@@ -376,8 +301,8 @@ export default function SubjectsPage() {
                         </FormControl>
                         <SelectContent>
                           {departments.map(department => (
-                            <SelectItem key={department} value={department}>
-                              {department}
+                            <SelectItem key={department.id} value={department.id}>
+                              {department.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -405,60 +330,39 @@ export default function SubjectsPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="hasLabs"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Has Laboratory Component
-                        </FormLabel>
-                        <p className="text-sm text-gray-500">
-                          This subject requires laboratory sessions
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="grades"
+                  name="classIds"
                   render={() => (
                     <FormItem>
-                      <FormLabel>Applicable Grades</FormLabel>
-                      <div className="grid grid-cols-4 gap-2 border rounded-md p-3">
-                        {grades.map((grade) => (
-                          <div key={grade} className="flex items-center space-x-2">
+                      <FormLabel>Applicable Classes</FormLabel>
+                      <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-60 overflow-y-auto">
+                        {classes.map((classItem) => (
+                          <div key={classItem.id} className="flex items-center space-x-2">
                             <Checkbox
-                              id={grade}
-                              checked={form.watch("grades").includes(grade)}
+                              id={classItem.id}
+                              checked={form.watch("classIds").includes(classItem.id)}
                               onCheckedChange={(checked) => {
-                                const currentGrades = form.watch("grades");
+                                const currentClasses = form.watch("classIds");
                                 if (checked) {
-                                  form.setValue("grades", [...currentGrades, grade]);
+                                  form.setValue("classIds", [...currentClasses, classItem.id]);
                                 } else {
                                   form.setValue(
-                                    "grades",
-                                    currentGrades.filter((g) => g !== grade)
+                                    "classIds",
+                                    currentClasses.filter(c => c !== classItem.id)
                                   );
                                 }
                               }}
+                              className="rounded text-primary"
                             />
-                            <label
-                              htmlFor={grade}
-                              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {grade}
+                            <label htmlFor={classItem.id} className="text-sm cursor-pointer">
+                              {classItem.name}
+                              {classItem.academicYear.isCurrent && 
+                                <span className="ml-1 text-xs text-green-600">(Current)</span>
+                              }
                             </label>
                           </div>
                         ))}
                       </div>
-                      <FormMessage>{form.formState.errors.grades?.message}</FormMessage>
+                      <FormMessage>{form.formState.errors.classIds?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -472,6 +376,14 @@ export default function SubjectsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="md:w-2/3">
@@ -494,8 +406,8 @@ export default function SubjectsPage() {
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
               {departments.map(department => (
-                <SelectItem key={department} value={department}>
-                  {department}
+                <SelectItem key={department.id} value={department.name}>
+                  {department.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -503,83 +415,89 @@ export default function SubjectsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {filteredSubjects.map(subject => (
-          <Card key={subject.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                    <BookOpen className="h-5 w-5" />
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {filteredSubjects.map(subject => (
+            <Card key={subject.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{subject.name}</CardTitle>
+                      <p className="text-xs text-gray-500">{subject.code}</p>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">{subject.name}</CardTitle>
-                    <p className="text-xs text-gray-500">{subject.code}</p>
+                  <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                    {subject.department}
+                  </Badge>
+                </div>
+                <CardDescription className="mt-2 line-clamp-2">{subject.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {subject.grades.slice(0, 5).map((grade: string) => (
+                      <Badge key={grade} variant="outline" className="text-xs">
+                        {grade}
+                      </Badge>
+                    ))}
+                    {subject.grades.length > 5 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{subject.grades.length - 5} more
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <span>{subject.teachers} Teachers</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FolderOpen className="h-4 w-4 text-gray-500" />
+                      <span>{subject.classes} Classes</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center pt-3 border-t mt-3">
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEdit(subject.id)}
+                      >
+                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500"
+                        onClick={() => handleDelete(subject.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                    <Link href={`/admin/teaching/subjects/${subject.id}`}>
+                      <Button variant="ghost" size="sm">View</Button>
+                    </Link>
                   </div>
                 </div>
-                <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-                  {subject.department}
-                </Badge>
-              </div>
-              <CardDescription className="mt-2 line-clamp-2">{subject.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {subject.grades.slice(0, 5).map(grade => (
-                    <Badge key={grade} variant="outline" className="text-xs">
-                      {grade}
-                    </Badge>
-                  ))}
-                  {subject.grades.length > 5 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{subject.grades.length - 5} more
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="flex gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4 text-gray-500" />
-                    <span>{subject.teachers} Teachers</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <FolderOpen className="h-4 w-4 text-gray-500" />
-                    <span>{subject.classes} Classes</span>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center pt-3 border-t mt-3">
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleEdit(subject.id)}
-                    >
-                      <Edit className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-red-500"
-                      onClick={() => handleDelete(subject.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                  <Link href={`/admin/teaching/subjects/${subject.id}`}>
-                    <Button variant="ghost" size="sm">View</Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {filteredSubjects.length === 0 && (
+      {!loading && filteredSubjects.length === 0 && (
         <div className="text-center py-10">
           <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
           <h3 className="text-lg font-medium mb-1">No subjects found</h3>
@@ -588,7 +506,7 @@ export default function SubjectsPage() {
               ? "Try adjusting your filters or search terms"
               : "No subjects have been added yet"}
           </p>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={handleAddNew}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
           </Button>
         </div>

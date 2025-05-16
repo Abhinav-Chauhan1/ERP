@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  BookOpen, BookText, FolderPlus, Search
+  BookOpen, BookText, FolderPlus, Search, 
+  AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -36,180 +38,138 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
 import * as z from "zod";
 
-// Mock data - replace with actual API calls
-const subjectsData = [
-  {
-    id: "1",
-    name: "Mathematics",
-    code: "MATH101",
-    description: "Basic principles of algebra, geometry, and calculus",
-    department: "Mathematics",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: true
-  },
-  {
-    id: "2",
-    name: "Physics",
-    code: "PHYS101",
-    description: "Study of matter, energy, and the interaction between them",
-    department: "Science",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: true
-  },
-  {
-    id: "3",
-    name: "Chemistry",
-    code: "CHEM101",
-    description: "Study of composition, structure, properties, and change of matter",
-    department: "Science",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: true
-  },
-  {
-    id: "4",
-    name: "Biology",
-    code: "BIOL101",
-    description: "Study of living organisms and their interactions with each other and their environment",
-    department: "Science",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: false
-  },
-  {
-    id: "5",
-    name: "English",
-    code: "ENGL101",
-    description: "Study of language, literature, and composition",
-    department: "Languages",
-    classes: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    hasComplexSyllabus: true
-  },
-  {
-    id: "6",
-    name: "History",
-    code: "HIST101",
-    description: "Study of past events and their impact on society",
-    department: "Social Studies",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: false
-  },
-  {
-    id: "7",
-    name: "Geography",
-    code: "GEOG101",
-    description: "Study of places and the relationships between people and their environments",
-    department: "Social Studies",
-    classes: ["Grade 9", "Grade 10"],
-    hasComplexSyllabus: false
-  },
-  {
-    id: "8",
-    name: "Computer Science",
-    code: "COMP101",
-    description: "Study of computers and computational systems",
-    department: "Technology",
-    classes: ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
-    hasComplexSyllabus: true
-  }
-];
-
-const departmentsData = [
-  { id: "1", name: "Mathematics" },
-  { id: "2", name: "Science" },
-  { id: "3", name: "Languages" },
-  { id: "4", name: "Social Studies" },
-  { id: "5", name: "Physical Education" },
-  { id: "6", name: "Arts" },
-  { id: "7", name: "Technology" },
-  { id: "8", name: "Vocational Studies" }
-];
-
-const classesData = [
-  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", 
-  "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
-  "Grade 11", "Grade 12"
-];
-
-const formSchema = z.object({
-  name: z.string().min(3, "Subject name must be at least 3 characters"),
-  code: z.string().min(3, "Subject code must be at least 3 characters"),
-  description: z.string().optional(),
-  departmentId: z.string({
-    required_error: "Please select a department",
-  }),
-  classes: z.array(z.string()).min(1, "Please select at least one class"),
-});
+// Import schema validation and server actions
+import { subjectSchema, SubjectFormValues, subjectUpdateSchema, SubjectUpdateFormValues } from "@/lib/schemaValidation/curriculumSchemaValidation";
+import { 
+  getSubjects, 
+  getDepartments, 
+  getClasses, 
+  createSubject, 
+  updateSubject, 
+  deleteSubject 
+} from "@/lib/actions/curriculumActions";
 
 export default function CurriculumPage() {
-  const [subjects, setSubjects] = useState(subjectsData);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<SubjectFormValues>({
+    resolver: zodResolver(subjectSchema),
     defaultValues: {
       name: "",
       code: "",
       description: "",
       departmentId: "",
-      classes: [],
+      classIds: [],
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  useEffect(() => {
+    fetchSubjects();
+    fetchDepartments();
+    fetchClasses();
+  }, []);
+
+  async function fetchSubjects() {
+    setLoading(true);
+    setError(null);
     
-    const departmentName = departmentsData.find(dept => dept.id === values.departmentId)?.name || "";
-    
-    if (selectedSubjectId) {
-      // Update existing subject
-      setSubjects(subjects.map(subject => 
-        subject.id === selectedSubjectId 
-          ? { 
-              ...subject, 
-              name: values.name,
-              code: values.code,
-              description: values.description || "",
-              department: departmentName,
-              classes: values.classes
-            } 
-          : subject
-      ));
-    } else {
-      // Create new subject
-      const newSubject = {
-        id: (subjects.length + 1).toString(),
-        name: values.name,
-        code: values.code,
-        description: values.description || "",
-        department: departmentName,
-        classes: values.classes,
-        hasComplexSyllabus: false
-      };
+    try {
+      const result = await getSubjects();
       
-      setSubjects([...subjects, newSubject]);
+      if (result.success) {
+        setSubjects(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    
-    setDialogOpen(false);
-    form.reset();
-    setSelectedSubjectId(null);
+  }
+
+  async function fetchDepartments() {
+    try {
+      const result = await getDepartments();
+      
+      if (result.success) {
+        setDepartments(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch departments");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function fetchClasses() {
+    try {
+      const result = await getClasses();
+      
+      if (result.success) {
+        setClasses(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch classes");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function onSubmit(values: SubjectFormValues) {
+    try {
+      let result;
+      
+      if (selectedSubjectId) {
+        // Update existing subject
+        const updateData: SubjectUpdateFormValues = { ...values, id: selectedSubjectId };
+        result = await updateSubject(updateData);
+      } else {
+        // Create new subject
+        result = await createSubject(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Subject ${selectedSubjectId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedSubjectId(null);
+        fetchSubjects();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEdit(id: string) {
     const subjectToEdit = subjects.find(subject => subject.id === id);
     if (subjectToEdit) {
-      const departmentId = departmentsData.find(dept => dept.name === subjectToEdit.department)?.id || "";
-      
       form.reset({
         name: subjectToEdit.name,
         code: subjectToEdit.code,
         description: subjectToEdit.description,
-        departmentId: departmentId,
-        classes: subjectToEdit.classes,
+        departmentId: subjectToEdit.departmentId,
+        classIds: subjectToEdit.classIds,
       });
       setSelectedSubjectId(id);
       setDialogOpen(true);
@@ -221,11 +181,23 @@ export default function CurriculumPage() {
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedSubjectId) {
-      setSubjects(subjects.filter(subject => subject.id !== selectedSubjectId));
-      setDeleteDialogOpen(false);
-      setSelectedSubjectId(null);
+      try {
+        const result = await deleteSubject(selectedSubjectId);
+        
+        if (result.success) {
+          toast.success("Subject deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedSubjectId(null);
+          fetchSubjects();
+        } else {
+          toast.error(result.error || "Failed to delete subject");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
 
@@ -235,7 +207,7 @@ export default function CurriculumPage() {
       code: "", 
       description: "", 
       departmentId: "", 
-      classes: [] 
+      classIds: [] 
     });
     setSelectedSubjectId(null);
     setDialogOpen(true);
@@ -339,7 +311,7 @@ export default function CurriculumPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {departmentsData.map(department => (
+                          {departments.map(department => (
                             <SelectItem key={department.id} value={department.id}>
                               {department.name}
                             </SelectItem>
@@ -352,35 +324,40 @@ export default function CurriculumPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="classes"
+                  name="classIds"
                   render={() => (
                     <FormItem>
                       <FormLabel>Classes</FormLabel>
-                      <div className="grid grid-cols-3 gap-2 border rounded-md p-3">
-                        {classesData.map((className) => (
-                          <div key={className} className="flex items-center space-x-2">
+                      <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-60 overflow-y-auto">
+                        {classes.map((classItem) => (
+                          <div key={classItem.id} className="flex items-center space-x-2">
                             <input
                               type="checkbox"
-                              id={className}
-                              checked={form.watch("classes").includes(className)}
+                              id={classItem.id}
+                              checked={form.watch("classIds").includes(classItem.id)}
                               onChange={(e) => {
-                                const currentClasses = form.watch("classes");
+                                const currentClasses = form.watch("classIds");
                                 if (e.target.checked) {
-                                  form.setValue("classes", [...currentClasses, className]);
+                                  form.setValue("classIds", [...currentClasses, classItem.id]);
                                 } else {
                                   form.setValue(
-                                    "classes",
-                                    currentClasses.filter((c) => c !== className)
+                                    "classIds",
+                                    currentClasses.filter((c) => c !== classItem.id)
                                   );
                                 }
                               }}
                               className="rounded text-primary"
                             />
-                            <label htmlFor={className} className="text-sm">{className}</label>
+                            <label htmlFor={classItem.id} className="text-sm">
+                              {classItem.name}
+                              {classItem.academicYear.isCurrent && 
+                                <span className="ml-1 text-xs text-green-600">(Current)</span>
+                              }
+                            </label>
                           </div>
                         ))}
                       </div>
-                      <FormMessage>{form.formState.errors.classes?.message}</FormMessage>
+                      <FormMessage>{form.formState.errors.classIds?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -394,6 +371,14 @@ export default function CurriculumPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-4">
         <CardContent className="pt-6">
@@ -419,7 +404,7 @@ export default function CurriculumPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  {departmentsData.map(department => (
+                  {departments.map(department => (
                     <SelectItem key={department.id} value={department.name}>
                       {department.name}
                     </SelectItem>
@@ -431,69 +416,77 @@ export default function CurriculumPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSubjects.map((subject) => (
-          <Card key={subject.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                    <BookOpen className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">{subject.name}</CardTitle>
-                    <CardDescription className="text-xs">{subject.code}</CardDescription>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(subject.id)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleDelete(subject.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 line-clamp-2 mb-3">{subject.description}</p>
-              <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="p-1 bg-purple-50 rounded-md text-purple-700">
-                    <FolderPlus className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-700">{subject.department}</span>
-                </div>
-                {subject.hasComplexSyllabus && (
-                  <Link href={`/admin/academic/syllabus?subject=${subject.id}`}>
-                    <Button variant="outline" size="sm" className="h-7 text-xs">
-                      <BookText className="h-3.5 w-3.5 mr-1.5" />
-                      View Syllabus
-                    </Button>
-                  </Link>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {subject.classes.map((className) => (
-                  <span 
-                    key={className} 
-                    className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
-                  >
-                    {className}
-                  </span>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredSubjects.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-          <h3 className="text-lg font-medium mb-1">No subjects found</h3>
-          <p className="text-sm">Try changing your search or filter criteria</p>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredSubjects.map((subject) => (
+              <Card key={subject.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{subject.name}</CardTitle>
+                        <CardDescription className="text-xs">{subject.code}</CardDescription>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(subject.id)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleDelete(subject.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">{subject.description}</p>
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 bg-purple-50 rounded-md text-purple-700">
+                        <FolderPlus className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">{subject.department}</span>
+                    </div>
+                    {subject.hasComplexSyllabus && (
+                      <Link href={`/admin/academic/syllabus?subject=${subject.id}`}>
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <BookText className="h-3.5 w-3.5 mr-1.5" />
+                          View Syllabus
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {subject.classes.map((className: string) => (
+                      <span 
+                        key={className} 
+                        className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                      >
+                        {className}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredSubjects.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium mb-1">No subjects found</h3>
+              <p className="text-sm">Try changing your search or filter criteria</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}

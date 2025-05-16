@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  Search, Filter, Calendar, Clock, BookOpen, 
-  MoreVertical, Download, Printer, FileText, User,
-  CheckCircle2, School
+  Search, Calendar, Clock, BookOpen, 
+  MoreVertical, Download, Printer, FileText,
+  CheckCircle2, School, Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -47,228 +48,163 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
+import { format, parseISO } from "date-fns";
+import { DatePicker } from "@/components/ui/date-picker";
 
-// Mock data for exams
-const examData = [
-  {
-    id: "e1",
-    title: "Mid-Term Physics Exam",
-    subject: "Physics",
-    grade: "Grade 11",
-    examDate: "2023-12-10",
-    startTime: "09:00 AM",
-    duration: "90 min",
-    totalMarks: 100,
-    passingMarks: 40,
-    status: "Upcoming",
-    createdBy: "John Smith",
-    createdAt: "2023-11-15"
-  },
-  {
-    id: "e2",
-    title: "Mathematics Unit Test: Algebra",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    examDate: "2023-12-05",
-    startTime: "10:30 AM",
-    duration: "60 min",
-    totalMarks: 50,
-    passingMarks: 20,
-    status: "Upcoming",
-    createdBy: "Sarah Thompson",
-    createdAt: "2023-11-20"
-  },
-  {
-    id: "e3",
-    title: "English Literature Analysis",
-    subject: "English",
-    grade: "Grade 9",
-    examDate: "2023-11-28",
-    startTime: "01:00 PM",
-    duration: "120 min",
-    totalMarks: 75,
-    passingMarks: 30,
-    status: "Upcoming",
-    createdBy: "Emily Johnson",
-    createdAt: "2023-11-18"
-  },
-  {
-    id: "e4",
-    title: "Chemistry Final Exam",
-    subject: "Chemistry",
-    grade: "Grade 12",
-    examDate: "2023-12-15",
-    startTime: "09:00 AM",
-    duration: "180 min",
-    totalMarks: 120,
-    passingMarks: 48,
-    status: "Upcoming",
-    createdBy: "Michael Davis",
-    createdAt: "2023-11-10"
-  },
-  {
-    id: "e5",
-    title: "Biology Cell Structure Quiz",
-    subject: "Biology",
-    grade: "Grade 10",
-    examDate: "2023-11-15",
-    startTime: "11:00 AM",
-    duration: "45 min",
-    totalMarks: 30,
-    passingMarks: 12,
-    status: "Completed",
-    createdBy: "Robert Brown",
-    createdAt: "2023-11-05"
-  },
-];
-
-// Past exams data
-const pastExams = [
-  {
-    id: "pe1",
-    title: "Physics Mid-Term",
-    subject: "Physics",
-    grade: "Grade 11",
-    examDate: "2023-10-15",
-    studentsAppeared: 32,
-    averageScore: 76,
-    passPercentage: 91,
-    highestScore: 98
-  },
-  {
-    id: "pe2",
-    title: "Mathematics Unit Test",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    examDate: "2023-10-10",
-    studentsAppeared: 35,
-    averageScore: 68,
-    passPercentage: 83,
-    highestScore: 95
-  },
-  {
-    id: "pe3",
-    title: "English Grammar Test",
-    subject: "English",
-    grade: "Grade 9",
-    examDate: "2023-10-05",
-    studentsAppeared: 38,
-    averageScore: 72,
-    passPercentage: 89,
-    highestScore: 92
-  }
-];
-
-// Subject data
-const subjects = [
-  { id: "s1", name: "Physics" },
-  { id: "s2", name: "Chemistry" },
-  { id: "s3", name: "Biology" },
-  { id: "s4", name: "Mathematics" },
-  { id: "s5", name: "English" },
-  { id: "s6", name: "History" },
-  { id: "s7", name: "Geography" },
-  { id: "s8", name: "Computer Science" },
-];
-
-// Exam type data
-const examTypes = [
-  { id: "et1", name: "Mid-Term" },
-  { id: "et2", name: "Final" },
-  { id: "et3", name: "Unit Test" },
-  { id: "et4", name: "Quiz" },
-  { id: "et5", name: "Practical" },
-];
-
-// Grade data
-const grades = [
-  { id: "g9", name: "Grade 9" },
-  { id: "g10", name: "Grade 10" },
-  { id: "g11", name: "Grade 11" },
-  { id: "g12", name: "Grade 12" },
-];
-
-// Form schema for exams
-const examFormSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  examTypeId: z.string({
-    required_error: "Please select an exam type",
-  }),
-  subjectId: z.string({
-    required_error: "Please select a subject",
-  }),
-  gradeId: z.string({
-    required_error: "Please select a grade",
-  }),
-  examDate: z.string({
-    required_error: "Please select an exam date",
-  }),
-  startTime: z.string({
-    required_error: "Please enter a start time",
-  }),
-  duration: z.number().min(15, "Duration must be at least 15 minutes"),
-  totalMarks: z.number().min(1, "Total marks must be at least 1"),
-  passingMarks: z.number().min(1, "Passing marks must be at least 1"),
-  instructions: z.string().optional(),
-});
+// Import schema validation and server actions
+import { examSchema, ExamFormValues } from "@/lib/schemaValidation/examsSchemaValidation";
+import { 
+  getUpcomingExams, 
+  getPastExams, 
+  getExamTypes, 
+  getSubjects, 
+  getTerms,
+  createExam,
+  updateExam,
+  deleteExam,
+  getExamStatistics
+} from "@/lib/actions/examsActions";
 
 export default function ExamsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  
   const [examDialogOpen, setExamDialogOpen] = useState(false);
-  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<string>("upcoming");
+  
+  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [pastExams, setPastExams] = useState<any[]>([]);
+  const [examTypes, setExamTypes] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [terms, setTerms] = useState<any[]>([]);
+  const [statistics, setStatistics] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize exam form
-  const form = useForm<z.infer<typeof examFormSchema>>({
-    resolver: zodResolver(examFormSchema),
+  const form = useForm<ExamFormValues>({
+    resolver: zodResolver(examSchema),
     defaultValues: {
-      duration: 60,
+      title: "",
       totalMarks: 100,
       passingMarks: 40,
+      instructions: "",
     },
   });
 
-  // Filter exams based on search and filters
-  const filteredExams = examData.filter(exam => {
-    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    fetchExams();
+    fetchMetadata();
+    fetchStatistics();
+  }, []);
+
+  // Fetch upcoming and past exams
+  async function fetchExams() {
+    setLoading(true);
+    setError(null);
     
-    const matchesSubject = subjectFilter === "all" || exam.subject === subjects.find(s => s.id === subjectFilter)?.name;
-    const matchesGrade = gradeFilter === "all" || exam.grade === grades.find(g => g.id === gradeFilter)?.name;
-    const matchesStatus = statusFilter === "all" || exam.status.toLowerCase() === statusFilter.toLowerCase();
-    
-    return matchesSearch && matchesSubject && matchesGrade && matchesStatus;
-  });
+    try {
+      // Fetch upcoming exams
+      const upcomingResult = await getUpcomingExams();
+      if (upcomingResult.success) {
+        setUpcomingExams(upcomingResult.data || []);
+      } else {
+        toast.error("Failed to fetch upcoming exams");
+      }
+      
+      // Fetch past exams
+      const pastResult = await getPastExams();
+      if (pastResult.success) {
+        setPastExams(pastResult.data || []);
+      } else {
+        toast.error("Failed to fetch past exams");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Fetch metadata (exam types, subjects, terms)
+  async function fetchMetadata() {
+    try {
+      // Fetch exam types
+      const typesResult = await getExamTypes();
+      if (typesResult.success) {
+        setExamTypes(typesResult.data || []);
+      }
+      
+      // Fetch subjects
+      const subjectsResult = await getSubjects();
+      if (subjectsResult.success) {
+        setSubjects(subjectsResult.data || []);
+      }
+      
+      // Fetch terms
+      const termsResult = await getTerms();
+      if (termsResult.success) {
+        setTerms(termsResult.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching metadata:", err);
+    }
+  }
+
+  // Fetch exam statistics
+  async function fetchStatistics() {
+    setStatsLoading(true);
+    try {
+      const result = await getExamStatistics();
+      if (result.success) {
+        setStatistics(result.data);
+      }
+    } catch (err) {
+      console.error("Error fetching statistics:", err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }
 
   function handleCreateExam() {
     form.reset({
-      duration: 60,
+      title: "",
       totalMarks: 100,
       passingMarks: 40,
+      instructions: "",
+      examDate: undefined,
+      startTime: undefined,
+      endTime: undefined,
+      examTypeId: "",
+      subjectId: "",
+      termId: "",
     });
     setSelectedExamId(null);
     setExamDialogOpen(true);
   }
 
   function handleEditExam(examId: string) {
-    const examToEdit = examData.find(e => e.id === examId);
+    const examToEdit = upcomingExams.find(e => e.id === examId) || pastExams.find(e => e.id === examId);
+    
     if (examToEdit) {
       form.reset({
         title: examToEdit.title,
-        examTypeId: examTypes.find(t => t.name === examToEdit.subject)?.id || "",
-        subjectId: subjects.find(s => s.name === examToEdit.subject)?.id || "",
-        gradeId: grades.find(g => g.name === examToEdit.grade)?.id || "",
-        examDate: examToEdit.examDate,
-        startTime: examToEdit.startTime,
-        duration: parseInt(examToEdit.duration),
+        examTypeId: examToEdit.examTypeId,
+        subjectId: examToEdit.subjectId,
+        termId: examToEdit.termId,
+        examDate: new Date(examToEdit.examDate),
+        startTime: new Date(examToEdit.startTime),
+        endTime: new Date(examToEdit.endTime),
         totalMarks: examToEdit.totalMarks,
         passingMarks: examToEdit.passingMarks,
-        instructions: "",
+        instructions: examToEdit.instructions || "",
       });
       
       setSelectedExamId(examId);
@@ -281,38 +217,106 @@ export default function ExamsPage() {
     setDeleteDialogOpen(true);
   }
 
-  function onSubmit(values: z.infer<typeof examFormSchema>) {
-    console.log("Form submitted:", values);
-    // Here you would handle the API call to create/edit the exam
-    setExamDialogOpen(false);
-    form.reset({
-      duration: 60,
-      totalMarks: 100,
-      passingMarks: 40,
-    });
-    setSelectedExamId(null);
+  async function onSubmit(values: ExamFormValues) {
+    try {
+      setLoading(true);
+      
+      if (selectedExamId) {
+        // Update existing exam
+        const result = await updateExam({ ...values, id: selectedExamId });
+        
+        if (result.success) {
+          toast.success("Exam updated successfully");
+          fetchExams();
+          fetchStatistics();
+          setExamDialogOpen(false);
+        } else {
+          toast.error(result.error || "Failed to update exam");
+        }
+      } else {
+        // Create new exam - no teacherId needed for admin
+        const result = await createExam(values);
+        
+        if (result.success) {
+          toast.success("Exam created successfully");
+          fetchExams();
+          fetchStatistics();
+          setExamDialogOpen(false);
+        } else {
+          toast.error(result.error || "Failed to create exam");
+        }
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function confirmDelete() {
-    console.log("Deleting exam:", selectedExamId);
-    // Here you would handle the API call to delete the exam
-    setDeleteDialogOpen(false);
-    setSelectedExamId(null);
+  async function confirmDelete() {
+    if (selectedExamId) {
+      try {
+        const result = await deleteExam(selectedExamId);
+        
+        if (result.success) {
+          toast.success("Exam deleted successfully");
+          fetchExams();
+          fetchStatistics();
+          setDeleteDialogOpen(false);
+        } else {
+          toast.error(result.error || "Failed to delete exam");
+        }
+      } catch (err) {
+        toast.error("An unexpected error occurred");
+      }
+    }
   }
 
-  // Status badge colors
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'upcoming':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'in progress':
-        return 'bg-amber-100 text-amber-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  // Filter exams based on search and filters
+  const filteredUpcomingExams = upcomingExams.filter(exam => {
+    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
+    const matchesTerm = termFilter === "all" || exam.termId === termFilter;
+    
+    return matchesSearch && matchesSubject && matchesTerm;
+  });
+
+  // Utility function to format date-time
+  const formatDateTime = (date: string | Date) => {
+    if (!date) return "";
+    const parsedDate = typeof date === 'string' ? parseISO(date) : date;
+    return format(parsedDate, "MMM d, yyyy h:mm a");
+  };
+
+  // Get status color for badges
+  const getStatusColor = (examDate: string) => {
+    const now = new Date();
+    const date = new Date(examDate);
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    
+    if (date < now) {
+      return 'bg-green-100 text-green-800'; // Past
+    } else if (date.getTime() - now.getTime() < oneDayInMs) {
+      return 'bg-amber-100 text-amber-800'; // Today/tomorrow
+    } else {
+      return 'bg-blue-100 text-blue-800'; // Upcoming
+    }
+  };
+
+  // Get status text
+  const getStatusText = (examDate: string) => {
+    const now = new Date();
+    const date = new Date(examDate);
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    
+    if (date < now) {
+      return 'Completed';
+    } else if (date.getTime() - now.getTime() < oneDayInMs) {
+      return 'Today/Tomorrow';
+    } else {
+      return 'Upcoming';
     }
   };
 
@@ -409,32 +413,32 @@ export default function ExamsPage() {
                   />
                 </div>
                 
+                <FormField
+                  control={form.control}
+                  name="termId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Term</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select term" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {terms.map(term => (
+                            <SelectItem key={term.id} value={term.id}>
+                              {term.name} ({term.academicYear.name})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="gradeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Grade</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select grade" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {grades.map(grade => (
-                              <SelectItem key={grade.id} value={grade.id}>
-                                {grade.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
                   <FormField
                     control={form.control}
                     name="examDate"
@@ -442,7 +446,11 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Exam Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <DatePicker
+                            date={field.value}
+                            onSelect={field.onChange}
+                            placeholder="Select date"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -456,27 +464,16 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Start Time</FormLabel>
                         <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duration (mins)</FormLabel>
-                        <FormControl>
                           <Input 
-                            type="number" 
-                            min="15" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
+                            type="time" 
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(":");
+                              const now = new Date();
+                              now.setHours(parseInt(hours, 10));
+                              now.setMinutes(parseInt(minutes, 10));
+                              field.onChange(now);
+                            }}
+                            value={field.value ? format(field.value, "HH:mm") : ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -484,6 +481,32 @@ export default function ExamsPage() {
                     )}
                   />
                   
+                  <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Time</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="time" 
+                            onChange={(e) => {
+                              const [hours, minutes] = e.target.value.split(":");
+                              const now = new Date();
+                              now.setHours(parseInt(hours, 10));
+                              now.setMinutes(parseInt(minutes, 10));
+                              field.onChange(now);
+                            }}
+                            value={field.value ? format(field.value, "HH:mm") : ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="totalMarks"
@@ -495,7 +518,6 @@ export default function ExamsPage() {
                             type="number" 
                             min="1" 
                             {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
                         <FormMessage />
@@ -514,7 +536,6 @@ export default function ExamsPage() {
                             type="number" 
                             min="1" 
                             {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
                         <FormMessage />
@@ -556,6 +577,14 @@ export default function ExamsPage() {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Search and filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-1/2">
@@ -584,221 +613,110 @@ export default function ExamsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={gradeFilter} onValueChange={setGradeFilter}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Grade" />
+          <Select value={termFilter} onValueChange={setTermFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Term" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
-              {grades.map(grade => (
-                <SelectItem key={grade.id} value={grade.id}>
-                  {grade.name}
+              <SelectItem value="all">All Terms</SelectItem>
+              {terms.map(term => (
+                <SelectItem key={term.id} value={term.id}>
+                  {term.name} ({term.academicYear.name})
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <Tabs defaultValue="upcoming" onValueChange={setViewTab}>
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming Exams</TabsTrigger>
-          <TabsTrigger value="past">Past Exams</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="upcoming" className="mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <CardTitle>Upcoming Exams</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print Schedule
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {filteredExams.length > 0 ? (
-                <div className="rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date & Time</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredExams.map(exam => (
-                        <tr key={exam.id} className="border-b">
-                          <td className="py-3 px-4 align-middle font-medium">{exam.title}</td>
-                          <td className="py-3 px-4 align-middle">{exam.subject}</td>
-                          <td className="py-3 px-4 align-middle">{exam.grade}</td>
-                          <td className="py-3 px-4 align-middle">
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                                <span>{new Date(exam.examDate).toLocaleDateString()}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="h-3.5 w-3.5 text-gray-500" />
-                                <span>{exam.startTime} ({exam.duration})</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            <div className="flex flex-col">
-                              <span>Total: {exam.totalMarks}</span>
-                              <span className="text-xs text-gray-500">Pass: {exam.passingMarks}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            <Badge className={getStatusColor(exam.status)}>
-                              {exam.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 align-middle text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/assessment/exams/${exam.id}`}>
-                                    View Details
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditExam(exam.id)}>
-                                  Edit Exam
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/assessment/exams/${exam.id}/questions`}>
-                                    Manage Questions
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  className="text-red-600"
-                                  onClick={() => handleDeleteExam(exam.id)}
-                                >
-                                  Delete Exam
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-10">
-                  <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                  <h3 className="text-lg font-medium mb-1">No exams found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    {searchTerm || subjectFilter !== "all" || gradeFilter !== "all" || statusFilter !== "all"
-                      ? "Try adjusting your filters or search terms"
-                      : "No exams have been scheduled yet"}
-                  </p>
-                  <Button onClick={handleCreateExam}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="past" className="mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <CardTitle>Past Exams & Results</CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Results
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Students</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Avg. Score</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Pass %</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pastExams.map(exam => (
-                      <tr key={exam.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{exam.title}</td>
-                        <td className="py-3 px-4 align-middle">{exam.subject}</td>
-                        <td className="py-3 px-4 align-middle">{new Date(exam.examDate).toLocaleDateString()}</td>
-                        <td className="py-3 px-4 align-middle">{exam.studentsAppeared}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold" style={{
-                              background: `conic-gradient(#3b82f6 ${exam.averageScore}%, #e5e7eb ${exam.averageScore}% 100%)`
-                            }}>
-                              <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
-                                {exam.averageScore}%
-                              </div>
-                            </div>
-                            <span>{exam.averageScore}/100</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={exam.passPercentage >= 90 ? "bg-green-100 text-green-800" : 
-                                          exam.passPercentage >= 75 ? "bg-blue-100 text-blue-800" : 
-                                          exam.passPercentage >= 60 ? "bg-yellow-100 text-yellow-800" : 
-                                          "bg-red-100 text-red-800"}>
-                            {exam.passPercentage}%
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Link href={`/admin/assessment/results?exam=${exam.id}`}>
-                            <Button variant="ghost" size="sm">View Results</Button>
+      {/* Exams List Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Exams</CardTitle>
+          <CardDescription>Manage all scheduled examinations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredUpcomingExams.length > 0 ? (
+            <div className="rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
+                    <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
+                    <th className="py-3 px-4 text-left font-medium text-gray-500">Date & Time</th>
+                    <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
+                    <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUpcomingExams.map(exam => (
+                    <tr key={exam.id} className="border-b">
+                      <td className="py-3 px-4 align-middle font-medium">{exam.title}</td>
+                      <td className="py-3 px-4 align-middle">{exam.subject.name}</td>
+                      <td className="py-3 px-4 align-middle">
+                        {format(new Date(exam.examDate), 'MMM d, yyyy')}
+                        <div className="text-xs text-gray-500">
+                          {format(new Date(exam.startTime), 'h:mm a')} - {format(new Date(exam.endTime), 'h:mm a')}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 align-middle">{exam.examType.name}</td>
+                      <td className="py-3 px-4 align-middle">
+                        <Badge className={getStatusColor(exam.examDate)}>
+                          {getStatusText(exam.examDate)}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 align-middle text-right">
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/admin/assessment/exams/${exam.id}`}>
+                            <Button variant="ghost" size="sm">View</Button>
                           </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditExam(exam.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-500"
+                            onClick={() => handleDeleteExam(exam.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-medium mb-1">No exams found</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {searchTerm || subjectFilter !== "all" || termFilter !== "all"
+                  ? "Try adjusting your filters or search terms"
+                  : "No exams have been scheduled yet"}
+              </p>
+              <Button onClick={handleCreateExam}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Render tab content based on view */}
+      <Tabs defaultValue="upcoming" onValueChange={setViewTab}>
+        {/* ...existing tabs code... */}
       </Tabs>
 
       <Card className="mt-2">
@@ -807,43 +725,50 @@ export default function ExamsPage() {
           <CardDescription>Overview of exam performance and trends</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="p-2 bg-blue-50 rounded-md text-blue-600">
-                  <BookOpen className="h-5 w-5" />
-                </div>
-                <h3 className="font-medium">Upcoming Exams</h3>
-              </div>
-              <p className="text-3xl font-bold ml-11">{examData.filter(e => e.status === "Upcoming").length}</p>
-              <p className="text-sm text-gray-500 ml-11">Next: {
-                examData.filter(e => e.status === "Upcoming")
-                  .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0]?.subject || "None"
-              }</p>
+          {statsLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="p-2 bg-green-50 rounded-md text-green-600">
-                  <CheckCircle2 className="h-5 w-5" />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="p-2 bg-blue-50 rounded-md text-blue-600">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-medium">Upcoming Exams</h3>
                 </div>
-                <h3 className="font-medium">Completed Exams</h3>
+                <p className="text-3xl font-bold ml-11">{statistics?.upcomingExamsCount || 0}</p>
+                <p className="text-sm text-gray-500 ml-11">
+                  Next: {statistics?.nextExam || "None scheduled"}
+                </p>
               </div>
-              <p className="text-3xl font-bold ml-11">{examData.filter(e => e.status === "Completed").length}</p>
-              <p className="text-sm text-gray-500 ml-11">This term: {examData.filter(e => e.status === "Completed").length}</p>
-            </div>
-            
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-1">
-                <div className="p-2 bg-purple-50 rounded-md text-purple-600">
-                  <School className="h-5 w-5" />
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="p-2 bg-green-50 rounded-md text-green-600">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-medium">Completed Exams</h3>
                 </div>
-                <h3 className="font-medium">Highest Performers</h3>
+                <p className="text-3xl font-bold ml-11">{statistics?.completedExamsCount || 0}</p>
+                <p className="text-sm text-gray-500 ml-11">This term: {pastExams.length}</p>
               </div>
-              <p className="text-3xl font-bold ml-11">Grade 11</p>
-              <p className="text-sm text-gray-500 ml-11">Avg score: 82%</p>
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="p-2 bg-purple-50 rounded-md text-purple-600">
+                    <School className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-medium">Highest Performers</h3>
+                </div>
+                <p className="text-3xl font-bold ml-11">{statistics?.highestPerformingClass || "N/A"}</p>
+                <p className="text-sm text-gray-500 ml-11">
+                  Avg score: {statistics?.highestPerformingAverage ? `${statistics.highestPerformingAverage}%` : "N/A"}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

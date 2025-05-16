@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
   Search, ClipboardList, BookOpen, Clock, 
   CalendarDays, FileText, FolderOpen, Filter,
-  ChevronDown, MoreVertical
+  ChevronDown, MoreVertical, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,192 +49,211 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data - replace with actual API calls
-const lessonsData = [
-  {
-    id: "1",
-    title: "Kinematics",
-    subject: { id: "1", name: "Physics", code: "PHY101" },
-    grades: ["Grade 11", "Grade 12"],
-    unit: "Mechanics",
-    duration: 90, // in minutes
-    status: "active",
-    resources: 3,
-    description: "Introduction to motion in one and two dimensions, velocity, and acceleration"
-  },
-  {
-    id: "2",
-    title: "Laws of Motion",
-    subject: { id: "1", name: "Physics", code: "PHY101" },
-    grades: ["Grade 11", "Grade 12"],
-    unit: "Mechanics",
-    duration: 90,
-    status: "active",
-    resources: 5,
-    description: "Study of Newton's laws of motion and their applications"
-  },
-  {
-    id: "3",
-    title: "Work, Energy and Power",
-    subject: { id: "1", name: "Physics", code: "PHY101" },
-    grades: ["Grade 11", "Grade 12"],
-    unit: "Mechanics",
-    duration: 90,
-    status: "active",
-    resources: 4,
-    description: "Understanding work, energy, and power in mechanical systems"
-  },
-  {
-    id: "4",
-    title: "Heat and Temperature",
-    subject: { id: "1", name: "Physics", code: "PHY101" },
-    grades: ["Grade 11", "Grade 12"],
-    unit: "Thermodynamics",
-    duration: 90,
-    status: "active",
-    resources: 3,
-    description: "Concepts of heat, temperature, and thermal equilibrium"
-  },
-  {
-    id: "5",
-    title: "Linear Equations",
-    subject: { id: "4", name: "Algebra", code: "MTH101" },
-    grades: ["Grade 9", "Grade 10"],
-    unit: "Equations and Inequalities",
-    duration: 60,
-    status: "active",
-    resources: 6,
-    description: "Solving linear equations and their applications"
-  },
-  {
-    id: "6",
-    title: "Quadratic Equations",
-    subject: { id: "4", name: "Algebra", code: "MTH101" },
-    grades: ["Grade 9", "Grade 10"],
-    unit: "Equations and Inequalities",
-    duration: 90,
-    status: "active",
-    resources: 4,
-    description: "Methods for solving quadratic equations and their applications"
-  },
-  {
-    id: "7",
-    title: "Coordinate Geometry",
-    subject: { id: "5", name: "Geometry", code: "MTH102" },
-    grades: ["Grade 9", "Grade 10"],
-    unit: "Analytical Geometry",
-    duration: 90,
-    status: "active",
-    resources: 3,
-    description: "Introduction to coordinate geometry and the Cartesian plane"
-  },
-  {
-    id: "8",
-    title: "Cell Structure",
-    subject: { id: "3", name: "Biology", code: "BIO101" },
-    grades: ["Grade 9", "Grade 10"],
-    unit: "Cell Biology",
-    duration: 90,
-    status: "active",
-    resources: 7,
-    description: "Study of cell structure, organelles, and their functions"
-  },
-  {
-    id: "9",
-    title: "Chemical Bonding",
-    subject: { id: "2", name: "Chemistry", code: "CHEM101" },
-    grades: ["Grade 9", "Grade 10"],
-    unit: "Chemical Bonds",
-    duration: 90,
-    status: "active",
-    resources: 5,
-    description: "Understanding ionic, covalent, and metallic bonds"
-  },
-  {
-    id: "10",
-    title: "Parts of Speech",
-    subject: { id: "7", name: "English", code: "ENG101" },
-    grades: ["Grade 6", "Grade 7", "Grade 8"],
-    unit: "Grammar",
-    duration: 60,
-    status: "active",
-    resources: 8,
-    description: "Identifying and using different parts of speech in English"
-  },
-];
-
-// Subject data for the form
-const subjectsData = [
-  { id: "1", name: "Physics", code: "PHY101", units: ["Mechanics", "Thermodynamics", "Waves"] },
-  { id: "2", name: "Chemistry", code: "CHEM101", units: ["Chemical Bonds", "Periodicity", "Reactions"] },
-  { id: "3", name: "Biology", code: "BIO101", units: ["Cell Biology", "Genetics", "Ecology"] },
-  { id: "4", name: "Algebra", code: "MTH101", units: ["Equations and Inequalities", "Functions", "Matrices"] },
-  { id: "5", name: "Geometry", code: "MTH102", units: ["Analytical Geometry", "Trigonometry", "Vectors"] },
-  { id: "7", name: "English", code: "ENG101", units: ["Grammar", "Literature", "Composition"] },
-];
-
-// Grade levels
-const grades = [
-  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-  "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"
-];
-
-// Form schema
-const lessonFormSchema = z.object({
-  title: z.string().min(3, "Lesson title must be at least 3 characters"),
-  subjectId: z.string({
-    required_error: "Please select a subject",
-  }),
-  unit: z.string({
-    required_error: "Please select a unit",
-  }),
-  grades: z.array(z.string()).min(1, "Please select at least one grade"),
-  duration: z.coerce.number().min(15, "Duration must be at least 15 minutes"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  resources: z.array(z.string()).optional(),
-});
+// Import schema validation and server actions
+import { lessonSchema, LessonFormValues } from "@/lib/schemaValidation/lessonsSchemaValidation";
+import { 
+  getLessons, 
+  getSubjectsForLessons, 
+  getSyllabusUnitsBySubject, 
+  createLesson, 
+  updateLesson, 
+  deleteLesson 
+} from "@/lib/actions/lessonsActions";
 
 export default function LessonsPage() {
-  const [lessons, setLessons] = useState(lessonsData);
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSubject, setFilterSubject] = useState("all");
-  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+  const [availableUnits, setAvailableUnits] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Form handling
-  const form = useForm<z.infer<typeof lessonFormSchema>>({
-    resolver: zodResolver(lessonFormSchema),
+  const form = useForm<LessonFormValues>({
+    resolver: zodResolver(lessonSchema),
     defaultValues: {
       title: "",
-      duration: 60,
       description: "",
-      grades: [],
-      resources: [],
+      duration: 60,
+      subjectId: "",
+      syllabusUnitId: "",
+      content: "",
+      resources: "",
     },
   });
+
+  useEffect(() => {
+    fetchLessons();
+    fetchSubjects();
+  }, []);
 
   // Watch the subject selection to update available units
   const watchSubjectId = form.watch("subjectId");
 
+  useEffect(() => {
+    if (watchSubjectId) {
+      updateAvailableUnits(watchSubjectId);
+    }
+  }, [watchSubjectId]);
+
+  async function fetchLessons() {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await getLessons();
+      
+      if (result.success) {
+        setLessons(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchSubjects() {
+    try {
+      const result = await getSubjectsForLessons();
+      
+      if (result.success) {
+        setSubjects(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch subjects");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+
+  async function updateAvailableUnits(subjectId: string) {
+    try {
+      const selectedSubject = subjects.find(s => s.id === subjectId);
+      if (selectedSubject) {
+        setAvailableUnits(selectedSubject.units || []);
+      } else {
+        setAvailableUnits([]);
+      }
+    } catch (err) {
+      console.error("Error updating available units:", err);
+    }
+  }
+
   // Update available units when subject changes
   const handleSubjectChange = (value: string) => {
     form.setValue("subjectId", value);
-    form.setValue("unit", ""); // Reset unit when subject changes
+    form.setValue("syllabusUnitId", ""); // Reset unit when subject changes
     
-    const selectedSubject = subjectsData.find(s => s.id === value);
-    if (selectedSubject) {
-      setAvailableUnits(selectedSubject.units);
+    if (value) {
+      updateAvailableUnits(value);
     } else {
       setAvailableUnits([]);
     }
   };
+
+  async function onSubmit(values: LessonFormValues) {
+    try {
+      let result;
+      
+      if (selectedLessonId) {
+        // Update existing lesson
+        result = await updateLesson({ ...values, id: selectedLessonId });
+      } else {
+        // Create new lesson
+        result = await createLesson(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Lesson ${selectedLessonId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedLessonId(null);
+        fetchLessons();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  function handleEdit(id: string) {
+    const lessonToEdit = lessons.find(lesson => lesson.id === id);
+    if (lessonToEdit) {
+      handleSubjectChange(lessonToEdit.subject.id);
+      
+      form.reset({
+        title: lessonToEdit.title,
+        description: lessonToEdit.description,
+        subjectId: lessonToEdit.subject.id,
+        syllabusUnitId: lessonToEdit.syllabusUnitId,
+        duration: lessonToEdit.duration,
+        content: lessonToEdit.content,
+        resources: lessonToEdit.resources,
+      });
+      
+      setSelectedLessonId(id);
+      setDialogOpen(true);
+    }
+  }
+
+  function handleAddNew() {
+    form.reset({
+      title: "",
+      description: "",
+      duration: 60,
+      subjectId: "",
+      syllabusUnitId: "",
+      content: "",
+      resources: "",
+    });
+    setAvailableUnits([]);
+    setSelectedLessonId(null);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(id: string) {
+    setSelectedLessonId(id);
+    setDeleteDialogOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (selectedLessonId) {
+      try {
+        const result = await deleteLesson(selectedLessonId);
+        
+        if (result.success) {
+          toast.success("Lesson deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedLessonId(null);
+          fetchLessons();
+        } else {
+          toast.error(result.error || "Failed to delete lesson");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
+    }
+  }
 
   // Filter lessons based on search term and subject filter
   const filteredLessons = lessons.filter(lesson => {
@@ -257,96 +276,6 @@ export default function LessonsPage() {
     lessonsBySubject[lesson.subject.id].push(lesson);
   });
 
-  function onSubmit(values: z.infer<typeof lessonFormSchema>) {
-    console.log("Form submitted:", values);
-    
-    const selectedSubject = subjectsData.find(s => s.id === values.subjectId);
-    
-    if (selectedSubject) {
-      if (selectedLessonId) {
-        // Update existing lesson
-        setLessons(lessons.map(lesson => 
-          lesson.id === selectedLessonId 
-            ? { 
-                ...lesson, 
-                title: values.title,
-                subject: {
-                  id: selectedSubject.id,
-                  name: selectedSubject.name,
-                  code: selectedSubject.code
-                },
-                grades: values.grades,
-                unit: values.unit,
-                duration: values.duration,
-                description: values.description,
-                resources: values.resources?.length || 0,
-              } 
-            : lesson
-        ));
-      } else {
-        // Create new lesson
-        const newLesson = {
-          id: String(lessons.length + 1),
-          title: values.title,
-          subject: {
-            id: selectedSubject.id,
-            name: selectedSubject.name,
-            code: selectedSubject.code
-          },
-          grades: values.grades,
-          unit: values.unit,
-          duration: values.duration,
-          status: "active",
-          resources: values.resources?.length || 0,
-          description: values.description,
-        };
-        
-        setLessons([...lessons, newLesson]);
-      }
-    }
-    
-    setDialogOpen(false);
-    form.reset();
-    setSelectedLessonId(null);
-  }
-
-  function handleEdit(id: string) {
-    const lessonToEdit = lessons.find(lesson => lesson.id === id);
-    if (lessonToEdit) {
-      // Set available units for the selected subject
-      const selectedSubject = subjectsData.find(s => s.id === lessonToEdit.subject.id);
-      if (selectedSubject) {
-        setAvailableUnits(selectedSubject.units);
-      }
-      
-      form.reset({
-        title: lessonToEdit.title,
-        subjectId: lessonToEdit.subject.id,
-        unit: lessonToEdit.unit,
-        grades: lessonToEdit.grades,
-        duration: lessonToEdit.duration,
-        description: lessonToEdit.description,
-        resources: Array.from({ length: lessonToEdit.resources }, (_, i) => `resource-${i}`),
-      });
-      
-      setSelectedLessonId(id);
-      setDialogOpen(true);
-    }
-  }
-
-  function handleDelete(id: string) {
-    setSelectedLessonId(id);
-    setDeleteDialogOpen(true);
-  }
-
-  function confirmDelete() {
-    if (selectedLessonId) {
-      setLessons(lessons.filter(lesson => lesson.id !== selectedLessonId));
-      setDeleteDialogOpen(false);
-      setSelectedLessonId(null);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -361,7 +290,7 @@ export default function LessonsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleAddNew}>
               <PlusCircle className="mr-2 h-4 w-4" /> Create Lesson
             </Button>
           </DialogTrigger>
@@ -398,7 +327,7 @@ export default function LessonsPage() {
                         <FormLabel>Subject</FormLabel>
                         <Select 
                           onValueChange={handleSubjectChange} 
-                          defaultValue={field.value}
+                          value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -406,9 +335,9 @@ export default function LessonsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {subjectsData.map(subject => (
+                            {subjects.map(subject => (
                               <SelectItem key={subject.id} value={subject.id}>
-                                {subject.name} ({subject.code})
+                                {subject.name} {subject.code ? `(${subject.code})` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -419,13 +348,13 @@ export default function LessonsPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="unit"
+                    name="syllabusUnitId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
-                          defaultValue={field.value}
+                          value={field.value}
                           disabled={!watchSubjectId || availableUnits.length === 0}
                         >
                           <FormControl>
@@ -434,9 +363,10 @@ export default function LessonsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="none">None (Uncategorized)</SelectItem>
                             {availableUnits.map(unit => (
-                              <SelectItem key={unit} value={unit}>
-                                {unit}
+                              <SelectItem key={unit.id} value={unit.id}>
+                                {unit.title}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -446,83 +376,24 @@ export default function LessonsPage() {
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duration (minutes)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min={15} 
-                            step={15} 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="grades"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>Applicable Grades</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                className="w-full justify-between"
-                              >
-                                {form.watch("grades").length > 0
-                                  ? `${form.watch("grades").length} grades selected`
-                                  : "Select grades"}
-                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[200px] p-0" align="start">
-                            <div className="p-2 grid grid-cols-2 gap-2">
-                              {grades.map(grade => (
-                                <div key={grade} className="flex items-center space-x-2">
-                                  <input
-                                    type="checkbox"
-                                    id={`grade-${grade}`}
-                                    checked={form.watch("grades").includes(grade)}
-                                    onChange={(e) => {
-                                      const currentGrades = form.watch("grades");
-                                      if (e.target.checked) {
-                                        form.setValue("grades", [...currentGrades, grade]);
-                                      } else {
-                                        form.setValue(
-                                          "grades",
-                                          currentGrades.filter((g) => g !== grade)
-                                        );
-                                      }
-                                    }}
-                                    className="rounded text-primary"
-                                  />
-                                  <label
-                                    htmlFor={`grade-${grade}`}
-                                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                  >
-                                    {grade}
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage>{form.formState.errors.grades?.message}</FormMessage>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration (minutes)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min={15} 
+                          step={15} 
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="description"
@@ -534,9 +405,47 @@ export default function LessonsPage() {
                           placeholder="Briefly describe the lesson content and objectives" 
                           {...field} 
                           rows={4}
+                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lesson Content (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter the lesson content or a URL to content" 
+                          {...field} 
+                          rows={3}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="resources"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Resources (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter URLs to resources, separated by commas" 
+                          {...field} 
+                          rows={2}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-gray-500">Enter resource URLs separated by commas, e.g. http://example.com/resource1, http://example.com/resource2</p>
                     </FormItem>
                   )}
                 />
@@ -550,6 +459,14 @@ export default function LessonsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="md:w-2/3">
@@ -571,9 +488,9 @@ export default function LessonsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjectsData.map(subject => (
+              {subjects.map(subject => (
                 <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name} ({subject.code})
+                  {subject.name} {subject.code ? `(${subject.code})` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -608,7 +525,11 @@ export default function LessonsPage() {
         </div>
 
         <TabsContent value="all">
-          {viewMode === "grid" ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : viewMode === "grid" ? (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filteredLessons.map(lesson => (
                 <Card key={lesson.id} className="overflow-hidden">
@@ -663,7 +584,7 @@ export default function LessonsPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
-                      {lesson.grades.slice(0, 3).map(grade => (
+                      {lesson.grades.slice(0, 3).map((grade: string) => (
                         <Badge key={grade} variant="secondary" className="text-xs">
                           {grade}
                         </Badge>
@@ -707,12 +628,12 @@ export default function LessonsPage() {
                         <tr key={lesson.id} className="border-b">
                           <td className="py-3 px-4 align-middle font-medium">{lesson.title}</td>
                           <td className="py-3 px-4 align-middle">
-                            {lesson.subject.name} <span className="text-xs text-gray-500">({lesson.subject.code})</span>
+                            {lesson.subject.name} {lesson.subject.code && <span className="text-xs text-gray-500">({lesson.subject.code})</span>}
                           </td>
                           <td className="py-3 px-4 align-middle">{lesson.unit}</td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex flex-wrap gap-1">
-                              {lesson.grades.slice(0, 2).map(grade => (
+                              {lesson.grades.slice(0, 2).map((grade: string) => (
                                 <Badge key={grade} variant="secondary" className="text-xs">
                                   {grade}
                                 </Badge>
@@ -744,7 +665,7 @@ export default function LessonsPage() {
             </Card>
           )}
 
-          {filteredLessons.length === 0 && (
+          {!loading && filteredLessons.length === 0 && (
             <div className="text-center py-10">
               <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No lessons found</h3>
@@ -753,7 +674,7 @@ export default function LessonsPage() {
                   ? "Try adjusting your filters or search terms"
                   : "No lessons have been added yet"}
               </p>
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={handleAddNew}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Lesson
               </Button>
             </div>
@@ -761,97 +682,110 @@ export default function LessonsPage() {
         </TabsContent>
 
         <TabsContent value="by-subject">
-          <div className="space-y-6">
-            {Object.keys(lessonsBySubject).map(subjectId => {
-              const subject = subjectsData.find(s => s.id === subjectId);
-              const subjectLessons = lessonsBySubject[subjectId];
-              
-              return (
-                <Card key={subjectId}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                          <BookOpen className="h-5 w-5" />
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.keys(lessonsBySubject).map(subjectId => {
+                const subject = subjects.find(s => s.id === subjectId);
+                const subjectLessons = lessonsBySubject[subjectId];
+                
+                return (
+                  <Card key={subjectId}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                            <BookOpen className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <CardTitle>{subject?.name || "Unknown Subject"}</CardTitle>
+                            <CardDescription>{subject?.code || ""}</CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle>{subject?.name}</CardTitle>
-                          <CardDescription>{subject?.code}</CardDescription>
-                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            handleSubjectChange(subjectId);
+                            handleAddNew();
+                          }}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Lesson
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Lesson
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="rounded-md border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50 border-b">
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Unit</th>
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Grades</th>
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                            <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {subjectLessons.map(lesson => (
-                            <tr key={lesson.id} className="border-b">
-                              <td className="py-3 px-4 align-middle font-medium">{lesson.title}</td>
-                              <td className="py-3 px-4 align-middle">{lesson.unit}</td>
-                              <td className="py-3 px-4 align-middle">
-                                <div className="flex flex-wrap gap-1">
-                                  {lesson.grades.slice(0, 2).map((grade: string) => (
-                                    <Badge key={grade} variant="secondary" className="text-xs">
-                                      {grade}
-                                    </Badge>
-                                  ))}
-                                  {lesson.grades.length > 2 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      +{lesson.grades.length - 2}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle">{lesson.duration} min</td>
-                              <td className="py-3 px-4 align-middle text-right">
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(lesson.id)}>
-                                  <Edit className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(lesson.id)}>
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Delete
-                                </Button>
-                              </td>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-md border">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 border-b">
+                              <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
+                              <th className="py-3 px-4 text-left font-medium text-gray-500">Unit</th>
+                              <th className="py-3 px-4 text-left font-medium text-gray-500">Grades</th>
+                              <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
+                              <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                          </thead>
+                          <tbody>
+                            {subjectLessons.map(lesson => (
+                              <tr key={lesson.id} className="border-b">
+                                <td className="py-3 px-4 align-middle font-medium">{lesson.title}</td>
+                                <td className="py-3 px-4 align-middle">{lesson.unit}</td>
+                                <td className="py-3 px-4 align-middle">
+                                  <div className="flex flex-wrap gap-1">
+                                    {lesson.grades.slice(0, 2).map((grade: string) => (
+                                      <Badge key={grade} variant="secondary" className="text-xs">
+                                        {grade}
+                                      </Badge>
+                                    ))}
+                                    {lesson.grades.length > 2 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        +{lesson.grades.length - 2}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 align-middle">{lesson.duration} min</td>
+                                <td className="py-3 px-4 align-middle text-right">
+                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(lesson.id)}>
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(lesson.id)}>
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Delete
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
 
-            {Object.keys(lessonsBySubject).length === 0 && (
-              <div className="text-center py-10">
-                <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                <h3 className="text-lg font-medium mb-1">No lessons found</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {searchTerm || filterSubject !== "all"
-                    ? "Try adjusting your filters or search terms"
-                    : "No lessons have been added yet"}
-                </p>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Create Lesson
-                </Button>
-              </div>
-            )}
-          </div>
+              {Object.keys(lessonsBySubject).length === 0 && (
+                <div className="text-center py-10">
+                  <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No lessons found</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {searchTerm || filterSubject !== "all"
+                      ? "Try adjusting your filters or search terms"
+                      : "No lessons have been added yet"}
+                  </p>
+                  <Button onClick={handleAddNew}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create Lesson
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

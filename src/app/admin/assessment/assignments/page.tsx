@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
   Search, Calendar, Clock, BookOpen, User,
   MoreVertical, Download, CheckCircle, AlertCircle,
-  FileUp, Eye, BookmarkCheck
+  FileUp, Eye, BookmarkCheck, Loader2, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -46,191 +46,37 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { format } from "date-fns";
+import { DatePicker } from "@/components/ui/date-picker"; 
+import toast from "react-hot-toast";
 
-// Mock data for assignments
-const assignmentsData = [
-  {
-    id: "a1",
-    title: "Physics Problem Set: Forces and Motion",
-    subject: "Physics",
-    grade: "Grade 11",
-    dueDate: "2023-12-05",
-    assignedDate: "2023-11-28",
-    totalMarks: 50,
-    status: "Open",
-    submissions: 15,
-    totalStudents: 35,
-    description: "Complete the problems related to Newton's laws of motion and force diagrams.",
-    createdBy: "John Smith",
-    attachments: 2
-  },
-  {
-    id: "a2",
-    title: "Mathematics: Quadratic Equations Worksheet",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    dueDate: "2023-12-10",
-    assignedDate: "2023-11-30",
-    totalMarks: 30,
-    status: "Open",
-    submissions: 22,
-    totalStudents: 38,
-    description: "Solve the given quadratic equations using various methods and show your work.",
-    createdBy: "Sarah Thompson",
-    attachments: 1
-  },
-  {
-    id: "a3",
-    title: "English Essay: Character Analysis",
-    subject: "English",
-    grade: "Grade 9",
-    dueDate: "2023-12-12",
-    assignedDate: "2023-11-25",
-    totalMarks: 40,
-    status: "Open",
-    submissions: 18,
-    totalStudents: 40,
-    description: "Write a 500-word essay analyzing the main character from the assigned novel.",
-    createdBy: "Emily Johnson",
-    attachments: 0
-  },
-  {
-    id: "a4",
-    title: "Chemistry Lab Report: Acid-Base Reactions",
-    subject: "Chemistry",
-    grade: "Grade 12",
-    dueDate: "2023-11-20",
-    assignedDate: "2023-11-10",
-    totalMarks: 60,
-    status: "Closed",
-    submissions: 28,
-    totalStudents: 30,
-    description: "Document your findings from the acid-base titration lab and analyze the results.",
-    createdBy: "Michael Davis",
-    attachments: 3
-  },
-  {
-    id: "a5",
-    title: "Biology Research Project: Ecosystems",
-    subject: "Biology",
-    grade: "Grade 10",
-    dueDate: "2023-11-15",
-    assignedDate: "2023-10-20",
-    totalMarks: 100,
-    status: "Graded",
-    submissions: 32,
-    totalStudents: 35,
-    description: "Research a specific ecosystem and prepare a detailed report on its characteristics.",
-    createdBy: "Robert Brown",
-    attachments: 5
-  },
-];
-
-// Submission data for a specific assignment
-const submissionData = [
-  { 
-    id: "s1", 
-    studentName: "Alex Johnson", 
-    studentId: "ST10023", 
-    submissionDate: "2023-11-29", 
-    status: "Submitted",
-    grade: null,
-    feedback: "",
-    late: false
-  },
-  { 
-    id: "s2", 
-    studentName: "Emma Williams", 
-    studentId: "ST10045", 
-    submissionDate: "2023-11-30", 
-    status: "Graded",
-    grade: 45,
-    feedback: "Excellent work on problem 3!",
-    late: false
-  },
-  { 
-    id: "s3", 
-    studentName: "Ryan Davis", 
-    studentId: "ST10067", 
-    submissionDate: "2023-12-01", 
-    status: "Submitted",
-    grade: null,
-    feedback: "",
-    late: true
-  },
-  { 
-    id: "s4", 
-    studentName: "Sophia Garcia", 
-    studentId: "ST10078", 
-    submissionDate: null, 
-    status: "Not Submitted",
-    grade: null,
-    feedback: "",
-    late: false
-  },
-  { 
-    id: "s5", 
-    studentName: "Michael Brown", 
-    studentId: "ST10089", 
-    submissionDate: "2023-11-28", 
-    status: "Graded",
-    grade: 42,
-    feedback: "Good work, but needs more detail in section 2.",
-    late: false
-  },
-];
-
-// Subject data
-const subjects = [
-  { id: "s1", name: "Physics" },
-  { id: "s2", name: "Chemistry" },
-  { id: "s3", name: "Biology" },
-  { id: "s4", name: "Mathematics" },
-  { id: "s5", name: "English" },
-  { id: "s6", name: "History" },
-  { id: "s7", name: "Geography" },
-  { id: "s8", name: "Computer Science" },
-];
-
-// Grade data
-const grades = [
-  { id: "g9", name: "Grade 9" },
-  { id: "g10", name: "Grade 10" },
-  { id: "g11", name: "Grade 11" },
-  { id: "g12", name: "Grade 12" },
-];
-
-// Assignment form schema
-const assignmentFormSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  subjectId: z.string({
-    required_error: "Please select a subject",
-  }),
-  gradeId: z.string({
-    required_error: "Please select a grade",
-  }),
-  dueDate: z.string({
-    required_error: "Please select a due date",
-  }),
-  totalMarks: z.number().min(1, "Total marks must be at least 1"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  allowLateSubmissions: z.boolean().default(false),
-  attachFiles: z.boolean().default(false),
-});
-
-// Grade form schema
-const gradeFormSchema = z.object({
-  marks: z.number().min(0, "Marks cannot be negative").max(100, "Marks cannot exceed 100"),
-  feedback: z.string().optional(),
-});
+// Import schema validation and actions
+import { 
+  assignmentSchema, 
+  submissionGradeSchema,
+  AssignmentFormValues,
+  SubmissionGradeValues
+} from "@/lib/schemaValidation/assignmentsSchemaValidation";
+import { 
+  getAssignments, 
+  getAssignmentById, 
+  createAssignment, 
+  updateAssignment, 
+  deleteAssignment, 
+  gradeSubmission,
+  getSubjectsForAssignments,
+  getClassesForAssignments
+} from "@/lib/actions/assignmentsActions";
 
 export default function AssignmentsPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [viewSubmissionsDialogOpen, setViewSubmissionsDialogOpen] = useState(false);
@@ -239,83 +85,194 @@ export default function AssignmentsPage() {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewTab, setViewTab] = useState<string>("active");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // State for data
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  // Get user info (or use placeholder in development)
+  const currentTeacherId = "teacher-id-123"; // In production, get this from auth
 
   // Initialize assignment form
-  const form = useForm<z.infer<typeof assignmentFormSchema>>({
-    resolver: zodResolver(assignmentFormSchema),
+  const form = useForm<AssignmentFormValues>({
+    resolver: zodResolver(assignmentSchema),
     defaultValues: {
+      title: "",
+      description: "",
+      subjectId: "",
+      classIds: [],
+      assignedDate: new Date(),
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
       totalMarks: 50,
+      instructions: "",
       allowLateSubmissions: false,
-      attachFiles: false,
     },
   });
 
   // Initialize grade form
-  const gradeForm = useForm<z.infer<typeof gradeFormSchema>>({
-    resolver: zodResolver(gradeFormSchema),
+  const gradeForm = useForm<SubmissionGradeValues>({
+    resolver: zodResolver(submissionGradeSchema),
     defaultValues: {
+      submissionId: "",
       marks: 0,
       feedback: "",
+      status: "GRADED",
     },
   });
 
-  // Filter assignments based on search and filters
-  const filteredAssignments = assignmentsData.filter(assignment => {
-    const matchesSearch = assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         assignment.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         assignment.description.toLowerCase().includes(searchTerm.toLowerCase());
+  useEffect(() => {
+    fetchAssignments();
+    fetchSubjects();
+    fetchClasses();
+  }, [viewTab]);
+
+  async function fetchAssignments() {
+    setLoading(true);
+    setError(null);
     
-    const matchesSubject = subjectFilter === "all" || assignment.subject === subjects.find(s => s.id === subjectFilter)?.name;
-    const matchesGrade = gradeFilter === "all" || assignment.grade === grades.find(g => g.id === gradeFilter)?.name;
-    const matchesStatus = statusFilter === "all" || assignment.status.toLowerCase() === statusFilter.toLowerCase();
-    
-    return matchesSearch && matchesSubject && matchesGrade && matchesStatus;
-  });
-
-  // Get active vs. past assignments
-  const activeAssignments = filteredAssignments.filter(a => a.status === "Open");
-  const pastAssignments = filteredAssignments.filter(a => a.status === "Closed" || a.status === "Graded");
-
-  function handleCreateAssignment() {
-    form.reset({
-      totalMarks: 50,
-      allowLateSubmissions: false,
-      attachFiles: false,
-    });
-    setSelectedAssignmentId(null);
-    setAssignmentDialogOpen(true);
-  }
-
-  function handleEditAssignment(assignmentId: string) {
-    const assignmentToEdit = assignmentsData.find(a => a.id === assignmentId);
-    if (assignmentToEdit) {
-      form.reset({
-        title: assignmentToEdit.title,
-        subjectId: subjects.find(s => s.name === assignmentToEdit.subject)?.id || "",
-        gradeId: grades.find(g => g.name === assignmentToEdit.grade)?.id || "",
-        dueDate: assignmentToEdit.dueDate,
-        totalMarks: assignmentToEdit.totalMarks,
-        description: assignmentToEdit.description,
-        allowLateSubmissions: true,
-        attachFiles: assignmentToEdit.attachments > 0,
+    try {
+      const result = await getAssignments({
+        searchTerm: searchTerm.length > 0 ? searchTerm : undefined,
+        subjectId: subjectFilter !== "all" ? subjectFilter : undefined,
+        classId: classFilter !== "all" ? classFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter as any : undefined,
       });
       
-      setSelectedAssignmentId(assignmentId);
-      setAssignmentDialogOpen(true);
+      if (result.success) {
+        setAssignments(result.data || []);
+      } else {
+        setError(result.error || "Failed to fetch assignments");
+        toast.error(result.error || "Failed to fetch assignments");
+      }
+    } catch (err) {
+      console.error("Error fetching assignments:", err);
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   }
 
-  function handleViewSubmissions(assignmentId: string) {
+  async function fetchSubjects() {
+    try {
+      const result = await getSubjectsForAssignments();
+      
+      if (result.success) {
+        setSubjects(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch subjects");
+      }
+    } catch (err) {
+      console.error("Error fetching subjects:", err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  async function fetchClasses() {
+    try {
+      const result = await getClassesForAssignments();
+      
+      if (result.success) {
+        setClasses(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch classes");
+      }
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  async function handleViewSubmissions(assignmentId: string) {
+    setDetailsLoading(true);
     setSelectedAssignmentId(assignmentId);
-    setViewSubmissionsDialogOpen(true);
+    
+    try {
+      const result = await getAssignmentById(assignmentId);
+      
+      if (result.success) {
+        setSelectedAssignment(result.data);
+        setViewSubmissionsDialogOpen(true);
+      } else {
+        toast.error(result.error || "Failed to fetch assignment details");
+      }
+    } catch (err) {
+      console.error("Error fetching assignment details:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setDetailsLoading(false);
+    }
+  }
+
+  function handleCreateAssignment() {
+    form.reset({
+      title: "",
+      description: "",
+      subjectId: "",
+      classIds: [],
+      assignedDate: new Date(),
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+      totalMarks: 50,
+      instructions: "",
+      allowLateSubmissions: false,
+    });
+    setSelectedAssignmentId(null);
+    setSelectedFiles([]);
+    setAssignmentDialogOpen(true);
+  }
+
+  async function handleEditAssignment(assignmentId: string) {
+    setDetailsLoading(true);
+    
+    try {
+      const result = await getAssignmentById(assignmentId);
+      
+      if (result.success && result.data) {
+        const assignment = result.data;
+        form.reset({
+          title: assignment.title,
+          description: assignment.description,
+          subjectId: assignment.subjectId,
+          classIds: assignment.classIds,
+          assignedDate: new Date(assignment.assignedDate),
+          dueDate: new Date(assignment.dueDate),
+          totalMarks: assignment.totalMarks,
+          instructions: assignment.instructions,
+          allowLateSubmissions: false, // This would be a field in the DB schema if implemented
+        });
+        
+        setSelectedAssignmentId(assignmentId);
+        setSelectedFiles([]);
+        setAssignmentDialogOpen(true);
+      } else {
+        toast.error(result.error || "Failed to fetch assignment details");
+      }
+    } catch (err) {
+      console.error("Error fetching assignment details:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setDetailsLoading(false);
+    }
   }
 
   function handleGradeSubmission(submissionId: string) {
-    const submissionToGrade = submissionData.find(s => s.id === submissionId);
+    if (!selectedAssignment) return;
+    
+    const submissionToGrade = selectedAssignment.submissions.find((s: any) => s.id === submissionId);
     if (submissionToGrade) {
       gradeForm.reset({
-        marks: submissionToGrade.grade || 0,
+        submissionId: submissionId,
+        marks: submissionToGrade.marks || 0,
         feedback: submissionToGrade.feedback || "",
+        status: "GRADED",
       });
       
       setSelectedSubmissionId(submissionId);
@@ -328,32 +285,99 @@ export default function AssignmentsPage() {
     setDeleteDialogOpen(true);
   }
 
-  function onSubmit(values: z.infer<typeof assignmentFormSchema>) {
-    console.log("Form submitted:", values);
-    // Here you would handle the API call to create/edit the assignment
-    setAssignmentDialogOpen(false);
-    form.reset({
-      totalMarks: 50,
-      allowLateSubmissions: false,
-      attachFiles: false,
-    });
-    setSelectedAssignmentId(null);
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedFiles(filesArray);
+
+      // Show upload progress simulation
+      let progress = 0;
+      setUploadProgress(progress);
+      const interval = setInterval(() => {
+        progress += 5;
+        setUploadProgress(progress > 100 ? 100 : progress);
+        if (progress >= 100) clearInterval(interval);
+      }, 200);
+    }
   }
 
-  function onGradeSubmit(values: z.infer<typeof gradeFormSchema>) {
-    console.log("Grade submitted:", values, "for submission:", selectedSubmissionId);
-    // Here you would handle the API call to grade the submission
-    setGradeSubmissionDialogOpen(false);
-    gradeForm.reset();
-    setSelectedSubmissionId(null);
+  async function onSubmit(values: AssignmentFormValues) {
+    setUploading(true);
+    
+    try {
+      let result;
+      
+      if (selectedAssignmentId) {
+        // Update existing assignment
+        result = await updateAssignment({
+          ...values,
+          id: selectedAssignmentId
+        }, selectedFiles);
+      } else {
+        // Create new assignment
+        // Pass null for creatorId when creating from admin dashboard
+        result = await createAssignment(values, null, selectedFiles);
+      }
+      
+      if (result.success) {
+        toast.success(`Assignment ${selectedAssignmentId ? "updated" : "created"} successfully`);
+        setAssignmentDialogOpen(false);
+        setSelectedFiles([]);
+        fetchAssignments();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error("Error submitting assignment:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setUploading(false);
+    }
   }
 
-  function confirmDelete() {
-    console.log("Deleting assignment:", selectedAssignmentId);
-    // Here you would handle the API call to delete the assignment
-    setDeleteDialogOpen(false);
-    setSelectedAssignmentId(null);
+  async function onGradeSubmit(values: SubmissionGradeValues) {
+    try {
+      const result = await gradeSubmission(values);
+      
+      if (result.success) {
+        toast.success("Submission graded successfully");
+        setGradeSubmissionDialogOpen(false);
+        
+        // Refresh the assignment details
+        if (selectedAssignmentId) {
+          handleViewSubmissions(selectedAssignmentId);
+        }
+      } else {
+        toast.error(result.error || "Failed to grade submission");
+      }
+    } catch (err) {
+      console.error("Error grading submission:", err);
+      toast.error("An unexpected error occurred");
+    }
   }
+
+  async function confirmDelete() {
+    if (!selectedAssignmentId) return;
+    
+    try {
+      const result = await deleteAssignment(selectedAssignmentId);
+      
+      if (result.success) {
+        toast.success("Assignment deleted successfully");
+        setDeleteDialogOpen(false);
+        fetchAssignments();
+      } else {
+        toast.error(result.error || "Failed to delete assignment");
+      }
+    } catch (err) {
+      console.error("Error deleting assignment:", err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Filter assignments based on the active tab
+  const activeAssignments = assignments.filter(a => a.status === "Open");
+  const pastAssignments = assignments.filter(a => a.status === "Closed" || a.status === "Graded");
 
   // Status badge colors
   const getStatusColor = (status: string) => {
@@ -372,19 +396,18 @@ export default function AssignmentsPage() {
   const getSubmissionStatusColor = (status: string, late: boolean) => {
     if (late) return 'bg-amber-100 text-amber-800';
     
-    switch (status.toLowerCase()) {
-      case 'submitted':
+    switch (status) {
+      case 'SUBMITTED':
         return 'bg-blue-100 text-blue-800';
-      case 'graded':
+      case 'GRADED':
+      case 'RETURNED':
         return 'bg-green-100 text-green-800';
-      case 'not submitted':
+      case 'PENDING':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
-
-  const selectedAssignment = assignmentsData.find(a => a.id === selectedAssignmentId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -398,13 +421,11 @@ export default function AssignmentsPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Assignment Management</h1>
         </div>
+        <Button onClick={handleCreateAssignment}>
+          <PlusCircle className="mr-2 h-4 w-4" /> Create Assignment
+        </Button>
         <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCreateAssignment}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Assignment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedAssignmentId ? "Edit Assignment" : "Create New Assignment"}</DialogTitle>
               <DialogDescription>
@@ -427,14 +448,14 @@ export default function AssignmentsPage() {
                   )}
                 />
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="subjectId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Subject</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select subject" />
@@ -448,47 +469,6 @@ export default function AssignmentsPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="gradeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Grade</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select grade" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {grades.map(grade => (
-                              <SelectItem key={grade.id} value={grade.id}>
-                                {grade.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Due Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -516,28 +496,130 @@ export default function AssignmentsPage() {
                 
                 <FormField
                   control={form.control}
-                  name="description"
-                  render={({ field }) => (
+                  name="classIds"
+                  render={() => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe the assignment instructions and requirements"
-                          rows={4}
-                          {...field}
-                        />
-                      </FormControl>
+                      <FormLabel>Classes/Grades</FormLabel>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                        {classes.map((cls) => (
+                          <div key={cls.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={cls.id}
+                              checked={form.watch("classIds").includes(cls.id)}
+                              onCheckedChange={(checked) => {
+                                const currentClasses = form.watch("classIds");
+                                if (checked) {
+                                  form.setValue("classIds", [...currentClasses, cls.id]);
+                                } else {
+                                  form.setValue(
+                                    "classIds",
+                                    currentClasses.filter((id) => id !== cls.id)
+                                  );
+                                }
+                              }}
+                            />
+                            <label htmlFor={cls.id} className="text-sm">
+                              {cls.name}
+                              {cls.academicYear.isCurrent && (
+                                <span className="ml-1 text-xs text-green-600">(Current)</span>
+                              )}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="assignedDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assigned Date</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value} 
+                            onSelect={field.onChange}
+                            placeholder="Select assigned date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value} 
+                            onSelect={field.onChange}
+                            placeholder="Select due date"
+                            disabled={(date) => {
+                              const assignedDate = form.watch("assignedDate");
+                              return assignedDate ? date < assignedDate : false;
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Brief description of the assignment"
+                            rows={2}
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="instructions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Detailed instructions for students"
+                            rows={3}
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="allowLateSubmissions"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 h-full">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -556,35 +638,52 @@ export default function AssignmentsPage() {
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="attachFiles"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            Attach Files
-                          </FormLabel>
-                          <p className="text-sm text-gray-500">
-                            Include files or resources for students
-                          </p>
+                  <div className="border p-4 rounded-md">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-4 w-4 text-gray-500" />
+                        <h3 className="font-medium">Attachments</h3>
+                      </div>
+                      {selectedFiles.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          {selectedFiles.length} file(s) selected
+                        </span>
+                      )}
+                    </div>
+                    
+                    {selectedFiles.length > 0 ? (
+                      <div className="space-y-2 mb-2">
+                        <Progress value={uploadProgress} className="h-2" />
+                        <div className="max-h-20 overflow-y-auto">
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} className="text-xs flex items-center justify-between">
+                              <span className="truncate max-w-[200px]">{file.name}</span>
+                              <span>{(file.size / 1024).toFixed(1)} KB</span>
+                            </div>
+                          ))}
                         </div>
-                      </FormItem>
+                      </div>
+                    ) : (
+                      <Input 
+                        type="file" 
+                        multiple 
+                        className="mt-2" 
+                        onChange={handleFileChange}
+                      />
                     )}
-                  />
+                    
+                    <p className="text-xs text-gray-500 mt-1">
+                      Upload resources for students
+                    </p>
+                  </div>
                 </div>
                 
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={() => setAssignmentDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={uploading}>
+                    {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {selectedAssignmentId ? "Save Changes" : "Create Assignment"}
                   </Button>
                 </DialogFooter>
@@ -594,8 +693,16 @@ export default function AssignmentsPage() {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Search and filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
         <div className="md:w-1/2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -605,6 +712,7 @@ export default function AssignmentsPage() {
               className="pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && fetchAssignments()}
             />
           </div>
         </div>
@@ -622,15 +730,15 @@ export default function AssignmentsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={gradeFilter} onValueChange={setGradeFilter}>
+          <Select value={classFilter} onValueChange={setClassFilter}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Grade" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Grades</SelectItem>
-              {grades.map(grade => (
-                <SelectItem key={grade.id} value={grade.id}>
-                  {grade.name}
+              {classes.map(cls => (
+                <SelectItem key={cls.id} value={cls.id}>
+                  {cls.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -646,6 +754,9 @@ export default function AssignmentsPage() {
               <SelectItem value="graded">Graded</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="secondary" onClick={fetchAssignments}>
+            Apply Filters
+          </Button>
         </div>
       </div>
 
@@ -669,7 +780,11 @@ export default function AssignmentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {activeAssignments.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : activeAssignments.length > 0 ? (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
@@ -690,11 +805,11 @@ export default function AssignmentsPage() {
                             <div className="max-w-[200px] truncate">{assignment.title}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">{assignment.subject}</td>
-                          <td className="py-3 px-4 align-middle">{assignment.grade}</td>
+                          <td className="py-3 px-4 align-middle">{assignment.grades}</td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                              <span>{new Date(assignment.dueDate).toLocaleDateString()}</span>
+                              <span>{format(new Date(assignment.dueDate), 'MMM d, yyyy')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
@@ -702,7 +817,7 @@ export default function AssignmentsPage() {
                             <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1">
                               <div 
                                 className="h-1.5 bg-blue-500 rounded-full" 
-                                style={{ width: `${(assignment.submissions / assignment.totalStudents) * 100}%` }}
+                                style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
                           </td>
@@ -757,7 +872,7 @@ export default function AssignmentsPage() {
                   <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No active assignments</h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    {searchTerm || subjectFilter !== "all" || gradeFilter !== "all" || statusFilter !== "all"
+                    {searchTerm || subjectFilter !== "all" || classFilter !== "all" || statusFilter !== "all"
                       ? "Try adjusting your filters or search terms"
                       : "Create a new assignment to get started"}
                   </p>
@@ -784,7 +899,11 @@ export default function AssignmentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {pastAssignments.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : pastAssignments.length > 0 ? (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
@@ -805,11 +924,11 @@ export default function AssignmentsPage() {
                             <div className="max-w-[200px] truncate">{assignment.title}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">{assignment.subject}</td>
-                          <td className="py-3 px-4 align-middle">{assignment.grade}</td>
+                          <td className="py-3 px-4 align-middle">{assignment.grades}</td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                              <span>{new Date(assignment.dueDate).toLocaleDateString()}</span>
+                              <span>{format(new Date(assignment.dueDate), 'MMM d, yyyy')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
@@ -817,7 +936,7 @@ export default function AssignmentsPage() {
                             <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1">
                               <div 
                                 className="h-1.5 bg-blue-500 rounded-full" 
-                                style={{ width: `${(assignment.submissions / assignment.totalStudents) * 100}%` }}
+                                style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
                           </td>
@@ -846,7 +965,7 @@ export default function AssignmentsPage() {
                   <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No past assignments</h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    {searchTerm || subjectFilter !== "all" || gradeFilter !== "all" || statusFilter !== "all"
+                    {searchTerm || subjectFilter !== "all" || classFilter !== "all" || statusFilter !== "all"
                       ? "Try adjusting your filters or search terms"
                       : "Completed assignments will appear here"}
                   </p>
@@ -866,93 +985,111 @@ export default function AssignmentsPage() {
               View and grade student submissions
             </DialogDescription>
           </DialogHeader>
-          <div className="overflow-y-auto max-h-[60vh]">
-            <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="bg-gray-50 border-b">
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Submission Date</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissionData.map(submission => (
-                    <tr key={submission.id} className="border-b">
-                      <td className="py-3 px-4 align-middle">
-                        <div className="font-medium">{submission.studentName}</div>
-                        <div className="text-xs text-gray-500">{submission.studentId}</div>
-                      </td>
-                      <td className="py-3 px-4 align-middle">
-                        {submission.submissionDate ? (
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                            <span>{new Date(submission.submissionDate).toLocaleDateString()}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">Not submitted</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 align-middle">
-                        <Badge className={getSubmissionStatusColor(submission.status, submission.late)}>
-                          {submission.status}
-                          {submission.late && " (Late)"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 align-middle">
-                        {submission.grade !== null ? (
-                          <span className="font-medium">{submission.grade}/{selectedAssignment?.totalMarks}</span>
-                        ) : (
-                          <span className="text-gray-400">Not graded</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 align-middle text-right">
-                        {submission.status === "Submitted" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleGradeSubmission(submission.id)}
-                          >
-                            <BookmarkCheck className="h-4 w-4 mr-1" />
-                            Grade
-                          </Button>
-                        )}
-                        {submission.status === "Graded" && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleGradeSubmission(submission.id)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit Grade
-                          </Button>
-                        )}
-                        {submission.status === "Not Submitted" && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            disabled
-                          >
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            No Submission
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {detailsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          </div>
+          ) : selectedAssignment ? (
+            <div className="overflow-y-auto max-h-[60vh]">
+              <div className="mb-4 border rounded-lg p-4 bg-gray-50">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Subject</p>
+                    <p className="font-medium">{selectedAssignment.subject}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Total Marks</p>
+                    <p className="font-medium">{selectedAssignment.totalMarks}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Due Date</p>
+                    <p className="font-medium">{format(new Date(selectedAssignment.dueDate), 'MMM d, yyyy')}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Status</p>
+                    <Badge className={getStatusColor(selectedAssignment.status)}>
+                      {selectedAssignment.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {selectedAssignment.submissions.length > 0 ? (
+                <div className="rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="bg-gray-50 border-b">
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Submission Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
+                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedAssignment.submissions.map((submission: any) => (
+                        <tr key={submission.id} className="border-b">
+                          <td className="py-3 px-4 align-middle">
+                            <div className="font-medium">{submission.studentName}</div>
+                            <div className="text-xs text-gray-500">{submission.studentAdmissionId}</div>
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            {submission.submissionDate 
+                              ? format(new Date(submission.submissionDate), 'MMM d, yyyy h:mm a')
+                              : "Not submitted"}
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            <Badge className={getSubmissionStatusColor(submission.status, submission.isLate)}>
+                              {submission.isLate && submission.status !== "PENDING" ? "LATE" : submission.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            {submission.status === "GRADED" || submission.status === "RETURNED" ? 
+                              <span className="font-medium">{submission.marks} / {selectedAssignment.totalMarks}</span> : 
+                              <span className="text-gray-500">-</span>
+                            }
+                          </td>
+                          <td className="py-3 px-4 align-middle text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={submission.status === "PENDING"}
+                              onClick={() => submission.status !== "PENDING" && submission.submissionDate && router.push(`/admin/assessment/assignments/${selectedAssignment.id}/submissions/${submission.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={submission.status === "PENDING"}
+                              onClick={() => submission.status !== "PENDING" && submission.submissionDate && handleGradeSubmission(submission.id)}
+                            >
+                              <BookmarkCheck className="h-4 w-4 mr-1" />
+                              Grade
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <FileUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No submissions yet</h3>
+                  <p className="text-sm">
+                    Students haven't submitted their work for this assignment
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">Assignment not found</div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewSubmissionsDialogOpen(false)}>
               Close
-            </Button>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export Results
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -964,68 +1101,34 @@ export default function AssignmentsPage() {
           <DialogHeader>
             <DialogTitle>Grade Submission</DialogTitle>
             <DialogDescription>
-              Assign a grade and provide feedback
+              Provide feedback and marks for this submission
             </DialogDescription>
           </DialogHeader>
           <Form {...gradeForm}>
             <form onSubmit={gradeForm.handleSubmit(onGradeSubmit)} className="space-y-4">
-              <div className="bg-gray-50 rounded-md p-4 mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Student Information</h3>
-                  <Button variant="ghost" size="sm">
-                    <FileUp className="h-4 w-4 mr-1" />
-                    View Submission
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Student</p>
-                    <p className="font-medium">
-                      {submissionData.find(s => s.id === selectedSubmissionId)?.studentName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {submissionData.find(s => s.id === selectedSubmissionId)?.studentId}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Submission Date</p>
-                    <p className="font-medium">
-                      {submissionData.find(s => s.id === selectedSubmissionId)?.submissionDate 
-                        ? new Date(submissionData.find(s => s.id === selectedSubmissionId)?.submissionDate || "").toLocaleDateString()
-                        : "Not submitted"
-                      }
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {submissionData.find(s => s.id === selectedSubmissionId)?.late ? "Submitted Late" : ""}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
               <FormField
                 control={gradeForm.control}
                 name="marks"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Marks</FormLabel>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center">
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max={selectedAssignment?.totalMarks} 
-                          {...field} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
+                        <Input
+                          type="number"
+                          min="0"
+                          max={selectedAssignment?.totalMarks || 100}
+                          step="0.5"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
                         />
                       </FormControl>
-                      <span className="text-sm text-gray-500">out of {selectedAssignment?.totalMarks}</span>
+                      <span className="ml-2">/ {selectedAssignment?.totalMarks || 0}</span>
                     </div>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={gradeForm.control}
                 name="feedback"
@@ -1033,24 +1136,46 @@ export default function AssignmentsPage() {
                   <FormItem>
                     <FormLabel>Feedback</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Provide feedback on the submission"
-                        rows={4}
+                      <Textarea
+                        rows={5}
+                        placeholder="Provide constructive feedback for the student"
                         {...field}
-                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+              <FormField
+                control={gradeForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="GRADED">Graded</SelectItem>
+                        <SelectItem value="RETURNED">Returned to Student</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setGradeSubmissionDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setGradeSubmissionDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">
-                  Save Grade
+                  Submit Grades
                 </Button>
               </DialogFooter>
             </form>
@@ -1064,7 +1189,7 @@ export default function AssignmentsPage() {
           <DialogHeader>
             <DialogTitle>Delete Assignment</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this assignment? This action cannot be undone and will remove all student submissions.
+              Are you sure you want to delete this assignment? This action cannot be undone and all submissions will be deleted.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

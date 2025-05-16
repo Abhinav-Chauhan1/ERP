@@ -1,8 +1,29 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, DollarSign, CreditCard, Receipt, Wallet, BadgeDollarSign, Building } from "lucide-react";
 import { Chart } from "@/components/dashboard/chart";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const financeCategories = [
   {
@@ -137,17 +158,142 @@ const pendingFees = [
 ];
 
 export default function FinancePage() {
+  const [recordPaymentDialog, setRecordPaymentDialog] = useState(false);
+  const [addExpenseDialog, setAddExpenseDialog] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("");
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Finance Management</h1>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <PlusCircle className="mr-2 h-4 w-4" /> Record Payment
-          </Button>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
-          </Button>
+          <Dialog open={recordPaymentDialog} onOpenChange={setRecordPaymentDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <PlusCircle className="mr-2 h-4 w-4" /> Record Payment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Record Payment</DialogTitle>
+                <DialogDescription>
+                  Record a new student fee payment
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Student</label>
+                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="s1">John Smith (Grade 10-A)</SelectItem>
+                      <SelectItem value="s2">Emily Johnson (Grade 9-B)</SelectItem>
+                      <SelectItem value="s3">Michael Brown (Grade 11-A)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedStudent && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Fee Type</label>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select fee type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tuition">Tuition Fee</SelectItem>
+                        <SelectItem value="exam">Examination Fee</SelectItem>
+                        <SelectItem value="transport">Transport Fee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                {selectedStudent && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Amount</label>
+                    <Input type="number" placeholder="Enter amount" />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRecordPaymentDialog(false)}>
+                  Cancel
+                </Button>
+                <Link href="/admin/finance/payments">
+                  <Button onClick={() => setRecordPaymentDialog(false)}>
+                    Continue
+                  </Button>
+                </Link>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={addExpenseDialog} onOpenChange={setAddExpenseDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Expense</DialogTitle>
+                <DialogDescription>
+                  Record a new expense
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Title</label>
+                  <Input placeholder="Expense title" />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="utilities">Utilities</SelectItem>
+                      <SelectItem value="supplies">Supplies</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="salary">Staff Salary</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Amount</label>
+                  <Input type="number" placeholder="Enter amount" />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date</label>
+                  <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea placeholder="Additional details about this expense" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddExpenseDialog(false)}>
+                  Cancel
+                </Button>
+                <Link href="/admin/finance/expenses">
+                  <Button onClick={() => setAddExpenseDialog(false)}>
+                    Continue
+                  </Button>
+                </Link>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

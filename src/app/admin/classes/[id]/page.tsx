@@ -7,12 +7,16 @@ import {
   ChevronLeft, Edit, Trash2, PlusCircle, 
   Users, BookOpen, Clock, Calendar, 
   GraduationCap, Building, Search, Download,
-  UploadCloud, Check, X, ExternalLink
+  UploadCloud, Check, X, ExternalLink,
+  Loader2, AlertCircle, UserPlus, FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -23,110 +27,43 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
+import * as z from "zod";
 
-// Mock data - replace with actual API calls
-const classData = {
-  "1": {
-    id: "1",
-    name: "Grade 10 - Science",
-    year: "2023-2024",
-    section: "A",
-    strength: 35,
-    classTeacher: "Emily Johnson",
-    classTeacherId: "t1",
-    room: "Science Block - 101",
-    subjects: [
-      { id: "s1", name: "Mathematics", teacher: "John Smith" },
-      { id: "s2", name: "Physics", teacher: "Emily Johnson" },
-      { id: "s3", name: "Chemistry", teacher: "Robert Brown" },
-      { id: "s4", name: "Biology", teacher: "Sarah Thompson" },
-      { id: "s5", name: "English", teacher: "Michael Davis" },
-    ],
-    students: [
-      { id: "st1", rollNumber: "1001", name: "Alice Brown", gender: "Female", attendance: "95%", performance: "Excellent" },
-      { id: "st2", rollNumber: "1002", name: "Bob Smith", gender: "Male", attendance: "88%", performance: "Good" },
-      { id: "st3", rollNumber: "1003", name: "Charlie Davis", gender: "Male", attendance: "92%", performance: "Very Good" },
-      { id: "st4", rollNumber: "1004", name: "Diana Wilson", gender: "Female", attendance: "98%", performance: "Excellent" },
-      { id: "st5", rollNumber: "1005", name: "Edward Jones", gender: "Male", attendance: "85%", performance: "Good" },
-      { id: "st6", rollNumber: "1006", name: "Fiona Miller", gender: "Female", attendance: "90%", performance: "Very Good" },
-      { id: "st7", rollNumber: "1007", name: "George Taylor", gender: "Male", attendance: "82%", performance: "Average" },
-      { id: "st8", rollNumber: "1008", name: "Hannah White", gender: "Female", attendance: "94%", performance: "Very Good" },
-    ],
-    timetable: [
-      { 
-        day: "Monday", 
-        periods: [
-          { id: "p1", time: "9:00 - 9:45", subject: "Mathematics", teacher: "John Smith", room: "Science Block - 101" },
-          { id: "p2", time: "9:50 - 10:35", subject: "Physics", teacher: "Emily Johnson", room: "Science Block - 101" },
-          { id: "p3", time: "10:40 - 11:25", subject: "Chemistry", teacher: "Robert Brown", room: "Science Block - Lab" },
-          { id: "p4", time: "11:45 - 12:30", subject: "Biology", teacher: "Sarah Thompson", room: "Science Block - Lab" },
-          { id: "p5", time: "1:15 - 2:00", subject: "English", teacher: "Michael Davis", room: "Science Block - 101" },
-        ] 
-      },
-      { 
-        day: "Tuesday", 
-        periods: [
-          { id: "p6", time: "9:00 - 9:45", subject: "Physics", teacher: "Emily Johnson", room: "Science Block - 101" },
-          { id: "p7", time: "9:50 - 10:35", subject: "Mathematics", teacher: "John Smith", room: "Science Block - 101" },
-          { id: "p8", time: "10:40 - 11:25", subject: "English", teacher: "Michael Davis", room: "Science Block - 101" },
-          { id: "p9", time: "11:45 - 12:30", subject: "Chemistry", teacher: "Robert Brown", room: "Science Block - Lab" },
-          { id: "p10", time: "1:15 - 2:00", subject: "Biology", teacher: "Sarah Thompson", room: "Science Block - Lab" },
-        ] 
-      }
-    ],
-    exams: [
-      { id: "e1", name: "Mid-term Examination", startDate: "2023-10-15", endDate: "2023-10-25", status: "Completed", results: "Released" },
-      { id: "e2", name: "Final Examination", startDate: "2024-03-10", endDate: "2024-03-20", status: "Upcoming", results: "Pending" },
-    ]
-  },
-  "2": {
-    id: "2",
-    name: "Grade 10 - Science",
-    year: "2023-2024",
-    section: "B",
-    strength: 32,
-    classTeacher: "Michael Davis",
-    classTeacherId: "t5",
-    room: "Science Block - 102",
-    subjects: [
-      { id: "s1", name: "Mathematics", teacher: "John Smith" },
-      { id: "s2", name: "Physics", teacher: "Emily Johnson" },
-      { id: "s3", name: "Chemistry", teacher: "Robert Brown" },
-      { id: "s4", name: "Biology", teacher: "Sarah Thompson" },
-      { id: "s5", name: "English", teacher: "Michael Davis" },
-    ],
-    students: [
-      { id: "st9", rollNumber: "1009", name: "Ian Clark", gender: "Male", attendance: "89%", performance: "Good" },
-      { id: "st10", rollNumber: "1010", name: "Julia Roberts", gender: "Female", attendance: "95%", performance: "Excellent" },
-    ],
-    timetable: [
-      { 
-        day: "Monday", 
-        periods: [
-          { id: "p11", time: "9:00 - 9:45", subject: "English", teacher: "Michael Davis", room: "Science Block - 102" },
-          { id: "p12", time: "9:50 - 10:35", subject: "Mathematics", teacher: "John Smith", room: "Science Block - 102" },
-        ] 
-      }
-    ],
-    exams: [
-      { id: "e1", name: "Mid-term Examination", startDate: "2023-10-15", endDate: "2023-10-25", status: "Completed", results: "Released" },
-    ]
-  }
-};
-
-// Student upload format help content
-const studentUploadHelp = [
-  { header: "Student List Upload Format", content: "The file should be in CSV or Excel format with the following columns:" },
-  { header: "Required Fields", content: "Roll Number, First Name, Last Name, Gender, Date of Birth, Contact Email, Parent Contact, Address" },
-  { header: "Example", content: "1001, John, Smith, Male, 2006-05-15, john.smith@example.com, +1234567890, 123 Main St" },
-];
+// Import schema validation and server actions
+import { 
+  classSectionSchema, 
+  classTeacherSchema, 
+  studentEnrollmentSchema,
+  ClassSectionFormValues,
+  ClassTeacherFormValues,
+  StudentEnrollmentFormValues
+} from "@/lib/schemaValidation/classesSchemaValidation";
+import { 
+  getClassById, 
+  deleteClass, 
+  createClassSection,
+  getTeachersForDropdown,
+  assignTeacherToClass,
+  enrollStudentInClass,
+  getAvailableStudentsForClass
+} from "@/lib/actions/classesActions";
 
 export default function ClassDetailsPage() {
   const params = useParams();
@@ -137,31 +74,219 @@ export default function ClassDetailsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [studentUploadDialogOpen, setStudentUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("students");
+  
+  // Section dialog state
+  const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
+  const [teacherDialogOpen, setTeacherDialogOpen] = useState(false);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  
+  // New state for student enrollment
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [availableStudents, setAvailableStudents] = useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Forms
+  const sectionForm = useForm<ClassSectionFormValues>({
+    resolver: zodResolver(classSectionSchema),
+    defaultValues: {
+      name: "",
+      capacity: 30,
+      classId: "",
+    },
+  });
+
+  const teacherForm = useForm<ClassTeacherFormValues>({
+    resolver: zodResolver(classTeacherSchema),
+    defaultValues: {
+      teacherId: "",
+      classId: "",
+      isClassHead: false,
+    },
+  });
+  
+  // New enrollment form
+  const enrollmentForm = useForm<StudentEnrollmentFormValues>({
+    resolver: zodResolver(studentEnrollmentSchema),
+    defaultValues: {
+      studentId: "",
+      classId: "",
+      sectionId: "",
+      rollNumber: "",
+      status: "ACTIVE",
+    },
+  });
 
   useEffect(() => {
-    // Fetch class details - replace with actual API call
-    const id = params.id as string;
-    const details = classData[id as keyof typeof classData];
+    fetchClassDetails();
+    fetchTeachers();
+  }, [params.id]);
+
+  async function fetchClassDetails() {
+    setLoading(true);
+    setError(null);
     
-    if (details) {
-      setClassDetails(details);
-    } else {
-      // Handle not found case
-      router.push('/admin/classes');
+    try {
+      const id = params.id as string;
+      const result = await getClassById(id);
+      
+      if (result.success) {
+        setClassDetails(result.data);
+        
+        // Pre-populate forms with class ID
+        sectionForm.setValue("classId", id);
+        teacherForm.setValue("classId", id);
+        enrollmentForm.setValue("classId", id);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  async function fetchTeachers() {
+    try {
+      const result = await getTeachersForDropdown();
+      
+      if (result.success) {
+        setTeachers(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch teachers");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    }
+  }
+  
+  // New function to fetch available students
+  async function fetchAvailableStudents() {
+    setLoadingStudents(true);
+    try {
+      const classId = params.id as string;
+      const result = await getAvailableStudentsForClass(classId);
+      
+      if (result.success) {
+        setAvailableStudents(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch available students");
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
+
+  async function handleDeleteClass() {
+    try {
+      const id = params.id as string;
+      const result = await deleteClass(id);
+      
+      if (result.success) {
+        toast.success("Class deleted successfully");
+        router.push('/admin/classes');
+      } else {
+        toast.error(result.error || "Failed to delete class");
+        setDeleteDialogOpen(false);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  function handleAddSection() {
+    sectionForm.reset({
+      name: "",
+      capacity: 30,
+      classId: params.id as string,
+    });
+    setSectionDialogOpen(true);
+  }
+
+  async function onSectionSubmit(values: ClassSectionFormValues) {
+    try {
+      const result = await createClassSection(values);
+      
+      if (result.success) {
+        toast.success("Section created successfully");
+        setSectionDialogOpen(false);
+        fetchClassDetails();
+      } else {
+        toast.error(result.error || "Failed to create section");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  function handleAddTeacher() {
+    teacherForm.reset({
+      teacherId: "",
+      classId: params.id as string,
+      isClassHead: false,
+    });
     
-    setLoading(false);
-  }, [params.id, router]);
+    setTeacherDialogOpen(true);
+  }
 
-  const filteredStudents = classDetails?.students.filter((student: any) => 
-    student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    student.rollNumber.includes(studentSearch)
-  );
-
-  function handleDeleteClass() {
-    console.log("Deleting class:", classDetails.id);
-    setDeleteDialogOpen(false);
-    router.push('/admin/classes');
+  async function onTeacherSubmit(values: ClassTeacherFormValues) {
+    try {
+      const result = await assignTeacherToClass(values);
+      
+      if (result.success) {
+        toast.success("Teacher assigned successfully");
+        setTeacherDialogOpen(false);
+        fetchClassDetails();
+      } else {
+        toast.error(result.error || "Failed to assign teacher");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+  
+  // New function to open enrollment dialog
+  function handleEnrollStudent() {
+    enrollmentForm.reset({
+      studentId: "",
+      classId: params.id as string,
+      sectionId: "",
+      rollNumber: "",
+      status: "ACTIVE",
+    });
+    
+    fetchAvailableStudents();
+    setEnrollDialogOpen(true);
+  }
+  
+  // New function to handle enrollment submission
+  async function onEnrollmentSubmit(values: StudentEnrollmentFormValues) {
+    try {
+      const result = await enrollStudentInClass(values);
+      
+      if (result.success) {
+        toast.success("Student enrolled successfully");
+        setEnrollDialogOpen(false);
+        fetchClassDetails();
+      } else {
+        toast.error(result.error || "Failed to enroll student");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -170,21 +295,50 @@ export default function ClassDetailsPage() {
     }
   }
 
-  function handleFileUpload() {
-    if (selectedFile) {
-      console.log("Uploading file:", selectedFile.name);
-      // Here you would process the file and add students to the class
-      setStudentUploadDialogOpen(false);
-      setSelectedFile(null);
-    }
-  }
+  // Filter students based on search term
+  const filteredStudents = classDetails?.students?.filter((student: any) => 
+    student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    student.rollNumber.includes(studentSearch)
+  ) || [];
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/classes')}>
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Classes
+        </Button>
+      </div>
+    );
   }
 
   if (!classDetails) {
-    return <div>Class not found</div>;
+    return (
+      <div className="p-4">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Not Found</AlertTitle>
+          <AlertDescription>Class not found</AlertDescription>
+        </Alert>
+        <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/classes')}>
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Classes
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -217,12 +371,21 @@ export default function ClassDetailsPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl">{classDetails.name} <span className="text-gray-400">({classDetails.section})</span></CardTitle>
+                <CardTitle className="text-2xl">
+                  {classDetails.name}
+                  {classDetails.sections && classDetails.sections.length > 0 && (
+                    <span className="text-gray-400 ml-2 text-lg">
+                      (Sections: {classDetails.sections.map((s: any) => s.name).join(', ')})
+                    </span>
+                  )}
+                </CardTitle>
                 <CardDescription>
                   Academic Year: {classDetails.year}
                 </CardDescription>
               </div>
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+              <Badge className={`${classDetails.isCurrent ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'} hover:bg-green-100`}>
+                {classDetails.isCurrent ? 'Current Year' : 'Past Year'}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -230,33 +393,33 @@ export default function ClassDetailsPage() {
               <div className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg">
                 <Users className="h-8 w-8 text-blue-500 mb-2" />
                 <span className="text-sm font-medium text-gray-500">Students</span>
-                <span className="text-xl font-bold">{classDetails.strength}</span>
+                <span className="text-xl font-bold">{classDetails.students?.length || 0}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg">
                 <GraduationCap className="h-8 w-8 text-green-500 mb-2" />
                 <span className="text-sm font-medium text-gray-500">Class Teacher</span>
-                <span className="text-xl font-bold">{classDetails.classTeacher}</span>
+                <span className="text-xl font-bold">{classDetails.classTeacher || 'Not Assigned'}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg">
                 <BookOpen className="h-8 w-8 text-purple-500 mb-2" />
                 <span className="text-sm font-medium text-gray-500">Subjects</span>
-                <span className="text-xl font-bold">{classDetails.subjects.length}</span>
+                <span className="text-xl font-bold">{classDetails.subjects?.length || 0}</span>
               </div>
               <div className="flex flex-col items-center justify-center p-4 bg-yellow-50 rounded-lg">
                 <Building className="h-8 w-8 text-yellow-500 mb-2" />
-                <span className="text-sm font-medium text-gray-500">Room</span>
-                <span className="text-xl font-bold">{classDetails.room}</span>
+                <span className="text-sm font-medium text-gray-500">Sections</span>
+                <span className="text-xl font-bold">{classDetails.sections?.length || 0}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="students" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 md:grid-cols-4">
             <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="teachers">Teachers</TabsTrigger>
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="timetable">Timetable</TabsTrigger>
-            <TabsTrigger value="exams">Exams</TabsTrigger>
           </TabsList>
           
           <TabsContent value="students">
@@ -300,12 +463,14 @@ export default function ClassDetailsPage() {
                         
                         <div className="border rounded-md p-4 bg-gray-50">
                           <h4 className="font-medium text-sm mb-2">Format Help</h4>
-                          {studentUploadHelp.map((item, index) => (
-                            <div key={index} className="mb-2">
-                              <p className="text-xs font-medium">{item.header}</p>
-                              <p className="text-xs text-gray-500">{item.content}</p>
-                            </div>
-                          ))}
+                          <div className="mb-2">
+                            <p className="text-xs font-medium">Student List Upload Format</p>
+                            <p className="text-xs text-gray-500">The file should be in CSV or Excel format with the following columns</p>
+                          </div>
+                          <div className="mb-2">
+                            <p className="text-xs font-medium">Required Fields</p>
+                            <p className="text-xs text-gray-500">Roll Number, First Name, Last Name, Gender, Date of Birth, Contact Email, Parent Contact, Address</p>
+                          </div>
                           <Button variant="outline" size="sm" className="mt-2">
                             <Download className="h-3 w-3 mr-1" />
                             Download Template
@@ -316,18 +481,16 @@ export default function ClassDetailsPage() {
                         <Button variant="outline" onClick={() => setStudentUploadDialogOpen(false)}>
                           Cancel
                         </Button>
-                        <Button onClick={handleFileUpload} disabled={!selectedFile}>
+                        <Button disabled={!selectedFile}>
                           Upload and Process
                         </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-                  <Link href={`/admin/students/create?classId=${classDetails.id}`}>
-                    <Button>
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Add Student
-                    </Button>
-                  </Link>
+                  <Button onClick={handleEnrollStudent}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Enroll Student
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -354,9 +517,8 @@ export default function ClassDetailsPage() {
                         <tr className="bg-gray-50 border-b">
                           <th className="py-3 px-4 text-left font-medium text-gray-500">Roll No.</th>
                           <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Gender</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Attendance</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Performance</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Section</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
                           <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
                         </tr>
                       </thead>
@@ -366,38 +528,29 @@ export default function ClassDetailsPage() {
                             <tr key={student.id} className="border-b">
                               <td className="py-3 px-4 align-middle">{student.rollNumber}</td>
                               <td className="py-3 px-4 align-middle font-medium">{student.name}</td>
-                              <td className="py-3 px-4 align-middle">{student.gender}</td>
-                              <td className="py-3 px-4 align-middle">{student.attendance}</td>
-                              <td className="py-3 px-4 align-middle">{student.performance}</td>
+                              <td className="py-3 px-4 align-middle">{student.section}</td>
+                              <td className="py-3 px-4 align-middle">
+                                <Badge className={
+                                  student.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                  student.status === 'INACTIVE' ? 'bg-red-100 text-red-800' : 
+                                  student.status === 'TRANSFERRED' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }>
+                                  {student.status}
+                                </Badge>
+                              </td>
                               <td className="py-3 px-4 align-middle text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">Actions</Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Student Actions</DropdownMenuLabel>
-                                    <Link href={`/admin/students/${student.id}`}>
-                                      <DropdownMenuItem>
-                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                        View Profile
-                                      </DropdownMenuItem>
-                                    </Link>
-                                    <DropdownMenuItem>
-                                      <Check className="h-4 w-4 mr-2" />
-                                      Mark Attendance
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-red-600">
-                                      <X className="h-4 w-4 mr-2" />
-                                      Remove from Class
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <Link href={`/admin/students/${student.id}`}>
+                                  <Button variant="ghost" size="sm">
+                                    View
+                                  </Button>
+                                </Link>
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={6} className="py-6 text-center text-gray-500">
+                            <td colSpan={5} className="py-6 text-center text-gray-500">
                               {studentSearch ? "No students match your search" : "No students enrolled yet"}
                             </td>
                           </tr>
@@ -409,7 +562,71 @@ export default function ClassDetailsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
+          
+          <TabsContent value="teachers">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Teachers</CardTitle>
+                  <CardDescription>Teachers assigned to this class</CardDescription>
+                </div>
+                <Button onClick={handleAddTeacher}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Assign Teacher
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {classDetails.teachers.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <GraduationCap className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+                    <p>No teachers assigned to this class yet.</p>
+                    <Button variant="outline" className="mt-4" onClick={handleAddTeacher}>
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Assign First Teacher
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Employee ID</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Email</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Role</th>
+                            <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classDetails.teachers.map((teacher: any) => (
+                            <tr key={teacher.id} className="border-b">
+                              <td className="py-3 px-4 align-middle font-medium">{teacher.name}</td>
+                              <td className="py-3 px-4 align-middle">{teacher.employeeId}</td>
+                              <td className="py-3 px-4 align-middle">{teacher.email}</td>
+                              <td className="py-3 px-4 align-middle">
+                                {teacher.isClassHead ? (
+                                  <Badge className="bg-green-100 text-green-800">Class Teacher</Badge>
+                                ) : "Subject Teacher"}
+                              </td>
+                              <td className="py-3 px-4 align-middle text-right">
+                                <Link href={`/admin/teachers/${teacher.teacherId}`}>
+                                  <Button variant="ghost" size="sm">
+                                    View
+                                  </Button>
+                                </Link>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
           <TabsContent value="subjects">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -417,172 +634,241 @@ export default function ClassDetailsPage() {
                   <CardTitle>Subjects</CardTitle>
                   <CardDescription>Subjects taught in this class</CardDescription>
                 </div>
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Add Subject
-                </Button>
+                <Link href={`/admin/academic/curriculum?classId=${classDetails.id}`}>
+                  <Button>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Manage Subjects
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {classDetails.subjects.map((subject: any) => (
-                          <tr key={subject.id} className="border-b">
-                            <td className="py-3 px-4 align-middle font-medium">{subject.name}</td>
-                            <td className="py-3 px-4 align-middle">{subject.teacher}</td>
-                            <td className="py-3 px-4 align-middle text-right">
-                              <Button variant="ghost" size="sm">Edit</Button>
-                              <Button variant="ghost" size="sm" className="text-red-500">Remove</Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {classDetails.subjects.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <BookOpen className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+                    <p>No subjects assigned to this class yet.</p>
+                    <Link href={`/admin/academic/curriculum?classId=${classDetails.id}`}>
+                      <Button variant="outline" className="mt-4">
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Subjects
+                      </Button>
+                    </Link>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Code</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
+                            <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classDetails.subjects.map((subject: any) => (
+                            <tr key={subject.id} className="border-b">
+                              <td className="py-3 px-4 align-middle font-medium">{subject.name}</td>
+                              <td className="py-3 px-4 align-middle">{subject.code}</td>
+                              <td className="py-3 px-4 align-middle">{subject.teacher || 'Not Assigned'}</td>
+                              <td className="py-3 px-4 align-middle text-right">
+                                <Link href={`/admin/academic/syllabus?subject=${subject.id}`}>
+                                  <Button variant="ghost" size="sm">
+                                    Syllabus
+                                  </Button>
+                                </Link>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
-
+          
           <TabsContent value="timetable">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Class Timetable</CardTitle>
-                  <CardDescription>Weekly schedule for this class</CardDescription>
+                  <CardTitle>Timetable</CardTitle>
+                  <CardDescription>Class schedule</CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Change Timing
-                  </Button>
+                <Link href={`/admin/timetable?classId=${classDetails.id}`}>
                   <Button>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Edit Timetable
+                    <Edit className="h-4 w-4 mr-2" />
+                    Manage Timetable
                   </Button>
-                </div>
+                </Link>
               </CardHeader>
               <CardContent>
-                {classDetails.timetable.map((day: any) => (
-                  <div key={day.day} className="mb-6">
-                    <h3 className="text-lg font-medium mb-3">{day.day}</h3>
-                    <div className="rounded-md border">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-gray-50 border-b">
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Time</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Room</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {day.periods.map((period: any) => (
-                              <tr key={period.id} className="border-b">
-                                <td className="py-3 px-4 align-middle">{period.time}</td>
-                                <td className="py-3 px-4 align-middle font-medium">{period.subject}</td>
-                                <td className="py-3 px-4 align-middle">{period.teacher}</td>
-                                <td className="py-3 px-4 align-middle">{period.room}</td>
+                {!classDetails.timetable || classDetails.timetable.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+                    <p>No timetable has been set for this class.</p>
+                    <Link href={`/admin/timetable?classId=${classDetails.id}`}>
+                      <Button variant="outline" className="mt-4">
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Create Timetable
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {classDetails.timetable.map((day: any) => (
+                      <div key={day.day} className="border rounded-md">
+                        <div className="bg-gray-50 py-2 px-4 font-medium border-b">
+                          {day.day}
+                        </div>
+                        <div className="p-2">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="py-2 px-3 text-left font-medium text-gray-500">Time</th>
+                                <th className="py-2 px-3 text-left font-medium text-gray-500">Subject</th>
+                                <th className="py-2 px-3 text-left font-medium text-gray-500">Teacher</th>
+                                <th className="py-2 px-3 text-left font-medium text-gray-500">Room</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {day.periods.map((period: any) => (
+                                <tr key={period.id} className="border-b">
+                                  <td className="py-2 px-3">{period.time}</td>
+                                  <td className="py-2 px-3 font-medium">{period.subject}</td>
+                                  <td className="py-2 px-3">{period.teacher}</td>
+                                  <td className="py-2 px-3">{period.room}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Timetable
-                </Button>
-                <Button variant="outline">
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Add Day
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="exams">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Examinations</CardTitle>
-                  <CardDescription>Exams scheduled for this class</CardDescription>
-                </div>
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Schedule Exam
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Exam Name</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Results</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {classDetails.exams.map((exam: any) => (
-                          <tr key={exam.id} className="border-b">
-                            <td className="py-3 px-4 align-middle font-medium">{exam.name}</td>
-                            <td className="py-3 px-4 align-middle">{exam.startDate}</td>
-                            <td className="py-3 px-4 align-middle">{exam.endDate}</td>
-                            <td className="py-3 px-4 align-middle">
-                              <Badge 
-                                className={`${
-                                  exam.status === 'Completed' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                                  exam.status === 'Upcoming' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' :
-                                  'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                                }`}
-                              >
-                                {exam.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              {exam.results === 'Released' ? (
-                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                  Released
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-                                  Pending
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 align-middle text-right">
-                              <Button variant="ghost" size="sm">View</Button>
-                              <Button variant="ghost" size="sm">Edit</Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Section Dialog */}
+      <Dialog open={sectionDialogOpen} onOpenChange={setSectionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Section</DialogTitle>
+            <DialogDescription>
+              Create a new section for this class
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...sectionForm}>
+            <form onSubmit={sectionForm.handleSubmit(onSectionSubmit)} className="space-y-4">
+              <FormField
+                control={sectionForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Section Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. A, B, Science" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={sectionForm.control}
+                name="capacity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Capacity (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min={1} 
+                        placeholder="e.g. 30" 
+                        {...field} 
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit">Create Section</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Teacher Dialog */}
+      <Dialog open={teacherDialogOpen} onOpenChange={setTeacherDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Teacher</DialogTitle>
+            <DialogDescription>
+              Assign a teacher to this class
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...teacherForm}>
+            <form onSubmit={teacherForm.handleSubmit(onTeacherSubmit)} className="space-y-4">
+              <FormField
+                control={teacherForm.control}
+                name="teacherId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teacher</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a teacher" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {teachers.map(teacher => (
+                          <SelectItem key={teacher.id} value={teacher.id}>
+                            {teacher.name} ({teacher.employeeId})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={teacherForm.control}
+                name="isClassHead"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Set as class teacher
+                      </FormLabel>
+                      <p className="text-sm text-gray-500">
+                        This teacher will be responsible for this class.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit">Assign Teacher</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -590,7 +876,7 @@ export default function ClassDetailsPage() {
           <DialogHeader>
             <DialogTitle>Delete Class</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this class? This will remove all students, subjects, and timetable entries associated with this class. This action cannot be undone.
+              Are you sure you want to delete this class? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -601,6 +887,127 @@ export default function ClassDetailsPage() {
               Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enroll Student Dialog */}
+      <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enroll Student</DialogTitle>
+            <DialogDescription>
+              Add a student to this class
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...enrollmentForm}>
+            <form onSubmit={enrollmentForm.handleSubmit(onEnrollmentSubmit)} className="space-y-4">
+              <FormField
+                control={enrollmentForm.control}
+                name="studentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Student</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a student" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingStudents ? (
+                          <div className="flex justify-center items-center py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          </div>
+                        ) : availableStudents.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-gray-500">
+                            No available students found
+                          </div>
+                        ) : (
+                          availableStudents.map(student => (
+                            <SelectItem key={student.id} value={student.id}>
+                              {student.name} ({student.admissionId})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="sectionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Section</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a section" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {classDetails.sections.map((section: any) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="rollNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Roll Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. 101, A-23, etc." {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="TRANSFERRED">Transferred</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit">Enroll Student</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

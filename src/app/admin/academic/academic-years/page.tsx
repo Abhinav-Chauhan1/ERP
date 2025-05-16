@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { 
   Calendar, Edit, Trash2, PlusCircle, 
-  ChevronLeft, Eye, Calendar as CalendarIcon 
+  ChevronLeft, Eye, AlertCircle, ChevronRight 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,92 +31,82 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
-// Mock data - replace with actual API calls
-const academicYearsData = [
-  {
-    id: "1",
-    name: "2023-2024",
-    startDate: new Date("2023-08-15"),
-    endDate: new Date("2024-05-31"),
-    isCurrent: true,
-    terms: 3,
-    classes: 32
-  },
-  {
-    id: "2",
-    name: "2022-2023",
-    startDate: new Date("2022-08-16"),
-    endDate: new Date("2023-06-01"),
-    isCurrent: false,
-    terms: 3,
-    classes: 30
-  },
-  {
-    id: "3",
-    name: "2024-2025",
-    startDate: new Date("2024-08-14"),
-    endDate: new Date("2025-05-30"),
-    isCurrent: false,
-    terms: 0,
-    classes: 0
-  },
-];
-
-const formSchema = z.object({
-  name: z.string().min(5, "Academic year name must be at least 5 characters"),
-  startDate: z.date({
-    required_error: "Start date is required",
-  }),
-  endDate: z.date({
-    required_error: "End date is required",
-  }).refine(date => date > new Date(), {
-    message: "End date must be in the future",
-  }),
-  isCurrent: z.boolean().default(false),
-});
+import { academicYearSchema, AcademicYearFormValues } from "@/lib/schemaValidation/academicyearsSchemaValidation";
+import { getAcademicYears, createAcademicYear, updateAcademicYear, deleteAcademicYear } from "@/lib/actions/academicyearsActions";
 
 export default function AcademicYearsPage() {
   const router = useRouter();
-  const [academicYears, setAcademicYears] = useState(academicYearsData);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<AcademicYearFormValues>({
+    resolver: zodResolver(academicYearSchema),
     defaultValues: {
       name: "",
       isCurrent: false,
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Handle form submission - create or update academic year
-    console.log(values);
+  useEffect(() => {
+    fetchAcademicYears();
+  }, []);
+
+  async function fetchAcademicYears() {
+    setLoading(true);
+    setError(null);
     
-    // For demonstration purposes, let's just add a new item to the state
-    const newAcademicYear = {
-      id: (academicYears.length + 1).toString(),
-      name: values.name,
-      startDate: values.startDate,
-      endDate: values.endDate,
-      isCurrent: values.isCurrent,
-      terms: 0,
-      classes: 0
-    };
-    
-    setAcademicYears([...academicYears, newAcademicYear]);
-    setDialogOpen(false);
-    form.reset();
+    try {
+      const result = await getAcademicYears();
+      
+      if (result.success) {
+        setAcademicYears(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onSubmit(values: AcademicYearFormValues) {
+    try {
+      const result = selectedYearId 
+        ? await updateAcademicYear({ ...values, id: selectedYearId })
+        : await createAcademicYear(values);
+      
+      if (result.success) {
+        toast.success(`Academic year ${selectedYearId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        fetchAcademicYears();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEdit(id: string) {
@@ -123,8 +114,8 @@ export default function AcademicYearsPage() {
     if (yearToEdit) {
       form.reset({
         name: yearToEdit.name,
-        startDate: yearToEdit.startDate,
-        endDate: yearToEdit.endDate,
+        startDate: new Date(yearToEdit.startDate),
+        endDate: new Date(yearToEdit.endDate),
         isCurrent: yearToEdit.isCurrent,
       });
       setSelectedYearId(id);
@@ -132,16 +123,37 @@ export default function AcademicYearsPage() {
     }
   }
 
+  function handleCreate() {
+    form.reset({
+      name: "",
+      isCurrent: false,
+    });
+    setSelectedYearId(null);
+    setDialogOpen(true);
+  }
+
   function handleDelete(id: string) {
     setSelectedYearId(id);
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedYearId) {
-      setAcademicYears(academicYears.filter(year => year.id !== selectedYearId));
-      setDeleteDialogOpen(false);
-      setSelectedYearId(null);
+      try {
+        const result = await deleteAcademicYear(selectedYearId);
+        
+        if (result.success) {
+          toast.success("Academic year deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedYearId(null);
+          fetchAcademicYears();
+        } else {
+          toast.error(result.error || "Failed to delete academic year");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
 
@@ -159,7 +171,7 @@ export default function AcademicYearsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={handleCreate}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Academic Year
             </Button>
           </DialogTrigger>
@@ -194,34 +206,13 @@ export default function AcademicYearsPage() {
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>Start Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className="w-full pl-3 text-left font-normal"
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarComponent
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value}
+                            onSelect={field.onChange}
+                            placeholder="Select start date"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -232,34 +223,17 @@ export default function AcademicYearsPage() {
                     render={({ field }) => (
                       <FormItem className="flex-1">
                         <FormLabel>End Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className="w-full pl-3 text-left font-normal"
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <CalendarComponent
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date()
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <DatePicker
+                            date={field.value}
+                            onSelect={field.onChange}
+                            placeholder="Select end date"
+                            disabled={(date) => {
+                              const startDate = form.getValues("startDate");
+                              return startDate ? date < startDate : false;
+                            }}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -298,75 +272,94 @@ export default function AcademicYearsPage() {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>All Academic Years</CardTitle>
           <CardDescription>Manage your institution's academic years</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Year Name</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Terms</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
-                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {academicYears.map((year) => (
-                    <tr key={year.id} className="border-b">
-                      <td className="py-3 px-4 align-middle font-medium">{year.name}</td>
-                      <td className="py-3 px-4 align-middle">{format(year.startDate, 'MMM d, yyyy')}</td>
-                      <td className="py-3 px-4 align-middle">{format(year.endDate, 'MMM d, yyyy')}</td>
-                      <td className="py-3 px-4 align-middle">
-                        <span 
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            year.isCurrent ? 'bg-green-100 text-green-800' : 
-                            year.startDate > new Date() ? 'bg-blue-100 text-blue-800' : 
-                            'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {year.isCurrent ? 'Current' : 
-                           year.startDate > new Date() ? 'Planned' : 'Past'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 align-middle">{year.terms}</td>
-                      <td className="py-3 px-4 align-middle">{year.classes}</td>
-                      <td className="py-3 px-4 align-middle text-right">
-                        <Link href={`/admin/academic/academic-years/${year.id}`}>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(year.id)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-red-500"
-                          onClick={() => handleDelete(year.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {loading ? (
+            <div className="text-center py-6">Loading academic years...</div>
+          ) : academicYears.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="mb-4">No academic years found</p>
+              <Button onClick={handleCreate}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Create First Academic Year
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-md border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Year Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Terms</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
+                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {academicYears.map((year) => (
+                      <tr key={year.id} className="border-b">
+                        <td className="py-3 px-4 align-middle font-medium">{year.name}</td>
+                        <td className="py-3 px-4 align-middle">{format(new Date(year.startDate), 'MMM d, yyyy')}</td>
+                        <td className="py-3 px-4 align-middle">{format(new Date(year.endDate), 'MMM d, yyyy')}</td>
+                        <td className="py-3 px-4 align-middle">
+                          <span 
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              year.isCurrent ? 'bg-green-100 text-green-800' : 
+                              new Date(year.startDate) > new Date() ? 'bg-blue-100 text-blue-800' : 
+                              'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {year.isCurrent ? 'Current' : 
+                             new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 align-middle">{year._count?.terms || 0}</td>
+                        <td className="py-3 px-4 align-middle">{year._count?.classes || 0}</td>
+                        <td className="py-3 px-4 align-middle text-right">
+                          <Link href={`/admin/academic/academic-years/${year.id}`}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEdit(year.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-red-500"
+                            onClick={() => handleDelete(year.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

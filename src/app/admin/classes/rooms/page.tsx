@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
   Building, CircleUser, EyeOff, ListFilter,
   Search, SlidersHorizontal, ChevronDown,
-  MoreVertical, Check, MapPin, X
+  MoreVertical, Check, MapPin, X, Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -53,179 +54,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data - replace with actual API calls
-const roomsData = [
-  {
-    id: "1",
-    name: "Science Block - 101",
-    building: "Science Block",
-    floor: "1st Floor",
-    type: "Classroom",
-    capacity: 40,
-    hasProjector: true,
-    hasSmartBoard: true,
-    hasAC: true,
-    currentClass: "Grade 10 Science - Section A",
-    description: "Classroom equipped with laboratory setup for science experiments",
-    status: "In Use"
-  },
-  {
-    id: "2",
-    name: "Science Block - 102",
-    building: "Science Block",
-    floor: "1st Floor",
-    type: "Classroom",
-    capacity: 40,
-    hasProjector: true,
-    hasSmartBoard: true,
-    hasAC: true,
-    currentClass: "Grade 10 Science - Section B",
-    description: "Classroom equipped with laboratory setup for science experiments",
-    status: "In Use"
-  },
-  {
-    id: "3",
-    name: "Science Block - 201",
-    building: "Science Block",
-    floor: "2nd Floor",
-    type: "Classroom",
-    capacity: 30,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: true,
-    currentClass: "Grade 11 Science - Section A",
-    description: "Regular classroom for theory classes",
-    status: "In Use"
-  },
-  {
-    id: "4",
-    name: "Science Lab",
-    building: "Science Block",
-    floor: "Ground Floor",
-    type: "Laboratory",
-    capacity: 30,
-    hasProjector: true,
-    hasSmartBoard: true,
-    hasAC: true,
-    currentClass: null,
-    description: "Fully equipped science laboratory for physics, chemistry and biology experiments",
-    status: "Available"
-  },
-  {
-    id: "5",
-    name: "Commerce Block - 201",
-    building: "Commerce Block",
-    floor: "2nd Floor",
-    type: "Classroom",
-    capacity: 35,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: true,
-    currentClass: "Grade 10 Commerce - Section A",
-    description: "Regular classroom for theory classes",
-    status: "In Use"
-  },
-  {
-    id: "6",
-    name: "Main Block - 101",
-    building: "Main Block",
-    floor: "1st Floor",
-    type: "Classroom",
-    capacity: 40,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: false,
-    currentClass: "Grade 9 - Section A",
-    description: "Standard classroom",
-    status: "In Use"
-  },
-  {
-    id: "7",
-    name: "Main Block - 102",
-    building: "Main Block",
-    floor: "1st Floor",
-    type: "Classroom",
-    capacity: 40,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: false,
-    currentClass: "Grade 9 - Section B",
-    description: "Standard classroom",
-    status: "In Use"
-  },
-  {
-    id: "8",
-    name: "Computer Lab",
-    building: "Main Block",
-    floor: "Ground Floor",
-    type: "Laboratory",
-    capacity: 30,
-    hasProjector: true,
-    hasSmartBoard: true,
-    hasAC: true,
-    currentClass: null,
-    description: "Equipped with 30 desktop computers and high-speed internet",
-    status: "Available"
-  },
-  {
-    id: "9",
-    name: "Library",
-    building: "Main Block",
-    floor: "2nd Floor",
-    type: "Library",
-    capacity: 60,
-    hasProjector: false,
-    hasSmartBoard: false,
-    hasAC: true,
-    currentClass: null,
-    description: "Central library with study area and extensive book collection",
-    status: "Available"
-  },
-  {
-    id: "10",
-    name: "Arts Block - 301",
-    building: "Arts Block",
-    floor: "3rd Floor",
-    type: "Classroom",
-    capacity: 30,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: true,
-    currentClass: "Grade 11 Arts - Section A",
-    description: "Classroom for humanities and arts subjects",
-    status: "In Use"
-  },
-  {
-    id: "11",
-    name: "Junior Block - 201",
-    building: "Junior Block",
-    floor: "2nd Floor",
-    type: "Classroom",
-    capacity: 35,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: false,
-    currentClass: "Grade 8 - Section A",
-    description: "Standard classroom for junior grades",
-    status: "In Use"
-  },
-  {
-    id: "12",
-    name: "Auditorium",
-    building: "Main Block",
-    floor: "Ground Floor",
-    type: "Auditorium",
-    capacity: 200,
-    hasProjector: true,
-    hasSmartBoard: false,
-    hasAC: true,
-    currentClass: null,
-    description: "Large auditorium for school events and assemblies",
-    status: "Available"
-  },
-];
+// Import schema validation and actions
+import { roomSchema, RoomFormValues } from "@/lib/schemaValidation/roomsSchemaValidation";
+import { getRooms, createRoom, updateRoom, deleteRoom, getRoomUsageStats } from "@/lib/actions/roomsActions";
 
 // Building options
 const buildings = [
@@ -233,7 +66,9 @@ const buildings = [
   "Commerce Block",
   "Arts Block",
   "Main Block",
-  "Junior Block"
+  "Junior Block",
+  "Computer Block",
+  "Administration Block"
 ];
 
 // Floor options
@@ -257,31 +92,26 @@ const roomTypes = [
   "Activity Room"
 ];
 
-// Form schema
-const roomFormSchema = z.object({
-  name: z.string().min(3, "Room name must be at least 3 characters"),
-  building: z.string({
-    required_error: "Please select a building",
-  }),
-  floor: z.string({
-    required_error: "Please select a floor",
-  }),
-  type: z.string({
-    required_error: "Please select a room type",
-  }),
-  capacity: z.coerce.number().min(1, "Capacity must be at least 1").max(300, "Capacity should not exceed 300"),
-  hasProjector: z.boolean().default(false),
-  hasSmartBoard: z.boolean().default(false),
-  hasAC: z.boolean().default(false),
-  description: z.string().optional(),
-});
+// Features options
+const features = [
+  "Projector",
+  "Smart Board",
+  "AC",
+  "Computer",
+  "Audio System",
+  "Internet",
+  "Lab Equipment"
+];
 
 export default function ClassroomsPage() {
-  const [rooms, setRooms] = useState(roomsData);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Filter state
   const [filterOpen, setFilterOpen] = useState(false);
@@ -294,91 +124,102 @@ export default function ClassroomsPage() {
     hasAC: false,
   });
 
-  const form = useForm<z.infer<typeof roomFormSchema>>({
-    resolver: zodResolver(roomFormSchema),
+  const form = useForm<RoomFormValues>({
+    resolver: zodResolver(roomSchema),
     defaultValues: {
-      hasProjector: false,
-      hasSmartBoard: false,
-      hasAC: false,
+      name: "",
+      building: "",
+      floor: "",
+      type: "",
       capacity: 40,
+      features: [],
+      description: "",
     },
   });
 
-  // Apply filters and search term
-  const filteredRooms = rooms.filter(room => {
-    // Check search term
-    const matchesSearch = room.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        room.building.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        room.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        false;
-    
-    // Check building filter
-    const matchesBuilding = filters.building.length === 0 || 
-                           filters.building.includes(room.building);
-    
-    // Check room type filter
-    const matchesRoomType = filters.roomType.length === 0 || 
-                           filters.roomType.includes(room.type);
-    
-    // Check availability filter
-    const matchesAvailability = filters.availability.length === 0 || 
-                              (filters.availability.includes('Available') && room.status === 'Available') ||
-                              (filters.availability.includes('In Use') && room.status === 'In Use');
-    
-    // Check features
-    const matchesProjector = !filters.hasProjector || room.hasProjector;
-    const matchesSmartBoard = !filters.hasSmartBoard || room.hasSmartBoard;
-    const matchesAC = !filters.hasAC || room.hasAC;
-    
-    return matchesSearch && matchesBuilding && matchesRoomType && 
-           matchesAvailability && matchesProjector && matchesSmartBoard && matchesAC;
-  });
+  useEffect(() => {
+    fetchRooms();
+    fetchRoomStats();
+  }, []);
 
-  function onSubmit(values: z.infer<typeof roomFormSchema>) {
-    console.log("Form submitted:", values);
+  async function fetchRooms() {
+    setLoading(true);
+    setError(null);
     
-    const roomData = {
-      id: selectedRoomId || String(rooms.length + 1),
-      name: values.name,
-      building: values.building,
-      floor: values.floor,
-      type: values.type,
-      capacity: values.capacity,
-      hasProjector: values.hasProjector,
-      hasSmartBoard: values.hasSmartBoard,
-      hasAC: values.hasAC,
-      description: values.description || "",
-      currentClass: selectedRoomId ? rooms.find(r => r.id === selectedRoomId)?.currentClass || null : null,
-      status: selectedRoomId ? rooms.find(r => r.id === selectedRoomId)?.status || "Available" : "Available"
-    };
-    
-    if (selectedRoomId) {
-      // Update existing room
-      setRooms(rooms.map(room => 
-        room.id === selectedRoomId ? roomData : room
-      ));
-    } else {
-      // Add new room
-      setRooms([...rooms, roomData]);
+    try {
+      const result = await getRooms();
+      
+      if (result.success) {
+        setRooms(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    
-    setDialogOpen(false);
-    form.reset();
-    setSelectedRoomId(null);
+  }
+
+  async function fetchRoomStats() {
+    try {
+      const result = await getRoomUsageStats();
+      
+      if (result.success) {
+        setStats(result.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function onSubmit(values: RoomFormValues) {
+    try {
+      let result;
+      
+      if (selectedRoomId) {
+        // Update existing room
+        result = await updateRoom({ ...values, id: selectedRoomId });
+      } else {
+        // Create new room
+        result = await createRoom(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Classroom ${selectedRoomId ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        form.reset();
+        setSelectedRoomId(null);
+        fetchRooms();
+        fetchRoomStats();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleEditRoom(id: string) {
     const roomToEdit = rooms.find(room => room.id === id);
     if (roomToEdit) {
+      // Extract features from room data
+      const roomFeatures = [];
+      if (roomToEdit.hasProjector) roomFeatures.push("Projector");
+      if (roomToEdit.hasSmartBoard) roomFeatures.push("Smart Board");
+      if (roomToEdit.hasAC) roomFeatures.push("AC");
+      
       form.reset({
         name: roomToEdit.name,
         building: roomToEdit.building,
         floor: roomToEdit.floor,
         type: roomToEdit.type,
         capacity: roomToEdit.capacity,
-        hasProjector: roomToEdit.hasProjector,
-        hasSmartBoard: roomToEdit.hasSmartBoard,
-        hasAC: roomToEdit.hasAC,
+        features: roomFeatures,
         description: roomToEdit.description,
       });
       
@@ -387,16 +228,29 @@ export default function ClassroomsPage() {
     }
   }
 
-  function handleDeleteRoom(id: string) {
+  async function handleDeleteRoom(id: string) {
     setSelectedRoomId(id);
     setDeleteDialogOpen(true);
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (selectedRoomId) {
-      setRooms(rooms.filter(room => room.id !== selectedRoomId));
-      setDeleteDialogOpen(false);
-      setSelectedRoomId(null);
+      try {
+        const result = await deleteRoom(selectedRoomId);
+        
+        if (result.success) {
+          toast.success("Classroom deleted successfully");
+          setDeleteDialogOpen(false);
+          setSelectedRoomId(null);
+          fetchRooms();
+          fetchRoomStats();
+        } else {
+          toast.error(result.error || "Failed to delete classroom");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("An unexpected error occurred");
+      }
     }
   }
 
@@ -456,6 +310,36 @@ export default function ClassroomsPage() {
     return count;
   }
 
+  // Apply filters and search term
+  const filteredRooms = rooms.filter(room => {
+    // Check search term
+    const matchesSearch = room.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        room.building.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        room.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        false;
+    
+    // Check building filter
+    const matchesBuilding = filters.building.length === 0 || 
+                           filters.building.includes(room.building);
+    
+    // Check room type filter
+    const matchesRoomType = filters.roomType.length === 0 || 
+                           filters.roomType.includes(room.type);
+    
+    // Check availability filter
+    const matchesAvailability = filters.availability.length === 0 || 
+                              (filters.availability.includes('Available') && room.status === 'Available') ||
+                              (filters.availability.includes('In Use') && room.status === 'In Use');
+    
+    // Check features
+    const matchesProjector = !filters.hasProjector || room.hasProjector;
+    const matchesSmartBoard = !filters.hasSmartBoard || room.hasSmartBoard;
+    const matchesAC = !filters.hasAC || room.hasAC;
+    
+    return matchesSearch && matchesBuilding && matchesRoomType && 
+           matchesAvailability && matchesProjector && matchesSmartBoard && matchesAC;
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -470,7 +354,19 @@ export default function ClassroomsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => {
+              form.reset({
+                name: "",
+                building: "",
+                floor: "",
+                type: "",
+                capacity: 40,
+                features: [],
+                description: "",
+              });
+              setSelectedRoomId(null);
+              setDialogOpen(true);
+            }}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Classroom
             </Button>
           </DialogTrigger>
@@ -505,7 +401,7 @@ export default function ClassroomsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Building</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select building" />
@@ -529,7 +425,7 @@ export default function ClassroomsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Floor</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select floor" />
@@ -555,7 +451,7 @@ export default function ClassroomsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Room Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select type" />
@@ -583,7 +479,7 @@ export default function ClassroomsPage() {
                           <Input 
                             type="number" 
                             min={1} 
-                            max={300} 
+                            max={500} 
                             {...field} 
                             onChange={e => field.onChange(parseInt(e.target.value))}
                           />
@@ -593,62 +489,43 @@ export default function ClassroomsPage() {
                     )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <FormLabel>Features</FormLabel>
-                  <div className="flex flex-wrap gap-6">
-                    <FormField
-                      control={form.control}
-                      name="hasProjector"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
-                            Projector
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="hasSmartBoard"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
-                            Smart Board
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="hasAC"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
-                            Air Conditioning
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="features"
+                  render={() => (
+                    <FormItem>
+                      <div className="mb-2">
+                        <FormLabel>Features</FormLabel>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {features.map((feature) => (
+                          <FormItem key={feature} className="flex flex-row items-start space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={form.watch("features")?.includes(feature)}
+                                onCheckedChange={(checked) => {
+                                  const currentFeatures = form.watch("features") || [];
+                                  if (checked) {
+                                    form.setValue("features", [...currentFeatures, feature]);
+                                  } else {
+                                    form.setValue(
+                                      "features",
+                                      currentFeatures.filter(f => f !== feature)
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="text-sm font-normal cursor-pointer">
+                              {feature}
+                            </FormLabel>
+                          </FormItem>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="description"
@@ -677,6 +554,14 @@ export default function ClassroomsPage() {
         </Dialog>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle>Classrooms and Teaching Spaces</CardTitle>
@@ -685,6 +570,48 @@ export default function ClassroomsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Stats cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4 flex flex-row items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Rooms</p>
+                    <p className="text-2xl font-bold">{stats.total}</p>
+                  </div>
+                  <Building className="h-8 w-8 text-blue-500" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-row items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Available</p>
+                    <p className="text-2xl font-bold">{stats.available}</p>
+                  </div>
+                  <Check className="h-8 w-8 text-green-500" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-row items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">In Use</p>
+                    <p className="text-2xl font-bold">{stats.inUse}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-indigo-500" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-row items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Utilization</p>
+                    <p className="text-2xl font-bold">{stats.utilizationRate.toFixed(1)}%</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-orange-500" />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
@@ -912,122 +839,128 @@ export default function ClassroomsPage() {
             </div>
           )}
 
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {filteredRooms.map((room) => (
-              <Card key={room.id} className="overflow-hidden">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Building className="h-5 w-5 text-blue-500" />
-                      {room.name}
-                    </CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Room Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditRoom(room.id)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Room
-                        </DropdownMenuItem>
-                        {room.status === "In Use" ? (
-                          <DropdownMenuItem>
-                            <CircleUser className="h-4 w-4 mr-2" />
-                            View Assigned Class
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {filteredRooms.map((room) => (
+                <Card key={room.id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Building className="h-5 w-5 text-blue-500" />
+                        {room.name}
+                      </CardTitle>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Room Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditRoom(room.id)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Room
                           </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem>
-                            <Check className="h-4 w-4 mr-2" />
-                            Assign to Class
+                          {room.status === "In Use" ? (
+                            <DropdownMenuItem>
+                              <CircleUser className="h-4 w-4 mr-2" />
+                              View Assigned Class
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem>
+                              <Check className="h-4 w-4 mr-2" />
+                              Assign to Class
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDeleteRoom(room.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Room
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDeleteRoom(room.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Room
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardDescription>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <MapPin className="h-3 w-3" />
-                      {room.building}, {room.floor}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 mb-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Type:</span>
-                      <span className="font-medium">{room.type}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Capacity:</span>
-                      <span className="font-medium">{room.capacity} students</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span>Status:</span>
-                      <Badge className={`${
-                        room.status === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                        'bg-blue-100 text-blue-800 hover:bg-blue-100'
-                      }`}>
-                        {room.status}
-                      </Badge>
-                    </div>
-                    {room.currentClass && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span>Current Class:</span>
-                        <span className="font-medium">{room.currentClass}</span>
+                    <CardDescription>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <MapPin className="h-3 w-3" />
+                        {room.building}, {room.floor}
                       </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 mb-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Type:</span>
+                        <span className="font-medium">{room.type}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Capacity:</span>
+                        <span className="font-medium">{room.capacity} students</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Status:</span>
+                        <Badge className={`${
+                          room.status === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
+                          'bg-blue-100 text-blue-800 hover:bg-blue-100'
+                        }`}>
+                          {room.status}
+                        </Badge>
+                      </div>
+                      {room.currentClass && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Current Class:</span>
+                          <span className="font-medium">{room.currentClass}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {room.hasProjector && (
+                        <Badge variant="outline" className="text-xs bg-gray-50">Projector</Badge>
+                      )}
+                      {room.hasSmartBoard && (
+                        <Badge variant="outline" className="text-xs bg-gray-50">Smart Board</Badge>
+                      )}
+                      {room.hasAC && (
+                        <Badge variant="outline" className="text-xs bg-gray-50">AC</Badge>
+                      )}
+                    </div>
+                    
+                    {room.description && (
+                      <p className="text-xs text-gray-500 line-clamp-2 mt-2">{room.description}</p>
                     )}
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {room.hasProjector && (
-                      <Badge variant="outline" className="text-xs bg-gray-50">Projector</Badge>
-                    )}
-                    {room.hasSmartBoard && (
-                      <Badge variant="outline" className="text-xs bg-gray-50">Smart Board</Badge>
-                    )}
-                    {room.hasAC && (
-                      <Badge variant="outline" className="text-xs bg-gray-50">AC</Badge>
-                    )}
-                  </div>
-                  
-                  {room.description && (
-                    <p className="text-xs text-gray-500 line-clamp-2 mt-2">{room.description}</p>
-                  )}
 
-                  <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
-                    <Button variant="outline" size="sm" onClick={() => handleEditRoom(room.id)}>
-                      <Edit className="h-3.5 w-3.5 mr-1.5" />
-                      Edit
-                    </Button>
-                    {room.status === "Available" ? (
-                      <Button variant="outline" size="sm">
-                        <Check className="h-3.5 w-3.5 mr-1.5" />
-                        Assign
+                    <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+                      <Button variant="outline" size="sm" onClick={() => handleEditRoom(room.id)}>
+                        <Edit className="h-3.5 w-3.5 mr-1.5" />
+                        Edit
                       </Button>
-                    ) : (
-                      <Button variant="outline" size="sm">
-                        <EyeOff className="h-3.5 w-3.5 mr-1.5" />
-                        Unassign
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          {filteredRooms.length === 0 && (
+                      {room.status === "Available" ? (
+                        <Button variant="outline" size="sm">
+                          <Check className="h-3.5 w-3.5 mr-1.5" />
+                          Assign
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm">
+                          <EyeOff className="h-3.5 w-3.5 mr-1.5" />
+                          Unassign
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!loading && filteredRooms.length === 0 && (
             <div className="text-center py-10">
               <Building className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No classrooms found</h3>
@@ -1053,7 +986,7 @@ export default function ClassroomsPage() {
               Are you sure you want to delete this classroom? This action cannot be undone.
               {rooms.find(r => r.id === selectedRoomId)?.status === 'In Use' && (
                 <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
-                  <strong>Warning:</strong> This classroom is currently assigned to a class. Deleting it will remove the assignment.
+                  <strong>Warning:</strong> This classroom is currently assigned to a class. Please unassign it before deleting.
                 </div>
               )}
             </DialogDescription>
@@ -1069,5 +1002,44 @@ export default function ClassroomsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Missing component for Activity icon
+function Activity({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+// Missing component for Users icon
+function Users({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
   );
 }

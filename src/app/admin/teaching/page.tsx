@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   PlusCircle, BookOpen, ClipboardList, Clock, Search, Filter, 
   GraduationCap, FileText, Calendar, LayoutGrid, ArrowRight, Edit,
-  Users, School, Layers, CheckCircle
+  Users, School, Layers, CheckCircle, Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +39,20 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
+import { formatDistanceToNow } from "date-fns";
+
+// Import schema validation and server actions
+import { subjectFormSchema, SubjectFormValues } from "@/lib/schemaValidation/teachingSchemaValidation";
+import { 
+  getTeachingStats, 
+  getAllSubjects, 
+  getSubjectsByDepartment, 
+  getDepartments, 
+  getClasses,
+  createSubject,
+  getRecentTeachingActivities
+} from "@/lib/actions/teachingActions";
 
 const teachingCategories = [
   {
@@ -47,21 +60,21 @@ const teachingCategories = [
     icon: <BookOpen className="h-5 w-5" />,
     description: "Manage academic subjects",
     href: "/admin/teaching/subjects",
-    count: 48
+    countKey: "subjects"
   },
   {
     title: "Lessons",
     icon: <ClipboardList className="h-5 w-5" />,
     description: "Create and manage lessons",
     href: "/admin/teaching/lessons",
-    count: 324
+    countKey: "lessons"
   },
   {
     title: "Timetable",
     icon: <Clock className="h-5 w-5" />,
     description: "Schedule management",
     href: "/admin/teaching/timetable",
-    count: 32
+    countKey: "timetableSlots"
   }
 ];
 
@@ -89,151 +102,165 @@ const teachingQuickActions = [
   },
 ];
 
-const subjectsByDepartment = [
-  {
-    department: "Science",
-    subjects: [
-      { id: "s1", name: "Physics", teachers: 6, classes: 10 },
-      { id: "s2", name: "Chemistry", teachers: 5, classes: 10 },
-      { id: "s3", name: "Biology", teachers: 4, classes: 8 },
-    ]
-  },
-  {
-    department: "Mathematics",
-    subjects: [
-      { id: "m1", name: "Algebra", teachers: 8, classes: 15 },
-      { id: "m2", name: "Geometry", teachers: 5, classes: 12 },
-      { id: "m3", name: "Statistics", teachers: 3, classes: 6 },
-    ]
-  },
-  {
-    department: "Languages",
-    subjects: [
-      { id: "l1", name: "English", teachers: 10, classes: 32 },
-      { id: "l2", name: "Spanish", teachers: 4, classes: 16 },
-      { id: "l3", name: "French", teachers: 3, classes: 8 },
-    ]
-  },
-  {
-    department: "Social Studies",
-    subjects: [
-      { id: "ss1", name: "History", teachers: 6, classes: 18 },
-      { id: "ss2", name: "Geography", teachers: 4, classes: 16 },
-      { id: "ss3", name: "Civics", teachers: 3, classes: 10 },
-    ]
-  },
-];
-
-// Recent activities data
-const recentActivities = [
-  {
-    id: '1',
-    action: 'New syllabus added',
-    subject: 'Physics - Grade 11',
-    user: 'John Smith',
-    userRole: 'Teacher',
-    timestamp: '1 hour ago'
-  },
-  {
-    id: '2',
-    action: 'Lesson updated',
-    subject: 'Algebra - Quadratic Equations',
-    user: 'Emily Johnson',
-    userRole: 'Teacher',
-    timestamp: '3 hours ago'
-  },
-  {
-    id: '3',
-    action: 'Timetable modified',
-    subject: 'Grade 10 - Science',
-    user: 'Admin',
-    userRole: 'Administrator',
-    timestamp: '1 day ago'
-  },
-  {
-    id: '4',
-    action: 'New lesson resource added',
-    subject: 'Biology - Cell Structure',
-    user: 'Robert Brown',
-    userRole: 'Teacher',
-    timestamp: '2 days ago'
-  },
-];
-
-// Teaching stats data
-const teachingStats = [
-  {
-    title: "Active Teachers",
-    value: "85",
-    icon: <Users className="h-5 w-5" />,
-    trend: "+5%",
-    color: "text-green-600"
-  },
-  {
-    title: "Total Classes",
-    value: "32",
-    icon: <School className="h-5 w-5" />,
-    trend: "0%",
-    color: "text-gray-600"
-  },
-  {
-    title: "Subjects",
-    value: "48",
-    icon: <BookOpen className="h-5 w-5" />,
-    trend: "+10%",
-    color: "text-green-600"
-  },
-  {
-    title: "Lessons",
-    value: "324",
-    icon: <Layers className="h-5 w-5" />,
-    trend: "+15%",
-    color: "text-green-600"
-  }
-];
-
-// Subject form schema
-const subjectFormSchema = z.object({
-  name: z.string().min(2, "Subject name must be at least 2 characters"),
-  code: z.string().min(3, "Subject code must be at least 3 characters"),
-  department: z.string({
-    required_error: "Please select a department",
-  }),
-  description: z.string().optional(),
-});
-
 export default function TeachingPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  
+  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  
+  const [stats, setStats] = useState<any>({});
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [departmentsWithSubjects, setDepartmentsWithSubjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
 
   // Initialize subject form
-  const form = useForm<z.infer<typeof subjectFormSchema>>({
+  const form = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectFormSchema),
     defaultValues: {
       name: "",
       code: "",
       description: "",
+      departmentId: "",
+      classIds: [],
     },
   });
 
-  // Filter subjects based on search and department
-  const filteredDepartments = subjectsByDepartment.filter(dept => 
-    departmentFilter === "all" || dept.department === departmentFilter
-  );
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchDepartments();
+    fetchClasses();
+    fetchData();
+    fetchStats();
+    fetchActivities();
+  }, []);
 
-  const filteredSubjects = filteredDepartments.flatMap(dept => 
-    dept.subjects.filter(subject => 
-      subject.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ).map(subject => ({ ...subject, department: dept.department }))
-  );
-
-  function onSubmit(values: z.infer<typeof subjectFormSchema>) {
-    console.log("Form submitted:", values);
-    // Here you would handle the API call to create the subject
-    setDialogOpen(false);
-    form.reset();
+  // Fetch subjects data
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const result = await getSubjectsByDepartment();
+      if (result.success && result.data) {
+        setDepartmentsWithSubjects(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch subjects");
+      }
+      
+      const subjectsResult = await getAllSubjects();
+      if (subjectsResult.success && subjectsResult.data) {
+        setSubjects(subjectsResult.data);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   }
+  
+  // Fetch teaching stats
+  async function fetchStats() {
+    setStatsLoading(true);
+    try {
+      const result = await getTeachingStats();
+      if (result.success) {
+        setStats(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch teaching stats");
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+  
+  // Fetch recent activities
+  async function fetchActivities() {
+    setActivitiesLoading(true);
+    try {
+      const result = await getRecentTeachingActivities();
+      if (result.success) {
+        setActivities(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch recent activities");
+      }
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }
+
+  // Fetch departments for dropdown
+  async function fetchDepartments() {
+    try {
+      const result = await getDepartments();
+      if (result.success && result.data) {
+        setDepartments(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch departments");
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Fetch classes for multiselect
+  async function fetchClasses() {
+    try {
+      const result = await getClasses();
+      if (result.success && result.data) {
+        setClasses(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch classes");
+      }
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Handle form submission for new subject
+  async function onSubmit(values: SubjectFormValues) {
+    try {
+      const result = await createSubject(values);
+      
+      if (result.success) {
+        toast.success("Subject created successfully");
+        setDialogOpen(false);
+        form.reset();
+        
+        // Refresh data
+        fetchData();
+        fetchStats();
+      } else {
+        toast.error(result.error || "Failed to create subject");
+      }
+    } catch (error) {
+      console.error("Error creating subject:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Filter subjects based on search term and department filter
+  const filteredDepartments = departmentsWithSubjects.filter(dept => 
+    departmentFilter === "all" || dept.name === departmentFilter
+  );
+
+  // Get flattened list of subjects for the table
+  const filteredSubjects = subjects.filter(subject => {
+    const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         subject.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = departmentFilter === "all" || 
+                             (subject.department && subject.department.name === departmentFilter);
+    return matchesSearch && matchesDepartment;
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -245,7 +272,7 @@ export default function TeachingPage() {
               <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Subject</DialogTitle>
               <DialogDescription>
@@ -284,7 +311,7 @@ export default function TeachingPage() {
                 </div>
                 <FormField
                   control={form.control}
-                  name="department"
+                  name="departmentId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department</FormLabel>
@@ -295,14 +322,53 @@ export default function TeachingPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {subjectsByDepartment.map(dept => (
-                            <SelectItem key={dept.department} value={dept.department}>
-                              {dept.department}
+                          {departments.map(dept => (
+                            <SelectItem key={dept.id} value={dept.id}>
+                              {dept.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="classIds"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Classes</FormLabel>
+                      <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-60 overflow-y-auto">
+                        {classes.map((classItem) => (
+                          <div key={classItem.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`class-${classItem.id}`}
+                              checked={form.watch("classIds").includes(classItem.id)}
+                              onChange={(e) => {
+                                const currentClasses = form.watch("classIds");
+                                if (e.target.checked) {
+                                  form.setValue("classIds", [...currentClasses, classItem.id]);
+                                } else {
+                                  form.setValue(
+                                    "classIds",
+                                    currentClasses.filter((c) => c !== classItem.id)
+                                  );
+                                }
+                              }}
+                              className="rounded text-primary"
+                            />
+                            <label htmlFor={`class-${classItem.id}`} className="text-sm">
+                              {classItem.name}
+                              {classItem.academicYear?.isCurrent && 
+                                <span className="ml-1 text-xs text-green-600">(Current)</span>
+                              }
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <FormMessage>{form.formState.errors.classIds?.message}</FormMessage>
                     </FormItem>
                   )}
                 />
@@ -346,7 +412,13 @@ export default function TeachingPage() {
             </CardHeader>
             <CardContent>
               <div className="flex justify-between items-center">
-                <div className="text-3xl font-bold">{category.count}</div>
+                <div className="text-3xl font-bold">
+                  {statsLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  ) : (
+                    stats[category.countKey] || 0
+                  )}
+                </div>
                 <Link href={category.href}>
                   <Button variant="outline" size="sm">
                     Manage
@@ -408,9 +480,9 @@ export default function TeachingPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {subjectsByDepartment.map(dept => (
-                      <SelectItem key={dept.department} value={dept.department}>
-                        {dept.department}
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -419,52 +491,63 @@ export default function TeachingPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Department</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Teachers</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
-                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSubjects.length > 0 ? (
-                    filteredSubjects.map((subject) => (
-                      <tr key={subject.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{subject.name}</td>
-                        <td className="py-3 px-4 align-middle">{subject.department}</td>
-                        <td className="py-3 px-4 align-middle">{subject.teachers}</td>
-                        <td className="py-3 px-4 align-middle">{subject.classes}</td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Link href={`/admin/teaching/subjects/${subject.id}`}>
-                            <Button variant="ghost" size="sm">View</Button>
-                          </Link>
-                          <Button variant="ghost" size="sm">Edit</Button>
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Department</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Teachers</th>
+                      <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
+                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSubjects.length > 0 ? (
+                      filteredSubjects.map((subject) => (
+                        <tr key={subject.id} className="border-b">
+                          <td className="py-3 px-4 align-middle font-medium">
+                            <div>
+                              {subject.name}
+                              <div className="text-xs text-gray-500">{subject.code}</div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 align-middle">{subject.department?.name || "—"}</td>
+                          <td className="py-3 px-4 align-middle">{subject._count?.teachers || 0}</td>
+                          <td className="py-3 px-4 align-middle">{subject._count?.classes || 0}</td>
+                          <td className="py-3 px-4 align-middle text-right">
+                            <Link href={`/admin/teaching/subjects/${subject.id}`}>
+                              <Button variant="ghost" size="sm">View</Button>
+                            </Link>
+                            <Link href={`/admin/teaching/subjects/${subject.id}/edit`}>
+                              <Button variant="ghost" size="sm">Edit</Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-500">
+                          {searchTerm || departmentFilter !== "all" 
+                            ? "No subjects match your search criteria"
+                            : "No subjects found, add one to get started"
+                          }
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-gray-500">
-                        {searchTerm || departmentFilter !== "all" 
-                          ? "No subjects match your search criteria"
-                          : "No subjects found, add one to get started"
-                        }
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {filteredSubjects.length > 0 && (
               <div className="flex justify-between items-center mt-4">
                 <p className="text-sm text-gray-500">
-                  Showing {filteredSubjects.length} out of {
-                    subjectsByDepartment.reduce((acc, dept) => acc + dept.subjects.length, 0)
-                  } subjects
+                  Showing {filteredSubjects.length} out of {subjects.length} subjects
                 </p>
                 <Link href="/admin/teaching/subjects">
                   <Button variant="outline" size="sm">
@@ -484,22 +567,58 @@ export default function TeachingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {teachingStats.map((stat) => (
-              <div key={stat.title} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-100 rounded-md text-gray-700">
-                    {stat.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
+            {statsLoading ? (
+              <div className="flex justify-center items-center py-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-md text-gray-700">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Active Teachers</p>
+                      <p className="text-2xl font-bold">{stats.activeTeachers || 0}</p>
+                    </div>
                   </div>
                 </div>
-                <Badge className={`${stat.color} bg-opacity-10`}>
-                  {stat.trend}
-                </Badge>
-              </div>
-            ))}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-md text-gray-700">
+                      <School className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Total Classes</p>
+                      <p className="text-2xl font-bold">{stats.totalClasses || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-md text-gray-700">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Subjects</p>
+                      <p className="text-2xl font-bold">{stats.subjects || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 rounded-md text-gray-700">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Lessons</p>
+                      <p className="text-2xl font-bold">{stats.lessons || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -512,21 +631,35 @@ export default function TeachingPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex gap-3 pb-4 border-b last:border-0 last:pb-0">
-                <div className="p-2 bg-blue-50 rounded-full h-fit text-blue-600">
-                  <CheckCircle className="h-4 w-4" />
+          {activitiesLoading ? (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : activities.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              No recent activities found
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <div key={activity.id} className="flex gap-3 pb-4 border-b last:border-0 last:pb-0">
+                  <div className="p-2 bg-blue-50 rounded-full h-fit text-blue-600">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">
+                      {activity.type === 'lesson' ? 'Lesson' : 'Syllabus'} {activity.action} {' '}
+                      <span className="text-blue-600">{activity.entityName}</span> 
+                      {activity.subjectName && <span> for {activity.subjectName}</span>}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">{activity.action} <span className="text-blue-600">{activity.subject}</span></p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    By {activity.user} ({activity.userRole}) · {activity.timestamp}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="border-t">
           <Button variant="outline" size="sm" className="ml-auto">

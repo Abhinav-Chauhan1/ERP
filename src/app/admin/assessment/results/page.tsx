@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Search, Download, FileText, 
   Filter, Calendar, BookOpen, GraduationCap, 
   BarChart, ArrowUpDown, Eye, Printer, CheckCircle, 
-  AlertCircle, HelpCircle
+  AlertCircle, HelpCircle, Loader2, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -34,192 +34,27 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
+import toast from "react-hot-toast";
 
-// Mock data for exam results
-const examResultsData = [
-  {
-    id: "e1",
-    examName: "Mid-Term Physics Exam",
-    subject: "Physics",
-    grade: "Grade 11",
-    examDate: "2023-10-15",
-    totalStudents: 35,
-    absentStudents: 3,
-    highestScore: 95,
-    lowestScore: 42,
-    averageScore: 76.5,
-    passPercentage: 88.6,
-    gradeDistribution: {
-      "A+": 4,
-      "A": 8,
-      "B+": 6,
-      "B": 5,
-      "C+": 4,
-      "C": 3,
-      "D": 2,
-      "F": 3
-    },
-    isPublished: true,
-    publishedOn: "2023-10-20"
-  },
-  {
-    id: "e2",
-    examName: "Mathematics Unit Test: Algebra",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    examDate: "2023-10-12",
-    totalStudents: 38,
-    absentStudents: 2,
-    highestScore: 98,
-    lowestScore: 35,
-    averageScore: 72.3,
-    passPercentage: 84.2,
-    gradeDistribution: {
-      "A+": 5,
-      "A": 7,
-      "B+": 8,
-      "B": 6,
-      "C+": 4,
-      "C": 3,
-      "D": 2,
-      "F": 3
-    },
-    isPublished: true,
-    publishedOn: "2023-10-18"
-  },
-  {
-    id: "e3",
-    examName: "English Literature Essay",
-    subject: "English",
-    grade: "Grade 9",
-    examDate: "2023-10-20",
-    totalStudents: 40,
-    absentStudents: 1,
-    highestScore: 92,
-    lowestScore: 48,
-    averageScore: 74.8,
-    passPercentage: 92.5,
-    gradeDistribution: {
-      "A+": 3,
-      "A": 9,
-      "B+": 10,
-      "B": 8,
-      "C+": 5,
-      "C": 3,
-      "D": 1,
-      "F": 1
-    },
-    isPublished: false,
-    publishedOn: null
-  },
-  {
-    id: "e4",
-    examName: "Chemistry Final Exam",
-    subject: "Chemistry",
-    grade: "Grade 12",
-    examDate: "2023-10-18",
-    totalStudents: 32,
-    absentStudents: 0,
-    highestScore: 96,
-    lowestScore: 39,
-    averageScore: 68.4,
-    passPercentage: 78.1,
-    gradeDistribution: {
-      "A+": 2,
-      "A": 5,
-      "B+": 6,
-      "B": 7,
-      "C+": 5,
-      "C": 3,
-      "D": 3,
-      "F": 1
-    },
-    isPublished: true,
-    publishedOn: "2023-10-25"
-  },
-];
-
-// Mock data for student examination results
-const studentResultsData = [
-  {
-    id: "sr1",
-    studentName: "Alex Johnson",
-    studentId: "ST10023",
-    admissionId: "ADM2021/123",
-    grade: "Grade 11",
-    rollNumber: "11A-01",
-    photo: "/avatars/01.png",
-    exams: [
-      { id: "e1", examName: "Mid-Term Physics Exam", subject: "Physics", marks: 82, totalMarks: 100, grade: "A", percentage: 82 },
-      { id: "e2", examName: "Mid-Term Chemistry Exam", subject: "Chemistry", marks: 75, totalMarks: 100, grade: "B+", percentage: 75 },
-      { id: "e3", examName: "Mid-Term Mathematics Exam", subject: "Mathematics", marks: 90, totalMarks: 100, grade: "A+", percentage: 90 },
-      { id: "e4", examName: "Mid-Term English Exam", subject: "English", marks: 68, totalMarks: 100, grade: "C+", percentage: 68 },
-      { id: "e5", examName: "Mid-Term Computer Science Exam", subject: "Computer Science", marks: 85, totalMarks: 100, grade: "A", percentage: 85 },
-    ],
-    totalMarks: 400,
-    obtainedMarks: 315,
-    percentage: 78.75,
-    rank: 5,
-    overallGrade: "B+",
-    attendance: 92.5
-  },
-  {
-    id: "sr2",
-    studentName: "Emma Williams",
-    studentId: "ST10045",
-    admissionId: "ADM2021/145",
-    grade: "Grade 11",
-    rollNumber: "11A-02",
-    photo: "/avatars/02.png",
-    exams: [
-      { id: "e1", examName: "Mid-Term Physics Exam", subject: "Physics", marks: 78, totalMarks: 100, grade: "B+", percentage: 78 },
-      { id: "e2", examName: "Mid-Term Chemistry Exam", subject: "Chemistry", marks: 82, totalMarks: 100, grade: "A", percentage: 82 },
-      { id: "e3", examName: "Mid-Term Mathematics Exam", subject: "Mathematics", marks: 95, totalMarks: 100, grade: "A+", percentage: 95 },
-      { id: "e4", examName: "Mid-Term English Exam", subject: "English", marks: 88, totalMarks: 100, grade: "A", percentage: 88 },
-      { id: "e5", examName: "Mid-Term Computer Science Exam", subject: "Computer Science", marks: 80, totalMarks: 100, grade: "B+", percentage: 80 },
-    ],
-    totalMarks: 400,
-    obtainedMarks: 343,
-    percentage: 85.75,
-    rank: 2,
-    overallGrade: "A",
-    attendance: 96.0
-  }
-];
-
-// Subject data
-const subjects = [
-  { id: "s1", name: "Physics" },
-  { id: "s2", name: "Chemistry" },
-  { id: "s3", name: "Biology" },
-  { id: "s4", name: "Mathematics" },
-  { id: "s5", name: "English" },
-  { id: "s6", name: "History" },
-  { id: "s7", name: "Geography" },
-  { id: "s8", name: "Computer Science" },
-];
-
-// Grade data
-const grades = [
-  { id: "g9", name: "Grade 9" },
-  { id: "g10", name: "Grade 10" },
-  { id: "g11", name: "Grade 11" },
-  { id: "g12", name: "Grade 12" },
-];
-
-// Exam types
-const examTypes = [
-  { id: "et1", name: "Mid-Term" },
-  { id: "et2", name: "Final" },
-  { id: "et3", name: "Unit Test" },
-  { id: "et4", name: "Quiz" },
-];
+// Import schema validation and server actions
+import { 
+  getExamResults, 
+  getStudentResults, 
+  getExamResultById, 
+  getResultFilters,
+  publishExamResults,
+  generateReportCard
+} from "@/lib/actions/resultsActions";
 
 export default function ResultsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [examTypeFilter, setExamTypeFilter] = useState("all");
+  const [termFilter, setTermFilter] = useState("all");
+  
   const [viewResultsDialogOpen, setViewResultsDialogOpen] = useState(false);
   const [viewStudentResultsDialogOpen, setViewStudentResultsDialogOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
@@ -227,22 +62,82 @@ export default function ResultsPage() {
   const [sortColumn, setSortColumn] = useState<string>("examDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [viewTab, setViewTab] = useState<string>("exams");
+  
+  const [loading, setLoading] = useState(true);
+  const [examResultsLoading, setExamResultsLoading] = useState(false);
+  const [studentResultsLoading, setStudentResultsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [examResults, setExamResults] = useState<any[]>([]);
+  const [studentResultsList, setStudentResultsList] = useState<any[]>([]);
+  const [selectedExamDetails, setSelectedExamDetails] = useState<any>(null);
+  const [selectedStudentDetails, setSelectedStudentDetails] = useState<any>(null);
+  const [filterOptions, setFilterOptions] = useState<any>({
+    subjects: [],
+    examTypes: [],
+    terms: [],
+    classes: []
+  });
 
-  // Filter exam results based on search and filters
-  const filteredExams = examResultsData.filter(exam => {
-    const matchesSearch = exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  useEffect(() => {
+    fetchExamResults();
+    fetchFilterOptions();
+  }, []);
+
+  async function fetchFilterOptions() {
+    try {
+      const result = await getResultFilters();
+      if (result.success) {
+        setFilterOptions(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch filter options");
+      }
+    } catch (err) {
+      console.error("Error fetching filter options:", err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  async function fetchExamResults() {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await getExamResults({
+        searchTerm: searchTerm || undefined,
+        subjectId: subjectFilter !== "all" ? subjectFilter : undefined,
+        examTypeId: examTypeFilter !== "all" ? examTypeFilter : undefined,
+        termId: termFilter !== "all" ? termFilter : undefined,
+      });
+      
+      if (result.success) {
+        setExamResults(result.data || []);
+      } else {
+        setError(result.error || "Failed to fetch exam results");
+        toast.error(result.error || "Failed to fetch exam results");
+      }
+    } catch (err) {
+      console.error("Error fetching exam results:", err);
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Apply filters and sorting
+  const filteredExams = examResults.filter(exam => {
+    if (viewTab !== "exams") return true;
+    
+    const matchesSearch = !searchTerm || 
+                          exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSubject = subjectFilter === "all" || exam.subject === subjects.find(s => s.id === subjectFilter)?.name;
-    const matchesGrade = gradeFilter === "all" || exam.grade === grades.find(g => g.id === gradeFilter)?.name;
+    const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
+    const matchesExamType = examTypeFilter === "all" || exam.examTypeId === examTypeFilter;
+    const matchesTerm = termFilter === "all" || exam.termId === termFilter;
     
-    // For examType, we'd extract type from exam name, but in a real app this would be a separate field
-    const examType = exam.examName.includes("Mid-Term") ? "Mid-Term" : 
-                     exam.examName.includes("Final") ? "Final" : 
-                     exam.examName.includes("Unit Test") ? "Unit Test" : "Quiz";
-    const matchesExamType = examTypeFilter === "all" || examType === examTypes.find(t => t.id === examTypeFilter)?.name;
-    
-    return matchesSearch && matchesSubject && matchesGrade && matchesExamType;
+    return matchesSearch && matchesSubject && matchesExamType && matchesTerm;
   });
 
   // Sort filtered exams
@@ -255,9 +150,6 @@ export default function ResultsPage() {
         break;
       case "subject":
         comparison = a.subject.localeCompare(b.subject);
-        break;
-      case "grade":
-        comparison = a.grade.localeCompare(b.grade);
         break;
       case "examDate":
         comparison = new Date(a.examDate).getTime() - new Date(b.examDate).getTime();
@@ -284,23 +176,91 @@ export default function ResultsPage() {
     }
   }
 
-  function handleViewResults(examId: string) {
+  async function handleViewResults(examId: string) {
+    setExamResultsLoading(true);
     setSelectedExamId(examId);
-    setViewResultsDialogOpen(true);
+    
+    try {
+      const result = await getExamResultById(examId);
+      
+      if (result.success) {
+        setSelectedExamDetails(result.data);
+        setViewResultsDialogOpen(true);
+      } else {
+        toast.error(result.error || "Failed to fetch exam details");
+      }
+    } catch (err) {
+      console.error("Error fetching exam details:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setExamResultsLoading(false);
+    }
   }
 
-  function handleViewStudentResults(studentId: string) {
+  async function handleViewStudentResults(studentId: string) {
+    setStudentResultsLoading(true);
     setSelectedStudentId(studentId);
-    setViewStudentResultsDialogOpen(true);
+    
+    try {
+      const result = await getStudentResults(studentId, termFilter !== "all" ? termFilter : undefined);
+      
+      if (result.success) {
+        setSelectedStudentDetails(result.data);
+        setViewStudentResultsDialogOpen(true);
+      } else {
+        toast.error(result.error || "Failed to fetch student results");
+      }
+    } catch (err) {
+      console.error("Error fetching student results:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setStudentResultsLoading(false);
+    }
   }
 
-  function publishResults(examId: string) {
-    // Handle publishing results
-    console.log(`Publishing results for exam ID: ${examId}`);
+  async function handlePublishResults(examId: string) {
+    try {
+      const result = await publishExamResults({
+        examId,
+        isPublished: true,
+        publishDate: new Date(),
+        sendNotifications: false
+      });
+      
+      if (result.success) {
+        toast.success(result.message || "Results published successfully");
+        fetchExamResults();
+        setViewResultsDialogOpen(false);
+      } else {
+        toast.error(result.error || "Failed to publish results");
+      }
+    } catch (err) {
+      console.error("Error publishing results:", err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
-  const selectedExam = examResultsData.find(e => e.id === selectedExamId);
-  const selectedStudent = studentResultsData.find(s => s.id === selectedStudentId);
+  async function handleGenerateReportCard(studentId: string, termId: string) {
+    try {
+      const result = await generateReportCard({
+        studentId,
+        termId,
+        includeRemarks: false
+      });
+      
+      if (result.success) {
+        toast.success(result.message || "Report card generated successfully");
+        setViewStudentResultsDialogOpen(false);
+        // Redirect to report card view
+        // router.push(`/admin/assessment/report-cards/${result.data.id}`);
+      } else {
+        toast.error(result.error || "Failed to generate report card");
+      }
+    } catch (err) {
+      console.error("Error generating report card:", err);
+      toast.error("An unexpected error occurred");
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -326,6 +286,14 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="exams" onValueChange={setViewTab}>
         <TabsList>
           <TabsTrigger value="exams">Exam Results</TabsTrigger>
@@ -345,45 +313,57 @@ export default function ResultsPage() {
                   className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchExamResults()}
                 />
               </div>
             </div>
             <div className="md:w-1/2 flex flex-wrap gap-2">
-              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+              <Select value={subjectFilter} onValueChange={(value) => {
+                setSubjectFilter(value);
+                fetchExamResults();
+              }}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Subject" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Subjects</SelectItem>
-                  {subjects.map(subject => (
+                  {filterOptions.subjects.map((subject: any) => (
                     <SelectItem key={subject.id} value={subject.id}>
                       {subject.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {grades.map(grade => (
-                    <SelectItem key={grade.id} value={grade.id}>
-                      {grade.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={examTypeFilter} onValueChange={setExamTypeFilter}>
+              
+              <Select value={examTypeFilter} onValueChange={(value) => {
+                setExamTypeFilter(value);
+                fetchExamResults();
+              }}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Exam Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {examTypes.map(type => (
+                  {filterOptions.examTypes.map((type: any) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={termFilter} onValueChange={(value) => {
+                setTermFilter(value);
+                fetchExamResults();
+              }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Terms</SelectItem>
+                  {filterOptions.terms.map((term: any) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name} ({term.academicYear.name})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -403,7 +383,11 @@ export default function ResultsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {sortedFilteredExams.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : sortedFilteredExams.length > 0 ? (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
@@ -426,17 +410,6 @@ export default function ResultsPage() {
                           <div className="flex items-center">
                             Subject
                             {sortColumn === "subject" && (
-                              <ArrowUpDown className="ml-1 h-3 w-3" />
-                            )}
-                          </div>
-                        </th>
-                        <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
-                          onClick={() => handleSort("grade")}
-                        >
-                          <div className="flex items-center">
-                            Grade
-                            {sortColumn === "grade" && (
                               <ArrowUpDown className="ml-1 h-3 w-3" />
                             )}
                           </div>
@@ -487,9 +460,8 @@ export default function ResultsPage() {
                         <tr key={exam.id} className="border-b">
                           <td className="py-3 px-4 align-middle font-medium">{exam.examName}</td>
                           <td className="py-3 px-4 align-middle">{exam.subject}</td>
-                          <td className="py-3 px-4 align-middle">{exam.grade}</td>
                           <td className="py-3 px-4 align-middle">
-                            {new Date(exam.examDate).toLocaleDateString()}
+                            {format(new Date(exam.examDate), 'MMM d, yyyy')}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-2">
@@ -536,7 +508,7 @@ export default function ResultsPage() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => publishResults(exam.id)}
+                                onClick={() => handlePublishResults(exam.id)}
                               >
                                 Publish
                               </Button>
@@ -552,7 +524,7 @@ export default function ResultsPage() {
                   <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No results found</h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    {searchTerm || subjectFilter !== "all" || gradeFilter !== "all" || examTypeFilter !== "all"
+                    {searchTerm || subjectFilter !== "all" || examTypeFilter !== "all" || termFilter !== "all"
                       ? "Try adjusting your filters to find what you're looking for"
                       : "No exam results have been added yet"
                     }
@@ -581,50 +553,15 @@ export default function ResultsPage() {
               <CardDescription>View and manage individual student performance</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">ID</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Average</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Rank</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {studentResultsData.map(student => (
-                      <tr key={student.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{student.studentName}</td>
-                        <td className="py-3 px-4 align-middle">{student.studentId}</td>
-                        <td className="py-3 px-4 align-middle">{student.grade}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={student.percentage}
-                              className="h-2 w-16"
-                            />
-                            <span>{student.percentage.toFixed(1)}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge variant="outline">{student.rank}</Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewStudentResults(student.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Results
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="text-center py-12">
+                <GraduationCap className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <h3 className="text-lg font-medium mb-1">Student Results View</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  This feature allows you to view results by student
+                </p>
+                <Button variant="outline">
+                  Search for a Student
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -658,59 +595,65 @@ export default function ResultsPage() {
       <Dialog open={viewResultsDialogOpen} onOpenChange={setViewResultsDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{selectedExam?.examName}</DialogTitle>
+            <DialogTitle>{selectedExamDetails?.title}</DialogTitle>
             <DialogDescription>
-              Detailed results for {selectedExam?.subject} - {selectedExam?.grade}
+              {selectedExamDetails?.subject} - {selectedExamDetails?.term} ({selectedExamDetails?.academicYear})
             </DialogDescription>
           </DialogHeader>
           
-          {selectedExam && (
+          {examResultsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : selectedExamDetails ? (
             <div className="max-h-[70vh] overflow-auto pr-2">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <div className="text-blue-700 font-medium text-sm mb-1">Average Score</div>
-                  <div className="text-2xl font-bold">{selectedExam.averageScore.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">{selectedExamDetails.averageScore.toFixed(1)}%</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
                   <div className="text-green-700 font-medium text-sm mb-1">Pass Percentage</div>
-                  <div className="text-2xl font-bold">{selectedExam.passPercentage.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">{selectedExamDetails.passPercentage.toFixed(1)}%</div>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4">
                   <div className="text-purple-700 font-medium text-sm mb-1">Highest Score</div>
-                  <div className="text-2xl font-bold">{selectedExam.highestScore}%</div>
+                  <div className="text-2xl font-bold">{selectedExamDetails.highestScore}%</div>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4">
                   <div className="text-amber-700 font-medium text-sm mb-1">Attendance</div>
                   <div className="text-2xl font-bold">
-                    {selectedExam.totalStudents - selectedExam.absentStudents}/{selectedExam.totalStudents}
+                    {selectedExamDetails.presentStudents}/{selectedExamDetails.totalStudents}
                   </div>
                 </div>
               </div>
               
-              <div className="border rounded-lg p-4 mb-6">
-                <h3 className="font-medium mb-3">Grade Distribution</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(selectedExam.gradeDistribution).map(([grade, count]) => (
-                    <div key={grade} className="flex items-center gap-3">
-                      <div className={`
-                        w-10 h-10 rounded-full flex items-center justify-center font-medium
-                        ${grade === 'A+' || grade === 'A' ? 'bg-green-100 text-green-800' :
-                          grade === 'B+' || grade === 'B' ? 'bg-blue-100 text-blue-800' :
-                          grade === 'C+' || grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'}
-                      `}>
-                        {grade}
-                      </div>
-                      <div>
-                        <div className="font-medium">{count} students</div>
-                        <div className="text-xs text-gray-500">
-                          {((count / selectedExam.totalStudents) * 100).toFixed(1)}%
+              {Object.keys(selectedExamDetails.gradeDistribution).length > 0 && (
+                <div className="border rounded-lg p-4 mb-6">
+                  <h3 className="font-medium mb-3">Grade Distribution</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {Object.entries(selectedExamDetails.gradeDistribution).map(([grade, count]: [string, any]) => (
+                      <div key={grade} className="flex items-center gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-full flex items-center justify-center font-medium
+                          ${grade === 'A+' || grade === 'A' ? 'bg-green-100 text-green-800' :
+                            grade === 'B+' || grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                            grade === 'C+' || grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'}
+                        `}>
+                          {grade}
+                        </div>
+                        <div>
+                          <div className="font-medium">{count} students</div>
+                          <div className="text-xs text-gray-500">
+                            {((count / selectedExamDetails.totalStudents) * 100).toFixed(1)}%
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               
               <div className="border rounded-lg mb-4">
                 <div className="bg-gray-50 py-3 px-4 border-b">
@@ -728,23 +671,24 @@ export default function ResultsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {/* Mock student results - in a real app this would be fetched */}
-                      {[...Array(5)].map((_, index) => (
-                        <tr key={index} className="border-b">
-                          <td className="py-3 px-4">Student Name {index + 1}</td>
-                          <td className="py-3 px-4">ST100{index + 1}</td>
+                      {selectedExamDetails.studentResults.map((result: any) => (
+                        <tr key={result.id} className="border-b">
+                          <td className="py-3 px-4">{result.student.name}</td>
+                          <td className="py-3 px-4">{result.student.admissionId}</td>
                           <td className="py-3 px-4">
-                            {Math.floor(Math.random() * (95 - 35 + 1)) + 35}/100
+                            {result.isAbsent ? '-' : `${result.marks}/${selectedExamDetails.totalMarks}`}
                           </td>
                           <td className="py-3 px-4">
-                            {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'][Math.floor(Math.random() * 8)]}
+                            {result.isAbsent ? '-' : result.grade || '-'}
                           </td>
                           <td className="py-3 px-4">
-                            <Badge className={
-                              Math.random() > 0.2 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }>
-                              {Math.random() > 0.2 ? "Pass" : "Fail"}
-                            </Badge>
+                            {result.isAbsent ? (
+                              <Badge className="bg-gray-100 text-gray-800">Absent</Badge>
+                            ) : (
+                              <Badge className={result.isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                                {result.isPass ? "Pass" : "Fail"}
+                              </Badge>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -752,6 +696,10 @@ export default function ResultsPage() {
                   </table>
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-gray-500">
+              No details available
             </div>
           )}
           
@@ -763,8 +711,8 @@ export default function ResultsPage() {
               <Printer className="h-4 w-4 mr-2" />
               Print Results
             </Button>
-            {!selectedExam?.isPublished && (
-              <Button>
+            {selectedExamDetails && !selectedExamDetails.isPublished && (
+              <Button onClick={() => handlePublishResults(selectedExamDetails.id)}>
                 Publish Results
               </Button>
             )}
@@ -776,30 +724,69 @@ export default function ResultsPage() {
       <Dialog open={viewStudentResultsDialogOpen} onOpenChange={setViewStudentResultsDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Student Results: {selectedStudent?.studentName}</DialogTitle>
+            <DialogTitle>Student Results</DialogTitle>
             <DialogDescription>
-              {selectedStudent?.grade} | Roll No: {selectedStudent?.rollNumber} | ID: {selectedStudent?.studentId}
+              Performance details for this student
             </DialogDescription>
           </DialogHeader>
           
-          {selectedStudent && (
+          {studentResultsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : selectedStudentDetails ? (
             <div className="max-h-[70vh] overflow-auto pr-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
+                <div className="md:w-1/4">
+                  <div className="w-24 h-24 rounded-full bg-gray-200 mx-auto overflow-hidden">
+                    {selectedStudentDetails.student.photo ? (
+                      <img 
+                        src={selectedStudentDetails.student.photo} 
+                        alt={selectedStudentDetails.student.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <User className="h-12 w-12" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="md:w-3/4">
+                  <h2 className="text-xl font-bold">{selectedStudentDetails.student.name}</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                    <div>
+                      <p className="text-sm text-gray-500">ID</p>
+                      <p className="font-medium">{selectedStudentDetails.student.admissionId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Class</p>
+                      <p className="font-medium">{selectedStudentDetails.student.grade}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Roll Number</p>
+                      <p className="font-medium">{selectedStudentDetails.student.rollNumber || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <div className="text-blue-700 font-medium text-sm mb-1">Overall Percentage</div>
-                  <div className="text-2xl font-bold">{selectedStudent.percentage.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold">{selectedStudentDetails.summary.percentage.toFixed(1)}%</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
                   <div className="text-green-700 font-medium text-sm mb-1">Overall Grade</div>
-                  <div className="text-2xl font-bold">{selectedStudent.overallGrade}</div>
+                  <div className="text-2xl font-bold">{selectedStudentDetails.summary.grade}</div>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-purple-700 font-medium text-sm mb-1">Class Rank</div>
-                  <div className="text-2xl font-bold">{selectedStudent.rank}</div>
+                  <div className="text-purple-700 font-medium text-sm mb-1">Exams Taken</div>
+                  <div className="text-2xl font-bold">{selectedStudentDetails.summary.totalExams}</div>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4">
                   <div className="text-amber-700 font-medium text-sm mb-1">Attendance</div>
-                  <div className="text-2xl font-bold">{selectedStudent.attendance}%</div>
+                  <div className="text-2xl font-bold">{selectedStudentDetails.summary.attendance}%</div>
                 </div>
               </div>
               
@@ -807,55 +794,66 @@ export default function ResultsPage() {
                 <div className="bg-gray-50 py-3 px-4 border-b">
                   <h3 className="font-medium">Subject-wise Performance</h3>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Percentage</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedStudent.exams.map(exam => (
-                        <tr key={exam.id} className="border-b">
-                          <td className="py-3 px-4 font-medium">{exam.subject}</td>
-                          <td className="py-3 px-4">{exam.examName}</td>
-                          <td className="py-3 px-4">{exam.marks}/{exam.totalMarks}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={exam.percentage}
-                                className="h-2 w-16"
-                              />
-                              <span>{exam.percentage}%</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge className={
-                              exam.grade === 'A+' || exam.grade === 'A' ? "bg-green-100 text-green-800" :
-                              exam.grade === 'B+' || exam.grade === 'B' ? "bg-blue-100 text-blue-800" :
-                              exam.grade === 'C+' || exam.grade === 'C' ? "bg-yellow-100 text-yellow-800" :
-                              "bg-red-100 text-red-800"
-                            }>
-                              {exam.grade}
-                            </Badge>
-                          </td>
+                {selectedStudentDetails.exams.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Percentage</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {selectedStudentDetails.exams.map((exam: any) => (
+                          <tr key={exam.id} className="border-b">
+                            <td className="py-3 px-4 font-medium">{exam.subject}</td>
+                            <td className="py-3 px-4">{exam.examName}</td>
+                            <td className="py-3 px-4">{format(new Date(exam.date), 'MMM d, yyyy')}</td>
+                            <td className="py-3 px-4">
+                              {exam.isAbsent ? 'Absent' : `${exam.marks}/${exam.totalMarks}`}
+                            </td>
+                            <td className="py-3 px-4">
+                              {exam.isAbsent ? '-' : (
+                                <div className="flex items-center gap-2">
+                                  <Progress
+                                    value={exam.percentage}
+                                    className="h-2 w-16"
+                                  />
+                                  <span>{exam.percentage.toFixed(1)}%</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {exam.isAbsent ? '-' : (
+                                <Badge className={
+                                  exam.grade === 'A+' || exam.grade === 'A' ? "bg-green-100 text-green-800" :
+                                  exam.grade === 'B+' || exam.grade === 'B' ? "bg-blue-100 text-blue-800" :
+                                  exam.grade === 'C+' || exam.grade === 'C' ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
+                                }>
+                                  {exam.grade || '-'}
+                                </Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-6 text-center text-gray-500">
+                    No exam results found for this student
+                  </div>
+                )}
               </div>
-
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium mb-3">Performance Chart</h3>
-                <div className="h-64 bg-gray-50 rounded-md flex items-center justify-center">
-                  <p className="text-gray-400">Subject-wise performance chart would appear here</p>
-                </div>
-              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-gray-500">
+              No student details available
             </div>
           )}
           
@@ -863,15 +861,22 @@ export default function ResultsPage() {
             <Button variant="outline" onClick={() => setViewStudentResultsDialogOpen(false)}>
               Close
             </Button>
-            <Link href={`/admin/assessment/report-cards/${selectedStudent?.id}`}>
-              <Button variant="outline">
-                Generate Report Card
-              </Button>
-            </Link>
-            <Button variant="outline">
-              <Printer className="h-4 w-4 mr-2" />
-              Print Results
-            </Button>
+            {selectedStudentDetails && (
+              <>
+                <Button variant="outline">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Results
+                </Button>
+                <Button 
+                  onClick={() => handleGenerateReportCard(
+                    selectedStudentDetails.student.id, 
+                    termFilter !== "all" ? termFilter : filterOptions.terms[0]?.id
+                  )}
+                >
+                  Generate Report Card
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

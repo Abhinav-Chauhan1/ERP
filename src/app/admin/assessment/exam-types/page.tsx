@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, PlusCircle, Edit, Trash2, 
   MoreVertical, ClipboardList, BarChart, 
-  AlertCircle
+  AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -39,141 +40,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data for exam types
-const examTypesData = [
-  {
-    id: "et1",
-    name: "Mid-Term",
-    description: "Mid-term assessments conducted in the middle of each term",
-    weight: 30,
-    isActive: true,
-    canRetest: true,
-    includeInGradeCard: true,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 48
-  },
-  {
-    id: "et2",
-    name: "Final",
-    description: "Final examinations conducted at the end of each term",
-    weight: 50,
-    isActive: true,
-    canRetest: false,
-    includeInGradeCard: true,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 32
-  },
-  {
-    id: "et3",
-    name: "Unit Test",
-    description: "Short assessments after completing each unit",
-    weight: 15,
-    isActive: true,
-    canRetest: true,
-    includeInGradeCard: true,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 96
-  },
-  {
-    id: "et4",
-    name: "Quiz",
-    description: "Short surprise quizzes to test knowledge and attention",
-    weight: 5,
-    isActive: true,
-    canRetest: false,
-    includeInGradeCard: false,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 120
-  },
-  {
-    id: "et5",
-    name: "Practical",
-    description: "Practical assessments for science subjects and other skill-based courses",
-    weight: 20,
-    isActive: true,
-    canRetest: true,
-    includeInGradeCard: true,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 65
-  },
-  {
-    id: "et6",
-    name: "Project",
-    description: "Long-term projects that demonstrate comprehensive understanding and application",
-    weight: 25,
-    isActive: true,
-    canRetest: false,
-    includeInGradeCard: true,
-    gradeThresholds: [
-      { grade: "A", minScore: 90 },
-      { grade: "B", minScore: 80 },
-      { grade: "C", minScore: 70 },
-      { grade: "D", minScore: 60 },
-      { grade: "F", minScore: 0 }
-    ],
-    examsCount: 28
-  }
-];
-
-// Exam type form schema
-const examTypeFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  description: z.string().optional(),
-  weight: z.number().min(0, "Weight cannot be negative").max(100, "Weight cannot exceed 100"),
-  isActive: z.boolean().default(true),
-  canRetest: z.boolean().default(false),
-  includeInGradeCard: z.boolean().default(true),
-});
-
-// Grade thresholds form schema (not using in main form for simplicity)
-const gradeThresholdsSchema = z.array(
-  z.object({
-    grade: z.string().min(1),
-    minScore: z.number().min(0).max(100),
-  })
-);
+// Import schema validation and server actions
+import { examTypeSchema, ExamTypeFormValues, examTypeUpdateSchema, ExamTypeUpdateFormValues } from "@/lib/schemaValidation/examTypesSchemaValidation";
+import { 
+  getExamTypes, 
+  createExamType, 
+  updateExamType, 
+  deleteExamType,
+  getExamStatsByType
+} from "@/lib/actions/examTypesActions";
+import { getGrades } from "@/lib/actions/gradesActions";
 
 export default function ExamTypesPage() {
+  const [examTypes, setExamTypes] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExamType, setEditingExamType] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [examTypeToDelete, setExamTypeToDelete] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [gradesLoading, setGradesLoading] = useState(true);
 
   // Initialize form
-  const form = useForm<z.infer<typeof examTypeFormSchema>>({
-    resolver: zodResolver(examTypeFormSchema),
+  const form = useForm<ExamTypeFormValues>({
+    resolver: zodResolver(examTypeSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -184,12 +77,80 @@ export default function ExamTypesPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof examTypeFormSchema>) {
-    console.log("Form submitted:", values);
-    // Handle API call to create/update exam type
-    setDialogOpen(false);
-    setEditingExamType(null);
-    form.reset();
+  useEffect(() => {
+    fetchExamTypes();
+    fetchGrades();
+  }, []);
+
+  async function fetchExamTypes() {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await getExamTypes();
+      
+      if (result.success) {
+        setExamTypes(result.data || []);
+      } else {
+        setError(result.error || "An error occurred");
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      toast.error("An unexpected error occurred");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchGrades() {
+    setGradesLoading(true);
+    
+    try {
+      const result = await getGrades();
+      
+      if (result.success) {
+        // Sort grades by minMarks in descending order (highest first)
+        const sortedGrades = [...(result.data || [])].sort((a, b) => b.minMarks - a.minMarks);
+        setGrades(sortedGrades);
+      } else {
+        toast.error(result.error || "Failed to fetch grades");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred while fetching grades");
+    } finally {
+      setGradesLoading(false);
+    }
+  }
+
+  async function onSubmit(values: ExamTypeFormValues) {
+    try {
+      let result;
+      
+      if (editingExamType) {
+        // Update existing exam type
+        const updateData: ExamTypeUpdateFormValues = { ...values, id: editingExamType.id };
+        result = await updateExamType(updateData);
+      } else {
+        // Create new exam type
+        result = await createExamType(values);
+      }
+      
+      if (result.success) {
+        toast.success(`Exam type ${editingExamType ? "updated" : "created"} successfully`);
+        setDialogOpen(false);
+        setEditingExamType(null);
+        form.reset();
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
 
   function handleCreateExamType() {
@@ -223,12 +184,38 @@ export default function ExamTypesPage() {
     setDeleteDialogOpen(true);
   }
 
-  function confirmDeleteExamType() {
-    console.log("Deleting exam type:", examTypeToDelete);
-    // Handle API call to delete exam type
-    setDeleteDialogOpen(false);
-    setExamTypeToDelete(null);
+  async function confirmDeleteExamType() {
+    if (!examTypeToDelete) return;
+    
+    try {
+      const result = await deleteExamType(examTypeToDelete);
+      
+      if (result.success) {
+        toast.success("Exam type deleted successfully");
+        setDeleteDialogOpen(false);
+        setExamTypeToDelete(null);
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "Failed to delete exam type");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
   }
+
+  // Function to get grade color class
+  const getGradeColorClass = (grade: string) => {
+    const firstChar = grade.charAt(0).toUpperCase();
+    
+    switch(firstChar) {
+      case 'A': return { bg: 'bg-green-50', text: 'text-green-600' };
+      case 'B': return { bg: 'bg-blue-50', text: 'text-blue-600' };
+      case 'C': return { bg: 'bg-yellow-50', text: 'text-yellow-600' };
+      case 'D': return { bg: 'bg-orange-50', text: 'text-orange-600' };
+      default: return { bg: 'bg-red-50', text: 'text-red-600' };
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -304,7 +291,11 @@ export default function ExamTypesPage() {
                           min="0" 
                           max="100" 
                           {...field} 
-                          onChange={e => field.onChange(parseInt(e.target.value))}
+                          value={field.value ?? ""}
+                          onChange={e => {
+                            const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                            field.onChange(isNaN(value) ? 0 : value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -386,105 +377,130 @@ export default function ExamTypesPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {examTypesData.map((examType) => (
-          <Card key={examType.id} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{examType.name}</CardTitle>
-                    {examType.isActive ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700">Active</Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-gray-50 text-gray-700">Inactive</Badge>
-                    )}
-                  </div>
-                  <CardDescription className="mt-1">{examType.description}</CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditExamType(examType)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <BarChart className="h-4 w-4 mr-2" />
-                      View Stats
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      className="text-red-600"
-                      onClick={() => handleDeleteExamType(examType.id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="border rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Weight</p>
-                    <p className="text-lg font-semibold">{examType.weight}%</p>
-                  </div>
-                  <div className="border rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Exams</p>
-                    <p className="text-lg font-semibold">{examType.examsCount}</p>
-                  </div>
-                </div>
-                
-                <div className="border rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-2">Features</p>
-                  <div className="flex flex-wrap gap-2">
-                    {examType.canRetest && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                        Retests Allowed
-                      </Badge>
-                    )}
-                    {examType.includeInGradeCard && (
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                        In Report Card
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="border rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-2">Grade Thresholds</p>
-                  <div className="grid grid-cols-5 gap-1 text-center">
-                    {examType.gradeThresholds.map((threshold) => (
-                      <div 
-                        key={threshold.grade} 
-                        className="border rounded p-1 text-xs"
-                        style={{
-                          backgroundColor: 
-                            threshold.grade === 'A' ? '#ecfdf5' : 
-                            threshold.grade === 'B' ? '#e0f2fe' : 
-                            threshold.grade === 'C' ? '#fef9c3' : 
-                            threshold.grade === 'D' ? '#ffedd5' : 
-                            '#fee2e2'
-                        }}
-                      >
-                        <div className="font-medium mb-1">{threshold.grade}</div>
-                        <div className="text-gray-600">{threshold.minScore}%+</div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {examTypes.length === 0 ? (
+            <div className="col-span-3 text-center py-12 text-gray-500">
+              <ClipboardList className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium mb-1">No exam types found</h3>
+              <p className="text-sm mb-4">Create your first exam type to get started</p>
+              <Button onClick={handleCreateExamType}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type
+              </Button>
+            </div>
+          ) : (
+            examTypes.map((examType) => (
+              <Card key={examType.id} className="overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{examType.name}</CardTitle>
+                        {examType.isActive ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700">Active</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700">Inactive</Badge>
+                        )}
                       </div>
-                    ))}
+                      <CardDescription className="mt-1">{examType.description}</CardDescription>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditExamType(examType)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <BarChart className="h-4 w-4 mr-2" />
+                          View Stats
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-red-600"
+                          onClick={() => handleDeleteExamType(examType.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="border rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Weight</p>
+                        <p className="text-lg font-semibold">{examType.weight}%</p>
+                      </div>
+                      <div className="border rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Exams</p>
+                        <p className="text-lg font-semibold">{examType.examsCount}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-2">Features</p>
+                      <div className="flex flex-wrap gap-2">
+                        {examType.canRetest && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            Retests Allowed
+                          </Badge>
+                        )}
+                        {examType.includeInGradeCard && (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                            In Report Card
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="border rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-2">Grade Thresholds</p>
+                      <div className="grid grid-cols-5 gap-1 text-center">
+                        {examType.gradeThresholds?.map((threshold: any) => (
+                          <div 
+                            key={threshold.grade} 
+                            className="border rounded p-1 text-xs"
+                            style={{
+                              backgroundColor: 
+                                threshold.grade === 'A' ? '#ecfdf5' : 
+                                threshold.grade === 'B' ? '#e0f2fe' : 
+                                threshold.grade === 'C' ? '#fef9c3' : 
+                                threshold.grade === 'D' ? '#ffedd5' : 
+                                '#fee2e2'
+                            }}
+                          >
+                            <div className="font-medium mb-1">{threshold.grade}</div>
+                            <div className="text-gray-600">{threshold.minScore}%+</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -527,9 +543,11 @@ export default function ExamTypesPage() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              Configure
-            </Button>
+            <Link href="/admin/academic/grades">
+              <Button variant="outline" size="sm">
+                Configure
+              </Button>
+            </Link>
           </div>
 
           <div className="border rounded-lg overflow-hidden">
@@ -537,35 +555,44 @@ export default function ExamTypesPage() {
               <h3 className="font-medium">Default Grade Thresholds</h3>
             </div>
             <div className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="border rounded-lg p-3 bg-green-50">
-                  <p className="text-center font-medium">A</p>
-                  <p className="text-center text-xs text-gray-600">90% - 100%</p>
-                  <p className="text-center text-xs font-medium text-green-600 mt-1">Excellent</p>
+              {gradesLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
-                <div className="border rounded-lg p-3 bg-blue-50">
-                  <p className="text-center font-medium">B</p>
-                  <p className="text-center text-xs text-gray-600">80% - 89%</p>
-                  <p className="text-center text-xs font-medium text-blue-600 mt-1">Very Good</p>
+              ) : grades.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  <p className="text-sm">No grade thresholds defined yet.</p>
+                  <Link href="/admin/academic/grades">
+                    <Button variant="outline" size="sm" className="mt-2">
+                      <PlusCircle className="mr-2 h-3 w-3" /> Add Grades
+                    </Button>
+                  </Link>
                 </div>
-                <div className="border rounded-lg p-3 bg-yellow-50">
-                  <p className="text-center font-medium">C</p>
-                  <p className="text-center text-xs text-gray-600">70% - 79%</p>
-                  <p className="text-center text-xs font-medium text-yellow-600 mt-1">Good</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {grades.map((grade) => {
+                    const colors = getGradeColorClass(grade.grade);
+                    return (
+                      <div key={grade.id} className={`border rounded-lg p-3 ${colors.bg}`}>
+                        <p className="text-center font-medium">{grade.grade}</p>
+                        <p className="text-center text-xs text-gray-600">
+                          {grade.minMarks.toFixed(1)}% - {grade.maxMarks.toFixed(1)}%
+                        </p>
+                        <p className={`text-center text-xs font-medium ${colors.text} mt-1`}>
+                          {grade.description || (grade.grade === "F" ? "Fail" : 
+                            grade.grade === "D" ? "Satisfactory" :
+                            grade.grade === "C" ? "Good" :
+                            grade.grade === "B" ? "Very Good" : "Excellent")}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="border rounded-lg p-3 bg-orange-50">
-                  <p className="text-center font-medium">D</p>
-                  <p className="text-center text-xs text-gray-600">60% - 69%</p>
-                  <p className="text-center text-xs font-medium text-orange-600 mt-1">Satisfactory</p>
-                </div>
-                <div className="border rounded-lg p-3 bg-red-50">
-                  <p className="text-center font-medium">F</p>
-                  <p className="text-center text-xs text-gray-600">0% - 59%</p>
-                  <p className="text-center text-xs font-medium text-red-600 mt-1">Fail</p>
-                </div>
-              </div>
+              )}
               <div className="flex justify-end mt-4">
-                <Button variant="outline" size="sm">Edit Thresholds</Button>
+                <Link href="/admin/academic/grades">
+                  <Button variant="outline" size="sm">Edit Thresholds</Button>
+                </Link>
               </div>
             </div>
           </div>
