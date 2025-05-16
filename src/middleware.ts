@@ -1,7 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-import { ensureUserExists } from "./lib/user-handler";
 
 // Define route access patterns directly in the middleware
 const adminRoutes = createRouteMatcher(["/admin(.*)"]);
@@ -10,12 +9,13 @@ const studentRoutes = createRouteMatcher(["/student(.*)", "/shared(.*)"]);
 const parentRoutes = createRouteMatcher(["/parent(.*)", "/shared(.*)"]);
 const publicRoutes = createRouteMatcher([
   "/", 
-  "/login", 
-  "/register", 
-  "/forgot-password",
+  "/login(.*)",  // Use (.*) to match all routes under /login
+  "/register(.*)",  // Use (.*) to match all routes under /register
+  "/forgot-password(.*)",  // Use (.*) to match all routes under /forgot-password
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/api/webhooks(.*)"
+  "/api/webhooks(.*)",
+  "/api/users/sync(.*)"
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -35,12 +35,8 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  try {
-    // Ensure the user exists in our database
-    await ensureUserExists(authObject.userId);
-  } catch (error) {
-    console.error("Error ensuring user exists:", error);
-  }
+  // No database operations in middleware!
+  // Instead, rely on Clerk session claims for role-based access
 
   // Get role from metadata in session claims
   const role = (authObject.sessionClaims?.metadata as { role?: string })?.role;

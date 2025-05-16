@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { clerkClient } from "@clerk/clerk-sdk-node";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
+
+// Specify Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,
@@ -81,7 +83,8 @@ export async function PATCH(
     });
     
     // Update user role in Clerk
-    await clerkClient.users.updateUser(user.clerkId, {
+    const clerk = await clerkClient();
+    await clerk.users.updateUser(user.clerkId, {
       publicMetadata: { role }
     });
     

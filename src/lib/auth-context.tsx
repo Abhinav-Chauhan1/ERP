@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth as useClerkAuth } from "@clerk/nextjs";
 import { UserRole } from "@prisma/client";
 
 // Define user type
@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { getToken } = useClerkAuth();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,14 +36,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!clerkUser) return;
 
     try {
+      const token = await getToken();
+
       const response = await fetch(`/api/users/sync`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          clerkId: clerkUser.id,
-        }),
       });
 
       if (response.ok) {

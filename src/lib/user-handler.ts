@@ -1,6 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "./db";
 import { UserRole } from "@prisma/client";
+import { syncUser } from "@/app/actions/user";
 
 /**
  * Creates a user in the database from Clerk user data
@@ -31,7 +32,7 @@ export async function createUserFromClerk(clerkUserId: string) {
     }
     
     // Create new user
-    const newUser = await db.user.create({
+    return await db.user.create({
       data: {
         clerkId: clerkUserId,
         email: email,
@@ -42,15 +43,6 @@ export async function createUserFromClerk(clerkUserId: string) {
         role: UserRole.STUDENT, // Default role
       }
     });
-    
-    // Update clerk metadata with the role
-    await client.users.updateUser(clerkUserId, {
-      publicMetadata: {
-        role: UserRole.STUDENT
-      }
-    });
-    
-    return newUser;
   } catch (error) {
     console.error("Error creating user from Clerk:", error);
     throw error;
@@ -59,16 +51,14 @@ export async function createUserFromClerk(clerkUserId: string) {
 
 /**
  * Ensures a user exists in the database for the given Clerk ID
- * If not, creates a new user with Clerk data
+ * IMPORTANT: Only use in server components or API routes, NOT in middleware
  */
 export async function ensureUserExists(clerkUserId: string) {
-  const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUserId }
-  });
-  
-  if (!dbUser) {
-    return await createUserFromClerk(clerkUserId);
+  try {
+    const user = await syncUser();
+    return user;
+  } catch (error) {
+    console.error("Error ensuring user exists:", error);
+    throw error;
   }
-  
-  return dbUser;
 }

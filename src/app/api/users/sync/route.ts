@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { ensureUserExists } from "@/lib/user-handler";
+import { syncUser } from "@/app/actions/user";
+
+// Specify Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,8 +13,8 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
     
-    // Ensure user exists in database
-    const user = await ensureUserExists(userId);
+    // Use the server action to sync user
+    const user = await syncUser();
     
     return NextResponse.json(user);
   } catch (error) {

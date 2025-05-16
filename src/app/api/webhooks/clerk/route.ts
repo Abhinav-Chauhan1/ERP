@@ -5,6 +5,9 @@ import { Webhook } from "svix";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 
+// Specify Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
+
 export async function POST(req: Request) {
   // Get the SVIX_WEBHOOK_SECRET from environment variables
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
