@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { getCurrentUserDetails } from "@/lib/auth";
+import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { UserRole } from "@prisma/client";
 import { AttendanceOverview } from "@/components/student/attendance-overview";
 import { UpcomingAssessments } from "@/components/student/upcoming-assessments";
 import { SubjectPerformance } from "@/components/student/subject-performance";
@@ -10,15 +11,27 @@ import { StudentHeader } from "@/components/student/student-header";
 import { DashboardStats } from "@/components/student/dashboard-stats";
 
 export default async function StudentDashboard() {
-  const userDetails = await getCurrentUserDetails();
+  // Get current user directly from Clerk
+  const clerkUser = await currentUser();
   
-  if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
   
   const student = await db.student.findUnique({
     where: {
-      userId: userDetails.dbUser.id
+      userId: dbUser.id
     },
     include: {
       enrollments: {
@@ -49,7 +62,7 @@ export default async function StudentDashboard() {
 
   // Calculate attendance percentage
   const totalDays = attendanceData.length;
-const presentDays: number = attendanceData.filter((a: { status: string }) => a.status === "PRESENT").length;
+  const presentDays = attendanceData.filter(a => a.status === "PRESENT").length;
   const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
   // Get upcoming exams

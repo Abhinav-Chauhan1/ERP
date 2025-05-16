@@ -86,3 +86,70 @@ export async function hasRole(role: UserRole): Promise<boolean> {
   const userRole = await getUserRole();
   return userRole === role;
 }
+
+/**
+ * Syncs the user's role to Clerk's metadata
+ */
+export async function syncRoleToClerk(userId: string): Promise<void> {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { clerkId: true, role: true }
+    });
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Update the user's metadata in Clerk
+    const client = await clerkClient();
+    await client.users.updateUser(user.clerkId, {
+      publicMetadata: {
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error("Error syncing role to Clerk:", error);
+    throw error;
+  }
+}
+
+/**
+ * Gets the current user's profile based on role
+ */
+export async function getCurrentUserProfile() {
+  try {
+    const userDetails = await getCurrentUserDetails();
+    
+    if (!userDetails || !userDetails.dbUser) {
+      return null;
+    }
+
+    const { dbUser } = userDetails;
+    
+    // Based on role, fetch the specific profile
+    switch (dbUser.role) {
+      case UserRole.ADMIN:
+        return await db.administrator.findUnique({
+          where: { userId: dbUser.id }
+        });
+      case UserRole.TEACHER:
+        return await db.teacher.findUnique({
+          where: { userId: dbUser.id }
+        });
+      case UserRole.STUDENT:
+        return await db.student.findUnique({
+          where: { userId: dbUser.id }
+        });
+      case UserRole.PARENT:
+        return await db.parent.findUnique({
+          where: { userId: dbUser.id }
+        });
+      default:
+        return null;
+    }
+  } catch (error) {
+    console.error("Error getting current user profile:", error);
+    return null;
+  }
+}

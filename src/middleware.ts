@@ -1,12 +1,22 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { UserRole } from "@prisma/client";
+import { ensureUserExists } from "./lib/user-handler";
 
 // Define route access patterns directly in the middleware
 const adminRoutes = createRouteMatcher(["/admin(.*)"]);
 const teacherRoutes = createRouteMatcher(["/teacher(.*)", "/shared(.*)"]);
 const studentRoutes = createRouteMatcher(["/student(.*)", "/shared(.*)"]);
 const parentRoutes = createRouteMatcher(["/parent(.*)", "/shared(.*)"]);
-const publicRoutes = createRouteMatcher(["/", "/login", "/register", "/forgot-password"]);
+const publicRoutes = createRouteMatcher([
+  "/", 
+  "/login", 
+  "/register", 
+  "/forgot-password",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks(.*)"
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   // Handle public routes
@@ -25,24 +35,31 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(signInUrl);
   }
 
+  try {
+    // Ensure the user exists in our database
+    await ensureUserExists(authObject.userId);
+  } catch (error) {
+    console.error("Error ensuring user exists:", error);
+  }
+
   // Get role from metadata in session claims
   const role = (authObject.sessionClaims?.metadata as { role?: string })?.role;
 
   // Role-based access control
-  if (role === 'admin') {
+  if (role === UserRole.ADMIN) {
     // Admins can access everything
     return NextResponse.next();
-  } else if (role === 'teacher') {
+  } else if (role === UserRole.TEACHER) {
     // Teachers cannot access admin routes
     if (adminRoutes(req)) {
       return NextResponse.redirect(new URL("/teacher", req.url));
     }
-  } else if (role === 'student') {
+  } else if (role === UserRole.STUDENT) {
     // Students cannot access admin or teacher routes
     if (adminRoutes(req) || teacherRoutes(req)) {
       return NextResponse.redirect(new URL("/student", req.url));
     }
-  } else if (role === 'parent') {
+  } else if (role === UserRole.PARENT) {
     // Parents cannot access admin, teacher, or student routes
     if (adminRoutes(req) || teacherRoutes(req) || studentRoutes(req)) {
       return NextResponse.redirect(new URL("/parent", req.url));

@@ -1,6 +1,6 @@
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider } from "@/lib/auth-context";
 
 import "./globals.css";
 import { Toaster } from "react-hot-toast";

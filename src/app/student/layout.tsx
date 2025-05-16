@@ -1,9 +1,10 @@
 import { Toaster } from "react-hot-toast";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { UserRole } from "@prisma/client";
 
 import { StudentSidebar } from "@/components/layout/student-sidebar";
-import { getUserRole } from "@/lib/auth";
+import { db } from "@/lib/db";
 
 export default async function StudentLayout({
   children
@@ -16,13 +17,20 @@ export default async function StudentLayout({
     redirect("/login");
   }
   
-  // Verify user is a student
-  const role = await getUserRole();
-  if (role !== "STUDENT") {
-    // Redirect to appropriate dashboard based on role
-    if (role === "ADMIN") redirect("/admin");
-    if (role === "TEACHER") redirect("/teacher");
-    if (role === "PARENT") redirect("/parent");
+  // Get current user directly
+  const clerkUser = await currentUser();
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Query the database directly
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
 
