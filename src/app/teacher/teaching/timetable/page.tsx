@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, Calendar, CalendarDays, ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
+import { getTeacherTimetable, getTimeSlots } from "@/lib/actions/teacherTimetableActions";
+import { DayOfWeek } from "@prisma/client";
+import { toast } from "react-hot-toast";
 
 type TimetableEvent = {
   id: string;
@@ -14,162 +17,86 @@ type TimetableEvent = {
   subject: string;
   timeStart: string;
   timeEnd: string;
+  startTime: Date;
+  endTime: Date;
   room: string;
   type: "class" | "duty" | "meeting" | "break";
 };
 
-const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-const timetableEvents: TimetableEvent[] = [
-  {
-    id: "1",
-    day: "Monday",
-    class: "Grade 10-A",
-    subject: "Mathematics",
-    timeStart: "09:00 AM",
-    timeEnd: "10:00 AM",
-    room: "Room 101",
-    type: "class"
-  },
-  {
-    id: "2",
-    day: "Monday",
-    class: "Grade 9-C",
-    subject: "Mathematics",
-    timeStart: "12:00 PM",
-    timeEnd: "01:00 PM",
-    room: "Room 105",
-    type: "class"
-  },
-  {
-    id: "3",
-    day: "Monday",
-    class: "Staff",
-    subject: "Department Meeting",
-    timeStart: "03:00 PM",
-    timeEnd: "04:00 PM",
-    room: "Conference Room",
-    type: "meeting"
-  },
-  {
-    id: "4",
-    day: "Tuesday",
-    class: "Grade 11-B",
-    subject: "Mathematics",
-    timeStart: "10:30 AM",
-    timeEnd: "11:30 AM",
-    room: "Room 203",
-    type: "class"
-  },
-  {
-    id: "5",
-    day: "Tuesday",
-    class: "Grade 10-B",
-    subject: "Mathematics",
-    timeStart: "02:30 PM",
-    timeEnd: "03:30 PM",
-    room: "Room 102",
-    type: "class"
-  },
-  {
-    id: "6",
-    day: "Wednesday",
-    class: "Grade 10-A",
-    subject: "Mathematics",
-    timeStart: "09:00 AM",
-    timeEnd: "10:00 AM",
-    room: "Room 101",
-    type: "class"
-  },
-  {
-    id: "7",
-    day: "Wednesday",
-    class: "Grade 9-C",
-    subject: "Mathematics", 
-    timeStart: "12:00 PM",
-    timeEnd: "01:00 PM",
-    room: "Room 105",
-    type: "class"
-  },
-  {
-    id: "8",
-    day: "Wednesday",
-    class: "School",
-    subject: "Lunch Duty",
-    timeStart: "01:00 PM",
-    timeEnd: "01:30 PM",
-    room: "Cafeteria",
-    type: "duty"
-  },
-  {
-    id: "9",
-    day: "Thursday",
-    class: "Grade 11-B",
-    subject: "Mathematics",
-    timeStart: "10:30 AM",
-    timeEnd: "11:30 AM",
-    room: "Room 203",
-    type: "class"
-  },
-  {
-    id: "10",
-    day: "Thursday",
-    class: "Grade 10-B",
-    subject: "Mathematics",
-    timeStart: "02:30 PM",
-    timeEnd: "03:30 PM",
-    room: "Room 102",
-    type: "class"
-  },
-  {
-    id: "11",
-    day: "Friday",
-    class: "Grade 10-A",
-    subject: "Mathematics",
-    timeStart: "09:00 AM",
-    timeEnd: "10:00 AM",
-    room: "Room 101",
-    type: "class"
-  },
-  {
-    id: "12",
-    day: "Friday",
-    class: "Staff",
-    subject: "Professional Development",
-    timeStart: "03:00 PM",
-    timeEnd: "04:30 PM",
-    room: "Library",
-    type: "meeting"
-  }
-];
-
-const timeSlots = [
-  "08:00 AM - 09:00 AM",
-  "09:00 AM - 10:00 AM",
-  "10:00 AM - 10:15 AM",
-  "10:15 AM - 11:15 AM",
-  "11:15 AM - 12:15 PM",
-  "12:15 PM - 01:00 PM",
-  "01:00 PM - 02:00 PM",
-  "02:00 PM - 03:00 PM",
-  "03:00 PM - 04:00 PM"
-];
-
-const breakTimes = ["10:00 AM - 10:15 AM", "12:15 PM - 01:00 PM"];
+type TimeSlot = {
+  id: string;
+  name: string;
+  timeStart: string;
+  timeEnd: string;
+  startTime: Date;
+  endTime: Date;
+};
 
 export default function TeacherTimetablePage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const startOfCurrentWeek = startOfWeek(currentWeek, { weekStartsOn: 1 });
   
+  const [timetableEvents, setTimetableEvents] = useState<TimetableEvent[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [weekdays, setWeekdays] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchTimetableData = async () => {
+      setLoading(true);
+      try {
+        // Fetch teacher timetable data
+        const { slots, weekdays: days } = await getTeacherTimetable();
+        setTimetableEvents(slots);
+        
+        // Convert weekdays from DayOfWeek enum to title case strings
+        const formattedDays = days.map((day: string) => {
+          return day.charAt(0) + day.slice(1).toLowerCase();
+        });
+        setWeekdays(formattedDays);
+        
+        // Fetch time slots for the grid view
+        const periods = await getTimeSlots();
+        setTimeSlots(periods);
+      } catch (error) {
+        console.error("Failed to fetch timetable:", error);
+        toast.error("Failed to load timetable data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTimetableData();
+  }, []);
+  
   const getPeriodByTime = (day: string, timeSlot: string) => {
     const [startTime] = timeSlot.split(" - ");
     return timetableEvents.filter(
-      event => event.day === day && event.timeStart === startTime
+      event => event.day === day.toUpperCase() && event.timeStart === startTime
     );
   };
   
+  // Determine break times by checking gaps between time slots
+  const getBreakTimes = (): string[] => {
+    const breaks: string[] = [];
+    
+    if (timeSlots.length < 2) return breaks;
+    
+    for (let i = 1; i < timeSlots.length; i++) {
+      const prevEndTime = new Date(timeSlots[i-1].endTime);
+      const currStartTime = new Date(timeSlots[i].startTime);
+      
+      // If there's a gap between periods, it's a break
+      if (currStartTime.getTime() - prevEndTime.getTime() > 5 * 60 * 1000) { // 5 min buffer
+        breaks.push(`${format(prevEndTime, 'hh:mm a')} - ${format(currStartTime, 'hh:mm a')}`);
+      }
+    }
+    
+    return breaks;
+  };
+  
   const isBreakTime = (timeSlot: string) => {
-    return breakTimes.includes(timeSlot);
+    return getBreakTimes().includes(timeSlot);
   };
   
   const formatWeekRange = () => {
@@ -188,10 +115,57 @@ export default function TeacherTimetablePage() {
   
   const isToday = (day: string) => {
     const today = new Date();
-    const dayIndex = weekdays.indexOf(day);
+    const dayIndex = weekdays.findIndex(d => 
+      d.toUpperCase() === day.toUpperCase()
+    );
+    if (dayIndex === -1) return false;
+    
     const weekdayDate = addDays(startOfCurrentWeek, dayIndex);
     return isSameDay(today, weekdayDate);
   };
+
+  // Generate grid of time slots for the timetable
+  const getTimeSlotGrid = () => {
+    if (timeSlots.length === 0) {
+      // If no configured time slots, use a default set
+      return [
+        "08:00 AM - 09:00 AM",
+        "09:00 AM - 10:00 AM",
+        "10:00 AM - 10:15 AM", // Break
+        "10:15 AM - 11:15 AM",
+        "11:15 AM - 12:15 PM",
+        "12:15 PM - 01:00 PM", // Lunch
+        "01:00 PM - 02:00 PM",
+        "02:00 PM - 03:00 PM",
+        "03:00 PM - 04:00 PM"
+      ];
+    }
+    
+    // Create time slots from periods and breaks
+    const slots: string[] = [];
+    const breaks = getBreakTimes();
+    
+    timeSlots.forEach((slot, index) => {
+      slots.push(`${slot.timeStart} - ${slot.timeEnd}`);
+      
+      if (index < timeSlots.length - 1) {
+        const breakTime = `${slot.timeEnd} - ${timeSlots[index + 1].timeStart}`;
+        if (breaks.includes(breakTime)) {
+          slots.push(breakTime);
+        }
+      }
+    });
+    
+    return slots;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,10 +184,10 @@ export default function TeacherTimetablePage() {
             <div>
               <CardTitle>Weekly Schedule</CardTitle>
               <CardDescription>
-                <div className="flex items-center gap-2">
+                <span className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <span>{formatWeekRange()}</span>
-                </div>
+                </span>
               </CardDescription>
             </div>
             
@@ -267,7 +241,7 @@ export default function TeacherTimetablePage() {
                   </thead>
                   
                   <tbody>
-                    {timeSlots.map((timeSlot) => (
+                    {getTimeSlotGrid().map((timeSlot) => (
                       <tr key={timeSlot}>
                         <td className="border p-2 text-sm font-medium">
                           <div className="flex items-center">
@@ -286,7 +260,8 @@ export default function TeacherTimetablePage() {
                                 key={`${day}-${timeSlot}`} 
                                 className="border p-2 bg-gray-50 text-center text-xs text-gray-500"
                               >
-                                {timeSlot === "10:00 AM - 10:15 AM" ? "Morning Break" : "Lunch Break"}
+                                {timeSlot.includes("10:00") || timeSlot.includes("10:15") ? "Morning Break" : 
+                                 timeSlot.includes("12:15") || timeSlot.includes("01:00") ? "Lunch Break" : "Break"}
                               </td>
                             );
                           }
@@ -355,7 +330,7 @@ export default function TeacherTimetablePage() {
             <TabsContent value="list">
               <div className="space-y-6">
                 {weekdays.map((day) => {
-                  const dayEvents = timetableEvents.filter(event => event.day === day);
+                  const dayEvents = timetableEvents.filter(event => event.day === day.toUpperCase());
                   
                   return (
                     <Card key={day} className="overflow-hidden">
@@ -422,22 +397,47 @@ export default function TeacherTimetablePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500">Total Classes</p>
-              <p className="text-2xl font-bold">10</p>
+              <p className="text-2xl font-bold">
+                {timetableEvents.filter(e => e.type === 'class').length}
+              </p>
               <p className="text-xs text-gray-500">per week</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500">Teaching Hours</p>
-              <p className="text-2xl font-bold">15</p>
+              <p className="text-2xl font-bold">
+                {Math.round(timetableEvents.reduce((total, event) => {
+                  const start = new Date(event.startTime);
+                  const end = new Date(event.endTime);
+                  const diffInHours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+                  return total + diffInHours;
+                }, 0))}
+              </p>
               <p className="text-xs text-gray-500">hours per week</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500">Busiest Day</p>
-              <p className="text-2xl font-bold">Monday</p>
-              <p className="text-xs text-gray-500">3 classes</p>
+              <p className="text-2xl font-bold">
+                {weekdays.reduce((busiest, day) => {
+                  const count = timetableEvents.filter(e => e.day === day.toUpperCase()).length;
+                  const busiestCount = timetableEvents.filter(e => e.day === busiest.toUpperCase()).length;
+                  return count > busiestCount ? day : busiest;
+                }, weekdays[0]) || "N/A"}
+              </p>
+              <p className="text-xs text-gray-500">
+                {timetableEvents.filter(e => 
+                  e.day === weekdays.reduce((busiest, day) => {
+                    const count = timetableEvents.filter(e => e.day === day.toUpperCase()).length;
+                    const busiestCount = timetableEvents.filter(e => e.day === busiest.toUpperCase()).length;
+                    return count > busiestCount ? day : busiest;
+                  }, weekdays[0]).toUpperCase()
+                ).length} classes
+              </p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500">Free Periods</p>
-              <p className="text-2xl font-bold">7</p>
+              <p className="text-2xl font-bold">
+                {(getTimeSlotGrid().length - getBreakTimes().length) * weekdays.length - timetableEvents.length}
+              </p>
               <p className="text-xs text-gray-500">periods per week</p>
             </div>
           </div>

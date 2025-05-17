@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getTeacherExams } from "@/lib/actions/teacherExamsActions";
 import { 
   Card, 
   CardContent, 
@@ -34,113 +35,38 @@ import {
   Download,
   Edit,
   Copy,
-  Trash2,
   Eye
 } from "lucide-react";
 import { format } from "date-fns";
-
-// Types
-interface Exam {
-  id: string;
-  title: string;
-  subject: string;
-  grade: string;
-  section: string;
-  examType: string;
-  date: Date;
-  startTime: string;
-  endTime: string;
-  duration: string;
-  totalMarks: number;
-  status: "upcoming" | "completed" | "ongoing" | "cancelled";
-  submittedBy?: number;
-  totalStudents?: number;
-  avgScore?: number;
-}
-
-// Mock data
-const exams: Exam[] = [
-  {
-    id: "1",
-    title: "Mid-term Examination",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    section: "A",
-    examType: "Mid Term",
-    date: new Date("2023-12-10"),
-    startTime: "09:00 AM",
-    endTime: "11:00 AM",
-    duration: "2 hours",
-    totalMarks: 50,
-    status: "upcoming"
-  },
-  {
-    id: "2",
-    title: "Algebraic Expressions Quiz",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    section: "A",
-    examType: "Quiz",
-    date: new Date("2023-11-28"),
-    startTime: "10:00 AM",
-    endTime: "10:30 AM",
-    duration: "30 minutes",
-    totalMarks: 15,
-    status: "completed",
-    submittedBy: 30,
-    totalStudents: 30,
-    avgScore: 12.5
-  },
-  {
-    id: "3",
-    title: "Linear Equations Test",
-    subject: "Mathematics",
-    grade: "Grade 9",
-    section: "C",
-    examType: "Unit Test",
-    date: new Date("2023-11-20"),
-    startTime: "01:00 PM",
-    endTime: "02:00 PM",
-    duration: "1 hour",
-    totalMarks: 30,
-    status: "completed",
-    submittedBy: 28,
-    totalStudents: 32,
-    avgScore: 22.8
-  },
-  {
-    id: "4",
-    title: "Calculus Principles",
-    subject: "Mathematics",
-    grade: "Grade 11",
-    section: "B",
-    examType: "Unit Test",
-    date: new Date("2023-12-15"),
-    startTime: "10:30 AM",
-    endTime: "11:30 AM",
-    duration: "1 hour",
-    totalMarks: 25,
-    status: "upcoming"
-  },
-  {
-    id: "5",
-    title: "Geometry Final",
-    subject: "Mathematics",
-    grade: "Grade 10",
-    section: "B",
-    examType: "Final",
-    date: new Date("2023-12-20"),
-    startTime: "09:00 AM",
-    endTime: "12:00 PM",
-    duration: "3 hours",
-    totalMarks: 100,
-    status: "upcoming"
-  }
-];
+import { toast } from "react-hot-toast";
 
 export default function TeacherExamsPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("all");
+  const [exams, setExams] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchExams = async () => {
+      setLoading(true);
+      try {
+        const data = await getTeacherExams(
+          selectedSubject !== "all" ? selectedSubject : undefined
+        );
+        setExams(data.exams);
+        setSubjects(data.subjects);
+      } catch (error) {
+        console.error("Failed to fetch exams:", error);
+        toast.error("Failed to load exams");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchExams();
+  }, [selectedSubject]);
   
   const filteredExams = exams
     .filter(exam => {
@@ -150,8 +76,7 @@ export default function TeacherExamsPage() {
     .filter(exam => 
       exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       exam.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exam.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exam.section.toLowerCase().includes(searchQuery.toLowerCase())
+      exam.grade.toLowerCase().includes(searchQuery.toLowerCase())
     );
   
   const upcomingExams = exams.filter(exam => exam.status === "upcoming");
@@ -176,6 +101,14 @@ export default function TeacherExamsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -196,7 +129,7 @@ export default function TeacherExamsPage() {
           <CardContent>
             <div className="text-3xl font-bold">{upcomingExams.length}</div>
             <div className="text-sm text-gray-500">
-              Next exam: {upcomingExams.length > 0 ? format(upcomingExams[0].date, "MMM d, yyyy") : "None"}
+              Next exam: {upcomingExams.length > 0 ? format(new Date(upcomingExams[0].date), "MMM d, yyyy") : "None"}
             </div>
           </CardContent>
         </Card>
@@ -207,8 +140,10 @@ export default function TeacherExamsPage() {
             <CardDescription>Exams needing evaluation</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">0</div>
-            <div className="text-sm text-gray-500">All exams graded</div>
+            <div className="text-3xl font-bold">
+              {exams.filter(e => e.status === "completed" && e.submittedBy > 0 && e.submittedBy !== e.totalStudents).length}
+            </div>
+            <div className="text-sm text-gray-500">Exams with ungraded submissions</div>
           </CardContent>
         </Card>
         
@@ -221,7 +156,7 @@ export default function TeacherExamsPage() {
             <div className="text-3xl font-bold">{completedExams.length}</div>
             <div className="text-sm text-gray-500">
               Average score: {completedExams.length > 0 
-                ? `${(completedExams.reduce((sum, exam) => sum + (exam.avgScore || 0), 0) / completedExams.length).toFixed(1)}%`
+                ? `${(completedExams.reduce((sum, exam) => sum + parseFloat(exam.avgScore), 0) / completedExams.length).toFixed(1)}%`
                 : "N/A"}
             </div>
           </CardContent>
@@ -248,17 +183,21 @@ export default function TeacherExamsPage() {
               />
             </div>
             
-            <Select defaultValue="all">
+            <Select 
+              value={selectedSubject} 
+              onValueChange={setSelectedSubject}
+            >
               <SelectTrigger className="w-[140px]">
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 <SelectValue placeholder="Filter by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                <SelectItem value="grade10a">Grade 10-A</SelectItem>
-                <SelectItem value="grade10b">Grade 10-B</SelectItem>
-                <SelectItem value="grade9c">Grade 9-C</SelectItem>
-                <SelectItem value="grade11b">Grade 11-B</SelectItem>
+                <SelectItem value="all">All Subjects</SelectItem>
+                {subjects.map(subject => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -292,13 +231,13 @@ export default function TeacherExamsPage() {
                                 <div className="text-xs text-gray-500">{exam.subject}</div>
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
-                                {exam.grade}-{exam.section}
+                                {exam.grade}{exam.section !== "All" ? `-${exam.section}` : ""}
                               </td>
                               <td className="py-3 px-4">
                                 <Badge variant="outline">{exam.examType}</Badge>
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
-                                {format(exam.date, "MMM d, yyyy")}
+                                {format(new Date(exam.date), "MMM d, yyyy")}
                               </td>
                               <td className="py-3 px-4 whitespace-nowrap">
                                 {exam.startTime} - {exam.endTime}
@@ -315,9 +254,11 @@ export default function TeacherExamsPage() {
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 </Link>
-                                <Button size="sm" variant="ghost">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                <Link href={`/teacher/assessments/exams/${exam.id}/edit`}>
+                                  <Button size="sm" variant="ghost">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </Link>
                                 {exam.status === "upcoming" && (
                                   <Button size="sm" variant="ghost">
                                     <Copy className="h-4 w-4" />
@@ -349,6 +290,8 @@ export default function TeacherExamsPage() {
             </Card>
           </TabsContent>
           
+          {/* Other tabs content will be similar */}
+          
           <TabsContent value="upcoming" className="m-0">
             <div className="space-y-6">
               {upcomingExams.length > 0 ? (
@@ -358,7 +301,7 @@ export default function TeacherExamsPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle>{exam.title}</CardTitle>
-                          <CardDescription>{exam.subject} • {exam.grade}-{exam.section}</CardDescription>
+                          <CardDescription>{exam.subject} • {exam.grade}{exam.section !== "All" ? `-${exam.section}` : ""}</CardDescription>
                         </div>
                         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Upcoming</Badge>
                       </div>
@@ -369,7 +312,7 @@ export default function TeacherExamsPage() {
                           <div className="text-xs text-gray-500">Date</div>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                            <span>{format(exam.date, "MMM d, yyyy")}</span>
+                            <span>{format(new Date(exam.date), "MMM d, yyyy")}</span>
                           </div>
                         </div>
                         <div>
@@ -400,9 +343,11 @@ export default function TeacherExamsPage() {
                         <FileText className="mr-1 h-4 w-4" /> Question Paper
                       </Button>
                       <div className="space-x-2">
-                        <Button size="sm" variant="outline">
-                          <Edit className="mr-1 h-4 w-4" /> Edit
-                        </Button>
+                        <Link href={`/teacher/assessments/exams/${exam.id}/edit`}>
+                          <Button size="sm" variant="outline">
+                            <Edit className="mr-1 h-4 w-4" /> Edit
+                          </Button>
+                        </Link>
                         <Link href={`/teacher/assessments/exams/${exam.id}`}>
                           <Button size="sm">
                             <Eye className="mr-1 h-4 w-4" /> View Details
@@ -444,7 +389,7 @@ export default function TeacherExamsPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle>{exam.title}</CardTitle>
-                          <CardDescription>{exam.subject} • {exam.grade}-{exam.section}</CardDescription>
+                          <CardDescription>{exam.subject} • {exam.grade}{exam.section !== "All" ? `-${exam.section}` : ""}</CardDescription>
                         </div>
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
                       </div>
@@ -455,7 +400,7 @@ export default function TeacherExamsPage() {
                           <div className="text-xs text-gray-500">Date</div>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                            <span>{format(exam.date, "MMM d, yyyy")}</span>
+                            <span>{format(new Date(exam.date), "MMM d, yyyy")}</span>
                           </div>
                         </div>
                         <div>
@@ -475,9 +420,9 @@ export default function TeacherExamsPage() {
                         <div>
                           <div className="text-xs text-gray-500">Average Score</div>
                           <div className="flex items-center gap-1 font-medium">
-                            <span>{exam.avgScore}/{exam.totalMarks}</span>
+                            <span>{exam.avgScore}</span>
                             <span className="text-xs text-gray-500">
-                              ({((exam.avgScore || 0) / exam.totalMarks * 100).toFixed(1)}%)
+                              out of {exam.totalMarks}
                             </span>
                           </div>
                         </div>
@@ -507,7 +452,7 @@ export default function TeacherExamsPage() {
                         <Button size="sm" variant="outline">
                           <Download className="mr-1 h-4 w-4" /> Export Results
                         </Button>
-                        <Link href={`/teacher/assessments/results?examId=${exam.id}`}>
+                        <Link href={`/teacher/assessments/exams/${exam.id}`}>
                           <Button size="sm">
                             <ClipboardList className="mr-1 h-4 w-4" /> View Results
                           </Button>

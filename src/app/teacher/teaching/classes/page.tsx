@@ -5,137 +5,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeachingClassCard } from "@/components/academic/class-card";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { getTeacherClasses } from "@/lib/actions/teacherClassesActions";
 
-// Mock data for teacher's classes
-const teacherClasses = [
-  {
-    id: "1",
-    name: "Grade 10",
-    section: "A",
-    subject: "Mathematics",
-    studentCount: 30,
-    scheduleDay: "Monday, Wednesday, Friday",
-    scheduleTime: "09:00 AM - 10:00 AM",
-    roomName: "Room 101",
-    currentTopic: "Quadratic Equations",
-    completionPercentage: 65,
-  },
-  {
-    id: "2",
-    name: "Grade 11",
-    section: "B",
-    subject: "Mathematics",
-    studentCount: 28,
-    scheduleDay: "Tuesday, Thursday",
-    scheduleTime: "10:30 AM - 11:30 AM",
-    roomName: "Room 203",
-    currentTopic: "Calculus Introduction",
-    completionPercentage: 45,
-  },
-  {
-    id: "3",
-    name: "Grade 9",
-    section: "C",
-    subject: "Mathematics",
-    studentCount: 32,
-    scheduleDay: "Monday, Wednesday",
-    scheduleTime: "12:00 PM - 01:00 PM",
-    roomName: "Room 105",
-    currentTopic: "Linear Equations",
-    completionPercentage: 78,
-  },
-  {
-    id: "4",
-    name: "Grade 10",
-    section: "B",
-    subject: "Mathematics",
-    studentCount: 31,
-    scheduleDay: "Tuesday, Thursday",
-    scheduleTime: "02:30 PM - 03:30 PM",
-    roomName: "Room 102",
-    currentTopic: "Quadratic Equations",
-    completionPercentage: 62,
-  },
-];
+export default async function TeacherClassesPage() {
+  const { classes } = await getTeacherClasses();
+  
+  // Group classes by day for timetable view
+  const classesByDay: Record<string, any[]> = {};
+  
+  classes.forEach(cls => {
+    const days = cls.scheduleDay.split(", ");
+    days.forEach(day => {
+      if (!classesByDay[day]) {
+        classesByDay[day] = [];
+      }
+      
+      classesByDay[day].push({
+        id: cls.id,
+        name: `${cls.name}-${cls.section}`,
+        subject: cls.subject,
+        time: cls.scheduleTime,
+        room: cls.roomName
+      });
+    });
+  });
 
-// Group classes by day for timetable view
-const classesByDay = {
-  Monday: [
-    {
-      id: "1",
-      name: "Grade 10-A",
-      subject: "Mathematics",
-      time: "09:00 AM - 10:00 AM",
-      room: "Room 101"
-    },
-    {
-      id: "3",
-      name: "Grade 9-C",
-      subject: "Mathematics",
-      time: "12:00 PM - 01:00 PM",
-      room: "Room 105"
-    }
-  ],
-  Tuesday: [
-    {
-      id: "2",
-      name: "Grade 11-B",
-      subject: "Mathematics",
-      time: "10:30 AM - 11:30 AM",
-      room: "Room 203"
-    },
-    {
-      id: "4",
-      name: "Grade 10-B",
-      subject: "Mathematics",
-      time: "02:30 PM - 03:30 PM",
-      room: "Room 102"
-    }
-  ],
-  Wednesday: [
-    {
-      id: "1",
-      name: "Grade 10-A",
-      subject: "Mathematics",
-      time: "09:00 AM - 10:00 AM",
-      room: "Room 101"
-    },
-    {
-      id: "3",
-      name: "Grade 9-C",
-      subject: "Mathematics",
-      time: "12:00 PM - 01:00 PM",
-      room: "Room 105"
-    }
-  ],
-  Thursday: [
-    {
-      id: "2",
-      name: "Grade 11-B",
-      subject: "Mathematics",
-      time: "10:30 AM - 11:30 AM",
-      room: "Room 203"
-    },
-    {
-      id: "4",
-      name: "Grade 10-B",
-      subject: "Mathematics",
-      time: "02:30 PM - 03:30 PM",
-      room: "Room 102"
-    }
-  ],
-  Friday: [
-    {
-      id: "1",
-      name: "Grade 10-A",
-      subject: "Mathematics",
-      time: "09:00 AM - 10:00 AM",
-      room: "Room 101"
-    }
-  ]
-};
-
-export default function TeacherClassesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
@@ -163,7 +57,7 @@ export default function TeacherClassesPage() {
         
         <TabsContent value="all-classes">
           <div className="grid gap-6 md:grid-cols-2">
-            {teacherClasses.map(classInfo => (
+            {classes.map(classInfo => (
               <TeachingClassCard
                 key={classInfo.id}
                 id={classInfo.id}

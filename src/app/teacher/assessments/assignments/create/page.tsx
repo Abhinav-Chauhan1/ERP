@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
   Card, 
   CardContent, 
@@ -13,56 +15,162 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SelectClass } from "@/components/forms/select-class";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Calendar as CalendarIcon,
+  ArrowLeft, 
+  FileText, 
+  Upload, 
+  File, 
+  X,
+  Loader2
+} from "lucide-react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Upload, PlusCircle, FileText } from "lucide-react";
-
-// Example class data for selection
-const teacherClasses = [
-  { id: "1", name: "Grade 10-A", subject: "Mathematics" },
-  { id: "2", name: "Grade 11-B", subject: "Mathematics" },
-  { id: "3", name: "Grade 9-C", subject: "Mathematics" },
-  { id: "4", name: "Grade 10-B", subject: "Mathematics" },
-];
+import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions"; 
+import { getTeacherClasses, createAssignment } from "@/lib/actions/teacherAssignmentsActions";
+import { toast } from "react-hot-toast";
+import { CldUploadWidget } from "next-cloudinary";
 
 export default function CreateAssignmentPage() {
-  const [selectedClass, setSelectedClass] = useState(teacherClasses[0]);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [assignedDate, setAssignedDate] = useState<Date | undefined>(new Date());
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-  const [files, setFiles] = useState<File[]>([]);
+  const [totalMarks, setTotalMarks] = useState("100");
+  const [instructions, setInstructions] = useState("");
+  const [attachments, setAttachments] = useState<{name: string; url: string; size: number; type: string}[]>([]);
+  
+  // Options for selects
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+  // Fetch data when component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch subjects
+        const subjectsData = await getTeacherSubjects();
+        setSubjects(subjectsData.subjects);
+        
+        // Fetch classes
+        const classesData = await getTeacherClasses();
+        setClasses(classesData.classes);
+        
+        // Set default values
+        if (subjectsData.subjects.length > 0) {
+          setSelectedSubject(subjectsData.subjects[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load required data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+  
+  const handleClassToggle = (classId: string) => {
+    setSelectedClasses(prev => {
+      if (prev.includes(classId)) {
+        return prev.filter(id => id !== classId);
+      } else {
+        return [...prev, classId];
+      }
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!assignedDate || !dueDate) {
+      toast.error("Please select assigned and due dates");
+      return;
+    }
+    
+    if (selectedClasses.length === 0) {
+      toast.error("Please select at least one class");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("subjectId", selectedSubject);
+      selectedClasses.forEach(classId => formData.append("classIds", classId));
+      formData.append("assignedDate", assignedDate.toISOString());
+      formData.append("dueDate", dueDate.toISOString());
+      formData.append("totalMarks", totalMarks);
+      formData.append("instructions", instructions);
+      formData.append("attachments", JSON.stringify(attachments));
+      
+      const response = await createAssignment(formData);
+      
+      if (response.success) {
+        toast.success("Assignment created successfully");
+        router.push('/teacher/assessments/assignments');
+      } else {
+        toast.error(response.error || "Failed to create assignment");
+      }
+    } catch (error) {
+      console.error("Failed to create assignment:", error);
+      toast.error("An error occurred while creating the assignment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUploadSuccess = (result: any) => {
+    const fileInfo = {
+      name: result.info.original_filename + '.' + result.info.format,
+      url: result.info.secure_url,
+      size: result.info.bytes,
+      type: result.info.resource_type + '/' + result.info.format
+    };
     
-    // Process form submission
-    console.log("Assignment created!");
-    
-    // In a real app, this would call an API or server action
-    // to create the assignment in the database
+    setAttachments(prev => [...prev, fileInfo]);
+    toast.success("File uploaded successfully");
   };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="icon" onClick={() => router.push('/teacher/assessments/assignments')}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <h1 className="text-2xl font-bold tracking-tight">Create New Assignment</h1>
       </div>
 
@@ -76,37 +184,83 @@ export default function CreateAssignmentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Assignment Title</Label>
-                <Input id="title" placeholder="Enter assignment title" required />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Select Class</Label>
-                <SelectClass 
-                  classes={teacherClasses}
-                  selected={selectedClass}
-                  onSelect={(cls) => setSelectedClass(cls)}
+                <Input 
+                  id="title" 
+                  placeholder="Enter assignment title" 
+                  required 
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="total-marks">Total Marks</Label>
-                <Input id="total-marks" type="number" min="0" placeholder="Enter total marks" required />
+                <Label htmlFor="description">Description</Label>
+                <Textarea 
+                  id="description" 
+                  placeholder="Brief description of the assignment"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="category">Assignment Category</Label>
-                <Select defaultValue="homework">
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Select a category" />
+                <Label htmlFor="subject">Subject</Label>
+                <Select 
+                  value={selectedSubject} 
+                  onValueChange={setSelectedSubject}
+                  required
+                >
+                  <SelectTrigger id="subject">
+                    <SelectValue placeholder="Select a subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="homework">Homework</SelectItem>
-                    <SelectItem value="project">Project</SelectItem>
-                    <SelectItem value="quiz">Quiz</SelectItem>
-                    <SelectItem value="practice">Practice</SelectItem>
-                    <SelectItem value="research">Research</SelectItem>
+                    {subjects.map(subject => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Classes</Label>
+                <div className="border rounded-md p-4 max-h-40 overflow-y-auto">
+                  {classes.length > 0 ? (
+                    <div className="space-y-2">
+                      {classes.map((cls) => (
+                        <div key={cls.id} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`class-${cls.id}`} 
+                            checked={selectedClasses.includes(cls.id)}
+                            onCheckedChange={() => handleClassToggle(cls.id)}
+                          />
+                          <label 
+                            htmlFor={`class-${cls.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {cls.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center">No classes available</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="total-marks">Total Marks</Label>
+                <Input 
+                  id="total-marks" 
+                  type="number" 
+                  min="0" 
+                  placeholder="Enter total marks" 
+                  required 
+                  value={totalMarks}
+                  onChange={(e) => setTotalMarks(e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -169,6 +323,8 @@ export default function CreateAssignmentPage() {
                   id="instructions" 
                   placeholder="Provide detailed instructions for students"
                   rows={4}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -182,44 +338,46 @@ export default function CreateAssignmentPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="content">Assignment Content</Label>
-              <Textarea 
-                id="content" 
-                placeholder="Enter the details of the assignment..."
-                rows={6}
-              />
-            </div>
-            
-            <div className="space-y-2">
               <Label>Attachments</Label>
               <div className="border border-dashed rounded-lg p-8 text-center">
-                <Input 
-                  type="file" 
-                  id="file" 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                  multiple
-                />
-                <Label htmlFor="file" className="cursor-pointer">
-                  <div className="flex flex-col items-center gap-2">
-                    <Upload className="h-10 w-10 text-gray-400" />
-                    <p className="font-medium">Click to upload files</p>
-                    <p className="text-xs text-gray-500">
-                      Upload PDF, Word, Excel, or image files
-                    </p>
-                  </div>
-                </Label>
+                <CldUploadWidget 
+                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+                  onSuccess={handleUploadSuccess}
+                >
+                  {({ open }) => (
+                    <div 
+                      onClick={() => open()}
+                      className="cursor-pointer flex flex-col items-center gap-2"
+                    >
+                      <Upload className="h-10 w-10 text-gray-400" />
+                      <p className="font-medium">Click to upload files</p>
+                      <p className="text-xs text-gray-500">
+                        Upload PDF, Word, Excel, or image files
+                      </p>
+                    </div>
+                  )}
+                </CldUploadWidget>
               </div>
               
-              {files.length > 0 && (
+              {attachments.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-sm font-medium mb-2">Selected Files:</p>
+                  <p className="text-sm font-medium mb-2">Uploaded Files:</p>
                   <div className="space-y-2">
-                    {files.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">{file.name}</span>
-                        <span className="text-xs text-gray-500">({Math.round(file.size / 1024)} KB)</span>
+                    {attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm">{file.name}</span>
+                          <span className="text-xs text-gray-500">({Math.round(file.size / 1024)} KB)</span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => handleRemoveAttachment(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -228,8 +386,23 @@ export default function CreateAssignmentPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Button variant="outline">Cancel</Button>
-            <Button type="submit">Create Assignment</Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => router.push('/teacher/assessments/assignments')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Assignment"
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </form>

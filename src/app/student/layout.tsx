@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
 
 import { StudentSidebar } from "@/components/layout/student-sidebar";
+import { StudentHeader } from "@/components/layout/student-header";
 import { db } from "@/lib/db";
 
 export default async function StudentLayout({
@@ -40,7 +41,8 @@ export default async function StudentLayout({
         <StudentSidebar />
       </div>
       <main className="md:pl-72 h-full">
-        <div className="h-full overflow-y-auto bg-gray-50">
+        <StudentHeader />
+        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-gray-50">
           {children}
         </div>
       </main>

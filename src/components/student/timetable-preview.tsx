@@ -1,68 +1,64 @@
-import { format } from "date-fns";
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 
 interface TimeTablePreviewProps {
-  studentId: string;
+  schedule: any[];
 }
 
-export function TimeTablePreview({ studentId }: TimeTablePreviewProps) {
-  // This would typically come from an API call based on the studentId
-  // For now, using dummy data
-  const todaySchedule = [
-    { id: 1, subject: "Mathematics", teacher: "Mr. Johnson", time: "08:00 - 09:30", room: "101" },
-    { id: 2, subject: "Science", teacher: "Mrs. Smith", time: "09:45 - 11:15", room: "Lab 2" },
-    { id: 3, subject: "Lunch Break", teacher: "", time: "11:15 - 12:00", room: "Cafeteria" },
-    { id: 4, subject: "English", teacher: "Ms. Davis", time: "12:00 - 13:30", room: "203" },
-    { id: 5, subject: "Computer Science", teacher: "Mr. Wilson", time: "13:45 - 15:15", room: "IT Lab" },
-  ];
+export function TimeTablePreview({ schedule }: TimeTablePreviewProps) {
+  const [currentDay] = useState(format(new Date(), "EEEE"));
 
-  const currentDay = format(new Date(), "EEEE");
-  
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-md font-medium flex items-center justify-between">
-          <div className="flex items-center">
-            <Calendar className="h-5 w-5 mr-2" />
-            Today's Schedule
-          </div>
-          <span className="text-sm font-normal text-gray-500">{currentDay}</span>
-        </CardTitle>
+        <CardTitle className="text-lg">Today's Schedule ({currentDay})</CardTitle>
       </CardHeader>
-      <CardContent className="px-2">
-        <div className="space-y-1">
-          {todaySchedule.map((period, index) => (
-            <div 
-              key={period.id} 
-              className={`flex items-center p-2 rounded-md ${
-                index === 2 ? 'bg-gray-50' : 'border-l-4 border-blue-500'
-              }`}
-            >
-              <div className="flex-1">
-                <p className={`font-medium ${index === 2 ? 'text-gray-500' : ''}`}>
-                  {period.subject}
-                </p>
-                {period.teacher && (
-                  <p className="text-xs text-gray-500">{period.teacher}</p>
-                )}
+      <CardContent>
+        {schedule.length > 0 ? (
+          <div className="space-y-3">
+            {schedule.map((slot, index) => (
+              <div key={index} className="flex items-center justify-between rounded-md border p-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-blue-50 p-2">
+                    <Clock className="h-4 w-4 text-blue-700" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{slot.subject}</p>
+                    <p className="text-xs text-gray-500">
+                      {format(new Date(slot.startTime), "h:mm a")} - {format(new Date(slot.endTime), "h:mm a")}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {slot.teacherName}
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm">{period.time}</p>
-                <p className="text-xs text-gray-500">{period.room}</p>
-              </div>
+            ))}
+            
+            <div className="flex justify-end pt-2">
+              <Link href="/student/academics/schedule">
+                <Button variant="link" size="sm" className="font-normal text-blue-600">
+                  Full schedule <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </div>
-          ))}
-        </div>
-        
-        <div className="text-center pt-4">
-          <a 
-            href="/student/academics/schedule" 
-            className="text-sm text-blue-600 hover:underline"
-          >
-            View full schedule
-          </a>
-        </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-gray-500">
+            <p>No classes scheduled for today</p>
+            <Link href="/student/academics/schedule">
+              <Button variant="link" size="sm" className="font-normal text-blue-600 mt-2">
+                View full schedule
+              </Button>
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

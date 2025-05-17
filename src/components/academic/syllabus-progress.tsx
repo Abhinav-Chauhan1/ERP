@@ -1,3 +1,5 @@
+"use client";
+
 import { 
   Card, 
   CardContent, 
@@ -7,8 +9,13 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock } from "lucide-react";
+import { CheckCircle, Clock, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SyllabusUpdateDialog } from "./syllabus-update-dialog";
+import { updateSyllabusUnitProgress } from "@/lib/actions/teacherSubjectsActions";
+import { useState } from "react";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface SyllabusUnit {
   id: string;
@@ -27,7 +34,7 @@ interface SyllabusProgressProps {
   overallProgress: number;
   lastUpdated: string;
   units: SyllabusUnit[];
-  onUpdate?: () => void;
+  subjectId?: string;
 }
 
 export function SyllabusProgress({
@@ -37,8 +44,30 @@ export function SyllabusProgress({
   overallProgress,
   lastUpdated,
   units,
-  onUpdate
+  subjectId
 }: SyllabusProgressProps) {
+  const router = useRouter();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const refreshData = () => {
+    router.refresh();
+  };
+
+  const handleUpdate = async () => {
+    if (!subjectId) return;
+    
+    try {
+      setIsUpdating(true);
+      await updateSyllabusUnitProgress(units[0]?.id || "", units[0]?.completedTopics || 0);
+      toast.success("Syllabus progress updated successfully");
+    } catch (error) {
+      toast.error("Failed to update syllabus progress");
+      console.error(error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "not-started":
@@ -63,8 +92,12 @@ export function SyllabusProgress({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onUpdate}>
-              Update Progress
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => toast.success("Report generated successfully")}
+            >
+              <Download className="mr-2 h-4 w-4" /> Export Progress
             </Button>
           </div>
         </div>
@@ -125,6 +158,16 @@ export function SyllabusProgress({
                   style={{ width: `${(unit.completedTopics / unit.totalTopics) * 100}%` }}
                 ></div>
               </div>
+
+              {subjectId && (
+                <div className="flex justify-end mt-3">
+                  <SyllabusUpdateDialog 
+                    unit={unit}
+                    subjectId={subjectId}
+                    onSuccess={refreshData}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

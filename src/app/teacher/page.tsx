@@ -21,6 +21,16 @@ interface CalendarEvent {
   type: CalendarEventType;
 }
 
+// Add this type for lessons
+interface RecentLesson {
+  id: string;
+  title: string;
+  subject: string; 
+  date: string;
+  duration: number;
+  unit: string;
+}
+
 // Mock data for today's classes
 const todayClasses = [
   {
@@ -173,6 +183,34 @@ const classPerformanceData = [
   { subject: 'Grade 11-B', average: 78 },
 ];
 
+// Mock data for recent lessons
+const recentLessons: RecentLesson[] = [
+  {
+    id: "1",
+    title: "Quadratic Equations Introduction",
+    subject: "Mathematics",
+    date: "2023-12-01",
+    duration: 45,
+    unit: "Algebra II"
+  },
+  {
+    id: "2",
+    title: "Solving Linear Equations",
+    subject: "Mathematics",
+    date: "2023-11-28",
+    duration: 45,
+    unit: "Algebra I"
+  },
+  {
+    id: "3",
+    title: "Calculus Principles",
+    subject: "Mathematics",
+    date: "2023-11-25",
+    duration: 60,
+    unit: "Calculus"
+  }
+];
+
 export default async function TeacherDashboard() {
   const { userId } = await auth();
 
@@ -287,6 +325,52 @@ export default async function TeacherDashboard() {
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Add Recent Lessons section before the charts section */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-xl">Recent Lessons</CardTitle>
+              <CardDescription>Latest lesson content you've created</CardDescription>
+            </div>
+            <Link href="/teacher/teaching/lessons">
+              <Button variant="outline" size="sm">
+                View All Lessons
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentLessons.map((lesson) => (
+              <Link href={`/teacher/teaching/lessons/${lesson.id}`} key={lesson.id}>
+                <div className="p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium">{lesson.title}</h4>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {lesson.subject} • {lesson.unit}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>{lesson.duration} min</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="border-t pt-4">
+          <Link href="/teacher/teaching/lessons/create" className="w-full">
+            <Button variant="outline" className="w-full">
+              <FileText className="mr-2 h-4 w-4" /> Create New Lesson
+            </Button>
+          </Link>
+        </CardFooter>
       </Card>
 
       {/* Charts and Upcoming Content */}
@@ -473,12 +557,12 @@ export default async function TeacherDashboard() {
               <span className="text-sm font-medium">Create Assignment</span>
             </div>
           </Link>
-          <Link href="/teacher/assessments/exams/create">
+          <Link href="/teacher/teaching/lessons/create">
             <div className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-white hover:border-emerald-200 hover:bg-emerald-50 transition-colors text-center">
               <div className="p-2 rounded-full bg-purple-100 text-purple-600">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <span className="text-sm font-medium">Create Exam</span>
+              <span className="text-sm font-medium">Create Lesson</span>
             </div>
           </Link>
           <Link href="/teacher/communication/messages/compose">

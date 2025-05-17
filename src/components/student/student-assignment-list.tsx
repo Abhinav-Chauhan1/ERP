@@ -2,44 +2,40 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { format, isBefore, isAfter } from "date-fns";
-import { Search, Filter, FileText, Calendar, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { format } from "date-fns";
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+  FileText, 
+  Calendar, 
+  Clock, 
+  Search, 
+  BookOpen, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle 
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-type Assignment = {
+interface Assignment {
   id: string;
   title: string;
-  subject: {
-    id: string;
-    name: string;
-  };
-  dueDate: string;
-  assignedDate: string;
+  subject: string;
+  subjectId: string;
+  dueDate: Date | string;
+  assignedDate: Date | string;
   totalMarks: number;
-  creator: {
-    id: string;
-    user: {
-      firstName: string;
-      lastName: string;
-    };
-  };
-  submissions: Array<{
-    id: string;
-    status: string;
-    marks: number | null;
-    submissionDate: string | null;
-  }>;
-};
+  isSubmitted?: boolean;
+  submission?: any;
+}
 
 interface StudentAssignmentListProps {
   assignments: Assignment[];
@@ -47,204 +43,189 @@ interface StudentAssignmentListProps {
   type: "pending" | "submitted" | "graded" | "overdue";
 }
 
-export function StudentAssignmentList({ assignments, studentId, type }: StudentAssignmentListProps) {
+export function StudentAssignmentList({ 
+  assignments, 
+  studentId, 
+  type 
+}: StudentAssignmentListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
-
-  // Get unique subjects for filtering
-  const subjects = Array.from(
-    new Set(assignments.map(assignment => assignment.subject.name))
-  );
-
-  // Filter assignments based on search query and subject filter
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  
+  // Get unique subjects for filter
+  const subjects = ["all", ...Array.from(new Set(assignments.map(a => a.subject)))];
+  
+  // Filter assignments
   const filteredAssignments = assignments.filter(assignment => {
-    const matchesSearch = assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          assignment.subject.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSubject = !subjectFilter || assignment.subject.name === subjectFilter;
+    const matchesSearch = 
+      assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      assignment.subject.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesSubject = subjectFilter === "all" || assignment.subject === subjectFilter;
+    
     return matchesSearch && matchesSubject;
   });
-
-  const getStatusIcon = () => {
+  
+  // Get days until due or days since submitted
+  const getDaysText = (assignment: Assignment) => {
+    if (type === "pending") {
+      const today = new Date();
+      const dueDate = new Date(assignment.dueDate);
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return "Due today";
+      if (diffDays === 1) return "Due tomorrow";
+      return `Due in ${diffDays} days`;
+    } 
+    else if (type === "submitted" || type === "graded") {
+      const submissionDate = new Date(assignment.submission?.submissionDate);
+      return `Submitted on ${format(submissionDate, "MMM d, yyyy")}`;
+    }
+    else if (type === "overdue") {
+      const today = new Date();
+      const dueDate = new Date(assignment.dueDate);
+      const diffTime = today.getTime() - dueDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) return "Overdue by 1 day";
+      return `Overdue by ${diffDays} days`;
+    }
+    
+    return "";
+  };
+  
+  // Get the icon based on assignment type
+  const getIcon = () => {
     switch (type) {
-      case "pending":
-        return <Clock className="h-6 w-6 text-blue-600" />;
-      case "submitted":
-        return <CheckCircle className="h-6 w-6 text-green-600" />;
-      case "graded":
-        return <FileText className="h-6 w-6 text-purple-600" />;
-      case "overdue":
-        return <AlertCircle className="h-6 w-6 text-red-600" />;
+      case "pending": return Clock;
+      case "submitted": return CheckCircle;
+      case "graded": return CheckCircle;
+      case "overdue": return AlertCircle;
+      default: return FileText;
     }
   };
-
-  const getStatusBadge = (assignment: Assignment) => {
-    const now = new Date();
-    
-    if (type === "pending") {
-      const dueDate = new Date(assignment.dueDate);
-      const isUrgent = isBefore(dueDate, new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000));
-      
-      return (
-        <Badge 
-          variant={isUrgent ? "destructive" : "secondary"}
-          className="whitespace-nowrap"
-        >
-          {isUrgent ? "Due Soon" : "Pending"}
-        </Badge>
-      );
-    } else if (type === "submitted") {
-      const submission = assignment.submissions[0];
-      const submissionDate = submission?.submissionDate ? new Date(submission.submissionDate) : null;
-      const dueDate = new Date(assignment.dueDate);
-      const isLate = submissionDate && isAfter(submissionDate, dueDate);
-      
-      return (
-        <Badge 
-          variant={isLate ? "outline" : "secondary"}
-          className={isLate ? "border-amber-500 text-amber-700" : ""}
-        >
-          {isLate ? "Late Submission" : "Submitted"}
-        </Badge>
-      );
-    } else if (type === "graded") {
-      const submission = assignment.submissions[0];
-      const scorePercentage = submission?.marks !== null 
-        ? (submission.marks / assignment.totalMarks) * 100 
-        : 0;
-      
-      return (
-        <div className="flex items-center gap-2">
-          <Badge 
-            variant={scorePercentage >= 70 ? "default" : scorePercentage >= 40 ? "secondary" : "destructive"}
-          >
-            {submission?.marks !== null ? `${submission.marks}/${assignment.totalMarks}` : "N/A"}
-          </Badge>
-        </div>
-      );
-    } else { // overdue
-      const daysPast = Math.ceil((now.getTime() - new Date(assignment.dueDate).getTime()) / (1000 * 60 * 60 * 24));
-      
-      return (
-        <Badge variant="destructive">
-          {daysPast === 1 ? "1 day overdue" : `${daysPast} days overdue`}
-        </Badge>
-      );
+  
+  const Icon = getIcon();
+  
+  // Get the empty message
+  const getEmptyMessage = () => {
+    switch (type) {
+      case "pending": return "You don't have any pending assignments";
+      case "submitted": return "You don't have any submitted assignments awaiting grading";
+      case "graded": return "You don't have any graded assignments";
+      case "overdue": return "You don't have any overdue assignments";
+      default: return "No assignments found";
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input
             placeholder="Search assignments..."
-            className="pl-10"
+            className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="flex gap-2">
-              <Filter className="h-4 w-4" />
-              {subjectFilter ? subjectFilter : "All Subjects"}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setSubjectFilter(null)}>
-              All Subjects
-            </DropdownMenuItem>
+        <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Subject" />
+          </SelectTrigger>
+          <SelectContent>
             {subjects.map(subject => (
-              <DropdownMenuItem key={subject} onClick={() => setSubjectFilter(subject)}>
-                {subject}
-              </DropdownMenuItem>
+              <SelectItem key={subject} value={subject}>
+                {subject === "all" ? "All Subjects" : subject}
+              </SelectItem>
             ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </SelectContent>
+        </Select>
       </div>
-
-      {filteredAssignments.length === 0 ? (
-        <div className="text-center py-12">
-          {getStatusIcon()}
-          <h3 className="mt-4 text-lg font-medium">
-            {type === "pending" && "No pending assignments"}
-            {type === "submitted" && "No submitted assignments"}
-            {type === "graded" && "No graded assignments"}
-            {type === "overdue" && "No overdue assignments"}
-          </h3>
-          <p className="mt-2 text-gray-500">
-            {type === "pending" && "You're all caught up! Check back later for new assignments."}
-            {type === "submitted" && "You haven't submitted any assignments yet."}
-            {type === "graded" && "No assignments have been graded yet."}
-            {type === "overdue" && "Great job keeping up with your deadlines!"}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredAssignments.map((assignment) => (
-            <Link href={`/student/assessments/assignments/${assignment.id}`} key={assignment.id}>
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-gray-100 p-3 rounded-lg">
-                      {getStatusIcon()}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <h3 className="font-semibold truncate">{assignment.title}</h3>
-                        {getStatusBadge(assignment)}
+      
+      {filteredAssignments.length > 0 ? (
+        <div className="grid gap-4">
+          {filteredAssignments.map(assignment => (
+            <Card key={assignment.id}>
+              <CardContent className="p-0">
+                <div className="flex flex-col md:flex-row">
+                  <div className={`p-6 flex items-center justify-center md:w-1/4 ${
+                    type === "pending" ? "bg-blue-50" :
+                    type === "submitted" ? "bg-green-50" :
+                    type === "graded" ? "bg-indigo-50" :
+                    "bg-red-50"
+                  }`}>
+                    <div className="text-center">
+                      <div className={`rounded-full p-3 mx-auto ${
+                        type === "pending" ? "bg-blue-100 text-blue-700" :
+                        type === "submitted" ? "bg-green-100 text-green-700" :
+                        type === "graded" ? "bg-indigo-100 text-indigo-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        <Icon className="h-6 w-6" />
                       </div>
-                      
-                      <p className="text-sm text-gray-500 mb-2">{assignment.subject.name}</p>
-                      
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-1 text-xs">
-                        <div className="flex items-center text-gray-600">
-                          <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                          Due: {format(new Date(assignment.dueDate), "MMM d, yyyy 'at' h:mm a")}
-                        </div>
-                        <div className="flex items-center text-gray-600">
-                          <FileText className="h-3.5 w-3.5 mr-1.5" />
-                          {assignment.totalMarks} {assignment.totalMarks === 1 ? 'mark' : 'marks'} total
-                        </div>
+                      <div className={`mt-2 text-sm font-medium ${
+                        type === "pending" ? "text-blue-700" :
+                        type === "submitted" ? "text-green-700" :
+                        type === "graded" ? "text-indigo-700" :
+                        "text-red-700"
+                      }`}>
+                        {getDaysText(assignment)}
                       </div>
-                      
-                      {type === "submitted" && (
-                        <div className="mt-3">
-                          <p className="text-xs text-gray-500 mb-1">Submission status</p>
-                          <Progress 
-                            value={100} 
-                            className="h-2 bg-gray-100"
-                          />
-                          <p className="text-xs mt-1 text-gray-600">
-                            Submitted on: {assignment.submissions[0]?.submissionDate 
-                              ? format(new Date(assignment.submissions[0].submissionDate), "MMM d, yyyy 'at' h:mm a")
-                              : "N/A"
-                            }
-                          </p>
-                        </div>
-                      )}
-                      
-                      {type === "graded" && (
-                        <div className="mt-3">
-                          <p className="text-xs text-gray-500 mb-1">Score</p>
-                          <Progress 
-                            value={assignment.submissions[0]?.marks !== null 
-                              ? (assignment.submissions[0].marks / assignment.totalMarks) * 100 
-                              : 0
-                            } 
-                            className="h-2 bg-gray-100"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  
+                  <div className="p-6 flex-1">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div>
+                        <h3 className="font-semibold text-lg">{assignment.title}</h3>
+                        <div className="flex items-center mt-1 text-sm text-gray-500">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          <span>{assignment.subject}</span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-sm">
+                          <div className="flex items-center">
+                            <Calendar className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <FileText className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>
+                              {type === "graded" 
+                                ? `Marks: ${assignment.submission?.marks}/${assignment.totalMarks}` 
+                                : `Total Marks: ${assignment.totalMarks}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button asChild>
+                          <Link href={`/student/assessments/assignments/${assignment.id}`}>
+                            {type === "pending" ? "Submit Assignment" :
+                             type === "submitted" ? "View Submission" :
+                             type === "graded" ? "View Feedback" :
+                             "Submit Late"}
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-4 text-lg font-medium">No assignments found</h3>
+          <p className="mt-1 text-gray-500">
+            {getEmptyMessage()}
+          </p>
         </div>
       )}
     </div>

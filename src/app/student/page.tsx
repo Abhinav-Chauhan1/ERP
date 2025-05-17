@@ -9,6 +9,11 @@ import { TimeTablePreview } from "@/components/student/timetable-preview";
 import { RecentAnnouncements } from "@/components/student/recent-announcements";
 import { StudentHeader } from "@/components/student/student-header";
 import { DashboardStats } from "@/components/student/dashboard-stats";
+import { 
+  getStudentDashboardData, 
+  getStudentSubjectPerformance, 
+  getStudentTodaySchedule 
+} from "@/lib/actions/student-actions";
 
 export default async function StudentDashboard() {
   // Get current user directly from Clerk
@@ -29,97 +34,23 @@ export default async function StudentDashboard() {
     redirect("/login");
   }
   
-  const student = await db.student.findUnique({
-    where: {
-      userId: dbUser.id
-    },
-    include: {
-      enrollments: {
-        include: {
-          class: true,
-          section: true,
-        }
-      }
-    }
-  });
+  // Fetch dashboard data
+  const { 
+    student,
+    attendancePercentage,
+    upcomingExams,
+    pendingAssignments,
+    recentAnnouncements 
+  } = await getStudentDashboardData();
 
   if (!student) {
     redirect("/login");
   }
 
-  // Fetch attendance data
-  const currentDate = new Date();
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  // Fetch additional data
+  const subjectPerformance = await getStudentSubjectPerformance(student.id);
+  const todaySchedule = await getStudentTodaySchedule(student.id);
   
-  const attendanceData = await db.studentAttendance.findMany({
-    where: {
-      studentId: student.id,
-      date: {
-        gte: startOfMonth
-      }
-    }
-  });
-
-  // Calculate attendance percentage
-  const totalDays = attendanceData.length;
-  const presentDays = attendanceData.filter(a => a.status === "PRESENT").length;
-  const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-
-  // Get upcoming exams
-  const upcomingExams = await db.exam.findMany({
-    where: {
-      examDate: {
-        gte: currentDate
-      },
-    },
-    include: {
-      subject: true,
-      examType: true
-    },
-    take: 3,
-    orderBy: {
-      examDate: 'asc'
-    }
-  });
-
-  // Get upcoming assignments
-  const upcomingAssignments = await db.assignment.findMany({
-    where: {
-      dueDate: {
-        gte: currentDate
-      }
-    },
-    include: {
-      subject: true
-    },
-    take: 3,
-    orderBy: {
-      dueDate: 'asc'
-    }
-  });
-
-  // Get recent announcements
-  const recentAnnouncements = await db.announcement.findMany({
-    where: {
-      isActive: true,
-      OR: [
-        { targetAudience: { has: "STUDENT" } },
-        { targetAudience: { has: "ALL" } }
-      ],
-    },
-    take: 3,
-    orderBy: {
-      createdAt: 'desc'
-    },
-    include: {
-      publisher: {
-        include: {
-          user: true
-        }
-      }
-    }
-  });
-
   const currentEnrollment = student.enrollments[0]; // Assuming the most recent enrollment
   
   return (
@@ -130,19 +61,19 @@ export default async function StudentDashboard() {
         <DashboardStats 
           attendancePercentage={attendancePercentage}
           upcomingExamsCount={upcomingExams.length}
-          pendingAssignmentsCount={upcomingAssignments.length}
+          pendingAssignmentsCount={pendingAssignments.length}
           className={currentEnrollment?.class?.name || "N/A"}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <UpcomingAssessments exams={upcomingExams} assignments={upcomingAssignments} />
-          <SubjectPerformance studentId={student.id} />
+          <UpcomingAssessments exams={upcomingExams} assignments={pendingAssignments} />
+          <SubjectPerformance data={subjectPerformance} />
         </div>
         <div className="space-y-6">
           <AttendanceOverview attendancePercentage={attendancePercentage} />
-          <TimeTablePreview studentId={student.id} />
+          <TimeTablePreview schedule={todaySchedule} />
           <RecentAnnouncements announcements={recentAnnouncements} />
         </div>
       </div>
