@@ -1,82 +1,143 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { 
-  BookOpen, 
-  Clock, 
-  CheckCircle, 
-  FileText, 
-  BarChart, 
-  ChevronRight 
-} from "lucide-react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { redirect } from "next/navigation";
+import { FileText, GraduationCap, Pencil, ChartPie, ChevronRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { 
-  getUpcomingExams,
-  getExamResults,
-  getAssignments,
-  getReportCards
-} from "@/lib/actions/student-assessment-actions";
+import { db } from "@/lib/db";
+import { currentUser } from "@clerk/nextjs/server";
+import { UserRole } from "@prisma/client";
 
 export const metadata: Metadata = {
   title: "Assessments | Student Portal",
-  description: "View and manage your exams, assignments, and results",
+  description: "View your exams, assignments, and academic evaluations",
 };
 
 export default async function AssessmentsPage() {
-  // Fetch data
-  const upcomingExams = await getUpcomingExams();
-  const examResults = await getExamResults();
-  const assignments = await getAssignments();
-  const reportCards = await getReportCards();
+  // Use currentUser directly instead of getCurrentUserDetails which is causing the error
+  const clerkUser = await currentUser();
   
-  // Get counts
-  const pendingAssignmentsCount = assignments.pending.length;
-  const overdueAssignmentsCount = assignments.overdue.length;
-  const upcomingExamsCount = upcomingExams.length;
-  const recentResultsCount = examResults.slice(0, 5).length;
+  if (!clerkUser) {
+    redirect("/login");
+  }
   
-  const assessmentAreas = [
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
+    redirect("/login");
+  }
+  
+  const student = await db.student.findUnique({
+    where: {
+      userId: dbUser.id
+    },
+    include: {
+      enrollments: {
+        orderBy: {
+          enrollDate: 'desc'
+        },
+        take: 1,
+        include: {
+          class: true
+        }
+      }
+    }
+  });
+
+  if (!student) {
+    redirect("/student");
+  }
+
+  // Get current class ID
+  const currentClassId = student.enrollments[0]?.class.id;
+
+  // Get all subject IDs for the current class
+  const subjectClasses = await db.subjectClass.findMany({
+    where: {
+      classId: currentClassId
+    },
+    select: {
+      subjectId: true
+    }
+  });
+
+  const subjectIds = subjectClasses.map(sc => sc.subjectId);
+
+  // Get assessment counts
+  const upcomingExamsCount = await db.exam.count({
+    where: {
+      subjectId: {
+        in: subjectIds
+      },
+      examDate: {
+        gte: new Date()
+      }
+    }
+  });
+
+  const pendingAssignmentsCount = await db.assignment.count({
+    where: {
+      subjectId: {
+        in: subjectIds
+      },
+      dueDate: {
+        gte: new Date()
+      },
+      submissions: {
+        none: {
+          studentId: student.id
+        }
+      }
+    }
+  });
+
+  const pastExamsCount = await db.examResult.count({
+    where: {
+      studentId: student.id
+    }
+  });
+
+  const reportCardsCount = await db.reportCard.count({
+    where: {
+      studentId: student.id,
+      isPublished: true
+    }
+  });
+
+  const assessmentLinks = [
     {
       title: "Upcoming Exams",
-      description: "View your upcoming exam schedule",
-      icon: Clock,
+      description: "View your scheduled exams and prepare ahead",
+      icon: FileText,
       href: "/student/assessments/exams",
-      count: upcomingExamsCount,
-      color: "bg-blue-50 text-blue-600",
-    },
-    {
-      title: "Exam Results",
-      description: "Check your past exam results and performance",
-      icon: BarChart,
-      href: "/student/assessments/results",
-      count: recentResultsCount,
-      color: "bg-green-50 text-green-600",
+      count: upcomingExamsCount
     },
     {
       title: "Assignments",
-      description: "View and submit your pending assignments",
-      icon: FileText,
+      description: "Manage and submit your pending assignments",
+      icon: Pencil,
       href: "/student/assessments/assignments",
-      count: pendingAssignmentsCount + overdueAssignmentsCount,
-      color: "bg-amber-50 text-amber-600",
+      count: pendingAssignmentsCount
+    },
+    {
+      title: "Exam Results",
+      description: "Check your performance in past exams",
+      icon: ChartPie,
+      href: "/student/assessments/results",
+      count: pastExamsCount
     },
     {
       title: "Report Cards",
-      description: "Access your term and year-end report cards",
-      icon: BookOpen,
+      description: "Access your term and annual report cards",
+      icon: GraduationCap,
       href: "/student/assessments/report-cards",
-      count: reportCards.length,
-      color: "bg-purple-50 text-purple-600",
-    },
+      count: reportCardsCount
+    }
   ];
 
   return (
@@ -84,127 +145,37 @@ export default async function AssessmentsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Assessments</h1>
         <p className="text-gray-500">
-          View your exams, assignments, results, and report cards
+          View and manage your exams, assignments, and academic evaluations
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        {assessmentAreas.map((area) => (
-          <Card key={area.href}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className={`rounded-lg p-2 ${area.color}`}>
-                  <area.icon className="h-6 w-6" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {assessmentLinks.map((item) => (
+          <Card key={item.href}>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center text-lg">
+                <div className="bg-blue-50 p-2 rounded-lg mr-3">
+                  <item.icon className="h-5 w-5 text-blue-600" />
                 </div>
-                {area.count > 0 && (
-                  <Badge className="bg-blue-500 hover:bg-blue-500">
-                    {area.count}
-                  </Badge>
+                {item.title}
+                {item.count > 0 && (
+                  <div className="ml-2 bg-blue-100 text-blue-800 text-xs rounded-full px-2 py-0.5">
+                    {item.count}
+                  </div>
                 )}
-              </div>
-              <CardTitle>{area.title}</CardTitle>
-              <CardDescription>{area.description}</CardDescription>
+              </CardTitle>
             </CardHeader>
-            <CardFooter>
-              <Button asChild>
-                <Link href={area.href}>
-                  Access {area.title}
+            <CardContent>
+              <p className="text-gray-500 mb-4">{item.description}</p>
+              <Button asChild className="w-full mt-2">
+                <Link href={item.href}>
+                  Access {item.title}
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-            </CardFooter>
+            </CardContent>
           </Card>
         ))}
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Upcoming Exams Preview */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Upcoming Exams</CardTitle>
-              <Link href="/student/assessments/exams">
-                <Button variant="ghost" size="sm" className="text-blue-600">
-                  View All
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {upcomingExams.slice(0, 3).length > 0 ? (
-              <div className="space-y-4">
-                {upcomingExams.slice(0, 3).map((exam) => (
-                  <div key={exam.id} className="flex justify-between items-center border p-3 rounded-md">
-                    <div>
-                      <h4 className="font-medium">{exam.title}</h4>
-                      <div className="flex items-center mt-1 text-sm text-gray-500">
-                        <BookOpen className="h-3.5 w-3.5 mr-1.5" />
-                        {exam.subject}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        {format(new Date(exam.examDate), "MMM d, yyyy")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {format(new Date(exam.startTime), "h:mm a")}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="mx-auto h-8 w-8 text-gray-300" />
-                <p className="mt-2">No upcoming exams</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pending Assignments Preview */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Pending Assignments</CardTitle>
-              <Link href="/student/assessments/assignments">
-                <Button variant="ghost" size="sm" className="text-blue-600">
-                  View All
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {pendingAssignmentsCount > 0 ? (
-              <div className="space-y-4">
-                {assignments.pending.slice(0, 3).map((assignment: any) => (
-                  <div key={assignment.id} className="flex justify-between items-center border p-3 rounded-md">
-                    <div>
-                      <h4 className="font-medium">{assignment.title}</h4>
-                      <div className="flex items-center mt-1 text-sm text-gray-500">
-                        <BookOpen className="h-3.5 w-3.5 mr-1.5" />
-                        {assignment.subject}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}
-                      </div>
-                      <Badge variant="outline" className="text-xs h-5 mt-1">
-                        {assignment.totalMarks} marks
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="mx-auto h-8 w-8 text-gray-300" />
-                <p className="mt-2">No pending assignments</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

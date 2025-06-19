@@ -1,12 +1,25 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
+import { useState } from "react";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  LineChart,
+  Line
+} from 'recharts';
+import { Button } from "@/components/ui/button";
+import { BarChart2, LineChart as LineChartIcon } from "lucide-react";
 
 interface PerformanceData {
-  term: string;
+  name: string;
   percentage: number;
-  averageMarks?: number | null;
   rank?: number | null;
+  averageMarks?: number | null;
 }
 
 interface PerformanceChartProps {
@@ -14,50 +27,107 @@ interface PerformanceChartProps {
 }
 
 export function PerformanceChart({ data }: PerformanceChartProps) {
-  // Add an average line if we have multiple terms
-  const avgPercentage = data.length > 0 
-    ? data.reduce((sum, item) => sum + item.percentage, 0) / data.length 
-    : 0;
+  const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
+  
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="custom-tooltip bg-white p-3 border rounded-md shadow-md">
+          <p className="font-medium">{`${label}`}</p>
+          <p className="text-blue-600">{`Percentage: ${payload[0].value}%`}</p>
+          {payload[0].payload.rank && (
+            <p className="text-amber-600">{`Rank: ${payload[0].payload.rank}`}</p>
+          )}
+        </div>
+      );
+    }
+  
+    return null;
+  };
 
   return (
-    <div className="w-full h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis 
-            dataKey="term" 
-            tick={{ fontSize: 12 }} 
-            tickLine={false}
-          />
-          <YAxis 
-            domain={[0, 100]}
-            ticks={[0, 20, 40, 60, 80, 100]} 
-            tickFormatter={(value) => `${value}%`}
-            tick={{ fontSize: 12 }}
-          />
-          <Tooltip 
-            formatter={(value) => [`${value}%`, "Performance"]}
-            contentStyle={{ fontSize: 12 }}
-          />
-          <Bar 
-            dataKey="percentage" 
-            fill="#4f46e5" 
-            radius={[4, 4, 0, 0]}
-            maxBarSize={50}
-          />
-          {data.length > 1 && (
-            <ReferenceLine y={avgPercentage} stroke="#ff8c00" strokeDasharray="3 3" label={{
-              position: 'right',
-              value: `Avg: ${avgPercentage.toFixed(1)}%`, 
-              fill: '#ff8c00',
-              fontSize: 12
-            }} />
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="flex items-center border rounded-md overflow-hidden">
+          <Button
+            type="button"
+            variant={chartType === 'bar' ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none"
+            onClick={() => setChartType('bar')}
+          >
+            <BarChart2 className="h-4 w-4 mr-1" />
+            Bar
+          </Button>
+          <Button
+            type="button"
+            variant={chartType === 'line' ? "default" : "ghost"}
+            size="sm"
+            className="rounded-none"
+            onClick={() => setChartType('line')}
+          >
+            <LineChartIcon className="h-4 w-4 mr-1" />
+            Line
+          </Button>
+        </div>
+      </div>
+      
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === 'bar' ? (
+            <BarChart
+              data={data}
+              margin={{ top: 20, right: 30, left: 0, bottom: 30 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                tickMargin={10}
+              />
+              <YAxis 
+                domain={[0, 100]} 
+                tickCount={6}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar 
+                dataKey="percentage" 
+                name="Performance"
+                fill="#3b82f6" 
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          ) : (
+            <LineChart
+              data={data}
+              margin={{ top: 20, right: 30, left: 0, bottom: 30 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis 
+                dataKey="name" 
+                tick={{ fontSize: 12 }}
+                tickMargin={10}
+              />
+              <YAxis 
+                domain={[0, 100]} 
+                tickCount={6}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line 
+                type="monotone" 
+                dataKey="percentage" 
+                name="Performance"
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           )}
-        </BarChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

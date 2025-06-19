@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { File, FileText, UploadCloud, FolderIcon, Download } from "lucide-react";
-import { db } from "@/lib/db";
-import { getCurrentUserDetails } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { DocumentUploadForm } from "@/components/student/document-upload-form";
 import { DocumentList } from "@/components/student/document-list";
+import { DocumentHeader } from "@/components/student/document-header";
+import { getStudentDocuments } from "@/lib/actions/student-document-actions";
 
 export const metadata: Metadata = {
   title: "Documents | Student Portal",
@@ -15,65 +15,20 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentDocumentsPage() {
-  const userDetails = await getCurrentUserDetails();
+  const { user, documentTypes, personalDocuments, schoolDocuments } = await getStudentDocuments();
   
-  if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {
+  if (!user) {
     redirect("/login");
   }
-  
-  const student = await db.student.findUnique({
-    where: {
-      userId: userDetails.dbUser.id
-    }
-  });
-
-  if (!student) {
-    redirect("/student");
-  }
-
-  // Get document types
-  const documentTypes = await db.documentType.findMany({
-    orderBy: {
-      name: 'asc'
-    }
-  });
-
-  // Get student's personal documents
-  const personalDocuments = await db.document.findMany({
-    where: {
-      userId: userDetails.dbUser.id
-    },
-    include: {
-      documentType: true
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  });
-
-  // Get school documents (public)
-  const schoolDocuments = await db.document.findMany({
-    where: {
-      isPublic: true
-    },
-    include: {
-      documentType: true,
-      user: {
-        select: {
-          firstName: true,
-          lastName: true
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-    take: 20
-  });
 
   return (
     <div className="container p-6">
       <h1 className="text-2xl font-bold mb-6">Documents</h1>
+      
+      <DocumentHeader 
+        totalPersonalDocs={personalDocuments.length} 
+        totalSchoolDocs={schoolDocuments.length} 
+      />
       
       <Tabs defaultValue="my-documents" className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-md mb-8">
@@ -118,8 +73,8 @@ export default async function StudentDocumentsPage() {
             <CardContent>
               <DocumentUploadForm 
                 documentTypes={documentTypes} 
-                userId={userDetails.dbUser.id} 
-                studentId={student.id}
+                userId={user.id} 
+                studentId=""
               />
             </CardContent>
           </Card>

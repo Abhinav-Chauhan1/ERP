@@ -2,11 +2,21 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
-import { File, FileText, Download, Image, FileSpreadsheet, Search, Trash2, AlertCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { 
+  FileText, 
+  File, 
+  FileType, 
+  FileImage, 
+  FileSpreadsheet, 
+  FileCode,
+  Download, 
+  Trash2, 
+  User,
+  Search,
+  AlertTriangle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
+import { 
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -14,10 +24,24 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import toast from "react-hot-toast";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { toast } from "react-hot-toast";
+import { deleteDocument } from "@/lib/actions/student-document-actions";
+
+interface DocumentType {
+  id: string;
+  name: string;
+}
+
+interface User {
+  firstName: string;
+  lastName: string;
+}
 
 interface Document {
   id: string;
@@ -27,242 +51,207 @@ interface Document {
   fileUrl: string;
   fileType: string | null;
   fileSize: number | null;
+  documentType: DocumentType | null;
   tags: string | null;
   createdAt: Date;
-  documentType: {
-    id: string;
-    name: string;
-  } | null;
-  user?: {
-    firstName: string;
-    lastName: string;
-  };
+  user?: User;
 }
 
 interface DocumentListProps {
   documents: Document[];
-  emptyMessage: string;
-  allowDownload: boolean;
-  allowDelete: boolean;
+  emptyMessage?: string;
+  allowDownload?: boolean;
+  allowDelete?: boolean;
   showUploader?: boolean;
 }
 
-export function DocumentList({ documents, emptyMessage, allowDownload, allowDelete, showUploader = false }: DocumentListProps) {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+export function DocumentList({ 
+  documents, 
+  emptyMessage = "No documents found", 
+  allowDownload = true,
+  allowDelete = false,
+  showUploader = false
+}: DocumentListProps) {
+  const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const filteredDocuments = documents.filter((doc) => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      doc.title.toLowerCase().includes(searchLower) ||
-      (doc.description && doc.description.toLowerCase().includes(searchLower)) ||
-      doc.fileName.toLowerCase().includes(searchLower) ||
-      (doc.documentType && doc.documentType.name.toLowerCase().includes(searchLower)) ||
-      (doc.tags && doc.tags.toLowerCase().includes(searchLower))
-    );
-  });
-
+  
+  // Filter documents based on search term
+  const filteredDocuments = documents.filter(doc => 
+    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (doc.description && doc.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (doc.tags && doc.tags.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (doc.documentType && doc.documentType.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+  
+  // Get icon based on file type
   const getFileIcon = (fileType: string | null, fileName: string) => {
     if (!fileType) {
-      // Try to extract from filename if fileType is not available
-      const extension = fileName.split('.').pop()?.toLowerCase();
-      fileType = extension || 'unknown';
+      if (fileName.endsWith('.pdf')) return <FileType className="h-6 w-6 text-red-500" />;
+      if (/\.(jpg|jpeg|png|gif)$/i.test(fileName)) return <FileImage className="h-6 w-6 text-blue-500" />;
+      if (/\.(xlsx|xls|csv)$/i.test(fileName)) return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+      if (/\.(html|css|js|json)$/i.test(fileName)) return <FileCode className="h-6 w-6 text-yellow-500" />;
+      return <FileText className="h-6 w-6 text-gray-500" />;
     }
     
-    if (fileType.includes('pdf')) {
-      return <FileText className="h-6 w-6 text-red-500" />;
-    } else if (
-      fileType.includes('image') || 
-      ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType)
-    ) {
-      return <Image className="h-6 w-6 text-purple-500" />;
-    } else if (
-      fileType.includes('sheet') || 
-      fileType.includes('excel') || 
-      ['xls', 'xlsx', 'csv'].includes(fileType)
-    ) {
+    if (fileType.includes('pdf')) return <FileType className="h-6 w-6 text-red-500" />;
+    if (fileType.includes('image')) return <FileImage className="h-6 w-6 text-blue-500" />;
+    if (fileType.includes('sheet') || fileType.includes('csv') || fileType.includes('excel')) 
       return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
-    } else {
-      return <FileText className="h-6 w-6 text-blue-500" />;
-    }
-  };
-
-  const handleDownload = (fileUrl: string, fileName: string) => {
-    // Create temporary link for download
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleDelete = async () => {
-    if (!documentToDelete) return;
+    if (fileType.includes('html') || fileType.includes('javascript') || fileType.includes('css')) 
+      return <FileCode className="h-6 w-6 text-yellow-500" />;
     
+    return <FileText className="h-6 w-6 text-gray-500" />;
+  };
+  
+  // Format file size
+  const formatFileSize = (size: number | null) => {
+    if (!size) return "Unknown";
+    
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  };
+  
+  // Handle document deletion
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true);
     try {
-      setIsDeleting(true);
-      
-      const response = await fetch(`/api/documents/${documentToDelete}`, {
-        method: "DELETE"
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to delete document");
+      const result = await deleteDocument(id);
+      if (result.success) {
+        toast.success(result.message);
+        // The page will be revalidated by the server action
+      } else {
+        toast.error(result.message);
       }
-      
-      toast.success("Document deleted successfully");
-      router.refresh();
     } catch (error) {
-      console.error(error);
-      toast.error("Error deleting document");
+      toast.error("Failed to delete document");
     } finally {
       setIsDeleting(false);
-      setDocumentToDelete(null);
     }
   };
-
-  if (documents.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <File className="h-12 w-12 mx-auto text-gray-400" />
-        <p className="mt-4 text-gray-500">{emptyMessage}</p>
-      </div>
-    );
-  }
-
+  
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search documents..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+        <Input
+          className="pl-9"
+          placeholder="Search documents..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
-
-      {filteredDocuments.length === 0 ? (
-        <div className="text-center py-10">
-          <AlertCircle className="h-10 w-10 mx-auto text-gray-400" />
-          <p className="mt-2 text-gray-500">No documents found matching your search</p>
-        </div>
-      ) : (
+      
+      {filteredDocuments.length > 0 ? (
         <div className="space-y-4">
-          {filteredDocuments.map((document) => (
+          {filteredDocuments.map((doc) => (
             <div 
-              key={document.id}
-              className="flex flex-col sm:flex-row items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              key={doc.id} 
+              className="flex flex-col sm:flex-row sm:items-center gap-4 border rounded-lg p-4 transition-colors hover:bg-gray-50"
             >
-              <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg">
-                {getFileIcon(document.fileType, document.fileName)}
+              <div className="flex-shrink-0">
+                {getFileIcon(doc.fileType, doc.fileName)}
               </div>
               
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h4 className="font-medium text-gray-900 truncate">{document.title}</h4>
-                  
-                  {document.documentType && (
-                    <Badge variant="outline" className="whitespace-nowrap">
-                      {document.documentType.name}
+              <div className="flex-grow min-w-0">
+                <h3 className="font-medium truncate">{doc.title}</h3>
+                {doc.description && (
+                  <p className="text-sm text-gray-500 line-clamp-1">{doc.description}</p>
+                )}
+                
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {doc.documentType && (
+                    <Badge variant="outline" className="text-xs">
+                      {doc.documentType.name}
                     </Badge>
                   )}
+                  
+                  {doc.tags && doc.tags.split(',').map((tag, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="secondary" 
+                      className="text-xs bg-gray-100"
+                    >
+                      {tag.trim()}
+                    </Badge>
+                  ))}
                 </div>
                 
-                {document.description && (
-                  <p className="text-sm text-gray-500 line-clamp-2 mt-1">
-                    {document.description}
-                  </p>
-                )}
-                
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-2 text-xs text-gray-500">
-                  <span className="flex items-center">
-                    <File className="h-3.5 w-3.5 mr-1" />
-                    {document.fileName}
-                  </span>
-                  
-                  <span className="hidden sm:block">•</span>
-                  
-                  <span>
-                    Uploaded: {format(new Date(document.createdAt), "MMM d, yyyy")}
-                  </span>
-                  
-                  {showUploader && document.user && (
-                    <>
-                      <span className="hidden sm:block">•</span>
-                      <span>
-                        By: {document.user.firstName} {document.user.lastName}
-                      </span>
-                    </>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                  <span>Added: {format(new Date(doc.createdAt), "MMM d, yyyy")}</span>
+                  {doc.fileSize && <span>Size: {formatFileSize(doc.fileSize)}</span>}
+                  {showUploader && doc.user && (
+                    <span className="flex items-center">
+                      <User className="h-3 w-3 mr-1" />
+                      {doc.user.firstName} {doc.user.lastName}
+                    </span>
                   )}
                 </div>
-                
-                {document.tags && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {document.tags.split(',').map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {tag.trim()}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </div>
               
-              <div className="flex gap-2 mt-2 sm:mt-0">
+              <div className="flex gap-2 self-end sm:self-center mt-2 sm:mt-0">
                 {allowDownload && (
                   <Button 
                     size="sm" 
-                    variant="ghost"
-                    onClick={() => handleDownload(document.fileUrl, document.fileName)}
+                    variant="outline" 
+                    className="gap-1"
+                    asChild
                   >
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
+                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                      <Download className="h-4 w-4" />
+                      <span className="sm:hidden md:inline">Download</span>
+                    </a>
                   </Button>
                 )}
                 
                 {allowDelete && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => setDocumentToDelete(document.id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        size="sm" 
+                        variant="destructive" 
+                        className="gap-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sm:hidden md:inline">Delete</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the document "{doc.title}". This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          disabled={isDeleting}
+                          onClick={() => handleDelete(doc.id)}
+                          className={cn(
+                            "bg-red-600 hover:bg-red-700",
+                            isDeleting && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </div>
           ))}
         </div>
+      ) : (
+        <div className="text-center py-12 border rounded-lg">
+          <AlertTriangle className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium mb-1">No documents found</h3>
+          <p className="text-gray-500">
+            {emptyMessage}
+          </p>
+        </div>
       )}
-      
-      <AlertDialog open={!!documentToDelete} onOpenChange={(open: boolean) => !open && setDocumentToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this document?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. The document will be permanently deleted from your account.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

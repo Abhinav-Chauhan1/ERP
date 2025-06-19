@@ -9,19 +9,12 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { 
-  ChevronDown, 
-  ChevronUp, 
-  Search,
-  TrendingUp,
-  TrendingDown,
-  Minus
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { BookOpen, Search, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
-interface SubjectPerformance {
+interface Subject {
   id: string;
   name: string;
   code: string;
@@ -29,184 +22,124 @@ interface SubjectPerformance {
   examsTaken: number;
   lastScore: number | null;
   lastScoreTotal: number | null;
+  grade: string;
 }
 
 interface SubjectPerformanceTableProps {
-  subjects: SubjectPerformance[];
+  subjects: Subject[];
 }
 
 export function SubjectPerformanceTable({ subjects }: SubjectPerformanceTableProps) {
-  const [sortField, setSortField] = useState<string>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Filter subjects by search term
+  const filteredSubjects = subjects.filter(subject => 
+    subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    subject.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Handle sorting
-  const handleSort = (field: string) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
+  // Get badge style based on percentage
+  const getBadgeStyle = (percentage: number) => {
+    if (percentage >= 90) return "bg-green-100 text-green-800 border-green-200";
+    if (percentage >= 75) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (percentage >= 60) return "bg-amber-100 text-amber-800 border-amber-200";
+    if (percentage >= 50) return "bg-orange-100 text-orange-800 border-orange-200";
+    return "bg-red-100 text-red-800 border-red-200";
   };
-
-  // Get sortable properties
-  const getSortableProps = (field: string) => ({
-    onClick: () => handleSort(field),
-    className: "cursor-pointer select-none",
-  });
-
-  // Get sort indicator
-  const getSortIndicator = (field: string) => {
-    if (field !== sortField) return null;
-    return sortDirection === "asc" ? (
-      <ChevronUp className="h-4 w-4 inline ml-1" />
-    ) : (
-      <ChevronDown className="h-4 w-4 inline ml-1" />
-    );
-  };
-
-  // Filter and sort subjects
-  const filteredAndSortedSubjects = [...subjects]
-    .filter(subject => {
-      if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
-      return (
-        subject.name.toLowerCase().includes(query) ||
-        subject.code.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortField) {
-        case "name":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "code":
-          comparison = a.code.localeCompare(b.code);
-          break;
-        case "percentage":
-          comparison = a.percentage - b.percentage;
-          break;
-        case "examsTaken":
-          comparison = a.examsTaken - b.examsTaken;
-          break;
-        default:
-          comparison = 0;
-      }
-      
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-
-  // Get performance status
-  const getPerformanceStatus = (percentage: number) => {
-    if (percentage >= 80) {
-      return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          Excellent
-        </Badge>
-      );
-    } else if (percentage >= 60) {
-      return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-          Good
-        </Badge>
-      );
-    } else if (percentage >= 40) {
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          <Minus className="h-3 w-3 mr-1" />
-          Average
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
-          <TrendingDown className="h-3 w-3 mr-1" />
-          Needs Improvement
-        </Badge>
-      );
-    }
+  
+  // Get progress color based on percentage
+  const getProgressColor = (percentage: number) => {
+    if (percentage >= 90) return "bg-green-500";
+    if (percentage >= 75) return "bg-blue-500";
+    if (percentage >= 60) return "bg-amber-500";
+    if (percentage >= 50) return "bg-orange-500";
+    return "bg-red-500";
   };
 
   return (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
         <Input
           placeholder="Search subjects..."
-          className="pl-10"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
         />
       </div>
       
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead {...getSortableProps("name")}>
-                Subject {getSortIndicator("name")}
-              </TableHead>
-              <TableHead {...getSortableProps("code")} className="hidden md:table-cell">
-                Code {getSortIndicator("code")}
-              </TableHead>
-              <TableHead {...getSortableProps("percentage")}>
-                Performance {getSortIndicator("percentage")}
-              </TableHead>
-              <TableHead {...getSortableProps("examsTaken")} className="hidden sm:table-cell">
-                Exams Taken {getSortIndicator("examsTaken")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell">Last Score</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead className="w-[100px] text-center">Grade</TableHead>
+              <TableHead className="w-[140px] text-center">Percentage</TableHead>
+              <TableHead className="w-[140px] text-center">Progress</TableHead>
+              <TableHead className="w-[120px] text-center">Last Score</TableHead>
+              <TableHead className="w-[100px] text-center">Exams</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAndSortedSubjects.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                  No subjects found matching your search
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredAndSortedSubjects.map((subject) => (
+            {filteredSubjects.length > 0 ? (
+              filteredSubjects.map((subject) => (
                 <TableRow key={subject.id}>
-                  <TableCell className="font-medium">{subject.name}</TableCell>
-                  <TableCell className="hidden md:table-cell">{subject.code}</TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">
-                          {subject.percentage.toFixed(1)}%
-                        </span>
-                        <span className="hidden sm:block">
-                          {getPerformanceStatus(subject.percentage)}
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-gray-500" />
+                      <div>
+                        <div className="font-medium">{subject.name}</div>
+                        <div className="text-xs text-gray-500">{subject.code}</div>
                       </div>
-                      <Progress 
-                        value={subject.percentage}
-                        className={`h-2 ${subject.percentage >= 80 ? 'bg-green-500' : subject.percentage >= 60 ? 'bg-blue-500' : subject.percentage >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                      />
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {subject.examsTaken}
+                  <TableCell className="text-center">
+                    <Badge 
+                      variant="outline" 
+                      className={getBadgeStyle(subject.percentage)}
+                    >
+                      {subject.grade}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell className="text-center font-medium">
+                    {subject.percentage}%
+                  </TableCell>
+                  <TableCell>
+                    <Progress 
+                      value={subject.percentage} 
+                      className="h-2"
+                      style={{ 
+                        "--progress-color": getProgressColor(subject.percentage)
+                      } as React.CSSProperties}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center">
                     {subject.lastScore !== null && subject.lastScoreTotal !== null ? (
-                      <span>
-                        {subject.lastScore}/{subject.lastScoreTotal} 
-                        <span className="text-gray-500 ml-1">
-                          ({((subject.lastScore / subject.lastScoreTotal) * 100).toFixed(1)}%)
+                      <div className="flex items-center justify-center gap-1">
+                        <span>
+                          {subject.lastScore}/{subject.lastScoreTotal}
                         </span>
-                      </span>
+                        {subject.lastScore / subject.lastScoreTotal >= 0.7 ? (
+                          <TrendingUp className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <TrendingDown className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
                     ) : (
                       <span className="text-gray-500">N/A</span>
                     )}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {subject.examsTaken}
+                  </TableCell>
                 </TableRow>
               ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No subjects found with search term &quot;{searchTerm}&quot;
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>

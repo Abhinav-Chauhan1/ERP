@@ -1,6 +1,5 @@
-import { CheckCircle2, XCircle, Clock, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, XCircle, Clock, AlertCircle, CalendarCheck } from "lucide-react";
 
 interface AttendanceStatsCardsProps {
   presentDays: number;
@@ -11,91 +10,97 @@ interface AttendanceStatsCardsProps {
   attendancePercentage: number;
 }
 
-export function AttendanceStatsCards({
-  presentDays,
-  absentDays,
-  lateDays,
-  leaveDays,
+export function AttendanceStatsCards({ 
+  presentDays, 
+  absentDays, 
+  lateDays, 
+  leaveDays, 
   totalDays,
-  attendancePercentage
+  attendancePercentage 
 }: AttendanceStatsCardsProps) {
-  // Determine attendance status color
-  const getAttendanceStatusColor = () => {
-    if (attendancePercentage >= 90) return "text-green-600";
-    if (attendancePercentage >= 75) return "text-amber-600";
+  // Get color class based on attendance percentage
+  const getColorClass = (percentage: number) => {
+    if (percentage >= 90) return "text-green-600";
+    if (percentage >= 75) return "text-blue-600";
+    if (percentage >= 65) return "text-amber-600";
     return "text-red-600";
   };
 
-  // Get progress indicator class based on percentage
-  const getProgressClass = () => {
-    if (attendancePercentage >= 90) return "bg-green-600";
-    if (attendancePercentage >= 75) return "bg-amber-500";
-    return "bg-red-500";
-  };
-  
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
-      <Card className="col-span-1 lg:col-span-2">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Overall Attendance</p>
-              <div className="flex items-baseline">
-                <h3 className={`text-3xl font-bold ${getAttendanceStatusColor()}`}>
-                  {attendancePercentage.toFixed(1)}%
-                </h3>
-                <span className="ml-1 text-gray-500 text-sm">of classes attended</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {presentDays} present out of {totalDays} school days
-              </p>
-            </div>
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <Calendar className="h-8 w-8 text-gray-500" />
-            </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <Card>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-green-100 p-2 mb-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
           </div>
-          
-          <div className="mt-4">
-            <Progress 
-              value={attendancePercentage} 
-              className={`h-2 bg-gray-100 [&>div]:${getProgressClass()}`}
-            />
-          </div>
+          <p className="text-sm text-gray-500">Present</p>
+          <p className="text-2xl font-bold">{presentDays}</p>
+          <p className="text-xs text-gray-500">days</p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-green-100 p-2 rounded-full">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </div>
-            <h3 className="mt-2 text-2xl font-bold">{presentDays}</h3>
-            <p className="text-sm text-gray-500">Present Days</p>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-red-100 p-2 mb-2">
+            <XCircle className="h-5 w-5 text-red-600" />
           </div>
+          <p className="text-sm text-gray-500">Absent</p>
+          <p className="text-2xl font-bold">{absentDays}</p>
+          <p className="text-xs text-gray-500">days</p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-red-100 p-2 rounded-full">
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <h3 className="mt-2 text-2xl font-bold">{absentDays}</h3>
-            <p className="text-sm text-gray-500">Absent Days</p>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-amber-100 p-2 mb-2">
+            <Clock className="h-5 w-5 text-amber-600" />
           </div>
+          <p className="text-sm text-gray-500">Late</p>
+          <p className="text-2xl font-bold">{lateDays}</p>
+          <p className="text-xs text-gray-500">days</p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="bg-amber-100 p-2 rounded-full">
-              <Clock className="h-5 w-5 text-amber-600" />
-            </div>
-            <h3 className="mt-2 text-2xl font-bold">{lateDays}</h3>
-            <p className="text-sm text-gray-500">Late Arrivals</p>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-blue-100 p-2 mb-2">
+            <AlertCircle className="h-5 w-5 text-blue-600" />
+          </div>
+          <p className="text-sm text-gray-500">Leave</p>
+          <p className="text-2xl font-bold">{leaveDays}</p>
+          <p className="text-xs text-gray-500">days</p>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className="rounded-full bg-gray-100 p-2 mb-2">
+            <CalendarCheck className="h-5 w-5 text-gray-600" />
+          </div>
+          <p className="text-sm text-gray-500">Total</p>
+          <p className="text-2xl font-bold">{totalDays}</p>
+          <p className="text-xs text-gray-500">school days</p>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <div className={`text-3xl font-bold ${getColorClass(attendancePercentage)}`}>
+            {attendancePercentage}%
+          </div>
+          <p className="text-sm text-gray-500">Attendance</p>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+            <div 
+              className="h-2.5 rounded-full" 
+              style={{ 
+                width: `${attendancePercentage}%`,
+                backgroundColor: 
+                  attendancePercentage >= 90 ? '#22c55e' : 
+                  attendancePercentage >= 75 ? '#3b82f6' : 
+                  attendancePercentage >= 65 ? '#f59e0b' : 
+                  '#ef4444'
+              }}
+            ></div>
           </div>
         </CardContent>
       </Card>

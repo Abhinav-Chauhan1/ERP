@@ -7,14 +7,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, Phone, Mail, Briefcase, Users } from "lucide-react";
+import { ParentStudentAssociationDialog } from "@/components/admin/parent-student-association-dialog";
+import { removeStudentFromParent } from "@/lib/actions/parent-student-actions";
 
-interface ParentDetailPageProps {
-  params: Promise<{ id: string }>;
-}
+// For App Router, we no longer declare params as a TypeScript type
+// but let Next.js handle the parameter extraction
+export default async function ParentDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  // Access the id directly - Next.js handles this correctly at runtime
+  const param = await params;
+  const  id  = param.id;
 
-export default async function ParentDetailPage({ params }: ParentDetailPageProps) {
-  const { id } = await params;
-
+  // Get parent data with children and meetings
   const parent = await db.parent.findUnique({
     where: { id },
     include: {
@@ -57,6 +64,36 @@ export default async function ParentDetailPage({ params }: ParentDetailPageProps
   if (!parent) {
     notFound();
   }
+  
+  // Get all students that are not associated with this parent
+  const unassociatedStudents = await db.student.findMany({
+    where: {
+      NOT: {
+        parents: {
+          some: {
+            parentId: id
+          }
+        }
+      }
+    },
+    include: {
+      user: {
+        select: {
+          firstName: true,
+          lastName: true
+        }
+      },
+      enrollments: {
+        take: 1,
+        orderBy: {
+          enrollDate: 'desc'
+        },
+        include: {
+          class: true
+        }
+      }
+    }
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,7 +190,10 @@ export default async function ParentDetailPage({ params }: ParentDetailPageProps
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Children</CardTitle>
-              <Button variant="outline" size="sm">Add Child</Button>
+              <ParentStudentAssociationDialog 
+                parentId={parent.id} 
+                students={unassociatedStudents} 
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -175,7 +215,12 @@ export default async function ParentDetailPage({ params }: ParentDetailPageProps
                         </div>
                       )}
                       <div>
-                        <p className="font-medium">{child.student.user.firstName} {child.student.user.lastName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{child.student.user.firstName} {child.student.user.lastName}</p>
+                          {child.isPrimary && (
+                            <Badge variant="outline" className="text-xs">Primary</Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">
                           {child.student.enrollments.length > 0 
                             ? `${child.student.enrollments[0].class.name} - ${child.student.enrollments[0].section.name}`
@@ -184,9 +229,18 @@ export default async function ParentDetailPage({ params }: ParentDetailPageProps
                         </p>
                       </div>
                     </div>
-                    <Link href={`/admin/users/students/${child.student.id}`}>
-                      <Button variant="ghost" size="sm">View</Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link href={`/admin/users/students/${child.student.id}`}>
+                        <Button variant="ghost" size="sm">View</Button>
+                      </Link>
+                      <form action={async (formData: FormData) => {
+                        await removeStudentFromParent(formData);
+                      }}>
+                        <input type="hidden" name="parentId" value={parent.id} />
+                        <input type="hidden" name="studentId" value={child.student.id} />
+                        <Button variant="ghost" size="sm" className="text-red-500">Remove</Button>
+                      </form>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -194,7 +248,6 @@ export default async function ParentDetailPage({ params }: ParentDetailPageProps
               <div className="flex flex-col items-center justify-center p-4 text-center">
                 <Users className="h-8 w-8 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500">No children associated with this parent</p>
-                <Button size="sm" variant="outline" className="mt-2">Associate Child</Button>
               </div>
             )}
           </CardContent>

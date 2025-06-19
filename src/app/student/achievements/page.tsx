@@ -1,11 +1,19 @@
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import { Award, Medal, Scroll, Bookmark, Calendar, User } from "lucide-react";
+import { format } from "date-fns";
+import { Award, Medal, Scroll, Calendar, User, Trash2 } from "lucide-react";
+import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { getCurrentUserDetails } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserRole } from "@prisma/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { getStudentAchievements, deleteAchievement } from "@/lib/actions/student-achievement-actions";
+import { CertificateForm } from "@/components/student/certificate-form";
+import { AwardForm } from "@/components/student/award-form";
+import { ExtraCurricularForm } from "@/components/student/extra-curricular-form";
+import { AchievementDialogTrigger } from "@/components/student/achievement-dialog-trigger";
 
 export const metadata: Metadata = {
   title: "Achievements | Student Portal",
@@ -13,15 +21,27 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentAchievementsPage() {
-  const userDetails = await getCurrentUserDetails();
+  // Use direct authentication instead of getCurrentUserDetails
+  const clerkUser = await currentUser();
   
-  if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
   
   const student = await db.student.findUnique({
     where: {
-      userId: userDetails.dbUser.id
+      userId: dbUser.id
     }
   });
 
@@ -29,75 +49,13 @@ export default async function StudentAchievementsPage() {
     redirect("/student");
   }
 
-  // For demonstration purposes, we'll create some mock data
-  // In a real application, you would fetch this from your database
-  const certificates = [
-    {
-      id: "1",
-      title: "Academic Excellence",
-      issueDate: new Date("2023-05-15"),
-      issuedBy: "School Principal",
-      description: "Awarded for outstanding academic performance in the 2022-2023 academic year.",
-      category: "Academic",
-      imageUrl: "/assets/certificates/academic-excellence.png"
-    },
-    {
-      id: "2",
-      title: "Mathematics Olympiad",
-      issueDate: new Date("2023-02-10"),
-      issuedBy: "National Mathematics Society",
-      description: "Silver medal in the Regional Mathematics Olympiad.",
-      category: "Competition",
-      imageUrl: "/assets/certificates/math-olympiad.png"
-    }
-  ];
-  
-  const awards = [
-    {
-      id: "1",
-      title: "Best Student of the Year",
-      awardDate: new Date("2023-04-20"),
-      presenter: "School Board",
-      category: "Academic",
-      description: "Recognized for exceptional academics, leadership, and school involvement."
-    },
-    {
-      id: "2",
-      title: "Sports Champion",
-      awardDate: new Date("2022-11-15"),
-      presenter: "Sports Department",
-      category: "Sports",
-      description: "Outstanding performance in school sports competitions."
-    }
-  ];
-  
-  const extraCurricular = [
-    {
-      id: "1",
-      activity: "School Debate Club",
-      role: "Club President",
-      duration: "2022-2023",
-      achievements: "Led the team to state finals; Organized 5 inter-school events",
-      category: "Leadership"
-    },
-    {
-      id: "2",
-      activity: "Community Service",
-      role: "Volunteer",
-      duration: "2022-2023",
-      achievements: "Completed 50 hours of community service in local orphanage",
-      category: "Service"
-    },
-    {
-      id: "3",
-      activity: "Science Club",
-      role: "Member",
-      duration: "2021-2023",
-      achievements: "Participated in the National Science Fair; Conducted 3 experiments",
-      category: "Academic"
-    }
-  ];
-  
+  const { 
+    certificates, 
+    awards, 
+    extraCurricular,
+    categories
+  } = await getStudentAchievements();
+
   return (
     <div className="container p-6">
       <h1 className="text-2xl font-bold mb-6">My Achievements</h1>
@@ -110,6 +68,13 @@ export default async function StudentAchievementsPage() {
         </TabsList>
         
         <TabsContent value="certificates" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Certificates</h2>
+            <AchievementDialogTrigger title="Add Certificate">
+              <CertificateForm categories={categories.certificate} />
+            </AchievementDialogTrigger>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {certificates.length > 0 ? (
               certificates.map(certificate => (
@@ -127,7 +92,7 @@ export default async function StudentAchievementsPage() {
                       <Badge variant="outline">{certificate.category}</Badge>
                     </div>
                     <CardDescription>
-                      Issued on {certificate.issueDate.toLocaleDateString()}
+                      Issued on {format(new Date(certificate.issueDate), "MMMM d, yyyy")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -139,6 +104,17 @@ export default async function StudentAchievementsPage() {
                       Issued by: {certificate.issuedBy}
                     </p>
                   </CardContent>
+                  <CardFooter className="border-t pt-3 flex justify-end">
+                    <form action={async () => {
+                      "use server";
+                      await deleteAchievement(certificate.id, "certificate");
+                    }}>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </form>
+                  </CardFooter>
                 </Card>
               ))
             ) : (
@@ -146,7 +122,7 @@ export default async function StudentAchievementsPage() {
                 <Scroll className="h-12 w-12 mx-auto text-gray-400" />
                 <h3 className="mt-4 text-lg font-medium">No certificates yet</h3>
                 <p className="text-sm text-gray-500">
-                  Your certificates will appear here when awarded
+                  Your certificates will appear here when added
                 </p>
               </div>
             )}
@@ -154,6 +130,13 @@ export default async function StudentAchievementsPage() {
         </TabsContent>
         
         <TabsContent value="awards">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Awards</h2>
+            <AchievementDialogTrigger title="Add Award">
+              <AwardForm categories={categories.award} />
+            </AchievementDialogTrigger>
+          </div>
+          
           <div className="space-y-6">
             {awards.length > 0 ? (
               awards.map(award => (
@@ -176,7 +159,7 @@ export default async function StudentAchievementsPage() {
                     <div className="flex flex-col sm:flex-row gap-4 text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-2" />
-                        Awarded on {award.awardDate.toLocaleDateString()}
+                        Awarded on {format(new Date(award.awardDate), "MMMM d, yyyy")}
                       </div>
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-2" />
@@ -184,6 +167,17 @@ export default async function StudentAchievementsPage() {
                       </div>
                     </div>
                   </CardContent>
+                  <CardFooter className="border-t pt-3 flex justify-end">
+                    <form action={async () => {
+                      "use server";
+                      await deleteAchievement(award.id, "award");
+                    }}>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </form>
+                  </CardFooter>
                 </Card>
               ))
             ) : (
@@ -191,7 +185,7 @@ export default async function StudentAchievementsPage() {
                 <Award className="h-12 w-12 mx-auto text-gray-400" />
                 <h3 className="mt-4 text-lg font-medium">No awards yet</h3>
                 <p className="text-sm text-gray-500">
-                  Your awards will appear here when received
+                  Your awards will appear here when added
                 </p>
               </div>
             )}
@@ -199,6 +193,13 @@ export default async function StudentAchievementsPage() {
         </TabsContent>
         
         <TabsContent value="extra-curricular">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">Extra-curricular Activities</h2>
+            <AchievementDialogTrigger title="Add Activity">
+              <ExtraCurricularForm categories={categories.extraCurricular} />
+            </AchievementDialogTrigger>
+          </div>
+          
           <div className="space-y-4">
             {extraCurricular.length > 0 ? (
               extraCurricular.map(activity => (
@@ -218,6 +219,17 @@ export default async function StudentAchievementsPage() {
                       {activity.achievements}
                     </p>
                   </CardContent>
+                  <CardFooter className="border-t pt-3 flex justify-end">
+                    <form action={async () => {
+                      "use server";
+                      await deleteAchievement(activity.id, "extraCurricular");
+                    }}>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </form>
+                  </CardFooter>
                 </Card>
               ))
             ) : (

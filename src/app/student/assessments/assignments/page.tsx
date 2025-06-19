@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { db } from "@/lib/db";
-import { getCurrentUserDetails } from "@/lib/auth";
 import { StudentAssignmentList } from "@/components/student/student-assignment-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UploadCloud, CheckCircle, X } from "lucide-react";
+import { currentUser } from "@clerk/nextjs/server";
+import { UserRole } from "@prisma/client";
 
 export const metadata: Metadata = {
   title: "My Assignments | Student Portal",
@@ -12,15 +13,27 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentAssignmentsPage() {
-  const userDetails = await getCurrentUserDetails();
+  // Use direct authentication instead of getCurrentUserDetails
+  const clerkUser = await currentUser();
   
-  if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
   
   const student = await db.student.findUnique({
     where: {
-      userId: userDetails.dbUser.id
+      userId: dbUser.id
     },
     include: {
       enrollments: {
@@ -85,6 +98,15 @@ const subjectIds: string[] = subjectClasses.map((sc: SubjectClass) => sc.subject
     }
   });
 
+  // Before passing assignments to StudentAssignmentList, map subject to only include needed fields
+  const assignmentsWithSubjectName = assignments.map(a => ({
+    ...a,
+    subject: {
+      name: a.subject?.name || "",
+      code: a.subject?.code || ""
+    }
+  }));
+
   // Group assignments by status
 // Define interface for submission structure
 interface AssignmentSubmission {
@@ -97,7 +119,7 @@ interface AssignmentWithSubmissions {
     submissions: AssignmentSubmission[];
 }
 
-const pending = assignments.filter((a: AssignmentWithSubmissions) => 
+const pending = assignmentsWithSubjectName.filter((a: AssignmentWithSubmissions) => 
     a.submissions.length === 0 && new Date(a.dueDate) >= new Date()
 );
   
@@ -108,7 +130,7 @@ interface AssignmentWithSubmission extends AssignmentWithSubmissions {
     }>;
 }
 
-const submitted = assignments.filter((a: AssignmentWithSubmission) => 
+const submitted = assignmentsWithSubjectName.filter((a: AssignmentWithSubmission) => 
     a.submissions.length > 0 && a.submissions[0].status !== "GRADED"
 );
   
@@ -118,7 +140,7 @@ interface AssignmentWithGradedSubmission {
     }>;
 }
 
-const graded = assignments.filter((a: AssignmentWithGradedSubmission) => 
+const graded = assignmentsWithSubjectName.filter((a: AssignmentWithGradedSubmission) => 
     a.submissions.length > 0 && a.submissions[0].status === "GRADED"
 );
   
@@ -128,7 +150,7 @@ interface AssignmentWithDueDate {
     submissions: AssignmentSubmission[];
 }
 
-const overdue = assignments.filter((a: AssignmentWithDueDate) => 
+const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) => 
     a.submissions.length === 0 && new Date(a.dueDate) < new Date()
 );
 

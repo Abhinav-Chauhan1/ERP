@@ -1,97 +1,65 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine
-} from "recharts";
+interface TrendData {
+  month: string;
+  percentage: number;
+}
 
 interface AttendanceTrendChartProps {
-  data: {
-    month: string;
-    percentage: number;
-  }[];
+  data: TrendData[];
 }
 
 export function AttendanceTrendChart({ data }: AttendanceTrendChartProps) {
-  // Function to determine the bar color based on attendance percentage
+  // Find max percentage for scaling
+  const maxPercentage = Math.max(...data.map((d) => d.percentage), 100);
+
+  // Get color based on percentage
   const getBarColor = (percentage: number) => {
-    if (percentage >= 90) return "#22c55e"; // Green
-    if (percentage >= 75) return "#f59e0b"; // Amber
-    return "#ef4444"; // Red
+    if (percentage >= 90) return "#22c55e"; // green
+    if (percentage >= 75) return "#3b82f6"; // blue
+    if (percentage >= 65) return "#f59e0b"; // amber
+    return "#ef4444"; // red
   };
 
-  // Custom tooltip content
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 shadow-md border rounded-md">
-          <p className="font-medium">{label}</p>
-          <p className="text-sm">
-            <span style={{ color: getBarColor(payload[0].value) }}>
-              {payload[0].value}% Attendance
-            </span>
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-  
   return (
-    <div className="w-full h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="month"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis 
-            axisLine={false}
-            tickLine={false}
-            domain={[0, 100]}
-            ticks={[0, 25, 50, 75, 100]}
-            tick={{ fontSize: 12 }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <ReferenceLine y={75} stroke="#f59e0b" strokeDasharray="3 3" />
-          <ReferenceLine y={90} stroke="#22c55e" strokeDasharray="3 3" />
-          <Bar 
-            dataKey="percentage" 
-            name="Attendance"
-            radius={[4, 4, 0, 0]}
-            barSize={30}
-            fill="#6366f1" // Default color
-            fillOpacity={0.9}
-            animationDuration={1000}
-            shape={(props: any) => {
-              const { x, y, width, height, index } = props;
-              return (
-                <rect
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  fill={getBarColor(data[index].percentage)}
-                  rx={4}
-                  ry={4}
-                />
-              );
-            }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="h-64 relative">
+      {/* Y-axis labels */}
+      <div className="absolute inset-y-0 left-0 w-10 flex flex-col justify-between text-xs text-gray-500">
+        <div>100%</div>
+        <div>75%</div>
+        <div>50%</div>
+        <div>25%</div>
+        <div>0%</div>
+      </div>
+
+      {/* Chart area */}
+      <div className="ml-10 h-full relative">
+        {/* Horizontal gridlines */}
+        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+          <div className="border-t border-gray-200 h-0 w-full"></div>
+          <div className="border-t border-gray-200 h-0 w-full"></div>
+          <div className="border-t border-gray-200 h-0 w-full"></div>
+          <div className="border-t border-gray-200 h-0 w-full"></div>
+          <div className="border-t border-gray-200 h-0 w-full"></div>
+        </div>
+
+        {/* Bars */}
+        <div className="flex h-full items-end justify-around">
+          {data.map((item, index) => (
+            <div key={index} className="flex flex-col items-center flex-1">
+              <div
+                className="w-16 rounded-t-md transition-all duration-500"
+                style={{
+                  height: `${(item.percentage / 100) * 100}%`,
+                  backgroundColor: getBarColor(item.percentage),
+                }}
+              ></div>
+              <div className="text-xs font-medium mt-1">{item.month}</div>
+              <div className="text-xs text-gray-500">{item.percentage}%</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

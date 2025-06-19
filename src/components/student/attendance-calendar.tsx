@@ -1,129 +1,173 @@
 "use client";
 
 import { useState } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, CalendarIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWeekend } from "date-fns";
+import { CheckCircle2, XCircle, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
-interface AttendanceRecord {
+interface AttendanceData {
   date: string;
   status: string;
 }
 
 interface AttendanceCalendarProps {
-  attendanceData: AttendanceRecord[];
+  attendanceData: AttendanceData[];
 }
 
 export function AttendanceCalendar({ attendanceData }: AttendanceCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   
-  const nextMonth = () => {
-    setCurrentMonth(addMonths(currentMonth, 1));
-  };
-  
-  const prevMonth = () => {
-    setCurrentMonth(subMonths(currentMonth, 1));
-  };
-  
+  // Generate calendar days
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
   
-  // Get status for a specific day
-  const getDayStatus = (date: Date) => {
-    const formattedDate = format(date, 'yyyy-MM-dd');
-    const record = attendanceData.find(d => d.date === formattedDate);
-    
-    if (!record) return null;
-    
-    return record.status;
-  };
+  // Determine week rows
+  const startDay = monthStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  // Get status icon and color based on attendance status
-  const getStatusIndicator = (status: string | null) => {
-    if (!status) return null;
+  // Get status icon for a date
+  const getStatusIcon = (day: Date) => {
+    if (!isSameMonth(day, currentMonth)) return null;
     
-    switch (status) {
+    const attendance = attendanceData.find(
+      (record) => isSameDay(new Date(record.date), day)
+    );
+    
+    if (!attendance) {
+      // Return null for future dates, show a "no record" icon for past dates
+      return day > new Date() ? null : (
+        <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center">
+          <span className="text-gray-400 text-xs">-</span>
+        </div>
+      );
+    }
+    
+    switch (attendance.status) {
       case "PRESENT":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return (
+          <div className="h-7 w-7 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          </div>
+        );
       case "ABSENT":
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return (
+          <div className="h-7 w-7 rounded-full bg-red-100 flex items-center justify-center">
+            <XCircle className="h-4 w-4 text-red-600" />
+          </div>
+        );
       case "LATE":
-        return <Clock className="h-5 w-5 text-amber-600" />;
+        return (
+          <div className="h-7 w-7 rounded-full bg-amber-100 flex items-center justify-center">
+            <Clock className="h-4 w-4 text-amber-600" />
+          </div>
+        );
       case "LEAVE":
-        return <div className="h-5 w-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">L</div>;
+        return (
+          <Badge className="h-7 w-7 rounded-full flex items-center justify-center bg-blue-100 text-blue-600 hover:bg-blue-100">
+            L
+          </Badge>
+        );
+      case "HALF_DAY":
+        return (
+          <Badge className="h-7 w-7 rounded-full flex items-center justify-center bg-purple-100 text-purple-600 hover:bg-purple-100">
+            H
+          </Badge>
+        );
       default:
-        return null;
+        return (
+          <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center">
+            <span className="text-gray-400 text-xs">?</span>
+          </div>
+        );
     }
   };
   
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Go to previous month
+  const prevMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  
+  // Go to next month
+  const nextMonth = () => {
+    const nextDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    // Only allow going to next month if it's not in the future
+    if (nextDate <= new Date()) {
+      setCurrentMonth(nextDate);
+    }
+  };
+  
+  // Go to current month
+  const currentMonthHandler = () => {
+    setCurrentMonth(new Date());
+  };
   
   return (
-    <div className="calendar w-full">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-medium">{format(currentMonth, "MMMM yyyy")}</h3>
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">
+          {format(currentMonth, 'MMMM yyyy')}
+        </h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={prevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(new Date())}>
-            <CalendarIcon className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={nextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <button
+            onClick={prevMonth}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            &lt;
+          </button>
+          <button
+            onClick={currentMonthHandler}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            Today
+          </button>
+          <button
+            onClick={nextMonth}
+            className="p-2 rounded-md hover:bg-gray-100"
+            disabled={new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1) > new Date()}
+          >
+            &gt;
+          </button>
         </div>
       </div>
       
-      <div className="grid grid-cols-7 gap-2">
-        {weekDays.map(day => (
-          <div key={day} className="text-center font-medium text-sm py-2">
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {/* Weekday headers */}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+          <div key={i} className="h-10 flex items-center justify-center font-medium text-sm">
             {day}
           </div>
         ))}
         
-        {daysInMonth.map((day, i) => {
-          const status = getDayStatus(day);
-          const statusIndicator = getStatusIndicator(status);
+        {/* Empty spaces for days before the first of the month */}
+        {Array.from({ length: startDay }).map((_, i) => (
+          <div key={`empty-${i}`} className="h-14 border rounded-md bg-gray-50"></div>
+        ))}
+        
+        {/* Calendar days */}
+        {calendarDays.map((day, i) => {
+          const isToday = isSameDay(day, new Date());
+          const isWeekendDay = isWeekend(day);
           
           return (
-            <div
+            <div 
               key={i}
               className={cn(
-                "h-24 p-2 border rounded-lg flex flex-col",
-                !isSameMonth(day, currentMonth) && "bg-gray-50 opacity-50",
-                isToday(day) && "border-blue-500",
-                status === "PRESENT" && "bg-green-50",
-                status === "ABSENT" && "bg-red-50",
-                status === "LATE" && "bg-amber-50",
-                status === "LEAVE" && "bg-blue-50",
+                "h-14 border rounded-md flex flex-col items-center justify-center relative",
+                isToday && "border-blue-500 border-2",
+                isWeekendDay && "bg-gray-50"
               )}
             >
-              <div className="flex justify-between items-start">
-                <span className={cn(
-                  "text-sm font-medium",
-                  isToday(day) && "bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center"
-                )}>
-                  {format(day, "d")}
-                </span>
-                {statusIndicator}
+              <span className={cn(
+                "text-sm absolute top-1 right-2",
+                isToday && "font-bold text-blue-600"
+              )}>
+                {format(day, 'd')}
+              </span>
+              <div className="mt-2">
+                {getStatusIcon(day)}
               </div>
-              
-              {status && (
-                <div className="mt-auto">
-                  <span className={cn(
-                    "text-xs px-2 py-1 rounded",
-                    status === "PRESENT" && "bg-green-100 text-green-800",
-                    status === "ABSENT" && "bg-red-100 text-red-800",
-                    status === "LATE" && "bg-amber-100 text-amber-800",
-                    status === "LEAVE" && "bg-blue-100 text-blue-800"
-                  )}>
-                    {status.charAt(0) + status.slice(1).toLowerCase()}
-                  </span>
-                </div>
-              )}
             </div>
           );
         })}

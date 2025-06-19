@@ -1,20 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Calendar, User, CheckCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { registerForEvent } from "@/lib/actions/student-event-actions";
+
+// Registration schema
+const formSchema = z.object({
+  role: z.enum(["ATTENDEE", "PARTICIPANT", "VOLUNTEER"], {
+    required_error: "Please select a role",
+  }),
+  notes: z.string().optional(),
+});
 
 interface RegistrationDialogProps {
   event: {
@@ -29,110 +55,122 @@ interface RegistrationDialogProps {
 }
 
 export function RegistrationDialog({ event, userId, studentId, isOpen }: RegistrationDialogProps) {
-  const router = useRouter();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [additionalInfo, setAdditionalInfo] = useState("");
 
-  const handleRegistration = async () => {
+  // Initialize form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      role: "ATTENDEE",
+      notes: "",
+    },
+  });
+
+  // Handle form submission
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
+
     try {
-      setIsSubmitting(true);
-      
-      const response = await fetch("/api/events/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          eventId: event.id,
-          userId,
-          studentId,
-          role: "ATTENDEE",
-          additionalInfo
-        }),
+      const result = await registerForEvent({
+        eventId: event.id,
+        studentId,
+        role: values.role,
+        notes: values.notes,
       });
-      
-      if (!response.ok) {
-        throw new Error("Registration failed");
+
+      if (result.success) {
+        toast.success(result.message);
+        setOpen(false);
+        form.reset();
+      } else {
+        toast.error(result.message);
       }
-      
-      toast.success("Registration successful!");
-      setIsDialogOpen(false);
-      setAdditionalInfo("");
-      
-      // Refresh the page to show updated registration status
-      router.refresh();
-      
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to register for the event");
+      toast.error("Failed to register for event");
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
+
+  if (!isOpen) {
+    return (
+      <Button disabled className="w-full">
+        Registration Closed
+      </Button>
+    );
+  }
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full" disabled={!isOpen}>
-          {isOpen ? "Register" : "Registration Closed"}
-        </Button>
+        <Button className="w-full">Register Now</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Register for Event</DialogTitle>
-          <DialogDescription>
-            You are registering for <span className="font-medium">{event.title}</span>
-          </DialogDescription>
+          <DialogTitle>Register for {event.title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="flex items-center text-sm">
-            <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-            <span>Event Date: {new Date(event.startDate).toLocaleDateString()}</span>
-          </div>
-          
-          {event.maxParticipants && (
-            <div className="flex items-center text-sm">
-              <User className="h-4 w-4 mr-2 text-gray-500" />
-              <span>Maximum Participants: {event.maxParticipants}</span>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <label htmlFor="additional-info" className="text-sm font-medium">
-              Additional Information (Optional)
-            </label>
-            <Textarea
-              id="additional-info"
-              placeholder="Any additional information you'd like to provide..."
-              value={additionalInfo}
-              onChange={(e) => setAdditionalInfo(e.target.value)}
-              className="resize-none"
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Your Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ATTENDEE">Attendee</SelectItem>
+                      <SelectItem value="PARTICIPANT">Participant</SelectItem>
+                      <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Select how you will participate in this event
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleRegistration} 
-            disabled={isSubmitting}
-            className="ml-2"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Registering...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="mr-2 h-4 w-4" />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Notes (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Any special requirements or information"
+                      className="resize-none h-20"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Let the organizers know if you have any special requirements
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm Registration
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
