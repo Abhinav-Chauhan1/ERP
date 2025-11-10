@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, PlusCircle, Search, Inbox, Send, Archive, 
-  Star, Trash2, MoreHorizontal, MessageSquare, Clock, 
-  User, Paperclip, Reply, Forward, Edit, RefreshCw
+  ChevronLeft, PlusCircle, Search, Inbox, Send, Archive,
+  Trash2, Reply, Forward, Loader2, Mail, MailOpen
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -29,495 +36,673 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
+import { format } from "date-fns";
+
+// Import server actions
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  getMessages,
+  sendMessage,
+  replyToMessage,
+  forwardMessage,
+  deleteMessage,
+  markAsRead,
+  getContacts,
+  getMessageStats,
+} from "@/lib/actions/messageActions";
+
+// Import validation schema
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-
-// Mock data for messages
-const messages = [
-  {
-    id: "m1",
-    subject: "Question about homework assignment",
-    sender: "Emily Johnson",
-    senderRole: "Student",
-    senderAvatar: "EJ",
-    recipients: ["John Smith"],
-    content: "Hello,\n\nI have a question about the math homework assigned yesterday. For problem #5, I'm not sure if we're supposed to use the quadratic formula or factoring. Could you please clarify?\n\nThank you,\nEmily",
-    attachments: [],
-    time: "10:30 AM",
-    date: "Dec 5, 2023",
-    isRead: false,
-    isStarred: false,
-    folder: "inbox"
-  },
-  {
-    id: "m2",
-    subject: "Regarding the upcoming science project",
-    sender: "Michael Brown",
-    senderRole: "Student",
-    senderAvatar: "MB",
-    recipients: ["John Smith"],
-    content: "Dear Teacher,\n\nI wanted to discuss my idea for the upcoming science project. I'm thinking of doing a demonstration on renewable energy sources, specifically solar power. Would this be an appropriate topic?\n\nBest regards,\nMichael",
-    attachments: ["project_outline.pdf"],
-    time: "Yesterday",
-    date: "Dec 4, 2023",
-    isRead: true,
-    isStarred: true,
-    folder: "inbox"
-  },
-  {
-    id: "m3",
-    subject: "Absence notification",
-    sender: "Sophia Martinez",
-    senderRole: "Parent",
-    senderAvatar: "SM",
-    recipients: ["John Smith"],
-    content: "Hello Mr. Smith,\n\nI wanted to inform you that my daughter, Sophia, will be absent tomorrow as we have a doctor's appointment scheduled. She will make up any missed work upon her return.\n\nThank you for your understanding.\n\nRegards,\nMrs. Martinez",
-    attachments: ["doctors_note.pdf"],
-    time: "Yesterday",
-    date: "Dec 4, 2023",
-    isRead: true,
-    isStarred: false,
-    folder: "inbox"
-  },
-  {
-    id: "m4",
-    subject: "Request for parent-teacher meeting",
-    sender: "Robert Wilson",
-    senderRole: "Parent",
-    senderAvatar: "RW",
-    recipients: ["John Smith"],
-    content: "Dear Mr. Smith,\n\nI would like to schedule a meeting to discuss my son's progress in your class. I am available any day next week after 4:00 PM. Please let me know what works for you.\n\nBest regards,\nRobert Wilson",
-    attachments: [],
-    time: "Dec 3",
-    date: "Dec 3, 2023",
-    isRead: true,
-    isStarred: false,
-    folder: "inbox"
-  },
-  {
-    id: "m5",
-    subject: "Re: Grading policy question",
-    sender: "Principal Stevens",
-    senderRole: "Admin",
-    senderAvatar: "PS",
-    recipients: ["Jane Doe", "John Smith"],
-    content: "John,\n\nThank you for your inquiry about the grading policy. As discussed in our last staff meeting, we are maintaining the same policy as last semester. If you have any specific concerns, feel free to stop by my office.\n\nBest,\nPrincipal Stevens",
-    attachments: ["grading_policy.pdf"],
-    time: "Dec 2",
-    date: "Dec 2, 2023",
-    isRead: true,
-    isStarred: true,
-    folder: "inbox"
-  },
-  {
-    id: "s1",
-    subject: "Classroom supplies request",
-    sender: "John Smith",
-    senderRole: "Teacher",
-    senderAvatar: "JS",
-    recipients: ["Sarah Thompson"],
-    content: "Dear Ms. Thompson,\n\nI would like to request additional supplies for my classroom. We are running low on whiteboard markers and construction paper. Could these be provided by the end of the week?\n\nThank you,\nJohn Smith",
-    attachments: [],
-    time: "9:15 AM",
-    date: "Dec 5, 2023",
-    isRead: true,
-    isStarred: false,
-    folder: "sent"
-  },
-  {
-    id: "s2",
-    subject: "Field trip permission forms",
-    sender: "John Smith",
-    senderRole: "Teacher",
-    senderAvatar: "JS",
-    recipients: ["All Grade 10 Parents"],
-    content: "Dear Parents,\n\nThis is a reminder that permission forms for the upcoming science museum field trip are due this Friday. Please ensure your child returns the signed form to me by then.\n\nBest regards,\nJohn Smith",
-    attachments: ["permission_form.pdf"],
-    time: "Yesterday",
-    date: "Dec 4, 2023",
-    isRead: true,
-    isStarred: false,
-    folder: "sent"
-  },
-];
-
-// Mock data for users/contacts
-const contacts = [
-  { id: "u1", name: "Emily Johnson", role: "Student", avatar: "EJ" },
-  { id: "u2", name: "Michael Brown", role: "Student", avatar: "MB" },
-  { id: "u3", name: "Sophia Martinez", role: "Student", avatar: "SM" },
-  { id: "u4", name: "Robert Wilson", role: "Parent", avatar: "RW" },
-  { id: "u5", name: "Principal Stevens", role: "Admin", avatar: "PS" },
-  { id: "u6", name: "Sarah Thompson", role: "Admin", avatar: "ST" },
-  { id: "u7", name: "David Clark", role: "Teacher", avatar: "DC" },
-  { id: "u8", name: "Jennifer Adams", role: "Teacher", avatar: "JA" },
-];
-
-// Message folder types with counts
-const messageFolders = [
-  { id: "inbox", name: "Inbox", icon: <Inbox className="h-4 w-4" />, count: 5, badge: 2 },
-  { id: "sent", name: "Sent", icon: <Send className="h-4 w-4" />, count: 2 },
-  { id: "starred", name: "Starred", icon: <Star className="h-4 w-4" />, count: 2 },
-  { id: "archived", name: "Archived", icon: <Archive className="h-4 w-4" />, count: 0 },
-  { id: "trash", name: "Trash", icon: <Trash2 className="h-4 w-4" />, count: 0 },
-];
+  messageSchema,
+  MessageFormValues,
+} from "@/lib/schemaValidation/messageSchemaValidation";
 
 export default function MessagesPage() {
-  const [activeFolder, setActiveFolder] = useState("inbox");
+  // State management
+  const [messages, setMessages] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
-  const [composeDialog, setComposeDialog] = useState(false);
-  const [recipient, setRecipient] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<"inbox" | "sent" | "archive">("inbox");
+  const [composeDialogOpen, setComposeDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
 
-  // Filter messages based on active folder and search term
-  const filteredMessages = messages.filter(message => {
-    const matchesFolder = message.folder === activeFolder || 
-                         (activeFolder === "starred" && message.isStarred);
-    
-    const matchesSearch = message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         message.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         message.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesFolder && matchesSearch;
+  // Initialize form
+  const form = useForm<MessageFormValues>({
+    resolver: zodResolver(messageSchema),
+    defaultValues: {
+      recipientId: "",
+      subject: "",
+      content: "",
+      attachments: "",
+    },
   });
 
-  // Get currently selected message details
-  const currentMessage = messages.find(m => m.id === selectedMessage);
+  const replyForm = useForm({
+    defaultValues: {
+      content: "",
+    },
+  });
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  };
+  const forwardForm = useForm({
+    defaultValues: {
+      recipientId: "",
+    },
+  });
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, [activeFolder]);
+
+  async function fetchAllData() {
+    setLoading(true);
+    try {
+      const [messagesResult, contactsResult, statsResult] = await Promise.all([
+        getMessages(activeFolder),
+        getContacts(),
+        getMessageStats(),
+      ]);
+
+      if (messagesResult.success) setMessages(messagesResult.data || []);
+      if (contactsResult.success) setContacts(contactsResult.data || []);
+      if (statsResult.success) setStats(statsResult.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Filter messages
+  const filteredMessages = messages.filter((message) => {
+    const searchLower = searchTerm.toLowerCase();
+    const senderName = `${message.sender?.firstName} ${message.sender?.lastName}`.toLowerCase();
+    const recipientName = `${message.recipient?.firstName} ${message.recipient?.lastName}`.toLowerCase();
+    const subject = message.subject?.toLowerCase() || "";
+    const content = message.content?.toLowerCase() || "";
+
+    return (
+      senderName.includes(searchLower) ||
+      recipientName.includes(searchLower) ||
+      subject.includes(searchLower) ||
+      content.includes(searchLower)
+    );
+  });
+
+  // Handle compose message
+  function handleComposeMessage() {
+    form.reset({
+      recipientId: "",
+      subject: "",
+      content: "",
+      attachments: "",
+    });
+    setRecipientSearch("");
+    setShowRecipientDropdown(false);
+    setComposeDialogOpen(true);
+  }
+
+  // Handle view message
+  async function handleViewMessage(message: any) {
+    setSelectedMessage(message);
+    setViewDialogOpen(true);
+
+    // Mark as read if it's in inbox and unread
+    if (activeFolder === "inbox" && !message.isRead) {
+      await markAsRead(message.id);
+      fetchAllData();
+    }
+  }
+
+  // Handle reply
+  function handleReply(message: any) {
+    setSelectedMessage(message);
+    replyForm.reset({ content: "" });
+    setReplyDialogOpen(true);
+  }
+
+  // Handle forward
+  function handleForward(message: any) {
+    setSelectedMessage(message);
+    forwardForm.reset({ recipientId: "" });
+    setForwardDialogOpen(true);
+  }
+
+  // Handle delete
+  function handleDelete(id: string) {
+    setSelectedMessageId(id);
+    setDeleteDialogOpen(true);
+  }
+
+  // Submit compose message
+  async function onSubmitMessage(values: MessageFormValues) {
+    try {
+      const result = await sendMessage(values);
+
+      if (result.success) {
+        toast.success("Message sent successfully");
+        setComposeDialogOpen(false);
+        form.reset();
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to send message");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Submit reply
+  async function onSubmitReply(values: any) {
+    if (!selectedMessage) return;
+
+    try {
+      const result = await replyToMessage(selectedMessage.id, values.content);
+
+      if (result.success) {
+        toast.success("Reply sent successfully");
+        setReplyDialogOpen(false);
+        setViewDialogOpen(false);
+        replyForm.reset();
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to send reply");
+      }
+    } catch (error) {
+      console.error("Error sending reply:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Submit forward
+  async function onSubmitForward(values: any) {
+    if (!selectedMessage) return;
+
+    try {
+      const result = await forwardMessage(selectedMessage.id, values.recipientId);
+
+      if (result.success) {
+        toast.success("Message forwarded successfully");
+        setForwardDialogOpen(false);
+        setViewDialogOpen(false);
+        forwardForm.reset();
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to forward message");
+      }
+    } catch (error) {
+      console.error("Error forwarding message:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Confirm delete
+  async function confirmDelete() {
+    if (!selectedMessageId) return;
+
+    try {
+      const result = await deleteMessage(selectedMessageId);
+
+      if (result.success) {
+        toast.success("Message deleted successfully");
+        setDeleteDialogOpen(false);
+        setSelectedMessageId(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to delete message");
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/admin/communications">
+          <Link href="/admin/communication">
             <Button variant="ghost" size="sm">
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
+              Back to Communication
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
         </div>
-        <Dialog open={composeDialog} onOpenChange={setComposeDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Compose Message
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[625px]">
-            <DialogHeader>
-              <DialogTitle>Compose New Message</DialogTitle>
-              <DialogDescription>
-                Send a direct message to users in the system
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">To</label>
-                <Select value={recipient} onValueChange={setRecipient}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select recipient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map(contact => (
-                      <SelectItem key={contact.id} value={contact.id}>
-                        {contact.name} ({contact.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Subject</label>
-                <Input placeholder="Enter message subject" />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Message</label>
-                <Textarea 
-                  placeholder="Type your message here" 
-                  className="min-h-[200px]" 
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Attachments</label>
-                <Input type="file" multiple />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setComposeDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setComposeDialog(false)}>
-                <Send className="mr-2 h-4 w-4" /> Send Message
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleComposeMessage}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Compose Message
+        </Button>
       </div>
 
-      <div className="grid grid-cols-12 gap-4 h-[calc(100vh-10rem)]">
-        {/* Sidebar */}
-        <div className="col-span-12 md:col-span-3 flex flex-col">
-          <Card className="flex-1">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">Folders</CardTitle>
-                <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                {messageFolders.map(folder => (
-                  <Button
-                    key={folder.id}
-                    variant={activeFolder === folder.id ? "secondary" : "ghost"}
-                    className="justify-start w-full"
-                    onClick={() => setActiveFolder(folder.id)}
-                  >
-                    <div className="flex items-center w-full">
-                      <div className="mr-2">{folder.icon}</div>
-                      <span>{folder.name}</span>
-                      <div className="ml-auto flex items-center">
-                        {folder.badge && folder.badge > 0 && (
-                          <Badge variant="destructive" className="rounded-full px-1 min-w-[20px] h-5 flex justify-center items-center">
-                            {folder.badge}
-                          </Badge>
-                        )}
-                        {!folder.badge && folder.count > 0 && (
-                          <span className="text-xs text-gray-500">{folder.count}</span>
-                        )}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-              
-              <div className="mt-6">
-                <p className="text-sm font-medium mb-2">Labels</p>
-                <div className="space-y-1">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                    <span className="text-sm">Students</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                    <span className="text-sm">Parents</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                    <span className="text-sm">Administration</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
-                    <span className="text-sm">Teachers</span>
-                  </div>
+      {/* Statistics Cards */}
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Inbox</p>
+                  <p className="text-2xl font-bold">{stats.totalReceived}</p>
                 </div>
+                <Inbox className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Unread</p>
+                  <p className="text-2xl font-bold">{stats.unreadCount}</p>
+                </div>
+                <Mail className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Sent</p>
+                  <p className="text-2xl font-bold">{stats.totalSent}</p>
+                </div>
+                <Send className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
         </div>
+      )}
 
-        {/* Message list */}
-        <div className="col-span-12 md:col-span-9 lg:col-span-3 flex flex-col">
-          <Card className="flex-1">
-            <CardHeader className="pb-2">
-              <div className="flex flex-col space-y-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">{
-                    activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)
-                  }</CardTitle>
+      {/* Messages Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Your Messages</CardTitle>
+              <CardDescription>
+                Send and receive messages with other users
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Search and Tabs */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                type="search"
+                placeholder="Search messages..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Tabs value={activeFolder} onValueChange={(v) => setActiveFolder(v as any)} className="w-full md:w-auto">
+              <TabsList>
+                <TabsTrigger value="inbox">
+                  <Inbox className="h-4 w-4 mr-1" />
+                  Inbox
+                </TabsTrigger>
+                <TabsTrigger value="sent">
+                  <Send className="h-4 w-4 mr-1" />
+                  Sent
+                </TabsTrigger>
+                <TabsTrigger value="archive">
+                  <Archive className="h-4 w-4 mr-1" />
+                  Archive
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Messages List */}
+          {filteredMessages.length === 0 ? (
+            <div className="text-center py-10">
+              <Mail className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-lg font-medium mb-1">No messages found</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {searchTerm
+                  ? "Try adjusting your search"
+                  : activeFolder === "inbox"
+                  ? "Your inbox is empty"
+                  : activeFolder === "sent"
+                  ? "You haven't sent any messages yet"
+                  : "No archived messages"}
+              </p>
+              {activeFolder === "inbox" && (
+                <Button onClick={handleComposeMessage}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Compose Message
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
+                    !message.isRead && activeFolder === "inbox" ? "bg-blue-50 border-blue-200" : ""
+                  }`}
+                  onClick={() => handleViewMessage(message)}
+                >
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback>
+                      {activeFolder === "inbox"
+                        ? `${message.sender?.firstName?.[0]}${message.sender?.lastName?.[0]}`
+                        : `${message.recipient?.firstName?.[0]}${message.recipient?.lastName?.[0]}`}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className={`font-medium ${!message.isRead && activeFolder === "inbox" ? "font-bold" : ""}`}>
+                        {activeFolder === "inbox"
+                          ? `${message.sender?.firstName} ${message.sender?.lastName}`
+                          : `${message.recipient?.firstName} ${message.recipient?.lastName}`}
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(message.createdAt), "MMM dd, h:mm a")}
+                      </span>
+                    </div>
+                    {message.subject && (
+                      <p className={`text-sm mb-1 ${!message.isRead && activeFolder === "inbox" ? "font-semibold" : ""}`}>
+                        {message.subject}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {message.content}
+                    </p>
+                  </div>
+                  {!message.isRead && activeFolder === "inbox" && (
+                    <Badge variant="default" className="ml-2">New</Badge>
+                  )}
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    type="search"
-                    placeholder="Search messages..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="h-[calc(100vh-15rem)] overflow-y-auto pb-6">
-              {filteredMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <MessageSquare className="h-10 w-10 text-gray-300 mb-2" />
-                  <p className="text-sm font-medium">No messages found</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {searchTerm ? "Try a different search term" : `Your ${activeFolder} is empty`}
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Compose Message Dialog */}
+      <Dialog open={composeDialogOpen} onOpenChange={setComposeDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Compose Message</DialogTitle>
+            <DialogDescription>Send a message to another user</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form 
+              onSubmit={form.handleSubmit(onSubmitMessage)} 
+              className="space-y-4"
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (!target.closest('.recipient-search-container')) {
+                  setShowRecipientDropdown(false);
+                }
+              }}
+            >
+              <FormField
+                control={form.control}
+                name="recipientId"
+                render={({ field }) => {
+                  const selectedContact = contacts.find(c => c.id === field.value);
+                  const filteredContacts = contacts.filter(contact =>
+                    `${contact.firstName} ${contact.lastName} ${contact.role}`
+                      .toLowerCase()
+                      .includes(recipientSearch.toLowerCase())
+                  );
+
+                  return (
+                    <FormItem>
+                      <FormLabel>To</FormLabel>
+                      <FormControl>
+                        <div className="relative recipient-search-container">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            placeholder="Search for a recipient..."
+                            className="pl-9"
+                            value={selectedContact ? `${selectedContact.firstName} ${selectedContact.lastName} (${selectedContact.role})` : recipientSearch}
+                            onChange={(e) => {
+                              setRecipientSearch(e.target.value);
+                              setShowRecipientDropdown(true);
+                              if (field.value) {
+                                field.onChange("");
+                              }
+                            }}
+                            onFocus={() => setShowRecipientDropdown(true)}
+                          />
+                          {showRecipientDropdown && filteredContacts.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                              {filteredContacts.map((contact) => (
+                                <div
+                                  key={contact.id}
+                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                  onClick={() => {
+                                    field.onChange(contact.id);
+                                    setRecipientSearch("");
+                                    setShowRecipientDropdown(false);
+                                  }}
+                                >
+                                  <div className="font-medium">
+                                    {contact.firstName} {contact.lastName}
+                                  </div>
+                                  <div className="text-xs text-gray-500">{contact.role}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Message subject" {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Type your message here..."
+                        className="min-h-[150px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setComposeDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Message
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Message Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedMessage?.subject || "Message"}</DialogTitle>
+          </DialogHeader>
+          {selectedMessage && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>
+                    {selectedMessage.sender?.firstName?.[0]}
+                    {selectedMessage.sender?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">
+                    {selectedMessage.sender?.firstName} {selectedMessage.sender?.lastName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(selectedMessage.createdAt), "MMM dd, yyyy 'at' h:mm a")}
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredMessages.map((message) => (
-                    <div 
-                      key={message.id}
-                      className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
-                        selectedMessage === message.id ? 'bg-gray-50 border-blue-200' : ''
-                      } ${!message.isRead && activeFolder === "inbox" ? 'border-l-4 border-l-blue-500' : ''}`}
-                      onClick={() => setSelectedMessage(message.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{message.senderAvatar}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className={`font-medium text-sm ${!message.isRead && activeFolder === "inbox" ? 'text-black' : ''}`}>
-                              {message.sender}
-                            </p>
-                            <p className={`text-sm truncate ${!message.isRead && activeFolder === "inbox" ? 'font-medium' : ''}`}>
-                              {message.subject}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs text-gray-500">{message.time}</span>
-                          <div className="flex items-center mt-1">
-                            {message.attachments.length > 0 && (
-                              <Paperclip className="h-3 w-3 text-gray-400 mr-1" />
-                            )}
-                            {message.isStarred && (
-                              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1 truncate">
-                        {message.content.split('\n')[0]}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Message detail */}
-        <div className="col-span-12 lg:col-span-6 flex flex-col">
-          <Card className="flex-1">
-            {currentMessage ? (
-              <>
-                <CardHeader className="pb-2 border-b">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-xl">{currentMessage.subject}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <Clock className="h-3 w-3" /> {currentMessage.date} at {currentMessage.time}
-                      </CardDescription>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Reply className="h-4 w-4 mr-2" /> Reply
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Forward className="h-4 w-4 mr-2" /> Forward
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Star className="h-4 w-4 mr-2" /> {currentMessage.isStarred ? 'Unstar' : 'Star'}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Archive className="h-4 w-4 mr-2" /> Archive
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4 h-[calc(100vh-15rem)] overflow-y-auto pb-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>{currentMessage.senderAvatar}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{currentMessage.sender}</p>
-                        <Badge variant="outline">{currentMessage.senderRole}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        To: {currentMessage.recipients.join(", ")}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 whitespace-pre-line">
-                    {currentMessage.content}
-                  </div>
-                  
-                  {currentMessage.attachments.length > 0 && (
-                    <div className="mt-6">
-                      <p className="text-sm font-medium mb-2">Attachments:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {currentMessage.attachments.map((attachment, index) => (
-                          <div key={index} className="flex items-center p-2 border rounded-lg">
-                            <Paperclip className="h-4 w-4 mr-2 text-blue-500" />
-                            <span className="text-sm">{attachment}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="mt-8 pt-4 border-t">
-                    <div className="flex gap-2">
-                      <Button>
-                        <Reply className="h-4 w-4 mr-2" /> Reply
-                      </Button>
-                      <Button variant="outline">
-                        <Forward className="h-4 w-4 mr-2" /> Forward
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                <MessageSquare className="h-16 w-16 text-gray-200 mb-4" />
-                <h3 className="text-xl font-medium mb-2">No message selected</h3>
-                <p className="text-gray-500 mb-4 max-w-md">
-                  Select a message from the list to view its contents, or create a new message.
-                </p>
-                <Button onClick={() => setComposeDialog(true)}>
-                  <Edit className="h-4 w-4 mr-2" /> Compose New Message
-                </Button>
               </div>
+              <div className="prose prose-sm max-w-none">
+                <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+              Close
+            </Button>
+            {activeFolder === "inbox" && (
+              <Button onClick={() => {
+                setViewDialogOpen(false);
+                handleReply(selectedMessage);
+              }}>
+                <Reply className="mr-2 h-4 w-4" />
+                Reply
+              </Button>
             )}
-          </Card>
-        </div>
-      </div>
+            <Button variant="outline" onClick={() => {
+              setViewDialogOpen(false);
+              handleForward(selectedMessage);
+            }}>
+              <Forward className="mr-2 h-4 w-4" />
+              Forward
+            </Button>
+            <Button variant="destructive" onClick={() => {
+              setViewDialogOpen(false);
+              handleDelete(selectedMessage.id);
+            }}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reply Dialog */}
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reply to Message</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={replyForm.handleSubmit(onSubmitReply)} className="space-y-4">
+            <Textarea
+              placeholder="Type your reply..."
+              className="min-h-[150px]"
+              {...replyForm.register("content")}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setReplyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                <Reply className="mr-2 h-4 w-4" />
+                Send Reply
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forward Dialog */}
+      <Dialog open={forwardDialogOpen} onOpenChange={setForwardDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Forward Message</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={forwardForm.handleSubmit(onSubmitForward)} className="space-y-4">
+            <Select {...forwardForm.register("recipientId")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select recipient" />
+              </SelectTrigger>
+              <SelectContent>
+                {contacts.map((contact) => (
+                  <SelectItem key={contact.id} value={contact.id}>
+                    {contact.firstName} {contact.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setForwardDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                <Forward className="mr-2 h-4 w-4" />
+                Forward
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Message</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this message? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -47,14 +47,18 @@ export function PasswordChangeForm({ userId }: PasswordChangeFormProps) {
     setIsLoading(true);
     
     try {
-      await changePassword({
+      const result = await changePassword({
         userId,
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       });
       
-      toast.success("Password changed successfully");
-      reset();
+      if (result.success) {
+        toast.success("Password changed successfully");
+        reset();
+      } else {
+        toast.error(result.error || "Failed to change password");
+      }
     } catch (error) {
       toast.error("Failed to change password");
       console.error(error);

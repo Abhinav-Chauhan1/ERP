@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +39,16 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  getNotifications,
+  createNotification,
+  deleteNotification,
+  getNotificationStats,
+  getUsersForNotifications,
+} from "@/lib/actions/notificationActions";
 
-// Mock data for notifications
-const notifications = [
+// Mock data for notifications (fallback)
+const mockNotifications = [
   {
     id: "n1",
     title: "Exam Results Published",
@@ -140,6 +148,7 @@ const userSegments = [
 ];
 
 export default function NotificationsPage() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [audienceFilter, setAudienceFilter] = useState("all");
@@ -148,6 +157,148 @@ export default function NotificationsPage() {
   const [viewNotificationDialog, setViewNotificationDialog] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: "",
+    message: "",
+    type: "INFO",
+    recipientRole: "ALL",
+    link: "",
+  });
+
+  // Load notifications
+  useEffect(() => {
+    loadNotifications();
+    loadUsers();
+    loadStats();
+  }, [typeFilter, audienceFilter]);
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      if (typeFilter !== "all") filters.type = typeFilter;
+      if (audienceFilter !== "all") filters.recipientRole = audienceFilter.toUpperCase();
+
+      const result = await getNotifications(filters);
+      if (result.success && result.data) {
+        setNotifications(result.data);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to load notifications",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const result = await getUsersForNotifications();
+      if (result.success && result.data) {
+        setUsers(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading users:", error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await getNotificationStats();
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const handleCreateNotification = async () => {
+    try {
+      if (!formData.title || !formData.message) {
+        toast({
+          title: "Validation Error",
+          description: "Title and message are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await createNotification(formData);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Notification sent successfully",
+        });
+        setCreateNotificationDialog(false);
+        setFormData({
+          title: "",
+          message: "",
+          type: "INFO",
+          recipientRole: "ALL",
+          link: "",
+        });
+        loadNotifications();
+        loadStats();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to send notification",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send notification",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteNotification = async (id: string) => {
+    try {
+      const result = await deleteNotification(id);
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Notification deleted successfully",
+        });
+        loadNotifications();
+        loadStats();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete notification",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Filter notifications based on search, type, audience, and tab
   const filteredNotifications = notifications.filter(notification => {
@@ -174,11 +325,11 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    await loadNotifications();
+    await loadStats();
+    setRefreshing(false);
   };
 
   const getTypeIcon = (type: string) => {
@@ -239,36 +390,49 @@ export default function NotificationsPage() {
             <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Title</label>
-                <Input placeholder="Notification title" />
+                <Input 
+                  placeholder="Notification title" 
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Message</label>
                 <Textarea 
                   placeholder="Enter notification message" 
-                  className="min-h-[100px]" 
+                  className="min-h-[100px]"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Recipients</label>
-                  <Select>
+                  <Select 
+                    value={formData.recipientRole} 
+                    onValueChange={(value) => setFormData({ ...formData, recipientRole: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select recipients" />
                     </SelectTrigger>
                     <SelectContent>
-                      {userSegments.map(segment => (
-                        <SelectItem key={segment.id} value={segment.id}>
-                          {segment.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="ALL">All Users</SelectItem>
+                      <SelectItem value="STUDENT">All Students</SelectItem>
+                      <SelectItem value="TEACHER">All Teachers</SelectItem>
+                      <SelectItem value="PARENT">All Parents</SelectItem>
+                      <SelectItem value="ADMIN">Administrators</SelectItem>
+                      <SelectItem value="STAFF">Staff Members</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Type</label>
-                  <Select>
+                  <Select 
+                    value={formData.type} 
+                    onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -284,7 +448,11 @@ export default function NotificationsPage() {
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Link (Optional)</label>
-                <Input placeholder="e.g., /admin/assessment/results" />
+                <Input 
+                  placeholder="e.g., /admin/assessment/results" 
+                  value={formData.link}
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                />
                 <p className="text-xs text-gray-500">
                   Users will be directed to this link when they click on the notification
                 </p>
@@ -304,7 +472,7 @@ export default function NotificationsPage() {
               <Button variant="outline" onClick={() => setCreateNotificationDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setCreateNotificationDialog(false)}>
+              <Button onClick={handleCreateNotification}>
                 <Send className="mr-2 h-4 w-4" /> Send Notification
               </Button>
             </DialogFooter>
@@ -389,8 +557,13 @@ export default function NotificationsPage() {
             </TabsList>
             
             <div className="mt-4">
-              <div className="rounded-md border">
-                {filteredNotifications.length > 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  {filteredNotifications.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -423,10 +596,10 @@ export default function NotificationsPage() {
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center gap-1">
                                 <Users className="h-3.5 w-3.5 text-gray-500" />
-                                <span>{notification.sentTo}</span>
+                                <span>{notification.recipientRole || "ALL"}</span>
                               </div>
                               <div className="text-xs text-gray-500">
-                                {notification.sentToCount} recipients
+                                {notification.sender ? `By ${notification.sender.firstName} ${notification.sender.lastName}` : "System"}
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle">
@@ -441,14 +614,8 @@ export default function NotificationsPage() {
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle">
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                <div 
-                                  className="bg-blue-600 h-1.5 rounded-full" 
-                                  style={{ width: `${(notification.readCount / notification.sentToCount) * 100}%` }}
-                                ></div>
-                              </div>
                               <div className="text-xs text-gray-500">
-                                {notification.readCount} of {notification.sentToCount} read ({Math.round((notification.readCount / notification.sentToCount) * 100)}%)
+                                Sent to {notification.recipientRole || "ALL"}
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle text-right">
@@ -475,7 +642,10 @@ export default function NotificationsPage() {
                                     Duplicate
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-red-600">
+                                  <DropdownMenuItem 
+                                    className="text-red-600"
+                                    onClick={() => handleDeleteNotification(notification.id)}
+                                  >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
@@ -502,7 +672,8 @@ export default function NotificationsPage() {
                     </Button>
                   </div>
                 )}
-              </div>
+                </div>
+              )}
             </div>
           </Tabs>
         </CardContent>
@@ -542,26 +713,29 @@ export default function NotificationsPage() {
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <p className="text-sm text-gray-500">Sent By</p>
-                  <p className="font-medium">{selectedNotification.createdBy}</p>
-                  <p className="text-xs text-gray-500">{selectedNotification.creatorRole}</p>
+                  <p className="font-medium">
+                    {selectedNotification.sender 
+                      ? `${selectedNotification.sender.firstName} ${selectedNotification.sender.lastName}`
+                      : "System"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {selectedNotification.sender?.role || "System"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Sent To</p>
-                  <p className="font-medium">{selectedNotification.sentTo}</p>
-                  <p className="text-xs text-gray-500">{selectedNotification.sentToCount} recipients</p>
+                  <p className="font-medium">{selectedNotification.recipientRole || "ALL"}</p>
+                  <p className="text-xs text-gray-500">Role-based notification</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Delivery Rate</p>
-                  <p className="font-medium">{selectedNotification.deliveryRate}%</p>
+                  <p className="text-sm text-gray-500">Type</p>
+                  <Badge className={getTypeColor(selectedNotification.type)}>
+                    {selectedNotification.type}
+                  </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Read Status</p>
-                  <p className="font-medium">
-                    {selectedNotification.readCount} out of {selectedNotification.sentToCount} read
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {Math.round((selectedNotification.readCount / selectedNotification.sentToCount) * 100)}% read rate
-                  </p>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium">Delivered</p>
                 </div>
               </div>
               

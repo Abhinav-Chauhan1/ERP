@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   ChevronLeft, PlusCircle, Search, Filter,
   BadgeDollarSign, User, CheckCircle, XCircle, 
@@ -51,165 +52,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Chart } from "@/components/dashboard/chart";
 import { Progress } from "@/components/ui/progress";
+import {
+  getScholarships,
+  createScholarship,
+  updateScholarship,
+  deleteScholarship,
+  getScholarshipRecipients,
+  awardScholarship,
+  removeRecipient,
+  getStudentsForScholarship,
+  getScholarshipStats,
+} from "@/lib/actions/scholarshipActions";
+import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 
-// Mock data for scholarship programs
-const scholarshipPrograms = [
-  {
-    id: "sp1",
-    name: "Academic Excellence Scholarship",
-    description: "For students with outstanding academic achievements",
-    amount: 10000,
-    percentage: null,
-    duration: "Full Academic Year",
-    criteria: "Minimum GPA of 3.75",
-    fundedBy: "School Trust",
-    recipientCount: 15,
-    createdAt: "2023-06-15",
-  },
-  {
-    id: "sp2",
-    name: "Sports Merit Scholarship",
-    description: "For students with exceptional sports achievements",
-    amount: 8000,
-    percentage: null,
-    duration: "Full Academic Year",
-    criteria: "National or state-level sports achievement",
-    fundedBy: "Sports Department",
-    recipientCount: 8,
-    createdAt: "2023-06-20",
-  },
-  {
-    id: "sp3",
-    name: "Need-Based Financial Aid",
-    description: "For students from economically disadvantaged backgrounds",
-    amount: null,
-    percentage: 50,
-    duration: "Full Academic Year",
-    criteria: "Family income below threshold",
-    fundedBy: "Alumni Association",
-    recipientCount: 25,
-    createdAt: "2023-06-10",
-  },
-  {
-    id: "sp4",
-    name: "Arts and Culture Scholarship",
-    description: "For students excelling in arts, music, or cultural activities",
-    amount: 5000,
-    percentage: null,
-    duration: "Full Academic Year",
-    criteria: "Exceptional achievement in arts or cultural activities",
-    fundedBy: "Cultural Foundation",
-    recipientCount: 6,
-    createdAt: "2023-07-05",
-  },
-];
 
-// Mock data for scholarship recipients
-const scholarshipRecipients = [
-  {
-    id: "sr1",
-    scholarshipId: "sp1",
-    scholarshipName: "Academic Excellence Scholarship",
-    studentId: "student1",
-    studentName: "Emily Johnson",
-    grade: "Grade 10-A",
-    awardDate: "2023-08-01",
-    endDate: "2024-05-31",
-    amount: 10000,
-    status: "ACTIVE",
-    academicPerformance: 95.2,
-  },
-  {
-    id: "sr2",
-    scholarshipId: "sp2",
-    scholarshipName: "Sports Merit Scholarship",
-    studentId: "student2",
-    studentName: "Michael Brown",
-    grade: "Grade 11-B",
-    awardDate: "2023-08-01",
-    endDate: "2024-05-31",
-    amount: 8000,
-    status: "ACTIVE",
-    academicPerformance: 85.5,
-  },
-  {
-    id: "sr3",
-    scholarshipId: "sp3",
-    scholarshipName: "Need-Based Financial Aid",
-    studentId: "student3",
-    studentName: "Sophia Martinez",
-    grade: "Grade 9-C",
-    awardDate: "2023-08-01",
-    endDate: "2024-05-31",
-    amount: 12500,
-    status: "ACTIVE",
-    academicPerformance: 78.3,
-  },
-  {
-    id: "sr4",
-    scholarshipId: "sp4",
-    scholarshipName: "Arts and Culture Scholarship",
-    studentId: "student4",
-    studentName: "David Wilson",
-    grade: "Grade 11-A",
-    awardDate: "2023-08-01",
-    endDate: "2024-05-31",
-    amount: 5000,
-    status: "ACTIVE",
-    academicPerformance: 88.7,
-  },
-  {
-    id: "sr5",
-    scholarshipId: "sp1",
-    scholarshipName: "Academic Excellence Scholarship",
-    studentId: "student5",
-    studentName: "Emma Davis",
-    grade: "Grade 12-B",
-    awardDate: "2023-08-01",
-    endDate: "2024-05-31",
-    amount: 10000,
-    status: "ACTIVE",
-    academicPerformance: 97.8,
-  },
-];
-
-// Mock data for students
-const students = [
-  { id: "student1", name: "Emily Johnson", grade: "Grade 10-A", averageGrade: 95.2, admissionId: "ADM20210001" },
-  { id: "student2", name: "Michael Brown", grade: "Grade 11-B", averageGrade: 85.5, admissionId: "ADM20200015" },
-  { id: "student3", name: "Sophia Martinez", grade: "Grade 9-C", averageGrade: 78.3, admissionId: "ADM20220008" },
-  { id: "student4", name: "David Wilson", grade: "Grade 11-A", averageGrade: 88.7, admissionId: "ADM20200022" },
-  { id: "student5", name: "Emma Davis", grade: "Grade 12-B", averageGrade: 97.8, admissionId: "ADM20190017" },
-  { id: "student6", name: "James Taylor", grade: "Grade 10-B", averageGrade: 82.1, admissionId: "ADM20210033" },
-  { id: "student7", name: "Olivia Harris", grade: "Grade 9-A", averageGrade: 91.5, admissionId: "ADM20220012" },
-  { id: "student8", name: "William Anderson", grade: "Grade 12-A", averageGrade: 89.3, admissionId: "ADM20190005" },
-];
-
-// Academic years for the form
-const academicYears = [
-  { id: "1", name: "2023-2024" },
-  { id: "2", name: "2022-2023" },
-  { id: "3", name: "2024-2025" },
-];
-
-// Program statistics
-const programStatistics = [
-  { year: '2019', scholarships: 42 },
-  { year: '2020', scholarships: 48 },
-  { year: '2021', scholarships: 52 },
-  { year: '2022', scholarships: 58 },
-  { year: '2023', scholarships: 65 },
-];
-
-// Distribution by type
-const scholarshipDistribution = [
-  { type: 'Academic Excellence', count: 15 },
-  { type: 'Sports Merit', count: 8 },
-  { type: 'Need-Based', count: 25 },
-  { type: 'Arts & Culture', count: 6 },
-  { type: 'Leadership', count: 4 },
-  { type: 'Alumni', count: 7 },
-];
 
 // Schema for scholarship program form
 const scholarshipProgramSchema = z.object({
@@ -256,6 +112,150 @@ export default function ScholarshipsPage() {
   const [selectedProgram, setSelectedProgram] = useState<any>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("programs");
+  const [loading, setLoading] = useState(true);
+  const [scholarshipPrograms, setScholarshipPrograms] = useState<any[]>([]);
+  const [scholarshipRecipients, setScholarshipRecipients] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  // Load data on mount
+  useEffect(() => {
+    loadScholarships();
+    loadStudents();
+    loadAcademicYears();
+    loadStats();
+  }, [statusFilter]);
+
+  const loadAcademicYears = async () => {
+    try {
+      const result = await getAcademicYears();
+      if (result.success && result.data) {
+        setAcademicYears(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading academic years:", error);
+    }
+  };
+
+  const loadScholarships = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      if (statusFilter !== "all") filters.status = statusFilter.toUpperCase();
+
+      const result = await getScholarships(filters);
+      if (result.success && result.data) {
+        setScholarshipPrograms(result.data);
+        // Flatten recipients from all scholarships
+        const allRecipients = result.data.flatMap((s: any) => 
+          s.recipients.map((r: any) => ({
+            ...r,
+            scholarshipName: s.name,
+            scholarshipId: s.id,
+          }))
+        );
+        setScholarshipRecipients(allRecipients);
+      } else {
+        toast.error(result.error || "Failed to load scholarships");
+      }
+    } catch (error) {
+      console.error("Error loading scholarships:", error);
+      toast.error("Failed to load scholarships");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const result = await getStudentsForScholarship();
+      if (result.success && result.data) {
+        setStudents(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading students:", error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await getScholarshipStats();
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const handleCreateScholarship = async (data: any) => {
+    try {
+      const result = await createScholarship(data);
+      if (result.success) {
+        toast.success("Scholarship created successfully");
+        setCreateProgramDialog(false);
+        programForm.reset();
+        loadScholarships();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to create scholarship");
+      }
+    } catch (error) {
+      console.error("Error creating scholarship:", error);
+      toast.error("Failed to create scholarship");
+    }
+  };
+
+  const handleDeleteScholarship = async (id: string) => {
+    try {
+      const result = await deleteScholarship(id);
+      if (result.success) {
+        toast.success("Scholarship deleted successfully");
+        loadScholarships();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to delete scholarship");
+      }
+    } catch (error) {
+      console.error("Error deleting scholarship:", error);
+      toast.error("Failed to delete scholarship");
+    }
+  };
+
+  const handleAwardScholarship = async (data: any) => {
+    try {
+      const result = await awardScholarship(data);
+      if (result.success) {
+        toast.success("Scholarship awarded successfully");
+        setAddRecipientDialog(false);
+        recipientForm.reset();
+        loadScholarships();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to award scholarship");
+      }
+    } catch (error) {
+      console.error("Error awarding scholarship:", error);
+      toast.error("Failed to award scholarship");
+    }
+  };
+
+  const handleRemoveRecipient = async (id: string) => {
+    try {
+      const result = await removeRecipient(id);
+      if (result.success) {
+        toast.success("Recipient removed successfully");
+        loadScholarships();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to remove recipient");
+      }
+    } catch (error) {
+      console.error("Error removing recipient:", error);
+      toast.error("Failed to remove recipient");
+    }
+  };
 
   // Initialize form for scholarship program
   const programForm = useForm<z.infer<typeof scholarshipProgramSchema>>({
@@ -336,14 +336,12 @@ export default function ScholarshipsPage() {
     }
   }
 
-  function onSubmitProgram(values: z.infer<typeof scholarshipProgramSchema>) {
-    console.log("Scholarship program created:", values);
-    setCreateProgramDialog(false);
+  async function onSubmitProgram(values: z.infer<typeof scholarshipProgramSchema>) {
+    await handleCreateScholarship(values);
   }
 
-  function onSubmitRecipient(values: z.infer<typeof scholarshipRecipientSchema>) {
-    console.log("Scholarship recipient added:", values);
-    setAddRecipientDialog(false);
+  async function onSubmitRecipient(values: z.infer<typeof scholarshipRecipientSchema>) {
+    await handleAwardScholarship(values);
   }
 
   function getScholarshipAmount(program: any) {
@@ -735,10 +733,10 @@ export default function ScholarshipsPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">{scholarshipRecipients.length}</div>
+                <div className="text-3xl font-bold">{stats?.totalRecipients || scholarshipRecipients.length}</div>
                 <div className="text-sm text-gray-500 flex items-center">
                   <ArrowUp className="h-3 w-3 text-green-500 mr-1" />
-                  <span className="text-green-500 mr-1">12%</span>
+                  <span className="text-green-500 mr-1">{stats?.growthPercentage || 0}%</span>
                   <span>vs last year</span>
                 </div>
               </div>
@@ -757,7 +755,7 @@ export default function ScholarshipsPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$45,500</div>
+                <div className="text-3xl font-bold">₹{stats?.totalAmount?.toLocaleString() || '0'}</div>
                 <div className="text-sm text-gray-500">Total scholarship funds</div>
               </div>
               <div className="p-2 bg-green-50 rounded-md text-green-700">
@@ -775,7 +773,7 @@ export default function ScholarshipsPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">{scholarshipPrograms.length}</div>
+                <div className="text-3xl font-bold">{stats?.totalPrograms || scholarshipPrograms.length}</div>
                 <div className="text-sm text-gray-500">Different programs</div>
               </div>
               <div className="p-2 bg-purple-50 rounded-md text-purple-700">
@@ -837,12 +835,12 @@ export default function ScholarshipsPage() {
                           <div className="text-xs text-gray-500">{program.criteria}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">
-                          {getScholarshipAmount(program)}
+                          ₹{getScholarshipAmount(program)}
                         </td>
                         <td className="py-3 px-4 align-middle">{program.fundedBy}</td>
                         <td className="py-3 px-4 align-middle">
                           <Badge className="bg-blue-100 text-blue-800">
-                            {program.recipientCount} students
+                            {program.recipients?.length || 0} students
                           </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle text-right">
@@ -930,12 +928,12 @@ export default function ScholarshipsPage() {
                     {filteredRecipients.length > 0 ? filteredRecipients.map((recipient) => (
                       <tr key={recipient.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
-                          <div className="font-medium">{recipient.studentName}</div>
-                          <div className="text-xs text-gray-500">{recipient.grade}</div>
+                          <div className="font-medium">{recipient.student?.name || recipient.studentName}</div>
+                          <div className="text-xs text-gray-500">{recipient.student?.class?.name || recipient.grade}</div>
                         </td>
-                        <td className="py-3 px-4 align-middle">{recipient.scholarshipName}</td>
+                        <td className="py-3 px-4 align-middle">{recipient.scholarship?.name || recipient.scholarshipName}</td>
                         <td className="py-3 px-4 align-middle font-medium">
-                          ${recipient.amount.toLocaleString()}
+                          ₹{recipient.amount.toLocaleString()}
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <div className="flex items-center gap-1.5">
@@ -990,15 +988,21 @@ export default function ScholarshipsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={programStatistics}
-                  type="bar"
-                  xKey="year"
-                  yKey="scholarships"
-                  categories={["scholarships"]}
-                  colors={["#3b82f6"]}
-                />
+                {stats?.yearlyGrowth && stats.yearlyGrowth.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.yearlyGrowth}
+                    type="bar"
+                    xKey="year"
+                    yKey="scholarships"
+                    categories={["scholarships"]}
+                    colors={["#3b82f6"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No historical data available
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -1010,14 +1014,20 @@ export default function ScholarshipsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={scholarshipDistribution}
-                  type="pie"
-                  xKey="type"
-                  yKey="count"
-                  colors={["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#8b5cf6"]}
-                />
+                {stats?.distribution && stats.distribution.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.distribution}
+                    type="pie"
+                    xKey="type"
+                    yKey="count"
+                    colors={["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#8b5cf6"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No distribution data available
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1030,54 +1040,42 @@ export default function ScholarshipsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Academic Excellence</span>
-                    <span className="text-sm font-medium">$150,000 (33.3%)</span>
-                  </div>
-                  <Progress value={33.3} className="h-2" />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Need-Based Financial Aid</span>
-                    <span className="text-sm font-medium">$180,000 (40.0%)</span>
-                  </div>
-                  <Progress value={40} className="h-2" />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Sports Merit</span>
-                    <span className="text-sm font-medium">$64,000 (14.2%)</span>
-                  </div>
-                  <Progress value={14.2} className="h-2" />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Arts & Cultural</span>
-                    <span className="text-sm font-medium">$30,000 (6.7%)</span>
-                  </div>
-                  <Progress value={6.7} className="h-2" />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Other Scholarships</span>
-                    <span className="text-sm font-medium">$26,000 (5.8%)</span>
-                  </div>
-                  <Progress value={5.8} className="h-2" />
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span>Total Scholarship Budget</span>
-                    <span>$450,000</span>
+              {scholarshipPrograms.length > 0 ? (
+                <div className="space-y-6">
+                  {scholarshipPrograms.slice(0, 5).map((program) => {
+                    const totalAmount = scholarshipPrograms.reduce((sum, p) => {
+                      const amt = p.amount || 0;
+                      const recipientCount = p.recipients?.length || 0;
+                      return sum + (amt * recipientCount);
+                    }, 0);
+                    const programAmount = (program.amount || 0) * (program.recipients?.length || 0);
+                    const percentage = totalAmount > 0 ? (programAmount / totalAmount) * 100 : 0;
+                    
+                    return (
+                      <div key={program.id} className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium">{program.name}</span>
+                          <span className="text-sm font-medium">
+                            ₹{programAmount.toLocaleString()} ({percentage.toFixed(1)}%)
+                          </span>
+                        </div>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                  
+                  <div className="pt-4 border-t">
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span>Total Scholarship Budget</span>
+                      <span>₹{stats?.totalAmount?.toLocaleString() || '0'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  No scholarship programs available
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1098,7 +1096,7 @@ export default function ScholarshipsPage() {
               <div className="flex flex-col space-y-1">
                 <h3 className="text-lg font-semibold">{selectedProgram.name}</h3>
                 <Badge className="bg-blue-100 text-blue-800 w-fit">
-                  {selectedProgram.recipientCount} Recipients
+                  {selectedProgram.recipients?.length || 0} Recipients
                 </Badge>
               </div>
               
@@ -1153,9 +1151,9 @@ export default function ScholarshipsPage() {
                         .slice(0, 3)
                         .map(recipient => (
                           <tr key={recipient.id} className="border-b">
-                            <td className="py-2 px-3 align-middle font-medium">{recipient.studentName}</td>
-                            <td className="py-2 px-3 align-middle">{recipient.grade}</td>
-                            <td className="py-2 px-3 align-middle">${recipient.amount.toLocaleString()}</td>
+                            <td className="py-2 px-3 align-middle font-medium">{recipient.student?.name || recipient.studentName}</td>
+                            <td className="py-2 px-3 align-middle">{recipient.student?.class?.name || recipient.grade}</td>
+                            <td className="py-2 px-3 align-middle">₹{recipient.amount.toLocaleString()}</td>
                           </tr>
                         ))}
                       {scholarshipRecipients.filter(r => r.scholarshipId === selectedProgram.id).length > 3 && (
@@ -1208,8 +1206,8 @@ export default function ScholarshipsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">{selectedRecipient.studentName}</h3>
-                  <p className="text-sm text-gray-500">{selectedRecipient.grade}</p>
+                  <h3 className="text-lg font-semibold">{selectedRecipient.student?.name || selectedRecipient.studentName}</h3>
+                  <p className="text-sm text-gray-500">{selectedRecipient.student?.class?.name || selectedRecipient.grade}</p>
                 </div>
                 <Badge className="bg-green-100 text-green-800">
                   {selectedRecipient.status}
@@ -1219,11 +1217,11 @@ export default function ScholarshipsPage() {
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 bg-purple-50 p-4 rounded-lg">
                   <div className="text-sm text-purple-700 font-medium mb-1">Scholarship</div>
-                  <div className="text-lg font-bold text-purple-800">{selectedRecipient.scholarshipName}</div>
+                  <div className="text-lg font-bold text-purple-800">{selectedRecipient.scholarship?.name || selectedRecipient.scholarshipName}</div>
                 </div>
                 <div className="flex-1 bg-green-50 p-4 rounded-lg">
                   <div className="text-sm text-green-700 font-medium mb-1">Amount</div>
-                  <div className="text-2xl font-bold text-green-800">${selectedRecipient.amount.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-green-800">₹{selectedRecipient.amount.toLocaleString()}</div>
                 </div>
               </div>
               
@@ -1255,7 +1253,7 @@ export default function ScholarshipsPage() {
                 <div>
                   <p className="text-sm text-gray-500">Student ID</p>
                   <p className="font-medium">
-                    {students.find(s => s.id === selectedRecipient.studentId)?.admissionId || "N/A"}
+                    {selectedRecipient.student?.admissionId || students.find(s => s.id === selectedRecipient.studentId)?.admissionId || "N/A"}
                   </p>
                 </div>
               </div>
@@ -1273,15 +1271,15 @@ export default function ScholarshipsPage() {
                     </thead>
                     <tbody>
                       <tr className="border-b">
-                        <td className="py-2 px-3 align-middle">Aug 1, 2023</td>
-                        <td className="py-2 px-3 align-middle">${(selectedRecipient.amount / 2).toLocaleString()}</td>
+                        <td className="py-2 px-3 align-middle">{new Date(selectedRecipient.awardDate).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 align-middle">₹{(selectedRecipient.amount / 2).toLocaleString()}</td>
                         <td className="py-2 px-3 align-middle">
                           <Badge className="bg-green-100 text-green-800">Paid</Badge>
                         </td>
                       </tr>
                       <tr>
-                        <td className="py-2 px-3 align-middle">Jan 15, 2024</td>
-                        <td className="py-2 px-3 align-middle">${(selectedRecipient.amount / 2).toLocaleString()}</td>
+                        <td className="py-2 px-3 align-middle">{new Date(new Date(selectedRecipient.awardDate).getTime() + 180 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 align-middle">₹{(selectedRecipient.amount / 2).toLocaleString()}</td>
                         <td className="py-2 px-3 align-middle">
                           <Badge className="bg-amber-100 text-amber-800">Scheduled</Badge>
                         </td>

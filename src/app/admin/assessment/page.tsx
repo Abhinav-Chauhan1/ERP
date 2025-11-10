@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -28,6 +29,19 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getUpcomingExams, getRecentExams } from "@/lib/actions/examsActions";
+import { getRecentAssignments } from "@/lib/actions/assignmentsActions";
+import {
+  getPerformanceAnalytics,
+  getSubjectWisePerformance,
+  getPassFailRates,
+  getTopPerformers,
+} from "@/lib/actions/performanceAnalyticsActions";
+import {
+  getTimelineByMonth,
+  getTimelineStats,
+} from "@/lib/actions/assessmentTimelineActions";
+import { Chart } from "@/components/dashboard/chart";
 
 const assessmentCategories = [
   {
@@ -74,7 +88,7 @@ const assessmentCategories = [
   },
 ];
 
-const upcomingExams = [
+const mockUpcomingExams = [
   {
     id: "1",
     name: "Mid-term Examination",
@@ -117,7 +131,7 @@ const upcomingExams = [
   },
 ];
 
-const recentAssessments = [
+const mockRecentAssessments = [
   {
     id: "1",
     name: "Quiz: Algebraic Equations",
@@ -182,6 +196,123 @@ const grades = [
 export default function AssessmentPage() {
   const [newExamDialogOpen, setNewExamDialogOpen] = useState(false);
   const [newAssignmentDialogOpen, setNewAssignmentDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [recentAssessments, setRecentAssessments] = useState<any[]>([]);
+  const [performanceLoading, setPerformanceLoading] = useState(false);
+  const [performanceStats, setPerformanceStats] = useState<any>(null);
+  const [subjectPerformance, setSubjectPerformance] = useState<any[]>([]);
+  const [passFailRates, setPassFailRates] = useState<any>(null);
+  const [topPerformers, setTopPerformers] = useState<any[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineItems, setTimelineItems] = useState<any[]>([]);
+  const [timelineStats, setTimelineStats] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [upcomingResult, recentExamsResult, recentAssignmentsResult] = await Promise.all([
+        getUpcomingExams({ limit: 10 }),
+        getRecentExams({ limit: 5 }),
+        getRecentAssignments({ limit: 5 }),
+      ]);
+
+      if (upcomingResult.success && upcomingResult.data) {
+        setUpcomingExams(upcomingResult.data);
+      }
+
+      // Combine recent exams and assignments
+      const recentItems = [];
+      if (recentExamsResult.success && recentExamsResult.data) {
+        recentItems.push(...recentExamsResult.data.map((exam: any) => ({
+          ...exam,
+          type: 'exam',
+        })));
+      }
+      if (recentAssignmentsResult.success && recentAssignmentsResult.data) {
+        recentItems.push(...recentAssignmentsResult.data.map((assignment: any) => ({
+          ...assignment,
+          type: 'assignment',
+        })));
+      }
+      
+      // Sort by date and take top 10
+      recentItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setRecentAssessments(recentItems.slice(0, 10));
+
+    } catch (error) {
+      console.error("Error loading assessment data:", error);
+      toast.error("Failed to load assessment data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPerformanceData = async () => {
+    setPerformanceLoading(true);
+    try {
+      const [analyticsResult, subjectResult, passFailResult, topPerformersResult] = await Promise.all([
+        getPerformanceAnalytics(),
+        getSubjectWisePerformance(),
+        getPassFailRates(),
+        getTopPerformers(10),
+      ]);
+
+      if (analyticsResult.success && analyticsResult.data) {
+        setPerformanceStats(analyticsResult.data.statistics);
+      }
+
+      if (subjectResult.success && subjectResult.data) {
+        setSubjectPerformance(subjectResult.data);
+      }
+
+      if (passFailResult.success && passFailResult.data) {
+        setPassFailRates(passFailResult.data);
+      }
+
+      if (topPerformersResult.success && topPerformersResult.data) {
+        setTopPerformers(topPerformersResult.data);
+      }
+    } catch (error) {
+      console.error("Error loading performance data:", error);
+      toast.error("Failed to load performance data");
+    } finally {
+      setPerformanceLoading(false);
+    }
+  };
+
+  const loadTimelineData = async () => {
+    setTimelineLoading(true);
+    try {
+      const [timelineResult, statsResult] = await Promise.all([
+        getTimelineByMonth(selectedYear, selectedMonth),
+        getTimelineStats(
+          new Date(selectedYear, selectedMonth - 1, 1),
+          new Date(selectedYear, selectedMonth, 0, 23, 59, 59)
+        ),
+      ]);
+
+      if (timelineResult.success && timelineResult.data) {
+        setTimelineItems(timelineResult.data);
+      }
+
+      if (statsResult.success && statsResult.data) {
+        setTimelineStats(statsResult.data);
+      }
+    } catch (error) {
+      console.error("Error loading timeline data:", error);
+      toast.error("Failed to load timeline data");
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
   const [viewTab, setViewTab] = useState("overview");
 
   return (
@@ -373,17 +504,32 @@ export default function AssessmentPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {upcomingExams.map((exam) => (
-                          <tr key={exam.id} className="border-b">
-                            <td className="py-3 px-4 align-middle">
-                              <div className="font-medium">{exam.subject}</div>
-                              <div className="text-xs text-gray-500">{exam.type}</div>
+                        {loading ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                              Loading...
                             </td>
-                            <td className="py-3 px-4 align-middle">{exam.grade}</td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center gap-1.5">
-                                <CalendarClock className="h-3.5 w-3.5 text-gray-500" />
-                                <span>{exam.date}</span>
+                          </tr>
+                        ) : upcomingExams.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                              No upcoming exams
+                            </td>
+                          </tr>
+                        ) : (
+                          upcomingExams.map((exam) => (
+                            <tr key={exam.id} className="border-b">
+                              <td className="py-3 px-4 align-middle">
+                                <div className="font-medium">{exam.subject?.name || exam.title || "Exam"}</div>
+                                <div className="text-xs text-gray-500">{exam.examType?.name || exam.type || "Assessment"}</div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                {exam.class?.name || "N/A"}{exam.section ? `-${exam.section.name}` : ""}
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <div className="flex items-center gap-1.5">
+                                  <CalendarClock className="h-3.5 w-3.5 text-gray-500" />
+                                  <span>{new Date(exam.date).toLocaleDateString()}</span>
                               </div>
                               <div className="text-xs text-gray-500 ml-5">{exam.time}</div>
                             </td>
@@ -435,19 +581,42 @@ export default function AssessmentPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {recentAssessments.map((assessment) => (
-                          <tr key={assessment.id} className="border-b">
-                            <td className="py-3 px-4 align-middle">
-                              <div className="font-medium">{assessment.name}</div>
-                              <div className="text-xs text-gray-500">{assessment.grade} • {assessment.date}</div>
+                        {loading ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                              Loading...
                             </td>
-                            <td className="py-3 px-4 align-middle">{assessment.subject}</td>
-                            <td className="py-3 px-4 align-middle">{assessment.submissions}</td>
-                            <td className="py-3 px-4 align-middle">
-                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                                {assessment.avgScore}
-                              </Badge>
+                          </tr>
+                        ) : recentAssessments.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                              No recent assessments
                             </td>
+                          </tr>
+                        ) : (
+                          recentAssessments.map((assessment) => (
+                            <tr key={assessment.id} className="border-b">
+                              <td className="py-3 px-4 align-middle">
+                                <div className="font-medium">
+                                  {assessment.type === 'exam' 
+                                    ? (assessment.subject?.name || assessment.title || "Exam")
+                                    : (assessment.title || "Assignment")}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {assessment.class?.name || "N/A"} • {new Date(assessment.createdAt).toLocaleDateString()}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                {assessment.type === 'exam' ? assessment.subject?.name : assessment.subject?.name || "N/A"}
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                {assessment.type === 'exam' ? "Exam" : "Assignment"}
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                                  {assessment.type === 'exam' ? assessment.status : assessment.status}
+                                </Badge>
+                              </td>
                             <td className="py-3 px-4 align-middle text-right">
                               <Link href={`/admin/assessment/results?assessment=${assessment.id}`}>
                                 <Button variant="ghost" size="sm">Results</Button>
@@ -544,24 +713,313 @@ export default function AssessmentPage() {
         </TabsContent>
         
         <TabsContent value="performance">
-          <div className="py-10 text-center">
-            <BarChart className="h-10 w-10 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Performance Analytics Coming Soon</h3>
-            <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
-              Detailed analytics on student performance, exam results, and academic trends will be available here.
-            </p>
-            <Button variant="outline">Explore Sample Report</Button>
-          </div>
+          {!performanceStats && !performanceLoading && (
+            <div className="py-10 text-center">
+              <BarChart className="h-10 w-10 mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium mb-2">Load Performance Analytics</h3>
+              <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                Click below to load detailed analytics on student performance and exam results.
+              </p>
+              <Button onClick={loadPerformanceData}>Load Analytics</Button>
+            </div>
+          )}
+
+          {performanceLoading && (
+            <div className="py-10 text-center">
+              <div className="text-gray-500">Loading performance data...</div>
+            </div>
+          )}
+
+          {performanceStats && !performanceLoading && (
+            <div className="space-y-6">
+              {/* Statistics Cards */}
+              <div className="grid gap-4 md:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Total Results</CardDescription>
+                    <CardTitle className="text-3xl">{performanceStats.totalResults}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Average Score</CardDescription>
+                    <CardTitle className="text-3xl">{performanceStats.averageScore}%</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Pass Rate</CardDescription>
+                    <CardTitle className="text-3xl text-green-600">{performanceStats.passRate}%</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Pass/Fail</CardDescription>
+                    <CardTitle className="text-3xl">
+                      {performanceStats.passCount}/{performanceStats.failCount}
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Subject-wise Performance */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Subject-wise Performance</CardTitle>
+                    <CardDescription>Average scores by subject</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {subjectPerformance.length > 0 ? (
+                      <div className="space-y-4">
+                        {subjectPerformance.map((subject: any, index: number) => (
+                          <div key={index}>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-sm font-medium">{subject.subject}</span>
+                              <span className="text-sm font-medium">{subject.averageScore}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${subject.averageScore}%` }}
+                              ></div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {subject.totalStudents} students • {subject.passRate}% pass rate
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">No subject data available</div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Grade Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Grade Distribution</CardTitle>
+                    <CardDescription>Student performance breakdown</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {passFailRates && (
+                      <div className="space-y-3">
+                        {Object.entries(passFailRates.gradeDistribution).map(([grade, count]: [string, any]) => (
+                          <div key={grade} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="w-8 text-center">{grade}</Badge>
+                              <span className="text-sm">
+                                {grade === 'A' && '90-100%'}
+                                {grade === 'B' && '80-89%'}
+                                {grade === 'C' && '70-79%'}
+                                {grade === 'D' && '60-69%'}
+                                {grade === 'E' && '50-59%'}
+                                {grade === 'F' && 'Below 50%'}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium">{count} students</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top Performers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Performers</CardTitle>
+                  <CardDescription>Students with highest average scores</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {topPerformers.length > 0 ? (
+                    <div className="rounded-md border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Rank</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Exams</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Avg Score</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {topPerformers.map((performer: any, index: number) => (
+                            <tr key={index} className="border-b">
+                              <td className="py-3 px-4">
+                                <Badge variant="outline">{index + 1}</Badge>
+                              </td>
+                              <td className="py-3 px-4 font-medium">
+                                {performer.student.user.firstName} {performer.student.user.lastName}
+                              </td>
+                              <td className="py-3 px-4">
+                                {performer.student.enrollments[0]?.class.name || "N/A"}
+                              </td>
+                              <td className="py-3 px-4">{performer.totalExams}</td>
+                              <td className="py-3 px-4">
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                  {performer.averageScore}%
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">No performance data available</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
         
         <TabsContent value="timeline">
-          <div className="py-10 text-center">
-            <CalendarClock className="h-10 w-10 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Assessment Timeline Coming Soon</h3>
-            <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
-              View and plan your academic year's assessment schedule with our interactive timeline tool.
-            </p>
-            <Button variant="outline">View Academic Calendar</Button>
+          <div className="space-y-6">
+            {/* Month/Year Selector and Stats */}
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              <div className="flex gap-2">
+                <Select 
+                  value={selectedMonth.toString()} 
+                  onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {new Date(2024, i).toLocaleString('default', { month: 'long' })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select 
+                  value={selectedYear.toString()} 
+                  onValueChange={(value) => setSelectedYear(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 5 }, (_, i) => {
+                      const year = new Date().getFullYear() - 2 + i;
+                      return (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <Button onClick={loadTimelineData} disabled={timelineLoading}>
+                  {timelineLoading ? "Loading..." : "Load Timeline"}
+                </Button>
+              </div>
+
+              {timelineStats && (
+                <div className="flex gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{timelineStats.totalExams}</div>
+                    <div className="text-xs text-gray-500">Exams</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{timelineStats.totalAssignments}</div>
+                    <div className="text-xs text-gray-500">Assignments</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{timelineStats.completedAssessments}</div>
+                    <div className="text-xs text-gray-500">Completed</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Timeline */}
+            {timelineLoading ? (
+              <div className="py-10 text-center text-gray-500">Loading timeline...</div>
+            ) : timelineItems.length === 0 ? (
+              <div className="py-10 text-center">
+                <CalendarClock className="h-10 w-10 mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Assessments Scheduled</h3>
+                <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                  There are no exams or assignments scheduled for the selected period.
+                </p>
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assessment Schedule</CardTitle>
+                  <CardDescription>
+                    {new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {timelineItems.map((item, index) => {
+                      const isExam = item.type === 'exam';
+                      const isPast = new Date(item.date) < new Date();
+                      
+                      return (
+                        <div key={item.id} className="flex gap-4">
+                          {/* Date */}
+                          <div className="flex flex-col items-center min-w-[60px]">
+                            <div className="text-2xl font-bold">
+                              {new Date(item.date).getDate()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(item.date).toLocaleString('default', { weekday: 'short' })}
+                            </div>
+                          </div>
+
+                          {/* Timeline Line */}
+                          <div className="flex flex-col items-center">
+                            <div className={`w-3 h-3 rounded-full ${isExam ? 'bg-blue-500' : 'bg-green-500'} ${isPast ? 'opacity-50' : ''}`}></div>
+                            {index < timelineItems.length - 1 && (
+                              <div className="w-0.5 h-full bg-gray-200 flex-1"></div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 pb-8">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium">{item.title}</h4>
+                                  <Badge variant="outline" className={isExam ? 'bg-blue-50' : 'bg-green-50'}>
+                                    {isExam ? 'Exam' : 'Assignment'}
+                                  </Badge>
+                                  {item.status === 'COMPLETED' && (
+                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                      Completed
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  {item.subtitle} • {item.class}{item.section ? `-${item.section}` : ''}
+                                </div>
+                                {item.description && (
+                                  <div className="text-sm text-gray-600 mt-2">
+                                    {item.description}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

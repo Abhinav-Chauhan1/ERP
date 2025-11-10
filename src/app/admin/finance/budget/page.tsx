@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   ChevronLeft, PlusCircle, Search, Filter, 
   Building, Wallet, ArrowUp, ArrowDown, 
@@ -49,15 +50,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Chart } from "@/components/dashboard/chart";
+import {
+  getBudgets,
+  createBudget,
+  updateBudget,
+  deleteBudget,
+  getBudgetUtilization,
+  getBudgetStats,
+  getBudgetAlerts,
+} from "@/lib/actions/budgetActions";
 
-// Mock data for academic years
-const academicYears = [
-  { id: "1", name: "2023-2024", startDate: "2023-08-15", endDate: "2024-05-31", isActive: true },
-  { id: "2", name: "2022-2023", startDate: "2022-08-16", endDate: "2023-06-01", isActive: false },
-  { id: "3", name: "2024-2025", startDate: "2024-08-14", endDate: "2025-05-30", isActive: false },
-];
-
-// Mock data for budget categories
+// Budget categories
 const budgetCategories = [
   { id: "salaries", name: "Staff Salaries", color: "bg-blue-100 text-blue-800" },
   { id: "infrastructure", name: "Infrastructure", color: "bg-purple-100 text-purple-800" },
@@ -67,101 +70,6 @@ const budgetCategories = [
   { id: "maintenance", name: "Maintenance", color: "bg-indigo-100 text-indigo-800" },
   { id: "technology", name: "Technology", color: "bg-red-100 text-red-800" },
   { id: "miscellaneous", name: "Miscellaneous", color: "bg-gray-100 text-gray-800" },
-];
-
-// Mock data for budget items
-const budgets = [
-  {
-    id: "b1",
-    title: "Staff Salaries",
-    category: "salaries",
-    academicYear: "2023-2024",
-    allocatedAmount: 450000,
-    usedAmount: 225000,
-    remainingAmount: 225000,
-    status: "ACTIVE",
-    startDate: "2023-08-15",
-    endDate: "2024-05-31",
-    description: "Budget allocation for teaching and non-teaching staff salaries",
-  },
-  {
-    id: "b2",
-    title: "School Supplies",
-    category: "supplies",
-    academicYear: "2023-2024",
-    allocatedAmount: 75000,
-    usedAmount: 45000,
-    remainingAmount: 30000,
-    status: "ACTIVE",
-    startDate: "2023-08-15",
-    endDate: "2024-05-31",
-    description: "Budget for classroom materials, books, and other educational supplies",
-  },
-  {
-    id: "b3",
-    title: "Facility Maintenance",
-    category: "maintenance",
-    academicYear: "2023-2024",
-    allocatedAmount: 120000,
-    usedAmount: 72000,
-    remainingAmount: 48000,
-    status: "ACTIVE",
-    startDate: "2023-08-15",
-    endDate: "2024-05-31",
-    description: "Funds for ongoing building maintenance, repairs, and cleaning services",
-  },
-  {
-    id: "b4",
-    title: "IT Infrastructure",
-    category: "technology",
-    academicYear: "2023-2024",
-    allocatedAmount: 85000,
-    usedAmount: 65000,
-    remainingAmount: 20000,
-    status: "ACTIVE",
-    startDate: "2023-08-15",
-    endDate: "2024-05-31",
-    description: "Budget for computer labs, internet services, and educational software",
-  },
-  {
-    id: "b5",
-    title: "Sports Programs",
-    category: "events",
-    academicYear: "2023-2024",
-    allocatedAmount: 50000,
-    usedAmount: 28000,
-    remainingAmount: 22000,
-    status: "ACTIVE",
-    startDate: "2023-08-15",
-    endDate: "2024-05-31",
-    description: "Funding for sports equipment, competitions, and physical education activities",
-  },
-];
-
-// Monthly summary data
-const budgetSummaryData = [
-  { month: 'Aug', income: 125000, expenses: 92000 },
-  { month: 'Sep', income: 118000, expenses: 102000 },
-  { month: 'Oct', income: 122000, expenses: 95000 },
-  { month: 'Nov', income: 130000, expenses: 112000 },
-  { month: 'Dec', income: 125000, expenses: 105000 },
-  { month: 'Jan', income: 128000, estimates: 110000 },
-  { month: 'Feb', income: 130000, estimates: 115000 },
-  { month: 'Mar', income: 135000, estimates: 120000 },
-  { month: 'Apr', income: 132000, estimates: 118000 },
-  { month: 'May', income: 125000, estimates: 108000 },
-];
-
-// Budget allocation by category
-const budgetAllocationData = [
-  { category: 'Staff Salaries', amount: 450000 },
-  { category: 'Infrastructure', amount: 120000 },
-  { category: 'Educational Supplies', amount: 75000 },
-  { category: 'Technology', amount: 85000 },
-  { category: 'Sports Programs', amount: 50000 },
-  { category: 'Maintenance', amount: 120000 },
-  { category: 'Utilities', amount: 60000 },
-  { category: 'Miscellaneous', amount: 40000 },
 ];
 
 // Schema for budget form
@@ -193,6 +101,138 @@ export default function BudgetPage() {
   const [viewBudgetDialog, setViewBudgetDialog] = useState(false);
   const [editBudgetDialog, setEditBudgetDialog] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadAcademicYears();
+    loadBudgets();
+    loadStats();
+    loadAlerts();
+  }, [categoryFilter, academicYearFilter]);
+
+  const loadAcademicYears = async () => {
+    try {
+      const { getAcademicYears } = await import("@/lib/actions/academicyearsActions");
+      const result = await getAcademicYears();
+      if (result.success && result.data) {
+        setAcademicYears(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading academic years:", error);
+    }
+  };
+
+  const loadBudgets = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      
+      if (categoryFilter !== "all") {
+        filters.category = categoryFilter;
+      }
+
+      if (academicYearFilter !== "all") {
+        filters.academicYearId = academicYearFilter;
+      }
+
+      const result = await getBudgets(filters);
+      if (result.success && result.data) {
+        setBudgets(result.data);
+      } else {
+        toast.error(result.error || "Failed to load budgets");
+      }
+    } catch (error) {
+      console.error("Error loading budgets:", error);
+      toast.error("Failed to load budgets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const academicYearId = academicYearFilter !== "all" ? academicYearFilter : undefined;
+      
+      const result = await getBudgetStats(academicYearId);
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const loadAlerts = async () => {
+    try {
+      const academicYearId = academicYearFilter !== "all" ? academicYearFilter : undefined;
+      
+      const result = await getBudgetAlerts(academicYearId);
+      if (result.success && result.data) {
+        setAlerts(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading alerts:", error);
+    }
+  };
+
+  const handleCreateBudget = async (data: any) => {
+    try {
+      const result = await createBudget(data);
+      if (result.success) {
+        toast.success("Budget created successfully");
+        setCreateBudgetDialog(false);
+        form.reset();
+        loadBudgets();
+        loadStats();
+        loadAlerts();
+      } else {
+        toast.error(result.error || "Failed to create budget");
+      }
+    } catch (error) {
+      console.error("Error creating budget:", error);
+      toast.error("Failed to create budget");
+    }
+  };
+
+  const handleUpdateBudget = async (id: string, data: any) => {
+    try {
+      const result = await updateBudget(id, data);
+      if (result.success) {
+        toast.success("Budget updated successfully");
+        setEditBudgetDialog(false);
+        loadBudgets();
+        loadStats();
+        loadAlerts();
+      } else {
+        toast.error(result.error || "Failed to update budget");
+      }
+    } catch (error) {
+      console.error("Error updating budget:", error);
+      toast.error("Failed to update budget");
+    }
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    try {
+      const result = await deleteBudget(id);
+      if (result.success) {
+        toast.success("Budget deleted successfully");
+        loadBudgets();
+        loadStats();
+        loadAlerts();
+      } else {
+        toast.error(result.error || "Failed to delete budget");
+      }
+    } catch (error) {
+      console.error("Error deleting budget:", error);
+      toast.error("Failed to delete budget");
+    }
+  };
 
   // Initialize form for creating/editing budget
   const form = useForm<z.infer<typeof budgetFormSchema>>({
@@ -206,20 +246,15 @@ export default function BudgetPage() {
     },
   });
 
-  // Filter budgets based on search, category, and academic year
+  // Filter budgets based on search
   const filteredBudgets = budgets.filter(budget => {
-    const matchesSearch = budget.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          budget.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = budget.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (budget.description && budget.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = categoryFilter === "all" || budget.category === categoryFilter;
-    
-    const matchesAcademicYear = academicYearFilter === "all" || budget.academicYear === 
-      academicYears.find(y => y.id === academicYearFilter)?.name;
-    
-    return matchesSearch && matchesCategory && matchesAcademicYear;
+    return matchesSearch;
   });
 
-  function handleCreateBudget() {
+  function handleOpenCreateDialog() {
     form.reset({
       title: "",
       allocatedAmount: 0,
@@ -291,7 +326,7 @@ export default function BudgetPage() {
         </div>
         <Dialog open={createBudgetDialog} onOpenChange={setCreateBudgetDialog}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreateBudget}>
+            <Button onClick={handleOpenCreateDialog}>
               <PlusCircle className="mr-2 h-4 w-4" /> Create Budget
             </Button>
           </DialogTrigger>
@@ -455,16 +490,14 @@ export default function BudgetPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Total Budget</CardTitle>
-            <CardDescription>Academic Year 2023-2024</CardDescription>
+            <CardDescription>Allocated amount</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$1,000,000</div>
-                <div className="text-sm text-gray-500 flex items-center">
-                  <ArrowUp className="h-3 w-3 text-green-500 mr-1" />
-                  <span className="text-green-500 mr-1">8.2%</span>
-                  <span>vs last year</span>
+                <div className="text-3xl font-bold">₹{stats?.totalAllocated?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">
+                  {stats?.totalBudgets || 0} budget items
                 </div>
               </div>
               <div className="p-2 bg-blue-50 rounded-md text-blue-700">
@@ -482,8 +515,8 @@ export default function BudgetPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$435,000</div>
-                <div className="text-sm text-gray-500">43.5% of total</div>
+                <div className="text-3xl font-bold">₹{stats?.totalSpent?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">{stats?.utilizationRate?.toFixed(1) || 0}% of total</div>
               </div>
               <div className="p-2 bg-green-50 rounded-md text-green-700">
                 <DollarSign className="h-6 w-6" />
@@ -500,8 +533,8 @@ export default function BudgetPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$565,000</div>
-                <div className="text-sm text-gray-500">56.5% of total</div>
+                <div className="text-3xl font-bold">₹{stats?.totalRemaining?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">{stats?.totalAllocated ? ((stats.totalRemaining / stats.totalAllocated) * 100).toFixed(1) : 0}% remaining</div>
               </div>
               <div className="p-2 bg-amber-50 rounded-md text-amber-700">
                 <Wallet className="h-6 w-6" />
@@ -682,15 +715,21 @@ export default function BudgetPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={budgetSummaryData}
-                  type="bar"
-                  xKey="month"
-                  yKey="income"
-                  categories={["income", "expenses"]}
-                  colors={["#3b82f6", "#ef4444"]}
-                />
+                {stats?.monthlyTrend && stats.monthlyTrend.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.monthlyTrend}
+                    type="bar"
+                    xKey="month"
+                    yKey="allocated"
+                    categories={["allocated", "spent"]}
+                    colors={["#3b82f6", "#ef4444"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No monthly trend data available
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -702,14 +741,20 @@ export default function BudgetPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={budgetAllocationData}
-                  type="pie"
-                  xKey="category"
-                  yKey="amount"
-                  colors={["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#6b7280"]}
-                />
+                {stats?.budgetsByCategory && stats.budgetsByCategory.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.budgetsByCategory}
+                    type="pie"
+                    xKey="category"
+                    yKey="allocated"
+                    colors={["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#6b7280"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No budget allocation data available
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

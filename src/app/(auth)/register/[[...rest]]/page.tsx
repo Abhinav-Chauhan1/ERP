@@ -10,6 +10,9 @@ export default function RegisterPage() {
               "bg-slate-900 hover:bg-slate-700 text-sm normal-case",
           },
         }}
+        routing="path"
+        path="/register"
+        signInUrl="/login"
       />
     </div>
   );

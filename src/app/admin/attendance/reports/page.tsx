@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { 
   ChevronLeft, Download, Filter, BarChart2, 
   Users, User, PrinterIcon, FileDown, FileText,
@@ -34,9 +35,17 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import {
+  getClassAttendanceReport,
+  getDepartmentAttendanceReport,
+  getLowAttendanceStudents,
+  getAttendanceTrends,
+  exportAttendanceReport,
+} from "@/lib/actions/attendanceReportActions";
+import { getClasses } from "@/lib/actions/classesActions";
 
-// Mock data for grades/classes
-const classes = [
+// Mock data for grades/classes (fallback)
+const mockClasses = [
   { id: "1", name: "Grade 9-A" },
   { id: "2", name: "Grade 9-B" },
   { id: "3", name: "Grade 10-A" },
@@ -106,6 +115,118 @@ export default function AttendanceReportsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() + "");
   const [reportGenerateDialogOpen, setReportGenerateDialogOpen] = useState(false);
   const [reportType, setReportType] = useState("student");
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [classReport, setClassReport] = useState<any>(null);
+  const [departmentReport, setDepartmentReport] = useState<any>(null);
+  const [lowAttendanceStudents, setLowAttendanceStudents] = useState<any[]>([]);
+  const [trends, setTrends] = useState<any[]>([]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadClasses();
+    loadLowAttendanceStudents();
+  }, []);
+
+  useEffect(() => {
+    if (selectedClass) {
+      loadClassReport();
+    }
+  }, [selectedClass, selectedMonth, selectedYear]);
+
+  const loadClasses = async () => {
+    try {
+      const result = await getClasses();
+      if (result.success && result.data) {
+        setClasses(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading classes:", error);
+    }
+  };
+
+  const loadClassReport = async () => {
+    if (!selectedClass) return;
+    
+    setLoading(true);
+    try {
+      const month = parseInt(selectedMonth);
+      const year = parseInt(selectedYear);
+      const dateFrom = new Date(year, month - 1, 1);
+      const dateTo = new Date(year, month, 0);
+
+      const result = await getClassAttendanceReport(selectedClass, dateFrom, dateTo);
+      if (result.success && result.data) {
+        setClassReport(result.data);
+      } else {
+        toast.error(result.error || "Failed to load class report");
+      }
+    } catch (error) {
+      console.error("Error loading class report:", error);
+      toast.error("Failed to load class report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDepartmentReport = async () => {
+    setLoading(true);
+    try {
+      const month = parseInt(selectedMonth);
+      const year = parseInt(selectedYear);
+      const dateFrom = new Date(year, month - 1, 1);
+      const dateTo = new Date(year, month, 0);
+
+      const result = await getDepartmentAttendanceReport(dateFrom, dateTo);
+      if (result.success && result.data) {
+        setDepartmentReport(result.data);
+      } else {
+        toast.error(result.error || "Failed to load department report");
+      }
+    } catch (error) {
+      console.error("Error loading department report:", error);
+      toast.error("Failed to load department report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLowAttendanceStudents = async () => {
+    try {
+      const result = await getLowAttendanceStudents(75);
+      if (result.success && result.data) {
+        setLowAttendanceStudents(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading low attendance students:", error);
+    }
+  };
+
+  const handleExportReport = async () => {
+    try {
+      const month = parseInt(selectedMonth);
+      const year = parseInt(selectedYear);
+      const dateFrom = new Date(year, month - 1, 1);
+      const dateTo = new Date(year, month, 0);
+
+      const result = await exportAttendanceReport({
+        classId: selectedClass,
+        dateFrom,
+        dateTo,
+        type: reportType === "student" ? "CLASS" : "DEPARTMENT",
+      });
+
+      if (result.success) {
+        toast.success("Report exported successfully");
+        setReportGenerateDialogOpen(false);
+      } else {
+        toast.error(result.error || "Failed to export report");
+      }
+    } catch (error) {
+      console.error("Error exporting report:", error);
+      toast.error("Failed to export report");
+    }
+  };
   
   return (
     <div className="flex flex-col gap-4">

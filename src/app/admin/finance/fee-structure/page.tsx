@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, PlusCircle, Search, Filter, Edit, Eye, Calendar,
-  Trash2, DollarSign, CheckCircle, AlertCircle, Copy
+  ChevronLeft, PlusCircle, Search, Edit, Eye,
+  Trash2, DollarSign, CheckCircle, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -51,104 +50,32 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import toast from "react-hot-toast";
 
-// Mock data for academic years
-const academicYears = [
-  { id: "1", name: "2023-2024", startDate: "2023-08-15", endDate: "2024-05-31", isActive: true },
-  { id: "2", name: "2022-2023", startDate: "2022-08-16", endDate: "2023-06-01", isActive: false },
-  { id: "3", name: "2024-2025", startDate: "2024-08-14", endDate: "2025-05-30", isActive: false },
-];
+// Import server actions
+import {
+  getFeeStructures,
+  createFeeStructure,
+  updateFeeStructure,
+  deleteFeeStructure,
+  getFeeTypes,
+  createFeeType,
+  updateFeeType,
+  deleteFeeType,
+  getFeeStructureStats,
+} from "@/lib/actions/feeStructureActions";
+import { getAcademicYears } from "@/lib/actions/academicyearsActions";
+import { getClasses } from "@/lib/actions/classesActions";
 
-// Mock data for fee structures
-const feeStructures = [
-  {
-    id: "fs1",
-    name: "Regular Fee Structure",
-    academicYear: "2023-2024",
-    description: "Standard fee structure for all classes",
-    applicableClasses: "All Classes",
-    validFrom: "2023-08-15",
-    validTo: "2024-05-31",
-    isActive: true,
-    totalAmount: 25000,
-    items: [
-      { id: "fs1-1", name: "Tuition Fee", amount: 15000, frequency: "ANNUAL" },
-      { id: "fs1-2", name: "Laboratory Fee", amount: 3000, frequency: "ANNUAL" },
-      { id: "fs1-3", name: "Library Fee", amount: 2000, frequency: "ANNUAL" },
-      { id: "fs1-4", name: "Sports Fee", amount: 2500, frequency: "ANNUAL" },
-      { id: "fs1-5", name: "Development Fee", amount: 2500, frequency: "ANNUAL" },
-    ]
-  },
-  {
-    id: "fs2",
-    name: "Special Program Fee Structure",
-    academicYear: "2023-2024",
-    description: "Fee structure for students in special programs",
-    applicableClasses: "Grade 11, Grade 12",
-    validFrom: "2023-08-15",
-    validTo: "2024-05-31",
-    isActive: true,
-    totalAmount: 35000,
-    items: [
-      { id: "fs2-1", name: "Tuition Fee", amount: 20000, frequency: "ANNUAL" },
-      { id: "fs2-2", name: "Laboratory Fee", amount: 5000, frequency: "ANNUAL" },
-      { id: "fs2-3", name: "Library Fee", amount: 3000, frequency: "ANNUAL" },
-      { id: "fs2-4", name: "Special Program Fee", amount: 5000, frequency: "ANNUAL" },
-      { id: "fs2-5", name: "Development Fee", amount: 2000, frequency: "ANNUAL" },
-    ]
-  },
-  {
-    id: "fs3",
-    name: "Scholarship Fee Structure",
-    academicYear: "2023-2024",
-    description: "Reduced fee structure for scholarship students",
-    applicableClasses: "All Classes",
-    validFrom: "2023-08-15",
-    validTo: "2024-05-31",
-    isActive: true,
-    totalAmount: 15000,
-    items: [
-      { id: "fs3-1", name: "Tuition Fee", amount: 7500, frequency: "ANNUAL" },
-      { id: "fs3-2", name: "Laboratory Fee", amount: 3000, frequency: "ANNUAL" },
-      { id: "fs3-3", name: "Library Fee", amount: 2000, frequency: "ANNUAL" },
-      { id: "fs3-4", name: "Sports Fee", amount: 1000, frequency: "ANNUAL" },
-      { id: "fs3-5", name: "Development Fee", amount: 1500, frequency: "ANNUAL" },
-    ]
-  },
-];
-
-// Mock data for fee types
-const feeTypes = [
-  { id: "ft1", name: "Tuition Fee", description: "Basic education fee", amount: 15000, frequency: "ANNUAL" },
-  { id: "ft2", name: "Laboratory Fee", description: "Access to lab equipment", amount: 3000, frequency: "ANNUAL" },
-  { id: "ft3", name: "Library Fee", description: "Library services and books", amount: 2000, frequency: "ANNUAL" },
-  { id: "ft4", name: "Sports Fee", description: "Sports facilities and equipment", amount: 2500, frequency: "ANNUAL" },
-  { id: "ft5", name: "Development Fee", description: "School infrastructure development", amount: 2500, frequency: "ANNUAL" },
-  { id: "ft6", name: "Special Program Fee", description: "Special academic programs", amount: 5000, frequency: "ANNUAL" },
-  { id: "ft7", name: "Exam Fee", description: "Examination costs", amount: 1000, frequency: "SEMI_ANNUAL" },
-  { id: "ft8", name: "Transport Fee", description: "School bus transportation", amount: 12000, frequency: "ANNUAL", isOptional: true },
-  { id: "ft9", name: "Uniform Fee", description: "School uniform", amount: 3500, frequency: "ANNUAL", isOptional: true },
-];
-
-// Mock data for applicable classes
-const classes = [
-  { id: "c1", name: "Grade 1" },
-  { id: "c2", name: "Grade 2" },
-  { id: "c3", name: "Grade 3" },
-  { id: "c4", name: "Grade 4" },
-  { id: "c5", name: "Grade 5" },
-  { id: "c6", name: "Grade 6" },
-  { id: "c7", name: "Grade 7" },
-  { id: "c8", name: "Grade 8" },
-  { id: "c9", name: "Grade 9" },
-  { id: "c10", name: "Grade 10" },
-  { id: "c11", name: "Grade 11" },
-  { id: "c12", name: "Grade 12" },
-];
+// Import validation schemas
+import {
+  feeStructureSchema,
+  FeeStructureFormValues,
+  feeTypeSchema,
+  FeeTypeFormValues,
+} from "@/lib/schemaValidation/feeStructureSchemaValidation";
 
 // Fee frequency options
 const frequencyOptions = [
@@ -159,71 +86,44 @@ const frequencyOptions = [
   { value: "ANNUAL", label: "Annual" },
 ];
 
-// Schema for fee structure creation
-const feeStructureSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  academicYearId: z.string({
-    required_error: "Please select an academic year",
-  }),
-  description: z.string().optional(),
-  applicableClasses: z.array(z.string()).min(1, "At least one class must be selected"),
-  validFrom: z.string({
-    required_error: "Valid from date is required",
-  }),
-  validTo: z.string({
-    required_error: "Valid to date is required",
-  }),
-  isActive: z.boolean().default(true),
-  items: z.array(
-    z.object({
-      feeTypeId: z.string({
-        required_error: "Fee type is required",
-      }),
-      amount: z.number({
-        required_error: "Amount is required",
-      }).min(0, "Amount must be positive"),
-      frequency: z.string(),
-    })
-  ).min(1, "At least one fee item is required"),
-});
-
-// Schema for fee type creation
-const feeTypeSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  description: z.string().optional(),
-  amount: z.number({
-    required_error: "Amount is required",
-  }).min(0, "Amount must be positive"),
-  frequency: z.string({
-    required_error: "Frequency is required",
-  }),
-  isOptional: z.boolean().default(false),
-});
-
 export default function FeeStructurePage() {
+  // State management
+  const [feeStructures, setFeeStructures] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [feeTypes, setFeeTypes] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [academicYearFilter, setAcademicYearFilter] = useState("all");
   const [activeTabIndex, setActiveTabIndex] = useState("structures");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createFeeTypeDialogOpen, setCreateFeeTypeDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [createFeeTypeDialogOpen, setCreateFeeTypeDialogOpen] = useState(false);
+  const [editFeeTypeDialogOpen, setEditFeeTypeDialogOpen] = useState(false);
+  const [deleteFeeTypeDialogOpen, setDeleteFeeTypeDialogOpen] = useState(false);
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectedFeeTypeId, setSelectedFeeTypeId] = useState<string | null>(null);
+  const [selectedStructure, setSelectedStructure] = useState<any>(null);
 
-  // Initialize form for fee structure
-  const form = useForm<z.infer<typeof feeStructureSchema>>({
+  // Initialize forms
+  const form = useForm<FeeStructureFormValues>({
     resolver: zodResolver(feeStructureSchema),
     defaultValues: {
       name: "",
+      academicYearId: "",
+      applicableClasses: "",
       description: "",
-      applicableClasses: [],
+      validFrom: new Date(),
+      validTo: undefined,
       isActive: true,
       items: [],
     },
   });
 
-  // Initialize form for fee type
-  const feeTypeForm = useForm<z.infer<typeof feeTypeSchema>>({
+  const feeTypeForm = useForm<FeeTypeFormValues>({
     resolver: zodResolver(feeTypeSchema),
     defaultValues: {
       name: "",
@@ -234,32 +134,146 @@ export default function FeeStructurePage() {
     },
   });
 
-  // Filter fee structures based on search and academic year
-  const filteredStructures = feeStructures.filter(structure => {
-    const matchesSearch = 
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  async function fetchAllData() {
+    setLoading(true);
+    try {
+      const [structuresResult, yearsResult, classesResult, typesResult, statsResult] = await Promise.all([
+        getFeeStructures(),
+        getAcademicYears(),
+        getClasses(),
+        getFeeTypes(),
+        getFeeStructureStats(),
+      ]);
+
+      if (structuresResult.success) setFeeStructures(structuresResult.data || []);
+      if (yearsResult.success) setAcademicYears(yearsResult.data || []);
+      if (classesResult.success) setClasses(classesResult.data || []);
+      if (typesResult.success) setFeeTypes(typesResult.data || []);
+      if (statsResult.success) setStats(statsResult.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Filter fee structures
+  const filteredStructures = feeStructures.filter((structure) => {
+    const matchesSearch =
       structure.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       structure.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesYear = 
-      academicYearFilter === "all" || structure.academicYear === academicYears.find(y => y.id === academicYearFilter)?.name;
-    
+
+    const matchesYear =
+      academicYearFilter === "all" ||
+      structure.academicYearId === academicYearFilter;
+
     return matchesSearch && matchesYear;
   });
 
+  // Handle create fee structure
   function handleCreateStructure() {
-    // Add empty items array to form
     form.reset({
       name: "",
+      academicYearId: "",
+      applicableClasses: "",
       description: "",
-      applicableClasses: [],
-      validFrom: new Date().toISOString().split('T')[0],
-      validTo: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+      validFrom: new Date(),
+      validTo: undefined,
       isActive: true,
-      items: [{ feeTypeId: "", amount: 0, frequency: "ANNUAL" }],
+      items: [],
     });
+    setSelectedStructureId(null);
     setCreateDialogOpen(true);
   }
 
+  // Handle edit fee structure
+  function handleEditStructure(structure: any) {
+    setSelectedStructureId(structure.id);
+    form.reset({
+      name: structure.name,
+      academicYearId: structure.academicYearId,
+      applicableClasses: structure.applicableClasses || "",
+      description: structure.description || "",
+      validFrom: new Date(structure.validFrom),
+      validTo: structure.validTo ? new Date(structure.validTo) : undefined,
+      isActive: structure.isActive,
+      items: structure.items.map((item: any) => ({
+        feeTypeId: item.feeTypeId,
+        amount: item.amount,
+        dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+      })),
+    });
+    setEditDialogOpen(true);
+  }
+
+  // Handle delete fee structure
+  function handleDeleteStructure(id: string) {
+    setSelectedStructureId(id);
+    setDeleteDialogOpen(true);
+  }
+
+  // Handle view fee structure
+  function handleViewStructure(structure: any) {
+    setSelectedStructure(structure);
+    setViewDialogOpen(true);
+  }
+
+  // Submit fee structure form
+  async function onSubmitStructure(values: FeeStructureFormValues) {
+    try {
+      let result;
+      if (selectedStructureId) {
+        result = await updateFeeStructure(selectedStructureId, values);
+      } else {
+        result = await createFeeStructure(values);
+      }
+
+      if (result.success) {
+        toast.success(
+          `Fee structure ${selectedStructureId ? "updated" : "created"} successfully`
+        );
+        setCreateDialogOpen(false);
+        setEditDialogOpen(false);
+        form.reset();
+        setSelectedStructureId(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (error) {
+      console.error("Error submitting fee structure:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Confirm delete fee structure
+  async function confirmDeleteStructure() {
+    if (!selectedStructureId) return;
+
+    try {
+      const result = await deleteFeeStructure(selectedStructureId);
+
+      if (result.success) {
+        toast.success("Fee structure deleted successfully");
+        setDeleteDialogOpen(false);
+        setSelectedStructureId(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to delete fee structure");
+      }
+    } catch (error) {
+      console.error("Error deleting fee structure:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Handle create fee type
   function handleCreateFeeType() {
     feeTypeForm.reset({
       name: "",
@@ -268,831 +282,772 @@ export default function FeeStructurePage() {
       frequency: "ANNUAL",
       isOptional: false,
     });
+    setSelectedFeeTypeId(null);
     setCreateFeeTypeDialogOpen(true);
   }
 
-  function handleViewStructure(structureId: string) {
-    setSelectedStructureId(structureId);
-    setViewDialogOpen(true);
+  // Handle edit fee type
+  function handleEditFeeType(feeType: any) {
+    setSelectedFeeTypeId(feeType.id);
+    feeTypeForm.reset({
+      name: feeType.name,
+      description: feeType.description || "",
+      amount: feeType.amount,
+      frequency: feeType.frequency,
+      isOptional: feeType.isOptional,
+    });
+    setEditFeeTypeDialogOpen(true);
   }
 
-  function addFeeItem() {
-    const currentItems = form.getValues().items || [];
-    form.setValue('items', [...currentItems, { feeTypeId: "", amount: 0, frequency: "ANNUAL" }]);
+  // Handle delete fee type
+  function handleDeleteFeeType(id: string) {
+    setSelectedFeeTypeId(id);
+    setDeleteFeeTypeDialogOpen(true);
   }
 
-  function removeFeeItem(index: number) {
-    const currentItems = form.getValues().items;
-    form.setValue('items', currentItems.filter((_, i) => i !== index));
-  }
+  // Submit fee type form
+  async function onSubmitFeeType(values: FeeTypeFormValues) {
+    try {
+      let result;
+      if (selectedFeeTypeId) {
+        result = await updateFeeType(selectedFeeTypeId, values);
+      } else {
+        result = await createFeeType(values);
+      }
 
-  function onSubmitFeeStructure(values: z.infer<typeof feeStructureSchema>) {
-    console.log("Creating fee structure:", values);
-    setCreateDialogOpen(false);
-  }
-
-  function onSubmitFeeType(values: z.infer<typeof feeTypeSchema>) {
-    console.log("Creating fee type:", values);
-    setCreateFeeTypeDialogOpen(false);
-  }
-
-  function handleCheckAllItems() {
-    if (selectedItems.length === feeTypes.length) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems(feeTypes.map(type => type.id));
+      if (result.success) {
+        toast.success(
+          `Fee type ${selectedFeeTypeId ? "updated" : "created"} successfully`
+        );
+        setCreateFeeTypeDialogOpen(false);
+        setEditFeeTypeDialogOpen(false);
+        feeTypeForm.reset();
+        setSelectedFeeTypeId(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "An error occurred");
+      }
+    } catch (error) {
+      console.error("Error submitting fee type:", error);
+      toast.error("An unexpected error occurred");
     }
   }
 
-  function handleItemChecked(itemId: string) {
-    if (selectedItems.includes(itemId)) {
-      setSelectedItems(selectedItems.filter(id => id !== itemId));
-    } else {
-      setSelectedItems([...selectedItems, itemId]);
+  // Confirm delete fee type
+  async function confirmDeleteFeeType() {
+    if (!selectedFeeTypeId) return;
+
+    try {
+      const result = await deleteFeeType(selectedFeeTypeId);
+
+      if (result.success) {
+        toast.success("Fee type deleted successfully");
+        setDeleteFeeTypeDialogOpen(false);
+        setSelectedFeeTypeId(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to delete fee type");
+      }
+    } catch (error) {
+      console.error("Error deleting fee type:", error);
+      toast.error("An unexpected error occurred");
     }
   }
 
-  const selectedStructure = feeStructures.find(structure => structure.id === selectedStructureId);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
+              Back to Finance
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Fee Structure Management</h1>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={createFeeTypeDialogOpen} onOpenChange={setCreateFeeTypeDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" onClick={handleCreateFeeType}>
-                <PlusCircle className="mr-2 h-4 w-4" /> New Fee Type
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Fee Type</DialogTitle>
-                <DialogDescription>
-                  Add a new fee type to the system
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...feeTypeForm}>
-                <form onSubmit={feeTypeForm.handleSubmit(onSubmitFeeType)} className="space-y-4">
-                  <FormField
-                    control={feeTypeForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fee Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Tuition Fee" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={feeTypeForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description (Optional)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Brief description of the fee" 
-                            {...field} 
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={feeTypeForm.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Default Amount</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
-                              placeholder="0.00" 
-                              {...field}
-                              onChange={e => field.onChange(parseFloat(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={feeTypeForm.control}
-                      name="frequency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Frequency</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {frequencyOptions.map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={feeTypeForm.control}
-                    name="isOptional"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5">
-                          <FormLabel>Optional Fee</FormLabel>
-                          <FormDescription>
-                            Mark if this fee is optional for students
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setCreateFeeTypeDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Create Fee Type</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-          
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreateStructure}>
-                <PlusCircle className="mr-2 h-4 w-4" /> New Fee Structure
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle>Create New Fee Structure</DialogTitle>
-                <DialogDescription>
-                  Define a new fee structure for students
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmitFeeStructure)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Structure Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Regular Fee Structure" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="academicYearId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Academic Year</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select academic year" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {academicYears.map(year => (
-                                <SelectItem key={year.id} value={year.id}>
-                                  {year.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description (Optional)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Brief description of the fee structure" 
-                            {...field} 
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="validFrom"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valid From</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="validTo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valid To</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="applicableClasses"
-                    render={() => (
-                      <FormItem>
-                        <div className="mb-4">
-                          <FormLabel>Applicable Classes</FormLabel>
-                          <FormDescription>
-                            Select which classes this fee structure applies to
-                          </FormDescription>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {classes.map((item) => (
-                            <FormField
-                              key={item.id}
-                              control={form.control}
-                              name="applicableClasses"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem
-                                    key={item.id}
-                                    className="flex flex-row items-start space-x-2 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(item.id)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([...field.value, item.id])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== item.id
-                                                )
-                                              )
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal">
-                                      {item.name}
-                                    </FormLabel>
-                                  </FormItem>
-                                )
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5">
-                          <FormLabel>Active</FormLabel>
-                          <FormDescription>
-                            Make this fee structure active and applicable to students
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <FormLabel className="text-base">Fee Items</FormLabel>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addFeeItem}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Add Fee Item
-                      </Button>
-                    </div>
-                    
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Fee Type</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Frequency</TableHead>
-                            <TableHead className="w-[100px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.getValues().items?.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <FormField
-                                  control={form.control}
-                                  name={`items.${index}.feeTypeId`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select fee type" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {feeTypes.map(type => (
-                                            <SelectItem key={type.id} value={type.id}>
-                                              {type.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <FormField
-                                  control={form.control}
-                                  name={`items.${index}.amount`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormControl>
-                                        <Input 
-                                          type="number" 
-                                          min={0} 
-                                          placeholder="0.00" 
-                                          {...field}
-                                          onChange={e => field.onChange(parseFloat(e.target.value))}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <FormField
-                                  control={form.control}
-                                  name={`items.${index}.frequency`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select frequency" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {frequencyOptions.map(option => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                              {option.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeFeeItem(index)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          
-                          {!form.getValues().items?.length && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                                No fee items added. Click "Add Fee Item" to add one.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                  
-                  <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">Create Fee Structure</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
       </div>
 
-      <Tabs defaultValue="structures" onValueChange={setActiveTabIndex}>
+      {/* Statistics Cards */}
+      {stats && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Structures</p>
+                <p className="text-2xl font-bold">{stats.totalStructures}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-500" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Active Structures</p>
+                <p className="text-2xl font-bold">{stats.activeStructures}</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Fee Types</p>
+                <p className="text-2xl font-bold">{stats.totalFeeTypes}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-purple-500" />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <Tabs value={activeTabIndex} onValueChange={setActiveTabIndex}>
         <TabsList>
           <TabsTrigger value="structures">Fee Structures</TabsTrigger>
           <TabsTrigger value="types">Fee Types</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="structures">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="md:w-1/2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  type="search"
-                  placeholder="Search fee structures..."
-                  className="pl-9"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 md:w-1/2">
-              <Select
-                value={academicYearFilter}
-                onValueChange={setAcademicYearFilter}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filter by academic year" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Academic Years</SelectItem>
-                  {academicYears.map((year) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
+
+        {/* Fee Structures Tab */}
+        <TabsContent value="structures" className="space-y-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Fee Structures</CardTitle>
-              <CardDescription>
-                Manage different fee structures for your institution
-              </CardDescription>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Fee Structures</CardTitle>
+                  <CardDescription>
+                    Manage fee structures for different academic years and classes
+                  </CardDescription>
+                </div>
+                <Button onClick={handleCreateStructure}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create Fee Structure
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Academic Year</TableHead>
-                      <TableHead>Applicable For</TableHead>
-                      <TableHead>Total Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStructures.map((structure) => (
-                      <TableRow key={structure.id}>
-                        <TableCell className="font-medium">{structure.name}</TableCell>
-                        <TableCell>{structure.academicYear}</TableCell>
-                        <TableCell>{structure.applicableClasses}</TableCell>
-                        <TableCell>
-                          ${structure.totalAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {structure.isActive ? (
-                            <Badge className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-800">
-                              Inactive
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewStructure(structure.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                          >
-                            <Copy className="h-4 w-4 mr-1" />
-                            Clone
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+              {/* Filters */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="search"
+                    placeholder="Search fee structures..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Academic Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.id}>
+                        {year.name}
+                      </SelectItem>
                     ))}
-                  </TableBody>
-                </Table>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Fee Structures List */}
+              {filteredStructures.length === 0 ? (
+                <div className="text-center py-10">
+                  <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No fee structures found</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {searchTerm || academicYearFilter !== "all"
+                      ? "Try adjusting your filters"
+                      : "Create your first fee structure to get started"}
+                  </p>
+                  <Button onClick={handleCreateStructure}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Fee Structure
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredStructures.map((structure) => (
+                    <Card key={structure.id} className="overflow-hidden">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-base">{structure.name}</CardTitle>
+                            <CardDescription className="text-xs mt-1">
+                              {structure.academicYear?.name}
+                            </CardDescription>
+                          </div>
+                          <Badge
+                            variant={structure.isActive ? "default" : "secondary"}
+                            className="ml-2"
+                          >
+                            {structure.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-3">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Classes:</span>
+                            <span className="font-medium">
+                              {structure.applicableClasses || "All"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fee Items:</span>
+                            <span className="font-medium">{structure.items?.length || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Total Amount:</span>
+                            <span className="font-medium">
+                              ₹
+                              {structure.items
+                                ?.reduce((sum: number, item: any) => sum + item.amount, 0)
+                                .toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                      <div className="flex border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-none"
+                          onClick={() => handleViewStructure(structure)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-none border-l"
+                          onClick={() => handleEditStructure(structure)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 rounded-none border-l text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteStructure(structure.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="types">
-          <div className="flex justify-between items-center mb-4">
-            <div className="relative w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                type="search"
-                placeholder="Search fee types..."
-                className="pl-9"
-              />
-            </div>
-            <div className="space-x-2">
-              <Button variant="outline">
-                <Trash2 className="h-4 w-4 mr-1" />
-                {selectedItems.length ? `Delete (${selectedItems.length})` : "Delete"}
-              </Button>
-            </div>
-          </div>
-          
+
+        {/* Fee Types Tab */}
+        <TabsContent value="types" className="space-y-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Fee Types</CardTitle>
-              <CardDescription>
-                Manage fee types that can be included in fee structures
-              </CardDescription>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Fee Types</CardTitle>
+                  <CardDescription>
+                    Manage different types of fees that can be included in fee structures
+                  </CardDescription>
+                </div>
+                <Button onClick={handleCreateFeeType}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create Fee Type
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
+              {feeTypes.length === 0 ? (
+                <div className="text-center py-10">
+                  <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No fee types found</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Create fee types to use in your fee structures
+                  </p>
+                  <Button onClick={handleCreateFeeType}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Fee Type
+                  </Button>
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[40px]">
-                        <Checkbox 
-                          checked={selectedItems.length === feeTypes.length && feeTypes.length > 0}
-                          onCheckedChange={handleCheckAllItems}
-                        />
-                      </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Default Amount</TableHead>
+                      <TableHead>Amount</TableHead>
                       <TableHead>Frequency</TableHead>
                       <TableHead>Optional</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {feeTypes.map((type) => (
-                      <TableRow key={type.id}>
-                        <TableCell>
-                          <Checkbox 
-                            checked={selectedItems.includes(type.id)}
-                            onCheckedChange={() => handleItemChecked(type.id)}
-                          />
+                    {feeTypes.map((feeType) => (
+                      <TableRow key={feeType.id}>
+                        <TableCell className="font-medium">{feeType.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {feeType.description || "—"}
                         </TableCell>
-                        <TableCell className="font-medium">{type.name}</TableCell>
-                        <TableCell>{type.description || "—"}</TableCell>
-                        <TableCell>${type.amount.toLocaleString()}</TableCell>
+                        <TableCell>₹{feeType.amount.toLocaleString()}</TableCell>
                         <TableCell>
-                          {frequencyOptions.find(f => f.value === type.frequency)?.label || type.frequency}
+                          <Badge variant="outline">
+                            {frequencyOptions.find((f) => f.value === feeType.frequency)?.label}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          {type.isOptional ? (
-                            <Badge className="bg-amber-100 text-amber-800">Optional</Badge>
+                          {feeType.isOptional ? (
+                            <Badge variant="secondary">Optional</Badge>
                           ) : (
-                            <Badge className="bg-blue-100 text-blue-800">Required</Badge>
+                            <Badge>Required</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleEditFeeType(feeType)}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="text-red-500 hover:text-red-600"
+                            onClick={() => handleDeleteFeeType(feeType.id)}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* View Fee Structure Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl">
+      {/* Create/Edit Fee Structure Dialog */}
+      <Dialog open={createDialogOpen || editDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setCreateDialogOpen(false);
+          setEditDialogOpen(false);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fee Structure Details</DialogTitle>
+            <DialogTitle>
+              {selectedStructureId ? "Edit Fee Structure" : "Create Fee Structure"}
+            </DialogTitle>
             <DialogDescription>
-              {selectedStructure?.name} - {selectedStructure?.academicYear}
+              {selectedStructureId
+                ? "Update the fee structure details"
+                : "Create a new fee structure for an academic year"}
             </DialogDescription>
           </DialogHeader>
-          
-          {selectedStructure && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-blue-700 font-medium text-sm mb-1">Total Amount</div>
-                  <div className="text-2xl font-bold">${selectedStructure.totalAmount.toLocaleString()}</div>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <div className="text-green-700 font-medium text-sm mb-1">Status</div>
-                  <div className="flex items-center">
-                    {selectedStructure.isActive ? (
-                      <>
-                        <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                        <span className="text-xl font-bold text-green-800">Active</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
-                        <span className="text-xl font-bold text-red-800">Inactive</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium mb-2">Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Academic Year</p>
-                    <p className="font-medium">{selectedStructure.academicYear}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Applicable Classes</p>
-                    <p className="font-medium">{selectedStructure.applicableClasses}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Valid From</p>
-                    <p className="font-medium">{new Date(selectedStructure.validFrom).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Valid To</p>
-                    <p className="font-medium">{new Date(selectedStructure.validTo).toLocaleDateString()}</p>
-                  </div>
-                  {selectedStructure.description && (
-                    <div className="md:col-span-2">
-                      <p className="text-sm text-gray-500">Description</p>
-                      <p className="font-medium">{selectedStructure.description}</p>
-                    </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitStructure)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Structure Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Grade 10 Annual Fees" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="academicYearId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Academic Year</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select academic year" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {academicYears.map((year) => (
+                          <SelectItem key={year.id} value={year.id}>
+                            {year.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="applicableClasses"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Applicable Classes (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., Grade 10, Grade 11 (leave empty for all)"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Brief description of this fee structure"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="validFrom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valid From</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                          onChange={(e) => field.onChange(new Date(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="validTo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valid To (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <FormLabel>Active Status</FormLabel>
+                      <FormDescription className="text-xs">
+                        Enable this fee structure for use
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setCreateDialogOpen(false);
+                  setEditDialogOpen(false);
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {selectedStructureId ? "Update" : "Create"} Fee Structure
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit Fee Type Dialog */}
+      <Dialog open={createFeeTypeDialogOpen || editFeeTypeDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setCreateFeeTypeDialogOpen(false);
+          setEditFeeTypeDialogOpen(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedFeeTypeId ? "Edit Fee Type" : "Create Fee Type"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedFeeTypeId
+                ? "Update the fee type details"
+                : "Create a new fee type to use in fee structures"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...feeTypeForm}>
+            <form onSubmit={feeTypeForm.handleSubmit(onSubmitFeeType)} className="space-y-4">
+              <FormField
+                control={feeTypeForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fee Type Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Tuition Fee" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={feeTypeForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Fee type description" {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={feeTypeForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={feeTypeForm.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequency</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {frequencyOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={feeTypeForm.control}
+                name="isOptional"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <FormLabel>Optional Fee</FormLabel>
+                      <FormDescription className="text-xs">
+                        Mark as optional if not mandatory
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setCreateFeeTypeDialogOpen(false);
+                  setEditFeeTypeDialogOpen(false);
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {selectedFeeTypeId ? "Update" : "Create"} Fee Type
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Fee Structure Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Fee Structure</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this fee structure? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteStructure}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Fee Type Dialog */}
+      <Dialog open={deleteFeeTypeDialogOpen} onOpenChange={setDeleteFeeTypeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Fee Type</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this fee type? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteFeeTypeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteFeeType}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Fee Structure Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Fee Structure Details</DialogTitle>
+          </DialogHeader>
+          {selectedStructure && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-2">{selectedStructure.name}</h3>
+                <p className="text-sm text-muted-foreground">{selectedStructure.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Academic Year:</span>
+                  <p className="font-medium">{selectedStructure.academicYear?.name}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>
+                  <p>
+                    <Badge variant={selectedStructure.isActive ? "default" : "secondary"}>
+                      {selectedStructure.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Applicable Classes:</span>
+                  <p className="font-medium">{selectedStructure.applicableClasses || "All"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Total Amount:</span>
+                  <p className="font-medium">
+                    ₹{selectedStructure.items
+                      ?.reduce((sum: number, item: any) => sum + item.amount, 0)
+                      .toLocaleString()}
+                  </p>
                 </div>
               </div>
-              
-              <div className="border rounded-lg">
-                <div className="bg-gray-50 p-4 border-b">
-                  <h3 className="font-medium">Fee Items</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Fee Type</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Frequency</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedStructure.items.map((item) => (
-                        <tr key={item.id} className="border-b">
-                          <td className="py-3 px-4 align-middle font-medium">{item.name}</td>
-                          <td className="py-3 px-4 align-middle">${item.amount.toLocaleString()}</td>
-                          <td className="py-3 px-4 align-middle">
-                            {frequencyOptions.find(f => f.value === item.frequency)?.label || item.frequency}
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            {feeTypes.find(t => t.name === item.name)?.isOptional ? (
-                              <Badge className="bg-amber-100 text-amber-800">Optional</Badge>
-                            ) : (
-                              <Badge className="bg-blue-100 text-blue-800">Required</Badge>
-                            )}
-                          </td>
-                        </tr>
+              {selectedStructure.items && selectedStructure.items.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Fee Items</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fee Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Due Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedStructure.items.map((item: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.feeType?.name || "—"}</TableCell>
+                          <TableCell>₹{item.amount.toLocaleString()}</TableCell>
+                          <TableCell>
+                            {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "—"}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gray-50 font-medium">
-                        <td className="py-3 px-4 align-middle">Total</td>
-                        <td className="py-3 px-4 align-middle">${selectedStructure.totalAmount.toLocaleString()}</td>
-                        <td colSpan={2}></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
+              )}
             </div>
           )}
-          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
-              Close
-            </Button>
-            <Button variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview for Student
-            </Button>
-            <Button>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Structure
-            </Button>
+            <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

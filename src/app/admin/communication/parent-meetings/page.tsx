@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,9 +44,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import toast from "react-hot-toast";
+import {
+  getParentMeetings,
+  scheduleMeeting,
+  updateMeeting,
+  cancelMeeting,
+  completeMeeting,
+  deleteMeeting,
+  getTeachersForMeetings,
+  getParentsForMeetings,
+  getMeetingStats,
+} from "@/lib/actions/parentMeetingActions";
 
-// Mock data for parent meetings
-const parentMeetings = [
+// Mock data for parent meetings (fallback)
+const mockParentMeetings = [
   {
     id: "pm1",
     title: "Term Progress Discussion",
@@ -194,19 +206,196 @@ export default function ParentMeetingsPage() {
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const [selectedParent, setSelectedParent] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [parentMeetings, setParentMeetings] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [parents, setParents] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dayMeetingsDialogOpen, setDayMeetingsDialogOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: "",
+    parentId: "",
+    teacherId: "",
+    scheduledDate: "",
+    scheduledTime: "",
+    duration: "30",
+    location: "",
+    purpose: "",
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    loadMeetings();
+    loadTeachers();
+    loadParents();
+    loadStats();
+  }, [statusFilter, timeFilter]);
+
+  const loadMeetings = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      if (statusFilter !== "all") filters.status = statusFilter.toUpperCase();
+      
+      const result = await getParentMeetings(filters);
+      if (result.success && result.data) {
+        setParentMeetings(result.data);
+      } else {
+        toast.error(result.error || "Failed to load meetings");
+      }
+    } catch (error) {
+      console.error("Error loading meetings:", error);
+      toast.error("Failed to load meetings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTeachers = async () => {
+    try {
+      const result = await getTeachersForMeetings();
+      if (result.success && result.data) {
+        setTeachers(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading teachers:", error);
+    }
+  };
+
+  const loadParents = async () => {
+    try {
+      const result = await getParentsForMeetings();
+      if (result.success && result.data) {
+        setParents(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading parents:", error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await getMeetingStats();
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const handleScheduleMeeting = async () => {
+    try {
+      if (!formData.parentId || !formData.teacherId || !formData.scheduledDate || !formData.scheduledTime) {
+        toast.error("Please fill in all required fields");
+        return;
+      }
+
+      const scheduledAt = `${formData.scheduledDate}T${formData.scheduledTime}:00`;
+      
+      const result = await scheduleMeeting({
+        parentId: formData.parentId,
+        teacherId: formData.teacherId,
+        scheduledAt,
+        duration: parseInt(formData.duration),
+        location: formData.location || null,
+        purpose: formData.purpose || null,
+      });
+
+      if (result.success) {
+        toast.success("Meeting scheduled successfully");
+        setScheduleMeetingDialog(false);
+        setFormData({
+          title: "",
+          parentId: "",
+          teacherId: "",
+          scheduledDate: "",
+          scheduledTime: "",
+          duration: "30",
+          location: "",
+          purpose: "",
+        });
+        loadMeetings();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to schedule meeting");
+      }
+    } catch (error) {
+      console.error("Error scheduling meeting:", error);
+      toast.error("Failed to schedule meeting");
+    }
+  };
+
+  const handleCompleteMeeting = async (id: string) => {
+    try {
+      const result = await completeMeeting(id);
+      if (result.success) {
+        toast.success("Meeting marked as completed");
+        loadMeetings();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to complete meeting");
+      }
+    } catch (error) {
+      console.error("Error completing meeting:", error);
+      toast.error("Failed to complete meeting");
+    }
+  };
+
+  const handleCancelMeeting = async (id: string) => {
+    try {
+      const result = await cancelMeeting(id);
+      if (result.success) {
+        toast.success("Meeting cancelled");
+        loadMeetings();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to cancel meeting");
+      }
+    } catch (error) {
+      console.error("Error cancelling meeting:", error);
+      toast.error("Failed to cancel meeting");
+    }
+  };
+
+  const handleDeleteMeeting = async (id: string) => {
+    try {
+      const result = await deleteMeeting(id);
+      if (result.success) {
+        toast.success("Meeting deleted");
+        loadMeetings();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to delete meeting");
+      }
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      toast.error("Failed to delete meeting");
+    }
+  };
 
   // Filter meetings based on search term, status, and time
   const filteredMeetings = parentMeetings.filter(meeting => {
-    const matchesSearch = 
-      meeting.parentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      meeting.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
+    const teacherName = `${meeting.teacher?.user?.firstName || ""} ${meeting.teacher?.user?.lastName || ""}`;
+    const studentName = meeting.parent?.children?.[0]?.student?.user 
+      ? `${meeting.parent.children[0].student.user.firstName} ${meeting.parent.children[0].student.user.lastName}`
+      : "";
     
-    const matchesStatus = statusFilter === "all" || meeting.status === statusFilter;
+    const matchesSearch = 
+      parentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (meeting.purpose && meeting.purpose.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = statusFilter === "all" || meeting.status === statusFilter.toUpperCase();
     
     const now = new Date();
-    const meetingDate = new Date(meeting.scheduledDate);
+    const meetingDate = new Date(meeting.scheduledAt);
     const matchesTime = 
       timeFilter === "all" ||
       (timeFilter === "upcoming" && meetingDate > now) ||
@@ -265,36 +454,47 @@ export default function ParentMeetingsPage() {
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Meeting Title</label>
-                <Input placeholder="e.g., End of Term Progress Discussion" />
-              </div>
-              
-              <div className="space-y-2">
                 <label className="text-sm font-medium">Parent</label>
-                <Select value={selectedParent} onValueChange={setSelectedParent}>
+                <Select 
+                  value={formData.parentId} 
+                  onValueChange={(value) => setFormData({ ...formData, parentId: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select parent" />
                   </SelectTrigger>
                   <SelectContent>
-                    {parents.map(parent => (
-                      <SelectItem key={parent.id} value={parent.id}>
-                        {parent.name} (Parent of {parent.studentName}, {parent.grade})
-                      </SelectItem>
-                    ))}
+                    {parents.map(parent => {
+                      const studentInfo = parent.children?.[0]?.student;
+                      const studentName = studentInfo?.user 
+                        ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+                        : "No student";
+                      const grade = studentInfo?.enrollments?.[0]
+                        ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
+                        : "";
+                      
+                      return (
+                        <SelectItem key={parent.id} value={parent.id}>
+                          {parent.user.firstName} {parent.user.lastName} (Parent of {studentName}{grade ? `, ${grade}` : ""})
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Teacher</label>
-                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                <Select 
+                  value={formData.teacherId} 
+                  onValueChange={(value) => setFormData({ ...formData, teacherId: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select teacher" />
                   </SelectTrigger>
                   <SelectContent>
                     {teachers.map(teacher => (
                       <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.name} ({teacher.subject})
+                        {teacher.user.firstName} {teacher.user.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -304,18 +504,29 @@ export default function ParentMeetingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
-                  <Input type="date" />
+                  <Input 
+                    type="date" 
+                    value={formData.scheduledDate}
+                    onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Time</label>
-                  <Input type="time" />
+                  <Input 
+                    type="time" 
+                    value={formData.scheduledTime}
+                    onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
+                  />
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Duration (minutes)</label>
-                  <Select defaultValue="30">
+                  <Select 
+                    value={formData.duration} 
+                    onValueChange={(value) => setFormData({ ...formData, duration: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select duration" />
                     </SelectTrigger>
@@ -329,15 +540,21 @@ export default function ParentMeetingsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Location</label>
-                  <Input placeholder="e.g., Room 101, Conference Room" />
+                  <Input 
+                    placeholder="e.g., Room 101, Conference Room" 
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notes</label>
+                <label className="text-sm font-medium">Purpose / Notes</label>
                 <Textarea 
                   placeholder="Provide details about the purpose of the meeting"
                   className="h-24"
+                  value={formData.purpose}
+                  onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
                 />
               </div>
               
@@ -355,7 +572,7 @@ export default function ParentMeetingsPage() {
               <Button variant="outline" onClick={() => setScheduleMeetingDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setScheduleMeetingDialog(false)}>
+              <Button onClick={handleScheduleMeeting}>
                 Schedule Meeting
               </Button>
             </DialogFooter>
@@ -416,8 +633,13 @@ export default function ParentMeetingsPage() {
             </TabsList>
             
             <TabsContent value="list">
-              <div className="rounded-md border">
-                <div className="overflow-x-auto">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b">
@@ -431,35 +653,46 @@ export default function ParentMeetingsPage() {
                     </thead>
                     <tbody>
                       {filteredMeetings.length > 0 ? (
-                        filteredMeetings.map((meeting) => (
-                          <tr key={meeting.id} className="border-b">
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback>{meeting.parentAvatar}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{meeting.parentName}</div>
-                                  <div className="text-xs text-gray-500">{meeting.studentName}, {meeting.studentGrade}</div>
+                        filteredMeetings.map((meeting) => {
+                          const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
+                          const parentInitials = `${meeting.parent?.user?.firstName?.[0] || ""}${meeting.parent?.user?.lastName?.[0] || ""}`;
+                          const studentInfo = meeting.parent?.children?.[0]?.student;
+                          const studentName = studentInfo?.user 
+                            ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+                            : "No student";
+                          const grade = studentInfo?.enrollments?.[0]
+                            ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
+                            : "";
+                          
+                          return (
+                            <tr key={meeting.id} className="border-b">
+                              <td className="py-3 px-4 align-middle">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{parentInitials}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="font-medium">{parentName}</div>
+                                    <div className="text-xs text-gray-500">{studentName}{grade ? `, ${grade}` : ""}</div>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle font-medium">{meeting.title}</td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="h-3.5 w-3.5 text-gray-500" />
-                                <span>{new Date(meeting.scheduledDate).toLocaleDateString()}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                                <Clock className="h-3 w-3" />
-                                <span>{new Date(meeting.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                <span>({meeting.duration} min)</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle">{meeting.location}</td>
-                            <td className="py-3 px-4 align-middle">
-                              {getStatusBadge(meeting.status)}
-                            </td>
+                              </td>
+                              <td className="py-3 px-4 align-middle font-medium">{meeting.purpose || "Meeting"}</td>
+                              <td className="py-3 px-4 align-middle">
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                                  <span>{new Date(meeting.scheduledAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span>({meeting.duration} min)</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">{meeting.location || "TBD"}</td>
+                              <td className="py-3 px-4 align-middle">
+                                {getStatusBadge(meeting.status)}
+                              </td>
                             <td className="py-3 px-4 align-middle text-right">
                               <Button 
                                 variant="ghost" 
@@ -490,17 +723,20 @@ export default function ParentMeetingsPage() {
                                   <DropdownMenuSeparator />
                                   {meeting.status === "SCHEDULED" && (
                                     <>
-                                      <DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleCompleteMeeting(meeting.id)}>
                                         <CheckCircle className="h-4 w-4 mr-2" />
                                         Mark as Completed
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleCancelMeeting(meeting.id)}>
                                         <XCircle className="h-4 w-4 mr-2" />
                                         Cancel Meeting
                                       </DropdownMenuItem>
                                     </>
                                   )}
-                                  <DropdownMenuItem className="text-red-600">
+                                  <DropdownMenuItem 
+                                    className="text-red-600"
+                                    onClick={() => handleDeleteMeeting(meeting.id)}
+                                  >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
@@ -508,7 +744,8 @@ export default function ParentMeetingsPage() {
                               </DropdownMenu>
                             </td>
                           </tr>
-                        ))
+                        );
+                        })
                       ) : (
                         <tr>
                           <td colSpan={6} className="py-10 text-center text-gray-500">
@@ -533,17 +770,140 @@ export default function ParentMeetingsPage() {
                   </table>
                 </div>
               </div>
+              )}
             </TabsContent>
             
             <TabsContent value="calendar">
-              <div className="p-8 text-center">
-                <CalendarDays className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium mb-2">Calendar View Coming Soon</h3>
-                <p className="text-gray-500 max-w-md mx-auto mb-4">
-                  The calendar view for parent meetings is under development and will be available soon.
-                </p>
-                <Button variant="outline">Try List View</Button>
-              </div>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Meeting Calendar</CardTitle>
+                      <CardDescription>View scheduled meetings by date</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newDate = new Date(currentCalendarDate);
+                          newDate.setMonth(newDate.getMonth() - 1);
+                          setCurrentCalendarDate(newDate);
+                        }}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentCalendarDate(new Date())}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newDate = new Date(currentCalendarDate);
+                          newDate.setMonth(newDate.getMonth() + 1);
+                          setCurrentCalendarDate(newDate);
+                        }}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="text-center text-lg font-semibold mt-2">
+                    {currentCalendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-7 gap-2">
+                    {/* Day headers */}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <div key={day} className="text-center font-medium text-sm text-gray-500 py-2">
+                        {day}
+                      </div>
+                    ))}
+                    
+                    {/* Calendar days */}
+                    {(() => {
+                      const year = currentCalendarDate.getFullYear();
+                      const month = currentCalendarDate.getMonth();
+                      const firstDay = new Date(year, month, 1).getDay();
+                      const daysInMonth = new Date(year, month + 1, 0).getDate();
+                      const days = [];
+                      
+                      // Empty cells for days before month starts
+                      for (let i = 0; i < firstDay; i++) {
+                        days.push(
+                          <div key={`empty-${i}`} className="aspect-square p-2 border rounded-lg bg-gray-50" />
+                        );
+                      }
+                      
+                      // Days of the month
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayMeetings = filteredMeetings.filter(meeting => {
+                          const meetingDate = new Date(meeting.scheduledDate);
+                          return meetingDate.getFullYear() === year &&
+                                 meetingDate.getMonth() === month &&
+                                 meetingDate.getDate() === day;
+                        });
+                        
+                        const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
+                        
+                        days.push(
+                          <div
+                            key={day}
+                            className={`aspect-square p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
+                              isToday ? 'border-blue-500 bg-blue-50' : ''
+                            }`}
+                            onClick={() => {
+                              if (dayMeetings.length > 0) {
+                                setSelectedDate(new Date(year, month, day));
+                                setDayMeetingsDialogOpen(true);
+                              }
+                            }}
+                          >
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : ''}`}>
+                              {day}
+                            </div>
+                            {dayMeetings.length > 0 && (
+                              <div className="space-y-1">
+                                {dayMeetings.slice(0, 2).map((meeting) => (
+                                  <div
+                                    key={meeting.id}
+                                    className={`text-xs p-1 rounded truncate ${
+                                      meeting.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                                      meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                      meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}
+                                  >
+                                    {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', { 
+                                      hour: 'numeric', 
+                                      minute: '2-digit',
+                                      hour12: true 
+                                    })}
+                                  </div>
+                                ))}
+                                {dayMeetings.length > 2 && (
+                                  <div className="text-xs text-gray-500 text-center">
+                                    +{dayMeetings.length - 2} more
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      
+                      return days;
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -559,91 +919,99 @@ export default function ParentMeetingsPage() {
             </DialogDescription>
           </DialogHeader>
           
-          {selectedMeeting && (
-            <div className="space-y-4 py-2">
-              <div className="flex flex-col space-y-2">
-                <h2 className="text-xl font-semibold">{selectedMeeting.title}</h2>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">
-                    {new Date(selectedMeeting.scheduledDate).toLocaleDateString()} • {new Date(selectedMeeting.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="text-sm text-gray-600">({selectedMeeting.duration} min)</span>
-                  {getStatusBadge(selectedMeeting.status)}
+          {selectedMeeting && (() => {
+            const parentName = `${selectedMeeting.parent?.user?.firstName || ""} ${selectedMeeting.parent?.user?.lastName || ""}`;
+            const parentInitials = `${selectedMeeting.parent?.user?.firstName?.[0] || ""}${selectedMeeting.parent?.user?.lastName?.[0] || ""}`;
+            const teacherName = `${selectedMeeting.teacher?.user?.firstName || ""} ${selectedMeeting.teacher?.user?.lastName || ""}`;
+            const teacherInitials = `${selectedMeeting.teacher?.user?.firstName?.[0] || ""}${selectedMeeting.teacher?.user?.lastName?.[0] || ""}`;
+            const studentInfo = selectedMeeting.parent?.children?.[0]?.student;
+            const studentName = studentInfo?.user 
+              ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+              : "No student";
+            const grade = studentInfo?.enrollments?.[0]
+              ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
+              : "";
+            
+            return (
+              <div className="space-y-4 py-2">
+                <div className="flex flex-col space-y-2">
+                  <h2 className="text-xl font-semibold">{selectedMeeting.purpose || "Parent-Teacher Meeting"}</h2>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm">
+                      {new Date(selectedMeeting.scheduledAt).toLocaleDateString()} • {new Date(selectedMeeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-sm text-gray-600">({selectedMeeting.duration} min)</span>
+                    {getStatusBadge(selectedMeeting.status)}
+                  </div>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Parent Information</h3>
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>{selectedMeeting.parentAvatar}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{selectedMeeting.parentName}</p>
-                      <p className="text-sm text-gray-500">Parent</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Parent Information</h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>{parentInitials}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{parentName}</p>
+                        <p className="text-sm text-gray-500">Parent</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span>{selectedMeeting.parent?.user?.email || "N/A"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{selectedMeeting.parent?.user?.phone || "N/A"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <span>{studentName}{grade ? ` (${grade})` : ""}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-500" />
-                      <span>{selectedMeeting.parentEmail}</span>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Teacher Information</h3>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>{teacherInitials}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{teacherName}</p>
+                        <p className="text-sm text-gray-500">Teacher</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500" />
-                      <span>{selectedMeeting.parentPhone}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-500" />
-                      <span>{selectedMeeting.studentName} ({selectedMeeting.studentGrade})</span>
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span>{selectedMeeting.teacher?.user?.email || "N/A"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{selectedMeeting.teacher?.user?.phone || "N/A"}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Teacher Information</h3>
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback>{selectedMeeting.teacherAvatar}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{selectedMeeting.teacherName}</p>
-                      <p className="text-sm text-gray-500">{selectedMeeting.teacherSubject}</p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium mb-2">Meeting Location</h3>
+                  <p className="text-sm bg-gray-50 p-2.5 rounded">{selectedMeeting.location || "TBD"}</p>
                 </div>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">Meeting Location</h3>
-                <p className="text-sm bg-gray-50 p-2.5 rounded">{selectedMeeting.location}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium mb-2">Meeting Notes</h3>
-                <p className="text-sm bg-gray-50 p-2.5 rounded whitespace-pre-line">{selectedMeeting.notes}</p>
-              </div>
-              
-              {selectedMeeting.status === "COMPLETED" && selectedMeeting.summary && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Meeting Summary</h3>
-                  <div className="bg-green-50 border border-green-100 p-3 rounded-md text-sm text-green-800">
-                    {selectedMeeting.summary}
+                
+                {selectedMeeting.notes && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Meeting Notes</h3>
+                    <p className="text-sm bg-gray-50 p-2.5 rounded whitespace-pre-line">{selectedMeeting.notes}</p>
                   </div>
-                </div>
-              )}
-              
-              {selectedMeeting.status === "CANCELLED" && selectedMeeting.cancellationReason && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Cancellation Reason</h3>
-                  <div className="bg-red-50 border border-red-100 p-3 rounded-md text-sm text-red-800">
-                    {selectedMeeting.cancellationReason}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
           
           <DialogFooter className="gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setViewMeetingDialog(false)}>
@@ -660,12 +1028,99 @@ export default function ParentMeetingsPage() {
                   <SendIcon className="h-4 w-4 mr-2" />
                   Send Reminder
                 </Button>
-                <Button variant="default">
+                <Button 
+                  variant="default"
+                  onClick={() => {
+                    handleCompleteMeeting(selectedMeeting.id);
+                    setViewMeetingDialog(false);
+                  }}
+                >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Mark as Completed
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Day Meetings Dialog */}
+      <Dialog open={dayMeetingsDialogOpen} onOpenChange={setDayMeetingsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              Meetings on {selectedDate?.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              All scheduled meetings for this day
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {selectedDate && filteredMeetings
+              .filter(meeting => {
+                const meetingDate = new Date(meeting.scheduledDate);
+                return meetingDate.toDateString() === selectedDate.toDateString();
+              })
+              .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+              .map((meeting) => (
+                <div
+                  key={meeting.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedMeeting(meeting);
+                    setDayMeetingsDialogOpen(false);
+                    setViewMeetingDialog(true);
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{meeting.title}</h4>
+                      <p className="text-sm text-gray-500">
+                        {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })} • {meeting.duration} min
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        meeting.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                        meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                        meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-700'
+                      }
+                    >
+                      {meeting.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      <span>{meeting.parent?.user?.firstName} {meeting.parent?.user?.lastName}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      <span>{meeting.teacher?.user?.firstName} {meeting.teacher?.user?.lastName}</span>
+                    </div>
+                  </div>
+                  {meeting.location && (
+                    <p className="text-sm text-gray-500 mt-2">📍 {meeting.location}</p>
+                  )}
+                </div>
+              ))}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDayMeetingsDialogOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

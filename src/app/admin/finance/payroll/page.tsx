@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   ChevronLeft, PlusCircle, Search, Filter, Calendar, Download,
   Printer, Wallet, User, CheckCircle, XCircle, AlertCircle,
@@ -47,96 +48,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
-// Mock data for staff members
-const staff = [
-  { id: "t1", name: "John Smith", employeeId: "EMP001", department: "Science", position: "Senior Teacher", salary: 65000 },
-  { id: "t2", name: "Emily Johnson", employeeId: "EMP002", department: "Mathematics", position: "Teacher", salary: 58000 },
-  { id: "t3", name: "Michael Brown", employeeId: "EMP003", department: "Languages", position: "HOD", salary: 72000 },
-  { id: "t4", name: "Sarah Davis", employeeId: "EMP004", department: "Science", position: "Teacher", salary: 56000 },
-  { id: "t5", name: "Robert Wilson", employeeId: "EMP005", department: "Social Studies", position: "Teacher", salary: 55000 },
-  { id: "t6", name: "Jessica Martinez", employeeId: "EMP006", department: "Mathematics", position: "Teacher", salary: 57000 },
-  { id: "t7", name: "David Thompson", employeeId: "EMP007", department: "Arts", position: "Teacher", salary: 52000 },
-  { id: "t8", name: "Lisa Anderson", employeeId: "EMP008", department: "Languages", position: "Teacher", salary: 54000 },
-  { id: "t9", name: "James Lee", employeeId: "EMP009", department: "Science", position: "Lab Assistant", salary: 48000 },
-  { id: "t10", name: "Sandra Harris", employeeId: "EMP010", department: "Social Studies", position: "Teacher", salary: 54000 },
-];
-
-// Mock data for salary payments
-const salaryPayments = [
-  {
-    id: "sp1",
-    staffId: "t1",
-    staffName: "John Smith",
-    employeeId: "EMP001",
-    department: "Science",
-    position: "Senior Teacher",
-    month: 10,
-    year: 2023,
-    basicSalary: 65000 / 12,
-    allowances: 1200,
-    deductions: 850,
-    netSalary: (65000 / 12) + 1200 - 850,
-    paymentDate: "2023-11-01",
-    status: "COMPLETED",
-    paymentMethod: "BANK_TRANSFER",
-    transactionId: "TRX123456"
-  },
-  {
-    id: "sp2",
-    staffId: "t2",
-    staffName: "Emily Johnson",
-    employeeId: "EMP002",
-    department: "Mathematics",
-    position: "Teacher",
-    month: 10,
-    year: 2023,
-    basicSalary: 58000 / 12,
-    allowances: 800,
-    deductions: 720,
-    netSalary: (58000 / 12) + 800 - 720,
-    paymentDate: "2023-11-01",
-    status: "COMPLETED",
-    paymentMethod: "BANK_TRANSFER",
-    transactionId: "TRX123457"
-  },
-  {
-    id: "sp3",
-    staffId: "t3",
-    staffName: "Michael Brown",
-    employeeId: "EMP003",
-    department: "Languages",
-    position: "HOD",
-    month: 10,
-    year: 2023,
-    basicSalary: 72000 / 12,
-    allowances: 1500,
-    deductions: 920,
-    netSalary: (72000 / 12) + 1500 - 920,
-    paymentDate: "2023-11-01",
-    status: "COMPLETED",
-    paymentMethod: "BANK_TRANSFER",
-    transactionId: "TRX123458"
-  },
-  {
-    id: "sp4",
-    staffId: "t4",
-    staffName: "Sarah Davis",
-    employeeId: "EMP004",
-    department: "Science",
-    position: "Teacher",
-    month: 11,
-    year: 2023,
-    basicSalary: 56000 / 12,
-    allowances: 750,
-    deductions: 680,
-    netSalary: (56000 / 12) + 750 - 680,
-    paymentDate: null,
-    status: "PENDING",
-    paymentMethod: null,
-    transactionId: null
-  }
-];
+import {
+  getPayrolls,
+  generatePayroll,
+  updatePayroll,
+  processPayment,
+  deletePayroll,
+  getTeachersForPayroll,
+  getPayrollStats,
+  bulkGeneratePayrolls,
+} from "@/lib/actions/payrollActions";
 
 // Months for dropdown
 const months = [
@@ -206,6 +127,132 @@ export default function PayrollPage() {
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [loading, setLoading] = useState(true);
+  const [salaryPayments, setSalaryPayments] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  // Load data on mount
+  useEffect(() => {
+    loadPayrolls();
+    loadTeachers();
+    loadStats();
+  }, [currentMonth, currentYear, statusFilter]);
+
+  const loadPayrolls = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {
+        month: currentMonth,
+        year: currentYear,
+      };
+      if (statusFilter !== "all") filters.status = statusFilter.toUpperCase();
+
+      const result = await getPayrolls(filters);
+      if (result.success && result.data) {
+        setSalaryPayments(result.data);
+      } else {
+        toast.error(result.error || "Failed to load payrolls");
+      }
+    } catch (error) {
+      console.error("Error loading payrolls:", error);
+      toast.error("Failed to load payrolls");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTeachers = async () => {
+    try {
+      const result = await getTeachersForPayroll();
+      if (result.success && result.data) {
+        setStaff(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading teachers:", error);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await getPayrollStats(currentMonth, currentYear);
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const handleGeneratePayroll = async (data: any) => {
+    try {
+      const result = await generatePayroll(data);
+      if (result.success) {
+        toast.success("Payroll generated successfully");
+        setCreateDialogOpen(false);
+        payrollForm.reset();
+        loadPayrolls();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to generate payroll");
+      }
+    } catch (error) {
+      console.error("Error generating payroll:", error);
+      toast.error("Failed to generate payroll");
+    }
+  };
+
+  const handleProcessPayment = async (id: string) => {
+    try {
+      const result = await processPayment(id);
+      if (result.success) {
+        toast.success("Payment processed successfully");
+        setPaymentDialogOpen(false);
+        loadPayrolls();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to process payment");
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast.error("Failed to process payment");
+    }
+  };
+
+  const handleDeletePayroll = async (id: string) => {
+    try {
+      const result = await deletePayroll(id);
+      if (result.success) {
+        toast.success("Payroll deleted successfully");
+        loadPayrolls();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to delete payroll");
+      }
+    } catch (error) {
+      console.error("Error deleting payroll:", error);
+      toast.error("Failed to delete payroll");
+    }
+  };
+
+  const handleBulkGenerate = async () => {
+    try {
+      const result = await bulkGeneratePayrolls(currentMonth, currentYear, 50000);
+      if (result.success) {
+        toast.success(`Generated ${result.data.generated} payrolls successfully`);
+        if (result.data.errors > 0) {
+          toast.warning(`${result.data.errors} payrolls failed to generate`);
+        }
+        loadPayrolls();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to bulk generate payrolls");
+      }
+    } catch (error) {
+      console.error("Error bulk generating payrolls:", error);
+      toast.error("Failed to bulk generate payrolls");
+    }
+  };
 
   // Initialize form for payroll
   const payrollForm = useForm<z.infer<typeof payrollSchema>>({
@@ -228,19 +275,17 @@ export default function PayrollPage() {
     },
   });
 
-  // Filter payments based on search, department, and status
+  // Filter payments based on search and status
   const filteredPayments = salaryPayments.filter(payment => {
+    const teacherName = `${payment.teacher?.user?.firstName || ""} ${payment.teacher?.user?.lastName || ""}`;
     const matchesSearch = 
-      payment.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDepartment = 
-      departmentFilter === "all" || payment.department === departmentFilter;
+      teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (payment.teacher?.user?.email && payment.teacher.user.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = 
-      statusFilter === "all" || payment.status === statusFilter;
+      statusFilter === "all" || payment.status === statusFilter.toUpperCase();
     
-    return matchesSearch && matchesDepartment && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   function handleCreatePayroll() {
@@ -360,7 +405,7 @@ export default function PayrollPage() {
                         <span className="text-gray-500">Position:</span> {selectedStaff.position}
                       </div>
                       <div>
-                        <span className="text-gray-500">Annual Salary:</span> ${selectedStaff.salary.toLocaleString()}
+                        <span className="text-gray-500">Annual Salary:</span> ₹{selectedStaff.salary.toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -565,20 +610,20 @@ export default function PayrollPage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="border rounded-md p-3 text-center bg-blue-50">
-                  <div className="text-sm text-blue-700 font-medium mb-1">Total Staff</div>
-                  <div className="text-2xl font-bold text-blue-800">10</div>
+                  <div className="text-sm text-blue-700 font-medium mb-1">Total Payrolls</div>
+                  <div className="text-2xl font-bold text-blue-800">{stats?.totalPayrolls || 0}</div>
                 </div>
                 <div className="border rounded-md p-3 text-center bg-green-50">
-                  <div className="text-sm text-green-700 font-medium mb-1">Paid</div>
-                  <div className="text-2xl font-bold text-green-800">3</div>
+                  <div className="text-sm text-green-700 font-medium mb-1">Completed</div>
+                  <div className="text-2xl font-bold text-green-800">{stats?.paidPayrolls || 0}</div>
                 </div>
                 <div className="border rounded-md p-3 text-center bg-amber-50">
                   <div className="text-sm text-amber-700 font-medium mb-1">Pending</div>
-                  <div className="text-2xl font-bold text-amber-800">1</div>
+                  <div className="text-2xl font-bold text-amber-800">{stats?.pendingPayrolls || 0}</div>
                 </div>
                 <div className="border rounded-md p-3 text-center bg-purple-50">
                   <div className="text-sm text-purple-700 font-medium mb-1">Total Amount</div>
-                  <div className="text-2xl font-bold text-purple-800">$16,848</div>
+                  <div className="text-2xl font-bold text-purple-800">₹{stats?.totalPaid?._sum?.netSalary?.toLocaleString() || '0'}</div>
                 </div>
               </div>
             </CardContent>
@@ -682,7 +727,7 @@ export default function PayrollPage() {
                       {getMonthName(payment.month)} {payment.year}
                     </td>
                     <td className="py-3 px-4 align-middle font-medium">
-                      ${payment.netSalary.toLocaleString()}
+                      ₹{payment.netSalary.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 align-middle">
                       <Badge className={
@@ -769,7 +814,7 @@ export default function PayrollPage() {
                   </div>
                   <div className="flex justify-between font-medium text-green-800">
                     <span>Amount:</span>
-                    <span>${selectedPayment.netSalary.toLocaleString()}</span>
+                    <span>₹{selectedPayment.netSalary.toLocaleString()}</span>
                   </div>
                 </div>
                 
@@ -913,19 +958,19 @@ export default function PayrollPage() {
                     <tbody>
                       <tr className="border-b">
                         <td className="py-3 px-4">Basic Salary</td>
-                        <td className="py-3 px-4 text-right">${selectedPayment.basicSalary.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">₹{selectedPayment.basicSalary.toLocaleString()}</td>
                       </tr>
                       <tr className="border-b">
                         <td className="py-3 px-4">Allowances</td>
-                        <td className="py-3 px-4 text-right">${selectedPayment.allowances.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">₹{selectedPayment.allowances.toLocaleString()}</td>
                       </tr>
                       <tr className="border-b">
                         <td className="py-3 px-4">Deductions</td>
-                        <td className="py-3 px-4 text-right">-${selectedPayment.deductions.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">-₹{selectedPayment.deductions.toLocaleString()}</td>
                       </tr>
                       <tr className="bg-gray-50 font-bold">
                         <td className="py-3 px-4">Net Salary</td>
-                        <td className="py-3 px-4 text-right">${selectedPayment.netSalary.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">₹{selectedPayment.netSalary.toLocaleString()}</td>
                       </tr>
                     </tbody>
                   </table>

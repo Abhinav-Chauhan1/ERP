@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronLeft, Edit, Trash2, PlusCircle, 
-  Building, CircleUser, EyeOff, ListFilter,
-  Search, SlidersHorizontal, ChevronDown,
-  MoreVertical, Check, MapPin, X, Loader2, AlertCircle
+  Building, Users, Activity,
+  Search, SlidersHorizontal,
+  MoreVertical, Check, MapPin, X, Loader2, AlertCircle,
+  CircleUser, EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -887,11 +888,9 @@ export default function ClassroomsPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <CardDescription>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <MapPin className="h-3 w-3" />
-                        {room.building}, {room.floor}
-                      </div>
+                    <CardDescription className="flex items-center gap-1.5 text-xs">
+                      <MapPin className="h-3 w-3" />
+                      {room.building}, {room.floor}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1005,41 +1004,4 @@ export default function ClassroomsPage() {
   );
 }
 
-// Missing component for Activity icon
-function Activity({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}
 
-// Missing component for Users icon
-function Users({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}

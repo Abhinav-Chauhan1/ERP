@@ -12,6 +12,7 @@ export default function LoginPage() {
         }}
         routing="path"
         path="/login"
+        signUpUrl="/register"
       />
     </div>
   );

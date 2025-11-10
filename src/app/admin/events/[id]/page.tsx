@@ -69,6 +69,7 @@ import {
   markAttendance,
   getEventParticipants
 } from "@/lib/actions/eventActions";
+import { getUsersForDropdown } from "@/lib/actions/userActions";
 import * as z from "zod";
 
 // Utility function to format dates
@@ -103,6 +104,8 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addParticipantDialogOpen, setAddParticipantDialogOpen] = useState(false);
@@ -190,6 +193,32 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
       toast.error("Failed to fetch participants");
     }
   };
+
+  // Fetch users for participant selection
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const result = await getUsersForDropdown();
+      
+      if (result.success && result.data) {
+        setUsers(result.data);
+      } else {
+        toast.error(result.error || "Failed to fetch users");
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Load users when add participant dialog opens
+  useEffect(() => {
+    if (addParticipantDialogOpen && users.length === 0) {
+      fetchUsers();
+    }
+  }, [addParticipantDialogOpen]);
   
   // Handle event update
   const handleUpdateEvent = async (data: EventFormDataWithRefinement) => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, DollarSign, CreditCard, Receipt, Wallet, BadgeDollarSign, Building } from "lucide-react";
@@ -24,6 +25,11 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getPaymentStats } from "@/lib/actions/feePaymentActions";
+import { getScholarshipStats } from "@/lib/actions/scholarshipActions";
+import { getPayrollStats } from "@/lib/actions/payrollActions";
+import { getExpenseStats } from "@/lib/actions/expenseActions";
+import { getBudgetStats } from "@/lib/actions/budgetActions";
 
 const financeCategories = [
   {
@@ -162,6 +168,55 @@ export default function FinancePage() {
   const [addExpenseDialog, setAddExpenseDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>({
+    payments: null,
+    scholarships: null,
+    payroll: null,
+    expenses: null,
+    budget: null,
+  });
+
+  // Load all statistics on mount
+  useEffect(() => {
+    loadAllStats();
+  }, []);
+
+  const loadAllStats = async () => {
+    setLoading(true);
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+
+      const [paymentStats, scholarshipStats, payrollStats, expenseStats, budgetStats] = 
+        await Promise.all([
+          getPaymentStats(),
+          getScholarshipStats(),
+          getPayrollStats(currentMonth, currentYear),
+          getExpenseStats(),
+          getBudgetStats(currentYear),
+        ]);
+
+      setStats({
+        payments: paymentStats.success ? paymentStats.data : null,
+        scholarships: scholarshipStats.success ? scholarshipStats.data : null,
+        payroll: payrollStats.success ? payrollStats.data : null,
+        expenses: expenseStats.success ? expenseStats.data : null,
+        budget: budgetStats.success ? budgetStats.data : null,
+      });
+    } catch (error) {
+      console.error("Error loading stats:", error);
+      toast.error("Failed to load finance statistics");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate totals
+  const totalIncome = (stats.payments?.totalCollected || 0);
+  const totalExpenses = (stats.expenses?.totalAmount || 0) + (stats.payroll?.totalPaid || 0);
+  const netBalance = totalIncome - totalExpenses;
+  const pendingPayments = stats.payments?.totalPending || 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -298,29 +353,46 @@ export default function FinancePage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {financeCategories.map((category) => (
-          <Card key={category.title} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                  {category.icon}
+        {financeCategories.map((category) => {
+          let count = category.count;
+          
+          // Update counts with real data
+          if (category.title === "Payments" && stats.payments) {
+            count = stats.payments.totalPayments;
+          } else if (category.title === "Scholarships" && stats.scholarships) {
+            count = stats.scholarships.activeRecipients;
+          } else if (category.title === "Payroll" && stats.payroll) {
+            count = stats.payroll.totalPayrolls;
+          } else if (category.title === "Expenses" && stats.expenses) {
+            count = stats.expenses.totalExpenses;
+          } else if (category.title === "Budget" && stats.budget) {
+            count = stats.budget.activeBudgets;
+          }
+          
+          return (
+            <Card key={category.title} className="overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                    {category.icon}
+                  </div>
+                  <CardTitle className="text-lg">{category.title}</CardTitle>
                 </div>
-                <CardTitle className="text-lg">{category.title}</CardTitle>
-              </div>
-              <CardDescription>{category.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center">
-                <div className="text-3xl font-bold">{category.count}</div>
-                <Link href={category.href}>
-                  <Button variant="outline" size="sm">
-                    Manage
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <CardDescription>{category.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <div className="text-3xl font-bold">{loading ? "..." : count}</div>
+                  <Link href={category.href}>
+                    <Button variant="outline" size="sm">
+                      Manage
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 mt-6 md:grid-cols-2">
@@ -360,39 +432,65 @@ export default function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="text-sm text-green-700 font-medium mb-1">Total Income</div>
-                  <div className="text-2xl font-bold text-green-800">$1,848,000</div>
-                  <div className="text-xs text-green-700 mt-1">+12% from last year</div>
-                </div>
-                <div className="bg-red-50 p-4 rounded-lg">
-                  <div className="text-sm text-red-700 font-medium mb-1">Total Expenses</div>
-                  <div className="text-2xl font-bold text-red-800">$1,284,000</div>
-                  <div className="text-xs text-red-700 mt-1">+8% from last year</div>
-                </div>
-              </div>
-              
-              <div className="space-y-3 mt-4">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium">Fee Collection Rate</span>
-                    <span className="text-sm font-medium">86%</span>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Loading statistics...</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="text-sm text-green-700 font-medium mb-1">Total Income</div>
+                      <div className="text-2xl font-bold text-green-800">
+                        ${(totalIncome / 1000).toFixed(1)}k
+                      </div>
+                      <div className="text-xs text-green-700 mt-1">Fee collections</div>
+                    </div>
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <div className="text-sm text-red-700 font-medium mb-1">Total Expenses</div>
+                      <div className="text-2xl font-bold text-red-800">
+                        ${(totalExpenses / 1000).toFixed(1)}k
+                      </div>
+                      <div className="text-xs text-red-700 mt-1">Payroll + Expenses</div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: "86%" }}></div>
-                  </div>
-                </div>
+                  
+                  <div className="space-y-3 mt-4">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Fee Collection Rate</span>
+                        <span className="text-sm font-medium">
+                          {stats.payments ? 
+                            Math.round((stats.payments.totalCollected / (stats.payments.totalCollected + stats.payments.totalPending)) * 100) 
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ 
+                            width: `${stats.payments ? 
+                              Math.round((stats.payments.totalCollected / (stats.payments.totalCollected + stats.payments.totalPending)) * 100) 
+                              : 0}%` 
+                          }}
+                        ></div>
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium">Budget Utilization</span>
-                    <span className="text-sm font-medium">72%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-amber-500 h-2 rounded-full" style={{ width: "72%" }}></div>
-                  </div>
-                </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Budget Utilization</span>
+                        <span className="text-sm font-medium">
+                          {stats.budget?.utilizationRate?.toFixed(0) || 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-amber-500 h-2 rounded-full" 
+                          style={{ width: `${stats.budget?.utilizationRate?.toFixed(0) || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <div className="flex justify-between mb-1">

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   ChevronLeft, PlusCircle, Search, Filter, Calendar, Download,
-  Receipt, DollarSign, ArrowUp, ArrowDown, Printer, Tag, Edit, Trash2, Eye, Clock
+  Receipt, DollarSign, ArrowUp, ArrowDown, Printer, Tag, Edit, Trash2, Eye, Clock,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -47,6 +49,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Chart } from "@/components/dashboard/chart";
+import {
+  getExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+  getExpenseStats,
+  getExpensesByCategory,
+} from "@/lib/actions/expenseActions";
 
 // Mock data for expense categories
 const expenseCategories = [
@@ -59,81 +69,7 @@ const expenseCategories = [
   { id: "other", name: "Other", color: "bg-gray-100 text-gray-800", icon: <Receipt className="h-4 w-4" /> },
 ];
 
-// Mock data for expenses
-const expenses = [
-  {
-    id: "e1",
-    title: "Electricity Bill",
-    category: "utilities",
-    amount: 1250,
-    date: "2023-11-25",
-    paymentMethod: "BANK_TRANSFER",
-    paidTo: "Power Company",
-    status: "COMPLETED",
-    description: "Monthly electricity bill for the main building",
-    receiptNumber: "UTIL-2311-01",
-    attachments: ["receipt1.pdf"],
-    createdBy: "Admin",
-  },
-  {
-    id: "e2",
-    title: "Science Lab Equipment",
-    category: "supplies",
-    amount: 3500,
-    date: "2023-11-23",
-    paymentMethod: "CREDIT_CARD",
-    paidTo: "Science Supplies Inc.",
-    status: "COMPLETED",
-    description: "New microscopes and lab equipment for the science department",
-    receiptNumber: "SUP-2311-02",
-    attachments: ["receipt2.pdf", "invoice2.pdf"],
-    createdBy: "Admin",
-  },
-  {
-    id: "e3",
-    title: "Staff Salaries - November",
-    category: "salary",
-    amount: 45000,
-    date: "2023-11-28",
-    paymentMethod: "BANK_TRANSFER",
-    paidTo: "Multiple Staff",
-    status: "PENDING",
-    description: "Monthly salaries for teaching and non-teaching staff",
-    receiptNumber: "SAL-2311-01",
-    attachments: [],
-    createdBy: "Admin",
-  },
-  {
-    id: "e4",
-    title: "Building Maintenance",
-    category: "maintenance",
-    amount: 2800,
-    date: "2023-11-20",
-    paymentMethod: "CASH",
-    paidTo: "City Maintenance Services",
-    status: "COMPLETED",
-    description: "Repairs to plumbing system in the east wing",
-    receiptNumber: "MAIN-2311-01",
-    attachments: ["receipt4.pdf", "work_order.pdf"],
-    createdBy: "Admin",
-  },
-  {
-    id: "e5",
-    title: "Annual Sports Day",
-    category: "events",
-    amount: 5000,
-    date: "2023-11-18",
-    paymentMethod: "CREDIT_CARD",
-    paidTo: "Various Vendors",
-    status: "COMPLETED",
-    description: "Expenses for annual school sports day including equipment, refreshments, and prizes",
-    receiptNumber: "EVT-2311-01",
-    attachments: ["expense_summary.pdf"],
-    createdBy: "Admin",
-  },
-];
-
-// Mock data for payment methods
+// Payment methods
 const paymentMethods = [
   { value: "CASH", label: "Cash" },
   { value: "CHEQUE", label: "Cheque" },
@@ -141,26 +77,6 @@ const paymentMethods = [
   { value: "DEBIT_CARD", label: "Debit Card" },
   { value: "BANK_TRANSFER", label: "Bank Transfer" },
   { value: "ONLINE_PAYMENT", label: "Online Payment" },
-];
-
-// Mock data for expense summary
-const expenseSummaryByCategory = [
-  { category: "Utilities", amount: 4250 },
-  { category: "Supplies", amount: 7800 },
-  { category: "Maintenance", amount: 5600 },
-  { category: "Salary", amount: 45000 },
-  { category: "Events", amount: 8500 },
-  { category: "Transport", amount: 3200 },
-  { category: "Other", amount: 1500 },
-];
-
-const monthlyExpenseData = [
-  { month: 'Jul', amount: 65000 },
-  { month: 'Aug', amount: 72000 },
-  { month: 'Sep', amount: 68000 },
-  { month: 'Oct', amount: 73500 },
-  { month: 'Nov', amount: 75800 },
-  { month: 'Dec', amount: 0 },
 ];
 
 // Schema for expense form
@@ -193,6 +109,119 @@ export default function ExpensesPage() {
   const [editExpenseDialog, setEditExpenseDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  // Load data on mount
+  useEffect(() => {
+    loadExpenses();
+    loadStats();
+  }, [categoryFilter, dateRangeFilter]);
+
+  const loadExpenses = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      
+      if (categoryFilter !== "all") {
+        filters.category = categoryFilter.toUpperCase();
+      }
+
+      // Calculate date range
+      if (dateRangeFilter !== "all") {
+        const now = new Date();
+        if (dateRangeFilter === "today") {
+          filters.dateFrom = new Date(now.setHours(0, 0, 0, 0));
+          filters.dateTo = new Date(now.setHours(23, 59, 59, 999));
+        } else if (dateRangeFilter === "week") {
+          const weekAgo = new Date();
+          weekAgo.setDate(now.getDate() - 7);
+          filters.dateFrom = weekAgo;
+          filters.dateTo = now;
+        } else if (dateRangeFilter === "month") {
+          const monthAgo = new Date();
+          monthAgo.setMonth(now.getMonth() - 1);
+          filters.dateFrom = monthAgo;
+          filters.dateTo = now;
+        }
+      }
+
+      const result = await getExpenses(filters);
+      if (result.success && result.data) {
+        setExpenses(result.data);
+      } else {
+        toast.error(result.error || "Failed to load expenses");
+      }
+    } catch (error) {
+      console.error("Error loading expenses:", error);
+      toast.error("Failed to load expenses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const result = await getExpenseStats();
+      if (result.success && result.data) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading stats:", error);
+    }
+  };
+
+  const handleCreateExpense = async (data: any) => {
+    try {
+      const result = await createExpense(data);
+      if (result.success) {
+        toast.success("Expense created successfully");
+        setCreateExpenseDialog(false);
+        form.reset();
+        loadExpenses();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to create expense");
+      }
+    } catch (error) {
+      console.error("Error creating expense:", error);
+      toast.error("Failed to create expense");
+    }
+  };
+
+  const handleUpdateExpense = async (id: string, data: any) => {
+    try {
+      const result = await updateExpense(id, data);
+      if (result.success) {
+        toast.success("Expense updated successfully");
+        setEditExpenseDialog(false);
+        loadExpenses();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to update expense");
+      }
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      toast.error("Failed to update expense");
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      const result = await deleteExpense(id);
+      if (result.success) {
+        toast.success("Expense deleted successfully");
+        loadExpenses();
+        loadStats();
+      } else {
+        toast.error(result.error || "Failed to delete expense");
+      }
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      toast.error("Failed to delete expense");
+    }
+  };
 
   // Initialize form for creating/editing expense
   const form = useForm<z.infer<typeof expenseFormSchema>>({
@@ -206,36 +235,16 @@ export default function ExpensesPage() {
     },
   });
 
-  // Filter expenses based on search, category, and date range
+  // Filter expenses based on search
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          expense.paidTo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          expense.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase());
+                          (expense.vendor && expense.vendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (expense.receiptNumber && expense.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = categoryFilter === "all" || expense.category === categoryFilter;
-    
-    // Simple date range filtering
-    let matchesDateRange = true;
-    const expenseDate = new Date(expense.date);
-    const now = new Date();
-    
-    if (dateRangeFilter === "today") {
-      const today = new Date();
-      matchesDateRange = expenseDate.toDateString() === today.toDateString();
-    } else if (dateRangeFilter === "week") {
-      const weekAgo = new Date();
-      weekAgo.setDate(now.getDate() - 7);
-      matchesDateRange = expenseDate >= weekAgo;
-    } else if (dateRangeFilter === "month") {
-      const monthAgo = new Date();
-      monthAgo.setMonth(now.getMonth() - 1);
-      matchesDateRange = expenseDate >= monthAgo;
-    }
-    
-    return matchesSearch && matchesCategory && matchesDateRange;
+    return matchesSearch;
   });
 
-  function handleCreateExpense() {
+  function handleOpenCreateDialog() {
     form.reset({
       title: "",
       amount: 0,
@@ -317,7 +326,7 @@ export default function ExpensesPage() {
         </div>
         <Dialog open={createExpenseDialog} onOpenChange={setCreateExpenseDialog}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreateExpense}>
+            <Button onClick={handleOpenCreateDialog}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
             </Button>
           </DialogTrigger>
@@ -518,20 +527,18 @@ export default function ExpensesPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Total Expenses</CardTitle>
-            <CardDescription>Current month</CardDescription>
+            <CardDescription>All time</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$75,800</div>
-                <div className="text-sm text-gray-500 flex items-center">
-                  <ArrowUp className="h-3 w-3 text-red-500 mr-1" />
-                  <span className="text-red-500 mr-1">3.2%</span>
-                  <span>vs last month</span>
+                <div className="text-3xl font-bold">₹{stats?.totalAmount?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">
+                  {stats?.totalExpenses || 0} expenses recorded
                 </div>
               </div>
               <div className="p-2 bg-red-50 rounded-md text-red-700">
-                <ArrowUp className="h-6 w-6" />
+                <DollarSign className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
@@ -545,8 +552,8 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">$45,000</div>
-                <div className="text-sm text-gray-500">3 pending expenses</div>
+                <div className="text-3xl font-bold">₹{stats?.pendingAmount?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">{stats?.pendingExpenses || 0} pending expenses</div>
               </div>
               <div className="p-2 bg-amber-50 rounded-md text-amber-700">
                 <Clock className="h-6 w-6" />
@@ -557,17 +564,17 @@ export default function ExpensesPage() {
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Budget Usage</CardTitle>
-            <CardDescription>Monthly allocation</CardDescription>
+            <CardTitle className="text-base">Completed Payments</CardTitle>
+            <CardDescription>Successfully processed</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold">75.8%</div>
-                <div className="text-sm text-gray-500">of monthly budget</div>
+                <div className="text-3xl font-bold">₹{stats?.completedAmount?.toLocaleString() || '0'}</div>
+                <div className="text-sm text-gray-500">{stats?.completedExpenses || 0} completed</div>
               </div>
-              <div className="p-2 bg-blue-50 rounded-md text-blue-700">
-                <DollarSign className="h-6 w-6" />
+              <div className="p-2 bg-green-50 rounded-md text-green-700">
+                <CheckCircle className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
@@ -666,7 +673,7 @@ export default function ExpensesPage() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle font-medium">
-                          ${expense.amount.toLocaleString()}
+                          ₹{expense.amount.toLocaleString()}
                         </td>
                         <td className="py-3 px-4 align-middle">
                           {new Date(expense.date).toLocaleDateString()}
@@ -743,15 +750,21 @@ export default function ExpensesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={monthlyExpenseData}
-                  type="bar"
-                  xKey="month"
-                  yKey="amount"
-                  categories={["amount"]}
-                  colors={["#ef4444"]}
-                />
+                {stats?.monthlyTrend && stats.monthlyTrend.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.monthlyTrend}
+                    type="bar"
+                    xKey="month"
+                    yKey="amount"
+                    categories={["amount"]}
+                    colors={["#ef4444"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No monthly trend data available
+                  </div>
+                )}
               </CardContent>
             </Card>
             
@@ -763,14 +776,20 @@ export default function ExpensesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Chart
-                  title=""
-                  data={expenseSummaryByCategory}
-                  type="pie"
-                  xKey="category"
-                  yKey="amount"
-                  colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#6366f1", "#6b7280"]}
-                />
+                {stats?.byCategory && stats.byCategory.length > 0 ? (
+                  <Chart
+                    title=""
+                    data={stats.byCategory}
+                    type="pie"
+                    xKey="category"
+                    yKey="amount"
+                    colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#6366f1", "#6b7280"]}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    No expense data available
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -783,49 +802,57 @@ export default function ExpensesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">% of Total</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Trend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenseSummaryByCategory.map((category) => (
-                      <tr key={category.category} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">
-                          {category.category}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          ${category.amount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          {(category.amount / 75800 * 100).toFixed(1)}%
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${(category.amount / 75800 * 100).toFixed(1)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex justify-center">
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-1" />
-                  Export Report
-                </Button>
-              </div>
+              {stats?.byCategory && stats.byCategory.length > 0 ? (
+                <>
+                  <div className="rounded-md border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">% of Total</th>
+                          <th className="py-3 px-4 text-left font-medium text-gray-500">Trend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.byCategory.map((category: any) => (
+                          <tr key={category.category} className="border-b">
+                            <td className="py-3 px-4 align-middle font-medium">
+                              {category.category}
+                            </td>
+                            <td className="py-3 px-4 align-middle">
+                              ₹{category.amount.toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4 align-middle">
+                              {stats.totalAmount > 0 ? ((category.amount / stats.totalAmount) * 100).toFixed(1) : 0}%
+                            </td>
+                            <td className="py-3 px-4 align-middle">
+                              <div className="flex items-center">
+                                <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                  <div 
+                                    className="bg-blue-600 h-2 rounded-full" 
+                                    style={{ width: `${stats.totalAmount > 0 ? ((category.amount / stats.totalAmount) * 100).toFixed(1) : 0}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-4 flex justify-center">
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-1" />
+                      Export Report
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  No expense data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -853,7 +880,7 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
                   <p className="text-sm text-gray-500">Amount</p>
-                  <p className="font-medium">${selectedExpense.amount.toLocaleString()}</p>
+                  <p className="font-medium">₹{selectedExpense.amount.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Date</p>
