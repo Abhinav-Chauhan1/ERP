@@ -61,10 +61,10 @@ export default function AcademicReportsPage() {
     setLoading(true);
     try {
       const filters = {
-        academicYearId: selectedAcademicYear || undefined,
-        classId: selectedClass || undefined,
-        termId: selectedTerm || undefined,
-        subjectId: selectedSubject || undefined,
+        academicYearId: selectedAcademicYear && selectedAcademicYear !== "all" ? selectedAcademicYear : undefined,
+        classId: selectedClass && selectedClass !== "all" ? selectedClass : undefined,
+        termId: selectedTerm && selectedTerm !== "all" ? selectedTerm : undefined,
+        subjectId: selectedSubject && selectedSubject !== "all" ? selectedSubject : undefined,
       };
 
       let result;
@@ -174,7 +174,7 @@ export default function AcademicReportsPage() {
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Years</SelectItem>
+                  <SelectItem value="all">All Years</SelectItem>
                   {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
@@ -190,7 +190,7 @@ export default function AcademicReportsPage() {
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Classes</SelectItem>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -206,7 +206,7 @@ export default function AcademicReportsPage() {
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Terms</SelectItem>
+                  <SelectItem value="all">All Terms</SelectItem>
                   <SelectItem value="1">Term 1</SelectItem>
                   <SelectItem value="2">Term 2</SelectItem>
                   <SelectItem value="3">Term 3</SelectItem>
@@ -220,7 +220,7 @@ export default function AcademicReportsPage() {
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="all">All Subjects</SelectItem>
                   <SelectItem value="math">Mathematics</SelectItem>
                   <SelectItem value="science">Science</SelectItem>
                   <SelectItem value="english">English</SelectItem>

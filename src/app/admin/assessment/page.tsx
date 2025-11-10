@@ -29,8 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getUpcomingExams, getRecentExams } from "@/lib/actions/examsActions";
-import { getRecentAssignments } from "@/lib/actions/assignmentsActions";
+import { getUpcomingExams } from "@/lib/actions/examsActions";
 import {
   getPerformanceAnalytics,
   getSubjectWisePerformance,
@@ -209,6 +208,7 @@ export default function AssessmentPage() {
   const [timelineStats, setTimelineStats] = useState<any>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [viewTab, setViewTab] = useState("overview");
 
   // Load data on mount
   useEffect(() => {
@@ -218,34 +218,13 @@ export default function AssessmentPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [upcomingResult, recentExamsResult, recentAssignmentsResult] = await Promise.all([
+      const [upcomingResult] = await Promise.all([
         getUpcomingExams({ limit: 10 }),
-        getRecentExams({ limit: 5 }),
-        getRecentAssignments({ limit: 5 }),
       ]);
 
       if (upcomingResult.success && upcomingResult.data) {
         setUpcomingExams(upcomingResult.data);
       }
-
-      // Combine recent exams and assignments
-      const recentItems = [];
-      if (recentExamsResult.success && recentExamsResult.data) {
-        recentItems.push(...recentExamsResult.data.map((exam: any) => ({
-          ...exam,
-          type: 'exam',
-        })));
-      }
-      if (recentAssignmentsResult.success && recentAssignmentsResult.data) {
-        recentItems.push(...recentAssignmentsResult.data.map((assignment: any) => ({
-          ...assignment,
-          type: 'assignment',
-        })));
-      }
-      
-      // Sort by date and take top 10
-      recentItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setRecentAssessments(recentItems.slice(0, 10));
 
     } catch (error) {
       console.error("Error loading assessment data:", error);
@@ -313,7 +292,7 @@ export default function AssessmentPage() {
       setTimelineLoading(false);
     }
   };
-  const [viewTab, setViewTab] = useState("overview");
+  
 
   return (
     <div className="flex flex-col gap-4">
@@ -530,8 +509,8 @@ export default function AssessmentPage() {
                                 <div className="flex items-center gap-1.5">
                                   <CalendarClock className="h-3.5 w-3.5 text-gray-500" />
                                   <span>{new Date(exam.date).toLocaleDateString()}</span>
-                              </div>
-                              <div className="text-xs text-gray-500 ml-5">{exam.time}</div>
+                                </div>
+                                <div className="text-xs text-gray-500 ml-5">{exam.time}</div>
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
@@ -547,7 +526,7 @@ export default function AssessmentPage() {
                               </Link>
                             </td>
                           </tr>
-                        ))}
+                        )))}
                       </tbody>
                     </table>
                   </div>
@@ -623,7 +602,7 @@ export default function AssessmentPage() {
                               </Link>
                             </td>
                           </tr>
-                        ))}
+                        )))}
                       </tbody>
                     </table>
                   </div>

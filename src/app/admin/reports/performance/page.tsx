@@ -60,8 +60,8 @@ export default function PerformanceAnalyticsPage() {
     setLoading(true);
     try {
       const filters: any = {
-        academicYearId: selectedAcademicYear || undefined,
-        classId: selectedClass || undefined,
+        academicYearId: selectedAcademicYear && selectedAcademicYear !== "all" ? selectedAcademicYear : undefined,
+        classId: selectedClass && selectedClass !== "all" ? selectedClass : undefined,
       };
 
       let result;
@@ -174,7 +174,7 @@ export default function PerformanceAnalyticsPage() {
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Years</SelectItem>
+                  <SelectItem value="all">All Years</SelectItem>
                   {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
@@ -204,7 +204,7 @@ export default function PerformanceAnalyticsPage() {
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Classes</SelectItem>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}

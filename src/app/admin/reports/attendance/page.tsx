@@ -61,18 +61,18 @@ export default function AttendanceReportsPage() {
     try {
       let result;
       const filters: any = {
-        classId: selectedClass || undefined,
+        classId: selectedClass && selectedClass !== "all" ? selectedClass : undefined,
       };
 
       switch (reportType) {
         case "daily":
           const today = new Date();
-          result = await getDailyAttendanceSummary(today, selectedClass || undefined);
+          result = await getDailyAttendanceSummary(today, filters.classId);
           break;
         case "monthly":
-          const month = parseInt(selectedMonth) || new Date().getMonth() + 1;
+          const month = selectedMonth && selectedMonth !== "current" ? parseInt(selectedMonth) : new Date().getMonth() + 1;
           const year = parseInt(selectedYear) || new Date().getFullYear();
-          result = await getMonthlyAttendanceTrends(month, year, selectedClass || undefined);
+          result = await getMonthlyAttendanceTrends(month, year, filters.classId);
           break;
         case "absenteeism":
           const startDate = new Date();
@@ -191,7 +191,7 @@ export default function AttendanceReportsPage() {
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Years</SelectItem>
+                  <SelectItem value="all">All Years</SelectItem>
                   {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
@@ -207,7 +207,7 @@ export default function AttendanceReportsPage() {
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Classes</SelectItem>
+                  <SelectItem value="all">All Classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -223,7 +223,7 @@ export default function AttendanceReportsPage() {
                   <SelectValue placeholder="Select month" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Current Month</SelectItem>
+                  <SelectItem value="current">Current Month</SelectItem>
                   <SelectItem value="1">January</SelectItem>
                   <SelectItem value="2">February</SelectItem>
                   <SelectItem value="3">March</SelectItem>

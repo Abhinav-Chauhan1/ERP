@@ -32,6 +32,7 @@
     "@radix-ui/react-tooltip": "^1.2.6",
     "@tanstack/react-table": "^8.10.7",
     "@types/react-datepicker": "^6.2.0",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.6.1",
     "clsx": "^2.1.0",
@@ -54,6 +55,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.12.9",
     "@types/react": "^18.2.67",
     "@types/react-dom": "^18.2.22",

@@ -53,8 +53,8 @@ export default function FinancialReportsPage() {
     setLoading(true);
     try {
       const filters: any = {
-        academicYearId: selectedAcademicYear || undefined,
-        category: selectedCategory || undefined,
+        academicYearId: selectedAcademicYear && selectedAcademicYear !== "all" ? selectedAcademicYear : undefined,
+        category: selectedCategory && selectedCategory !== "all" ? selectedCategory : undefined,
       };
 
       // Add date filters based on period
@@ -194,7 +194,7 @@ export default function FinancialReportsPage() {
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Years</SelectItem>
+                  <SelectItem value="all">All Years</SelectItem>
                   {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
@@ -210,7 +210,7 @@ export default function FinancialReportsPage() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="TUITION">Tuition</SelectItem>
                   <SelectItem value="TRANSPORT">Transport</SelectItem>
                   <SelectItem value="LIBRARY">Library</SelectItem>
