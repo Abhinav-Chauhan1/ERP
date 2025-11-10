@@ -489,19 +489,19 @@ export default function FinancePage() {
                         ></div>
                       </div>
                     </div>
-                  </>
-                )}
 
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium">Scholarship Funds</span>
-                    <span className="text-sm font-medium">48%</span>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Scholarship Funds</span>
+                        <span className="text-sm font-medium">48%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-500 h-2 rounded-full" style={{ width: "48%" }}></div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: "48%" }}></div>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -36,11 +36,11 @@ import {
 } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
-  getClassAttendanceReport,
-  getDepartmentAttendanceReport,
-  getLowAttendanceStudents,
-  getAttendanceTrends,
-  exportAttendanceReport,
+  getClassWiseAttendance,
+  getDailyAttendanceSummary,
+  getAbsenteeismAnalysis,
+  getMonthlyAttendanceTrends,
+  getPerfectAttendance,
 } from "@/lib/actions/attendanceReportActions";
 import { getClasses } from "@/lib/actions/classesActions";
 

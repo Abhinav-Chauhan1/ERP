@@ -99,7 +99,7 @@ const addParticipantSchema = z.object({
   role: z.string().default("ATTENDEE"),
 });
 
-export default function EventDetailPage({ params }: { params: { id: string } }) {
+export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);

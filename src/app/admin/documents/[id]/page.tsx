@@ -75,7 +75,7 @@ const getFileIcon = (fileType?: string, size = 24) => {
   return <FileBox size={size} />;
 };
 
-export default function DocumentDetailPage({ params }: { params: { id: string } }) {
+export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);
