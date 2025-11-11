@@ -24,11 +24,6 @@ export async function getExamTypes() {
       success: true, 
       data: examTypes.map(type => ({
         ...type,
-        // Default values for fields not in the DB yet
-        weight: 0,
-        isActive: true,
-        canRetest: false,
-        includeInGradeCard: true,
         examsCount: type._count.exams,
         // Default grade thresholds
         gradeThresholds: [
@@ -71,11 +66,6 @@ export async function getExamTypeById(id: string) {
       success: true, 
       data: {
         ...examType,
-        // Default values for fields not in the DB yet
-        weight: 0,
-        isActive: true,
-        canRetest: false,
-        includeInGradeCard: true,
         examsCount: examType._count.exams,
         // Default grade thresholds
         gradeThresholds: [
@@ -117,8 +107,10 @@ export async function createExamType(data: ExamTypeFormValues) {
       data: {
         name: data.name,
         description: data.description,
-        // Note: The additional fields aren't in the schema yet
-        // We'll mock them for now
+        weight: data.weight,
+        isActive: data.isActive,
+        canRetest: data.canRetest,
+        includeInGradeCard: data.includeInGradeCard,
       }
     });
 
@@ -158,8 +150,10 @@ export async function updateExamType(data: ExamTypeUpdateFormValues) {
       data: {
         name: data.name,
         description: data.description,
-        // Note: The additional fields aren't in the schema yet
-        // We'll mock them for now
+        weight: data.weight,
+        isActive: data.isActive,
+        canRetest: data.canRetest,
+        includeInGradeCard: data.includeInGradeCard,
       }
     });
 

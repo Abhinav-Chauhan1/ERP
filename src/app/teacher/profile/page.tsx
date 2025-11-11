@@ -18,34 +18,25 @@ import {
   Briefcase,
   Clock,
   Edit,
+  AlertCircle,
+  UserCircle,
 } from "lucide-react";
+import { getTeacherProfile } from "@/lib/actions/teacherProfileActions";
 
-// Example teacher data
-const teacherData = {
-  id: "1",
-  firstName: "Sarah",
-  lastName: "Johnson",
-  email: "sarah.johnson@school.edu",
-  phone: "+1 (555) 123-4567",
-  avatar: "/assets/avatars/teacher1.jpg",
-  employeeId: "TCH-2023-001",
-  qualification: "MSc in Mathematics, PhD in Applied Mathematics",
-  joinDate: "August 15, 2020",
-  department: "Mathematics",
-  subjects: ["Algebra", "Calculus", "Statistics"],
-  classes: ["Grade 10-A", "Grade 11-B", "Grade 9-C", "Grade 10-B"],
-  address: "123 University Ave, Academic City, AC 12345",
-  dateOfBirth: "March 12, 1985",
-  experience: "10+ years in teaching mathematics at secondary level",
-  expertise: "Advanced Calculus, Mathematical Modeling, Statistical Analysis",
-  achievements: [
-    "Mathematics Teacher of the Year 2022",
-    "Published 3 research papers on mathematics education",
-    "Mentored winning team in National Mathematics Olympiad",
-  ],
-};
+export default async function TeacherProfilePage() {
+  const result = await getTeacherProfile();
 
-export default function TeacherProfilePage() {
+  if (!result.success || !result.data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h2 className="text-xl font-semibold">Failed to load profile</h2>
+        <p className="text-muted-foreground">{result.error || "An error occurred"}</p>
+      </div>
+    );
+  }
+
+  const { profile, schedule, tasks } = result.data;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
@@ -64,28 +55,34 @@ export default function TeacherProfilePage() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
               <div className="w-32 h-32 rounded-full overflow-hidden mb-4 border-4 border-white shadow-lg">
-                <img
-                  src={teacherData.avatar || "https://via.placeholder.com/128"}
-                  alt={`${teacherData.firstName} ${teacherData.lastName}`}
-                  className="w-full h-full object-cover"
-                />
+                {profile.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    alt={`${profile.firstName} ${profile.lastName}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <UserCircle className="h-16 w-16 text-gray-400" />
+                  </div>
+                )}
               </div>
-              <h2 className="text-xl font-bold">{`${teacherData.firstName} ${teacherData.lastName}`}</h2>
-              <p className="text-sm text-gray-500">{teacherData.department} Teacher</p>
-              <p className="text-sm text-emerald-600 font-medium mt-1">ID: {teacherData.employeeId}</p>
+              <h2 className="text-xl font-bold">{`${profile.firstName} ${profile.lastName}`}</h2>
+              <p className="text-sm text-gray-500">{profile.department} Teacher</p>
+              <p className="text-sm text-emerald-600 font-medium mt-1">ID: {profile.employeeId}</p>
               
               <div className="w-full mt-6 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Mail className="h-4 w-4 text-gray-500" />
-                  <span>{teacherData.email}</span>
+                  <span>{profile.email}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Phone className="h-4 w-4 text-gray-500" />
-                  <span>{teacherData.phone}</span>
+                  <span>{profile.phone}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar className="h-4 w-4 text-gray-500" />
-                  <span>Joined: {teacherData.joinDate}</span>
+                  <span>Joined: {profile.joinDate}</span>
                 </div>
               </div>
               
@@ -121,31 +118,31 @@ export default function TeacherProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Full Name</h3>
-                    <p>{`${teacherData.firstName} ${teacherData.lastName}`}</p>
+                    <p>{`${profile.firstName} ${profile.lastName}`}</p>
                   </div>
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Employee ID</h3>
-                    <p>{teacherData.employeeId}</p>
+                    <p>{profile.employeeId}</p>
                   </div>
                   <div>
-                    <h3 className="font-medium text-sm text-gray-500">Date of Birth</h3>
-                    <p>{teacherData.dateOfBirth}</p>
+                    <h3 className="font-medium text-sm text-gray-500">Join Date</h3>
+                    <p>{profile.joinDate}</p>
                   </div>
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Department</h3>
-                    <p>{teacherData.department}</p>
+                    <p>{profile.department}</p>
                   </div>
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Email Address</h3>
-                    <p>{teacherData.email}</p>
+                    <p>{profile.email}</p>
                   </div>
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Phone Number</h3>
-                    <p>{teacherData.phone}</p>
+                    <p>{profile.phone}</p>
                   </div>
                   <div className="md:col-span-2">
-                    <h3 className="font-medium text-sm text-gray-500">Address</h3>
-                    <p>{teacherData.address}</p>
+                    <h3 className="font-medium text-sm text-gray-500">Qualification</h3>
+                    <p>{profile.qualification}</p>
                   </div>
                 </div>
               </TabsContent>
@@ -154,45 +151,48 @@ export default function TeacherProfilePage() {
                 <div className="space-y-6">
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Qualifications</h3>
-                    <p className="mt-1">{teacherData.qualification}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium text-sm text-gray-500">Teaching Experience</h3>
-                    <p className="mt-1">{teacherData.experience}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium text-sm text-gray-500">Areas of Expertise</h3>
-                    <p className="mt-1">{teacherData.expertise}</p>
+                    <p className="mt-1">{profile.qualification}</p>
                   </div>
                   
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Teaching Subjects</h3>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {teacherData.subjects.map((subject, index) => (
-                        <span 
-                          key={index} 
-                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                        >
-                          {subject}
-                        </span>
-                      ))}
+                      {profile.subjects.length > 0 ? (
+                        profile.subjects.map((subject, index) => (
+                          <span 
+                            key={index} 
+                            className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {subject}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No subjects assigned yet</p>
+                      )}
                     </div>
                   </div>
                   
                   <div>
                     <h3 className="font-medium text-sm text-gray-500">Assigned Classes</h3>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {teacherData.classes.map((cls, index) => (
-                        <span 
-                          key={index} 
-                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"
-                        >
-                          {cls}
-                        </span>
-                      ))}
+                      {profile.classes.length > 0 ? (
+                        profile.classes.map((cls, index) => (
+                          <span 
+                            key={index} 
+                            className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"
+                          >
+                            {cls}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No classes assigned yet</p>
+                      )}
                     </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium text-sm text-gray-500">Department</h3>
+                    <p className="mt-1">{profile.department}</p>
                   </div>
                 </div>
               </TabsContent>
@@ -200,14 +200,11 @@ export default function TeacherProfilePage() {
               <TabsContent value="achievements">
                 <div className="space-y-4">
                   <h3 className="font-medium">Achievements & Recognitions</h3>
-                  <ul className="space-y-2">
-                    {teacherData.achievements.map((achievement, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Award className="h-5 w-5 text-amber-500 mt-0.5" />
-                        <span>{achievement}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="p-6 text-center text-gray-500">
+                    <Award className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                    <p>Achievements and recognitions will be displayed here.</p>
+                    <p className="text-sm mt-1">Contact administration to add your achievements.</p>
+                  </div>
                 </div>
               </TabsContent>
             </CardContent>
@@ -233,32 +230,34 @@ export default function TeacherProfilePage() {
                     <p className="text-sm text-gray-500">This week</p>
                   </div>
                 </div>
-                <p className="text-2xl font-bold">18 hrs</p>
+                <p className="text-2xl font-bold">{schedule.totalWeeklyHours} hrs</p>
               </div>
               
               <div className="border-t pt-4">
                 <div className="flex justify-between mb-2">
                   <p className="text-sm font-medium">Today's Classes</p>
-                  <p className="text-sm font-medium">4 classes</p>
+                  <p className="text-sm font-medium">{schedule.todayClassesCount} classes</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="p-2 bg-gray-50 rounded-md">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Grade 10-A (Mathematics)</span>
-                      <span className="text-sm">09:00 AM - 10:00 AM</span>
-                    </div>
+                {schedule.todayClasses.length > 0 ? (
+                  <div className="space-y-2">
+                    {schedule.todayClasses.slice(0, 2).map((cls) => (
+                      <div key={cls.id} className="p-2 bg-gray-50 rounded-md">
+                        <div className="flex justify-between">
+                          <span className="font-medium">
+                            {cls.className} {cls.section && `- ${cls.section}`} ({cls.subject})
+                          </span>
+                          <span className="text-sm">{cls.time}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-2 bg-gray-50 rounded-md">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Grade 11-B (Mathematics)</span>
-                      <span className="text-sm">10:30 AM - 11:30 AM</span>
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">No classes today</p>
+                )}
               </div>
               
               <div className="flex justify-center">
-                <Link href="/teacher/schedule">
+                <Link href="/teacher/teaching/timetable">
                   <Button variant="outline">View Full Schedule</Button>
                 </Link>
               </div>
@@ -272,48 +271,49 @@ export default function TeacherProfilePage() {
             <CardDescription>Pending work and deadlines</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3 p-2 bg-amber-50 border border-amber-100 rounded-md">
-                <div className="p-1.5 rounded-full bg-amber-100">
-                  <Briefcase className="h-4 w-4 text-amber-600" />
+            {tasks.length > 0 ? (
+              <>
+                <ul className="space-y-3">
+                  {tasks.map((task) => (
+                    <li key={task.id} className={`flex items-start gap-3 p-2 border rounded-md ${
+                      task.priority === "High Priority" ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100"
+                    }`}>
+                      <div className={`p-1.5 rounded-full ${
+                        task.priority === "High Priority" ? "bg-amber-100" : "bg-gray-200"
+                      }`}>
+                        <Briefcase className={`h-4 w-4 ${
+                          task.priority === "High Priority" ? "text-amber-600" : "text-gray-600"
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{task.title}</p>
+                        <p className="text-xs text-gray-500">{task.description} • Due {task.dueDate}</p>
+                        <p className="text-xs text-gray-600 mt-1">{task.count} submissions to grade</p>
+                      </div>
+                      <div className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        task.priority === "High Priority" ? "bg-amber-100 text-amber-700" :
+                        task.priority === "Medium Priority" ? "bg-blue-100 text-blue-700" :
+                        "bg-gray-200 text-gray-700"
+                      }`}>
+                        {task.priority}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                
+                <div className="flex justify-center mt-4">
+                  <Link href="/teacher/assessments/assignments">
+                    <Button variant="outline">View All Tasks</Button>
+                  </Link>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">Grade Mathematics Assignment</p>
-                  <p className="text-xs text-gray-500">Grade 10-A • Due Dec 05, 2023</p>
-                </div>
-                <div className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
-                  High Priority
-                </div>
-              </li>
-              <li className="flex items-start gap-3 p-2 bg-gray-50 border border-gray-100 rounded-md">
-                <div className="p-1.5 rounded-full bg-gray-200">
-                  <GraduationCap className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Prepare Test Papers</p>
-                  <p className="text-xs text-gray-500">Grade 11-B • Due Dec 07, 2023</p>
-                </div>
-                <div className="px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
-                  Medium Priority
-                </div>
-              </li>
-              <li className="flex items-start gap-3 p-2 bg-gray-50 border border-gray-100 rounded-md">
-                <div className="p-1.5 rounded-full bg-gray-200">
-                  <GraduationCap className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Complete Progress Reports</p>
-                  <p className="text-xs text-gray-500">All Classes • Due Dec 10, 2023</p>
-                </div>
-                <div className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
-                  High Priority
-                </div>
-              </li>
-            </ul>
-            
-            <div className="flex justify-center mt-4">
-              <Button variant="outline">View All Tasks</Button>
-            </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <GraduationCap className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                <p>No pending tasks</p>
+                <p className="text-sm mt-1">You're all caught up!</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

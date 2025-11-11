@@ -7,121 +7,50 @@ import { StatsCard } from "@/components/dashboard/stats-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Chart } from "@/components/dashboard/chart";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
+import {
+  getDashboardStats,
+  getStudentAttendanceData,
+  getExamResultsData,
+  getEnrollmentDistribution,
+  getRecentActivities,
+  getUpcomingEvents,
+  getNotifications,
+} from "@/lib/actions/dashboardActions";
 
-// Define the CalendarEvent type to match the component's expected type
-type CalendarEventType = "exam" | "holiday" | "event" | "meeting";
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: Date;
-  type: CalendarEventType;
-}
+export default async function AdminDashboard() {
+  // Fetch all data in parallel
+  const [
+    statsResult,
+    attendanceResult,
+    examResultsResult,
+    enrollmentResult,
+    activitiesResult,
+    eventsResult,
+    notificationsResult,
+  ] = await Promise.all([
+    getDashboardStats(),
+    getStudentAttendanceData(),
+    getExamResultsData(),
+    getEnrollmentDistribution(),
+    getRecentActivities(),
+    getUpcomingEvents(),
+    getNotifications(),
+  ]);
 
-const studentAttendanceData = [
-  { month: 'Jan', present: 92 },
-  { month: 'Feb', present: 88 },
-  { month: 'Mar', present: 90 },
-  { month: 'Apr', present: 93 },
-  { month: 'May', present: 89 },
-  { month: 'Jun', present: 87 },
-  { month: 'Jul', present: 92 },
-  { month: 'Aug', present: 94 },
-  { month: 'Sep', present: 91 },
-  { month: 'Oct', present: 89 },
-  { month: 'Nov', present: 93 },
-  { month: 'Dec', present: 90 },
-];
+  // Extract data with fallbacks
+  const stats = statsResult.success ? statsResult.data : {
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    totalSubjects: 0,
+  };
 
-const examResultsData = [
-  { subject: 'Math', average: 76 },
-  { subject: 'Science', average: 82 },
-  { subject: 'English', average: 78 },
-  { subject: 'History', average: 74 },
-  { subject: 'Geography', average: 79 },
-  { subject: 'Art', average: 88 },
-];
-
-const enrollmentDistributionData = [
-  { grade: 'Grade 1', students: 120 },
-  { grade: 'Grade 2', students: 105 },
-  { grade: 'Grade 3', students: 132 },
-  { grade: 'Grade 4', students: 115 },
-  { grade: 'Grade 5', students: 125 },
-  { grade: 'Grade 6', students: 98 },
-];
-
-const recentActivities = [
-  {
-    id: '1',
-    user: { name: 'John Smith', role: 'teacher' },
-    action: 'created a new assignment in',
-    target: 'Mathematics Grade 10',
-    date: new Date('2023-11-25T10:30:00'),
-  },
-  {
-    id: '2',
-    user: { name: 'Sarah Johnson', role: 'admin' },
-    action: 'updated the timetable for',
-    target: 'Grade 9 Section A',
-    date: new Date('2023-11-25T09:15:00'),
-  },
-  {
-    id: '3',
-    user: { name: 'Robert Clark', role: 'teacher' },
-    action: 'marked attendance for',
-    target: 'Physics Class',
-    date: new Date('2023-11-24T16:45:00'),
-  },
-  {
-    id: '4',
-    user: { name: 'Amanda Lewis', role: 'admin' },
-    action: 'created a new announcement for',
-    target: 'All Staff',
-    date: new Date('2023-11-24T14:20:00'),
-  },
-  {
-    id: '5',
-    user: { name: 'Michael Brown', role: 'teacher' },
-    action: 'submitted exam results for',
-    target: 'Grade 11 Biology',
-    date: new Date('2023-11-23T11:10:00'),
-  },
-];
-
-const upcomingEvents: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Mid-term Exams',
-    date: new Date('2023-12-10T09:00:00'),
-    type: 'exam',
-  },
-  {
-    id: '2',
-    title: 'School Sports Day',
-    date: new Date('2023-12-15T08:30:00'),
-    type: 'event',
-  },
-  {
-    id: '3',
-    title: 'Staff Meeting',
-    date: new Date('2023-12-05T14:00:00'),
-    type: 'meeting',
-  },
-  {
-    id: '4',
-    title: 'Winter Break',
-    date: new Date('2023-12-22'),
-    type: 'holiday',
-  },
-  {
-    id: '5',
-    title: 'Parent-Teacher Conference',
-    date: new Date('2023-12-08T15:30:00'),
-    type: 'meeting',
-  },
-];
-
-export default function AdminDashboard() {
+  const studentAttendanceData = attendanceResult.success ? attendanceResult.data : [];
+  const examResultsData = examResultsResult.success ? examResultsResult.data : [];
+  const enrollmentDistributionData = enrollmentResult.success ? enrollmentResult.data : [];
+  const recentActivities = activitiesResult.success ? activitiesResult.data : [];
+  const upcomingEvents = eventsResult.success ? eventsResult.data : [];
+  const notifications = notificationsResult.success ? notificationsResult.data : [];
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -131,27 +60,25 @@ export default function AdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Students"
-            value="1,245"
+            value={stats.totalStudents.toLocaleString()}
             icon={<Users className="h-5 w-5" />}
-            trend={{ value: 12, isPositive: true }}
-            description="vs. last month"
+            description="active students"
           />
           <StatsCard
             title="Total Teachers"
-            value="85"
+            value={stats.totalTeachers.toLocaleString()}
             icon={<GraduationCap className="h-5 w-5" />}
-            trend={{ value: 4, isPositive: true }}
-            description="new this month"
+            description="active teachers"
           />
           <StatsCard
             title="Classes"
-            value="32"
+            value={stats.totalClasses.toLocaleString()}
             icon={<School className="h-5 w-5" />}
-            description="across 6 grades"
+            description="total classes"
           />
           <StatsCard
             title="Subjects"
-            value="48"
+            value={stats.totalSubjects.toLocaleString()}
             icon={<BookOpen className="h-5 w-5" />}
             description="in curriculum"
           />
@@ -244,43 +171,41 @@ export default function AdminDashboard() {
               <CardTitle className="text-base font-medium">Notifications</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="p-1.5 rounded-full bg-red-100 text-red-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                    <path d="M18 6 6 18"></path>
-                    <path d="m6 6 12 12"></path>
-                  </svg>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Absence Rate Alert</p>
-                  <p className="text-xs text-gray-600">Grade 10B has an absence rate of 15% this week.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="p-1.5 rounded-full bg-yellow-100 text-yellow-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                    <path d="M12 9v4"></path>
-                    <path d="M12 17h.01"></path>
-                  </svg>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Fee Payment Reminder</p>
-                  <p className="text-xs text-gray-600">15 students have pending fee payments due this week.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="p-1.5 rounded-full bg-blue-100 text-blue-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 8v4l3 3"></path>
-                  </svg>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Upcoming Events</p>
-                  <p className="text-xs text-gray-600">Parent-Teacher meeting scheduled for Friday.</p>
-                </div>
-              </div>
+              {notifications.length === 0 ? (
+                <p className="text-sm text-gray-500">No notifications at this time.</p>
+              ) : (
+                notifications.map((notification, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className={`p-1.5 rounded-full ${
+                      notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
+                      notification.type === 'error' ? 'bg-red-100 text-red-600' :
+                      'bg-blue-100 text-blue-600'
+                    }`}>
+                      {notification.type === 'warning' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                          <path d="M12 9v4"></path>
+                          <path d="M12 17h.01"></path>
+                        </svg>
+                      ) : notification.type === 'error' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <path d="M18 6 6 18"></path>
+                          <path d="m6 6 12 12"></path>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M12 8v4l3 3"></path>
+                        </svg>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{notification.title}</p>
+                      <p className="text-xs text-gray-600">{notification.message}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

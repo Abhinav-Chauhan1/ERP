@@ -1,44 +1,26 @@
 "use client";
 
-import { useState } from 'react';
-import { TeacherSidebar } from '@/components/layout/teacher-sidebar';
-import { Header } from '@/components/layout/header';
+import { Toaster } from "react-hot-toast";
+import { TeacherSidebar } from "@/components/layout/teacher-sidebar";
+import { TeacherHeader } from "@/components/layout/teacher-header";
 
 export default function TeacherLayout({
-  children,
+  children
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div className={`hidden lg:block relative`}>
+    <div className="h-full relative">
+      <div className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50">
         <TeacherSidebar />
       </div>
-
-      {/* Mobile sidebar */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-40">
-          <div className="fixed inset-0 bg-black/30" onClick={toggleSidebar}></div>
-          <div className="fixed left-0 top-0 bottom-0 w-64 bg-white z-50">
-            <TeacherSidebar />
-          </div>
-        </div>
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+      <main className="md:pl-72 h-full">
+        <TeacherHeader />
+        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-gray-50 p-4 md:p-6">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
+      <Toaster position="top-center" />
     </div>
   );
 }

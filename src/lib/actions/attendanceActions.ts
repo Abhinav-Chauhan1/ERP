@@ -1,840 +1,759 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { 
-  StudentAttendanceFormValues, 
-  BulkStudentAttendanceFormValues,
-  StudentAttendanceUpdateFormValues, 
-  TeacherAttendanceFormValues,
-  BulkTeacherAttendanceFormValues,
-  TeacherAttendanceUpdateFormValues,
-  AttendanceReportFormValues
-} from "../schemaValidation/attendanceSchemaValidation";
+import { AttendanceStatus } from "@prisma/client";
 
-// Student Attendance Actions
-export async function markStudentAttendance(data: StudentAttendanceFormValues, userId: string) {
+export async function getAttendanceOverview() {
   try {
-    // Check if student exists
-    const student = await db.student.findUnique({
-      where: { id: data.studentId }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalStudentAttendance,
+      totalTeacherAttendance,
+      studentPresentToday,
+      teacherPresentToday,
+    ] = await Promise.all([
+      db.studentAttendance.count({
+        where: { date: { gte: today } },
+      }),
+      db.teacherAttendance.count({
+        where: { date: { gte: today } },
+      }),
+      db.studentAttendance.count({
+        where: {
+          date: { gte: today },
+          status: AttendanceStatus.PRESENT,
+        },
+      }),
+      db.teacherAttendance.count({
+        where: {
+          date: { gte: today },
+          status: AttendanceStatus.PRESENT,
+        },
+      }),
+    ]);
+
+    const studentAttendanceRate =
+      totalStudentAttendance > 0
+        ? ((studentPresentToday / totalStudentAttendance) * 100).toFixed(1)
+        : "0.0";
+
+    const teacherAttendanceRate =
+      totalTeacherAttendance > 0
+        ? ((teacherPresentToday / totalTeacherAttendance) * 100).toFixed(1)
+        : "0.0";
+
+    return {
+      success: true,
+      data: {
+        studentAttendanceRate: `${studentAttendanceRate}%`,
+        teacherAttendanceRate: `${teacherAttendanceRate}%`,
+        totalReports: totalStudentAttendance + totalTeacherAttendance,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching attendance overview:", error);
+    return { success: false, error: "Failed to fetch attendance overview" };
+  }
+}
+
+export async function getWeeklyAttendanceTrend() {
+  try {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    const attendanceRecords = await db.studentAttendance.findMany({
+      where: {
+        date: {
+          gte: sevenDaysAgo,
+          lte: today,
+        },
+      },
+      select: {
+        date: true,
+        status: true,
+      },
     });
 
-    if (!student) {
-      return { success: false, error: "Student not found" };
-    }
+    // Group by date
+    const groupedByDate = attendanceRecords.reduce((acc, record) => {
+      const dateKey = record.date.toISOString().split("T")[0];
+      if (!acc[dateKey]) {
+        acc[dateKey] = { present: 0, absent: 0 };
+      }
+      if (record.status === AttendanceStatus.PRESENT) {
+        acc[dateKey].present++;
+      } else if (record.status === AttendanceStatus.ABSENT) {
+        acc[dateKey].absent++;
+      }
+      return acc;
+    }, {} as Record<string, { present: number; absent: number }>);
 
-    // Check if section exists
-    const section = await db.classSection.findUnique({
-      where: { id: data.sectionId }
+    // Convert to array and format
+    const trendData = Object.entries(groupedByDate)
+      .map(([date, counts]) => ({
+        date: new Date(date).toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+        }),
+        present: counts.present,
+        absent: counts.absent,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-7); // Last 7 days
+
+    return { success: true, data: trendData };
+  } catch (error) {
+    console.error("Error fetching weekly attendance trend:", error);
+    return { success: false, error: "Failed to fetch attendance trend" };
+  }
+}
+
+export async function getAttendanceByClass() {
+  try {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const classes = await db.class.findMany({
+      include: {
+        sections: {
+          include: {
+            attendanceRecords: {
+              where: {
+                date: {
+                  gte: thirtyDaysAgo,
+                },
+              },
+            },
+          },
+        },
+      },
+      take: 6,
+      orderBy: { name: "asc" },
     });
 
-    if (!section) {
-      return { success: false, error: "Class section not found" };
+    const classAttendance = classes.map((cls) => {
+      let totalRecords = 0;
+      let presentRecords = 0;
+
+      cls.sections.forEach((section) => {
+        totalRecords += section.attendanceRecords.length;
+        presentRecords += section.attendanceRecords.filter(
+          (r) => r.status === AttendanceStatus.PRESENT
+        ).length;
+      });
+
+      const presentPercentage =
+        totalRecords > 0 ? (presentRecords / totalRecords) * 100 : 0;
+      const absentPercentage = 100 - presentPercentage;
+
+      return {
+        class: cls.name,
+        present: parseFloat(presentPercentage.toFixed(1)),
+        absent: parseFloat(absentPercentage.toFixed(1)),
+      };
+    });
+
+    return { success: true, data: classAttendance };
+  } catch (error) {
+    console.error("Error fetching attendance by class:", error);
+    return { success: false, error: "Failed to fetch class attendance" };
+  }
+}
+
+export async function getRecentAbsences(limit: number = 10) {
+  try {
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    twoDaysAgo.setHours(0, 0, 0, 0);
+
+    const absences = await db.studentAttendance.findMany({
+      where: {
+        date: { gte: twoDaysAgo },
+        status: AttendanceStatus.ABSENT,
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { date: "desc" },
+      take: limit,
+    });
+
+    const formattedAbsences = absences.map((absence) => ({
+      id: absence.id,
+      name: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+      grade:
+        absence.student.enrollments.length > 0
+          ? `${absence.student.enrollments[0].class.name}-${absence.student.enrollments[0].section.name}`
+          : "N/A",
+      date: absence.date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      status: "Absent",
+      reason: absence.reason || "No Reason",
+      informed: absence.reason ? "Yes" : "No",
+      studentId: absence.studentId,
+    }));
+
+    return { success: true, data: formattedAbsences };
+  } catch (error) {
+    console.error("Error fetching recent absences:", error);
+    return { success: false, error: "Failed to fetch recent absences" };
+  }
+}
+
+export async function getAttendanceStats() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [studentStats, teacherStats] = await Promise.all([
+      db.studentAttendance.groupBy({
+        by: ["status"],
+        where: { date: { gte: today } },
+        _count: true,
+      }),
+      db.teacherAttendance.groupBy({
+        by: ["status"],
+        where: { date: { gte: today } },
+        _count: true,
+      }),
+    ]);
+
+    const studentTotal = studentStats.reduce((sum, stat) => sum + stat._count, 0);
+    const teacherTotal = teacherStats.reduce((sum, stat) => sum + stat._count, 0);
+
+    return {
+      success: true,
+      data: {
+        students: {
+          total: studentTotal,
+          present:
+            studentStats.find((s) => s.status === AttendanceStatus.PRESENT)?._count || 0,
+          absent:
+            studentStats.find((s) => s.status === AttendanceStatus.ABSENT)?._count || 0,
+          late: studentStats.find((s) => s.status === AttendanceStatus.LATE)?._count || 0,
+        },
+        teachers: {
+          total: teacherTotal,
+          present:
+            teacherStats.find((s) => s.status === AttendanceStatus.PRESENT)?._count || 0,
+          absent:
+            teacherStats.find((s) => s.status === AttendanceStatus.ABSENT)?._count || 0,
+          late: teacherStats.find((s) => s.status === AttendanceStatus.LATE)?._count || 0,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching attendance stats:", error);
+    return { success: false, error: "Failed to fetch attendance stats" };
+  }
+}
+
+export async function getClassSectionsForDropdown() {
+  try {
+    const classes = await db.class.findMany({
+      include: {
+        sections: {
+          orderBy: { name: "asc" },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return {
+      success: true,
+      data: classes.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        sections: cls.sections.map((section) => ({
+          id: section.id,
+          name: section.name,
+        })),
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching class sections:", error);
+    return { success: false, error: "Failed to fetch class sections" };
+  }
+}
+
+export async function getStudentAttendanceByDate(date: Date, sectionId?: string) {
+  try {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const whereClause: any = {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    };
+
+    if (sectionId) {
+      whereClause.sectionId = sectionId;
     }
 
-    // Check if attendance record already exists for this student on this date
-    const existingAttendance = await db.studentAttendance.findFirst({
+    const attendanceRecords = await db.studentAttendance.findMany({
+      where: whereClause,
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
+              },
+              take: 1,
+            },
+          },
+        },
+        section: {
+          include: {
+            class: true,
+          },
+        },
+      },
+      orderBy: {
+        student: {
+          user: {
+            firstName: "asc",
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: attendanceRecords.map((record) => ({
+        id: record.id,
+        studentId: record.studentId,
+        studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
+        admissionId: record.student.admissionId,
+        class:
+          record.student.enrollments.length > 0
+            ? record.student.enrollments[0].class.name
+            : "N/A",
+        section:
+          record.student.enrollments.length > 0
+            ? record.student.enrollments[0].section.name
+            : "N/A",
+        status: record.status,
+        reason: record.reason,
+        date: record.date,
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching student attendance by date:", error);
+    return { success: false, error: "Failed to fetch attendance records" };
+  }
+}
+
+export async function markStudentAttendance(data: {
+  studentId: string;
+  sectionId: string;
+  date: Date;
+  status: AttendanceStatus;
+  reason?: string;
+  markedBy?: string;
+}) {
+  try {
+    const startOfDay = new Date(data.date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(data.date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Check if attendance already exists
+    const existing = await db.studentAttendance.findFirst({
       where: {
         studentId: data.studentId,
-        date: data.date,
-        sectionId: data.sectionId
-      }
+        sectionId: data.sectionId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
     });
 
-    let attendance;
-
-    if (existingAttendance) {
+    if (existing) {
       // Update existing record
-      attendance = await db.studentAttendance.update({
-        where: { id: existingAttendance.id },
+      const updated = await db.studentAttendance.update({
+        where: { id: existing.id },
         data: {
           status: data.status,
           reason: data.reason,
-          markedBy: userId,
-        }
+          markedBy: data.markedBy,
+        },
       });
+      return { success: true, data: updated };
     } else {
       // Create new record
-      attendance = await db.studentAttendance.create({
+      const created = await db.studentAttendance.create({
         data: {
           studentId: data.studentId,
-          date: data.date,
           sectionId: data.sectionId,
+          date: data.date,
           status: data.status,
           reason: data.reason,
-          markedBy: userId,
-        }
+          markedBy: data.markedBy,
+        },
       });
+      return { success: true, data: created };
     }
-    
-    revalidatePath("/admin/attendance/students");
-    return { success: true, data: attendance };
   } catch (error) {
     console.error("Error marking student attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to mark student attendance" 
-    };
+    return { success: false, error: "Failed to mark attendance" };
   }
 }
 
-export async function markBulkStudentAttendance(data: BulkStudentAttendanceFormValues, userId: string) {
+export async function markBulkStudentAttendance(data: {
+  sectionId: string;
+  date: Date;
+  attendanceRecords: Array<{
+    studentId: string;
+    status: AttendanceStatus;
+    reason?: string;
+  }>;
+  markedBy?: string;
+}) {
   try {
-    // Check if section exists
-    const section = await db.classSection.findUnique({
-      where: { id: data.sectionId }
-    });
-
-    if (!section) {
-      return { success: false, error: "Class section not found" };
-    }
-
-    const results = [];
-    
-    // Process each record
-    for (const record of data.attendanceRecords) {
-      // Check if attendance record already exists
-      const existingAttendance = await db.studentAttendance.findFirst({
-        where: {
+    const results = await Promise.all(
+      data.attendanceRecords.map((record) =>
+        markStudentAttendance({
           studentId: record.studentId,
+          sectionId: data.sectionId,
           date: data.date,
-          sectionId: data.sectionId
-        }
-      });
+          status: record.status,
+          reason: record.reason,
+          markedBy: data.markedBy,
+        })
+      )
+    );
 
-      let attendance;
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.length - successCount;
 
-      if (existingAttendance) {
-        // Update existing record
-        attendance = await db.studentAttendance.update({
-          where: { id: existingAttendance.id },
-          data: {
-            status: record.status,
-            reason: record.reason,
-            markedBy: userId,
-          }
-        });
-      } else {
-        // Create new record
-        attendance = await db.studentAttendance.create({
-          data: {
-            studentId: record.studentId,
-            date: data.date,
-            sectionId: data.sectionId,
-            status: record.status,
-            reason: record.reason,
-            markedBy: userId,
-          }
-        });
-      }
-      
-      results.push(attendance);
-    }
-    
-    revalidatePath("/admin/attendance/students");
-    return { success: true, data: results };
-  } catch (error) {
-    console.error("Error marking bulk student attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to mark bulk student attendance" 
-    };
-  }
-}
-
-export async function updateStudentAttendance(data: StudentAttendanceUpdateFormValues, userId: string) {
-  try {
-    const attendance = await db.studentAttendance.update({
-      where: { id: data.id },
+    return {
+      success: true,
       data: {
-        status: data.status,
-        reason: data.reason,
-        markedBy: userId,
-      }
-    });
-    
-    revalidatePath("/admin/attendance/students");
-    return { success: true, data: attendance };
-  } catch (error) {
-    console.error("Error updating student attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update student attendance" 
+        total: results.length,
+        success: successCount,
+        failed: failCount,
+      },
     };
+  } catch (error) {
+    console.error("Error marking bulk attendance:", error);
+    return { success: false, error: "Failed to mark bulk attendance" };
   }
 }
 
 export async function deleteStudentAttendance(id: string) {
   try {
     await db.studentAttendance.delete({
-      where: { id }
+      where: { id },
     });
-    
-    revalidatePath("/admin/attendance/students");
-    return { success: true };
+
+    return { success: true, message: "Attendance record deleted successfully" };
   } catch (error) {
-    console.error("Error deleting student attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete student attendance" 
-    };
+    console.error("Error deleting attendance record:", error);
+    return { success: false, error: "Failed to delete attendance record" };
   }
 }
 
-export async function getStudentAttendanceByDate(date: Date, sectionId: string) {
+export async function getStudentAttendanceReport(
+  studentId: string,
+  startDate?: Date,
+  endDate?: Date
+) {
   try {
-    // Get all students in the section
-    const studentsInSection = await db.classEnrollment.findMany({
-      where: {
-        sectionId: sectionId,
-        status: "ACTIVE"
-      },
-      include: {
-        student: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                avatar: true,
-              }
-            }
-          }
-        }
-      }
-    });
+    const whereClause: any = { studentId };
 
-    // Get attendance records for the date and section
-    const attendanceRecords = await db.studentAttendance.findMany({
-      where: {
-        date: date,
-        sectionId: sectionId
-      }
-    });
-
-    // Map students to their attendance records
-    const result = studentsInSection.map(enrollment => {
-      const attendanceRecord = attendanceRecords.find(record => 
-        record.studentId === enrollment.studentId
-      );
-      
-      return {
-        id: enrollment.studentId,
-        rollNumber: enrollment.rollNumber || enrollment.student.rollNumber,
-        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
-        avatar: enrollment.student.user.avatar,
-        attendanceId: attendanceRecord?.id || null,
-        status: attendanceRecord?.status || "ABSENT",
-        reason: attendanceRecord?.reason || "",
-      };
-    });
-    
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error fetching student attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch student attendance" 
-    };
-  }
-}
-
-export async function getStudentAttendanceReport(data: AttendanceReportFormValues) {
-  try {
-    const { entityId, sectionId, startDate, endDate } = data;
-    
-    // Build query based on parameters
-    const where: any = {
-      date: {
-        gte: startDate,
-        lte: endDate
-      }
-    };
-    
-    if (entityId) {
-      where.studentId = entityId;
-    }
-    
-    if (sectionId) {
-      where.sectionId = sectionId;
+    if (startDate || endDate) {
+      whereClause.date = {};
+      if (startDate) whereClause.date.gte = startDate;
+      if (endDate) whereClause.date.lte = endDate;
     }
 
-    // Get attendance records
-    const attendanceRecords = await db.studentAttendance.findMany({
-      where,
+    const records = await db.studentAttendance.findMany({
+      where: whereClause,
       include: {
-        student: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-              }
-            }
-          }
-        },
         section: {
           include: {
-            class: true
-          }
-        }
+            class: true,
+          },
+        },
       },
-      orderBy: [
-        { date: 'asc' }
-      ]
+      orderBy: { date: "desc" },
     });
 
-    // Group records by student if needed
-    if (!entityId) {
-      // Group by student
-      const groupedByStudent: Record<string, any> = {};
-      
-      attendanceRecords.forEach(record => {
-        const studentId = record.studentId;
-        
-        if (!groupedByStudent[studentId]) {
-          groupedByStudent[studentId] = {
-            studentId,
-            studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
-            records: [],
-            summary: {
-              total: 0,
-              present: 0,
-              absent: 0,
-              late: 0,
-              halfDay: 0,
-              leave: 0
-            }
-          };
-        }
-        
-        groupedByStudent[studentId].records.push({
-          id: record.id,
-          date: record.date,
-          status: record.status,
-          reason: record.reason,
-          section: `${record.section.class.name} - ${record.section.name}`
-        });
-        
-        // Update summary
-        groupedByStudent[studentId].summary.total++;
-        switch (record.status) {
-          case "PRESENT":
-            groupedByStudent[studentId].summary.present++;
-            break;
-          case "ABSENT":
-            groupedByStudent[studentId].summary.absent++;
-            break;
-          case "LATE":
-            groupedByStudent[studentId].summary.late++;
-            break;
-          case "HALF_DAY":
-            groupedByStudent[studentId].summary.halfDay++;
-            break;
-          case "LEAVE":
-            groupedByStudent[studentId].summary.leave++;
-            break;
-        }
-      });
-      
-      return { 
-        success: true, 
-        data: Object.values(groupedByStudent),
-        summary: calculateAttendanceSummary(attendanceRecords)
-      };
-    } else {
-      // Individual student report
-      return { 
-        success: true, 
-        data: attendanceRecords,
-        summary: calculateAttendanceSummary(attendanceRecords)
-      };
-    }
-  } catch (error) {
-    console.error("Error generating student attendance report:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to generate student attendance report" 
-    };
-  }
-}
+    const totalDays = records.length;
+    const presentDays = records.filter((r) => r.status === AttendanceStatus.PRESENT).length;
+    const absentDays = records.filter((r) => r.status === AttendanceStatus.ABSENT).length;
+    const lateDays = records.filter((r) => r.status === AttendanceStatus.LATE).length;
+    const attendanceRate = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
 
-// Teacher Attendance Actions
-export async function markTeacherAttendance(data: TeacherAttendanceFormValues, userId: string) {
-  try {
-    // Check if teacher exists
-    const teacher = await db.teacher.findUnique({
-      where: { id: data.teacherId }
-    });
-
-    if (!teacher) {
-      return { success: false, error: "Teacher not found" };
-    }
-
-    // Check if attendance record already exists for this teacher on this date
-    const existingAttendance = await db.teacherAttendance.findFirst({
-      where: {
-        teacherId: data.teacherId,
-        date: data.date
-      }
-    });
-
-    let attendance;
-
-    if (existingAttendance) {
-      // Update existing record
-      attendance = await db.teacherAttendance.update({
-        where: { id: existingAttendance.id },
-        data: {
-          status: data.status,
-          reason: data.reason,
-          markedBy: userId,
-        }
-      });
-    } else {
-      // Create new record
-      attendance = await db.teacherAttendance.create({
-        data: {
-          teacherId: data.teacherId,
-          date: data.date,
-          status: data.status,
-          reason: data.reason,
-          markedBy: userId,
-        }
-      });
-    }
-    
-    revalidatePath("/admin/attendance/teachers");
-    return { success: true, data: attendance };
-  } catch (error) {
-    console.error("Error marking teacher attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to mark teacher attendance" 
-    };
-  }
-}
-
-export async function markBulkTeacherAttendance(data: BulkTeacherAttendanceFormValues, userId: string) {
-  try {
-    const results = [];
-    
-    // Process each record
-    for (const record of data.attendanceRecords) {
-      // Check if attendance record already exists
-      const existingAttendance = await db.teacherAttendance.findFirst({
-        where: {
-          teacherId: record.teacherId,
-          date: data.date
-        }
-      });
-
-      let attendance;
-
-      if (existingAttendance) {
-        // Update existing record
-        attendance = await db.teacherAttendance.update({
-          where: { id: existingAttendance.id },
-          data: {
-            status: record.status,
-            reason: record.reason,
-            markedBy: userId,
-          }
-        });
-      } else {
-        // Create new record
-        attendance = await db.teacherAttendance.create({
-          data: {
-            teacherId: record.teacherId,
-            date: data.date,
-            status: record.status,
-            reason: record.reason,
-            markedBy: userId,
-          }
-        });
-      }
-      
-      results.push(attendance);
-    }
-    
-    revalidatePath("/admin/attendance/teachers");
-    return { success: true, data: results };
-  } catch (error) {
-    console.error("Error marking bulk teacher attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to mark bulk teacher attendance" 
-    };
-  }
-}
-
-export async function updateTeacherAttendance(data: TeacherAttendanceUpdateFormValues, userId: string) {
-  try {
-    const attendance = await db.teacherAttendance.update({
-      where: { id: data.id },
+    return {
+      success: true,
       data: {
-        status: data.status,
-        reason: data.reason,
-        markedBy: userId,
-      }
-    });
-    
-    revalidatePath("/admin/attendance/teachers");
-    return { success: true, data: attendance };
-  } catch (error) {
-    console.error("Error updating teacher attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update teacher attendance" 
-    };
-  }
-}
-
-export async function deleteTeacherAttendance(id: string) {
-  try {
-    await db.teacherAttendance.delete({
-      where: { id }
-    });
-    
-    revalidatePath("/admin/attendance/teachers");
-    return { success: true };
-  } catch (error) {
-    console.error("Error deleting teacher attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete teacher attendance" 
-    };
-  }
-}
-
-export async function getTeacherAttendanceByDate(date: Date) {
-  try {
-    // Get all teachers
-    const teachers = await db.teacher.findMany({
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            avatar: true,
-          }
-        }
-      }
-    });
-
-    // Get attendance records for the date
-    const attendanceRecords = await db.teacherAttendance.findMany({
-      where: {
-        date: date
-      }
-    });
-
-    // Map teachers to their attendance records
-    const result = teachers.map(teacher => {
-      const attendanceRecord = attendanceRecords.find(record => 
-        record.teacherId === teacher.id
-      );
-      
-      return {
-        id: teacher.id,
-        employeeId: teacher.employeeId,
-        name: `${teacher.user.firstName} ${teacher.user.lastName}`,
-        avatar: teacher.user.avatar,
-        attendanceId: attendanceRecord?.id || null,
-        status: attendanceRecord?.status || "ABSENT",
-        reason: attendanceRecord?.reason || "",
-      };
-    });
-    
-    return { success: true, data: result };
-  } catch (error) {
-    console.error("Error fetching teacher attendance:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch teacher attendance" 
-    };
-  }
-}
-
-export async function getTeacherAttendanceReport(data: AttendanceReportFormValues) {
-  try {
-    const { entityId, startDate, endDate } = data;
-    
-    // Build query based on parameters
-    const where: any = {
-      date: {
-        gte: startDate,
-        lte: endDate
-      }
-    };
-    
-    if (entityId) {
-      where.teacherId = entityId;
-    }
-
-    // Get attendance records
-    const attendanceRecords = await db.teacherAttendance.findMany({
-      where,
-      include: {
-        teacher: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-              }
-            }
-          }
-        }
+        records: records.map((r) => ({
+          id: r.id,
+          date: r.date,
+          status: r.status,
+          reason: r.reason,
+          class: r.section.class.name,
+          section: r.section.name,
+        })),
+        summary: {
+          totalDays,
+          presentDays,
+          absentDays,
+          lateDays,
+          attendanceRate: parseFloat(attendanceRate.toFixed(2)),
+        },
       },
-      orderBy: [
-        { date: 'asc' }
-      ]
-    });
-
-    // Group records by teacher if needed
-    if (!entityId) {
-      // Group by teacher
-      const groupedByTeacher: Record<string, any> = {};
-      
-      attendanceRecords.forEach(record => {
-        const teacherId = record.teacherId;
-        
-        if (!groupedByTeacher[teacherId]) {
-          groupedByTeacher[teacherId] = {
-            teacherId,
-            teacherName: `${record.teacher.user.firstName} ${record.teacher.user.lastName}`,
-            employeeId: record.teacher.employeeId,
-            records: [],
-            summary: {
-              total: 0,
-              present: 0,
-              absent: 0,
-              late: 0,
-              halfDay: 0,
-              leave: 0
-            }
-          };
-        }
-        
-        groupedByTeacher[teacherId].records.push({
-          id: record.id,
-          date: record.date,
-          status: record.status,
-          reason: record.reason
-        });
-        
-        // Update summary
-        groupedByTeacher[teacherId].summary.total++;
-        switch (record.status) {
-          case "PRESENT":
-            groupedByTeacher[teacherId].summary.present++;
-            break;
-          case "ABSENT":
-            groupedByTeacher[teacherId].summary.absent++;
-            break;
-          case "LATE":
-            groupedByTeacher[teacherId].summary.late++;
-            break;
-          case "HALF_DAY":
-            groupedByTeacher[teacherId].summary.halfDay++;
-            break;
-          case "LEAVE":
-            groupedByTeacher[teacherId].summary.leave++;
-            break;
-        }
-      });
-      
-      return { 
-        success: true, 
-        data: Object.values(groupedByTeacher),
-        summary: calculateAttendanceSummary(attendanceRecords)
-      };
-    } else {
-      // Individual teacher report
-      return { 
-        success: true, 
-        data: attendanceRecords,
-        summary: calculateAttendanceSummary(attendanceRecords)
-      };
-    }
-  } catch (error) {
-    console.error("Error generating teacher attendance report:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to generate teacher attendance report" 
     };
-  }
-}
-
-// Helper Functions
-function calculateAttendanceSummary(records: any[]) {
-  const summary = {
-    total: records.length,
-    present: 0,
-    absent: 0,
-    late: 0,
-    halfDay: 0,
-    leave: 0,
-    presentPercentage: 0
-  };
-  
-  records.forEach(record => {
-    switch (record.status) {
-      case "PRESENT":
-        summary.present++;
-        break;
-      case "ABSENT":
-        summary.absent++;
-        break;
-      case "LATE":
-        summary.late++;
-        break;
-      case "HALF_DAY":
-        summary.halfDay++;
-        break;
-      case "LEAVE":
-        summary.leave++;
-        break;
-    }
-  });
-  
-  // Calculate percentages
-  summary.presentPercentage = summary.total > 0 
-    ? ((summary.present + summary.late + (summary.halfDay * 0.5)) / summary.total) * 100 
-    : 0;
-  
-  return summary;
-}
-
-// Section and Class data for dropdowns
-export async function getClassSectionsForDropdown() {
-  try {
-    const currentAcademicYear = await db.academicYear.findFirst({
-      where: { isCurrent: true }
-    });
-
-    if (!currentAcademicYear) {
-      return { success: false, error: "No current academic year found" };
-    }
-
-    const classes = await db.class.findMany({
-      where: {
-        academicYearId: currentAcademicYear.id
-      },
-      include: {
-        sections: true
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    });
-
-    const formattedData = classes.map(cls => ({
-      id: cls.id,
-      name: cls.name,
-      sections: cls.sections.map(section => ({
-        id: section.id,
-        name: section.name,
-        fullName: `${cls.name} - ${section.name}`
-      }))
-    }));
-
-    return { success: true, data: formattedData };
   } catch (error) {
-    console.error("Error fetching class sections:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch class sections" 
-    };
+    console.error("Error fetching student attendance report:", error);
+    return { success: false, error: "Failed to fetch attendance report" };
   }
 }
 
 export async function getTeachersForDropdown() {
   try {
     const teachers = await db.teacher.findMany({
-      include: {
+      where: {
         user: {
-          select: {
-            firstName: true,
-            lastName: true,
-          }
-        }
+          active: true,
+        },
+      },
+      include: {
+        user: true,
       },
       orderBy: {
         user: {
-          firstName: 'asc'
-        }
-      }
+          firstName: "asc",
+        },
+      },
     });
 
-    const formattedData = teachers.map(teacher => ({
-      id: teacher.id,
-      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
-      employeeId: teacher.employeeId
-    }));
-
-    return { success: true, data: formattedData };
+    return {
+      success: true,
+      data: teachers.map((teacher) => ({
+        id: teacher.id,
+        userId: teacher.userId,
+        name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+        employeeId: teacher.employeeId,
+      })),
+    };
   } catch (error) {
     console.error("Error fetching teachers:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch teachers" 
-    };
+    return { success: false, error: "Failed to fetch teachers" };
   }
 }
 
-export async function getStudentsForDropdown(sectionId?: string) {
+export async function getStudentsForDropdown() {
   try {
-    const where: any = {};
-    
-    if (sectionId) {
-      where.sectionId = sectionId;
-      where.status = "ACTIVE";
-    }
-
-    const enrollments = await db.classEnrollment.findMany({
-      where,
-      include: {
-        student: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-              }
-            }
-          }
+    const students = await db.student.findMany({
+      where: {
+        user: {
+          active: true,
         },
-        class: true,
-        section: true
       },
-      orderBy: [
-        {
-          student: {
-            user: {
-              firstName: 'asc'
-            }
-          }
-        }
-      ]
+      include: {
+        user: true,
+        enrollments: {
+          where: { status: "ACTIVE" },
+          include: {
+            class: true,
+            section: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: {
+        user: {
+          firstName: "asc",
+        },
+      },
     });
 
-    const formattedData = enrollments.map(enrollment => ({
-      id: enrollment.student.id,
-      name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
-      rollNumber: enrollment.rollNumber || enrollment.student.rollNumber,
-      class: enrollment.class.name,
-      section: enrollment.section.name
-    }));
-
-    return { success: true, data: formattedData };
+    return {
+      success: true,
+      data: students.map((student) => ({
+        id: student.id,
+        userId: student.userId,
+        name: `${student.user.firstName} ${student.user.lastName}`,
+        admissionId: student.admissionId,
+        class:
+          student.enrollments.length > 0
+            ? `${student.enrollments[0].class.name}-${student.enrollments[0].section.name}`
+            : "N/A",
+      })),
+    };
   } catch (error) {
     console.error("Error fetching students:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch students" 
+    return { success: false, error: "Failed to fetch students" };
+  }
+}
+
+export async function getTeacherAttendanceByDate(date: Date) {
+  try {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendanceRecords = await db.teacherAttendance.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        teacher: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: {
+        teacher: {
+          user: {
+            firstName: "asc",
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: attendanceRecords.map((record) => ({
+        id: record.id,
+        teacherId: record.teacherId,
+        teacherName: `${record.teacher.user.firstName} ${record.teacher.user.lastName}`,
+        employeeId: record.teacher.employeeId,
+        status: record.status,
+        reason: record.reason,
+        date: record.date,
+      })),
     };
+  } catch (error) {
+    console.error("Error fetching teacher attendance by date:", error);
+    return { success: false, error: "Failed to fetch attendance records" };
+  }
+}
+
+export async function markTeacherAttendance(data: {
+  teacherId: string;
+  date: Date;
+  status: AttendanceStatus;
+  reason?: string;
+  markedBy?: string;
+}) {
+  try {
+    const startOfDay = new Date(data.date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(data.date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Check if attendance already exists
+    const existing = await db.teacherAttendance.findFirst({
+      where: {
+        teacherId: data.teacherId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    if (existing) {
+      // Update existing record
+      const updated = await db.teacherAttendance.update({
+        where: { id: existing.id },
+        data: {
+          status: data.status,
+          reason: data.reason,
+          markedBy: data.markedBy,
+        },
+      });
+      return { success: true, data: updated };
+    } else {
+      // Create new record
+      const created = await db.teacherAttendance.create({
+        data: {
+          teacherId: data.teacherId,
+          date: data.date,
+          status: data.status,
+          reason: data.reason,
+          markedBy: data.markedBy,
+        },
+      });
+      return { success: true, data: created };
+    }
+  } catch (error) {
+    console.error("Error marking teacher attendance:", error);
+    return { success: false, error: "Failed to mark attendance" };
+  }
+}
+
+export async function markBulkTeacherAttendance(data: {
+  date: Date;
+  attendanceRecords: Array<{
+    teacherId: string;
+    status: AttendanceStatus;
+    reason?: string;
+  }>;
+  markedBy?: string;
+}) {
+  try {
+    const results = await Promise.all(
+      data.attendanceRecords.map((record) =>
+        markTeacherAttendance({
+          teacherId: record.teacherId,
+          date: data.date,
+          status: record.status,
+          reason: record.reason,
+          markedBy: data.markedBy,
+        })
+      )
+    );
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.length - successCount;
+
+    return {
+      success: true,
+      data: {
+        total: results.length,
+        success: successCount,
+        failed: failCount,
+      },
+    };
+  } catch (error) {
+    console.error("Error marking bulk teacher attendance:", error);
+    return { success: false, error: "Failed to mark bulk attendance" };
   }
 }

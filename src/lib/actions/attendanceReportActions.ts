@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { AttendanceStatus } from "@prisma/client";
 
-// Get daily attendance summary
-export async function getDailyAttendanceSummary(date: Date, classId?: string) {
+export async function getDailyAttendanceSummary(date: Date, sectionId?: string) {
   try {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -17,34 +17,48 @@ export async function getDailyAttendanceSummary(date: Date, classId?: string) {
       },
     };
 
-    if (classId) where.classId = classId;
+    if (sectionId) where.sectionId = sectionId;
 
-    const attendance = await db.attendance.findMany({
+    const attendance = await db.studentAttendance.findMany({
       where,
       include: {
         student: {
           include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
               },
+              take: 1,
             },
+          },
+        },
+        section: {
+          include: {
             class: true,
           },
         },
       },
     });
 
-    const presentCount = attendance.filter(a => a.status === "PRESENT").length;
-    const absentCount = attendance.filter(a => a.status === "ABSENT").length;
-    const lateCount = attendance.filter(a => a.status === "LATE").length;
+    const presentCount = attendance.filter((a) => a.status === AttendanceStatus.PRESENT).length;
+    const absentCount = attendance.filter((a) => a.status === AttendanceStatus.ABSENT).length;
+    const lateCount = attendance.filter((a) => a.status === AttendanceStatus.LATE).length;
     const totalStudents = attendance.length;
 
     return {
       success: true,
       data: {
-        attendance,
+        attendance: attendance.map((a) => ({
+          id: a.id,
+          studentName: `${a.student.user.firstName} ${a.student.user.lastName}`,
+          class: a.section.class.name,
+          section: a.section.name,
+          status: a.status,
+          reason: a.reason,
+        })),
         summary: {
           date: date.toISOString(),
           totalStudents,
@@ -61,11 +75,10 @@ export async function getDailyAttendanceSummary(date: Date, classId?: string) {
   }
 }
 
-// Get monthly attendance trends
-export async function getMonthlyAttendanceTrends(month: number, year: number, classId?: string) {
+export async function getMonthlyAttendanceTrends(month: number, year: number, sectionId?: string) {
   try {
     const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
 
     const where: any = {
       date: {
@@ -74,24 +87,19 @@ export async function getMonthlyAttendanceTrends(month: number, year: number, cl
       },
     };
 
-    if (classId) where.classId = classId;
+    if (sectionId) where.sectionId = sectionId;
 
-    const attendance = await db.attendance.findMany({
+    const attendance = await db.studentAttendance.findMany({
       where,
-      include: {
-        student: {
-          include: {
-            class: true,
-          },
-        },
-      },
     });
 
     // Group by date
-    const dailyStats = attendance.reduce((acc: any, record) => {
-      const dateKey = record.date.toISOString().split('T')[0];
-      if (!acc[dateKey]) {
-        acc[dateKey] = {
+    const dailyStats: Record<string, any> = {};
+    
+    attendance.forEach((record) => {
+      const dateKey = record.date.toISOString().split("T")[0];
+      if (!dailyStats[dateKey]) {
+        dailyStats[dateKey] = {
           date: dateKey,
           present: 0,
           absent: 0,
@@ -99,50 +107,31 @@ export async function getMonthlyAttendanceTrends(month: number, year: number, cl
           total: 0,
         };
       }
-      acc[dateKey].total++;
-      if (record.status === "PRESENT") acc[dateKey].present++;
-      if (record.status === "ABSENT") acc[dateKey].absent++;
-      if (record.status === "LATE") acc[dateKey].late++;
-      return acc;
-    }, {});
+      dailyStats[dateKey].total++;
+      if (record.status === AttendanceStatus.PRESENT) dailyStats[dateKey].present++;
+      if (record.status === AttendanceStatus.ABSENT) dailyStats[dateKey].absent++;
+      if (record.status === AttendanceStatus.LATE) dailyStats[dateKey].late++;
+    });
 
-    const trends = Object.values(dailyStats).map((day: any) => ({
-      ...day,
-      attendanceRate: day.total > 0 ? (day.present / day.total) * 100 : 0,
+    const trends = Object.values(dailyStats).map((stat: any) => ({
+      ...stat,
+      attendanceRate: stat.total > 0 ? (stat.present / stat.total) * 100 : 0,
     }));
 
-    const totalPresent = attendance.filter(a => a.status === "PRESENT").length;
-    const totalRecords = attendance.length;
-
-    return {
-      success: true,
-      data: {
-        trends,
-        summary: {
-          month,
-          year,
-          averageAttendanceRate: totalRecords > 0 ? (totalPresent / totalRecords) * 100 : 0,
-          totalDays: Object.keys(dailyStats).length,
-        },
-      },
-    };
+    return { success: true, data: trends };
   } catch (error) {
     console.error("Error fetching monthly attendance trends:", error);
-    return { success: false, error: "Failed to fetch monthly attendance trends" };
+    return { success: false, error: "Failed to fetch monthly trends" };
   }
 }
 
-// Get absenteeism analysis
 export async function getAbsenteeismAnalysis(filters?: {
   startDate?: Date;
   endDate?: Date;
-  classId?: string;
-  threshold?: number;
+  sectionId?: string;
 }) {
   try {
-    const where: any = {
-      status: "ABSENT",
-    };
+    const where: any = {};
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -150,65 +139,69 @@ export async function getAbsenteeismAnalysis(filters?: {
       if (filters.endDate) where.date.lte = filters.endDate;
     }
 
-    if (filters?.classId) where.classId = filters.classId;
+    if (filters?.sectionId) where.sectionId = filters.sectionId;
 
-    const absences = await db.attendance.findMany({
-      where,
+    const absences = await db.studentAttendance.findMany({
+      where: {
+        ...where,
+        status: AttendanceStatus.ABSENT,
+      },
       include: {
         student: {
           include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
               },
+              take: 1,
             },
-            class: true,
           },
         },
       },
     });
 
     // Group by student
-    const studentAbsences = absences.reduce((acc: any, record) => {
-      const studentId = record.studentId;
-      if (!acc[studentId]) {
-        acc[studentId] = {
-          studentId,
-          studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
-          className: record.student.class?.name || "N/A",
+    const studentAbsences: Record<string, any> = {};
+    
+    absences.forEach((absence) => {
+      if (!studentAbsences[absence.studentId]) {
+        studentAbsences[absence.studentId] = {
+          studentId: absence.studentId,
+          studentName: `${absence.student.user.firstName} ${absence.student.user.lastName}`,
+          admissionId: absence.student.admissionId,
+          class:
+            absence.student.enrollments.length > 0
+              ? absence.student.enrollments[0].class.name
+              : "N/A",
+          section:
+            absence.student.enrollments.length > 0
+              ? absence.student.enrollments[0].section.name
+              : "N/A",
           absenceCount: 0,
-          dates: [],
+          absences: [],
         };
       }
-      acc[studentId].absenceCount++;
-      acc[studentId].dates.push(record.date);
-      return acc;
-    }, {});
+      studentAbsences[absence.studentId].absenceCount++;
+      studentAbsences[absence.studentId].absences.push({
+        date: absence.date,
+        reason: absence.reason,
+      });
+    });
 
-    const threshold = filters?.threshold || 5;
-    const highAbsenteeism = Object.values(studentAbsences)
-      .filter((student: any) => student.absenceCount >= threshold)
-      .sort((a: any, b: any) => b.absenceCount - a.absenceCount);
+    const analysis = Object.values(studentAbsences).sort(
+      (a: any, b: any) => b.absenceCount - a.absenceCount
+    );
 
-    return {
-      success: true,
-      data: {
-        highAbsenteeism,
-        summary: {
-          totalAbsences: absences.length,
-          studentsWithHighAbsenteeism: highAbsenteeism.length,
-          threshold,
-        },
-      },
-    };
+    return { success: true, data: analysis };
   } catch (error) {
     console.error("Error fetching absenteeism analysis:", error);
     return { success: false, error: "Failed to fetch absenteeism analysis" };
   }
 }
 
-// Get class-wise attendance
 export async function getClassWiseAttendance(filters?: {
   startDate?: Date;
   endDate?: Date;
@@ -222,56 +215,53 @@ export async function getClassWiseAttendance(filters?: {
       if (filters.endDate) where.date.lte = filters.endDate;
     }
 
-    const attendance = await db.attendance.findMany({
-      where,
+    const classes = await db.class.findMany({
       include: {
-        student: {
+        sections: {
           include: {
-            class: true,
+            attendanceRecords: {
+              where,
+            },
           },
         },
       },
+      orderBy: { name: "asc" },
     });
 
-    // Group by class
-    const classStats = attendance.reduce((acc: any, record) => {
-      const className = record.student.class?.name || "Unknown";
-      if (!acc[className]) {
-        acc[className] = {
-          className,
-          present: 0,
-          absent: 0,
-          late: 0,
-          total: 0,
-        };
-      }
-      acc[className].total++;
-      if (record.status === "PRESENT") acc[className].present++;
-      if (record.status === "ABSENT") acc[className].absent++;
-      if (record.status === "LATE") acc[className].late++;
-      return acc;
-    }, {});
+    const classWiseData = classes.map((cls) => {
+      let totalRecords = 0;
+      let presentRecords = 0;
 
-    const classData = Object.values(classStats).map((cls: any) => ({
-      ...cls,
-      attendanceRate: cls.total > 0 ? (cls.present / cls.total) * 100 : 0,
-    }));
+      cls.sections.forEach((section) => {
+        totalRecords += section.attendanceRecords.length;
+        presentRecords += section.attendanceRecords.filter(
+          (r) => r.status === AttendanceStatus.PRESENT
+        ).length;
+      });
 
-    return {
-      success: true,
-      data: classData,
-    };
+      const attendanceRate = totalRecords > 0 ? (presentRecords / totalRecords) * 100 : 0;
+
+      return {
+        classId: cls.id,
+        className: cls.name,
+        totalRecords,
+        presentCount: presentRecords,
+        absentCount: totalRecords - presentRecords,
+        attendanceRate: parseFloat(attendanceRate.toFixed(2)),
+      };
+    });
+
+    return { success: true, data: classWiseData };
   } catch (error) {
     console.error("Error fetching class-wise attendance:", error);
     return { success: false, error: "Failed to fetch class-wise attendance" };
   }
 }
 
-// Get perfect attendance
 export async function getPerfectAttendance(filters?: {
   startDate?: Date;
   endDate?: Date;
-  classId?: string;
+  sectionId?: string;
 }) {
   try {
     const where: any = {};
@@ -282,57 +272,63 @@ export async function getPerfectAttendance(filters?: {
       if (filters.endDate) where.date.lte = filters.endDate;
     }
 
-    if (filters?.classId) where.classId = filters.classId;
+    if (filters?.sectionId) where.sectionId = filters.sectionId;
 
-    const attendance = await db.attendance.findMany({
+    // Get all attendance records
+    const allRecords = await db.studentAttendance.findMany({
       where,
       include: {
         student: {
           include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
               },
+              take: 1,
             },
-            class: true,
           },
         },
       },
     });
 
-    // Group by student
-    const studentRecords = attendance.reduce((acc: any, record) => {
-      const studentId = record.studentId;
-      if (!acc[studentId]) {
-        acc[studentId] = {
-          studentId,
+    // Group by student and check if all are present
+    const studentRecords: Record<string, any> = {};
+    
+    allRecords.forEach((record) => {
+      if (!studentRecords[record.studentId]) {
+        studentRecords[record.studentId] = {
+          studentId: record.studentId,
           studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
-          className: record.student.class?.name || "N/A",
+          admissionId: record.student.admissionId,
+          class:
+            record.student.enrollments.length > 0
+              ? record.student.enrollments[0].class.name
+              : "N/A",
+          section:
+            record.student.enrollments.length > 0
+              ? record.student.enrollments[0].section.name
+              : "N/A",
           totalDays: 0,
           presentDays: 0,
+          isPerfect: true,
         };
       }
-      acc[studentId].totalDays++;
-      if (record.status === "PRESENT") acc[studentId].presentDays++;
-      return acc;
-    }, {});
+      studentRecords[record.studentId].totalDays++;
+      if (record.status === AttendanceStatus.PRESENT) {
+        studentRecords[record.studentId].presentDays++;
+      } else {
+        studentRecords[record.studentId].isPerfect = false;
+      }
+    });
 
-    // Filter perfect attendance (100%)
-    const perfectAttendance = Object.values(studentRecords)
-      .filter((student: any) => student.totalDays === student.presentDays && student.totalDays > 0)
-      .map((student: any) => ({
-        ...student,
-        attendanceRate: 100,
-      }));
+    const perfectAttendance = Object.values(studentRecords).filter(
+      (student: any) => student.isPerfect && student.totalDays > 0
+    );
 
-    return {
-      success: true,
-      data: {
-        students: perfectAttendance,
-        count: perfectAttendance.length,
-      },
-    };
+    return { success: true, data: perfectAttendance };
   } catch (error) {
     console.error("Error fetching perfect attendance:", error);
     return { success: false, error: "Failed to fetch perfect attendance" };

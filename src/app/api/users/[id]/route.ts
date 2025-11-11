@@ -69,8 +69,9 @@ export async function PATCH(
       return new NextResponse("Invalid role", { status: 400 });
     }
     
+    const { id } = await params;
     const user = await db.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
     
     if (!user) {
@@ -79,7 +80,7 @@ export async function PATCH(
     
     // Update user role in database
     const updatedUser = await db.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { role }
     });
     

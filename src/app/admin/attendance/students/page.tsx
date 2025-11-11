@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Replace next-auth with your custom auth solution
-import { useAuth } from "@/lib/auth";
 import { 
   Calendar, Clock, Check, X, AlertTriangle, FileText, 
   Download, Plus, Edit, Trash2, Search, Filter, 
@@ -64,8 +62,6 @@ import {
 } from "@/lib/actions/attendanceActions";
 
 export default function StudentAttendancePage() {
-  // Replace useSession with custom auth hook
-  const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [classSections, setClassSections] = useState<any[]>([]);
@@ -160,7 +156,8 @@ export default function StudentAttendancePage() {
     
     setLoading(true);
     try {
-      const result = await getStudentAttendanceByDate(currentDate, selectedSection);
+      const sectionId = selectedSection === "all" ? undefined : selectedSection;
+      const result = await getStudentAttendanceByDate(currentDate, sectionId);
       
       if (result.success) {
         setAttendanceRecords(result.data || []);
@@ -218,13 +215,8 @@ export default function StudentAttendancePage() {
   }
 
   async function onAttendanceSubmit(values: StudentAttendanceFormValues) {
-    if (!user?.id) {
-      toast.error("User session not found");
-      return;
-    }
-    
     try {
-      const result = await markStudentAttendance(values, user.id);
+      const result = await markStudentAttendance(values, ""); // TODO: Get user ID from auth
       
       if (result.success) {
         toast.success("Attendance marked successfully");
@@ -240,13 +232,8 @@ export default function StudentAttendancePage() {
   }
 
   async function onBulkAttendanceSubmit(values: BulkStudentAttendanceFormValues) {
-    if (!user?.id) {
-      toast.error("User session not found");
-      return;
-    }
-    
     try {
-      const result = await markBulkStudentAttendance(values, user.id);
+      const result = await markBulkStudentAttendance(values, ""); // TODO: Get user ID from auth
       
       if (result.success) {
         toast.success("Bulk attendance marked successfully");
@@ -635,13 +622,13 @@ export default function StudentAttendancePage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">All Sections</SelectItem>
+                              <SelectItem value="all">All Sections</SelectItem>
                               {classSections.map(cls => (
                                 <div key={cls.id}>
-                                  <div className="px-2 py-1.5 text-sm font-semibold">{cls.name}</div>
+                                  <div className="px-2 py-1.5 text-sm font-semibold text-gray-500">{cls.name}</div>
                                   {cls.sections.map(section => (
                                     <SelectItem key={section.id} value={section.id}>
-                                      {section.fullName}
+                                      {cls.name} - {section.name}
                                     </SelectItem>
                                   ))}
                                 </div>

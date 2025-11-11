@@ -42,26 +42,7 @@ import {
   getMonthlyAttendanceTrends,
   getPerfectAttendance,
 } from "@/lib/actions/attendanceReportActions";
-import { getClasses } from "@/lib/actions/classesActions";
-
-// Mock data for grades/classes (fallback)
-const mockClasses = [
-  { id: "1", name: "Grade 9-A" },
-  { id: "2", name: "Grade 9-B" },
-  { id: "3", name: "Grade 10-A" },
-  { id: "4", name: "Grade 10-B" },
-  { id: "5", name: "Grade 11-A" },
-  { id: "6", name: "Grade 11-B" },
-];
-
-// Mock data for departments
-const departments = [
-  { id: "d1", name: "Science" },
-  { id: "d2", name: "Mathematics" },
-  { id: "d3", name: "Languages" },
-  { id: "d4", name: "Social Studies" },
-  { id: "d5", name: "Arts" },
-];
+import { getAttendanceStats } from "@/lib/actions/attendanceActions";
 
 // Month data for reports
 const months = [
@@ -79,85 +60,58 @@ const months = [
   { id: "12", name: "December" },
 ];
 
-// Mock attendance summary data
-const classAttendanceSummary = [
-  { id: "1", className: "Grade 9-A", totalStudents: 28, averageAttendance: 94.5, trend: "+1.2%" },
-  { id: "2", className: "Grade 9-B", totalStudents: 30, averageAttendance: 92.8, trend: "-0.5%" },
-  { id: "3", className: "Grade 10-A", totalStudents: 32, averageAttendance: 89.6, trend: "-2.3%" },
-  { id: "4", className: "Grade 10-B", totalStudents: 29, averageAttendance: 91.2, trend: "+0.8%" },
-  { id: "5", className: "Grade 11-A", totalStudents: 26, averageAttendance: 95.7, trend: "+2.1%" },
-  { id: "6", className: "Grade 11-B", totalStudents: 27, averageAttendance: 93.4, trend: "+0.7%" },
-];
-
-// Mock department attendance summary data
-const departmentAttendanceSummary = [
-  { id: "1", departmentName: "Science", totalTeachers: 18, averageAttendance: 96.2, trend: "+0.5%" },
-  { id: "2", departmentName: "Mathematics", totalTeachers: 15, averageAttendance: 97.8, trend: "+1.2%" },
-  { id: "3", departmentName: "Languages", totalTeachers: 20, averageAttendance: 94.5, trend: "-0.8%" },
-  { id: "4", departmentName: "Social Studies", totalTeachers: 12, averageAttendance: 95.3, trend: "+0.2%" },
-  { id: "5", departmentName: "Arts", totalTeachers: 8, averageAttendance: 93.7, trend: "-1.5%" },
-];
-
-// Mock students with low attendance
-const lowAttendanceStudents = [
-  { id: "1", name: "John Smith", grade: "Grade 10-A", attendance: 78.5, absences: 12, consecutiveDaysAbsent: 0 },
-  { id: "2", name: "Mary Johnson", grade: "Grade 9-B", attendance: 65.2, absences: 18, consecutiveDaysAbsent: 3 },
-  { id: "3", name: "David Wilson", grade: "Grade 11-B", attendance: 72.4, absences: 14, consecutiveDaysAbsent: 0 },
-  { id: "4", name: "Sarah Brown", grade: "Grade 10-B", attendance: 76.8, absences: 12, consecutiveDaysAbsent: 0 },
-  { id: "5", name: "Michael Davis", grade: "Grade 9-A", attendance: 71.3, absences: 15, consecutiveDaysAbsent: 2 },
-];
-
 export default function AttendanceReportsPage() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1 + "");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() + "");
   const [reportGenerateDialogOpen, setReportGenerateDialogOpen] = useState(false);
   const [reportType, setReportType] = useState("student");
-  const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [classReport, setClassReport] = useState<any>(null);
-  const [departmentReport, setDepartmentReport] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  
+  // Data states
+  const [todayStats, setTodayStats] = useState<any>(null);
+  const [classWiseData, setClassWiseData] = useState<any[]>([]);
   const [lowAttendanceStudents, setLowAttendanceStudents] = useState<any[]>([]);
-  const [trends, setTrends] = useState<any[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<any[]>([]);
 
-  // Load data on mount
+  // Load initial data
   useEffect(() => {
-    loadClasses();
+    loadTodayStats();
     loadLowAttendanceStudents();
   }, []);
 
   useEffect(() => {
-    if (selectedClass) {
-      loadClassReport();
+    if (activeTab === "class") {
+      loadClassWiseData();
     }
-  }, [selectedClass, selectedMonth, selectedYear]);
+  }, [activeTab, selectedMonth, selectedYear]);
 
-  const loadClasses = async () => {
+  const loadTodayStats = async () => {
     try {
-      const result = await getClasses();
+      const result = await getAttendanceStats();
       if (result.success && result.data) {
-        setClasses(result.data);
+        setTodayStats(result.data);
       }
     } catch (error) {
-      console.error("Error loading classes:", error);
+      console.error("Error loading today's stats:", error);
     }
   };
 
-  const loadClassReport = async () => {
-    if (!selectedClass) return;
-    
+  const loadClassWiseData = async () => {
     setLoading(true);
     try {
       const month = parseInt(selectedMonth);
       const year = parseInt(selectedYear);
-      const dateFrom = new Date(year, month - 1, 1);
-      const dateTo = new Date(year, month, 0);
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
 
-      const result = await getClassAttendanceReport(selectedClass, dateFrom, dateTo);
+      const result = await getClassWiseAttendance({
+        startDate,
+        endDate,
+      });
+      
       if (result.success && result.data) {
-        setClassReport(result.data);
+        setClassWiseData(result.data);
       } else {
         toast.error(result.error || "Failed to load class report");
       }
@@ -169,33 +123,23 @@ export default function AttendanceReportsPage() {
     }
   };
 
-  const loadDepartmentReport = async () => {
-    setLoading(true);
-    try {
-      const month = parseInt(selectedMonth);
-      const year = parseInt(selectedYear);
-      const dateFrom = new Date(year, month - 1, 1);
-      const dateTo = new Date(year, month, 0);
-
-      const result = await getDepartmentAttendanceReport(dateFrom, dateTo);
-      if (result.success && result.data) {
-        setDepartmentReport(result.data);
-      } else {
-        toast.error(result.error || "Failed to load department report");
-      }
-    } catch (error) {
-      console.error("Error loading department report:", error);
-      toast.error("Failed to load department report");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadLowAttendanceStudents = async () => {
     try {
-      const result = await getLowAttendanceStudents(75);
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 1);
+      
+      const result = await getAbsenteeismAnalysis({
+        startDate,
+        endDate,
+      });
+      
       if (result.success && result.data) {
-        setLowAttendanceStudents(result.data);
+        // Filter students with more than 5 absences (low attendance)
+        const lowAttendance = result.data
+          .filter((student: any) => student.absenceCount >= 5)
+          .slice(0, 10);
+        setLowAttendanceStudents(lowAttendance);
       }
     } catch (error) {
       console.error("Error loading low attendance students:", error);
@@ -204,29 +148,32 @@ export default function AttendanceReportsPage() {
 
   const handleExportReport = async () => {
     try {
-      const month = parseInt(selectedMonth);
-      const year = parseInt(selectedYear);
-      const dateFrom = new Date(year, month - 1, 1);
-      const dateTo = new Date(year, month, 0);
-
-      const result = await exportAttendanceReport({
-        classId: selectedClass,
-        dateFrom,
-        dateTo,
-        type: reportType === "student" ? "CLASS" : "DEPARTMENT",
-      });
-
-      if (result.success) {
-        toast.success("Report exported successfully");
-        setReportGenerateDialogOpen(false);
-      } else {
-        toast.error(result.error || "Failed to export report");
-      }
+      // TODO: Implement export functionality
+      toast.success("Export functionality coming soon");
+      setReportGenerateDialogOpen(false);
     } catch (error) {
       console.error("Error exporting report:", error);
       toast.error("Failed to export report");
     }
   };
+
+  // Calculate attendance rates
+  const studentAttendanceRate = todayStats?.students
+    ? todayStats.students.total > 0
+      ? ((todayStats.students.present / todayStats.students.total) * 100).toFixed(1)
+      : "0.0"
+    : "0.0";
+
+  const teacherAttendanceRate = todayStats?.teachers
+    ? todayStats.teachers.total > 0
+      ? ((todayStats.teachers.present / todayStats.teachers.total) * 100).toFixed(1)
+      : "0.0"
+    : "0.0";
+
+  const lowAttendanceCount = lowAttendanceStudents.length;
+  const consecutiveAbsenceCount = lowAttendanceStudents.filter(
+    (s: any) => s.absenceCount >= 3
+  ).length;
   
   return (
     <div className="flex flex-col gap-4">
@@ -264,48 +211,10 @@ export default function AttendanceReportsPage() {
                     <SelectItem value="student">Student Attendance</SelectItem>
                     <SelectItem value="teacher">Teacher Attendance</SelectItem>
                     <SelectItem value="class">Class-wise Attendance</SelectItem>
-                    <SelectItem value="department">Department-wise Attendance</SelectItem>
+                    <SelectItem value="absenteeism">Absenteeism Analysis</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
-              {reportType === "student" || reportType === "class" ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Class</label>
-                  <Select value={selectedClass} onValueChange={setSelectedClass}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select class" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Classes</SelectItem>
-                      {classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-              
-              {reportType === "teacher" || reportType === "department" ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Department</label>
-                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Period</label>
@@ -328,9 +237,15 @@ export default function AttendanceReportsPage() {
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2023">2023</SelectItem>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2021">2021</SelectItem>
+                      <SelectItem value={(new Date().getFullYear()).toString()}>
+                        {new Date().getFullYear()}
+                      </SelectItem>
+                      <SelectItem value={(new Date().getFullYear() - 1).toString()}>
+                        {new Date().getFullYear() - 1}
+                      </SelectItem>
+                      <SelectItem value={(new Date().getFullYear() - 2).toString()}>
+                        {new Date().getFullYear() - 2}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -354,7 +269,7 @@ export default function AttendanceReportsPage() {
               <Button variant="outline" onClick={() => setReportGenerateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setReportGenerateDialogOpen(false)}>
+              <Button onClick={handleExportReport}>
                 Generate
               </Button>
             </DialogFooter>
@@ -375,9 +290,11 @@ export default function AttendanceReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2 items-center justify-center">
-              <div className="text-3xl font-bold">92.4%</div>
-              <Badge className="bg-green-100 text-green-800">+1.2% vs. last month</Badge>
-              <Progress value={92.4} className="w-full mt-2" />
+              <div className="text-3xl font-bold">{studentAttendanceRate}%</div>
+              <Badge className="bg-blue-100 text-blue-800">
+                Today: {todayStats?.students?.present || 0} / {todayStats?.students?.total || 0}
+              </Badge>
+              <Progress value={parseFloat(studentAttendanceRate)} className="w-full mt-2" />
             </div>
           </CardContent>
           <CardFooter className="border-t pt-3">
@@ -401,9 +318,11 @@ export default function AttendanceReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2 items-center justify-center">
-              <div className="text-3xl font-bold">96.2%</div>
-              <Badge className="bg-green-100 text-green-800">+0.5% vs. last month</Badge>
-              <Progress value={96.2} className="w-full mt-2" />
+              <div className="text-3xl font-bold">{teacherAttendanceRate}%</div>
+              <Badge className="bg-purple-100 text-purple-800">
+                Today: {todayStats?.teachers?.present || 0} / {todayStats?.teachers?.total || 0}
+              </Badge>
+              <Progress value={parseFloat(teacherAttendanceRate)} className="w-full mt-2" />
             </div>
           </CardContent>
           <CardFooter className="border-t pt-3">
@@ -427,146 +346,203 @@ export default function AttendanceReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2 items-center justify-center">
-              <div className="text-3xl font-bold">15</div>
-              <Badge className="bg-red-100 text-red-800">Below 80% attendance</Badge>
+              <div className="text-3xl font-bold">{lowAttendanceCount}</div>
+              <Badge className="bg-red-100 text-red-800">High absenteeism</Badge>
               <div className="w-full mt-2 text-center text-sm text-gray-500">
-                5 students with consecutive absences
+                {consecutiveAbsenceCount} with 3+ consecutive absences
               </div>
             </div>
           </CardContent>
           <CardFooter className="border-t pt-3">
-            <Button variant="outline" size="sm" className="w-full">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => setActiveTab("alerts")}
+            >
               View Alerts
             </Button>
           </CardFooter>
         </Card>
       </div>
       
-      <Tabs defaultValue="overview" onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="class">Class Reports</TabsTrigger>
-          <TabsTrigger value="teacher">Teacher Reports</TabsTrigger>
           <TabsTrigger value="alerts">Attendance Alerts</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle>Monthly Attendance Trend</CardTitle>
+                <CardTitle>Quick Report Templates</CardTitle>
                 <CardDescription>
-                  School-wide attendance rates over time
+                  Generate commonly used attendance reports
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80 flex items-center justify-center bg-gray-50 rounded-md">
-                  <p className="text-gray-400">Monthly attendance chart would display here</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Card>
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-sm">Monthly Class Report</CardTitle>
+                      <CardDescription className="text-xs">Detailed monthly attendance for each class</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="text-xs text-gray-500 mb-3">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Current month data</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Generation time: ~2 minutes</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                          setReportType("class");
+                          setReportGenerateDialogOpen(true);
+                        }}
+                      >
+                        <FileDown className="h-3.5 w-3.5 mr-1" />
+                        Generate
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-sm">Student Absence Report</CardTitle>
+                      <CardDescription className="text-xs">List of students with high absences</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="text-xs text-gray-500 mb-3">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Last 30 days</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Generation time: ~1 minute</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                          setReportType("absenteeism");
+                          setReportGenerateDialogOpen(true);
+                        }}
+                      >
+                        <FileDown className="h-3.5 w-3.5 mr-1" />
+                        Generate
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-sm">Teacher Attendance Summary</CardTitle>
+                      <CardDescription className="text-xs">Teacher attendance overview</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="text-xs text-gray-500 mb-3">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Current month data</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Generation time: ~1 minute</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                          setReportType("teacher");
+                          setReportGenerateDialogOpen(true);
+                        }}
+                      >
+                        <FileDown className="h-3.5 w-3.5 mr-1" />
+                        Generate
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Attendance by Day of Week</CardTitle>
-                <CardDescription>
-                  Attendance patterns across different weekdays
-                </CardDescription>
+              <CardHeader>
+                <CardTitle>Today's Summary</CardTitle>
+                <CardDescription>Attendance breakdown for today</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80 flex items-center justify-center bg-gray-50 rounded-md">
-                  <p className="text-gray-400">Day of week attendance chart would display here</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Student Attendance</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Present</span>
+                        <Badge className="bg-green-100 text-green-800">
+                          {todayStats?.students?.present || 0}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Absent</span>
+                        <Badge className="bg-red-100 text-red-800">
+                          {todayStats?.students?.absent || 0}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Late</span>
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          {todayStats?.students?.late || 0}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Teacher Attendance</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Present</span>
+                        <Badge className="bg-green-100 text-green-800">
+                          {todayStats?.teachers?.present || 0}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Absent</span>
+                        <Badge className="bg-red-100 text-red-800">
+                          {todayStats?.teachers?.absent || 0}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Late</span>
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          {todayStats?.teachers?.late || 0}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-          
-          <Card className="mt-4">
-            <CardHeader className="pb-2">
-              <CardTitle>Top Report Templates</CardTitle>
-              <CardDescription>
-                Frequently used attendance report templates
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-sm">Monthly Class Report</CardTitle>
-                    <CardDescription className="text-xs">Detailed monthly attendance for each class</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="text-xs text-gray-500 mb-3">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Last generated: 2 days ago</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Generation time: ~2 minutes</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <FileDown className="h-3.5 w-3.5 mr-1" />
-                      Generate
-                    </Button>
-                  </CardFooter>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-sm">Teacher Attendance Summary</CardTitle>
-                    <CardDescription className="text-xs">Department-wise teacher attendance</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="text-xs text-gray-500 mb-3">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Last generated: 1 week ago</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Generation time: ~1 minute</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <FileDown className="h-3.5 w-3.5 mr-1" />
-                      Generate
-                    </Button>
-                  </CardFooter>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-sm">Student Absence Report</CardTitle>
-                    <CardDescription className="text-xs">List of students with high absences</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="text-xs text-gray-500 mb-3">
-                      <div className="flex items-center gap-1 mb-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Last generated: 3 days ago</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Generation time: ~1 minute</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <FileDown className="h-3.5 w-3.5 mr-1" />
-                      Generate
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
         
         <TabsContent value="class">
@@ -580,7 +556,7 @@ export default function AttendanceReportsPage() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <Select>
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger className="w-[120px]">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
@@ -592,139 +568,81 @@ export default function AttendanceReportsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" size="icon">
-                    <Filter className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Total Students</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Avg. Attendance</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Trend</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classAttendanceSummary.map((cls) => (
-                      <tr key={cls.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{cls.className}</td>
-                        <td className="py-3 px-4 align-middle">{cls.totalStudents}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={cls.averageAttendance}
-                              className="h-2 w-16"
-                            />
-                            <span>{cls.averageAttendance.toFixed(1)}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={
-                            cls.trend.startsWith("+") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }>
-                            {cls.trend}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View Report
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <PrinterIcon className="h-4 w-4 mr-1" />
-                            Print
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="teacher">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <CardTitle>Department Attendance Summary</CardTitle>
-                  <CardDescription>
-                    Teacher attendance rates by department
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <Select>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Month" />
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {months.map((month) => (
-                        <SelectItem key={month.id} value={month.id}>
-                          {month.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value={(new Date().getFullYear()).toString()}>
+                        {new Date().getFullYear()}
+                      </SelectItem>
+                      <SelectItem value={(new Date().getFullYear() - 1).toString()}>
+                        {new Date().getFullYear() - 1}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" size="icon">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={loadClassWiseData}
+                    disabled={loading}
+                  >
                     <Filter className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Department</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Total Teachers</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Avg. Attendance</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Trend</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {departmentAttendanceSummary.map((dept) => (
-                      <tr key={dept.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{dept.departmentName}</td>
-                        <td className="py-3 px-4 align-middle">{dept.totalTeachers}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={dept.averageAttendance}
-                              className="h-2 w-16"
-                            />
-                            <span>{dept.averageAttendance.toFixed(1)}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={
-                            dept.trend.startsWith("+") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }>
-                            {dept.trend}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View Report
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <PrinterIcon className="h-4 w-4 mr-1" />
-                            Print
-                          </Button>
-                        </td>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-gray-500">Loading class data...</p>
+                </div>
+              ) : classWiseData.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-gray-500">No attendance data available for the selected period</p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Total Records</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Present</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Absent</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Attendance Rate</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {classWiseData.map((cls) => (
+                        <tr key={cls.classId} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 align-middle font-medium">{cls.className}</td>
+                          <td className="py-3 px-4 align-middle">{cls.totalRecords}</td>
+                          <td className="py-3 px-4 align-middle">
+                            <Badge className="bg-green-100 text-green-800">
+                              {cls.presentCount}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            <Badge className="bg-red-100 text-red-800">
+                              {cls.absentCount}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={cls.attendanceRate}
+                                className="h-2 w-16"
+                              />
+                              <span>{cls.attendanceRate.toFixed(1)}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -734,70 +652,69 @@ export default function AttendanceReportsPage() {
             <CardHeader className="pb-2">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <CardTitle>Students with Low Attendance</CardTitle>
+                  <CardTitle>Students with High Absenteeism</CardTitle>
                   <CardDescription>
-                    Students with attendance below 80%
+                    Students with 5 or more absences in the last 30 days
                   </CardDescription>
                 </div>
                 <div>
-                  <Button variant="outline" size="sm">
-                    Send Notification to All
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={loadLowAttendanceStudents}
+                  >
+                    Refresh Data
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Attendance</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Absences</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lowAttendanceStudents.map((student) => (
-                      <tr key={student.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{student.name}</td>
-                        <td className="py-3 px-4 align-middle">{student.grade}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={student.attendance}
-                              className="h-2 w-16"
-                            />
-                            <span>{student.attendance.toFixed(1)}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">{student.absences} days</td>
-                        <td className="py-3 px-4 align-middle">
-                          {student.consecutiveDaysAbsent > 0 ? (
-                            <Badge className="bg-red-100 text-red-800">
-                              {student.consecutiveDaysAbsent} consecutive days
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-amber-100 text-amber-800">
-                              Low attendance
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            Attendance Log
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            Contact Parents
-                          </Button>
-                        </td>
+              {lowAttendanceStudents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Great News!</h3>
+                  <p className="text-gray-500">No students with high absenteeism</p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Admission ID</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Absences</th>
+                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {lowAttendanceStudents.map((student) => (
+                        <tr key={student.studentId} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4 align-middle font-medium">{student.studentName}</td>
+                          <td className="py-3 px-4 align-middle">{student.admissionId}</td>
+                          <td className="py-3 px-4 align-middle">{student.class} - {student.section}</td>
+                          <td className="py-3 px-4 align-middle">
+                            <Badge className={
+                              student.absenceCount >= 10 
+                                ? "bg-red-100 text-red-800" 
+                                : "bg-amber-100 text-amber-800"
+                            }>
+                              {student.absenceCount} days
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 align-middle text-right">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/admin/students/${student.studentId}`}>
+                                View Details
+                              </Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

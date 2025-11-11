@@ -7,219 +7,58 @@ import { Chart } from "@/components/dashboard/chart";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 import { 
   Users, BookOpen, ClipboardCheck, Calendar, FileText, 
-  Edit, CheckCircle, Clock, FileSpreadsheet
+  Edit, CheckCircle, Clock, FileSpreadsheet, AlertCircle
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { auth } from "@clerk/nextjs/server";
+import { getTeacherDashboardData } from "@/lib/actions/teacherDashboardActions";
+import { format } from "date-fns";
 
-// Types for teacher dashboard
-type CalendarEventType = "exam" | "holiday" | "event" | "meeting";
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: Date;
-  type: CalendarEventType;
-}
 
-// Add this type for lessons
-interface RecentLesson {
-  id: string;
-  title: string;
-  subject: string; 
-  date: string;
-  duration: number;
-  unit: string;
-}
-
-// Mock data for today's classes
-const todayClasses = [
-  {
-    id: "1",
-    subject: "Mathematics",
-    class: "Grade 10-A",
-    time: "09:00 AM - 10:00 AM",
-    room: "Room 101",
-    topic: "Quadratic Equations",
-    status: "completed"
-  },
-  {
-    id: "2",
-    subject: "Mathematics",
-    class: "Grade 11-B",
-    time: "10:30 AM - 11:30 AM", 
-    room: "Room 203",
-    topic: "Calculus Introduction",
-    status: "completed"
-  },
-  {
-    id: "3",
-    subject: "Mathematics",
-    class: "Grade 9-C",
-    time: "12:00 PM - 01:00 PM",
-    room: "Room 105",
-    topic: "Linear Equations",
-    status: "next"
-  },
-  {
-    id: "4",
-    subject: "Mathematics",
-    class: "Grade 10-B",
-    time: "02:30 PM - 03:30 PM",
-    room: "Room 102",
-    topic: "Quadratic Equations",
-    status: "upcoming"
-  }
-];
-
-// Mock data for students attendance
-const studentAttendanceData = [
-  { class: 'Grade 9-C', present: 92, absent: 8 },
-  { class: 'Grade 10-A', present: 95, absent: 5 },
-  { class: 'Grade 10-B', present: 90, absent: 10 },
-  { class: 'Grade 11-B', present: 88, absent: 12 },
-];
-
-// Mock data for assignments
-const assignmentData = [
-  { status: 'Submitted', count: 86 },
-  { status: 'Pending', count: 14 },
-  { status: 'Graded', count: 72 },
-  { status: 'Late', count: 8 },
-];
-
-// Mock data for upcoming events
-const upcomingEvents: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Mid-term Mathematics Exam',
-    date: new Date('2023-12-10T09:00:00'),
-    type: 'exam'
-  },
-  {
-    id: '2',
-    title: 'Parent-Teacher Meeting',
-    date: new Date('2023-12-15T14:30:00'),
-    type: 'meeting'
-  },
-  {
-    id: '3',
-    title: 'Staff Meeting',
-    date: new Date('2023-12-05T16:00:00'),
-    type: 'meeting'
-  },
-  {
-    id: '4',
-    title: 'Winter Break',
-    date: new Date('2023-12-22'),
-    type: 'holiday'
-  }
-];
-
-// Mock data for pending tasks
-const pendingTasks = [
-  {
-    id: "1",
-    title: "Grade Mathematics Assignment",
-    class: "Grade 10-A",
-    dueDate: "Dec 05, 2023",
-    priority: "high"
-  },
-  {
-    id: "2",
-    title: "Prepare Test Papers",
-    class: "Grade 11-B",
-    dueDate: "Dec 07, 2023",
-    priority: "medium"
-  },
-  {
-    id: "3",
-    title: "Complete Progress Reports",
-    class: "All Classes",
-    dueDate: "Dec 10, 2023",
-    priority: "high"
-  },
-  {
-    id: "4",
-    title: "Submit Lesson Plans",
-    class: "All Classes",
-    dueDate: "Dec 12, 2023",
-    priority: "low"
-  }
-];
-
-// Mock data for recent assignments
-const recentAssignments = [
-  {
-    id: "1",
-    title: "Quadratic Equations Practice",
-    class: "Grade 10-A",
-    dueDate: "Dec 03, 2023",
-    submissions: "25/30",
-    status: "active"
-  },
-  {
-    id: "2",
-    title: "Calculus Basics Worksheet",
-    class: "Grade 11-B",
-    dueDate: "Dec 05, 2023",
-    submissions: "18/28",
-    status: "active"
-  },
-  {
-    id: "3",
-    title: "Linear Equations Quiz",
-    class: "Grade 9-C",
-    dueDate: "Nov 30, 2023",
-    submissions: "29/32",
-    status: "completed"
-  }
-];
-
-// Mock data for class performance
-const classPerformanceData = [
-  { subject: 'Grade 9-C', average: 76 },
-  { subject: 'Grade 10-A', average: 82 },
-  { subject: 'Grade 10-B', average: 74 },
-  { subject: 'Grade 11-B', average: 78 },
-];
-
-// Mock data for recent lessons
-const recentLessons: RecentLesson[] = [
-  {
-    id: "1",
-    title: "Quadratic Equations Introduction",
-    subject: "Mathematics",
-    date: "2023-12-01",
-    duration: 45,
-    unit: "Algebra II"
-  },
-  {
-    id: "2",
-    title: "Solving Linear Equations",
-    subject: "Mathematics",
-    date: "2023-11-28",
-    duration: 45,
-    unit: "Algebra I"
-  },
-  {
-    id: "3",
-    title: "Calculus Principles",
-    subject: "Mathematics",
-    date: "2023-11-25",
-    duration: 60,
-    unit: "Calculus"
-  }
-];
 
 export default async function TeacherDashboard() {
-  const { userId } = await auth();
+  const result = await getTeacherDashboardData();
+
+  if (!result.success || !result.data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h2 className="text-xl font-semibold">Failed to load dashboard</h2>
+        <p className="text-muted-foreground">{result.error || "An error occurred"}</p>
+      </div>
+    );
+  }
+
+  const { data } = result;
+  const todayClasses = data.todayClasses;
+  const studentAttendanceData = data.studentAttendanceData;
+  const assignmentData = data.assignmentData;
+  const recentLessons = data.recentLessons;
+  const recentAssignments = data.recentAssignments;
+  const pendingTasks = data.pendingTasks;
+  const classPerformanceData = data.classPerformanceData;
+
+  // Mock upcoming events (can be replaced with real data later)
+  const upcomingEvents = [
+    {
+      id: '1',
+      title: 'Mid-term Exam',
+      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      type: 'exam' as const
+    },
+    {
+      id: '2',
+      title: 'Parent-Teacher Meeting',
+      date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      type: 'meeting' as const
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Teacher Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, Sarah! Here's an overview of your teaching activities.
+          Welcome back, {data.teacher.name}! Here's an overview of your teaching activities.
         </p>
       </div>
 
@@ -227,29 +66,27 @@ export default async function TeacherDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="My Classes"
-          value="4"
+          value={data.stats.classesCount.toString()}
           icon={<Users className="h-5 w-5" />}
           description="Today's classes"
         />
         <StatsCard
           title="Students"
-          value="124"
+          value={data.stats.studentsCount.toString()}
           icon={<Users className="h-5 w-5" />}
           description="Across all classes"
         />
         <StatsCard
           title="Assignments"
-          value="12"
+          value={data.stats.assignmentsNeedingGrading.toString()}
           icon={<FileText className="h-5 w-5" />}
-          trend={{ value: 3, isPositive: false }}
-          description="3 need grading"
+          description="Need grading"
         />
         <StatsCard
           title="Attendance"
-          value="91.4%"
+          value={`${data.stats.attendancePercentage}%`}
           icon={<ClipboardCheck className="h-5 w-5" />}
-          trend={{ value: 2.5, isPositive: true }}
-          description="vs. last week"
+          description="This week"
         />
       </div>
 
@@ -259,9 +96,9 @@ export default async function TeacherDashboard() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-xl">Today's Classes</CardTitle>
-              <CardDescription>Wednesday, December 1, 2023</CardDescription>
+              <CardDescription>{format(new Date(), "EEEE, MMMM d, yyyy")}</CardDescription>
             </div>
-            <Link href="/teacher/schedule">
+            <Link href="/teacher/teaching/timetable">
               <Button variant="outline" size="sm">
                 Full Schedule
               </Button>
@@ -269,61 +106,71 @@ export default async function TeacherDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <div className="absolute left-5 h-full w-px bg-gray-200"></div>
-            <div className="space-y-6 pl-12">
-              {todayClasses.map((cls) => (
-                <div 
-                  key={cls.id} 
-                  className={`p-4 border rounded-lg ${
-                    cls.status === 'completed' ? 'bg-gray-50' :
-                    cls.status === 'next' ? 'border-emerald-500 bg-emerald-50' :
-                    'bg-white'
-                  }`}
-                >
-                  <div className={`absolute -left-2 w-4 h-4 rounded-full ${
-                    cls.status === 'completed' ? 'bg-gray-400' :
-                    cls.status === 'next' ? 'bg-emerald-500 ring-4 ring-emerald-100' :
-                    'bg-gray-200'
-                  }`}></div>
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-                    <div>
-                      <h4 className="font-medium">{cls.subject}</h4>
-                      <div className="text-sm text-gray-500 flex flex-col md:flex-row gap-2 md:items-center">
-                        <span>{cls.class}</span>
-                        <span className="hidden md:inline">•</span>
-                        <span>{cls.room}</span>
+          {todayClasses.length > 0 ? (
+            <div className="relative">
+              <div className="absolute left-5 h-full w-px bg-gray-200"></div>
+              <div className="space-y-6 pl-12">
+                {todayClasses.map((cls) => (
+                  <div 
+                    key={cls.id} 
+                    className={`p-4 border rounded-lg ${
+                      cls.status === 'completed' ? 'bg-gray-50' :
+                      cls.status === 'next' ? 'border-emerald-500 bg-emerald-50' :
+                      'bg-white'
+                    }`}
+                  >
+                    <div className={`absolute -left-2 w-4 h-4 rounded-full ${
+                      cls.status === 'completed' ? 'bg-gray-400' :
+                      cls.status === 'next' ? 'bg-emerald-500 ring-4 ring-emerald-100' :
+                      'bg-gray-200'
+                    }`}></div>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+                      <div>
+                        <h4 className="font-medium">{cls.subject}</h4>
+                        <div className="text-sm text-gray-500 flex flex-col md:flex-row gap-2 md:items-center">
+                          <span>{cls.className}{cls.sectionName ? ` - ${cls.sectionName}` : ''}</span>
+                          <span className="hidden md:inline">•</span>
+                          <span>{cls.room}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-start md:items-end">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-gray-500" />
+                          <span className="text-sm text-gray-500">{cls.time}</span>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">Topic: {cls.topic}</div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-start md:items-end">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-gray-500" />
-                        <span className="text-sm text-gray-500">{cls.time}</span>
+                    {cls.status === 'next' && (
+                      <div className="mt-2 flex gap-2">
+                        <Link href={`/teacher/teaching/classes/${cls.classId}`}>
+                          <Button size="sm">Class Details</Button>
+                        </Link>
+                        <Link href={`/teacher/attendance/mark?classId=${cls.classId}&sectionId=${cls.sectionId}`}>
+                          <Button size="sm" variant="outline">Take Attendance</Button>
+                        </Link>
                       </div>
-                      <div className="text-sm text-gray-600 mt-1">Topic: {cls.topic}</div>
-                    </div>
+                    )}
+                    {cls.status === 'completed' && (
+                      <div className="mt-2 flex gap-1">
+                        <Badge variant="outline" className="bg-gray-100">
+                          <CheckCircle className="h-3 w-3 mr-1" /> Completed
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                  {cls.status === 'next' && (
-                    <div className="mt-2 flex gap-2">
-                      <Link href={`/teacher/teaching/classes/${cls.id}`}>
-                        <Button size="sm">Class Details</Button>
-                      </Link>
-                      <Link href={`/teacher/attendance/mark?classId=${cls.id}`}>
-                        <Button size="sm" variant="outline">Take Attendance</Button>
-                      </Link>
-                    </div>
-                  )}
-                  {cls.status === 'completed' && (
-                    <div className="mt-2 flex gap-1">
-                      <Badge variant="outline" className="bg-gray-100">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Completed
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-10">
+              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Classes Today</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                You don't have any classes scheduled for today. Enjoy your day!
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

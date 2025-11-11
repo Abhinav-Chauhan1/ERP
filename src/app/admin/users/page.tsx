@@ -3,86 +3,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle } from "lucide-react";
+import { getUsersOverview, getRecentUsers } from "@/lib/actions/userActions";
 
-const usersOverview = [
-  { 
-    title: "Administrators", 
-    count: 15, 
-    description: "School administrators",
-    href: "/admin/users/administrators",
-  },
-  { 
-    title: "Teachers", 
-    count: 85, 
-    description: "Teaching staff members",
-    href: "/admin/users/teachers",
-  },
-  { 
-    title: "Students", 
-    count: 1245, 
-    description: "Enrolled students",
-    href: "/admin/users/students",
-  },
-  { 
-    title: "Parents", 
-    count: 980, 
-    description: "Student parents/guardians",
-    href: "/admin/users/parents",
-  }
-];
+export default async function UsersPage() {
+  const [overviewResult, recentUsersResult] = await Promise.all([
+    getUsersOverview(),
+    getRecentUsers(10),
+  ]);
 
-const recentUsers = [
-  {
-    id: '1',
-    name: 'David Johnson',
-    email: 'davidjohnson@example.com',
-    role: 'STUDENT',
-    date: '2023-11-24',
-    status: 'active'
-  },
-  {
-    id: '2',
-    name: 'Sarah Williams',
-    email: 'sarahwilliams@example.com',
-    role: 'STUDENT',
-    date: '2023-11-23',
-    status: 'active'
-  },
-  {
-    id: '3',
-    name: 'Michael Brown',
-    email: 'michaelbrown@example.com',
-    role: 'TEACHER',
-    date: '2023-11-22',
-    status: 'active'
-  },
-  {
-    id: '4',
-    name: 'Emily Davis',
-    email: 'emilydavis@example.com',
-    role: 'PARENT',
-    date: '2023-11-21',
-    status: 'pending'
-  },
-  {
-    id: '5',
-    name: 'James Wilson',
-    email: 'jameswilson@example.com',
-    role: 'STUDENT',
-    date: '2023-11-20',
-    status: 'active'
-  },
-  {
-    id: '6',
-    name: 'Jennifer Garcia',
-    email: 'jennifergarcia@example.com',
-    role: 'TEACHER',
-    date: '2023-11-20',
-    status: 'active'
-  }
-];
+  const overview = overviewResult.success ? overviewResult.data : {
+    administrators: 0,
+    teachers: 0,
+    students: 0,
+    parents: 0,
+  };
 
-export default function UsersPage() {
+  const recentUsers = recentUsersResult.success ? recentUsersResult.data : [];
+
+  const usersOverview = [
+    { 
+      title: "Administrators", 
+      count: overview.administrators, 
+      description: "School administrators",
+      href: "/admin/users/administrators",
+    },
+    { 
+      title: "Teachers", 
+      count: overview.teachers, 
+      description: "Teaching staff members",
+      href: "/admin/users/teachers",
+    },
+    { 
+      title: "Students", 
+      count: overview.students, 
+      description: "Enrolled students",
+      href: "/admin/users/students",
+    },
+    { 
+      title: "Parents", 
+      count: overview.parents, 
+      description: "Student parents/guardians",
+      href: "/admin/users/parents",
+    }
+  ];
   return (
     <>
       <div className="flex flex-col gap-4">

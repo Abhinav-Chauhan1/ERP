@@ -1,9 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   BookOpen,
@@ -12,318 +11,203 @@ import {
   ClipboardCheck,
   FileText,
   MessageSquare,
-  ChevronRight,
-  BarChart,
-  Calendar,
-  Clock,
   Settings,
-  LogOut,
-  Menu,
-  User,
-  FileSpreadsheet,
-  PenSquare,
-  School,
-  ShieldCheck,
-  Calculator,
-  Book,
-  Laptop,
-  CalendarDays,
-  ListChecks,
-  Bell,
-  BarChart2,
-  Mail,
-  UserCircle
+  ChevronDown,
+  UserCircle,
+  LucideIcon,
 } from "lucide-react";
-import { SignOutButton } from "@clerk/nextjs";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { UserButton } from "@clerk/nextjs";
 
-interface NavItemProps {
-  href: string;
-  icon: React.ReactNode;
+interface SubMenuItem {
   label: string;
-  isActive?: boolean;
-  isPending?: boolean;
-  isExternal?: boolean;
-  children?: React.ReactNode;
+  href: string;
 }
 
-interface NavGroupProps {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  toggleOpen?: () => void; // Add this line to fix the type error
+interface RouteItem {
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  submenu?: SubMenuItem[];
 }
+
+const routes: RouteItem[] = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/teacher",
+  },
+  {
+    label: "Teaching",
+    icon: BookOpen,
+    submenu: [
+      { label: "Subjects", href: "/teacher/teaching/subjects" },
+      { label: "Classes", href: "/teacher/teaching/classes" },
+      { label: "Lessons", href: "/teacher/teaching/lessons" },
+      { label: "Timetable", href: "/teacher/teaching/timetable" },
+      { label: "Syllabus", href: "/teacher/teaching/syllabus" },
+    ],
+  },
+  {
+    label: "Assessments",
+    icon: FileText,
+    submenu: [
+      { label: "Assignments", href: "/teacher/assessments/assignments" },
+      { label: "Exams", href: "/teacher/assessments/exams" },
+      { label: "Results", href: "/teacher/assessments/results" },
+    ],
+  },
+  {
+    label: "Attendance",
+    icon: ClipboardCheck,
+    submenu: [
+      { label: "Overview", href: "/teacher/attendance" },
+      { label: "Mark Attendance", href: "/teacher/attendance/mark" },
+      { label: "Reports", href: "/teacher/attendance/reports" },
+    ],
+  },
+  {
+    label: "Students",
+    icon: GraduationCap,
+    submenu: [
+      { label: "Student List", href: "/teacher/students" },
+      { label: "Performance", href: "/teacher/students/performance" },
+    ],
+  },
+  {
+    label: "Communication",
+    icon: MessageSquare,
+    submenu: [
+      { label: "Messages", href: "/teacher/communication/messages" },
+      { label: "Announcements", href: "/teacher/communication/announcements" },
+    ],
+  },
+  {
+    label: "Profile",
+    icon: UserCircle,
+    href: "/teacher/profile",
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    href: "/teacher/settings",
+  },
+];
 
 export function TeacherSidebar() {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    teaching: true,
-    assessments: true,
-  });
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
-  const toggleGroup = (group: string) => {
-    setOpenGroups(prev => ({
+  // Initialize open menus based on current path
+  const initializeOpenMenus = () => {
+    const initialState: Record<string, boolean> = {};
+    routes.forEach((route) => {
+      if (route.submenu) {
+        const isActive = route.submenu.some(item => pathname.startsWith(item.href.split('?')[0]));
+        initialState[route.label] = isActive;
+      }
+    });
+    return initialState;
+  };
+
+  // Set initial state on mount
+  if (Object.keys(openMenus).length === 0) {
+    setOpenMenus(initializeOpenMenus());
+  }
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => ({
       ...prev,
-      [group]: !prev[group]
+      [label]: !prev[label]
     }));
   };
 
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
-
   return (
-    <div className="flex flex-col h-full border-r bg-white w-64">
-      <div className="p-4 border-b flex items-center justify-between">
+    <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
+      <div className="p-6 flex items-center gap-2">
         <Link href="/teacher">
-          <div className="flex items-center gap-2">
-            <School className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">School ERP</span>
-          </div>
+          <h1 className="text-xl font-bold">School ERP</h1>
+          <p className="text-xs text-muted-foreground">Teacher Portal</p>
         </Link>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="lg:hidden"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
       </div>
+      <div className="flex flex-col w-full">
+        {routes.map((route) => {
+          // Check if any submenu item is active
+          const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
+          const isRouteActive = route.href ? pathname === route.href : isSubRouteActive;
+          const isOpen = openMenus[route.label];
 
-      <nav className={cn(
-        "flex-1 overflow-y-auto p-2",
-        isMobileMenuOpen ? "block" : "hidden lg:block"
-      )}>
-        <div className="space-y-1">
-          <NavItem
-            href="/teacher"
-            icon={<LayoutDashboard className="h-4 w-4 mr-2" />}
-            label="Dashboard"
-            isActive={pathname === "/teacher"}
-          />
-          
-          <NavGroup 
-            title="Teaching" 
-            icon={<BookOpen className="h-4 w-4 mr-2" />}
-            defaultOpen={openGroups.teaching}
-            toggleOpen={() => toggleGroup('teaching')}
-          >
-            <NavItem
-              href="/teacher/teaching/subjects"
-              icon={<Book className="h-4 w-4 mr-2" />}
-              label="Subjects"
-              isActive={pathname.includes("/teacher/teaching/subjects")}
-            />
-            <NavItem
-              href="/teacher/teaching/classes"
-              icon={<Users className="h-4 w-4 mr-2" />}
-              label="Classes"
-              isActive={pathname.includes("/teacher/teaching/classes")}
-            />
-            <NavItem
-              href="/teacher/teaching/lessons"
-              icon={<Laptop className="h-4 w-4 mr-2" />}
-              label="Lessons"
-              isActive={pathname.includes("/teacher/teaching/lessons")}
-            />
-            <NavItem
-              href="/teacher/teaching/timetable"
-              icon={<CalendarDays className="h-4 w-4 mr-2" />}
-              label="Timetable"
-              isActive={pathname.includes("/teacher/teaching/timetable")}
-            />
-            <NavItem
-              href="/teacher/teaching/syllabus"
-              icon={<ListChecks className="h-4 w-4 mr-2" />}
-              label="Syllabus"
-              isActive={pathname.includes("/teacher/teaching/syllabus")}
-            />
-          </NavGroup>
-          
-          <NavGroup 
-            title="Assessments" 
-            icon={<FileText className="h-4 w-4 mr-2" />}
-            defaultOpen={openGroups.assessments}
-            toggleOpen={() => toggleGroup('assessments')}
-          >
-            <NavItem
-              href="/teacher/assessments/assignments"
-              icon={<FileSpreadsheet className="h-4 w-4 mr-2" />}
-              label="Assignments"
-              isActive={pathname.includes("/teacher/assessments/assignments")}
-            />
-            <NavItem
-              href="/teacher/assessments/exams"
-              icon={<PenSquare className="h-4 w-4 mr-2" />}
-              label="Exams"
-              isActive={pathname.includes("/teacher/assessments/exams")}
-            />
-            <NavItem
-              href="/teacher/assessments/results"
-              icon={<BarChart className="h-4 w-4 mr-2" />}
-              label="Results"
-              isActive={pathname.includes("/teacher/assessments/results")}
-            />
-          </NavGroup>
-
-          <NavGroup 
-            title="Attendance" 
-            icon={<ClipboardCheck className="h-4 w-4 mr-2" />}
-            defaultOpen={openGroups.attendance}
-            toggleOpen={() => toggleGroup('attendance')}
-          >
-            <NavItem
-              href="/teacher/attendance"
-              icon={<Calendar className="h-4 w-4 mr-2" />}
-              label="Overview"
-              isActive={pathname === "/teacher/attendance"}
-            />
-            <NavItem
-              href="/teacher/attendance/mark"
-              icon={<ClipboardCheck className="h-4 w-4 mr-2" />}
-              label="Mark Attendance"
-              isActive={pathname.includes("/teacher/attendance/mark")}
-            />
-            <NavItem
-              href="/teacher/attendance/reports"
-              icon={<FileText className="h-4 w-4 mr-2" />}
-              label="Reports"
-              isActive={pathname.includes("/teacher/attendance/reports")}
-            />
-          </NavGroup>
-
-          <NavGroup 
-            title="Students" 
-            icon={<GraduationCap className="h-4 w-4 mr-2" />}
-            defaultOpen={openGroups.students}
-            toggleOpen={() => toggleGroup('students')}
-          >
-            <NavItem
-              href="/teacher/students"
-              icon={<Users className="h-4 w-4 mr-2" />}
-              label="Student List"
-              isActive={pathname === "/teacher/students"}
-            />
-            <NavItem
-              href="/teacher/students/performance"
-              icon={<BarChart2 className="h-4 w-4 mr-2" />}
-              label="Performance"
-              isActive={pathname.includes("/teacher/students/performance")}
-            />
-          </NavGroup>
-          
-          <NavGroup 
-            title="Communication" 
-            icon={<MessageSquare className="h-4 w-4 mr-2" />}
-            defaultOpen={openGroups.communication}
-            toggleOpen={() => toggleGroup('communication')}
-          >
-            <NavItem
-              href="/teacher/communication/messages"
-              icon={<Mail className="h-4 w-4 mr-2" />}
-              label="Messages"
-              isActive={pathname.includes("/teacher/communication/messages")}
-            />
-            <NavItem
-              href="/teacher/communication/announcements"
-              icon={<Bell className="h-4 w-4 mr-2" />}
-              label="Announcements"
-              isActive={pathname.includes("/teacher/communication/announcements")}
-            />
-          </NavGroup>
-
-          <div className="pt-2 mt-2 border-t">
-            <NavItem
-              href="/teacher/profile"
-              icon={<UserCircle className="h-4 w-4 mr-2" />}
-              label="My Profile"
-              isActive={pathname.includes("/teacher/profile")}
-            />
-            <NavItem
-              href="/teacher/settings"
-              icon={<Settings className="h-4 w-4 mr-2" />}
-              label="Settings"
-              isActive={pathname.includes("/teacher/settings")}
-            />
-            <div className="px-2 mt-2">
-              <SignOutButton>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50"
+          // If route has submenu, render as button
+          if (route.submenu) {
+            return (
+              <div key={route.label}>
+                <button
+                  onClick={() => toggleMenu(route.label)}
+                  className={cn(
+                    "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors",
+                    isRouteActive
+                      ? "text-blue-700 bg-blue-50 border-r-4 border-blue-700"
+                      : "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
+                  )}
                 >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </SignOutButton>
-            </div>
-          </div>
+                  <span className="flex items-center">
+                    <route.icon className="h-5 w-5 mr-3" />
+                    {route.label}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      isOpen ? "transform rotate-180" : ""
+                    )}
+                  />
+                </button>
+
+                {/* Submenu */}
+                {isOpen && (
+                  <div className="ml-9 border-l pl-3 my-1">
+                    {route.submenu.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "text-xs flex items-center py-2 px-2 rounded transition-colors",
+                          pathname === item.href
+                            ? "text-blue-700 font-medium"
+                            : "text-gray-600 hover:text-blue-700"
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Regular link without submenu
+          return (
+            <Link
+              key={route.href}
+              href={route.href!}
+              className={cn(
+                "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                isRouteActive
+                  ? "text-blue-700 bg-blue-50 border-r-4 border-blue-700"
+                  : "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
+              )}
+            >
+              <route.icon className="h-5 w-5 mr-3" />
+              {route.label}
+            </Link>
+          );
+        })}
+      </div>
+      <div className="mt-auto p-4 border-t">
+        <div className="flex items-center gap-x-2">
+          <UserButton afterSignOutUrl="/login" />
+          <span className="text-sm font-medium">Teacher Account</span>
         </div>
-      </nav>
-    </div>
-  );
-}
-
-function NavItem({ href, icon, label, isActive, isPending, isExternal, children }: NavItemProps) {
-  return (
-    <Link 
-      href={href}
-      target={isExternal ? "_blank" : undefined}
-      rel={isExternal ? "noopener noreferrer" : undefined}
-      className={cn(
-        "flex items-center group px-2 py-2 text-sm font-medium rounded-md transition-colors",
-        isActive 
-          ? "bg-primary/10 text-primary hover:bg-primary/15" 
-          : "text-gray-700 hover:bg-gray-100",
-        isPending && "opacity-70 cursor-not-allowed"
-      )}
-    >
-      <span className="flex items-center">
-        {icon}
-        {label}
-      </span>
-      {isExternal && <ChevronRight className="ml-auto h-4 w-4 opacity-50" />}
-      {children}
-    </Link>
-  );
-}
-
-function NavGroup({ title, icon, children, defaultOpen = false, toggleOpen }: NavGroupProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  const handleToggleOpen = () => {
-    setIsOpen(!isOpen);
-    if (toggleOpen) {
-      toggleOpen();
-    }
-  };
-
-  return (
-    <div className="mb-2">
-      <button
-        className="flex items-center justify-between w-full px-2 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100"
-        onClick={handleToggleOpen}
-      >
-        <span className="flex items-center">
-          {icon}
-          {title}
-        </span>
-        <ChevronRight 
-          className={cn(
-            "h-4 w-4 transition-transform duration-200",
-            isOpen ? "transform rotate-90" : ""
-          )} 
-        />
-      </button>
-      <div 
-        className={cn(
-          "ml-4 pl-2 border-l transition-all overflow-hidden",
-          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        {children}
       </div>
     </div>
   );

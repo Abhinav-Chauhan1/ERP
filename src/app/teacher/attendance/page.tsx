@@ -1,6 +1,3 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,77 +14,39 @@ import {
   XCircle, 
   FileBarChart,
   Download,
-  Loader2
+  AlertCircle
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Chart } from "@/components/dashboard/chart";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
-import { getTeacherClassesForAttendance } from "@/lib/actions/teacherAttendanceActions";
-import { toast } from "react-hot-toast";
-import { format, addDays, isSameDay } from "date-fns";
+import { getTeacherAttendanceOverview } from "@/lib/actions/teacherAttendanceOverviewActions";
+import { format } from "date-fns";
 
-export default function TeacherAttendancePage() {
-  const [classes, setClasses] = useState<any[]>([]);
-  const [todayClasses, setTodayClasses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  
-  // Sample attendance data for charts and overview
-  const attendanceData = [
-    { date: 'Mon', present: 92, absent: 8 },
-    { date: 'Tue', present: 88, absent: 12 },
-    { date: 'Wed', present: 95, absent: 5 },
-    { date: 'Thu', present: 90, absent: 10 },
-    { date: 'Fri', present: 94, absent: 6 },
-  ];
-  
-  // Mock attendance events for calendar
-  const attendanceEvents = [
-    {
-      id: '1',
-      title: 'Low Attendance - Grade 10-A',
-      date: new Date(new Date().setDate(new Date().getDate() - 5)),
-      type: 'warning'
-    },
-    {
-      id: '2',
-      title: 'Perfect Attendance - Grade 11-B',
-      date: new Date(new Date().setDate(new Date().getDate() - 2)),
-      type: 'success'
-    },
-    {
-      id: '3',
-      title: 'Attendance Due - Grade 9-C',
-      date: new Date(),
-      type: 'alert'
-    }
-  ];
-  
-  useEffect(() => {
-    const fetchClasses = async () => {
-      setLoading(true);
-      try {
-        const data = await getTeacherClassesForAttendance();
-        setClasses(data.classes);
-        setTodayClasses(data.todayClasses);
-      } catch (error) {
-        console.error("Failed to fetch classes:", error);
-        toast.error("Failed to load classes");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchClasses();
-  }, []);
-  
-  if (loading) {
+export default async function TeacherAttendancePage() {
+  const result = await getTeacherAttendanceOverview();
+
+  if (!result.success || !result.data) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h2 className="text-xl font-semibold">Failed to load attendance data</h2>
+        <p className="text-muted-foreground">{result.error || "An error occurred"}</p>
       </div>
     );
   }
+
+  const { data } = result;
+  const { stats, todayClasses, attendanceByDay, classAttendanceSummary, studentsWithLowAttendance } = data;
+
+  // Mock attendance events for calendar (can be enhanced with real data later)
+  const attendanceEvents = [
+    {
+      id: '1',
+      title: 'Attendance Review',
+      date: new Date(),
+      type: 'event' as const
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,7 +66,7 @@ export default function TeacherAttendancePage() {
             <CardDescription>Classes requiring attendance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{todayClasses.length}</div>
+            <div className="text-3xl font-bold">{stats.todayClassesCount}</div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-400" />
               <span>Next: {todayClasses.length > 0 ? todayClasses[0].time : "No classes today"}</span>
@@ -121,9 +80,9 @@ export default function TeacherAttendancePage() {
             <CardDescription>Overall attendance rate</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">92%</div>
+            <div className="text-3xl font-bold">{stats.weeklyAverage}%</div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: "92%" }}></div>
+              <div className="bg-green-500 h-2 rounded-full" style={{ width: `${stats.weeklyAverage}%` }}></div>
             </div>
           </CardContent>
         </Card>
@@ -134,10 +93,10 @@ export default function TeacherAttendancePage() {
             <CardDescription>This week's absences</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">14</div>
+            <div className="text-3xl font-bold">{stats.absentThisWeek}</div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <UserX className="h-4 w-4 text-red-500" />
-              <span>12 with valid reasons</span>
+              <span>{stats.absentWithReasons} with valid reasons</span>
             </div>
           </CardContent>
         </Card>
@@ -148,9 +107,7 @@ export default function TeacherAttendancePage() {
             <CardDescription>Attendance records to mark</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{
-              todayClasses.filter(c => c.isNow || new Date(c.startTime) > new Date()).length
-            }</div>
+            <div className="text-3xl font-bold">{stats.pendingCount}</div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-400" />
               <span>{format(new Date(), "MMM d, yyyy")}</span>
@@ -168,7 +125,7 @@ export default function TeacherAttendancePage() {
           <CardContent>
             <Chart 
               title="Weekly Attendance"
-              data={attendanceData}
+              data={attendanceByDay}
               type="bar"
               xKey="date"
               yKey="present"
@@ -285,7 +242,7 @@ export default function TeacherAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {classes.map(classInfo => (
+                    {classAttendanceSummary.map(classInfo => (
                       <tr key={classInfo.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium">{classInfo.name}</div>
@@ -302,23 +259,27 @@ export default function TeacherAttendancePage() {
                             <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
                               <div 
                                 className="bg-green-500 h-2 rounded-full" 
-                                style={{ width: `${Math.floor(Math.random() * 40) + 60}%` }}
+                                style={{ width: `${classInfo.averageAttendance}%` }}
                               ></div>
                             </div>
-                            <span>{Math.floor(Math.random() * 40) + 60}%</span>
+                            <span>{classInfo.averageAttendance}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span>{Math.floor(Math.random() * 20) + 20}</span>
+                            <span>{classInfo.thisWeekPresent}</span>
                             <XCircle className="h-4 w-4 text-red-500 ml-2" />
-                            <span>{Math.floor(Math.random() * 5) + 1}</span>
+                            <span>{classInfo.thisWeekAbsent}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Good
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            classInfo.status === 'Good' ? 'bg-green-100 text-green-800' :
+                            classInfo.status === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {classInfo.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -354,53 +315,63 @@ export default function TeacherAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {/* Sample student data */}
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <tr key={i}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700">
-                              S
+                    {studentsWithLowAttendance.length > 0 ? (
+                      studentsWithLowAttendance.map((student) => (
+                        <tr key={student.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700">
+                                {student.name.charAt(0)}
+                              </div>
+                              <div className="ml-3">
+                                <div className="font-medium">{student.name}</div>
+                                <div className="text-sm text-gray-500">ID: {student.admissionId}</div>
+                              </div>
                             </div>
-                            <div className="ml-3">
-                              <div className="font-medium">Student {i}</div>
-                              <div className="text-sm text-gray-500">ID: S100{i}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm">{student.className}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-green-500 h-2 rounded-full" 
+                                  style={{ width: `${student.attendanceRate}%` }}
+                                ></div>
+                              </div>
+                              <span>{student.attendanceRate}%</span>
                             </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                              {student.absences} days
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              student.status === 'Good' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {student.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <Link href={`/teacher/students/${student.id}/attendance`}>
+                              <Button variant="link" className="h-auto p-0">View Details</Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                          <div className="flex flex-col items-center gap-2">
+                            <CheckCircle className="h-8 w-8 text-green-500" />
+                            <p>All students have good attendance!</p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm">Grade 10-A</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-green-500 h-2 rounded-full" 
-                                style={{ width: `${Math.floor(Math.random() * 30) + 70}%` }}
-                              ></div>
-                            </div>
-                            <span>{Math.floor(Math.random() * 30) + 70}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            {Math.floor(Math.random() * 5)} days
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            i % 3 === 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                          }`}>
-                            {i % 3 === 0 ? 'Needs attention' : 'Good'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <Link href={`/teacher/students/${i}/attendance`}>
-                            <Button variant="link" className="h-auto p-0">View Details</Button>
-                          </Link>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

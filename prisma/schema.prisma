@@ -103,6 +103,55 @@ model Student {
   feePayments       FeePayment[]
   reportCards       ReportCard[] // Added missing relation
   scholarships      ScholarshipRecipient[] // Added missing relation
+  settings          StudentSettings?
+  phone             String?
+  emergencyPhone    String?
+}
+
+model StudentSettings {
+  id                          String   @id @default(cuid())
+  student                     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId                   String   @unique
+  
+  // Notification preferences
+  emailNotifications          Boolean  @default(true)
+  assignmentReminders         Boolean  @default(true)
+  examReminders               Boolean  @default(true)
+  attendanceAlerts            Boolean  @default(true)
+  feeReminders                Boolean  @default(true)
+  eventNotifications          Boolean  @default(true)
+  announcementNotifications   Boolean  @default(true)
+  
+  // Privacy settings
+  profileVisibility           ProfileVisibility @default(PRIVATE)
+  showEmail                   Boolean  @default(false)
+  showPhone                   Boolean  @default(false)
+  
+  // Appearance settings
+  theme                       Theme    @default(LIGHT)
+  language                    String   @default("en")
+  dateFormat                  String   @default("MM/DD/YYYY")
+  timeFormat                  TimeFormat @default(TWELVE_HOUR)
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  CLASSMATES_ONLY
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum TimeFormat {
+  TWELVE_HOUR
+  TWENTY_FOUR_HOUR
 }
 
 model Parent {
@@ -420,11 +469,15 @@ enum DayOfWeek {
 
 // Assessment models
 model ExamType {
-  id          String   @id @default(cuid())
-  name        String   // e.g., "Mid-term", "Final", "Unit Test"
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  name                String   // e.g., "Mid-term", "Final", "Unit Test"
+  description         String?
+  weight              Float    @default(0) // Percentage weight in final grade (0-100)
+  isActive            Boolean  @default(true) // Whether this exam type is currently in use
+  canRetest           Boolean  @default(false) // Allow students to retake
+  includeInGradeCard  Boolean  @default(true) // Include in report cards
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relationships
   exams       Exam[]
@@ -949,4 +1002,56 @@ model EventParticipant {
   updatedAt       DateTime @default(now())
 
   @@unique([eventId, userId])
+}
+
+// System Settings Model
+model SystemSettings {
+  id                    String   @id @default(cuid())
+  
+  // School Information
+  schoolName            String   @default("School Name")
+  schoolEmail           String?
+  schoolPhone           String?
+  schoolAddress         String?
+  schoolWebsite         String?
+  schoolFax             String?
+  timezone              String   @default("UTC")
+  
+  // Academic Settings
+  currentAcademicYear   String?
+  currentTerm           String?
+  gradingSystem         String   @default("percentage") // percentage, gpa, letter
+  passingGrade          Int      @default(50)
+  autoAttendance        Boolean  @default(false)
+  lateArrivalThreshold  Int      @default(15) // minutes
+  
+  // Notification Settings
+  emailNotifications    Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  pushNotifications     Boolean  @default(true)
+  notifyEnrollment      Boolean  @default(true)
+  notifyPayment         Boolean  @default(true)
+  notifyAttendance      Boolean  @default(true)
+  notifyExamResults     Boolean  @default(true)
+  notifyLeaveApps       Boolean  @default(true)
+  
+  // Security Settings
+  twoFactorAuth         Boolean  @default(false)
+  sessionTimeout        Int      @default(30) // minutes
+  passwordExpiry        Int      @default(90) // days
+  autoBackup            Boolean  @default(true)
+  backupFrequency       String   @default("daily") // hourly, daily, weekly
+  
+  // Appearance Settings
+  theme                 String   @default("light") // light, dark, system
+  primaryColor          String   @default("#3b82f6")
+  language              String   @default("en")
+  dateFormat            String   @default("mdy") // mdy, dmy, ymd
+  logoUrl               String?
+  faviconUrl            String?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("system_settings")
 }

@@ -42,9 +42,10 @@ import { getStudentDetails } from "@/lib/actions/teacherStudentsActions";
 import { toast } from "react-hot-toast";
 import { format } from "date-fns";
 
-export default async function StudentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function StudentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const studentId = params.id;
+  const resolvedParams = use(params);
+  const studentId = resolvedParams.id;
   
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
