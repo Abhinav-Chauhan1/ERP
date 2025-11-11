@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Replace next-auth with custom auth solution
-import { useAuth } from "@/lib/auth";
 import { 
   Calendar, Clock, Check, X, AlertTriangle, FileText, 
   Download, Plus, Edit, Trash2, Search, Filter, 
@@ -70,8 +68,6 @@ import {
 } from "@/lib/actions/attendanceActions";
 
 export default function LeaveApplicationsPage() {
-  // Replace useSession with custom auth hook
-  const { user } = useAuth();
   const [leaveApplications, setLeaveApplications] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -211,15 +207,10 @@ export default function LeaveApplicationsPage() {
   }
 
   function handleProcess(leave: any) {
-    if (!user?.id) {
-      toast.error("User session not found");
-      return;
-    }
-    
     processForm.reset({
       id: leave.id,
       status: "APPROVED",
-      approvedById: user.id,
+      approvedById: "", // TODO: Get from auth
       remarks: "",
     });
     setSelectedLeave(leave);

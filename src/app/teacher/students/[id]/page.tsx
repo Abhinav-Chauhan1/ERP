@@ -42,7 +42,7 @@ import { getStudentDetails } from "@/lib/actions/teacherStudentsActions";
 import { toast } from "react-hot-toast";
 import { format } from "date-fns";
 
-export default function StudentDetailsPage({ params }: { params: { id: string } }) {
+export default async function StudentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const studentId = params.id;
   

@@ -44,7 +44,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
+export default async function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [assignment, setAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);

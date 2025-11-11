@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default async function ChildDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   // Await params before accessing properties
   const param = await params;

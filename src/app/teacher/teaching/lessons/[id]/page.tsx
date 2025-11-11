@@ -44,7 +44,7 @@ import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/a
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default function LessonDetailPage({ params }: { params: { id: string } }) {
+export default async function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const lessonId = React.use(params).id;
   

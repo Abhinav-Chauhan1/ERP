@@ -15,7 +15,7 @@ import { removeStudentFromParent } from "@/lib/actions/parent-student-actions";
 export default async function ParentDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   // Access the id directly - Next.js handles this correctly at runtime
   const param = await params;

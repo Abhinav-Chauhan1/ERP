@@ -27,7 +27,7 @@ import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/a
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default function EditLessonPage({ params }: { params: { id: string } }) {
+export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

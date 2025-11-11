@@ -17,8 +17,7 @@ export default async function SubjectDetailPage({
   params, 
   searchParams 
 }: { 
-  params: { id: string }, 
-  searchParams: { childId?: string } 
+  params: Promise<{ id: string }>, searchParams: Promise<{ childId?: string }> 
 }) {
   // Await both params and searchParams before using them
   const pathParams = await params;

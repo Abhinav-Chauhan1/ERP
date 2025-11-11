@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export default async function ExamDetailsPage({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }> 
 }) {
   // Fix the params issue by awaiting it first
   const resolvedParams = await Promise.resolve(params);

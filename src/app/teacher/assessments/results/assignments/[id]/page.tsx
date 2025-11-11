@@ -37,7 +37,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function AssignmentResultDetailPage({ params }: { params: { id: string } }) {
+export default async function AssignmentResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [assignmentData, setAssignmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

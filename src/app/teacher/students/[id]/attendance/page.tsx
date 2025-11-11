@@ -33,7 +33,7 @@ import { toast } from "react-hot-toast";
 import { AttendanceStatus } from "@prisma/client";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 
-export default function StudentAttendanceReportPage({ params }: { params: { id: string } }) {
+export default async function StudentAttendanceReportPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const studentId = params.id;
   

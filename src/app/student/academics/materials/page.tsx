@@ -46,7 +46,7 @@ interface Subject {
 export default async function LearningMaterialsPage({
   searchParams
 }: {
-  searchParams: { subject?: string }
+  searchParams: Promise<{  }>
 }) {
   // Fix: await searchParams before accessing its properties
   const resolvedSearchParams = await Promise.resolve(searchParams);

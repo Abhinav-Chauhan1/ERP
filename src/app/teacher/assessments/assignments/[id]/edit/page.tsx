@@ -41,7 +41,7 @@ import { getAssignmentDetails, getTeacherClasses, updateAssignment } from "@/lib
 import { toast } from "react-hot-toast";
 import { CldUploadWidget } from "next-cloudinary";
 
-export default function EditAssignmentPage({ params }: { params: { id: string } }) {
+export default async function EditAssignmentPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

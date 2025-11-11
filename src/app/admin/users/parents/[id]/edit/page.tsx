@@ -40,7 +40,7 @@ interface EditParentPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function EditParentPage({ params }: EditParentPageProps) {
+export default async function EditParentPage({ params }: EditParentPageProps) {
   const { id } = use(params);
 
   const router = useRouter();

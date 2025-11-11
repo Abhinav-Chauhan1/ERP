@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default async function ParentSubjectsPage({
   searchParams
 }: {
-  searchParams: { childId?: string }
+  searchParams: Promise<{  }>
 }) {
   // Await searchParams before using
   const params = await searchParams;

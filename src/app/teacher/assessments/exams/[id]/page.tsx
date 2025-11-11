@@ -41,7 +41,7 @@ import { format } from "date-fns";
 import { Chart } from "@/components/dashboard/chart";
 import { toast } from "react-hot-toast";
 
-export default function ExamDetailPage({ params }: { params: { id: string } }) {
+export default async function ExamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);

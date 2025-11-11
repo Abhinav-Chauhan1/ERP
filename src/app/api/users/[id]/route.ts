@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -26,8 +26,9 @@ export async function GET(
       return new NextResponse("Forbidden", { status: 403 });
     }
     
+    const { id } = await params;
     const user = await db.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
     
     if (!user) {
@@ -43,7 +44,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();

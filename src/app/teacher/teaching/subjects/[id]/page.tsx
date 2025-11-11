@@ -26,7 +26,7 @@ import {
 import { getTeacherSubjectDetails } from "@/lib/actions/teacherSubjectsActions";
 import { ResourceUploadDialog } from "@/components/academic/resource-upload-dialog";
 
-export default async function SubjectDetailPage({ params }: { params: { id: string } }) {
+export default async function SubjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const param = await params;
   const subjectId = param.id;
   const subject = await getTeacherSubjectDetails(subjectId);

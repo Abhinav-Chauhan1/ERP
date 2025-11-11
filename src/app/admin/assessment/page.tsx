@@ -219,7 +219,7 @@ export default function AssessmentPage() {
     setLoading(true);
     try {
       const [upcomingResult] = await Promise.all([
-        getUpcomingExams({ limit: 10 }),
+        getUpcomingExams(),
       ]);
 
       if (upcomingResult.success && upcomingResult.data) {

@@ -46,7 +46,7 @@ interface EditTeacherPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function EditTeacherPage({ params }: EditTeacherPageProps) {
+export default async function EditTeacherPage({ params }: EditTeacherPageProps) {
   const { id } = use(params);
 
   const router = useRouter();

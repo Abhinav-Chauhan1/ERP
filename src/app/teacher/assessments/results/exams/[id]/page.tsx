@@ -39,7 +39,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function ExamResultDetailPage({ params }: { params: { id: string } }) {
+export default async function ExamResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [examData, setExamData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   description: "View details of the event and manage your registration",
 };
 
-export default async function EventDetailPage({ params }: { params: { eventId: string } }) {
-  const eventId = params.eventId;
+export default async function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
   
   try {
     const { 

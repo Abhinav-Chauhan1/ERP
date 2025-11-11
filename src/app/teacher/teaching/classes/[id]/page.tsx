@@ -32,7 +32,7 @@ import {
 import { getClassDetails } from "@/lib/actions/teacherClassesActions";
 import { format } from "date-fns";
 
-export default async function ClassDetailPage({ params }: { params: { id: string } }) {
+export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const param = await params;
   const classId = param.id;
   const classInfo = await getClassDetails(classId);

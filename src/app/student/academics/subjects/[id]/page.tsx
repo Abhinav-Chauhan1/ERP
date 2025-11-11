@@ -13,11 +13,11 @@ export const metadata: Metadata = {
 export default async function SubjectDetailsPage({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }> 
 }) {
   // Fix by awaiting the params object if it's a promise
   const paramsResolved = await Promise.resolve(params);
-  const subjectId = paramsResolved.id;
+  const subjectId = await paramsResolved.id;
   const subjectDetails = await getSubjectDetails(subjectId);
 
   return (
