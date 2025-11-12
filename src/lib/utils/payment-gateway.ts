@@ -7,11 +7,26 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
+// Lazy-load Razorpay instance to avoid initialization during build
+let razorpayInstance: Razorpay | null = null;
+
+function getRazorpayInstance(): Razorpay {
+  if (!razorpayInstance) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    
+    if (!keyId || !keySecret) {
+      throw new Error('Razorpay credentials not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.');
+    }
+    
+    razorpayInstance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+  }
+  
+  return razorpayInstance;
+}
 
 /**
  * Interface for payment order creation
@@ -60,6 +75,8 @@ export async function createPaymentOrder(
   params: CreatePaymentOrderParams
 ): Promise<PaymentOrder> {
   try {
+    const razorpay = getRazorpayInstance();
+    
     // Convert amount to paise (Razorpay expects amount in smallest currency unit)
     const amountInPaise = Math.round(params.amount * 100);
     
@@ -141,6 +158,7 @@ export function verifyWebhookSignature(
  */
 export async function fetchPaymentDetails(paymentId: string) {
   try {
+    const razorpay = getRazorpayInstance();
     const payment = await razorpay.payments.fetch(paymentId);
     return payment;
   } catch (error) {
@@ -157,6 +175,7 @@ export async function fetchPaymentDetails(paymentId: string) {
  */
 export async function fetchOrderDetails(orderId: string) {
   try {
+    const razorpay = getRazorpayInstance();
     const order = await razorpay.orders.fetch(orderId);
     return order;
   } catch (error) {
@@ -177,6 +196,8 @@ export async function refundPayment(
   amount?: number
 ) {
   try {
+    const razorpay = getRazorpayInstance();
+    
     const refundData: any = {
       payment_id: paymentId,
     };
