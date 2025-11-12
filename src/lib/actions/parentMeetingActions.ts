@@ -155,12 +155,13 @@ export async function scheduleMeeting(data: any) {
   try {
     const meeting = await db.parentMeeting.create({
       data: {
+        title: data.title || "Parent-Teacher Meeting",
+        description: data.description || null,
         parentId: data.parentId,
         teacherId: data.teacherId,
-        scheduledAt: new Date(data.scheduledAt),
+        scheduledDate: new Date(data.scheduledAt),
         duration: data.duration || 30,
         location: data.location || null,
-        purpose: data.purpose || null,
         status: "SCHEDULED",
       },
       include: {
@@ -191,10 +192,9 @@ export async function updateMeeting(id: string, data: any) {
     const meeting = await db.parentMeeting.update({
       where: { id },
       data: {
-        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+        scheduledDate: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
         duration: data.duration,
         location: data.location,
-        purpose: data.purpose,
         status: data.status,
         notes: data.notes,
       },
@@ -264,7 +264,7 @@ export async function rescheduleMeeting(id: string, newDate: Date) {
     const meeting = await db.parentMeeting.update({
       where: { id },
       data: {
-        scheduledAt: newDate,
+        scheduledDate: newDate,
         status: "RESCHEDULED",
       },
     });
@@ -400,3 +400,6 @@ export async function getMeetingStats() {
     return { success: false, error: "Failed to fetch statistics" };
   }
 }
+
+
+

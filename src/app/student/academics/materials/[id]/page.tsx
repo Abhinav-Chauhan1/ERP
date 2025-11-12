@@ -14,10 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LessonMaterialPage({ 
-  params 
+  params: paramsPromise 
 }: { 
   params: Promise<{ id: string }> 
 }) {
+  const params = await paramsPromise;
   const userDetails = await getCurrentUserDetails();
   
   if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {

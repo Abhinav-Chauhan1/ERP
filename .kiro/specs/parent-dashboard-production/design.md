@@ -83,9 +83,9 @@ graph TB
 - Parent-child relationship verification
 
 **External Integrations:**
-- Payment Gateway (Stripe/Razorpay/PayPal)
-- Email service (Resend/SendGrid)
-- File storage (AWS S3/Cloudinary)
+- Payment Gateway (Razorpay)
+- Email service (SendGrid)
+- File storage (Cloudinary)
 
 ## Components and Interfaces
 
@@ -768,85 +768,96 @@ export function FeeOverviewSkeleton() {
 
 ### Payment Gateway Integration
 
-#### Stripe Integration
+#### Razorpay Integration
 ```typescript
 // lib/utils/payment-gateway.ts
-import Stripe from 'stripe';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
-export async function createPaymentIntent(
+export async function createPaymentOrder(
   amount: number,
-  currency: string = 'usd'
+  currency: string = 'INR',
+  receipt: string
 ) {
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: amount * 100, // Convert to cents
+  const order = await razorpay.orders.create({
+    amount: amount * 100, // Convert to paise
     currency,
-    automatic_payment_methods: { enabled: true },
+    receipt,
+    payment_capture: 1, // Auto capture
   });
   
-  return paymentIntent;
+  return order;
 }
 
-export async function verifyWebhookSignature(
-  payload: string,
+export async function verifyPaymentSignature(
+  orderId: string,
+  paymentId: string,
   signature: string
-) {
-  return stripe.webhooks.constructEvent(
-    payload,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET!
-  );
+): boolean {
+  const text = `${orderId}|${paymentId}`;
+  const generated_signature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+    .update(text)
+    .digest('hex');
+  
+  return generated_signature === signature;
 }
 ```
 
 ### Email Service Integration
 
-#### Resend Integration
+#### SendGrid Integration
 ```typescript
 // lib/utils/email-service.ts
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
 export async function sendPaymentReceipt(
   to: string,
   receiptData: ReceiptData
 ) {
-  await resend.emails.send({
-    from: 'noreply@school.com',
+  const msg = {
     to,
+    from: process.env.SENDGRID_FROM_EMAIL!,
     subject: 'Payment Receipt',
     html: generateReceiptHTML(receiptData),
-  });
+  };
+  
+  await sgMail.send(msg);
 }
 
 export async function sendMeetingConfirmation(
   to: string,
   meetingData: MeetingData
 ) {
-  await resend.emails.send({
-    from: 'noreply@school.com',
+  const msg = {
     to,
+    from: process.env.SENDGRID_FROM_EMAIL!,
     subject: 'Meeting Confirmation',
     html: generateMeetingHTML(meetingData),
-  });
+  };
+  
+  await sgMail.send(msg);
 }
 ```
 
 ### File Storage Integration
 
-#### AWS S3 / Cloudinary
+#### Cloudinary Integration
 ```typescript
 // lib/utils/file-upload.ts
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v2 as cloudinary } from 'cloudinary';
 
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 export async function uploadFile(
@@ -854,18 +865,20 @@ export async function uploadFile(
   folder: string
 ): Promise<string> {
   const buffer = await file.arrayBuffer();
-  const fileName = `${folder}/${Date.now()}-${file.name}`;
+  const base64 = Buffer.from(buffer).toString('base64');
+  const dataURI = `data:${file.type};base64,${base64}`;
   
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: fileName,
-      Body: Buffer.from(buffer),
-      ContentType: file.type,
-    })
-  );
+  const result = await cloudinary.uploader.upload(dataURI, {
+    folder,
+    resource_type: 'auto',
+    public_id: `${Date.now()}-${file.name.split('.')[0]}`,
+  });
   
-  return `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${fileName}`;
+  return result.secure_url;
+}
+
+export async function deleteFile(publicId: string): Promise<void> {
+  await cloudinary.uploader.destroy(publicId);
 }
 ```
 
@@ -880,19 +893,19 @@ DATABASE_URL=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 
-# Payment Gateway
-STRIPE_SECRET_KEY=
-STRIPE_PUBLISHABLE_KEY=
-STRIPE_WEBHOOK_SECRET=
+# Payment Gateway (Razorpay)
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
 
-# Email Service
-RESEND_API_KEY=
+# Email Service (SendGrid)
+SENDGRID_API_KEY=
+SENDGRID_FROM_EMAIL=
 
-# File Storage
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_BUCKET_NAME=
+# File Storage (Cloudinary)
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 
 # Application
 NEXT_PUBLIC_APP_URL=
@@ -903,7 +916,7 @@ NEXT_PUBLIC_APP_URL=
 // next.config.js
 module.exports = {
   images: {
-    domains: ['your-bucket.s3.amazonaws.com'],
+    domains: ['res.cloudinary.com'],
   },
   experimental: {
     serverActions: true,

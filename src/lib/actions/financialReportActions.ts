@@ -31,7 +31,15 @@ export async function getFeeCollectionReport(filters?: {
                 lastName: true,
               },
             },
-            class: true,
+            enrollments: {
+              include: {
+                class: true,
+              },
+              take: 1,
+              orderBy: {
+                enrollDate: 'desc'
+              }
+            },
           },
         },
         feeStructure: true,
@@ -41,10 +49,10 @@ export async function getFeeCollectionReport(filters?: {
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
     const paidAmount = payments
       .filter(p => p.status === "COMPLETED")
-      .reduce((sum, p) => sum + p.amountPaid, 0);
+      .reduce((sum, p) => sum + p.paidAmount, 0);
     const pendingAmount = payments
       .filter(p => p.status === "PENDING")
-      .reduce((sum, p) => sum + (p.amount - p.amountPaid), 0);
+      .reduce((sum, p) => sum + (p.amount - p.paidAmount), 0);
 
     return {
       success: true,
@@ -86,7 +94,7 @@ export async function getExpenseAnalysis(filters?: {
     const expenses = await db.expense.findMany({
       where,
       include: {
-        budget: true,
+        budgetCategory: true,
       },
       orderBy: {
         date: "desc",
@@ -153,25 +161,25 @@ export async function getOutstandingPayments(filters?: {
                 phone: true,
               },
             },
-            class: true,
+            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
           },
         },
         feeStructure: true,
       },
       orderBy: {
-        dueDate: "asc",
+        paymentDate: "asc",
       },
     });
 
     const totalOutstanding = outstandingPayments.reduce(
-      (sum, p) => sum + (p.amount - p.amountPaid),
+      (sum, p) => sum + (p.amount - p.paidAmount),
       0
     );
 
     // Calculate overdue
     const now = new Date();
     const overduePayments = outstandingPayments.filter(
-      p => p.dueDate && new Date(p.dueDate) < now
+      p => p.paymentDate && new Date(p.paymentDate) < now
     );
 
     return {
@@ -182,7 +190,7 @@ export async function getOutstandingPayments(filters?: {
           totalOutstanding,
           totalCount: outstandingPayments.length,
           overdueCount: overduePayments.length,
-          overdueAmount: overduePayments.reduce((sum, p) => sum + (p.amount - p.amountPaid), 0),
+          overdueAmount: overduePayments.reduce((sum, p) => sum + (p.amount - p.paidAmount), 0),
         },
       },
     };
@@ -203,11 +211,7 @@ export async function getBudgetVsActualReport(filters?: {
     const budgets = await db.budget.findMany({
       where,
       include: {
-        expenses: {
-          where: {
-            status: "COMPLETED",
-          },
-        },
+        expenses: true,
       },
     });
 
@@ -267,7 +271,7 @@ export async function getIncomeStatement(filters?: {
     const feePayments = await db.feePayment.findMany({
       where: {
         status: "COMPLETED",
-        paidDate: where.date,
+        paymentDate: where.date,
       },
     });
 
@@ -279,7 +283,7 @@ export async function getIncomeStatement(filters?: {
       },
     });
 
-    const totalIncome = feePayments.reduce((sum, p) => sum + p.amountPaid, 0);
+    const totalIncome = feePayments.reduce((sum, p) => sum + p.paidAmount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
     const netIncome = totalIncome - totalExpenses;
 
@@ -307,3 +311,5 @@ export async function getIncomeStatement(filters?: {
     return { success: false, error: "Failed to fetch income statement" };
   }
 }
+
+

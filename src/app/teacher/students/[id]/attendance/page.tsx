@@ -33,9 +33,9 @@ import { toast } from "react-hot-toast";
 import { AttendanceStatus } from "@prisma/client";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 
-export default async function StudentAttendanceReportPage({ params }: { params: Promise<{ id: string }> }) {
+export default function StudentAttendanceReportPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const studentId = params.id;
+  const [studentId, setStudentId] = useState<string>("");
   
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
@@ -43,8 +43,14 @@ export default async function StudentAttendanceReportPage({ params }: { params: 
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setStudentId(p.id));
+  }, [paramsPromise]);
   
   useEffect(() => {
+    if (!studentId) return;
     fetchStudentAttendanceReport();
   }, [studentId, dateRange]);
   

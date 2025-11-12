@@ -32,68 +32,95 @@ export default async function ChildDetailPage({
   const { student, currentEnrollment } = childDetails;
   
   return (
-    <div className="container p-6">
-      <Button variant="outline" size="sm" className="mb-6" asChild>
+    <div className="container max-w-7xl mx-auto p-6">
+      {/* Back Button */}
+      <Button variant="ghost" size="sm" className="mb-6" asChild>
         <Link href="/parent/children/overview">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Children
+          Back to All Children
         </Link>
       </Button>
       
-      <div className="flex flex-col md:flex-row gap-6 mb-8 items-start">
-        <div className="md:w-40">
-          <Avatar className="h-40 w-40">
-            <AvatarImage src={student.user.avatar || ""} alt={student.user.firstName} />
-            <AvatarFallback className="text-4xl">
-              {student.user.firstName.charAt(0)}{student.user.lastName.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-        
-        <div className="flex-1">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-            <h1 className="text-2xl font-bold">
-              {student.user.firstName} {student.user.lastName}
-            </h1>
+      {/* Profile Header */}
+      <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-8 mb-8 border border-blue-100">
+        <div className="flex flex-col md:flex-row gap-8 items-start">
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-3">
+            <Avatar className="h-40 w-40 border-4 border-white shadow-xl">
+              <AvatarImage src={student.user.avatar || ""} alt={student.user.firstName} />
+              <AvatarFallback className="text-5xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                {student.user.firstName.charAt(0)}{student.user.lastName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
             {childDetails.isPrimary && (
-              <Badge>Primary</Badge>
+              <Badge className="bg-blue-600 text-white">Primary Child</Badge>
             )}
           </div>
           
-          <p className="text-gray-500 mb-4">{student.admissionId}</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mb-4">
-            <div className="flex gap-2 items-center">
-              <GraduationCap className="h-4 w-4 text-gray-400" />
-              <span>
-                {currentEnrollment ? (
-                  `Class: ${currentEnrollment.class.name} - ${currentEnrollment.section.name}`
-                ) : (
-                  "Not enrolled in any class"
-                )}
-              </span>
-            </div>
+          {/* Info */}
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              {student.user.firstName} {student.user.lastName}
+            </h1>
             
-            <div className="flex gap-2 items-center">
-              <School className="h-4 w-4 text-gray-400" />
-              <span>Roll Number: {student.rollNumber || "Not assigned"}</span>
-            </div>
+            <p className="text-lg text-gray-600 mb-6">
+              Admission ID: <span className="font-semibold">{student.admissionId}</span>
+            </p>
             
-            <div className="flex gap-2 items-center">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span>Date of Birth: {format(new Date(student.dateOfBirth), "PPP")}</span>
-            </div>
-            
-            {student.address && (
-              <div className="flex gap-2 items-center">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span>{student.address}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <GraduationCap className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Current Class</p>
+                  <p className="text-sm font-semibold">
+                    {currentEnrollment ? (
+                      `${currentEnrollment.class.name} - ${currentEnrollment.section.name}`
+                    ) : (
+                      "Not enrolled"
+                    )}
+                  </p>
+                </div>
               </div>
-            )}
+              
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                  <School className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Roll Number</p>
+                  <p className="text-sm font-semibold">{student.rollNumber || "Not assigned"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
+                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Date of Birth</p>
+                  <p className="text-sm font-semibold">{format(new Date(student.dateOfBirth), "PPP")}</p>
+                </div>
+              </div>
+              
+              {student.address && (
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
+                  <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 font-medium">Address</p>
+                    <p className="text-sm font-semibold truncate">{student.address}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
       
+      {/* Tabs */}
       <ChildDetailTabs childDetails={childDetails} />
     </div>
   );

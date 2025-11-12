@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,8 @@ import {
   UserX,
   FileText,
   Download,
-  Loader2
+  Loader2,
+  ClipboardCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectClass } from "@/components/forms/select-class";
@@ -40,7 +41,7 @@ import { AttendanceStatus } from "@prisma/client";
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function MarkAttendancePage() {
+function MarkAttendanceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const classIdParam = searchParams.get('classId');
@@ -574,5 +575,18 @@ export default function MarkAttendancePage() {
         </Card>
       )}
     </div>
+  );
+}
+
+
+export default function MarkAttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <MarkAttendanceContent />
+    </Suspense>
   );
 }

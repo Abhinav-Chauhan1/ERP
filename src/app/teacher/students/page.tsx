@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -56,7 +56,7 @@ interface Section {
   name: string;
 }
 
-export default function TeacherStudentsPage() {
+function TeacherStudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -567,5 +567,18 @@ export default function TeacherStudentsPage() {
         </div>
       </Tabs>
     </div>
+  );
+}
+
+
+export default function TeacherStudentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <TeacherStudentsContent />
+    </Suspense>
   );
 }

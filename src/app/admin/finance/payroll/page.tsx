@@ -238,10 +238,10 @@ export default function PayrollPage() {
   const handleBulkGenerate = async () => {
     try {
       const result = await bulkGeneratePayrolls(currentMonth, currentYear, 50000);
-      if (result.success) {
+      if (result.success && result.data) {
         toast.success(`Generated ${result.data.generated} payrolls successfully`);
         if (result.data.errors > 0) {
-          toast.warning(`${result.data.errors} payrolls failed to generate`);
+          toast.error(`${result.data.errors} payrolls failed to generate`);
         }
         loadPayrolls();
         loadStats();

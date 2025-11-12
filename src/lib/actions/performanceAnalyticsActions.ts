@@ -19,7 +19,7 @@ export async function getPerformanceAnalytics(filters?: {
     }
 
     // Get exam results
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where: {
         ...where,
         ...(filters?.classId && {
@@ -47,7 +47,7 @@ export async function getPerformanceAnalytics(filters?: {
         exam: {
           include: {
             subject: true,
-            class: true,
+            
           },
         },
       },
@@ -56,11 +56,11 @@ export async function getPerformanceAnalytics(filters?: {
     // Calculate statistics
     const totalResults = results.length;
     const averageScore = totalResults > 0
-      ? results.reduce((sum, r) => sum + r.score, 0) / totalResults
+      ? results.reduce((sum, r) => sum + r.marks, 0) / totalResults
       : 0;
     
-    const passCount = results.filter(r => r.score >= 50).length;
-    const failCount = results.filter(r => r.score < 50).length;
+    const passCount = results.filter(r => r.marks >= 50).length;
+    const failCount = results.filter(r => r.marks < 50).length;
     const passRate = totalResults > 0 ? (passCount / totalResults) * 100 : 0;
 
     return {
@@ -92,7 +92,7 @@ export async function getSubjectWisePerformance(classId?: string) {
       };
     }
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         exam: {
@@ -115,9 +115,9 @@ export async function getSubjectWisePerformance(classId?: string) {
           failCount: 0,
         };
       }
-      acc[subjectName].totalScores += result.score;
+      acc[subjectName].totalScores += result.marks;
       acc[subjectName].count += 1;
-      if (result.score >= 50) {
+      if (result.marks >= 50) {
         acc[subjectName].passCount += 1;
       } else {
         acc[subjectName].failCount += 1;
@@ -152,23 +152,23 @@ export async function getPassFailRates(classId?: string) {
       };
     }
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
     });
 
     const totalResults = results.length;
-    const passCount = results.filter(r => r.score >= 50).length;
-    const failCount = results.filter(r => r.score < 50).length;
+    const passCount = results.filter(r => r.marks >= 50).length;
+    const failCount = results.filter(r => r.marks < 50).length;
     const passRate = totalResults > 0 ? (passCount / totalResults) * 100 : 0;
 
     // Grade distribution
     const gradeDistribution = {
-      A: results.filter(r => r.score >= 90).length,
-      B: results.filter(r => r.score >= 80 && r.score < 90).length,
-      C: results.filter(r => r.score >= 70 && r.score < 80).length,
-      D: results.filter(r => r.score >= 60 && r.score < 70).length,
-      E: results.filter(r => r.score >= 50 && r.score < 60).length,
-      F: results.filter(r => r.score < 50).length,
+      A: results.filter(r => r.marks >= 90).length,
+      B: results.filter(r => r.marks >= 80 && r.marks < 90).length,
+      C: results.filter(r => r.marks >= 70 && r.marks < 80).length,
+      D: results.filter(r => r.marks >= 60 && r.marks < 70).length,
+      E: results.filter(r => r.marks >= 50 && r.marks < 60).length,
+      F: results.filter(r => r.marks < 50).length,
     };
 
     return {
@@ -203,12 +203,12 @@ export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId
       };
     }
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         exam: {
           select: {
-            date: true,
+            examDate: true,
           },
         },
       },
@@ -219,7 +219,7 @@ export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId
 
     // Group by month
     const trendsByMonth = results.reduce((acc: any, result) => {
-      const monthKey = new Date(result.exam.date).toISOString().slice(0, 7); // YYYY-MM
+      const monthKey = new Date(result.exam.examDate).toISOString().slice(0, 7); // YYYY-MM
       if (!acc[monthKey]) {
         acc[monthKey] = {
           month: monthKey,
@@ -227,7 +227,7 @@ export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId
           count: 0,
         };
       }
-      acc[monthKey].totalScores += result.score;
+      acc[monthKey].totalScores += result.marks;
       acc[monthKey].count += 1;
       return acc;
     }, {});
@@ -258,7 +258,7 @@ export async function getTopPerformers(limit: number = 10, classId?: string) {
       };
     }
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         student: {
@@ -274,7 +274,7 @@ export async function getTopPerformers(limit: number = 10, classId?: string) {
                 status: "ACTIVE",
               },
               include: {
-                class: true,
+                
                 section: true,
               },
             },
@@ -293,7 +293,7 @@ export async function getTopPerformers(limit: number = 10, classId?: string) {
           count: 0,
         };
       }
-      acc[studentId].totalScores += result.score;
+      acc[studentId].totalScores += result.marks;
       acc[studentId].count += 1;
       return acc;
     }, {});
@@ -316,3 +316,5 @@ export async function getTopPerformers(limit: number = 10, classId?: string) {
     return { success: false, error: "Failed to fetch top performers" };
   }
 }
+
+

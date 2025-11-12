@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { 
@@ -74,7 +74,7 @@ import {
   getMaxUnitOrder
 } from "@/lib/actions/syllabusActions";
 
-export default function SyllabusPage() {
+function SyllabusContent() {
   const searchParams = useSearchParams();
   const initialSubjectId = searchParams.get("subject");
   
@@ -1042,5 +1042,18 @@ export default function SyllabusPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+
+export default function SyllabusPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <SyllabusContent />
+    </Suspense>
   );
 }

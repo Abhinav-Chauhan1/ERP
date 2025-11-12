@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +47,7 @@ import { getTeacherAttendanceReports } from "@/lib/actions/teacherAttendanceActi
 import { toast } from "react-hot-toast";
 import { AttendanceStatus } from "@prisma/client";
 
-export default function AttendanceReportsPage() {
+function AttendanceReportsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const classIdParam = searchParams.get('classId');
@@ -309,7 +309,7 @@ export default function AttendanceReportsPage() {
                 <Chart
                   title="Daily Attendance"
                   data={reportData?.dailyTrends || []}
-                  type="line"
+                  type="area"
                   xKey="date"
                   yKey="PRESENT"
                   categories={["PRESENT", "ABSENT", "LATE"]}
@@ -637,5 +637,18 @@ export default function AttendanceReportsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+
+export default function AttendanceReportsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <AttendanceReportsContent />
+    </Suspense>
   );
 }

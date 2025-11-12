@@ -216,7 +216,7 @@ export default function StudentAttendancePage() {
 
   async function onAttendanceSubmit(values: StudentAttendanceFormValues) {
     try {
-      const result = await markStudentAttendance(values, ""); // TODO: Get user ID from auth
+      const result = await markStudentAttendance(values);
       
       if (result.success) {
         toast.success("Attendance marked successfully");
@@ -233,7 +233,7 @@ export default function StudentAttendancePage() {
 
   async function onBulkAttendanceSubmit(values: BulkStudentAttendanceFormValues) {
     try {
-      const result = await markBulkStudentAttendance(values, ""); // TODO: Get user ID from auth
+      const result = await markBulkStudentAttendance(values);
       
       if (result.success) {
         toast.success("Bulk attendance marked successfully");
@@ -250,7 +250,16 @@ export default function StudentAttendancePage() {
   async function onReportSubmit(values: AttendanceReportFormValues) {
     setReportLoading(true);
     try {
-      const result = await getStudentAttendanceReport(values);
+      if (!values.entityId) {
+        toast.error("Please select a student");
+        return;
+      }
+      
+      const result = await getStudentAttendanceReport(
+        values.entityId,
+        values.startDate,
+        values.endDate
+      );
       
       if (result.success) {
         setReportData(result);
@@ -321,8 +330,7 @@ export default function StudentAttendancePage() {
                   <label htmlFor="date-picker" className="text-sm font-medium block mb-1">Date</label>
                   <DatePicker 
                     date={currentDate} 
-                    onSelect={setCurrentDate} 
-                    id="date-picker"
+                    onSelect={(date) => date && setCurrentDate(date)} 
                   />
                 </div>
                 <div className="flex-1">
@@ -332,10 +340,10 @@ export default function StudentAttendancePage() {
                       <SelectValue placeholder="Select a section" />
                     </SelectTrigger>
                     <SelectContent>
-                      {classSections.map(cls => (
+                      {classSections.map((cls: any) => (
                         <div key={cls.id}>
                           <div className="px-2 py-1.5 text-sm font-semibold">{cls.name}</div>
-                          {cls.sections.map(section => (
+                          {cls.sections.map((section: any) => (
                             <SelectItem key={section.id} value={section.id}>
                               {section.fullName}
                             </SelectItem>
@@ -623,10 +631,10 @@ export default function StudentAttendancePage() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="all">All Sections</SelectItem>
-                              {classSections.map(cls => (
+                              {classSections.map((cls: any) => (
                                 <div key={cls.id}>
                                   <div className="px-2 py-1.5 text-sm font-semibold text-gray-500">{cls.name}</div>
-                                  {cls.sections.map(section => (
+                                  {cls.sections.map((section: any) => (
                                     <SelectItem key={section.id} value={section.id}>
                                       {cls.name} - {section.name}
                                     </SelectItem>
@@ -777,8 +785,7 @@ export default function StudentAttendancePage() {
                               <td className="py-3 px-4 align-middle text-center">{entry.summary.leave}</td>
                               <td className="py-3 px-4 align-middle text-center">
                                 <div className="flex justify-center">
-                                  <Badge variant={entry.summary.present / entry.summary.total > 0.75 ? "success" : 
-                                        entry.summary.present / entry.summary.total > 0.5 ? "warning" : "destructive"}>
+                                  <Badge variant={entry.summary.present / entry.summary.total > 0.5 ? "default" : "destructive"}>
                                     {((entry.summary.present / entry.summary.total) * 100).toFixed(1)}%
                                   </Badge>
                                 </div>

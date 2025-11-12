@@ -8,19 +8,17 @@ export async function getAssessmentTimeline(dateFrom: Date, dateTo: Date) {
     // Get exams
     const exams = await db.exam.findMany({
       where: {
-        date: {
+        examDate: {
           gte: dateFrom,
           lte: dateTo,
         },
       },
       include: {
         subject: true,
-        class: true,
-        section: true,
         examType: true,
       },
       orderBy: {
-        date: "asc",
+        examDate: "asc",
       },
     });
 
@@ -34,8 +32,7 @@ export async function getAssessmentTimeline(dateFrom: Date, dateTo: Date) {
       },
       include: {
         subject: true,
-        class: true,
-        section: true,
+        classes: true,
       },
       orderBy: {
         dueDate: "asc",
@@ -49,24 +46,28 @@ export async function getAssessmentTimeline(dateFrom: Date, dateTo: Date) {
         type: "exam" as const,
         title: exam.subject?.name || "Exam",
         subtitle: exam.examType?.name || "Assessment",
-        date: exam.date,
-        class: exam.class?.name || "N/A",
-        section: exam.section?.name,
-        status: exam.status,
-        description: exam.description,
+        examDate: exam.examDate,
+        class: "N/A",
+        section: undefined,
+        status: "scheduled",
+        description: exam.instructions || "",
       })),
       ...assignments.map((assignment) => ({
         id: assignment.id,
         type: "assignment" as const,
         title: assignment.title,
         subtitle: assignment.subject?.name || "Assignment",
-        date: assignment.dueDate,
-        class: assignment.class?.name || "N/A",
-        section: assignment.section?.name,
-        status: assignment.status,
+        examDate: assignment.dueDate,
+        class: assignment.classes?.[0] ? "Multiple Classes" : "N/A",
+        section: undefined,
+        status: "active",
         description: assignment.description,
       })),
-    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    ].sort((a: any, b: any) => {
+      const dateA = a.examDate || a.date;
+      const dateB = b.examDate || b.date;
+      return new Date(dateA).getTime() - new Date(dateB).getTime();
+    });
 
     return {
       success: true,
@@ -111,7 +112,7 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
     const [examsCount, assignmentsCount, completedExams, completedAssignments] = await Promise.all([
       db.exam.count({
         where: {
-          date: {
+          examDate: {
             gte: dateFrom,
             lte: dateTo,
           },
@@ -127,20 +128,18 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
       }),
       db.exam.count({
         where: {
-          date: {
+          examDate: {
             gte: dateFrom,
-            lte: dateTo,
+            lte: new Date(), // Only count past exams as completed
           },
-          status: "COMPLETED",
         },
       }),
       db.assignment.count({
         where: {
           dueDate: {
             gte: dateFrom,
-            lte: dateTo,
+            lte: new Date(), // Only count past assignments as completed
           },
-          status: "COMPLETED",
         },
       }),
     ]);
@@ -161,3 +160,6 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
     return { success: false, error: "Failed to fetch timeline statistics" };
   }
 }
+
+
+

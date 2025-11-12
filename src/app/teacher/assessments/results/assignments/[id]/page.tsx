@@ -37,17 +37,25 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default async function AssignmentResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AssignmentResultDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [assignmentData, setAssignmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [assignmentId, setAssignmentId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setAssignmentId(p.id));
+  }, [paramsPromise]);
   
   useEffect(() => {
+    if (!assignmentId) return;
+    
     const fetchAssignmentDetails = async () => {
       setLoading(true);
       try {
-        const data = await getAssignmentResultDetails(params.id);
+        const data = await getAssignmentResultDetails(assignmentId);
         setAssignmentData(data);
       } catch (error) {
         console.error("Failed to fetch assignment details:", error);
@@ -58,7 +66,7 @@ export default async function AssignmentResultDetailPage({ params }: { params: P
     };
     
     fetchAssignmentDetails();
-  }, [params.id]);
+  }, [assignmentId]);
   
   const filteredSubmissions = assignmentData?.submissions.filter((submission: any) => 
     submission.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,7 +126,7 @@ export default async function AssignmentResultDetailPage({ params }: { params: P
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Export Results
           </Button>
-          <Link href={`/teacher/assessments/assignments/${params.id}`}>
+          <Link href={`/teacher/assessments/assignments/${assignmentId}`}>
             <Button>
               <Eye className="mr-2 h-4 w-4" /> View Assignment
             </Button>
@@ -320,7 +328,7 @@ export default async function AssignmentResultDetailPage({ params }: { params: P
             <CardDescription>View and manage submission details</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Link href={`/teacher/assessments/assignments/${params.id}#grade`}>
+            <Link href={`/teacher/assessments/assignments/${assignmentId}#grade`}>
               <Button>
                 <PenLine className="mr-2 h-4 w-4" /> Grade Submissions
               </Button>
@@ -415,7 +423,7 @@ export default async function AssignmentResultDetailPage({ params }: { params: P
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         {submission.status !== "PENDING" && (
-                          <Link href={`/teacher/assessments/assignments/${params.id}?submission=${submission.id}`}>
+                          <Link href={`/teacher/assessments/assignments/${assignmentId}?submission=${submission.id}`}>
                             <Button variant="ghost" size="sm">View Submission</Button>
                           </Link>
                         )}
@@ -437,7 +445,7 @@ export default async function AssignmentResultDetailPage({ params }: { params: P
           <Button variant="outline">
             <BarChart4 className="mr-2 h-4 w-4" /> View Performance Analytics
           </Button>
-          <Link href={`/teacher/assessments/assignments/${params.id}#grade`}>
+          <Link href={`/teacher/assessments/assignments/${assignmentId}#grade`}>
             <Button>
               <PenLine className="mr-2 h-4 w-4" /> Grade Submissions
             </Button>

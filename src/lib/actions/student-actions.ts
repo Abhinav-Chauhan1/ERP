@@ -299,3 +299,53 @@ export async function getStudentTodaySchedule(studentId: string) {
     endTime: slot.endTime,
   }));
 }
+
+export async function updateStudentProfile(studentId: string, data: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  address?: string;
+}) {
+  try {
+    // Update user information
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { user: true },
+    });
+
+    if (!student) {
+      return { success: false, error: "Student not found" };
+    }
+
+    // Update user fields
+    const updateData: any = {};
+    if (data.firstName) updateData.firstName = data.firstName;
+    if (data.lastName) updateData.lastName = data.lastName;
+    if (data.email) updateData.email = data.email;
+    if (data.phone) updateData.phone = data.phone;
+
+    await db.user.update({
+      where: { id: student.userId },
+      data: updateData,
+    });
+
+    // Update student-specific fields
+    const studentUpdateData: any = {};
+    if (data.dateOfBirth) studentUpdateData.dateOfBirth = data.dateOfBirth;
+    if (data.address) studentUpdateData.address = data.address;
+
+    if (Object.keys(studentUpdateData).length > 0) {
+      await db.student.update({
+        where: { id: studentId },
+        data: studentUpdateData,
+      });
+    }
+
+    return { success: true, message: "Profile updated successfully" };
+  } catch (error) {
+    console.error("Error updating student profile:", error);
+    return { success: false, error: "Failed to update profile" };
+  }
+}

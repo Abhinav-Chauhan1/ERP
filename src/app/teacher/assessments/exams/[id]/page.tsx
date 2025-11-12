@@ -41,7 +41,7 @@ import { format } from "date-fns";
 import { Chart } from "@/components/dashboard/chart";
 import { toast } from "react-hot-toast";
 
-export default async function ExamDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ExamDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,11 +50,19 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
   const [results, setResults] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [examId, setExamId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setExamId(p.id));
+  }, [paramsPromise]);
 
   useEffect(() => {
+    if (!examId) return;
+    
     const fetchExam = async () => {
       try {
-        const examData = await getTeacherExam(params.id);
+        const examData = await getTeacherExam(examId);
         setExam(examData);
         setResults(examData.results);
       } catch (err) {
@@ -66,7 +74,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
     };
 
     fetchExam();
-  }, [params.id]);
+  }, [examId]);
 
   const handleMarkUpdate = (studentId: string, field: string, value: any) => {
     setResults(prev => 
@@ -81,13 +89,13 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
   const saveResults = async () => {
     setIsSaving(true);
     try {
-      const response = await updateExamResults(params.id, results);
+      const response = await updateExamResults(examId, results);
       if (response.success) {
         toast.success("Exam results saved successfully");
         setIsGrading(false);
         
         // Refresh exam data to reflect the updated results
-        const examData = await getTeacherExam(params.id);
+        const examData = await getTeacherExam(examId);
         setExam(examData);
         setResults(examData.results);
       } else {
@@ -166,7 +174,7 @@ export default async function ExamDetailPage({ params }: { params: Promise<{ id:
           <Button variant="outline">
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
-          <Link href={`/teacher/assessments/exams/${params.id}/edit`}>
+          <Link href={`/teacher/assessments/exams/${examId}/edit`}>
             <Button>
               <Edit className="mr-2 h-4 w-4" /> Edit Exam
             </Button>

@@ -34,11 +34,7 @@ export function StudentProfileEdit({ student }: StudentProfileEditProps) {
     setIsLoading(true);
     
     try {
-      await updateStudentProfile({
-        studentId: student.id,
-        userId: student.userId,
-        data: formData
-      });
+      await updateStudentProfile(student.id, formData);
       
       toast.success("Profile updated successfully");
       router.refresh();

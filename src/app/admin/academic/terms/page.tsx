@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -51,7 +51,7 @@ import {
   deleteTerm 
 } from "@/lib/actions/termsActions";
 
-export default function TermsPage() {
+function TermsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialAcademicYearId = searchParams.get('academicYearId');
@@ -418,5 +418,18 @@ export default function TermsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+
+export default function TermsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <TermsContent />
+    </Suspense>
   );
 }

@@ -12,6 +12,8 @@ import { BookOpen, FileText, Play, Users, Eye } from "lucide-react";
 import { SyllabusProgress } from "@/components/academic/syllabus-progress";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherSubjectsPage() {
   const { subjects } = await getTeacherSubjects();
 

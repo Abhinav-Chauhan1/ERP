@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { 
@@ -38,13 +38,14 @@ import {
   Save,
   Upload,
   FileUp,
-  Paperclip
+  Paperclip,
+  Loader2
 } from "lucide-react";
 import { getTeacherLessons, getSubjectSyllabusUnits, createLesson } from "@/lib/actions/teacherLessonsActions";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default function LessonsPage() {
+function LessonsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const subjectId = searchParams.get("subject");
@@ -627,5 +628,18 @@ export default function LessonsPage() {
         </>
       )}
     </div>
+  );
+}
+
+
+export default function LessonsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LessonsContent />
+    </Suspense>
   );
 }

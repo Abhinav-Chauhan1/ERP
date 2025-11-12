@@ -12,7 +12,7 @@ export async function getOverallSchoolPerformance(filters?: {
     if (filters?.termId) where.termId = filters.termId;
 
     const [results, attendance, students] = await Promise.all([
-      db.result.findMany({
+      db.examResult.findMany({
         where,
         include: {
           exam: {
@@ -22,9 +22,7 @@ export async function getOverallSchoolPerformance(filters?: {
           },
         },
       }),
-      db.attendance.findMany({
-        where: filters?.academicYearId ? { classId: filters.academicYearId } : {},
-      }),
+      db.studentAttendance.findMany({}),
       db.student.count(),
     ]);
 
@@ -73,7 +71,7 @@ export async function getTeacherPerformanceMetrics(filters?: {
       include: {
         results: true,
         subject: true,
-        teacher: {
+        creator: {
           include: {
             user: {
               select: {
@@ -87,8 +85,9 @@ export async function getTeacherPerformanceMetrics(filters?: {
     });
 
     const teacherMetrics = exams.reduce((acc: any, exam) => {
-      const teacherId = exam.teacherId;
-      const teacherName = `${exam.teacher.user.firstName} ${exam.teacher.user.lastName}`;
+      if (!exam.creator) return acc;
+      const teacherId = exam.creatorId!;
+      const teacherName = `${exam.creator.user.firstName} ${exam.creator.user.lastName}`;
       
       if (!acc[teacherId]) {
         acc[teacherId] = {
@@ -138,7 +137,7 @@ export async function getTeacherPerformanceMetrics(filters?: {
 // Get student progress tracking
 export async function getStudentProgressTracking(studentId: string) {
   try {
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where: { studentId },
       include: {
         exam: {
@@ -153,7 +152,7 @@ export async function getStudentProgressTracking(studentId: string) {
       },
     });
 
-    const attendance = await db.attendance.findMany({
+    const attendance = await db.studentAttendance.findMany({
       where: { studentId },
       orderBy: {
         date: "asc",
@@ -219,11 +218,18 @@ export async function getComparativeAnalysis(filters?: {
   compareBy?: "class" | "term" | "subject";
 }) {
   try {
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       include: {
         student: {
           include: {
-            class: true,
+            enrollments: {
+              where: {
+                status: "ACTIVE",
+              },
+              include: {
+                class: true,
+              },
+            },
           },
         },
         exam: {
@@ -240,7 +246,7 @@ export async function getComparativeAnalysis(filters?: {
 
     if (compareBy === "class") {
       comparisonData = results.reduce((acc: any, result) => {
-        const className = result.student.class?.name || "Unknown";
+        const className = result.student.enrollments[0]?.class?.name || "Unknown";
         if (!acc[className]) {
           acc[className] = { name: className, totalMarks: 0, count: 0 };
         }

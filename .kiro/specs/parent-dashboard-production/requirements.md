@@ -12,7 +12,7 @@ The Parent Dashboard Production feature aims to complete the existing parent por
 - **Communication System**: The messaging, announcements, and notifications subsystem
 - **Performance Tracker**: The subsystem displaying exam results and progress reports
 - **Meeting Scheduler**: The subsystem for scheduling and managing parent-teacher meetings
-- **Payment Gateway**: Third-party service integration for processing online payments (Stripe/Razorpay/PayPal)
+- **Payment Gateway**: Third-party service integration for processing online payments (Razorpay)
 - **Notification Center**: Centralized location for all system notifications
 - **Document Repository**: Storage system for student documents, reports, and certificates
 

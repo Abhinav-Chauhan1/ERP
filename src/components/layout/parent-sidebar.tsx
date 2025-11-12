@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { 
   Users, UserCheck, Calendar, FileText, 
   BarChart2, Clock, DollarSign, MessageSquare, 
   FolderOpen, Award, Settings, CalendarCheck,
-  LucideIcon, BookOpen, School, Bell, BookOpenCheck
+  LucideIcon, BookOpen, School, Bell, BookOpenCheck,
+  ChevronDown, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
@@ -20,7 +22,7 @@ interface SubMenuItem {
 interface RouteItem {
   label: string;
   icon: LucideIcon;
-  href: string;
+  href?: string; // Optional now - headings without href are non-clickable
   submenu?: SubMenuItem[];
 }
 
@@ -33,9 +35,8 @@ const routes: RouteItem[] = [
   {
     label: "My Children",
     icon: UserCheck,
-    href: "/parent/children",
     submenu: [
-      { label: "Overview", href: "/parent/children/overview", icon: Users },
+      { label: "Overview", href: "/parent/children", icon: Users },
       { label: "Academic Progress", href: "/parent/children/progress", icon: BookOpenCheck },
       { label: "Attendance", href: "/parent/children/attendance", icon: Clock },
     ]
@@ -43,8 +44,8 @@ const routes: RouteItem[] = [
   {
     label: "Academics",
     icon: BookOpen,
-    href: "/parent/academics",
     submenu: [
+      { label: "Overview", href: "/parent/academics", icon: BookOpen },
       { label: "Class Schedule", href: "/parent/academics/schedule", icon: Calendar },
       { label: "Subjects", href: "/parent/academics/subjects", icon: School },
       { label: "Homework", href: "/parent/academics/homework", icon: FileText },
@@ -53,8 +54,8 @@ const routes: RouteItem[] = [
   {
     label: "Performance",
     icon: BarChart2,
-    href: "/parent/performance",
     submenu: [
+      { label: "Overview", href: "/parent/performance", icon: BarChart2 },
       { label: "Exam Results", href: "/parent/performance/results", icon: Award },
       { label: "Progress Reports", href: "/parent/performance/reports", icon: FileText },
     ]
@@ -67,9 +68,8 @@ const routes: RouteItem[] = [
   {
     label: "Fees & Payments",
     icon: DollarSign,
-    href: "/parent/fees",
     submenu: [
-      { label: "Fee Overview", href: "/parent/fees/overview" },
+      { label: "Overview", href: "/parent/fees", icon: DollarSign },
       { label: "Payment History", href: "/parent/fees/history" },
       { label: "Make Payment", href: "/parent/fees/payment" },
     ]
@@ -77,8 +77,8 @@ const routes: RouteItem[] = [
   {
     label: "Communication",
     icon: MessageSquare,
-    href: "/parent/communication",
     submenu: [
+      { label: "Overview", href: "/parent/communication", icon: MessageSquare },
       { label: "Messages", href: "/parent/communication/messages" },
       { label: "Announcements", href: "/parent/communication/announcements" },
       { label: "Notifications", href: "/parent/communication/notifications" },
@@ -87,8 +87,8 @@ const routes: RouteItem[] = [
   {
     label: "Meetings",
     icon: CalendarCheck,
-    href: "/parent/meetings",
     submenu: [
+      { label: "Overview", href: "/parent/meetings", icon: CalendarCheck },
       { label: "Schedule Meeting", href: "/parent/meetings/schedule" },
       { label: "Upcoming Meetings", href: "/parent/meetings/upcoming" },
       { label: "Past Meetings", href: "/parent/meetings/history" },
@@ -113,6 +113,23 @@ const routes: RouteItem[] = [
 
 export function ParentSidebar() {
   const pathname = usePathname();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  
+  // Initialize open menus based on current path
+  const isMenuOpen = (route: RouteItem) => {
+    if (openMenus[route.label] !== undefined) {
+      return openMenus[route.label];
+    }
+    // Auto-open if current path matches any submenu item
+    return route.submenu?.some(item => pathname === item.href) || false;
+  };
+  
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
   
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
@@ -124,30 +141,49 @@ export function ParentSidebar() {
       </div>
       <div className="flex flex-col w-full">
         {routes.map((route) => {
-          // Check if this route or any of its submenu items is active
-          const isMainRouteActive = pathname === route.href;
+          // Check if any submenu items are active
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
+          const isMainRouteActive = route.href && pathname === route.href;
           const isRouteActive = isMainRouteActive || isSubRouteActive;
           
-          // Show submenu when on any related page
-          const showSubmenu = route.submenu && (
-            pathname.startsWith(route.href)
-          );
+          const showSubmenu = route.submenu && isMenuOpen(route);
           
           return (
-            <div key={route.href}>
-              <Link
-                href={route.href}
-                className={cn(
-                  "text-sm font-medium flex items-center py-3 px-6 transition-colors",
-                  isRouteActive ? 
-                    "text-green-700 bg-green-50 border-r-4 border-green-700" : 
-                    "text-gray-600 hover:text-green-700 hover:bg-green-50"
-                )}
-              >
-                <route.icon className="h-5 w-5 mr-3" />
-                {route.label}
-              </Link>
+            <div key={route.label}>
+              {route.href ? (
+                <Link
+                  href={route.href}
+                  className={cn(
+                    "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                    isRouteActive ? 
+                      "text-green-700 bg-green-50 border-r-4 border-green-700" : 
+                      "text-gray-600 hover:text-green-700 hover:bg-green-50"
+                  )}
+                >
+                  <route.icon className="h-5 w-5 mr-3" />
+                  {route.label}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => toggleMenu(route.label)}
+                  className={cn(
+                    "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors cursor-pointer",
+                    isRouteActive ? 
+                      "text-green-700 bg-green-50" : 
+                      "text-gray-600 hover:text-green-700 hover:bg-green-50"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <route.icon className="h-5 w-5 mr-3" />
+                    {route.label}
+                  </div>
+                  {route.submenu && (
+                    showSubmenu ? 
+                      <ChevronDown className="h-4 w-4" /> : 
+                      <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              )}
               
               {/* Submenu */}
               {showSubmenu && (

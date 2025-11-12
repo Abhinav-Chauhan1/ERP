@@ -7,6 +7,8 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getTeacherClasses } from "@/lib/actions/teacherClassesActions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherClassesPage() {
   const { classes } = await getTeacherClasses();
   

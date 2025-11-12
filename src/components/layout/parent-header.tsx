@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,30 +17,78 @@ import {
 } from "@/components/ui/select";
 
 import { ParentSidebar } from "./parent-sidebar";
+import { getTotalUnreadCount } from "@/lib/actions/parent-communication-actions";
+
+interface Child {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  class: string;
+  section: string;
+  isPrimary: boolean;
+}
 
 export function ParentHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [notifications, setNotifications] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
   const [selectedChild, setSelectedChild] = useState<string>("");
-  
-  // Mock data for children
-  const children = [
-    { id: "1", name: "John Smith", grade: "Grade 9" },
-    { id: "2", name: "Sarah Smith", grade: "Grade 6" }
-  ];
+  const [children, setChildren] = useState<Child[]>([]);
 
-  // Simulate fetching notifications count
+  // Fetch children data
+  const fetchChildren = async () => {
+    try {
+      const response = await fetch("/api/parent/children");
+      const data = await response.json();
+      
+      if (data.success && data.children) {
+        setChildren(data.children);
+        
+        // Set selected child from URL or default to first
+        const childIdFromUrl = searchParams.get("childId");
+        if (childIdFromUrl && data.children.some((c: Child) => c.id === childIdFromUrl)) {
+          setSelectedChild(childIdFromUrl);
+        } else if (data.children.length > 0) {
+          setSelectedChild(data.children[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching children:", error);
+    }
+  };
+
+  // Fetch real notifications count from database
+  const fetchNotificationsCount = async () => {
+    try {
+      const result = await getTotalUnreadCount();
+      if (result.success && result.data) {
+        setNotifications(result.data.total);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications count:", error);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
-    // This would be replaced with an actual API call
-    setNotifications(2);
-    
-    // Set first child as default
-    if (children.length > 0) {
-      setSelectedChild(children[0].id);
-    }
+    fetchChildren();
+    fetchNotificationsCount();
+
+    // Refresh notifications count every 30 seconds
+    const interval = setInterval(fetchNotificationsCount, 30000);
+    return () => clearInterval(interval);
   }, []);
+  
+  // Update selected child when URL changes
+  useEffect(() => {
+    const childIdFromUrl = searchParams.get("childId");
+    if (childIdFromUrl && children.some(c => c.id === childIdFromUrl)) {
+      setSelectedChild(childIdFromUrl);
+    }
+  }, [searchParams, children]);
 
   if (!isMounted) {
     return null;
@@ -83,30 +131,48 @@ export function ParentHeader() {
 
       <div className="flex items-center gap-4">
         {children.length > 0 && (
-          <Select value={selectedChild} onValueChange={setSelectedChild}>
+          <Select 
+            value={selectedChild} 
+            onValueChange={(value) => {
+              setSelectedChild(value);
+              
+              // Update URL with childId for relevant pages
+              if (pathname.includes('/parent/performance') || 
+                  pathname.includes('/parent/fees') || 
+                  pathname.includes('/parent/academics') ||
+                  pathname.includes('/parent/documents')) {
+                const newSearchParams = new URLSearchParams(searchParams.toString());
+                newSearchParams.set('childId', value);
+                router.push(`${pathname}?${newSearchParams.toString()}`);
+              }
+            }}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select child" />
             </SelectTrigger>
             <SelectContent>
               {children.map(child => (
                 <SelectItem key={child.id} value={child.id}>
-                  {child.name} - {child.grade}
+                  {child.name} - {child.class}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
         
-        <Link href="/parent/communication/notifications">
-          <Button variant="outline" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {notifications > 0 && (
-              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs">
-                {notifications}
-              </Badge>
-            )}
-          </Button>
-        </Link>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="relative"
+          onClick={() => router.push("/parent/communication/notifications")}
+        >
+          <Bell className="h-5 w-5" />
+          {notifications > 0 && (
+            <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs">
+              {notifications > 99 ? "99+" : notifications}
+            </Badge>
+          )}
+        </Button>
         <UserButton afterSignOutUrl="/login" />
       </div>
     </div>

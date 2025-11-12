@@ -47,7 +47,12 @@ export default function TeacherTimetablePage() {
       try {
         // Fetch teacher timetable data
         const { slots, weekdays: days } = await getTeacherTimetable();
-        setTimetableEvents(slots);
+        // Cast the type field to the correct union type
+        const typedSlots = slots.map((slot: any) => ({
+          ...slot,
+          type: (slot.type || "class") as "class" | "duty" | "meeting" | "break"
+        }));
+        setTimetableEvents(typedSlots);
         
         // Convert weekdays from DayOfWeek enum to title case strings
         const formattedDays = days.map((day: string) => {

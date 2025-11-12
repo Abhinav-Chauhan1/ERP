@@ -183,3 +183,35 @@ export async function deleteUser(id: string) {
     return { success: false, error: "Failed to delete user" };
   }
 }
+
+export async function getUsersForDropdown(role?: UserRole) {
+  try {
+    const users = await db.user.findMany({
+      where: role ? { role, active: true } : { active: true },
+      orderBy: [
+        { firstName: "asc" },
+        { lastName: "asc" },
+      ],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: users.map((user) => ({
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+      })),
+    };
+  } catch (error) {
+    console.error("Error fetching users for dropdown:", error);
+    return { success: false, error: "Failed to fetch users" };
+  }
+}

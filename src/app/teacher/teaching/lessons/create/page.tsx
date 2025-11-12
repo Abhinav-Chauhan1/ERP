@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Card, 
@@ -21,12 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Clock, BookOpen, Layers, Plus } from "lucide-react";
+import { FileText, Clock, BookOpen, Layers, Plus, Loader2 } from "lucide-react";
 import { createLesson, getSubjectSyllabusUnits } from "@/lib/actions/teacherLessonsActions";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default function CreateLessonPage() {
+function CreateLessonContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialSubjectId = searchParams.get("subject") || "";
@@ -259,5 +259,18 @@ export default function CreateLessonPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+
+export default function CreateLessonPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <CreateLessonContent />
+    </Suspense>
   );
 }

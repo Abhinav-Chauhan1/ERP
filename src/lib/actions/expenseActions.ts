@@ -72,9 +72,9 @@ export async function createExpense(data: any) {
         amount: parseFloat(data.amount),
         date: new Date(data.date),
         paymentMethod: data.paymentMethod || null,
-        vendor: data.vendor || null,
+        paidTo: data.vendor || null,
         receiptNumber: data.receiptNumber || null,
-        remarks: data.remarks || null,
+        
       },
     });
 
@@ -98,9 +98,9 @@ export async function updateExpense(id: string, data: any) {
         amount: parseFloat(data.amount),
         date: new Date(data.date),
         paymentMethod: data.paymentMethod || null,
-        vendor: data.vendor || null,
+        paidTo: data.vendor || null,
         receiptNumber: data.receiptNumber || null,
-        remarks: data.remarks || null,
+        
       },
     });
 
@@ -245,3 +245,5 @@ export async function getMonthlyExpenseSummary(year: number) {
     return { success: false, error: "Failed to fetch monthly summary" };
   }
 }
+
+

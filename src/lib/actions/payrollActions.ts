@@ -130,11 +130,8 @@ export async function generatePayroll(data: any) {
         basicSalary,
         allowances,
         deductions,
-        bonus,
-        grossSalary,
         netSalary,
         status: "PENDING",
-        generatedAt: new Date(),
       },
       include: {
         teacher: {
@@ -169,8 +166,6 @@ export async function updatePayroll(id: string, data: any) {
         basicSalary,
         allowances,
         deductions,
-        bonus,
-        grossSalary,
         netSalary,
         remarks: data.remarks || null,
       },
@@ -385,12 +380,9 @@ export async function bulkGeneratePayrolls(month: number, year: number, defaultS
               basicSalary: defaultSalary,
               allowances: 0,
               deductions: 0,
-              bonus: 0,
-              grossSalary: defaultSalary,
               netSalary: defaultSalary,
               status: "PENDING",
-              generatedAt: new Date(),
-            },
+              },
           });
           results.push(payroll);
         }
@@ -417,3 +409,6 @@ export async function bulkGeneratePayrolls(month: number, year: number, defaultS
     return { success: false, error: "Failed to bulk generate payrolls" };
   }
 }
+
+
+

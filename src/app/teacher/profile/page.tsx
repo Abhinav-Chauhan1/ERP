@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { getTeacherProfile } from "@/lib/actions/teacherProfileActions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherProfilePage() {
   const result = await getTeacherProfile();
 

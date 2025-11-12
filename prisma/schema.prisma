@@ -167,6 +167,49 @@ model Parent {
   // Relationships
   children       StudentParent[]
   meetings       ParentMeeting[] // Added missing relation
+  settings       ParentSettings?
+}
+
+model ParentSettings {
+  id                          String   @id @default(cuid())
+  parent                      Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId                    String   @unique
+  
+  // Notification preferences
+  emailNotifications          Boolean  @default(true)
+  smsNotifications            Boolean  @default(false)
+  pushNotifications           Boolean  @default(true)
+  feeReminders                Boolean  @default(true)
+  attendanceAlerts            Boolean  @default(true)
+  examResultNotifications     Boolean  @default(true)
+  announcementNotifications   Boolean  @default(true)
+  meetingReminders            Boolean  @default(true)
+  
+  // Communication preferences
+  preferredContactMethod      ContactMethod @default(EMAIL)
+  notificationFrequency       NotificationFrequency @default(IMMEDIATE)
+  
+  // Privacy settings
+  profileVisibility           ProfileVisibility @default(PRIVATE)
+  
+  // Appearance settings
+  theme                       Theme    @default(LIGHT)
+  language                    String   @default("en")
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
+
+enum ContactMethod {
+  EMAIL
+  SMS
+  BOTH
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  DAILY_DIGEST
+  WEEKLY_DIGEST
 }
 
 model StudentParent {
@@ -180,6 +223,8 @@ model StudentParent {
   updatedAt DateTime @updatedAt
 
   @@unique([studentId, parentId])
+  @@index([parentId])
+  @@index([studentId])
 }
 
 // Academic structure
@@ -521,6 +566,8 @@ model ExamResult {
   updatedAt   DateTime @updatedAt
 
   @@unique([examId, studentId])
+  @@index([studentId])
+  @@index([examId])
 }
 
 model GradeScale {
@@ -553,6 +600,9 @@ model Assignment {
   // Relationships
   submissions AssignmentSubmission[]
   classes     AssignmentClass[]
+
+  @@index([subjectId])
+  @@index([dueDate])
 }
 
 model AssignmentClass {
@@ -583,6 +633,8 @@ model AssignmentSubmission {
   updatedAt       DateTime   @default(now())
 
   @@unique([assignmentId, studentId])
+  @@index([studentId])
+  @@index([status])
 }
 
 enum SubmissionStatus {
@@ -630,6 +682,8 @@ model StudentAttendance {
   updatedAt       DateTime     @default(now())
 
   @@unique([studentId, date, sectionId])
+  @@index([studentId, date])
+  @@index([status])
 }
 
 model TeacherAttendance {
@@ -749,6 +803,10 @@ model FeePayment {
   remarks         String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @default(now())
+
+  @@index([studentId])
+  @@index([paymentDate])
+  @@index([status])
 }
 
 enum PaymentMethod {
@@ -873,6 +931,10 @@ model Message {
   attachments     String?  // URLs to attached files
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now())
+
+  @@index([recipientId, isRead])
+  @@index([senderId])
+  @@index([createdAt])
 }
 
 model Announcement {
@@ -888,6 +950,9 @@ model Announcement {
   attachments     String?  // URLs to attached files
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now())
+
+  @@index([isActive])
+  @@index([startDate])
 }
 
 model Notification {
@@ -902,6 +967,9 @@ model Notification {
   link            String?  // Optional link to navigate to
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
 }
 
 model ParentMeeting {
@@ -919,6 +987,11 @@ model ParentMeeting {
   notes           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now())
+
+  @@index([parentId])
+  @@index([teacherId])
+  @@index([scheduledDate])
+  @@index([status])
 }
 
 enum MeetingStatus {
@@ -957,6 +1030,10 @@ model Document {
   tags            String?      // Comma-separated tags
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @default(now())
+
+  @@index([userId])
+  @@index([documentTypeId])
+  @@index([createdAt])
 }
 
 // Event management
@@ -979,6 +1056,10 @@ model Event {
 
   // Relationships
   participants    EventParticipant[]
+
+  @@index([startDate])
+  @@index([status])
+  @@index([type])
 }
 
 enum EventStatus {
@@ -1002,6 +1083,8 @@ model EventParticipant {
   updatedAt       DateTime @default(now())
 
   @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
 }
 
 // System Settings Model

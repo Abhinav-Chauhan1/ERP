@@ -22,6 +22,8 @@ import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 import { getTeacherAttendanceOverview } from "@/lib/actions/teacherAttendanceOverviewActions";
 import { format } from "date-fns";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherAttendancePage() {
   const result = await getTeacherAttendanceOverview();
 

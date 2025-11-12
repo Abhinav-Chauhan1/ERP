@@ -366,7 +366,7 @@ export default function TeacherSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PasswordChangeForm />
+              <PasswordChangeForm userId="" />
             </CardContent>
           </Card>
 

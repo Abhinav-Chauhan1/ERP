@@ -51,7 +51,7 @@ export async function getNotificationById(id: string) {
     const notification = await db.notification.findUnique({
       where: { id },
       include: {
-        sender: {
+        user: {
           select: {
             firstName: true,
             lastName: true,
@@ -94,11 +94,10 @@ export async function createNotification(data: any) {
         message: data.message,
         type: data.type || "INFO",
         link: data.link || null,
-        recipientRole: data.recipientRole || "ALL",
-        senderId: dbUser.id,
+        userId: dbUser.id, // Notification belongs to a user
       },
       include: {
-        sender: {
+        user: {
           select: {
             firstName: true,
             lastName: true,
@@ -126,10 +125,9 @@ export async function updateNotification(id: string, data: any) {
         message: data.message,
         type: data.type,
         link: data.link || null,
-        recipientRole: data.recipientRole,
       },
       include: {
-        sender: {
+        user: {
           select: {
             firstName: true,
             lastName: true,
@@ -201,8 +199,7 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
         message: data.message,
         type: data.type || "INFO",
         link: data.link || null,
-        recipientRole: "CUSTOM", // Indicates custom recipient list
-        senderId: dbUser.id,
+        userId: dbUser.id, // Notification belongs to a user
       },
     });
 
@@ -279,3 +276,5 @@ export async function getUsersForNotifications(role?: string) {
     return { success: false, error: "Failed to fetch users" };
   }
 }
+
+

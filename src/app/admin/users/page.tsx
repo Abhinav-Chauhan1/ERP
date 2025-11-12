@@ -11,14 +11,14 @@ export default async function UsersPage() {
     getRecentUsers(10),
   ]);
 
-  const overview = overviewResult.success ? overviewResult.data : {
+  const overview = (overviewResult.success && overviewResult.data) ? overviewResult.data : {
     administrators: 0,
     teachers: 0,
     students: 0,
     parents: 0,
   };
 
-  const recentUsers = recentUsersResult.success ? recentUsersResult.data : [];
+  const recentUsers = (recentUsersResult.success && recentUsersResult.data) ? recentUsersResult.data : [];
 
   const usersOverview = [
     { 

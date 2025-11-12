@@ -99,7 +99,7 @@ const addParticipantSchema = z.object({
   role: z.string().default("ATTENDEE"),
 });
 
-export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +110,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addParticipantDialogOpen, setAddParticipantDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
+  const [eventId, setEventId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setEventId(p.id));
+  }, [params]);
   
   // Initialize edit form
   const editForm = useForm<EventFormDataWithRefinement>({
@@ -134,10 +140,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   
   // Fetch event data
   useEffect(() => {
+    if (!eventId) return;
+    
     const fetchEventData = async () => {
       setLoading(true);
       try {
-        const result = await getEvent(params.id);
+        const result = await getEvent(eventId);
         
         if (result.success && result.data) { // Add check for result.data
           setEvent(result.data);
@@ -161,7 +169,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           });
           
           // Also fetch participants if successful
-          fetchParticipants(params.id);
+          fetchParticipants(eventId);
         } else {
           toast.error(result.error || "Failed to fetch event");
           router.push("/admin/events");
@@ -176,7 +184,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     };
     
     fetchEventData();
-  }, [params.id, router, editForm]);
+  }, [eventId, router, editForm]);
   
   // Fetch participants
   const fetchParticipants = async (eventId: string) => {
@@ -223,7 +231,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Handle event update
   const handleUpdateEvent = async (data: EventFormDataWithRefinement) => {
     try {
-      const result = await updateEvent(params.id, data);
+      const result = await updateEvent(eventId, data);
       
       if (result.success && result.data) { // Add check for result.data
         toast.success("Event updated successfully");
@@ -243,7 +251,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Handle event deletion
   const handleDeleteEvent = async () => {
     try {
-      const result = await deleteEvent(params.id);
+      const result = await deleteEvent(eventId);
       
       if (result.success) {
         toast.success("Event deleted successfully");
@@ -262,7 +270,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Handle status update
   const handleStatusUpdate = async (newStatus: string) => {
     try {
-      const result = await updateEventStatus(params.id, newStatus as any);
+      const result = await updateEventStatus(eventId, newStatus as any);
       
       if (result.success && result.data) { // Add check for result.data
         toast.success(`Event status updated to ${newStatus}`);
@@ -282,7 +290,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const handleAddParticipant = async (data: z.infer<typeof addParticipantSchema>) => {
     try {
       const participantData: EventParticipantData = {
-        eventId: params.id,
+        eventId: eventId,
         userId: data.userId,
         role: data.role,
         attended: false,
@@ -296,7 +304,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         participantForm.reset();
         
         // Refresh participants list
-        fetchParticipants(params.id);
+        fetchParticipants(eventId);
       } else {
         toast.error(result.error || "Failed to add participant");
       }
@@ -309,13 +317,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Handle remove participant
   const handleRemoveParticipant = async (userId: string) => {
     try {
-      const result = await removeParticipant(params.id, userId);
+      const result = await removeParticipant(eventId, userId);
       
       if (result.success) {
         toast.success("Participant removed successfully");
         
         // Refresh participants list
-        fetchParticipants(params.id);
+        fetchParticipants(eventId);
       } else {
         toast.error(result.error || "Failed to remove participant");
       }
@@ -328,13 +336,13 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   // Handle mark attendance
   const handleMarkAttendance = async (userId: string, attended: boolean) => {
     try {
-      const result = await markAttendance(params.id, userId, attended);
+      const result = await markAttendance(eventId, userId, attended);
       
       if (result.success && result.data) { // Add check for result.data
         toast.success("Attendance recorded successfully");
         
         // Refresh participants list
-        fetchParticipants(params.id);
+        fetchParticipants(eventId);
       } else {
         toast.error(result.error || "Failed to record attendance");
       }

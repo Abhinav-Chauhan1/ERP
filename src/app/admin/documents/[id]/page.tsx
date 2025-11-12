@@ -75,17 +75,25 @@ const getFileIcon = (fileType?: string, size = 24) => {
   return <FileBox size={size} />;
 };
 
-export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentId, setDocumentId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setDocumentId(p.id));
+  }, [params]);
 
   // Fetch document data
   useEffect(() => {
+    if (!documentId) return;
+    
     const fetchDocument = async () => {
       setLoading(true);
-      const result = await getDocument(params.id);
+      const result = await getDocument(documentId);
       
       if (result.success && result.data) {
         setDocument(result.data);
@@ -97,11 +105,11 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
     };
 
     fetchDocument();
-  }, [params.id, router]);
+  }, [documentId, router]);
 
   // Handle document deletion
   const handleDeleteDocument = async () => {
-    const result = await deleteDocument(params.id);
+    const result = await deleteDocument(documentId);
     
     if (result.success) {
       toast.success("Document deleted successfully");

@@ -44,7 +44,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default async function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AssignmentDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [assignment, setAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -53,11 +53,19 @@ export default async function AssignmentDetailPage({ params }: { params: Promise
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [assignmentId, setAssignmentId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setAssignmentId(p.id));
+  }, [paramsPromise]);
 
   useEffect(() => {
+    if (!assignmentId) return;
+    
     const fetchAssignment = async () => {
       try {
-        const assignmentData = await getAssignmentDetails(params.id);
+        const assignmentData = await getAssignmentDetails(assignmentId);
         setAssignment(assignmentData);
         setSubmissions(assignmentData.submissions);
       } catch (err: any) {
@@ -69,7 +77,7 @@ export default async function AssignmentDetailPage({ params }: { params: Promise
     };
 
     fetchAssignment();
-  }, [params.id]);
+  }, [assignmentId]);
 
   const handleGradeUpdate = (submissionId: string, field: string, value: any) => {
     setSubmissions(prev => 
@@ -99,14 +107,14 @@ export default async function AssignmentDetailPage({ params }: { params: Promise
         return;
       }
 
-      const response = await updateAssignmentGrades(params.id, gradesToUpdate);
+      const response = await updateAssignmentGrades(assignmentId, gradesToUpdate);
       
       if (response.success) {
         toast.success("Grades saved successfully");
         setIsGrading(false);
         
         // Refresh assignment data to reflect the updated grades
-        const assignmentData = await getAssignmentDetails(params.id);
+        const assignmentData = await getAssignmentDetails(assignmentId);
         setAssignment(assignmentData);
         setSubmissions(assignmentData.submissions);
       } else {
@@ -187,7 +195,7 @@ export default async function AssignmentDetailPage({ params }: { params: Promise
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Export Results
           </Button>
-          <Link href={`/teacher/assessments/assignments/${params.id}/edit`}>
+          <Link href={`/teacher/assessments/assignments/${assignmentId}/edit`}>
             <Button>
               <Edit className="mr-2 h-4 w-4" /> Edit Assignment
             </Button>

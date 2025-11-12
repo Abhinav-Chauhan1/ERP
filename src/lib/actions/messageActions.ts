@@ -20,7 +20,7 @@ export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox"
       return { success: false, error: "User not found" };
     }
 
-    let messages;
+    let messages: any[];
 
     if (folder === "inbox") {
       messages = await db.message.findMany({

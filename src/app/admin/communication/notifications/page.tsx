@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
+import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -148,7 +148,6 @@ const userSegments = [
 ];
 
 export default function NotificationsPage() {
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [audienceFilter, setAudienceFilter] = useState("all");
@@ -189,19 +188,11 @@ export default function NotificationsPage() {
       if (result.success && result.data) {
         setNotifications(result.data);
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to load notifications",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to load notifications");
       }
     } catch (error) {
       console.error("Error loading notifications:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load notifications",
-        variant: "destructive",
-      });
+      toast.error("Failed to load notifications");
     } finally {
       setLoading(false);
     }
@@ -232,20 +223,13 @@ export default function NotificationsPage() {
   const handleCreateNotification = async () => {
     try {
       if (!formData.title || !formData.message) {
-        toast({
-          title: "Validation Error",
-          description: "Title and message are required",
-          variant: "destructive",
-        });
+        toast.error("Title and message are required");
         return;
       }
 
       const result = await createNotification(formData);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: "Notification sent successfully",
-        });
+        toast.success("Notification sent successfully");
         setCreateNotificationDialog(false);
         setFormData({
           title: "",
@@ -257,19 +241,11 @@ export default function NotificationsPage() {
         loadNotifications();
         loadStats();
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to send notification",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to send notification");
       }
     } catch (error) {
       console.error("Error creating notification:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send notification",
-        variant: "destructive",
-      });
+      toast.error("Failed to send notification");
     }
   };
 
@@ -277,26 +253,15 @@ export default function NotificationsPage() {
     try {
       const result = await deleteNotification(id);
       if (result.success) {
-        toast({
-          title: "Success",
-          description: "Notification deleted successfully",
-        });
+        toast.success("Notification deleted successfully");
         loadNotifications();
         loadStats();
       } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to delete notification",
-          variant: "destructive",
-        });
+        toast.error(result.error || "Failed to delete notification");
       }
     } catch (error) {
       console.error("Error deleting notification:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete notification",
-        variant: "destructive",
-      });
+      toast.error("Failed to delete notification");
     }
   };
 

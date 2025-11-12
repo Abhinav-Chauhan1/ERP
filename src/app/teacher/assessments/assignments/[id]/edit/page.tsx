@@ -41,11 +41,17 @@ import { getAssignmentDetails, getTeacherClasses, updateAssignment } from "@/lib
 import { toast } from "react-hot-toast";
 import { CldUploadWidget } from "next-cloudinary";
 
-export default async function EditAssignmentPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditAssignmentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assignmentId, setAssignmentId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setAssignmentId(p.id));
+  }, [paramsPromise]);
   
   // Form state
   const [title, setTitle] = useState("");
@@ -64,19 +70,21 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
 
   // Fetch data when component mounts
   useEffect(() => {
+    if (!assignmentId) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // Fetch assignment details
-        const assignmentData = await getAssignmentDetails(params.id);
+        const assignmentData = await getAssignmentDetails(assignmentId);
         
         // Populate form with existing data
         setTitle(assignmentData.title);
         setDescription(assignmentData.description || "");
         setSelectedSubject(assignmentData.subjectId);
         setSelectedClasses(assignmentData.classes.map((c: any) => c.id));
-        setAssignedDate(parseISO(assignmentData.assignedDate));
-        setDueDate(parseISO(assignmentData.dueDate));
+        setAssignedDate(assignmentData.assignedDate instanceof Date ? assignmentData.assignedDate : new Date(assignmentData.assignedDate));
+        setDueDate(assignmentData.dueDate instanceof Date ? assignmentData.dueDate : new Date(assignmentData.dueDate));
         setTotalMarks(assignmentData.totalMarks.toString());
         setInstructions(assignmentData.instructions || "");
         setAttachments(assignmentData.attachments || []);
@@ -96,7 +104,7 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
     };
     
     fetchData();
-  }, [params.id]);
+  }, [assignmentId]);
   
   const handleClassToggle = (classId: string) => {
     setSelectedClasses(prev => {
@@ -125,7 +133,7 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
     
     try {
       const formData = new FormData();
-      formData.append("id", params.id);
+      formData.append("id", assignmentId);
       formData.append("title", title);
       formData.append("description", description);
       formData.append("subjectId", selectedSubject);
@@ -140,7 +148,7 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
       
       if (response.success) {
         toast.success("Assignment updated successfully");
-        router.push(`/teacher/assessments/assignments/${params.id}`);
+        router.push(`/teacher/assessments/assignments/${assignmentId}`);
       } else {
         toast.error(response.error || "Failed to update assignment");
       }
@@ -192,7 +200,7 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => router.push(`/teacher/assessments/assignments/${params.id}`)}>
+        <Button variant="outline" size="icon" onClick={() => router.push(`/teacher/assessments/assignments/${assignmentId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold tracking-tight">Edit Assignment</h1>
@@ -415,7 +423,7 @@ export default async function EditAssignmentPage({ params }: { params: Promise<{
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => router.push(`/teacher/assessments/assignments/${params.id}`)}
+              onClick={() => router.push(`/teacher/assessments/assignments/${assignmentId}`)}
             >
               Cancel
             </Button>

@@ -12,16 +12,9 @@ export default async function AcademicPage() {
     getAcademicYears(),
   ]);
 
-  const overview = overviewResult.success ? overviewResult.data : {
-    academicYears: 0,
-    terms: 0,
-    departments: 0,
-    grades: 0,
-    curriculum: 0,
-    syllabus: 0,
-  };
+  const overview = overviewResult.success && overviewResult.data ? overviewResult.data : undefined;
 
-  const academicYears = yearsResult.success ? yearsResult.data : [];
+  const academicYears = yearsResult.success && yearsResult.data ? yearsResult.data : [];
 
   const academicSections = [
     {
@@ -29,42 +22,42 @@ export default async function AcademicPage() {
       icon: <Calendar className="h-5 w-5" />,
       description: "Manage school academic years",
       href: "/admin/academic/academic-years",
-      count: overview.academicYears
+      count: overview?.academicYears ?? 0
     },
     {
       title: "Terms",
       icon: <Clock className="h-5 w-5" />,
       description: "Manage terms and semesters",
       href: "/admin/academic/terms",
-      count: overview.terms
+      count: overview?.terms ?? 0
     },
     {
       title: "Departments",
       icon: <Building2 className="h-5 w-5" />,
       description: "Manage academic departments",
       href: "/admin/academic/departments",
-      count: overview.departments
+      count: overview?.departments ?? 0
     },
     {
       title: "Grades",
       icon: <GraduationCap className="h-5 w-5" />,
       description: "Configure grading system",
       href: "/admin/academic/grades",
-      count: overview.grades
+      count: overview?.grades ?? 0
     },
     {
       title: "Curriculum",
       icon: <BookOpen className="h-5 w-5" />,
       description: "Manage curriculum structure",
       href: "/admin/academic/curriculum",
-      count: overview.curriculum
+      count: overview?.curriculum ?? 0
     },
     {
       title: "Syllabus",
       icon: <FileText className="h-5 w-5" />,
       description: "Subject syllabuses",
       href: "/admin/academic/syllabus",
-      count: overview.syllabus
+      count: overview?.syllabus ?? 0
     },
   ];
 

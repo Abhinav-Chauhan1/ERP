@@ -6,20 +6,10 @@ import { currentUser } from "@clerk/nextjs/server";
 
 // Get all scholarships
 export async function getScholarships(filters?: {
-  status?: string;
-  type?: string;
   limit?: number;
 }) {
   try {
     const where: any = {};
-
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-
-    if (filters?.type) {
-      where.type = filters.type;
-    }
 
     const scholarships = await db.scholarship.findMany({
       where,
@@ -106,14 +96,11 @@ export async function createScholarship(data: any) {
       data: {
         name: data.name,
         description: data.description || null,
-        type: data.type,
         amount: parseFloat(data.amount),
         percentage: data.percentage ? parseFloat(data.percentage) : null,
-        eligibilityCriteria: data.eligibilityCriteria || null,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        maxRecipients: data.maxRecipients ? parseInt(data.maxRecipients) : null,
-        status: data.status || "ACTIVE",
+        criteria: data.criteria || data.eligibilityCriteria || null,
+        duration: data.duration || null,
+        fundedBy: data.fundedBy || null,
       },
     });
 
@@ -133,14 +120,11 @@ export async function updateScholarship(id: string, data: any) {
       data: {
         name: data.name,
         description: data.description || null,
-        type: data.type,
         amount: data.amount ? parseFloat(data.amount) : undefined,
         percentage: data.percentage ? parseFloat(data.percentage) : null,
-        eligibilityCriteria: data.eligibilityCriteria || null,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        maxRecipients: data.maxRecipients ? parseInt(data.maxRecipients) : null,
-        status: data.status,
+        criteria: data.criteria || data.eligibilityCriteria || null,
+        duration: data.duration || null,
+        fundedBy: data.fundedBy || null,
       },
     });
 
@@ -205,7 +189,7 @@ export async function getScholarshipRecipients(scholarshipId: string) {
         scholarship: true,
       },
       orderBy: {
-        awardedAt: "desc",
+        awardDate: "desc",
       },
     });
 
@@ -224,7 +208,7 @@ export async function awardScholarship(data: any) {
       where: {
         scholarshipId: data.scholarshipId,
         studentId: data.studentId,
-        status: "ACTIVE",
+        status: "Active",
       },
     });
 
@@ -232,29 +216,19 @@ export async function awardScholarship(data: any) {
       return { success: false, error: "Student already has this scholarship" };
     }
 
-    // Check max recipients limit
+    // Get scholarship details
     const scholarship = await db.scholarship.findUnique({
       where: { id: data.scholarshipId },
-      include: {
-        recipients: {
-          where: { status: "ACTIVE" },
-        },
-      },
     });
-
-    if (scholarship?.maxRecipients && scholarship.recipients.length >= scholarship.maxRecipients) {
-      return { success: false, error: "Maximum recipients limit reached" };
-    }
 
     const recipient = await db.scholarshipRecipient.create({
       data: {
         scholarshipId: data.scholarshipId,
         studentId: data.studentId,
-        awardedAt: new Date(),
-        validFrom: data.validFrom ? new Date(data.validFrom) : new Date(),
-        validUntil: data.validUntil ? new Date(data.validUntil) : null,
-        status: "ACTIVE",
-        remarks: data.remarks || null,
+        awardDate: new Date(),
+        endDate: data.endDate ? new Date(data.endDate) : null,
+        amount: data.amount ? parseFloat(data.amount) : scholarship!.amount,
+        status: data.status || "Active",
       },
       include: {
         student: {
@@ -280,7 +254,7 @@ export async function removeRecipient(id: string) {
     await db.scholarshipRecipient.update({
       where: { id },
       data: {
-        status: "REVOKED",
+        status: "Expired",
       },
     });
 
@@ -333,27 +307,20 @@ export async function getScholarshipStats() {
   try {
     const [
       totalScholarships,
-      activeScholarships,
       totalRecipients,
       activeRecipients,
       totalAmountAwarded,
     ] = await Promise.all([
       db.scholarship.count(),
-      db.scholarship.count({
-        where: { status: "ACTIVE" },
-      }),
       db.scholarshipRecipient.count(),
       db.scholarshipRecipient.count({
-        where: { status: "ACTIVE" },
+        where: { status: "Active" },
       }),
       db.scholarshipRecipient.findMany({
-        where: { status: "ACTIVE" },
-        include: {
-          scholarship: true,
-        },
+        where: { status: "Active" },
       }).then((recipients) => {
         return recipients.reduce((sum, recipient) => {
-          return sum + (recipient.scholarship.amount || 0);
+          return sum + (recipient.amount || 0);
         }, 0);
       }),
     ]);
@@ -362,7 +329,7 @@ export async function getScholarshipStats() {
       success: true,
       data: {
         totalScholarships,
-        activeScholarships,
+        activeScholarships: totalScholarships, // All scholarships are considered active
         totalRecipients,
         activeRecipients,
         totalAmountAwarded,

@@ -7,6 +7,8 @@ import { BookOpen, FileText, CheckCircle, Clock, AlertCircle } from "lucide-reac
 import { SyllabusProgress } from "@/components/academic/syllabus-progress";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TeacherSyllabusPage() {
   const { subjects } = await getTeacherSubjects();
 

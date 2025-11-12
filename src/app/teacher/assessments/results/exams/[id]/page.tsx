@@ -39,7 +39,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default async function ExamResultDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ExamResultDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [examData, setExamData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -47,12 +47,20 @@ export default async function ExamResultDetailPage({ params }: { params: Promise
   const [students, setStudents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [examId, setExamId] = useState<string>("");
+
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setExamId(p.id));
+  }, [paramsPromise]);
   
   useEffect(() => {
+    if (!examId) return;
+    
     const fetchExamDetails = async () => {
       setLoading(true);
       try {
-        const data = await getExamResultDetails(params.id);
+        const data = await getExamResultDetails(examId);
         setExamData(data);
         setStudents(data.students);
       } catch (error) {
@@ -64,7 +72,7 @@ export default async function ExamResultDetailPage({ params }: { params: Promise
     };
     
     fetchExamDetails();
-  }, [params.id]);
+  }, [examId]);
   
   const handleResultChange = (studentId: string, field: string, value: any) => {
     setStudents(prevStudents => 
@@ -87,14 +95,14 @@ export default async function ExamResultDetailPage({ params }: { params: Promise
         isAbsent: student.isAbsent
       }));
       
-      const response = await updateExamResults(params.id, results);
+      const response = await updateExamResults(examId, results);
       
       if (response.success) {
         toast.success("Results updated successfully");
         setIsEditing(false);
         
         // Refresh exam data
-        const data = await getExamResultDetails(params.id);
+        const data = await getExamResultDetails(examId);
         setExamData(data);
         setStudents(data.students);
       } else {
@@ -373,8 +381,8 @@ export default async function ExamResultDetailPage({ params }: { params: Promise
                         item.grade === 'D' ? 'bg-orange-500' :
                         'bg-red-500'
                       }`}></div>
-                      <span>{item.grade}: </span>
-                      <span className="font-medium">{item.count} students</span>
+                      <span>{String(item.grade)}: </span>
+                      <span className="font-medium">{String(item.count)} students</span>
                     </div>
                   ))}
                 </div>

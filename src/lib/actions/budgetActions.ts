@@ -131,22 +131,27 @@ export async function getBudgetUtilization(budgetId: string) {
   try {
     const budget = await db.budget.findUnique({
       where: { id: budgetId },
+      include: {
+        expenses: true,
+      },
     });
 
     if (!budget) {
       return { success: false, error: "Budget not found" };
     }
 
-    const utilizationPercentage = (budget.spentAmount / budget.allocatedAmount) * 100;
-    const isOverBudget = budget.spentAmount > budget.allocatedAmount;
+    // Calculate spent amount from expenses
+    const spentAmount = budget.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const utilizationPercentage = (spentAmount / budget.allocatedAmount) * 100;
+    const isOverBudget = spentAmount > budget.allocatedAmount;
 
     return {
       success: true,
       data: {
-        budget,
+        budget: { ...budget, spentAmount },
         utilizationPercentage: Math.round(utilizationPercentage * 100) / 100,
         isOverBudget,
-        overBudgetAmount: isOverBudget ? budget.spentAmount - budget.allocatedAmount : 0,
+        overBudgetAmount: isOverBudget ? spentAmount - budget.allocatedAmount : 0,
       },
     };
   } catch (error) {
@@ -190,11 +195,7 @@ export async function getBudgetStats(academicYearId?: string) {
     const budgets = await db.budget.findMany({
       where,
       include: {
-        expenses: {
-          where: {
-            status: "COMPLETED",
-          },
-        },
+        expenses: true,
       },
     });
 
@@ -208,6 +209,22 @@ export async function getBudgetStats(academicYearId?: string) {
       ? (totalSpent / totalAllocated._sum.allocatedAmount) * 100
       : 0;
 
+    // Calculate spent per category from budgets with expenses
+    const categoryStats = budgetsByCategory.map((item) => {
+      const categoryBudgets = budgets.filter(b => b.category === item.category);
+      const categorySpent = categoryBudgets.reduce((sum, budget) => {
+        return sum + budget.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
+      }, 0);
+      const allocated = item._sum.allocatedAmount || 0;
+      
+      return {
+        category: item.category,
+        allocated,
+        spent: categorySpent,
+        remaining: allocated - categorySpent,
+      };
+    });
+
     return {
       success: true,
       data: {
@@ -217,12 +234,7 @@ export async function getBudgetStats(academicYearId?: string) {
         totalSpent,
         totalRemaining,
         utilizationRate: Math.round(utilizationRate * 100) / 100,
-        budgetsByCategory: budgetsByCategory.map((item) => ({
-          category: item.category,
-          allocated: item._sum.allocatedAmount || 0,
-          spent: item._sum.spentAmount || 0,
-          remaining: (item._sum.allocatedAmount || 0) - (item._sum.spentAmount || 0),
-        })),
+        budgetsByCategory: categoryStats,
       },
     };
   } catch (error) {
@@ -232,37 +244,15 @@ export async function getBudgetStats(academicYearId?: string) {
 }
 
 // Update budget spent amount (called when expenses are added)
+// Note: Spent amounts are now calculated from expenses, so this function just revalidates
 export async function updateBudgetSpentAmount(category: string, year: number, amount: number) {
   try {
-    const budget = await db.budget.findFirst({
-      where: {
-        category,
-        year,
-        status: "ACTIVE",
-      },
-    });
-
-    if (!budget) {
-      // No budget found for this category/year, skip update
-      return { success: true, message: "No active budget found for this category" };
-    }
-
-    const newSpentAmount = budget.spentAmount + amount;
-    const newRemainingAmount = budget.allocatedAmount - newSpentAmount;
-
-    await db.budget.update({
-      where: { id: budget.id },
-      data: {
-        spentAmount: newSpentAmount,
-        remainingAmount: newRemainingAmount,
-      },
-    });
-
+    // Spent amounts are calculated from expenses relation, no need to update
     revalidatePath("/admin/finance/budget");
-    return { success: true, data: { newSpentAmount, newRemainingAmount } };
+    return { success: true, message: "Budget updated" };
   } catch (error) {
-    console.error("Error updating budget spent amount:", error);
-    return { success: false, error: "Failed to update budget spent amount" };
+    console.error("Error updating budget:", error);
+    return { success: false, error: "Failed to update budget" };
   }
 }
 
@@ -275,11 +265,7 @@ export async function getBudgetAlerts(academicYearId?: string) {
     const budgets = await db.budget.findMany({
       where,
       include: {
-        expenses: {
-          where: {
-            status: "COMPLETED",
-          },
-        },
+        expenses: true,
       },
     });
 
@@ -319,3 +305,4 @@ export async function getBudgetAlerts(academicYearId?: string) {
     return { success: false, error: "Failed to fetch budget alerts" };
   }
 }
+

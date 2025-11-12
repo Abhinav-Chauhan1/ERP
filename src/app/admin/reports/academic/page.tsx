@@ -82,8 +82,10 @@ export default function AcademicReportsPage() {
           result = await getClassRankings(filters);
           break;
         case "progress":
-          result = await getProgressTracking(filters);
-          break;
+          // Progress tracking requires a specific student ID
+          toast.error("Progress tracking requires selecting a specific student");
+          setLoading(false);
+          return;
         default:
           throw new Error("Invalid report type");
       }

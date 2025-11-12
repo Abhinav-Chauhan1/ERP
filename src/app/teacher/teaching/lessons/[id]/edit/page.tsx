@@ -27,10 +27,11 @@ import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/a
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default async function EditLessonPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditLessonPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paramLessonId, setParamLessonId] = useState<string>("");
   
   const [lessonId, setLessonId] = useState("");
   const [title, setTitle] = useState("");
@@ -44,13 +45,20 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
   const [subjects, setSubjects] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
 
+  // Unwrap params
+  useEffect(() => {
+    paramsPromise.then(p => setParamLessonId(p.id));
+  }, [paramsPromise]);
+
   // Fetch lesson data and subjects when the component mounts
   useEffect(() => {
+    if (!paramLessonId) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // Fetch lesson details
-        const lesson = await getTeacherLesson(params.id);
+        const lesson = await getTeacherLesson(paramLessonId);
         setLessonId(lesson.id);
         setTitle(lesson.title);
         setDescription(lesson.description || "");
@@ -79,7 +87,7 @@ export default async function EditLessonPage({ params }: { params: Promise<{ id:
     };
 
     fetchData();
-  }, [params.id, router]);
+  }, [paramLessonId, router]);
 
   // Fetch syllabus units when subject changes
   const fetchUnits = async (subjectId: string) => {

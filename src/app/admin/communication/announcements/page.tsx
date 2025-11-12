@@ -55,10 +55,10 @@ import {
 
 // Target audience options
 const audienceOptions = [
-  { value: "STUDENT", label: "Students" },
-  { value: "TEACHER", label: "Teachers" },
-  { value: "PARENT", label: "Parents" },
-  { value: "ADMIN", label: "Administrators" },
+  { value: "STUDENT" as const, label: "Students" },
+  { value: "TEACHER" as const, label: "Teachers" },
+  { value: "PARENT" as const, label: "Parents" },
+  { value: "ADMIN" as const, label: "Administrators" },
 ];
 
 export default function AnnouncementsPage() {

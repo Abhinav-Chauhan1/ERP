@@ -38,19 +38,19 @@ export default async function AdminDashboard() {
   ]);
 
   // Extract data with fallbacks
-  const stats = statsResult.success ? statsResult.data : {
+  const stats = (statsResult.success && statsResult.data) ? statsResult.data : {
     totalStudents: 0,
     totalTeachers: 0,
     totalClasses: 0,
     totalSubjects: 0,
   };
 
-  const studentAttendanceData = attendanceResult.success ? attendanceResult.data : [];
-  const examResultsData = examResultsResult.success ? examResultsResult.data : [];
-  const enrollmentDistributionData = enrollmentResult.success ? enrollmentResult.data : [];
-  const recentActivities = activitiesResult.success ? activitiesResult.data : [];
-  const upcomingEvents = eventsResult.success ? eventsResult.data : [];
-  const notifications = notificationsResult.success ? notificationsResult.data : [];
+  const studentAttendanceData = (attendanceResult.success && attendanceResult.data) ? attendanceResult.data : [];
+  const examResultsData = (examResultsResult.success && examResultsResult.data) ? examResultsResult.data : [];
+  const enrollmentDistributionData = (enrollmentResult.success && enrollmentResult.data) ? enrollmentResult.data : [];
+  const recentActivities = (activitiesResult.success && activitiesResult.data) ? activitiesResult.data : [];
+  const upcomingEvents = (eventsResult.success && eventsResult.data) ? eventsResult.data : [];
+  const notifications = (notificationsResult.success && notificationsResult.data) ? notificationsResult.data : [];
   return (
     <>
       <div className="flex flex-col gap-4">

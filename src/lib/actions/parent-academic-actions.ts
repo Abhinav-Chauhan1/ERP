@@ -129,7 +129,7 @@ let subjects: Subject[] = [];
     }));
   }
   
-  // Get syllabus information
+  // Get syllabus information with curriculum completion
   const syllabusItems = await db.syllabus.findMany({
     where: {
       subject: {
@@ -151,6 +151,33 @@ let subjects: Subject[] = [];
         }
       }
     }
+  });
+  
+  // Calculate curriculum completion for each subject
+  const curriculumCompletion = syllabusItems.map(syllabus => {
+    const totalUnits = syllabus.units.length;
+    const totalLessons = syllabus.units.reduce((sum, unit) => sum + unit.lessons.length, 0);
+    
+    // For now, we'll calculate completion based on current date vs academic year
+    // In a real system, this would track actual lesson completion
+    const academicYearStart = currentEnrollment?.enrollDate || new Date();
+    const now = new Date();
+    const academicYearEnd = new Date(academicYearStart);
+    academicYearEnd.setFullYear(academicYearEnd.getFullYear() + 1);
+    
+    const totalDays = Math.floor((academicYearEnd.getTime() - academicYearStart.getTime()) / (1000 * 60 * 60 * 24));
+    const daysPassed = Math.floor((now.getTime() - academicYearStart.getTime()) / (1000 * 60 * 60 * 24));
+    const completionPercentage = Math.min(100, Math.max(0, Math.floor((daysPassed / totalDays) * 100)));
+    
+    return {
+      subjectId: syllabus.subject.id,
+      subjectName: syllabus.subject.name,
+      totalUnits,
+      totalLessons,
+      completionPercentage,
+      completedUnits: Math.floor((completionPercentage / 100) * totalUnits),
+      completedLessons: Math.floor((completionPercentage / 100) * totalLessons)
+    };
   });
   
   // Get recent homework/assignments
@@ -212,7 +239,366 @@ let subjects: Subject[] = [];
     subjects,
     syllabusItems,
     assignments,
-    timetable
+    timetable,
+    curriculumCompletion
+  };
+}
+
+/**
+ * Get class schedule for a child (weekly timetable)
+ */
+export async function getClassSchedule(childId: string) {
+  // Verify the current user is a parent
+  const clerkUser = await currentUser();
+  
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.PARENT) {
+    redirect("/login");
+  }
+  
+  const parent = await db.parent.findUnique({
+    where: {
+      userId: dbUser.id
+    }
+  });
+
+  if (!parent) {
+    redirect("/login");
+  }
+  
+  // Verify the child belongs to this parent
+  const parentChild = await db.studentParent.findFirst({
+    where: {
+      parentId: parent.id,
+      studentId: childId
+    }
+  });
+  
+  if (!parentChild) {
+    redirect("/parent");
+  }
+  
+  // Get student's current enrollment
+  const enrollment = await db.classEnrollment.findFirst({
+    where: {
+      studentId: childId,
+      status: "ACTIVE"
+    },
+    include: {
+      class: true,
+      section: true
+    },
+    orderBy: {
+      enrollDate: 'desc'
+    }
+  });
+  
+  if (!enrollment) {
+    return {
+      schedule: [],
+      enrollment: null
+    };
+  }
+  
+  // Get timetable slots for the class and section
+  const schedule = await db.timetableSlot.findMany({
+    where: {
+      classId: enrollment.classId,
+      sectionId: enrollment.sectionId
+    },
+    include: {
+      subjectTeacher: {
+        include: {
+          subject: true,
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
+            }
+          }
+        }
+      },
+      room: true
+    },
+    orderBy: [
+      { day: 'asc' },
+      { startTime: 'asc' }
+    ]
+  });
+  
+  return {
+    schedule,
+    enrollment
+  };
+}
+
+/**
+ * Get homework/assignments for a child with status filtering
+ */
+export async function getHomework(
+  childId: string, 
+  filters?: {
+    status?: 'PENDING' | 'SUBMITTED' | 'LATE' | 'GRADED' | 'RETURNED' | 'ALL';
+    subjectId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }
+) {
+  // Verify the current user is a parent
+  const clerkUser = await currentUser();
+  
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.PARENT) {
+    redirect("/login");
+  }
+  
+  const parent = await db.parent.findUnique({
+    where: {
+      userId: dbUser.id
+    }
+  });
+
+  if (!parent) {
+    redirect("/login");
+  }
+  
+  // Verify the child belongs to this parent
+  const parentChild = await db.studentParent.findFirst({
+    where: {
+      parentId: parent.id,
+      studentId: childId
+    }
+  });
+  
+  if (!parentChild) {
+    redirect("/parent");
+  }
+  
+  // Get student's current enrollment
+  const enrollment = await db.classEnrollment.findFirst({
+    where: {
+      studentId: childId,
+      status: "ACTIVE"
+    },
+    orderBy: {
+      enrollDate: 'desc'
+    }
+  });
+  
+  if (!enrollment) {
+    return {
+      homework: [],
+      enrollment: null
+    };
+  }
+  
+  // Build where clause for assignments
+  const whereClause: any = {
+    classes: {
+      some: {
+        classId: enrollment.classId
+      }
+    }
+  };
+  
+  // Add subject filter if provided
+  if (filters?.subjectId) {
+    whereClause.subjectId = filters.subjectId;
+  }
+  
+  // Add date range filters if provided
+  if (filters?.fromDate) {
+    whereClause.dueDate = {
+      ...whereClause.dueDate,
+      gte: filters.fromDate
+    };
+  }
+  
+  if (filters?.toDate) {
+    whereClause.dueDate = {
+      ...whereClause.dueDate,
+      lte: filters.toDate
+    };
+  }
+  
+  // Get assignments with submissions
+  const assignments = await db.assignment.findMany({
+    where: whereClause,
+    include: {
+      subject: true,
+      submissions: {
+        where: {
+          studentId: childId
+        }
+      }
+    },
+    orderBy: {
+      dueDate: 'desc'
+    }
+  });
+  
+  // Filter by status if provided
+  let filteredAssignments = assignments;
+  if (filters?.status && filters.status !== 'ALL') {
+    filteredAssignments = assignments.filter(assignment => {
+      const submission = assignment.submissions[0];
+      
+      if (!submission) {
+        // No submission - check if it's overdue
+        const now = new Date();
+        const isOverdue = assignment.dueDate < now;
+        return filters.status === 'PENDING' || (filters.status === 'LATE' && isOverdue);
+      }
+      
+      return submission.status === filters.status;
+    });
+  }
+  
+  return {
+    homework: filteredAssignments,
+    enrollment
+  };
+}
+
+/**
+ * Get full timetable for a child for a specific week
+ */
+export async function getFullTimetable(childId: string, week?: Date) {
+  // Verify the current user is a parent
+  const clerkUser = await currentUser();
+  
+  if (!clerkUser) {
+    redirect("/login");
+  }
+  
+  // Get user from database
+  const dbUser = await db.user.findUnique({
+    where: {
+      clerkId: clerkUser.id
+    }
+  });
+  
+  if (!dbUser || dbUser.role !== UserRole.PARENT) {
+    redirect("/login");
+  }
+  
+  const parent = await db.parent.findUnique({
+    where: {
+      userId: dbUser.id
+    }
+  });
+
+  if (!parent) {
+    redirect("/login");
+  }
+  
+  // Verify the child belongs to this parent
+  const parentChild = await db.studentParent.findFirst({
+    where: {
+      parentId: parent.id,
+      studentId: childId
+    }
+  });
+  
+  if (!parentChild) {
+    redirect("/parent");
+  }
+  
+  // Get student's current enrollment
+  const enrollment = await db.classEnrollment.findFirst({
+    where: {
+      studentId: childId,
+      status: "ACTIVE"
+    },
+    include: {
+      class: true,
+      section: true
+    },
+    orderBy: {
+      enrollDate: 'desc'
+    }
+  });
+  
+  if (!enrollment) {
+    return {
+      timetable: [],
+      enrollment: null,
+      weekStart: week || new Date(),
+      weekEnd: week || new Date()
+    };
+  }
+  
+  // Calculate week start and end dates
+  const weekStart = week ? new Date(week) : new Date();
+  weekStart.setHours(0, 0, 0, 0);
+  const dayOfWeek = weekStart.getDay();
+  const diff = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+  weekStart.setDate(diff);
+  
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+  weekEnd.setHours(23, 59, 59, 999);
+  
+  // Get timetable slots for the class and section
+  const timetable = await db.timetableSlot.findMany({
+    where: {
+      classId: enrollment.classId,
+      sectionId: enrollment.sectionId
+    },
+    include: {
+      subjectTeacher: {
+        include: {
+          subject: true,
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true
+                }
+              }
+            }
+          }
+        }
+      },
+      room: true,
+      timetable: true
+    },
+    orderBy: [
+      { day: 'asc' },
+      { startTime: 'asc' }
+    ]
+  });
+  
+  return {
+    timetable,
+    enrollment,
+    weekStart,
+    weekEnd
   };
 }
 

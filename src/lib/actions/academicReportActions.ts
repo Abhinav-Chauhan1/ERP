@@ -15,7 +15,7 @@ export async function getStudentPerformanceReport(filters?: {
     if (filters?.studentId) where.studentId = filters.studentId;
     if (filters?.termId) where.termId = filters.termId;
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         student: {
@@ -26,7 +26,7 @@ export async function getStudentPerformanceReport(filters?: {
                 lastName: true,
               },
             },
-            class: true,
+            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
           },
         },
         exam: {
@@ -77,7 +77,7 @@ export async function getGradeDistribution(filters?: {
     const where: any = {};
     if (filters?.termId) where.termId = filters.termId;
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         exam: {
@@ -127,7 +127,7 @@ export async function getSubjectWisePerformance(filters?: {
     const where: any = {};
     if (filters?.termId) where.termId = filters.termId;
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         exam: {
@@ -181,7 +181,7 @@ export async function getClassRankings(filters?: {
     const where: any = {};
     if (filters?.termId) where.termId = filters.termId;
 
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where,
       include: {
         student: {
@@ -192,7 +192,7 @@ export async function getClassRankings(filters?: {
                 lastName: true,
               },
             },
-            class: true,
+            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
           },
         },
         exam: true,
@@ -206,7 +206,7 @@ export async function getClassRankings(filters?: {
         acc[studentId] = {
           studentId,
           studentName: `${result.student.user.firstName} ${result.student.user.lastName}`,
-          className: result.student.class?.name || "N/A",
+          className: result.student.enrollments?.[0]?.class?.name || "N/A",
           totalMarks: 0,
           examCount: 0,
         };
@@ -241,7 +241,7 @@ export async function getClassRankings(filters?: {
 // Get progress tracking
 export async function getProgressTracking(studentId: string) {
   try {
-    const results = await db.result.findMany({
+    const results = await db.examResult.findMany({
       where: { studentId },
       include: {
         exam: {
@@ -285,3 +285,4 @@ export async function getProgressTracking(studentId: string) {
     return { success: false, error: "Failed to fetch progress tracking" };
   }
 }
+
