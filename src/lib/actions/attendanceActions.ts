@@ -286,6 +286,7 @@ export async function getClassSectionsForDropdown() {
         sections: cls.sections.map((section) => ({
           id: section.id,
           name: section.name,
+          fullName: `${cls.name} - ${section.name}`,
         })),
       })),
     };
@@ -297,43 +298,29 @@ export async function getClassSectionsForDropdown() {
 
 export async function getStudentAttendanceByDate(date: Date, sectionId?: string) {
   try {
+    if (!sectionId) {
+      return { success: false, error: "Section ID is required" };
+    }
+
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const whereClause: any = {
-      date: {
-        gte: startOfDay,
-        lte: endOfDay,
+    // Get all students enrolled in the section
+    const enrollments = await db.classEnrollment.findMany({
+      where: {
+        sectionId: sectionId,
+        status: "ACTIVE",
       },
-    };
-
-    if (sectionId) {
-      whereClause.sectionId = sectionId;
-    }
-
-    const attendanceRecords = await db.studentAttendance.findMany({
-      where: whereClause,
       include: {
         student: {
           include: {
             user: true,
-            enrollments: {
-              where: { status: "ACTIVE" },
-              include: {
-                class: true,
-                section: true,
-              },
-              take: 1,
-            },
           },
         },
-        section: {
-          include: {
-            class: true,
-          },
-        },
+        class: true,
+        section: true,
       },
       orderBy: {
         student: {
@@ -344,25 +331,52 @@ export async function getStudentAttendanceByDate(date: Date, sectionId?: string)
       },
     });
 
+    // Get attendance records for this date and section
+    const attendanceRecords = await db.studentAttendance.findMany({
+      where: {
+        sectionId: sectionId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+    });
+
+    // Create a map of student attendance
+    const attendanceMap = new Map(
+      attendanceRecords.map((record) => [
+        record.studentId,
+        {
+          id: record.id,
+          status: record.status,
+          reason: record.reason,
+        },
+      ])
+    );
+
+    // Combine enrollment data with attendance data
+    const studentsWithAttendance = enrollments.map((enrollment) => {
+      const attendance = attendanceMap.get(enrollment.studentId);
+      
+      return {
+        id: enrollment.studentId,
+        studentId: enrollment.studentId,
+        name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
+        avatar: enrollment.student.user.avatar,
+        rollNumber: enrollment.rollNumber,
+        admissionId: enrollment.student.admissionId,
+        class: enrollment.class.name,
+        section: enrollment.section.name,
+        status: attendance?.status || "PRESENT",
+        reason: attendance?.reason || "",
+        attendanceId: attendance?.id || null,
+        date: date,
+      };
+    });
+
     return {
       success: true,
-      data: attendanceRecords.map((record) => ({
-        id: record.id,
-        studentId: record.studentId,
-        studentName: `${record.student.user.firstName} ${record.student.user.lastName}`,
-        admissionId: record.student.admissionId,
-        class:
-          record.student.enrollments.length > 0
-            ? record.student.enrollments[0].class.name
-            : "N/A",
-        section:
-          record.student.enrollments.length > 0
-            ? record.student.enrollments[0].section.name
-            : "N/A",
-        status: record.status,
-        reason: record.reason,
-        date: record.date,
-      })),
+      data: studentsWithAttendance,
     };
   } catch (error) {
     console.error("Error fetching student attendance by date:", error);

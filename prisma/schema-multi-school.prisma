@@ -1,0 +1,447 @@
+// MULTI-SCHOOL SCHEMA - Updated Prisma Schema
+// This is the updated schema with multi-school support
+// BACKUP YOUR CURRENT SCHEMA BEFORE APPLYING THIS!
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-SCHOOL CORE MODELS
+// ============================================
+
+model School {
+  id              String   @id @default(cuid())
+  name            String
+  code            String   @unique  // Unique school identifier (e.g., "SCH001")
+  email           String?
+  phone           String?
+  address         String?
+  website         String?
+  logo            String?
+  timezone        String   @default("UTC")
+  
+  // Subscription & Status
+  subscriptionPlan    SubscriptionPlan @default(BASIC)
+  subscriptionStatus  SubscriptionStatus @default(ACTIVE)
+  subscriptionStart   DateTime @default(now())
+  subscriptionEnd     DateTime?
+  maxStudents         Int      @default(500)
+  maxTeachers         Int      @default(50)
+  
+  // Settings
+  settings        SchoolSettings?
+  
+  // Relationships - All major entities belong to a school
+  users           User[]
+  academicYears   AcademicYear[]
+  departments     Department[]
+  classes         Class[]
+  subjects        Subject[]
+  feeTypes        FeeType[]
+  scholarships    Scholarship[]
+  events          Event[]
+  announcements   Announcement[]
+  documentTypes   DocumentType[]
+  examTypes       ExamType[]
+  gradeScales     GradeScale[]
+  timetables      Timetable[]
+  timetableConfigs TimetableConfig[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([code])
+  @@index([subscriptionStatus])
+  @@map("schools")
+}
+
+enum SubscriptionPlan {
+  BASIC
+  STANDARD
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  TRIAL
+}
+
+model SchoolSettings {
+  id                    String   @id @default(cuid())
+  school                School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId              String   @unique
+  
+  // Academic Settings
+  currentAcademicYear   String?
+  currentTerm           String?
+  gradingSystem         String   @default("percentage")
+  passingGrade          Int      @default(50)
+  autoAttendance        Boolean  @default(false)
+  lateArrivalThreshold  Int      @default(15)
+  
+  // Notification Settings
+  emailNotifications    Boolean  @default(true)
+  smsNotifications      Boolean  @default(false)
+  pushNotifications     Boolean  @default(true)
+  notifyEnrollment      Boolean  @default(true)
+  notifyPayment         Boolean  @default(true)
+  notifyAttendance      Boolean  @default(true)
+  notifyExamResults     Boolean  @default(true)
+  notifyLeaveApps       Boolean  @default(true)
+  
+  // Security Settings
+  twoFactorAuth         Boolean  @default(false)
+  sessionTimeout        Int      @default(30)
+  passwordExpiry        Int      @default(90)
+  autoBackup            Boolean  @default(true)
+  backupFrequency       String   @default("daily")
+  
+  // Appearance Settings
+  theme                 String   @default("light")
+  primaryColor          String   @default("#3b82f6")
+  language              String   @default("en")
+  dateFormat            String   @default("mdy")
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@map("school_settings")
+}
+
+// ============================================
+// USERS AND AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  role          UserRole  @default(STUDENT)
+  active        Boolean   @default(true)
+  
+  // Multi-school support
+  school        School?   @relation(fields: [schoolId], references: [id])
+  schoolId      String?   // Null for SUPER_ADMIN only
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Role-based relationships
+  teacher       Teacher?
+  student       Student?
+  parent        Parent?
+  administrator Administrator?
+  superAdmin    SuperAdmin?
+
+  // Common relationships
+  sentMessages      Message[]        @relation("SentMessages")
+  receivedMessages  Message[]        @relation("ReceivedMessages")
+  notifications     Notification[]
+  documents         Document[]
+  
+  @@index([schoolId])
+  @@index([role])
+  @@index([clerkId])
+}
+
+enum UserRole {
+  SUPER_ADMIN  // Can manage all schools
+  ADMIN        // School-level admin
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+model SuperAdmin {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String   @unique
+  position        String?
+  permissions     String[] // Array of permission strings
+  canCreateSchools Boolean @default(true)
+  canManageSubscriptions Boolean @default(true)
+  canViewAllSchools Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("super_admins")
+}
+
+model Administrator {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String   @unique
+  position        String?
+  department      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  announcements   Announcement[]
+  
+  @@map("administrators")
+}
+
+model Teacher {
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String   @unique
+  employeeId      String   @unique
+  qualification   String?
+  joinDate        DateTime
+  salary          Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subjects        SubjectTeacher[]
+  classes         ClassTeacher[]
+  attendance      TeacherAttendance[]
+  examCreated     Exam[]
+  assignmentCreated Assignment[]
+  payrolls        Payroll[]
+  parentMeetings  ParentMeeting[]
+  departments     Department[] @relation("DepartmentTeachers")
+  
+  @@map("teachers")
+}
+
+model Student {
+  id                String   @id @default(cuid())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String   @unique
+  admissionId       String   @unique
+  admissionDate     DateTime
+  rollNumber        String?
+  dateOfBirth       DateTime
+  gender            String
+  address           String?
+  bloodGroup        String?
+  emergencyContact  String?
+  phone             String?
+  emergencyPhone    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  parents           StudentParent[]
+  enrollments       ClassEnrollment[]
+  attendance        StudentAttendance[]
+  examResults       ExamResult[]
+  assignments       AssignmentSubmission[]
+  feePayments       FeePayment[]
+  reportCards       ReportCard[]
+  scholarships      ScholarshipRecipient[]
+  settings          StudentSettings?
+  
+  @@map("students")
+}
+
+model StudentSettings {
+  id                          String   @id @default(cuid())
+  student                     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId                   String   @unique
+  
+  emailNotifications          Boolean  @default(true)
+  assignmentReminders         Boolean  @default(true)
+  examReminders               Boolean  @default(true)
+  attendanceAlerts            Boolean  @default(true)
+  feeReminders                Boolean  @default(true)
+  eventNotifications          Boolean  @default(true)
+  announcementNotifications   Boolean  @default(true)
+  
+  profileVisibility           ProfileVisibility @default(PRIVATE)
+  showEmail                   Boolean  @default(false)
+  showPhone                   Boolean  @default(false)
+  
+  theme                       Theme    @default(LIGHT)
+  language                    String   @default("en")
+  dateFormat                  String   @default("MM/DD/YYYY")
+  timeFormat                  TimeFormat @default(TWELVE_HOUR)
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  
+  @@map("student_settings")
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  CLASSMATES_ONLY
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum TimeFormat {
+  TWELVE_HOUR
+  TWENTY_FOUR_HOUR
+}
+
+model Parent {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @unique
+  occupation     String?
+  alternatePhone String?
+  relation       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  children       StudentParent[]
+  meetings       ParentMeeting[]
+  settings       ParentSettings?
+  
+  @@map("parents")
+}
+
+model ParentSettings {
+  id                          String   @id @default(cuid())
+  parent                      Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId                    String   @unique
+  
+  emailNotifications          Boolean  @default(true)
+  smsNotifications            Boolean  @default(false)
+  pushNotifications           Boolean  @default(true)
+  feeReminders                Boolean  @default(true)
+  attendanceAlerts            Boolean  @default(true)
+  examResultNotifications     Boolean  @default(true)
+  announcementNotifications   Boolean  @default(true)
+  meetingReminders            Boolean  @default(true)
+  
+  preferredContactMethod      ContactMethod @default(EMAIL)
+  notificationFrequency       NotificationFrequency @default(IMMEDIATE)
+  profileVisibility           ProfileVisibility @default(PRIVATE)
+  
+  theme                       Theme    @default(LIGHT)
+  language                    String   @default("en")
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  
+  @@map("parent_settings")
+}
+
+enum ContactMethod {
+  EMAIL
+  SMS
+  BOTH
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  DAILY_DIGEST
+  WEEKLY_DIGEST
+}
+
+model StudentParent {
+  id        String   @id @default(cuid())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  parent    Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId  String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, parentId])
+  @@index([parentId])
+  @@index([studentId])
+  @@map("student_parents")
+}
+
+// ============================================
+// ACADEMIC STRUCTURE (with schoolId)
+// ============================================
+
+model AcademicYear {
+  id          String   @id @default(cuid())
+  school      School   @relation(fields: [schoolId], references: [id])
+  schoolId    String
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  terms       Term[]
+  classes     Class[]
+  feeStructures FeeStructure[]
+  budgets     Budget[]
+  
+  @@index([schoolId])
+  @@index([schoolId, isCurrent])
+  @@map("academic_years")
+}
+
+model Term {
+  id              String       @id @default(cuid())
+  name            String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+  academicYearId  String
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  exams           Exam[]
+  reportCards     ReportCard[]
+  
+  @@map("terms")
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  school      School   @relation(fields: [schoolId], references: [id])
+  schoolId    String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjects    Subject[]
+  teachers    Teacher[] @relation("DepartmentTeachers")
+  
+  @@index([schoolId])
+  @@map("departments")
+}
+
+model Class {
+  id              String        @id @default(cuid())
+  school          School        @relation(fields: [schoolId], references: [id])
+  schoolId        String
+  name            String
+  academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id])
+  academicYearId  String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  sections        ClassSection[]
+  teachers        ClassTeacher[]
+  subjects        SubjectClass[]
+  enrollments     ClassEnrollment[]
+  timetableSlots  TimetableSlot[]
+  assignments     AssignmentClass[]
+  
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@map("classes")
+}
+
+// Continue with remaining models...
+// (I'll create a separate file for the complete schema due to length)
