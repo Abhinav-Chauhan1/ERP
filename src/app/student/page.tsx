@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AttendanceOverview } from "@/components/student/attendance-overview";
 import { UpcomingAssessments } from "@/components/student/upcoming-assessments";
 import { SubjectPerformance } from "@/components/student/subject-performance";
@@ -15,46 +15,55 @@ import {
   getStudentTodaySchedule 
 } from "@/lib/actions/student-actions";
 
-export default async function StudentDashboard() {
-  // Get current user directly from Clerk
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
-    redirect("/login");
-  }
-  
-  // Get user from database
-  const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
-  });
-  
-  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
-    redirect("/login");
-  }
-  
-  // Fetch dashboard data
-  const { 
-    student,
-    attendancePercentage,
-    upcomingExams,
-    pendingAssignments,
-    recentAnnouncements 
-  } = await getStudentDashboardData();
+export default function StudentDashboard() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
 
-  if (!student) {
-    redirect("/login");
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const dashboardData = await getStudentDashboardData();
+        
+        if (!dashboardData.student) {
+          router.push("/login");
+          return;
+        }
+
+        const [subjectPerformance, todaySchedule] = await Promise.all([
+          getStudentSubjectPerformance(dashboardData.student.id),
+          getStudentTodaySchedule(dashboardData.student.id)
+        ]);
+
+        setData({
+          ...dashboardData,
+          subjectPerformance,
+          todaySchedule
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router]);
+
+  if (loading || !data) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
-  // Fetch additional data
-  const subjectPerformance = await getStudentSubjectPerformance(student.id);
-  const todaySchedule = await getStudentTodaySchedule(student.id);
-  
-  const currentEnrollment = student.enrollments[0]; // Assuming the most recent enrollment
+  const { student, attendancePercentage, upcomingExams, pendingAssignments, recentAnnouncements, subjectPerformance, todaySchedule } = data;
+  const currentEnrollment = student.enrollments[0];
   
   return (
-    <div className="h-full p-6 space-y-6">
+    <div className="flex flex-col gap-4">
       <StudentHeader student={student} />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

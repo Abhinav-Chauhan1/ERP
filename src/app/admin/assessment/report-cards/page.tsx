@@ -330,7 +330,7 @@ export default function ReportCardsPage() {
             <div className="flex-1">
               <label htmlFor="search" className="text-sm font-medium block mb-1">Search</label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   id="search" 
                   placeholder="Search by student name or ID..." 
@@ -403,13 +403,13 @@ export default function ReportCardsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Term</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Result</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Issue Date</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Term</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Result</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Issue Date</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -417,7 +417,7 @@ export default function ReportCardsPage() {
                         <tr key={reportCard.id} className="border-b">
                           <td className="py-3 px-4 align-middle">
                             <div className="font-medium">{reportCard.studentName}</div>
-                            <div className="text-xs text-gray-500">{reportCard.studentAdmissionId}</div>
+                            <div className="text-xs text-muted-foreground">{reportCard.studentAdmissionId}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">{reportCard.grade} {reportCard.section}</td>
                           <td className="py-3 px-4 align-middle">{reportCard.term}</td>
@@ -425,7 +425,7 @@ export default function ReportCardsPage() {
                             <div className="flex items-center gap-1.5">
                               <Badge className={
                                 reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                                reportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
                                 reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
                                 "bg-red-100 text-red-800"
                               }>
@@ -462,7 +462,7 @@ export default function ReportCardsPage() {
                 <div className="text-center py-10">
                   <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No published report cards</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     No report cards have been published yet
                   </p>
                 </div>
@@ -488,13 +488,13 @@ export default function ReportCardsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Term</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Result</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Term</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Result</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -502,7 +502,7 @@ export default function ReportCardsPage() {
                         <tr key={reportCard.id} className="border-b">
                           <td className="py-3 px-4 align-middle">
                             <div className="font-medium">{reportCard.studentName}</div>
-                            <div className="text-xs text-gray-500">{reportCard.studentAdmissionId}</div>
+                            <div className="text-xs text-muted-foreground">{reportCard.studentAdmissionId}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">{reportCard.grade} {reportCard.section}</td>
                           <td className="py-3 px-4 align-middle">{reportCard.term}</td>
@@ -510,7 +510,7 @@ export default function ReportCardsPage() {
                             <div className="flex items-center gap-1.5">
                               <Badge className={
                                 reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                                reportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
                                 reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
                                 "bg-red-100 text-red-800"
                               }>
@@ -559,7 +559,7 @@ export default function ReportCardsPage() {
                 <div className="text-center py-10">
                   <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No draft report cards</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     All report cards have been published
                   </p>
                 </div>
@@ -588,12 +588,12 @@ export default function ReportCardsPage() {
               <div className="border-b pb-4 mb-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Student Information</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground">Student Information</h3>
                     <p className="font-medium text-lg">{selectedReportCard.studentName}</p>
                     <p className="text-sm">ID: {selectedReportCard.studentAdmissionId}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Report Details</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground">Report Details</h3>
                     <p className="text-sm">Term: {selectedReportCard.term}</p>
                     <p className="text-sm">Academic Year: {selectedReportCard.academicYear}</p>
                     <p className="text-sm">Generated on: {
@@ -613,7 +613,7 @@ export default function ReportCardsPage() {
                       <span className="text-sm">Overall Grade:</span>
                       <Badge className={
                         selectedReportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                        selectedReportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                        selectedReportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
                         selectedReportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
                         "bg-red-100 text-red-800"
                       }>
@@ -624,15 +624,15 @@ export default function ReportCardsPage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="border rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Overall Percentage</p>
+                      <p className="text-sm text-muted-foreground">Overall Percentage</p>
                       <p className="text-2xl font-bold">{selectedReportCard.percentage?.toFixed(1) || "0"}%</p>
                     </div>
                     <div className="border rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Class Rank</p>
+                      <p className="text-sm text-muted-foreground">Class Rank</p>
                       <p className="text-2xl font-bold">{selectedReportCard.rank || "-"}</p>
                     </div>
                     <div className="border rounded-lg p-4">
-                      <p className="text-sm text-gray-500">Attendance</p>
+                      <p className="text-sm text-muted-foreground">Attendance</p>
                       <p className="text-2xl font-bold">{selectedReportCard.attendance?.toFixed(1) || "0"}%</p>
                     </div>
                   </div>
@@ -643,12 +643,12 @@ export default function ReportCardsPage() {
                   <div className="rounded-md border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Marks Obtained</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Maximum Marks</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Percentage</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Marks Obtained</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Maximum Marks</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Percentage</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -662,7 +662,7 @@ export default function ReportCardsPage() {
                               <td className="py-3 px-4">
                                 <Badge className={
                                   result.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                                  result.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                  result.grade.startsWith('B') ? "bg-primary/10 text-primary" :
                                   result.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
                                   "bg-red-100 text-red-800"
                                 }>
@@ -673,7 +673,7 @@ export default function ReportCardsPage() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={5} className="py-4 px-4 text-center text-gray-500">
+                            <td colSpan={5} className="py-4 px-4 text-center text-muted-foreground">
                               No subject results found
                             </td>
                           </tr>
@@ -705,7 +705,7 @@ export default function ReportCardsPage() {
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-muted-foreground">
               No details available
             </div>
           )}

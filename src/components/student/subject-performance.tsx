@@ -58,7 +58,7 @@ export function SubjectPerformance({ data }: SubjectPerformanceProps) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="py-8 text-center text-gray-500">
+          <div className="py-8 text-center text-muted-foreground">
             <p>No performance data available yet</p>
           </div>
         )}

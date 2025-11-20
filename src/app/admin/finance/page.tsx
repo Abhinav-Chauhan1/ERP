@@ -228,12 +228,12 @@ export default function FinancePage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Net Balance</CardDescription>
-            <CardTitle className={`text-3xl ${netBalance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            <CardTitle className={`text-3xl ${netBalance >= 0 ? 'text-primary' : 'text-red-600'}`}>
               {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `$${(netBalance / 1000).toFixed(1)}k`}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center text-xs text-gray-600">
+            <div className="flex items-center text-xs text-muted-foreground">
               Income - Expenses
             </div>
           </CardContent>
@@ -260,7 +260,7 @@ export default function FinancePage() {
           <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                <div className="p-2 bg-primary/10 rounded-md text-primary">
                   {category.icon}
                 </div>
                 <CardTitle className="text-lg">{category.title}</CardTitle>
@@ -302,7 +302,7 @@ export default function FinancePage() {
           <CardContent>
             {loading || monthlyData.length === 0 ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <Chart
@@ -329,7 +329,7 @@ export default function FinancePage() {
             <div className="space-y-4">
               {loading ? (
                 <div className="text-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
                 </div>
               ) : (
                 <>
@@ -358,9 +358,9 @@ export default function FinancePage() {
                           {stats.payments?.collectionRate?.toFixed(0) || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-primary h-2 rounded-full" 
                           style={{ width: `${stats.payments?.collectionRate?.toFixed(0) || 0}%` }}
                         ></div>
                       </div>
@@ -373,7 +373,7 @@ export default function FinancePage() {
                           {stats.budget?.utilizationRate?.toFixed(0) || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div 
                           className="bg-amber-500 h-2 rounded-full" 
                           style={{ width: `${Math.min(stats.budget?.utilizationRate?.toFixed(0) || 0, 100)}%` }}
@@ -388,7 +388,7 @@ export default function FinancePage() {
                           {stats.scholarships?.activeRecipients || 0} students
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         Total awarded: ${((stats.scholarships?.totalAmountAwarded || 0) / 1000).toFixed(1)}k
                       </div>
                     </div>
@@ -412,10 +412,10 @@ export default function FinancePage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : recentPayments.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-muted-foreground">
                 No recent payments found
               </div>
             ) : (
@@ -423,17 +423,17 @@ export default function FinancePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentPayments.map((payment) => (
-                        <tr key={payment.id} className="border-b hover:bg-gray-50">
+                        <tr key={payment.id} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">
                             {payment.student.user.firstName} {payment.student.user.lastName}
                           </td>
@@ -476,10 +476,10 @@ export default function FinancePage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : pendingPayments.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-muted-foreground">
                 No pending payments found
               </div>
             ) : (
@@ -487,17 +487,17 @@ export default function FinancePage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Due Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Due Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pendingPayments.map((payment) => (
-                        <tr key={payment.id} className="border-b hover:bg-gray-50">
+                        <tr key={payment.id} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">
                             {payment.student.user.firstName} {payment.student.user.lastName}
                           </td>

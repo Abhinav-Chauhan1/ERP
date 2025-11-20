@@ -64,11 +64,11 @@ export function CalendarWidget({ events, className }: CalendarWidgetProps) {
       case "holiday":
         return "bg-green-500";
       case "event":
-        return "bg-blue-500";
+        return "bg-primary";
       case "meeting":
         return "bg-purple-500";
       default:
-        return "bg-gray-500";
+        return "bg-muted-foreground";
     }
   };
 
@@ -95,8 +95,8 @@ export function CalendarWidget({ events, className }: CalendarWidgetProps) {
           <div 
             className={`h-7 w-7 rounded-full flex items-center justify-center mx-auto ${
               isToday 
-                ? "bg-blue-600 text-white" 
-                : "hover:bg-gray-100 cursor-pointer"
+                ? "bg-primary text-primary-foreground" 
+                : "hover:bg-accent cursor-pointer"
             }`}
           >
             {day}
@@ -154,7 +154,7 @@ export function CalendarWidget({ events, className }: CalendarWidgetProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-xs font-medium text-gray-500 mb-1 text-center">
+        <div className="grid grid-cols-7 gap-1 text-xs font-medium text-muted-foreground mb-1 text-center">
           <div>Su</div>
           <div>Mo</div>
           <div>Tu</div>
@@ -176,7 +176,7 @@ export function CalendarWidget({ events, className }: CalendarWidgetProps) {
                   <div className={`h-2 w-2 mt-1.5 rounded-full ${getEventIndicatorColor(event.type)}`}></div>
                   <div>
                     <p className="text-sm font-medium">{event.title}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(event.date).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric',

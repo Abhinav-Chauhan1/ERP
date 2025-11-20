@@ -1,6 +1,8 @@
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "next-themes";
+import { ThemeContextProvider } from "@/lib/contexts/theme-context";
 
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -19,11 +21,20 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body className={inter.className}>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <ThemeContextProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </ThemeContextProvider>
+          </ThemeProvider>
           <Toaster position="top-right" />
         </body>
       </html>

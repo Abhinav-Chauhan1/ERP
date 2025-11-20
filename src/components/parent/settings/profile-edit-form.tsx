@@ -1,178 +1,190 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "react-hot-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { updateProfileSchema, type UpdateProfileInput } from "@/lib/schemaValidation/parent-settings-schemas";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
-import type { ParentProfileData } from "@/types/settings";
+import { Mail, Phone, User, Briefcase, Users } from "lucide-react";
+import { updateProfile } from "@/lib/actions/parent-settings-actions";
+import { toast } from "react-hot-toast";
 
 interface ProfileEditFormProps {
-  profile: ParentProfileData;
-  onUpdate: (data: UpdateProfileInput) => Promise<{ success: boolean; message?: string }>;
+  profile: {
+    id: string;
+    userId: string;
+    user: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string | null;
+      avatar: string | null;
+    };
+    occupation: string | null;
+    alternatePhone: string | null;
+    relation: string | null;
+  };
 }
 
-export function ProfileEditForm({ profile, onUpdate }: ProfileEditFormProps) {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-  } = useForm<UpdateProfileInput>({
-    resolver: zodResolver(updateProfileSchema),
-    defaultValues: {
-      firstName: profile.user.firstName,
-      lastName: profile.user.lastName,
-      email: profile.user.email,
-      phone: profile.user.phone || "",
-      alternatePhone: profile.alternatePhone || "",
-      occupation: profile.occupation || "",
-      relation: profile.relation || "",
-    },
+export function ProfileEditForm({ profile }: ProfileEditFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: profile.user.firstName || "",
+    lastName: profile.user.lastName || "",
+    email: profile.user.email || "",
+    phone: profile.user.phone || "",
+    alternatePhone: profile.alternatePhone || "",
+    occupation: profile.occupation || "",
+    relation: profile.relation || ""
   });
 
-  const onSubmit = async (values: UpdateProfileInput) => {
-    setIsLoading(true);
-    
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      const result = await onUpdate(values);
-      
+      const result = await updateProfile(formData);
+
       if (result.success) {
         toast.success(result.message || "Profile updated successfully");
       } else {
         toast.error(result.message || "Failed to update profile");
       }
     } catch (error) {
+      console.error("Profile update error:", error);
       toast.error("Failed to update profile");
-      console.error(error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile Information</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          Personal Information
+        </CardTitle>
         <CardDescription>
-          Update your personal information and contact details
+          Update your personal and contact information
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                {...register("firstName")}
-                placeholder="Enter your first name"
-              />
-              {errors.firstName && (
-                <p className="text-sm text-red-500">{errors.firstName.message}</p>
-              )}
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="pl-10"
+                  placeholder="First name"
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                {...register("lastName")}
-                placeholder="Enter your last name"
-              />
-              {errors.lastName && (
-                <p className="text-sm text-red-500">{errors.lastName.message}</p>
-              )}
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className="pl-10"
+                  placeholder="Last name"
+                  required
+                />
+              </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              {...register("email")}
-              placeholder="Enter your email"
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
+            <Label htmlFor="email">Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="pl-10"
+                placeholder="your.email@example.com"
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                {...register("phone")}
-                placeholder="+1234567890"
-              />
-              {errors.phone && (
-                <p className="text-sm text-red-500">{errors.phone.message}</p>
-              )}
+              <Label htmlFor="phone">Primary Phone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="pl-10"
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="alternatePhone">Alternate Phone</Label>
-              <Input
-                id="alternatePhone"
-                type="tel"
-                {...register("alternatePhone")}
-                placeholder="+1234567890"
-              />
-              {errors.alternatePhone && (
-                <p className="text-sm text-red-500">{errors.alternatePhone.message}</p>
-              )}
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="alternatePhone"
+                  type="tel"
+                  value={formData.alternatePhone}
+                  onChange={(e) => setFormData({ ...formData, alternatePhone: e.target.value })}
+                  className="pl-10"
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="occupation">Occupation</Label>
-              <Input
-                id="occupation"
-                {...register("occupation")}
-                placeholder="Enter your occupation"
-              />
-              {errors.occupation && (
-                <p className="text-sm text-red-500">{errors.occupation.message}</p>
-              )}
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="occupation"
+                  value={formData.occupation}
+                  onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
+                  className="pl-10"
+                  placeholder="Your occupation"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="relation">Relation to Student</Label>
-              <Input
-                id="relation"
-                {...register("relation")}
-                placeholder="e.g., Father, Mother, Guardian"
-              />
-              {errors.relation && (
-                <p className="text-sm text-red-500">{errors.relation.message}</p>
-              )}
+              <div className="relative">
+                <Users className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  id="relation"
+                  value={formData.relation}
+                  onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
+                  className="pl-10"
+                  placeholder="e.g., Father, Mother, Guardian"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button 
-              type="submit" 
-              disabled={isLoading || !isDirty}
-              className="min-w-[120px]"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>

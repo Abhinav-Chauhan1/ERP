@@ -103,7 +103,7 @@ export default function CommunicationsPage() {
       description: "Private messaging system",
       href: "/admin/communication/messages",
       count: messageStats?.totalSent || 0,
-      color: "bg-blue-50 text-blue-700"
+      color: "bg-primary/10 text-primary"
     },
     {
       title: "Announcements",
@@ -164,7 +164,7 @@ export default function CommunicationsPage() {
 
   const getCommunicationColor = (type: string) => {
     switch (type) {
-      case 'message': return 'bg-blue-100 text-blue-700';
+      case 'message': return 'bg-primary/10 text-primary';
       case 'announcement': return 'bg-purple-100 text-purple-700';
       case 'meeting': return 'bg-green-100 text-green-700';
       default: return 'bg-amber-100 text-amber-700';
@@ -237,25 +237,25 @@ export default function CommunicationsPage() {
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Recent Messages */}
                     {recentMessages.slice(0, 3).map((message) => (
                       <div key={message.id} className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
-                        <div className="p-2 rounded-full bg-blue-100 text-blue-700">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary">
                           <MessageSquare className="h-4 w-4" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <p className="font-medium text-sm">{message.subject}</p>
-                            {!message.isRead && <Badge className="bg-blue-100 text-blue-800">New</Badge>}
+                            {!message.isRead && <Badge className="bg-primary/10 text-primary">New</Badge>}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             From: {message.sender?.firstName} {message.sender?.lastName}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {new Date(message.createdAt).toLocaleString()}
                           </p>
                         </div>
@@ -278,10 +278,10 @@ export default function CommunicationsPage() {
                             <p className="font-medium text-sm">{announcement.title}</p>
                             {announcement.isPinned && <Badge className="bg-purple-100 text-purple-800">Pinned</Badge>}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             To: {announcement.targetAudience?.join(", ") || "All"}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {new Date(announcement.startDate).toLocaleDateString()}
                           </p>
                         </div>
@@ -294,7 +294,7 @@ export default function CommunicationsPage() {
                     ))}
 
                     {recentMessages.length === 0 && recentAnnouncements.length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-muted-foreground">
                         No recent activity
                       </div>
                     )}
@@ -322,7 +322,7 @@ export default function CommunicationsPage() {
               <CardContent className="h-[350px]">
                 {loading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
                   <Chart
@@ -352,10 +352,10 @@ export default function CommunicationsPage() {
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : upcomingMeetings.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     No upcoming meetings
                   </div>
                 ) : (
@@ -372,10 +372,10 @@ export default function CommunicationsPage() {
                               {meeting.status}
                             </Badge>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {meeting.teacher?.user?.firstName} {meeting.teacher?.user?.lastName}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {new Date(meeting.meetingDate).toLocaleString()}
                           </p>
                         </div>
@@ -406,12 +406,12 @@ export default function CommunicationsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Link href="/admin/communication/parent-meetings">
                     <Button variant="outline" className="w-full h-auto flex-col p-4 justify-start items-start gap-2">
-                      <div className="p-2 rounded-full bg-blue-100 text-blue-700 mb-1">
+                      <div className="p-2 rounded-full bg-primary/10 text-primary mb-1">
                         <Users className="h-4 w-4" />
                       </div>
                       <div className="text-left">
                         <p className="font-medium text-sm">Schedule Meeting</p>
-                        <p className="text-xs text-gray-500">With parents or staff</p>
+                        <p className="text-xs text-muted-foreground">With parents or staff</p>
                       </div>
                     </Button>
                   </Link>
@@ -423,7 +423,7 @@ export default function CommunicationsPage() {
                       </div>
                       <div className="text-left">
                         <p className="font-medium text-sm">Use Template</p>
-                        <p className="text-xs text-gray-500">For emails and messages</p>
+                        <p className="text-xs text-muted-foreground">For emails and messages</p>
                       </div>
                     </Button>
                   </Link>
@@ -435,7 +435,7 @@ export default function CommunicationsPage() {
                       </div>
                       <div className="text-left">
                         <p className="font-medium text-sm">Create Alert</p>
-                        <p className="text-xs text-gray-500">Send system notifications</p>
+                        <p className="text-xs text-muted-foreground">Send system notifications</p>
                       </div>
                     </Button>
                   </Link>
@@ -447,7 +447,7 @@ export default function CommunicationsPage() {
                       </div>
                       <div className="text-left">
                         <p className="font-medium text-sm">SMS Alert</p>
-                        <p className="text-xs text-gray-500">Send text messages</p>
+                        <p className="text-xs text-muted-foreground">Send text messages</p>
                       </div>
                     </Button>
                   </Link>
@@ -466,12 +466,12 @@ export default function CommunicationsPage() {
               <CardContent>
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-blue-100 text-blue-700">
+                      <div className="p-3 rounded-full bg-primary/10 text-primary">
                         <MessageSquare className="h-6 w-6" />
                       </div>
                       <div className="flex-1">
@@ -479,7 +479,7 @@ export default function CommunicationsPage() {
                           <p className="text-sm font-medium">Messages Sent</p>
                           <p className="text-sm font-medium">{messageStats?.totalSent || 0}</p>
                         </div>
-                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">
                           <span>{messageStats?.unreadCount || 0} unread</span>
                         </div>
                       </div>
@@ -494,7 +494,7 @@ export default function CommunicationsPage() {
                           <p className="text-sm font-medium">Announcements</p>
                           <p className="text-sm font-medium">{announcementStats?.activeAnnouncements || 0}</p>
                         </div>
-                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">
                           <span>{announcementStats?.totalAnnouncements || 0} total</span>
                         </div>
                       </div>
@@ -509,7 +509,7 @@ export default function CommunicationsPage() {
                           <p className="text-sm font-medium">Parent Meetings</p>
                           <p className="text-sm font-medium">{meetingStats?.scheduledMeetings || 0}</p>
                         </div>
-                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">
                           <span>{meetingStats?.completedMeetings || 0} completed</span>
                         </div>
                       </div>
@@ -524,7 +524,7 @@ export default function CommunicationsPage() {
                           <p className="text-sm font-medium">Notifications</p>
                           <p className="text-sm font-medium">{notificationStats?.totalNotifications || 0}</p>
                         </div>
-                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                        <div className="flex items-center text-xs text-muted-foreground mt-1">
                           <span>System alerts</span>
                         </div>
                       </div>
@@ -539,7 +539,7 @@ export default function CommunicationsPage() {
         <TabsContent value="analytics">
           <div className="py-6 text-center">
             <h2 className="text-xl font-bold mb-2">Coming Soon</h2>
-            <p className="text-gray-500 mb-4">Detailed communication analytics will be available in a future update.</p>
+            <p className="text-muted-foreground mb-4">Detailed communication analytics will be available in a future update.</p>
             <Button variant="outline" onClick={() => setActiveTab("overview")}>Return to Overview</Button>
           </div>
         </TabsContent>

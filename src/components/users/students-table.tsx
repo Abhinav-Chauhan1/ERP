@@ -94,14 +94,14 @@ export function StudentsTable({ students }: StudentsTableProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Admission ID</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Gender</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Admission Date</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+              <tr className="bg-accent border-b">
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Admission ID</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Gender</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Admission Date</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -118,7 +118,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
                 </tr>
               ) : (
                 paginatedStudents.map((student) => (
-                  <tr key={student.id} className="border-b hover:bg-gray-50">
+                  <tr key={student.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         {student.user.avatar ? (
@@ -128,7 +128,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
                             {student.user.firstName[0]}
                             {student.user.lastName[0]}
                           </div>
@@ -145,7 +145,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
                           {student.enrollments[0].class.name} - {student.enrollments[0].section.name}
                         </div>
                       ) : (
-                        <span className="text-gray-500">Not enrolled</span>
+                        <span className="text-muted-foreground">Not enrolled</span>
                       )}
                     </td>
                     <td className="py-3 px-4 align-middle capitalize">{student.gender.toLowerCase()}</td>
@@ -175,7 +175,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
 
       {filteredAndSortedStudents.length > 0 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedStudents.length)} of {filteredAndSortedStudents.length} students
           </div>
           <Pagination

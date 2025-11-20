@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { 
   User, BookOpen, Calendar, FileText, 
   BarChart2, Clock, DollarSign, MessageSquare, 
   FolderOpen, Award, CalendarDays, Settings,
   GraduationCap, BookMarked, Library, Presentation,
-  LucideIcon, CheckCircle, FileQuestion, ClipboardList, GraduationCap as GraduationCapIcon
+  LucideIcon, CheckCircle, FileQuestion, ClipboardList, GraduationCap as GraduationCapIcon,
+  ChevronDown, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
@@ -118,9 +120,17 @@ const routes: RouteItem[] = [
 
 export function StudentSidebar() {
   const pathname = usePathname();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
   
   return (
-    <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
+    <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
       <div className="p-6 flex items-center gap-2">
         <Link href="/student">
           <h1 className="text-xl font-bold">School ERP</h1>
@@ -134,26 +144,48 @@ export function StudentSidebar() {
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
           const isRouteActive = isMainRouteActive || isSubRouteActive;
           
-          // Special handling for academics section - show submenu when on any academics page
-          const showSubmenu = route.submenu && (
-            pathname.startsWith(route.href) || 
-            (route.label === "Academics" && pathname.startsWith("/student/academics"))
-          );
+          // Show submenu if manually opened or if a sub-route is active
+          const isOpen = openMenus[route.label] || isSubRouteActive;
+          const showSubmenu = route.submenu && isOpen;
           
           return (
             <div key={route.href}>
-              <Link
-                href={route.href}
-                className={cn(
-                  "text-sm font-medium flex items-center py-3 px-6 transition-colors",
-                  isRouteActive ? 
-                    "text-blue-700 bg-blue-50 border-r-4 border-blue-700" : 
-                    "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
-                )}
-              >
-                <route.icon className="h-5 w-5 mr-3" />
-                {route.label}
-              </Link>
+              {route.submenu ? (
+                // Parent item with submenu - no link, just toggle
+                <div
+                  onClick={() => toggleMenu(route.label)}
+                  className={cn(
+                    "text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors cursor-pointer",
+                    isRouteActive ? 
+                      "text-primary bg-primary/10" : 
+                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <route.icon className="h-5 w-5 mr-3" />
+                    {route.label}
+                  </div>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </div>
+              ) : (
+                // Regular link for items without submenu
+                <Link
+                  href={route.href}
+                  className={cn(
+                    "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                    isRouteActive ? 
+                      "text-primary bg-primary/10 border-r-4 border-primary" : 
+                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                  )}
+                >
+                  <route.icon className="h-5 w-5 mr-3" />
+                  {route.label}
+                </Link>
+              )}
               
               {/* Submenu */}
               {showSubmenu && (
@@ -165,8 +197,8 @@ export function StudentSidebar() {
                       className={cn(
                         "text-xs flex items-center py-2 px-2 rounded transition-colors",
                         pathname === item.href ? 
-                          "text-blue-700 font-medium" : 
-                          "text-gray-600 hover:text-blue-700"
+                          "text-primary font-medium bg-primary/10" : 
+                          "text-muted-foreground hover:text-primary hover:bg-accent"
                       )}
                     >
                       {item.icon && <item.icon className="h-3.5 w-3.5 mr-1.5" />}

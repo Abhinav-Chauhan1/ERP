@@ -310,7 +310,7 @@ export default function LeaveApplicationsPage() {
       case "REJECTED":
         return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>;
       case "CANCELLED":
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Cancelled</Badge>;
+        return <Badge variant="outline" className="bg-accent text-gray-700 border-gray-200">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -365,7 +365,7 @@ export default function LeaveApplicationsPage() {
               <div className="flex-1 space-y-1">
                 <label htmlFor="search-input" className="text-sm font-medium">Search</label>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="search-input"
                     type="search"
@@ -389,7 +389,7 @@ export default function LeaveApplicationsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredLeaveApplications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500">
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                 <File className="h-12 w-12 text-gray-300 mb-2" />
                 <h3 className="text-lg font-medium mb-1">No Leave Applications</h3>
                 <p className="max-w-md mb-4">
@@ -405,13 +405,13 @@ export default function LeaveApplicationsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Applicant</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date Range</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Applicant</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date Range</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -427,20 +427,20 @@ export default function LeaveApplicationsPage() {
                               </Avatar>
                               <div>
                                 <div className="font-medium">{leave.applicant?.name || "Unknown"}</div>
-                                <div className="text-xs text-gray-500">{leave.applicant?.id || ""}</div>
+                                <div className="text-xs text-muted-foreground">{leave.applicant?.id || ""}</div>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
                             <Badge variant="outline" className={leave.applicantType === "STUDENT" 
-                              ? "bg-blue-50 text-blue-700 border-blue-200" 
+                              ? "bg-primary/10 text-primary border-primary/30" 
                               : "bg-purple-50 text-purple-700 border-purple-200"}>
                               {leave.applicantType === "STUDENT" ? "Student" : "Teacher"}
                             </Badge>
                           </td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
-                              <CalendarDays className="h-3.5 w-3.5 text-gray-500" />
+                              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>
                                 {format(new Date(leave.fromDate), "MMM d, yyyy")} - {format(new Date(leave.toDate), "MMM d, yyyy")}
                               </span>
@@ -662,13 +662,13 @@ export default function LeaveApplicationsPage() {
                 </Avatar>
                 <div>
                   <h3 className="font-medium">{selectedLeave.applicant?.name}</h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {selectedLeave.applicantType === "STUDENT" ? "Student" : "Teacher"} • {selectedLeave.applicant?.id}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <CalendarRange className="h-4 w-4 text-gray-500" />
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
                 <span>
                   {format(new Date(selectedLeave.fromDate), "MMM d, yyyy")} - {format(new Date(selectedLeave.toDate), "MMM d, yyyy")}
                 </span>
@@ -676,7 +676,7 @@ export default function LeaveApplicationsPage() {
                   {selectedLeave.duration} {selectedLeave.duration === 1 ? "day" : "days"}
                 </Badge>
               </div>
-              <div className="p-3 bg-gray-50 rounded-md text-sm">
+              <div className="p-3 bg-accent rounded-md text-sm">
                 <p className="font-medium mb-1">Reason:</p>
                 <p>{selectedLeave.reason}</p>
               </div>
@@ -759,7 +759,7 @@ export default function LeaveApplicationsPage() {
                   </Avatar>
                   <div>
                     <h3 className="font-medium">{selectedLeave.applicant?.name}</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       {selectedLeave.applicant?.email}
                     </p>
                   </div>
@@ -769,53 +769,53 @@ export default function LeaveApplicationsPage() {
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-gray-500 mb-1">Applicant Type</p>
+                  <p className="text-muted-foreground mb-1">Applicant Type</p>
                   <p className="font-medium">{selectedLeave.applicantType === "STUDENT" ? "Student" : "Teacher"}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">ID</p>
+                  <p className="text-muted-foreground mb-1">ID</p>
                   <p className="font-medium">{selectedLeave.applicant?.id}</p>
                 </div>
                 {selectedLeave.applicant?.class && (
                   <>
                     <div>
-                      <p className="text-gray-500 mb-1">Class</p>
+                      <p className="text-muted-foreground mb-1">Class</p>
                       <p className="font-medium">{selectedLeave.applicant.class}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">Section</p>
+                      <p className="text-muted-foreground mb-1">Section</p>
                       <p className="font-medium">{selectedLeave.applicant.section}</p>
                     </div>
                   </>
                 )}
                 <div>
-                  <p className="text-gray-500 mb-1">From Date</p>
+                  <p className="text-muted-foreground mb-1">From Date</p>
                   <p className="font-medium">{format(new Date(selectedLeave.fromDate), "MMMM d, yyyy")}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">To Date</p>
+                  <p className="text-muted-foreground mb-1">To Date</p>
                   <p className="font-medium">{format(new Date(selectedLeave.toDate), "MMMM d, yyyy")}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">Duration</p>
+                  <p className="text-muted-foreground mb-1">Duration</p>
                   <p className="font-medium">{selectedLeave.duration} {selectedLeave.duration === 1 ? "day" : "days"}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 mb-1">Application Date</p>
+                  <p className="text-muted-foreground mb-1">Application Date</p>
                   <p className="font-medium">{format(new Date(selectedLeave.createdAt), "MMMM d, yyyy")}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-gray-500 mb-1">Reason</p>
-                <div className="p-3 bg-gray-50 rounded-md">
+                <p className="text-muted-foreground mb-1">Reason</p>
+                <div className="p-3 bg-accent rounded-md">
                   <p>{selectedLeave.reason}</p>
                 </div>
               </div>
 
               {selectedLeave.status !== "PENDING" && (
                 <div>
-                  <p className="text-gray-500 mb-1">
+                  <p className="text-muted-foreground mb-1">
                     {selectedLeave.status === "APPROVED" ? "Approved" : "Rejected"} By
                   </p>
                   {selectedLeave.approver ? (
@@ -829,16 +829,16 @@ export default function LeaveApplicationsPage() {
                       <span>{selectedLeave.approver.name}</span>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">Information not available</p>
+                    <p className="text-sm text-muted-foreground">Information not available</p>
                   )}
                 </div>
               )}
 
               {selectedLeave.remarks && (
                 <div>
-                  <p className="text-gray-500 mb-1">Remarks</p>
-                  <div className="p-3 bg-gray-50 rounded-md flex items-start">
-                    <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5 mr-2" />
+                  <p className="text-muted-foreground mb-1">Remarks</p>
+                  <div className="p-3 bg-accent rounded-md flex items-start">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 mr-2" />
                     <p>{selectedLeave.remarks}</p>
                   </div>
                 </div>

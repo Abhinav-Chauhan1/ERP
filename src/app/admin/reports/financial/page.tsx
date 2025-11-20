@@ -131,7 +131,7 @@ export default function FinancialReportsPage() {
       title: "Budget vs Actual",
       description: "Comparison of budgeted vs actual expenses",
       icon: PieChart,
-      color: "bg-blue-500",
+      color: "bg-primary",
     },
     {
       title: "Income Statement",
@@ -283,8 +283,8 @@ export default function FinancialReportsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Fee Collection Summary</h3>
                   <div className="grid gap-4 md:grid-cols-4">
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Total Amount</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Total Amount</div>
                       <div className="text-xl font-bold">₹{reportData.data.summary?.totalAmount?.toLocaleString() || 0}</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded">
@@ -311,8 +311,8 @@ export default function FinancialReportsPage() {
                       <div className="text-sm text-red-600">Total Expenses</div>
                       <div className="text-xl font-bold">₹{reportData.data.summary?.totalExpenses?.toLocaleString() || 0}</div>
                     </div>
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Total Count</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Total Count</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.totalCount || 0}</div>
                     </div>
                     <div className="bg-purple-50 p-3 rounded">
@@ -323,11 +323,11 @@ export default function FinancialReportsPage() {
                   <div className="space-y-2">
                     <h4 className="font-medium">By Category</h4>
                     {reportData.data.byCategory?.map((category: any) => (
-                      <div key={category.category} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={category.category} className="flex justify-between items-center p-3 bg-accent rounded">
                         <span className="font-medium">{category.category}</span>
                         <div className="text-right">
                           <div className="font-bold">₹{category.totalAmount.toLocaleString()}</div>
-                          <div className="text-sm text-gray-600">{category.count} expenses</div>
+                          <div className="text-sm text-muted-foreground">{category.count} expenses</div>
                         </div>
                       </div>
                     ))}
@@ -347,8 +347,8 @@ export default function FinancialReportsPage() {
                       <div className="text-sm text-red-600">Overdue Amount</div>
                       <div className="text-xl font-bold">₹{reportData.data.summary?.overdueAmount?.toLocaleString() || 0}</div>
                     </div>
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Total Count</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Total Count</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.totalCount || 0}</div>
                     </div>
                     <div className="bg-purple-50 p-3 rounded">

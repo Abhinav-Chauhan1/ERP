@@ -386,7 +386,7 @@ export default function FeeStructurePage() {
                 <p className="text-sm text-muted-foreground">Total Structures</p>
                 <p className="text-2xl font-bold">{stats.totalStructures}</p>
               </div>
-              <DollarSign className="h-8 w-8 text-blue-500" />
+              <DollarSign className="h-8 w-8 text-primary" />
             </CardContent>
           </Card>
           <Card>
@@ -438,7 +438,7 @@ export default function FeeStructurePage() {
               {/* Filters */}
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search fee structures..."
@@ -467,7 +467,7 @@ export default function FeeStructurePage() {
                 <div className="text-center py-10">
                   <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No fee structures found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || academicYearFilter !== "all"
                       ? "Try adjusting your filters"
                       : "Create your first fee structure to get started"}
@@ -579,7 +579,7 @@ export default function FeeStructurePage() {
                 <div className="text-center py-10">
                   <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No fee types found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Create fee types to use in your fee structures
                   </p>
                   <Button onClick={handleCreateFeeType}>

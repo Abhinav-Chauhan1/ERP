@@ -77,7 +77,7 @@ export default async function AttendancePage() {
           <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-gray-50 rounded-md">
+                <div className="p-2 bg-accent rounded-md">
                   {category.icon}
                 </div>
                 <CardTitle className="text-lg">{category.title}</CardTitle>
@@ -108,11 +108,11 @@ export default async function AttendancePage() {
                 <CardDescription>Student attendance for the last 7 school days</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div className="w-3 h-3 rounded-full bg-green-500"></div>
                   <span>Present</span>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
                   <span>Absent</span>
                 </div>
@@ -122,9 +122,9 @@ export default async function AttendancePage() {
           <CardContent>
             {trendData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart className="h-12 w-12 text-gray-300 mb-4" />
+                <BarChart className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No attendance data</h3>
-                <p className="text-gray-500 mb-6 max-w-sm">
+                <p className="text-muted-foreground mb-6 max-w-sm">
                   Start marking attendance to see trends here.
                 </p>
                 <Link href="/admin/attendance/students">
@@ -148,7 +148,7 @@ export default async function AttendancePage() {
           </CardContent>
           <div className="px-6 py-3 border-t">
             <Link href="/admin/attendance/reports">
-              <Button variant="ghost" size="sm" className="text-blue-600">
+              <Button variant="ghost" size="sm" className="text-primary">
                 View Detailed Reports
                 <ArrowUpRight className="ml-1 h-4 w-4" />
               </Button>
@@ -164,8 +164,8 @@ export default async function AttendancePage() {
           <CardContent>
             {classAttendance.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Users className="h-12 w-12 text-gray-300 mb-4" />
-                <p className="text-sm text-gray-500">No class data available</p>
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">No class data available</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -175,7 +175,7 @@ export default async function AttendancePage() {
                       <span className="text-sm font-medium">{item.class}</span>
                       <span className="text-sm font-medium">{item.present}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className={`h-2 rounded-full ${
                           item.present >= 95
@@ -183,7 +183,7 @@ export default async function AttendancePage() {
                             : item.present >= 90
                             ? "bg-green-400"
                             : item.present >= 85
-                            ? "bg-blue-500"
+                            ? "bg-primary"
                             : item.present >= 80
                             ? "bg-yellow-500"
                             : "bg-red-500"
@@ -198,7 +198,7 @@ export default async function AttendancePage() {
           </CardContent>
           <div className="px-6 py-3 border-t">
             <Link href="/admin/attendance/students">
-              <Button variant="ghost" size="sm" className="text-blue-600">
+              <Button variant="ghost" size="sm" className="text-primary">
                 View Student Attendance
                 <ArrowUpRight className="ml-1 h-4 w-4" />
               </Button>
@@ -222,28 +222,28 @@ export default async function AttendancePage() {
         <CardContent>
           {recentAbsences.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <XCircle className="h-12 w-12 text-gray-300 mb-4" />
+              <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No recent absences</h3>
-              <p className="text-gray-500">All students are present!</p>
+              <p className="text-muted-foreground">All students are present!</p>
             </div>
           ) : (
             <div className="rounded-md border">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Reason</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Informed</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Informed</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentAbsences.map((absence) => (
-                      <tr key={absence.id} className="border-b hover:bg-gray-50">
+                      <tr key={absence.id} className="border-b hover:bg-accent/50">
                         <td className="py-3 px-4 align-middle font-medium">{absence.name}</td>
                         <td className="py-3 px-4 align-middle">{absence.grade}</td>
                         <td className="py-3 px-4 align-middle">{absence.date}</td>
@@ -283,17 +283,17 @@ export default async function AttendancePage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-4">
-        <Card className="bg-blue-50">
+        <Card className="bg-primary/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-800">
+            <CardTitle className="text-sm font-medium text-primary">
               Quick Attendance Report
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-blue-800">Generate attendance reports instantly</p>
+              <p className="text-sm text-primary">Generate attendance reports instantly</p>
               <Link href="/admin/attendance/reports">
-                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700">
+                <Button size="sm" className="w-full">
                   Generate Report
                 </Button>
               </Link>

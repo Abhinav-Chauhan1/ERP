@@ -3,6 +3,25 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { v2 as cloudinary } from "cloudinary";
+import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
+import { validateImageFile } from "@/lib/utils/file-security";
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Validation schemas
+const profileUpdateSchema = z.object({
+  phone: z.string().optional(),
+  qualification: z.string().optional(),
+  bio: z.string().optional(),
+});
 
 /**
  * Get teacher profile data
@@ -222,6 +241,183 @@ export async function getTeacherProfile() {
     return {
       success: false,
       error: "Failed to fetch teacher profile",
+    };
+  }
+}
+
+
+/**
+ * Update teacher profile information
+ */
+export async function updateTeacherProfile(formData: FormData) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+      };
+    }
+
+    // Get user and teacher
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found",
+      };
+    }
+
+    const teacher = await db.teacher.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!teacher) {
+      return {
+        success: false,
+        message: "Teacher not found",
+      };
+    }
+
+    // Extract and validate data
+    const data = {
+      phone: formData.get("phone") as string,
+      qualification: formData.get("qualification") as string,
+      bio: formData.get("bio") as string,
+    };
+
+    const validated = profileUpdateSchema.parse(data);
+
+    // Update user phone if provided
+    if (validated.phone) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { phone: validated.phone },
+      });
+    }
+
+    // Update teacher qualification if provided
+    if (validated.qualification) {
+      await db.teacher.update({
+        where: { id: teacher.id },
+        data: { qualification: validated.qualification },
+      });
+    }
+
+    revalidatePath("/teacher/profile");
+
+    return {
+      success: true,
+      message: "Profile updated successfully",
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        message: error.errors[0].message,
+      };
+    }
+    console.error("Error updating teacher profile:", error);
+    return {
+      success: false,
+      message: "Failed to update profile",
+    };
+  }
+}
+
+/**
+ * Upload teacher profile photo
+ * Requirements: 10.1, 10.2, 10.4
+ */
+export async function uploadTeacherAvatar(formData: FormData) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+      };
+    }
+
+    // Get user
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: "User not found",
+      };
+    }
+
+    // Rate limiting for file uploads
+    const rateLimitKey = `file-upload:${user.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.FILE_UPLOAD);
+    if (!rateLimitResult) {
+      return {
+        success: false,
+        message: "Too many upload requests. Please try again later.",
+      };
+    }
+
+    const file = formData.get("avatar") as File;
+
+    if (!file) {
+      return {
+        success: false,
+        message: "No file provided",
+      };
+    }
+
+    // Validate file using security utility
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      return {
+        success: false,
+        message: validation.error || "Invalid file",
+      };
+    }
+
+    // Convert file to base64
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString("base64");
+    const dataURI = `data:${file.type};base64,${base64}`;
+
+    // Upload to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(dataURI, {
+      folder: "teacher-avatars",
+      public_id: `teacher_${user.id}`,
+      overwrite: true,
+      transformation: [
+        { width: 400, height: 400, crop: "fill", gravity: "face" },
+      ],
+    });
+
+    // Update user avatar
+    await db.user.update({
+      where: { id: user.id },
+      data: { avatar: uploadResponse.secure_url },
+    });
+
+    revalidatePath("/teacher/profile");
+
+    return {
+      success: true,
+      message: "Profile photo updated successfully",
+      data: { avatar: uploadResponse.secure_url },
+    };
+  } catch (error) {
+    console.error("Error uploading avatar:", error);
+    return {
+      success: false,
+      message: "Failed to upload profile photo",
     };
   }
 }

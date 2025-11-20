@@ -59,7 +59,7 @@ export function SubjectPerformanceTable({ subjects }: SubjectPerformanceTablePro
   return (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search subjects..."
           value={searchTerm}
@@ -86,10 +86,10 @@ export function SubjectPerformanceTable({ subjects }: SubjectPerformanceTablePro
                 <TableRow key={subject.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-gray-500" />
+                      <BookOpen className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <div className="font-medium">{subject.name}</div>
-                        <div className="text-xs text-gray-500">{subject.code}</div>
+                        <div className="text-xs text-muted-foreground">{subject.code}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -126,7 +126,7 @@ export function SubjectPerformanceTable({ subjects }: SubjectPerformanceTablePro
                         )}
                       </div>
                     ) : (
-                      <span className="text-gray-500">N/A</span>
+                      <span className="text-muted-foreground">N/A</span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">

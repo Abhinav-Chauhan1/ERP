@@ -315,7 +315,7 @@ export default function NotificationsPage() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "INFO":
-        return "bg-blue-100 text-blue-700";
+        return "bg-primary/10 text-primary";
       case "WARNING":
         return "bg-amber-100 text-amber-700";
       case "ALERT":
@@ -323,7 +323,7 @@ export default function NotificationsPage() {
       case "SUCCESS":
         return "bg-green-100 text-green-700";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-muted text-gray-700";
     }
   };
 
@@ -418,7 +418,7 @@ export default function NotificationsPage() {
                   value={formData.link}
                   onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Users will be directed to this link when they click on the notification
                 </p>
               </div>
@@ -456,7 +456,7 @@ export default function NotificationsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search notifications..."
@@ -524,7 +524,7 @@ export default function NotificationsPage() {
             <div className="mt-4">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
                 <div className="rounded-md border">
@@ -532,13 +532,13 @@ export default function NotificationsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Notification</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Sent To</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Read Rate</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Notification</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sent To</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Read Rate</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -546,7 +546,7 @@ export default function NotificationsPage() {
                           <tr key={notification.id} className="border-b">
                             <td className="py-3 px-4 align-middle">
                               <div className="font-medium">{notification.title}</div>
-                              <div className="text-xs text-gray-500 truncate max-w-xs">
+                              <div className="text-xs text-muted-foreground truncate max-w-xs">
                                 {notification.message}
                               </div>
                             </td>
@@ -560,26 +560,26 @@ export default function NotificationsPage() {
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center gap-1">
-                                <Users className="h-3.5 w-3.5 text-gray-500" />
+                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span>{notification.recipientRole || "ALL"}</span>
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 {notification.sender ? `By ${notification.sender.firstName} ${notification.sender.lastName}` : "System"}
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5 text-gray-500" />
+                                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span>
                                   {new Date(notification.createdAt).toLocaleDateString()}
                                 </span>
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 {new Date(notification.createdAt).toLocaleTimeString()}
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle">
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 Sent to {notification.recipientRole || "ALL"}
                               </div>
                             </td>
@@ -626,7 +626,7 @@ export default function NotificationsPage() {
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <BellOff className="h-12 w-12 text-gray-300 mb-4" />
                     <h3 className="text-lg font-medium mb-2">No notifications found</h3>
-                    <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                    <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
                       {searchTerm || typeFilter !== "all" || audienceFilter !== "all" 
                         ? "No notifications match your search criteria. Try adjusting your filters."
                         : "There are no notifications yet. Create your first notification to get started."}
@@ -662,7 +662,7 @@ export default function NotificationsPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">{selectedNotification.title}</h3>
-                  <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                     <Calendar className="h-3.5 w-3.5" />
                     <span>
                       {new Date(selectedNotification.createdAt).toLocaleString()}
@@ -671,43 +671,43 @@ export default function NotificationsPage() {
                 </div>
               </div>
               
-              <div className="bg-gray-50 p-4 rounded-md">
+              <div className="bg-accent p-4 rounded-md">
                 <p className="text-sm whitespace-pre-line">{selectedNotification.message}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
-                  <p className="text-sm text-gray-500">Sent By</p>
+                  <p className="text-sm text-muted-foreground">Sent By</p>
                   <p className="font-medium">
                     {selectedNotification.sender 
                       ? `${selectedNotification.sender.firstName} ${selectedNotification.sender.lastName}`
                       : "System"}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {selectedNotification.sender?.role || "System"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Sent To</p>
+                  <p className="text-sm text-muted-foreground">Sent To</p>
                   <p className="font-medium">{selectedNotification.recipientRole || "ALL"}</p>
-                  <p className="text-xs text-gray-500">Role-based notification</p>
+                  <p className="text-xs text-muted-foreground">Role-based notification</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Type</p>
+                  <p className="text-sm text-muted-foreground">Type</p>
                   <Badge className={getTypeColor(selectedNotification.type)}>
                     {selectedNotification.type}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
                   <p className="font-medium">Delivered</p>
                 </div>
               </div>
               
               {selectedNotification.link && (
                 <div className="pt-2">
-                  <p className="text-sm text-gray-500">Link</p>
-                  <Link href={selectedNotification.link} className="text-blue-600 hover:underline">
+                  <p className="text-sm text-muted-foreground">Link</p>
+                  <Link href={selectedNotification.link} className="text-primary hover:underline">
                     {selectedNotification.link}
                   </Link>
                 </div>

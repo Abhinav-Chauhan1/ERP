@@ -32,6 +32,209 @@ export async function getDashboardStats() {
   }
 }
 
+// New functions for Phase 10
+
+export async function getTotalStudents() {
+  try {
+    const totalStudents = await db.student.count({
+      where: {
+        user: {
+          active: true,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: totalStudents,
+    };
+  } catch (error) {
+    console.error("Error fetching total students:", error);
+    return { success: false, error: "Failed to fetch total students" };
+  }
+}
+
+export async function getTotalTeachers() {
+  try {
+    const totalTeachers = await db.teacher.count({
+      where: {
+        user: {
+          active: true,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: totalTeachers,
+    };
+  } catch (error) {
+    console.error("Error fetching total teachers:", error);
+    return { success: false, error: "Failed to fetch total teachers" };
+  }
+}
+
+export async function getPendingFeePayments() {
+  try {
+    const pendingPayments = await db.feePayment.aggregate({
+      where: {
+        status: {
+          in: ["PENDING", "PARTIAL"],
+        },
+      },
+      _sum: {
+        balance: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        totalAmount: pendingPayments._sum.balance || 0,
+        count: pendingPayments._count.id || 0,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching pending fee payments:", error);
+    return { success: false, error: "Failed to fetch pending fee payments" };
+  }
+}
+
+export async function getTodaysAttendance() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get student attendance for today
+    const studentAttendance = await db.studentAttendance.groupBy({
+      by: ["status"],
+      where: {
+        date: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Get teacher attendance for today
+    const teacherAttendance = await db.teacherAttendance.groupBy({
+      by: ["status"],
+      where: {
+        date: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Calculate student attendance percentage
+    const totalStudentRecords = studentAttendance.reduce(
+      (sum, record) => sum + record._count.id,
+      0
+    );
+    const presentStudents =
+      studentAttendance.find((record) => record.status === "PRESENT")?._count.id || 0;
+    const studentAttendancePercentage =
+      totalStudentRecords > 0
+        ? Math.round((presentStudents / totalStudentRecords) * 100)
+        : 0;
+
+    // Calculate teacher attendance percentage
+    const totalTeacherRecords = teacherAttendance.reduce(
+      (sum, record) => sum + record._count.id,
+      0
+    );
+    const presentTeachers =
+      teacherAttendance.find((record) => record.status === "PRESENT")?._count.id || 0;
+    const teacherAttendancePercentage =
+      totalTeacherRecords > 0
+        ? Math.round((presentTeachers / totalTeacherRecords) * 100)
+        : 0;
+
+    return {
+      success: true,
+      data: {
+        studentAttendance: {
+          percentage: studentAttendancePercentage,
+          present: presentStudents,
+          total: totalStudentRecords,
+        },
+        teacherAttendance: {
+          percentage: teacherAttendancePercentage,
+          present: presentTeachers,
+          total: totalTeacherRecords,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching today's attendance:", error);
+    return { success: false, error: "Failed to fetch today's attendance" };
+  }
+}
+
+export async function getUpcomingEventsCount() {
+  try {
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const upcomingEventsCount = await db.event.count({
+      where: {
+        startDate: {
+          gte: now,
+          lte: thirtyDaysFromNow,
+        },
+        status: {
+          in: ["UPCOMING", "ONGOING"],
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: upcomingEventsCount,
+    };
+  } catch (error) {
+    console.error("Error fetching upcoming events count:", error);
+    return { success: false, error: "Failed to fetch upcoming events count" };
+  }
+}
+
+export async function getRecentAnnouncementsCount() {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentAnnouncementsCount = await db.announcement.count({
+      where: {
+        isActive: true,
+        createdAt: {
+          gte: sevenDaysAgo,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: recentAnnouncementsCount,
+    };
+  } catch (error) {
+    console.error("Error fetching recent announcements count:", error);
+    return { success: false, error: "Failed to fetch recent announcements count" };
+  }
+}
+
 export async function getStudentAttendanceData() {
   try {
     // Get attendance data for the last 12 months

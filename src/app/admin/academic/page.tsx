@@ -82,7 +82,7 @@ export default async function AcademicPage() {
           <Card key={section.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                <div className="p-2 bg-primary/10 rounded-md text-primary">
                   {section.icon}
                 </div>
                 <CardTitle className="text-lg">{section.title}</CardTitle>
@@ -113,11 +113,11 @@ export default async function AcademicPage() {
         <CardContent>
           {academicYears.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-gray-100 p-6 mb-4">
-                <Calendar className="h-12 w-12 text-gray-400" />
+              <div className="rounded-full bg-muted p-6 mb-4">
+                <Calendar className="h-12 w-12 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No academic years yet</h3>
-              <p className="text-gray-500 mb-6 max-w-sm">
+              <p className="text-muted-foreground mb-6 max-w-sm">
                 Get started by creating your first academic year to organize your school calendar.
               </p>
               <Link href="/admin/academic/academic-years/create">
@@ -132,19 +132,19 @@ export default async function AcademicPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Year Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Terms</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Year Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Terms</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Classes</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {academicYears.map((year) => (
-                      <tr key={year.id} className="border-b hover:bg-gray-50">
+                      <tr key={year.id} className="border-b hover:bg-accent/50">
                         <td className="py-3 px-4 align-middle font-medium">{year.name}</td>
                         <td className="py-3 px-4 align-middle">{formatDate(year.startDate)}</td>
                         <td className="py-3 px-4 align-middle">{formatDate(year.endDate)}</td>
@@ -152,8 +152,8 @@ export default async function AcademicPage() {
                           <Badge 
                             className={
                               year.status === 'Current' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                              year.status === 'Past' ? 'bg-gray-100 text-gray-800 hover:bg-gray-100' :
-                              'bg-blue-100 text-blue-800 hover:bg-blue-100'
+                              year.status === 'Past' ? 'bg-muted text-gray-800 hover:bg-muted' :
+                              'bg-primary/10 text-primary hover:bg-primary/10'
                             }
                           >
                             {year.status}

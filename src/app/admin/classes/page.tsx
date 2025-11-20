@@ -284,12 +284,12 @@ export default function ClassesPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="mb-3">
-                      <div className="text-sm text-gray-500 mb-1">Sections:</div>
+                      <div className="text-sm text-muted-foreground mb-1">Sections:</div>
                       <div className="flex flex-wrap gap-1">
                         {grade.sections.map((section: string) => (
                           <span 
                             key={section}
-                            className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800"
+                            className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
                           >
                             {section}
                           </span>
@@ -307,7 +307,7 @@ export default function ClassesPage() {
                 </Card>
               ))
             ) : (
-              <div className="col-span-3 text-center py-12 text-gray-500">
+              <div className="col-span-3 text-center py-12 text-muted-foreground">
                 <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-3" />
                 <h3 className="text-lg font-medium mb-1">No classes found</h3>
                 <p className="text-sm mb-4">Create your first class to get started</p>
@@ -330,7 +330,7 @@ export default function ClassesPage() {
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="search"
                         placeholder="Search classes..."
@@ -363,12 +363,12 @@ export default function ClassesPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Academic Year</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Sections</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Students</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Academic Year</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sections</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Students</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -390,7 +390,7 @@ export default function ClassesPage() {
                                 {cls.sections.map((section: any) => (
                                   <span 
                                     key={section.id}
-                                    className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800 mr-1"
+                                    className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary mr-1"
                                   >
                                     {section.name}
                                   </span>
@@ -411,7 +411,7 @@ export default function ClassesPage() {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan={5} className="py-6 text-center text-gray-500">
+                            <td colSpan={5} className="py-6 text-center text-muted-foreground">
                               {searchTerm || academicYearFilter !== "all" 
                                 ? "No classes match your search criteria" 
                                 : "No classes found"}
@@ -428,7 +428,7 @@ export default function ClassesPage() {
 
           <div className="grid gap-4 mt-6 grid-cols-1 md:grid-cols-2">
             <Link href="/admin/classes/sections">
-              <Card className="h-full hover:bg-gray-50 transition-colors cursor-pointer">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
                   <CardTitle className="text-lg">Section Management</CardTitle>
                   <CardDescription>
@@ -436,7 +436,7 @@ export default function ClassesPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Create and manage sections for each class, assign teachers, and organize students.
                   </p>
                 </CardContent>
@@ -444,7 +444,7 @@ export default function ClassesPage() {
             </Link>
             
             <Link href="/admin/classes/rooms">
-              <Card className="h-full hover:bg-gray-50 transition-colors cursor-pointer">
+              <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>
                   <CardTitle className="text-lg">Classroom Management</CardTitle>
                   <CardDescription>
@@ -452,7 +452,7 @@ export default function ClassesPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Organize classrooms, labs, and other teaching spaces with capacity information.
                   </p>
                 </CardContent>

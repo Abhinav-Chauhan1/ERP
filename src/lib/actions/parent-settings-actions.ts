@@ -17,6 +17,8 @@ import {
 } from "@/lib/schemaValidation/parent-settings-schemas";
 import { revalidatePath } from "next/cache";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
+import { validateImageFile } from "@/lib/utils/file-security";
 
 /**
  * Helper function to get current parent and verify authentication
@@ -353,7 +355,7 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
 
 /**
  * Upload avatar with file validation and Cloudinary upload
- * Requirements: 6.5
+ * Requirements: 6.5, 10.1, 10.2, 10.4
  */
 export async function uploadAvatar(formData: FormData) {
   try {
@@ -365,6 +367,13 @@ export async function uploadAvatar(formData: FormData) {
     
     const { user } = parentData;
     
+    // Rate limiting for file uploads
+    const rateLimitKey = `file-upload:${user.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.FILE_UPLOAD);
+    if (!rateLimitResult) {
+      return { success: false, message: "Too many upload requests. Please try again later." };
+    }
+    
     // Extract file from FormData
     const file = formData.get("file") as File;
     
@@ -372,14 +381,10 @@ export async function uploadAvatar(formData: FormData) {
       return { success: false, message: "No file provided" };
     }
     
-    // Validate file
-    if (file.size > 5 * 1024 * 1024) {
-      return { success: false, message: "File size must be less than 5MB" };
-    }
-    
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      return { success: false, message: "File must be a JPEG, PNG, or WebP image" };
+    // Validate file using security utility
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      return { success: false, message: validation.error || "Invalid file" };
     }
     
     // Upload to Cloudinary

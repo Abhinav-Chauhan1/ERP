@@ -308,7 +308,7 @@ export default function MessagesPage() {
                   <p className="text-sm text-muted-foreground">Inbox</p>
                   <p className="text-2xl font-bold">{stats.totalReceived}</p>
                 </div>
-                <Inbox className="h-8 w-8 text-blue-500" />
+                <Inbox className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -353,7 +353,7 @@ export default function MessagesPage() {
           {/* Search and Tabs */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search messages..."
@@ -385,7 +385,7 @@ export default function MessagesPage() {
             <div className="text-center py-10">
               <Mail className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No messages found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm
                   ? "Try adjusting your search"
                   : activeFolder === "inbox"
@@ -406,8 +406,8 @@ export default function MessagesPage() {
               {filteredMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors ${
-                    !message.isRead && activeFolder === "inbox" ? "bg-blue-50 border-blue-200" : ""
+                  className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
+                    !message.isRead && activeFolder === "inbox" ? "bg-primary/10 border-primary/30" : ""
                   }`}
                   onClick={() => handleViewMessage(message)}
                 >
@@ -482,7 +482,7 @@ export default function MessagesPage() {
                       <FormLabel>To</FormLabel>
                       <FormControl>
                         <div className="relative recipient-search-container">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                           <Input
                             placeholder="Search for a recipient..."
                             className="pl-9"
@@ -501,7 +501,7 @@ export default function MessagesPage() {
                               {filteredContacts.map((contact) => (
                                 <div
                                   key={contact.id}
-                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                  className="px-3 py-2 hover:bg-muted cursor-pointer"
                                   onClick={() => {
                                     field.onChange(contact.id);
                                     setRecipientSearch("");
@@ -511,7 +511,7 @@ export default function MessagesPage() {
                                   <div className="font-medium">
                                     {contact.firstName} {contact.lastName}
                                   </div>
-                                  <div className="text-xs text-gray-500">{contact.role}</div>
+                                  <div className="text-xs text-muted-foreground">{contact.role}</div>
                                 </div>
                               ))}
                             </div>

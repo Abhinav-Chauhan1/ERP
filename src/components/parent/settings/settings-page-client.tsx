@@ -6,15 +6,9 @@ import { ProfileEditForm } from "./profile-edit-form";
 import { AvatarUpload } from "./avatar-upload";
 import { NotificationPreferences } from "./notification-preferences";
 import { SecuritySettings } from "./security-settings";
-import { 
-  updateProfile, 
-  uploadAvatar, 
-  updateNotificationPreferences,
-  changePassword 
-} from "@/lib/actions/parent-settings-actions";
+import { AppearanceSettings } from "@/components/shared/settings/appearance-settings";
 import type { ParentProfileData, ParentSettingsData } from "@/types/settings";
-import type { UpdateProfileInput, UpdateNotificationPreferencesInput, ChangePasswordInput } from "@/lib/schemaValidation/parent-settings-schemas";
-import { User, Bell, Shield } from "lucide-react";
+import { User, Bell, Shield, Palette } from "lucide-react";
 
 interface SettingsPageClientProps {
   profile: ParentProfileData;
@@ -24,36 +18,11 @@ interface SettingsPageClientProps {
 export function SettingsPageClient({ profile, settings }: SettingsPageClientProps) {
   const [activeTab, setActiveTab] = useState("profile");
   
-  const handleProfileUpdate = async (data: UpdateProfileInput) => {
-    return await updateProfile(data);
-  };
-  
-  const handleAvatarUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    
-    const result = await uploadAvatar(formData);
-    
-    return {
-      success: result.success,
-      message: result.message,
-      avatarUrl: result.data?.avatarUrl
-    };
-  };
-  
-  const handleNotificationUpdate = async (data: UpdateNotificationPreferencesInput) => {
-    return await updateNotificationPreferences(data);
-  };
-  
-  const handlePasswordChange = async (data: ChangePasswordInput) => {
-    return await changePassword(data);
-  };
-  
   const userName = `${profile.user.firstName} ${profile.user.lastName}`;
   
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+      <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
         <TabsTrigger value="profile" className="flex items-center space-x-2">
           <User className="h-4 w-4" />
           <span>Profile</span>
@@ -66,34 +35,31 @@ export function SettingsPageClient({ profile, settings }: SettingsPageClientProp
           <Shield className="h-4 w-4" />
           <span>Security</span>
         </TabsTrigger>
+        <TabsTrigger value="appearance" className="flex items-center space-x-2">
+          <Palette className="h-4 w-4" />
+          <span>Appearance</span>
+        </TabsTrigger>
       </TabsList>
       
       <TabsContent value="profile" className="space-y-6">
         <AvatarUpload
           currentAvatar={profile.user.avatar}
           userName={userName}
-          onUpload={handleAvatarUpload}
         />
         
-        <ProfileEditForm
-          profile={profile}
-          onUpdate={handleProfileUpdate}
-        />
+        <ProfileEditForm profile={profile} />
       </TabsContent>
       
       <TabsContent value="notifications">
-        <NotificationPreferences
-          settings={settings}
-          onUpdate={handleNotificationUpdate}
-        />
+        <NotificationPreferences settings={settings} />
       </TabsContent>
       
       <TabsContent value="security">
-        <SecuritySettings
-          userId={profile.userId}
-          lastPasswordChange={profile.updatedAt}
-          onPasswordChange={handlePasswordChange}
-        />
+        <SecuritySettings />
+      </TabsContent>
+      
+      <TabsContent value="appearance">
+        <AppearanceSettings />
       </TabsContent>
     </Tabs>
   );

@@ -383,13 +383,13 @@ export default function AssignmentsPage() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'open':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'closed':
         return 'bg-amber-100 text-amber-800';
       case 'graded':
         return 'bg-green-100 text-green-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-gray-800';
     }
   };
 
@@ -398,14 +398,14 @@ export default function AssignmentsPage() {
     
     switch (status) {
       case 'SUBMITTED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'GRADED':
       case 'RETURNED':
         return 'bg-green-100 text-green-800';
       case 'PENDING':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-gray-800';
     }
   };
 
@@ -630,7 +630,7 @@ export default function AssignmentsPage() {
                           <FormLabel>
                             Allow Late Submissions
                           </FormLabel>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             Students can submit after the due date
                           </p>
                         </div>
@@ -641,11 +641,11 @@ export default function AssignmentsPage() {
                   <div className="border p-4 rounded-md">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Upload className="h-4 w-4 text-gray-500" />
+                        <Upload className="h-4 w-4 text-muted-foreground" />
                         <h3 className="font-medium">Attachments</h3>
                       </div>
                       {selectedFiles.length > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           {selectedFiles.length} file(s) selected
                         </span>
                       )}
@@ -672,7 +672,7 @@ export default function AssignmentsPage() {
                       />
                     )}
                     
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Upload resources for students
                     </p>
                   </div>
@@ -705,7 +705,7 @@ export default function AssignmentsPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-4">
         <div className="md:w-1/2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search assignments by title or description..."
@@ -788,14 +788,14 @@ export default function AssignmentsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Due Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Submissions</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Due Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Submissions</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -808,15 +808,15 @@ export default function AssignmentsPage() {
                           <td className="py-3 px-4 align-middle">{assignment.grades}</td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>{format(new Date(assignment.dueDate), 'MMM d, yyyy')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {assignment.submissions}/{assignment.totalStudents}
-                            <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1">
+                            <div className="w-full h-1.5 bg-muted rounded-full mt-1">
                               <div 
-                                className="h-1.5 bg-blue-500 rounded-full" 
+                                className="h-1.5 bg-primary rounded-full" 
                                 style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
@@ -871,7 +871,7 @@ export default function AssignmentsPage() {
                 <div className="text-center py-10">
                   <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No active assignments</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || subjectFilter !== "all" || classFilter !== "all" || statusFilter !== "all"
                       ? "Try adjusting your filters or search terms"
                       : "Create a new assignment to get started"}
@@ -907,14 +907,14 @@ export default function AssignmentsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Due Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Submissions</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Due Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Submissions</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -927,15 +927,15 @@ export default function AssignmentsPage() {
                           <td className="py-3 px-4 align-middle">{assignment.grades}</td>
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                               <span>{format(new Date(assignment.dueDate), 'MMM d, yyyy')}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {assignment.submissions}/{assignment.totalStudents}
-                            <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1">
+                            <div className="w-full h-1.5 bg-muted rounded-full mt-1">
                               <div 
-                                className="h-1.5 bg-blue-500 rounded-full" 
+                                className="h-1.5 bg-primary rounded-full" 
                                 style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
@@ -964,7 +964,7 @@ export default function AssignmentsPage() {
                 <div className="text-center py-10">
                   <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No past assignments</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || subjectFilter !== "all" || classFilter !== "all" || statusFilter !== "all"
                       ? "Try adjusting your filters or search terms"
                       : "Completed assignments will appear here"}
@@ -991,22 +991,22 @@ export default function AssignmentsPage() {
             </div>
           ) : selectedAssignment ? (
             <div className="overflow-y-auto max-h-[60vh]">
-              <div className="mb-4 border rounded-lg p-4 bg-gray-50">
+              <div className="mb-4 border rounded-lg p-4 bg-accent">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Subject</p>
+                    <p className="text-muted-foreground">Subject</p>
                     <p className="font-medium">{selectedAssignment.subject}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Total Marks</p>
+                    <p className="text-muted-foreground">Total Marks</p>
                     <p className="font-medium">{selectedAssignment.totalMarks}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Due Date</p>
+                    <p className="text-muted-foreground">Due Date</p>
                     <p className="font-medium">{format(new Date(selectedAssignment.dueDate), 'MMM d, yyyy')}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Status</p>
+                    <p className="text-muted-foreground">Status</p>
                     <Badge className={getStatusColor(selectedAssignment.status)}>
                       {selectedAssignment.status}
                     </Badge>
@@ -1018,12 +1018,12 @@ export default function AssignmentsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-white">
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Submission Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Submission Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1031,7 +1031,7 @@ export default function AssignmentsPage() {
                         <tr key={submission.id} className="border-b">
                           <td className="py-3 px-4 align-middle">
                             <div className="font-medium">{submission.studentName}</div>
-                            <div className="text-xs text-gray-500">{submission.studentAdmissionId}</div>
+                            <div className="text-xs text-muted-foreground">{submission.studentAdmissionId}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {submission.submissionDate 
@@ -1046,7 +1046,7 @@ export default function AssignmentsPage() {
                           <td className="py-3 px-4 align-middle">
                             {submission.status === "GRADED" || submission.status === "RETURNED" ? 
                               <span className="font-medium">{submission.marks} / {selectedAssignment.totalMarks}</span> : 
-                              <span className="text-gray-500">-</span>
+                              <span className="text-muted-foreground">-</span>
                             }
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
@@ -1075,7 +1075,7 @@ export default function AssignmentsPage() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <FileUp className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No submissions yet</h3>
                   <p className="text-sm">
@@ -1085,7 +1085,7 @@ export default function AssignmentsPage() {
               )}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">Assignment not found</div>
+            <div className="text-center py-8 text-muted-foreground">Assignment not found</div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewSubmissionsDialogOpen(false)}>

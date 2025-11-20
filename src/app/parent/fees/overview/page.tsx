@@ -134,20 +134,18 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Child Selector */}
           {children.length > 1 && (
-            <Select value={selectedChildId}>
-              <SelectTrigger className="w-full sm:w-64">
-                <SelectValue placeholder="Select child" />
-              </SelectTrigger>
-              <SelectContent>
-                {children.map((child) => (
-                  <SelectItem key={child.id} value={child.id}>
-                    <Link href={`/parent/fees/overview?childId=${child.id}`} className="block w-full">
-                      {child.name} - {child.class}
-                    </Link>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              {children.map((child) => (
+                <Link key={child.id} href={`/parent/fees/overview?childId=${child.id}`}>
+                  <Button
+                    variant={child.id === selectedChildId ? "default" : "outline"}
+                    size="sm"
+                  >
+                    {child.name}
+                  </Button>
+                </Link>
+              ))}
+            </div>
           )}
           
           {/* Export to PDF Button */}

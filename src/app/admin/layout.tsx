@@ -16,11 +16,10 @@ export default function AdminLayout({
       </div>
       <main className="md:pl-72 h-full">
         <AdminHeader />
-        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-gray-50 p-4 md:p-6">
+        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-background p-4 md:p-6">
           {children}
         </div>
       </main>
-      <Toaster position="top-center" />
     </div>
   );
 }

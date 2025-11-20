@@ -259,8 +259,9 @@ export async function getDuePayments() {
 
 /**
  * Make a fee payment
+ * Requirements: 10.1, 10.2
  */
-export async function makePayment(feeItemId: string, paymentData: z.infer<typeof paymentSchema>) {
+export async function makePayment(feeItemId: string, paymentData: z.infer<typeof paymentSchema> & { csrfToken?: string }) {
   const student = await getCurrentStudent();
   
   if (!student) {
@@ -268,6 +269,23 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
   }
   
   try {
+    // Verify CSRF token
+    if (paymentData.csrfToken) {
+      const { verifyCsrfToken } = await import("@/lib/utils/csrf");
+      const isCsrfValid = await verifyCsrfToken(paymentData.csrfToken);
+      if (!isCsrfValid) {
+        return { success: false, message: "Invalid CSRF token" };
+      }
+    }
+    
+    // Rate limiting for payment operations
+    const { checkRateLimit, RateLimitPresets } = await import("@/lib/utils/rate-limit");
+    const rateLimitKey = `payment:${student.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
+    if (!rateLimitResult) {
+      return { success: false, message: "Too many payment requests. Please try again later." };
+    }
+    
     // Validate data
     const validatedData = paymentSchema.parse(paymentData);
     

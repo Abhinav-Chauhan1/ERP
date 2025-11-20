@@ -1,11 +1,29 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { sanitizeText, sanitizeEmail, sanitizePhoneNumber, sanitizeUrl } from "@/lib/utils/input-sanitization";
 
 // Get system settings (creates default if doesn't exist)
 export async function getSystemSettings() {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     let settings = await db.systemSettings.findFirst();
     
     // Create default settings if none exist
@@ -14,10 +32,10 @@ export async function getSystemSettings() {
         data: {
           schoolName: "School Name",
           timezone: "UTC",
-          gradingSystem: "percentage",
+          defaultGradingScale: "PERCENTAGE",
           passingGrade: 50,
-          emailNotifications: true,
-          theme: "light",
+          emailEnabled: true,
+          defaultTheme: "LIGHT",
           language: "en",
         },
       });
@@ -30,7 +48,66 @@ export async function getSystemSettings() {
   }
 }
 
-// Update general settings
+// Update school information
+export async function updateSchoolInfo(data: {
+  schoolName: string;
+  schoolEmail?: string;
+  schoolPhone?: string;
+  schoolAddress?: string;
+  schoolWebsite?: string;
+  schoolFax?: string;
+  timezone: string;
+  schoolLogo?: string;
+}) {
+  try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
+    const settings = await db.systemSettings.findFirst();
+    
+    if (!settings) {
+      return { success: false, error: "Settings not found" };
+    }
+    
+    // Sanitize inputs
+    const sanitizedData = {
+      schoolName: sanitizeText(data.schoolName),
+      schoolEmail: data.schoolEmail ? sanitizeEmail(data.schoolEmail) : undefined,
+      schoolPhone: data.schoolPhone ? sanitizePhoneNumber(data.schoolPhone) : undefined,
+      schoolAddress: data.schoolAddress ? sanitizeText(data.schoolAddress) : undefined,
+      schoolWebsite: data.schoolWebsite ? sanitizeUrl(data.schoolWebsite) : undefined,
+      schoolFax: data.schoolFax ? sanitizePhoneNumber(data.schoolFax) : undefined,
+      timezone: sanitizeText(data.timezone),
+      schoolLogo: data.schoolLogo ? sanitizeUrl(data.schoolLogo) : undefined,
+    };
+    
+    const updated = await db.systemSettings.update({
+      where: { id: settings.id },
+      data: sanitizedData,
+    });
+    
+    revalidatePath("/admin/settings");
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Error updating school info:", error);
+    return { success: false, error: "Failed to update school information" };
+  }
+}
+
+// Legacy function for backward compatibility
 export async function updateGeneralSettings(data: {
   schoolName: string;
   schoolEmail?: string;
@@ -40,44 +117,36 @@ export async function updateGeneralSettings(data: {
   schoolFax?: string;
   timezone: string;
 }) {
-  try {
-    const settings = await db.systemSettings.findFirst();
-    
-    if (!settings) {
-      return { success: false, error: "Settings not found" };
-    }
-    
-    const updated = await db.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        schoolName: data.schoolName,
-        schoolEmail: data.schoolEmail,
-        schoolPhone: data.schoolPhone,
-        schoolAddress: data.schoolAddress,
-        schoolWebsite: data.schoolWebsite,
-        schoolFax: data.schoolFax,
-        timezone: data.timezone,
-      },
-    });
-    
-    revalidatePath("/admin/settings");
-    return { success: true, data: updated };
-  } catch (error) {
-    console.error("Error updating general settings:", error);
-    return { success: false, error: "Failed to update general settings" };
-  }
+  return updateSchoolInfo(data);
 }
 
 // Update academic settings
 export async function updateAcademicSettings(data: {
   currentAcademicYear?: string;
   currentTerm?: string;
-  gradingSystem: string;
+  defaultGradingScale: string;
   passingGrade: number;
   autoAttendance: boolean;
-  lateArrivalThreshold: number;
+  lateArrivalMinutes: number;
+  attendanceThreshold: number;
 }) {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     const settings = await db.systemSettings.findFirst();
     
     if (!settings) {
@@ -89,10 +158,11 @@ export async function updateAcademicSettings(data: {
       data: {
         currentAcademicYear: data.currentAcademicYear,
         currentTerm: data.currentTerm,
-        gradingSystem: data.gradingSystem,
+        defaultGradingScale: data.defaultGradingScale,
         passingGrade: data.passingGrade,
         autoAttendance: data.autoAttendance,
-        lateArrivalThreshold: data.lateArrivalThreshold,
+        lateArrivalMinutes: data.lateArrivalMinutes,
+        attendanceThreshold: data.attendanceThreshold,
       },
     });
     
@@ -106,9 +176,9 @@ export async function updateAcademicSettings(data: {
 
 // Update notification settings
 export async function updateNotificationSettings(data: {
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  pushNotifications: boolean;
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  pushEnabled: boolean;
   notifyEnrollment: boolean;
   notifyPayment: boolean;
   notifyAttendance: boolean;
@@ -116,6 +186,22 @@ export async function updateNotificationSettings(data: {
   notifyLeaveApps: boolean;
 }) {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     const settings = await db.systemSettings.findFirst();
     
     if (!settings) {
@@ -140,10 +226,30 @@ export async function updateSecuritySettings(data: {
   twoFactorAuth: boolean;
   sessionTimeout: number;
   passwordExpiry: number;
+  passwordMinLength: number;
+  passwordRequireSpecialChar: boolean;
+  passwordRequireNumber: boolean;
+  passwordRequireUppercase: boolean;
   autoBackup: boolean;
   backupFrequency: string;
 }) {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     const settings = await db.systemSettings.findFirst();
     
     if (!settings) {
@@ -165,7 +271,8 @@ export async function updateSecuritySettings(data: {
 
 // Update appearance settings
 export async function updateAppearanceSettings(data: {
-  theme: string;
+  defaultTheme: string;
+  defaultColorTheme: string;
   primaryColor: string;
   language: string;
   dateFormat: string;
@@ -173,6 +280,22 @@ export async function updateAppearanceSettings(data: {
   faviconUrl?: string;
 }) {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     const settings = await db.systemSettings.findFirst();
     
     if (!settings) {
@@ -195,6 +318,22 @@ export async function updateAppearanceSettings(data: {
 // Trigger manual backup
 export async function triggerBackup() {
   try {
+    // Authentication check
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user and verify admin role
+    const user = await db.user.findUnique({
+      where: { clerkId: userId },
+      include: { administrator: true },
+    });
+
+    if (!user || !user.administrator) {
+      return { success: false, error: "Unauthorized - Admin access required" };
+    }
+
     // TODO: Implement actual backup logic
     // This would typically involve:
     // 1. Creating a database dump

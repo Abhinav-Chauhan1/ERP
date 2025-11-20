@@ -13,7 +13,7 @@ export async function UpcomingEventsWidget() {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-600" />
+          <Calendar className="h-5 w-5 text-primary" />
           Upcoming Events
         </CardTitle>
       </CardHeader>
@@ -22,7 +22,7 @@ export async function UpcomingEventsWidget() {
           <div className="space-y-4">
             {events.map(event => (
               <div key={event.id} className="flex items-start gap-3 pb-3 border-b last:pb-0 last:border-b-0">
-                <div className="bg-blue-50 h-10 w-10 rounded-md flex flex-col items-center justify-center text-blue-600">
+                <div className="bg-primary/10 h-10 w-10 rounded-md flex flex-col items-center justify-center text-primary">
                   <span className="text-xs font-medium">
                     {format(new Date(event.startDate), "MMM")}
                   </span>
@@ -34,7 +34,7 @@ export async function UpcomingEventsWidget() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-sm truncate">{event.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="flex items-center text-xs text-gray-500">
+                    <div className="flex items-center text-xs text-muted-foreground">
                       <Clock className="h-3 w-3 mr-1" />
                       {format(new Date(event.startDate), "h:mm a")}
                     </div>
@@ -58,7 +58,7 @@ export async function UpcomingEventsWidget() {
           </div>
         ) : (
           <div className="text-center py-6">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               No upcoming events at this time
             </p>
             <Button variant="outline" size="sm" className="mt-4" asChild>

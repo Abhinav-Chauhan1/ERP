@@ -301,7 +301,7 @@ export default function ExamsPage() {
     } else if (date.getTime() - now.getTime() < oneDayInMs) {
       return 'bg-amber-100 text-amber-800'; // Today/tomorrow
     } else {
-      return 'bg-blue-100 text-blue-800'; // Upcoming
+      return 'bg-primary/10 text-primary'; // Upcoming
     }
   };
 
@@ -589,7 +589,7 @@ export default function ExamsPage() {
       <div className="flex flex-col md:flex-row gap-4">
         <div className="md:w-1/2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search exams by title or subject..."
@@ -644,13 +644,13 @@ export default function ExamsPage() {
             <div className="rounded-md border">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Date & Time</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                    <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                  <tr className="bg-accent border-b">
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date & Time</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                    <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -660,7 +660,7 @@ export default function ExamsPage() {
                       <td className="py-3 px-4 align-middle">{exam.subject.name}</td>
                       <td className="py-3 px-4 align-middle">
                         {format(new Date(exam.examDate), 'MMM d, yyyy')}
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {format(new Date(exam.startTime), 'h:mm a')} - {format(new Date(exam.endTime), 'h:mm a')}
                         </div>
                       </td>
@@ -701,7 +701,7 @@ export default function ExamsPage() {
             <div className="text-center py-10">
               <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No exams found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm || subjectFilter !== "all" || termFilter !== "all"
                   ? "Try adjusting your filters or search terms"
                   : "No exams have been scheduled yet"}
@@ -733,13 +733,13 @@ export default function ExamsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-1">
-                  <div className="p-2 bg-blue-50 rounded-md text-blue-600">
+                  <div className="p-2 bg-primary/10 rounded-md text-primary">
                     <BookOpen className="h-5 w-5" />
                   </div>
                   <h3 className="font-medium">Upcoming Exams</h3>
                 </div>
                 <p className="text-3xl font-bold ml-11">{statistics?.upcomingExamsCount || 0}</p>
-                <p className="text-sm text-gray-500 ml-11">
+                <p className="text-sm text-muted-foreground ml-11">
                   Next: {statistics?.nextExam || "None scheduled"}
                 </p>
               </div>
@@ -752,7 +752,7 @@ export default function ExamsPage() {
                   <h3 className="font-medium">Completed Exams</h3>
                 </div>
                 <p className="text-3xl font-bold ml-11">{statistics?.completedExamsCount || 0}</p>
-                <p className="text-sm text-gray-500 ml-11">This term: {pastExams.length}</p>
+                <p className="text-sm text-muted-foreground ml-11">This term: {pastExams.length}</p>
               </div>
               
               <div className="border rounded-lg p-4">
@@ -763,7 +763,7 @@ export default function ExamsPage() {
                   <h3 className="font-medium">Highest Performers</h3>
                 </div>
                 <p className="text-3xl font-bold ml-11">{statistics?.highestPerformingClass || "N/A"}</p>
-                <p className="text-sm text-gray-500 ml-11">
+                <p className="text-sm text-muted-foreground ml-11">
                   Avg score: {statistics?.highestPerformingAverage ? `${statistics.highestPerformingAverage}%` : "N/A"}
                 </p>
               </div>

@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
+import { getTotalUnreadCount } from "@/lib/actions/student-communication-actions";
 
 import { StudentSidebar } from "./student-sidebar";
 
@@ -17,11 +20,27 @@ export function StudentHeader() {
   const [notifications, setNotifications] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Simulate fetching notifications count
+  // Fetch real unread count from database
   useEffect(() => {
     setIsMounted(true);
-    // This would be replaced with an actual API call
-    setNotifications(3);
+    
+    const fetchUnreadCount = async () => {
+      try {
+        const result = await getTotalUnreadCount();
+        if (result.success && result.data) {
+          setNotifications(result.data.total);
+        }
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+    
+    // Refresh count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   if (!isMounted) {
@@ -29,7 +48,7 @@ export function StudentHeader() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-white px-6">
+    <div className="flex h-16 items-center justify-between border-b bg-card px-6">
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
@@ -63,7 +82,9 @@ export function StudentHeader() {
         </h1>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <ColorThemeToggle />
+        <ThemeToggle />
         <Link href="/student/communication/notifications">
           <Button variant="outline" size="icon" className="relative">
             <Bell className="h-5 w-5" />

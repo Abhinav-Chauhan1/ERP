@@ -445,7 +445,7 @@ export default function LessonsPage() {
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-xs text-gray-500">Enter resource URLs separated by commas, e.g. http://example.com/resource1, http://example.com/resource2</p>
+                      <p className="text-xs text-muted-foreground">Enter resource URLs separated by commas, e.g. http://example.com/resource1, http://example.com/resource2</p>
                     </FormItem>
                   )}
                 />
@@ -471,7 +471,7 @@ export default function LessonsPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="md:w-2/3">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search lessons by title, description, or unit..."
@@ -536,7 +536,7 @@ export default function LessonsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                        <div className="p-2 bg-primary/10 rounded-md text-primary">
                           <ClipboardList className="h-5 w-5" />
                         </div>
                         <CardTitle className="text-lg">{lesson.title}</CardTitle>
@@ -562,24 +562,24 @@ export default function LessonsPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <CardDescription>
+                    <div className="text-sm text-muted-foreground">
                       <Badge variant="outline" className="mr-2">
                         {lesson.subject.name}
                       </Badge>
                       <Badge variant="outline">
                         {lesson.unit}
                       </Badge>
-                    </CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm line-clamp-2 mb-3">{lesson.description}</p>
                     <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4 text-gray-500" />
+                        <Clock className="h-4 w-4 text-muted-foreground" />
                         <span>{lesson.duration} minutes</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <FileText className="h-4 w-4 text-gray-500" />
+                        <FileText className="h-4 w-4 text-muted-foreground" />
                         <span>{lesson.resources} resources</span>
                       </div>
                     </div>
@@ -614,13 +614,13 @@ export default function LessonsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Unit</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grades</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Unit</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grades</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -628,7 +628,7 @@ export default function LessonsPage() {
                         <tr key={lesson.id} className="border-b">
                           <td className="py-3 px-4 align-middle font-medium">{lesson.title}</td>
                           <td className="py-3 px-4 align-middle">
-                            {lesson.subject.name} {lesson.subject.code && <span className="text-xs text-gray-500">({lesson.subject.code})</span>}
+                            {lesson.subject.name} {lesson.subject.code && <span className="text-xs text-muted-foreground">({lesson.subject.code})</span>}
                           </td>
                           <td className="py-3 px-4 align-middle">{lesson.unit}</td>
                           <td className="py-3 px-4 align-middle">
@@ -667,9 +667,9 @@ export default function LessonsPage() {
 
           {!loading && filteredLessons.length === 0 && (
             <div className="text-center py-10">
-              <ClipboardList className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+              <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No lessons found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm || filterSubject !== "all"
                   ? "Try adjusting your filters or search terms"
                   : "No lessons have been added yet"}
@@ -697,7 +697,7 @@ export default function LessonsPage() {
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                          <div className="p-2 bg-primary/10 rounded-md text-primary">
                             <BookOpen className="h-5 w-5" />
                           </div>
                           <div>
@@ -722,12 +722,12 @@ export default function LessonsPage() {
                       <div className="rounded-md border">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="bg-gray-50 border-b">
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Unit</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Grades</th>
-                              <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                              <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                            <tr className="bg-accent border-b">
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">Unit</th>
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grades</th>
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
+                              <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -772,9 +772,9 @@ export default function LessonsPage() {
 
               {Object.keys(lessonsBySubject).length === 0 && (
                 <div className="text-center py-10">
-                  <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <FolderOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No lessons found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || filterSubject !== "all"
                       ? "Try adjusting your filters or search terms"
                       : "No lessons have been added yet"}

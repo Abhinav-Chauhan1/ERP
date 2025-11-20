@@ -239,7 +239,7 @@ export default function DepartmentsPage() {
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                    <div className="p-2 bg-primary/10 rounded-md text-primary">
                       <Building2 className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-lg">{department.name}</CardTitle>
@@ -262,7 +262,7 @@ export default function DepartmentsPage() {
                       <BookOpen className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Subjects</p>
+                      <p className="text-xs text-muted-foreground">Subjects</p>
                       <p className="text-sm font-medium">{department._count?.subjects || 0}</p>
                     </div>
                   </div>
@@ -271,7 +271,7 @@ export default function DepartmentsPage() {
                       <GraduationCap className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Teachers</p>
+                      <p className="text-xs text-muted-foreground">Teachers</p>
                       <p className="text-sm font-medium">{department._count?.teachers || 0}</p>
                     </div>
                   </div>
@@ -283,7 +283,7 @@ export default function DepartmentsPage() {
       )}
 
       {departments.length === 0 && !loading && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium mb-1">No departments found</h3>
           <p className="text-sm mb-4">Create your first department to get started</p>

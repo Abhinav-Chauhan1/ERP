@@ -386,7 +386,7 @@ export default function CurriculumPage() {
             <div className="flex-1">
               <label htmlFor="search" className="text-sm font-medium block mb-1">Search</label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   id="search" 
                   placeholder="Search by subject name or code..." 
@@ -428,7 +428,7 @@ export default function CurriculumPage() {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                      <div className="p-2 bg-primary/10 rounded-md text-primary">
                         <BookOpen className="h-5 w-5" />
                       </div>
                       <div>
@@ -447,7 +447,7 @@ export default function CurriculumPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">{subject.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{subject.description}</p>
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-1.5">
                       <div className="p-1 bg-purple-50 rounded-md text-purple-700">
@@ -468,7 +468,7 @@ export default function CurriculumPage() {
                     {subject.classes.map((className: string) => (
                       <span 
                         key={className} 
-                        className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
+                        className="px-2 py-0.5 bg-muted text-gray-700 rounded text-xs"
                       >
                         {className}
                       </span>
@@ -480,7 +480,7 @@ export default function CurriculumPage() {
           </div>
 
           {filteredSubjects.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <h3 className="text-lg font-medium mb-1">No subjects found</h3>
               <p className="text-sm">Try changing your search or filter criteria</p>

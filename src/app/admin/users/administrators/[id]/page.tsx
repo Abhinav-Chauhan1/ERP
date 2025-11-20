@@ -64,29 +64,29 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
               <div>
-                <p className="text-sm text-gray-500">Full Name</p>
+                <p className="text-sm text-muted-foreground">Full Name</p>
                 <p className="font-medium">
                   {administrator.user.firstName} {administrator.user.lastName}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm text-muted-foreground">Email</p>
                 <p className="font-medium">{administrator.user.email}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Phone</p>
+                <p className="text-sm text-muted-foreground">Phone</p>
                 <p className="font-medium">{administrator.user.phone || "Not provided"}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Position</p>
+                <p className="text-sm text-muted-foreground">Position</p>
                 <p className="font-medium">{administrator.position || "Not specified"}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Department</p>
+                <p className="text-sm text-muted-foreground">Department</p>
                 <p className="font-medium">{administrator.department || "Not specified"}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Status</p>
+                <p className="text-sm text-muted-foreground">Status</p>
                 <Badge 
                   className={administrator.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                 >
@@ -94,11 +94,11 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Added on</p>
+                <p className="text-sm text-muted-foreground">Added on</p>
                 <p className="font-medium">{formatDate(administrator.createdAt)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Last Updated</p>
+                <p className="text-sm text-muted-foreground">Last Updated</p>
                 <p className="font-medium">{formatDate(administrator.updatedAt)}</p>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
           <CardContent className="space-y-4">
             <div className="text-sm">
               {/* We could fetch recent actions or announcements made by this administrator */}
-              <p className="text-gray-500">No recent activity available.</p>
+              <p className="text-muted-foreground">No recent activity available.</p>
             </div>
           </CardContent>
         </Card>

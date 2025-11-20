@@ -94,14 +94,14 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Employee ID</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Email</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Subjects</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Join Date</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+              <tr className="bg-accent border-b">
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Employee ID</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subjects</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Join Date</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -118,7 +118,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                 </tr>
               ) : (
                 paginatedTeachers.map((teacher) => (
-                  <tr key={teacher.id} className="border-b hover:bg-gray-50">
+                  <tr key={teacher.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         {teacher.user.avatar ? (
@@ -128,7 +128,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
                             {teacher.user.firstName[0]}
                             {teacher.user.lastName[0]}
                           </div>
@@ -156,7 +156,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-500">None assigned</span>
+                          <span className="text-muted-foreground">None assigned</span>
                         )}
                       </div>
                     </td>
@@ -186,7 +186,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
 
       {filteredAndSortedTeachers.length > 0 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedTeachers.length)} of {filteredAndSortedTeachers.length} teachers
           </div>
           <Pagination

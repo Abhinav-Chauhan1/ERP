@@ -374,7 +374,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "UPCOMING":
-        return "bg-blue-100 text-blue-800";
+        return "bg-primary/10 text-primary";
       case "ONGOING":
         return "bg-green-100 text-green-800";
       case "COMPLETED":
@@ -384,7 +384,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       case "POSTPONED":
         return "bg-amber-100 text-amber-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-muted-foreground";
     }
   };
   
@@ -438,7 +438,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
-        <div className="animate-spin w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -448,7 +448,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <div className="flex flex-col items-center justify-center min-h-[70vh]">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h2 className="text-xl font-bold mb-2">Event Not Found</h2>
-        <p className="text-gray-500 mb-4">The event you're looking for doesn't exist or has been removed.</p>
+        <p className="text-muted-foreground mb-4">The event you're looking for doesn't exist or has been removed.</p>
         <Link href="/admin/events">
           <Button>
             <ChevronLeft className="mr-2 h-4 w-4" /> Back to Events
@@ -740,7 +740,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           <FormLabel>
                             Public Event
                           </FormLabel>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             Make this event visible to everyone
                           </p>
                         </div>
@@ -831,15 +831,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <CardContent className="space-y-6">
                 {/* Date and Time */}
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-full bg-blue-50">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Calendar className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-medium">Date and Time</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {formatDate(event.startDate)} {formatDate(event.startDate) !== formatDate(event.endDate) && `- ${formatDate(event.endDate)}`}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {formatTime(event.startDate)} - {formatTime(event.endDate)}
                     </p>
                   </div>
@@ -853,7 +853,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div>
                       <h3 className="font-medium">Location</h3>
-                      <p className="text-sm text-gray-600 mt-1">{event.location}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{event.location}</p>
                     </div>
                   </div>
                 )}
@@ -866,7 +866,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div>
                       <h3 className="font-medium">Organizer</h3>
-                      <p className="text-sm text-gray-600 mt-1">{event.organizer}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{event.organizer}</p>
                     </div>
                   </div>
                 )}
@@ -878,13 +878,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div>
                     <h3 className="font-medium">Participants</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {event._count?.participants || 0} {event.maxParticipants 
                         ? `/ ${event.maxParticipants} (${Math.round((event._count?.participants || 0) / event.maxParticipants * 100)}% filled)`
                         : "registered"}
                     </p>
                     {event.registrationDeadline && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         Registration Deadline: {formatDate(event.registrationDeadline)} {formatTime(event.registrationDeadline)}
                       </p>
                     )}
@@ -910,15 +910,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 
                 {/* Public/Private */}
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-full bg-gray-50">
+                  <div className="p-2 rounded-full bg-accent">
                     {event.isPublic 
-                      ? <Globe className="h-5 w-5 text-gray-600" />
-                      : <Lock className="h-5 w-5 text-gray-600" />
+                      ? <Globe className="h-5 w-5 text-muted-foreground" />
+                      : <Lock className="h-5 w-5 text-muted-foreground" />
                     }
                   </div>
                   <div>
                     <h3 className="font-medium">Visibility</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {event.isPublic ? "Public - Anyone can view this event" : "Private - Only invited participants can view this event"}
                     </p>
                   </div>
@@ -932,9 +932,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </CardHeader>
               <CardContent>
                 {event.description ? (
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{event.description}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{event.description}</p>
                 ) : (
-                  <p className="text-sm text-gray-500 italic">No description provided.</p>
+                  <p className="text-sm text-muted-foreground italic">No description provided.</p>
                 )}
               </CardContent>
               <CardFooter className="flex justify-between border-t pt-4">
@@ -983,12 +983,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">User</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Role</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Registration Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Attended</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">User</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Role</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Registration Date</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Attended</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1005,7 +1005,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   <p className="font-medium">
                                     {mockUsers.find(u => u.id === participant.userId)?.name || "Unknown User"}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-muted-foreground">
                                     {mockUsers.find(u => u.id === participant.userId)?.role || ""}
                                   </p>
                                 </div>
@@ -1049,9 +1049,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               ) : (
                 <div className="text-center py-10">
-                  <Users className="h-10 w-10 text-gray-300 mx-auto mb-4" />
+                  <Users className="h-10 w-10 text-muted-foreground/50 mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No Participants Yet</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     This event doesn't have any participants yet.
                   </p>
                   <Button onClick={() => setAddParticipantDialogOpen(true)}>
@@ -1147,7 +1147,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <div className="py-4">
             <div className="border rounded-md p-4">
               <h3 className="font-medium">{event.title}</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {formatDate(event.startDate)} at {formatTime(event.startDate)}
               </p>
               {event._count && event._count.participants > 0 && (

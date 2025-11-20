@@ -174,16 +174,18 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
       
       {/* Child Selector */}
       {children.length > 1 && (
-        <div className="mb-6">
-          <Tabs value={childId} onValueChange={(value) => redirect(`/parent/children/progress?childId=${value}`)}>
-            <TabsList>
-              {children.map(child => (
-                <TabsTrigger key={child.id} value={child.id}>
-                  {child.firstName}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        <div className="mb-6 flex gap-2">
+          {children.map(child => (
+            <Button
+              key={child.id}
+              variant={child.id === childId ? "default" : "outline"}
+              asChild
+            >
+              <Link href={`/parent/children/progress?childId=${child.id}`}>
+                {child.firstName}
+              </Link>
+            </Button>
+          ))}
         </div>
       )}
       

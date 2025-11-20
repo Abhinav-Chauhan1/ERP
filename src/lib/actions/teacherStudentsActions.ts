@@ -713,3 +713,205 @@ export async function getClassStudents(classId: string, sectionId?: string) {
     throw new Error(`Failed to get class students: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+
+/**
+ * Get performance overview for all students in teacher's classes
+ */
+export async function getTeacherStudentsPerformance() {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the teacher record
+    const teacher = await db.teacher.findFirst({
+      where: {
+        user: {
+          clerkId: userId
+        }
+      }
+    });
+
+    if (!teacher) {
+      throw new Error("Teacher not found");
+    }
+
+    // Get classes assigned to this teacher
+    const teacherClasses = await db.classTeacher.findMany({
+      where: {
+        teacherId: teacher.id
+      },
+      include: {
+        class: {
+          include: {
+            sections: true
+          }
+        }
+      }
+    });
+
+    const classIds = teacherClasses.map(tc => tc.classId);
+
+    // Get all students in these classes
+    const students = await db.student.findMany({
+      where: {
+        enrollments: {
+          some: {
+            classId: {
+              in: classIds
+            }
+          }
+        }
+      },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        },
+        enrollments: {
+          where: {
+            classId: {
+              in: classIds
+            }
+          },
+          include: {
+            class: true,
+            section: true
+          }
+        },
+        examResults: {
+          include: {
+            exam: true
+          }
+        },
+        assignments: {
+          include: {
+            assignment: true
+          }
+        }
+      }
+    });
+
+    // Calculate performance metrics
+    const classPerformance = teacherClasses.map(tc => {
+      const classStudents = students.filter(s => 
+        s.enrollments.some(ce => ce.classId === tc.classId)
+      );
+
+      const scores = classStudents.flatMap(s => [
+        ...s.examResults.map(er => er.marksObtained / er.exam.totalMarks * 100),
+        ...s.assignments
+          .filter(as => as.grade !== null)
+          .map(as => as.grade!)
+      ]);
+
+      const average = scores.length > 0 
+        ? scores.reduce((a, b) => a + b, 0) / scores.length 
+        : 0;
+      const highest = scores.length > 0 ? Math.max(...scores) : 0;
+      const lowest = scores.length > 0 ? Math.min(...scores) : 0;
+
+      return {
+        className: `${tc.class.name}${tc.class.sections[0] ? ` - ${tc.class.sections[0].name}` : ''}`,
+        average,
+        highest,
+        lowest,
+        studentCount: classStudents.length
+      };
+    });
+
+    // Get subject performance (from exams)
+    const subjectPerformance: Record<string, { total: number; count: number; passed: number }> = {};
+    
+    students.forEach(student => {
+      student.examResults.forEach(result => {
+        const subjectName = result.exam.name;
+        const percentage = (result.marksObtained / result.exam.totalMarks) * 100;
+        
+        if (!subjectPerformance[subjectName]) {
+          subjectPerformance[subjectName] = { total: 0, count: 0, passed: 0 };
+        }
+        
+        subjectPerformance[subjectName].total += percentage;
+        subjectPerformance[subjectName].count += 1;
+        if (percentage >= 50) {
+          subjectPerformance[subjectName].passed += 1;
+        }
+      });
+    });
+
+    const subjectPerformanceArray = Object.entries(subjectPerformance).map(([subject, data]) => ({
+      subject,
+      average: data.count > 0 ? data.total / data.count : 0,
+      passRate: data.count > 0 ? (data.passed / data.count) * 100 : 0
+    }));
+
+    // Calculate student averages
+    const studentAverages = students.map(student => {
+      const scores = [
+        ...student.examResults.map(er => er.marksObtained / er.exam.totalMarks * 100),
+        ...student.assignments
+          .filter(as => as.grade !== null)
+          .map(as => as.grade!)
+      ];
+
+      const average = scores.length > 0 
+        ? scores.reduce((a, b) => a + b, 0) / scores.length 
+        : 0;
+
+      const enrollment = student.enrollments[0];
+      const className = enrollment 
+        ? `${enrollment.class.name}${enrollment.section ? ` - ${enrollment.section.name}` : ''}`
+        : 'Unknown';
+
+      return {
+        id: student.id,
+        name: `${student.user.firstName} ${student.user.lastName}`,
+        average,
+        className
+      };
+    });
+
+    // Top performers (>= 80%)
+    const topPerformers = studentAverages
+      .filter(s => s.average >= 80)
+      .sort((a, b) => b.average - a.average)
+      .slice(0, 10);
+
+    // Students needing attention (< 50%)
+    const needsAttention = studentAverages
+      .filter(s => s.average < 50 && s.average > 0)
+      .sort((a, b) => a.average - b.average)
+      .slice(0, 10);
+
+    // Overall stats
+    const allScores = studentAverages.map(s => s.average).filter(s => s > 0);
+    const averageScore = allScores.length > 0 
+      ? allScores.reduce((a, b) => a + b, 0) / allScores.length 
+      : 0;
+    const passRate = allScores.length > 0
+      ? (allScores.filter(s => s >= 50).length / allScores.length) * 100
+      : 0;
+
+    return {
+      classPerformance,
+      subjectPerformance: subjectPerformanceArray,
+      topPerformers,
+      needsAttention,
+      overallStats: {
+        totalStudents: students.length,
+        averageScore,
+        passRate,
+        trend: "stable" as const // Could be calculated from historical data
+      }
+    };
+  } catch (error) {
+    console.error("Failed to get teacher students performance:", error);
+    throw new Error(`Failed to get performance data: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}

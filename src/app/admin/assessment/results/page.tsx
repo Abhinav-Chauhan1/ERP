@@ -306,7 +306,7 @@ export default function ResultsPage() {
           <div className="flex flex-col md:flex-row gap-4 mt-4 mb-6">
             <div className="md:w-1/2">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search by exam name or subject..."
@@ -391,9 +391,9 @@ export default function ResultsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
+                      <tr className="bg-accent border-b">
                         <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
+                          className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("examName")}
                         >
                           <div className="flex items-center">
@@ -404,7 +404,7 @@ export default function ResultsPage() {
                           </div>
                         </th>
                         <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
+                          className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("subject")}
                         >
                           <div className="flex items-center">
@@ -415,7 +415,7 @@ export default function ResultsPage() {
                           </div>
                         </th>
                         <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
+                          className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("examDate")}
                         >
                           <div className="flex items-center">
@@ -426,7 +426,7 @@ export default function ResultsPage() {
                           </div>
                         </th>
                         <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
+                          className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("averageScore")}
                         >
                           <div className="flex items-center">
@@ -437,7 +437,7 @@ export default function ResultsPage() {
                           </div>
                         </th>
                         <th 
-                          className="py-3 px-4 text-left font-medium text-gray-500 cursor-pointer"
+                          className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("passPercentage")}
                         >
                           <div className="flex items-center">
@@ -447,10 +447,10 @@ export default function ResultsPage() {
                             )}
                           </div>
                         </th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">
                           Status
                         </th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">
                           Actions
                         </th>
                       </tr>
@@ -475,7 +475,7 @@ export default function ResultsPage() {
                           <td className="py-3 px-4 align-middle">
                             <Badge className={
                               exam.passPercentage >= 90 ? "bg-green-100 text-green-800" :
-                              exam.passPercentage >= 75 ? "bg-blue-100 text-blue-800" :
+                              exam.passPercentage >= 75 ? "bg-primary/10 text-primary" :
                               exam.passPercentage >= 60 ? "bg-yellow-100 text-yellow-800" :
                               "bg-red-100 text-red-800"
                             }>
@@ -523,7 +523,7 @@ export default function ResultsPage() {
                 <div className="text-center py-10">
                   <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No results found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || subjectFilter !== "all" || examTypeFilter !== "all" || termFilter !== "all"
                       ? "Try adjusting your filters to find what you're looking for"
                       : "No exam results have been added yet"
@@ -538,7 +538,7 @@ export default function ResultsPage() {
         <TabsContent value="students">
           <div className="mt-4 mb-6">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search by student name or ID..."
@@ -556,7 +556,7 @@ export default function ResultsPage() {
               <div className="text-center py-12">
                 <GraduationCap className="h-12 w-12 mx-auto text-gray-300 mb-3" />
                 <h3 className="text-lg font-medium mb-1">Student Results View</h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   This feature allows you to view results by student
                 </p>
                 <Button variant="outline">
@@ -578,7 +578,7 @@ export default function ResultsPage() {
                 <div className="text-center py-10">
                   <BarChart className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">Analytics Dashboard</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     This feature will display comprehensive analytics on exam results
                   </p>
                   <Button>
@@ -608,8 +608,8 @@ export default function ResultsPage() {
           ) : selectedExamDetails ? (
             <div className="max-h-[70vh] overflow-auto pr-2">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-blue-700 font-medium text-sm mb-1">Average Score</div>
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <div className="text-primary font-medium text-sm mb-1">Average Score</div>
                   <div className="text-2xl font-bold">{selectedExamDetails.averageScore.toFixed(1)}%</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
@@ -637,7 +637,7 @@ export default function ResultsPage() {
                         <div className={`
                           w-10 h-10 rounded-full flex items-center justify-center font-medium
                           ${grade === 'A+' || grade === 'A' ? 'bg-green-100 text-green-800' :
-                            grade === 'B+' || grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                            grade === 'B+' || grade === 'B' ? 'bg-primary/10 text-primary' :
                             grade === 'C+' || grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'}
                         `}>
@@ -645,7 +645,7 @@ export default function ResultsPage() {
                         </div>
                         <div>
                           <div className="font-medium">{count} students</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground">
                             {((count / selectedExamDetails.totalStudents) * 100).toFixed(1)}%
                           </div>
                         </div>
@@ -656,18 +656,18 @@ export default function ResultsPage() {
               )}
               
               <div className="border rounded-lg mb-4">
-                <div className="bg-gray-50 py-3 px-4 border-b">
+                <div className="bg-accent py-3 px-4 border-b">
                   <h3 className="font-medium">Student Results</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">ID</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">ID</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Marks</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -683,7 +683,7 @@ export default function ResultsPage() {
                           </td>
                           <td className="py-3 px-4">
                             {result.isAbsent ? (
-                              <Badge className="bg-gray-100 text-gray-800">Absent</Badge>
+                              <Badge className="bg-muted text-gray-800">Absent</Badge>
                             ) : (
                               <Badge className={result.isPass ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                                 {result.isPass ? "Pass" : "Fail"}
@@ -698,7 +698,7 @@ export default function ResultsPage() {
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-muted-foreground">
               No details available
             </div>
           )}
@@ -738,7 +738,7 @@ export default function ResultsPage() {
             <div className="max-h-[70vh] overflow-auto pr-2">
               <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
                 <div className="md:w-1/4">
-                  <div className="w-24 h-24 rounded-full bg-gray-200 mx-auto overflow-hidden">
+                  <div className="w-24 h-24 rounded-full bg-muted mx-auto overflow-hidden">
                     {selectedStudentDetails.student.photo ? (
                       <img 
                         src={selectedStudentDetails.student.photo} 
@@ -746,7 +746,7 @@ export default function ResultsPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         <User className="h-12 w-12" />
                       </div>
                     )}
@@ -756,15 +756,15 @@ export default function ResultsPage() {
                   <h2 className="text-xl font-bold">{selectedStudentDetails.student.name}</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
                     <div>
-                      <p className="text-sm text-gray-500">ID</p>
+                      <p className="text-sm text-muted-foreground">ID</p>
                       <p className="font-medium">{selectedStudentDetails.student.admissionId}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Class</p>
+                      <p className="text-sm text-muted-foreground">Class</p>
                       <p className="font-medium">{selectedStudentDetails.student.grade}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Roll Number</p>
+                      <p className="text-sm text-muted-foreground">Roll Number</p>
                       <p className="font-medium">{selectedStudentDetails.student.rollNumber || "-"}</p>
                     </div>
                   </div>
@@ -772,8 +772,8 @@ export default function ResultsPage() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-blue-700 font-medium text-sm mb-1">Overall Percentage</div>
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <div className="text-primary font-medium text-sm mb-1">Overall Percentage</div>
                   <div className="text-2xl font-bold">{selectedStudentDetails.summary.percentage.toFixed(1)}%</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
@@ -791,7 +791,7 @@ export default function ResultsPage() {
               </div>
               
               <div className="border rounded-lg mb-4">
-                <div className="bg-gray-50 py-3 px-4 border-b">
+                <div className="bg-accent py-3 px-4 border-b">
                   <h3 className="font-medium">Subject-wise Performance</h3>
                 </div>
                 {selectedStudentDetails.exams.length > 0 ? (
@@ -799,12 +799,12 @@ export default function ResultsPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Percentage</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Exam</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Marks</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Percentage</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -831,7 +831,7 @@ export default function ResultsPage() {
                               {exam.isAbsent ? '-' : (
                                 <Badge className={
                                   exam.grade === 'A+' || exam.grade === 'A' ? "bg-green-100 text-green-800" :
-                                  exam.grade === 'B+' || exam.grade === 'B' ? "bg-blue-100 text-blue-800" :
+                                  exam.grade === 'B+' || exam.grade === 'B' ? "bg-primary/10 text-primary" :
                                   exam.grade === 'C+' || exam.grade === 'C' ? "bg-yellow-100 text-yellow-800" :
                                   "bg-red-100 text-red-800"
                                 }>
@@ -845,14 +845,14 @@ export default function ResultsPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="p-6 text-center text-gray-500">
+                  <div className="p-6 text-center text-muted-foreground">
                     No exam results found for this student
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-muted-foreground">
               No student details available
             </div>
           )}

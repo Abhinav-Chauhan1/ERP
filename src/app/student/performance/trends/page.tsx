@@ -113,59 +113,138 @@ export default async function PerformanceTrendsPage() {
                 ))}
               </div>
               
-              {/* Replace recharts with custom progress chart */}
-              <div className="mt-8 p-6 bg-white border rounded-md">
-                <h3 className="font-medium text-gray-700 mb-4">Performance Trend Visualization</h3>
-                <div className="relative h-60 mt-6">
-                  {/* Background grid lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between border-t border-gray-200">
-                    <div className="absolute top-0 w-full h-px bg-gray-200"></div>
-                    <div className="absolute top-1/4 w-full h-px bg-gray-200"></div>
-                    <div className="absolute top-2/4 w-full h-px bg-gray-200"></div>
-                    <div className="absolute top-3/4 w-full h-px bg-gray-200"></div>
-                    <div className="absolute bottom-0 w-full h-px bg-gray-200"></div>
-                  </div>
-                  
-                  {/* Y-axis labels */}
-                  <div className="absolute left-0 inset-y-0 flex flex-col justify-between text-xs text-gray-500">
-                    <div className="-translate-y-1/2">100%</div>
-                    <div className="-translate-y-1/2">75%</div>
-                    <div className="-translate-y-1/2">50%</div>
-                    <div className="-translate-y-1/2">25%</div>
-                    <div className="-translate-y-1/2">0%</div>
-                  </div>
-                  
-                  {/* X-axis terms */}
-                  <div className="absolute bottom-0 inset-x-0 flex justify-between text-xs text-gray-500 px-8">
-                    {termPerformance.map(term => (
-                      <div key={term.id} className="text-center">{term.name}</div>
-                    ))}
-                  </div>
-                  
-                  {/* Performance line */}
-                  <div className="absolute inset-x-0 inset-y-0 flex px-8">
-                    <div className="relative flex-1 mt-2">
-                      <svg className="absolute inset-0" viewBox={`0 0 ${(termPerformance.length - 1) * 100} 100`} preserveAspectRatio="none">
-                        <polyline
-                          points={termPerformance.map((term, i) => `${i * 100},${100 - term.percentage}`).join(' ')}
-                          fill="none"
-                          stroke="#3b82f6"
-                          strokeWidth="2"
-                        />
-                        {termPerformance.map((term, i) => (
-                          <circle
-                            key={term.id}
-                            cx={i * 100}
-                            cy={100 - term.percentage}
-                            r="3"
-                            fill="#3b82f6"
-                          />
+              {/* Improved chart visualization */}
+              {termPerformance.length > 0 && (
+                <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-white border rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-gray-800 mb-6">Performance Trend Visualization</h3>
+                  <div className="relative h-80 bg-white rounded-lg p-6 border">
+                    {/* Y-axis labels */}
+                    <div className="absolute left-2 top-6 bottom-12 flex flex-col justify-between text-xs font-medium text-gray-600">
+                      <span>100%</span>
+                      <span>75%</span>
+                      <span>50%</span>
+                      <span>25%</span>
+                      <span>0%</span>
+                    </div>
+                    
+                    {/* Chart area */}
+                    <div className="ml-12 mr-4 h-full pb-8 relative">
+                      {/* Horizontal grid lines */}
+                      <div className="absolute inset-0 flex flex-col justify-between">
+                        {[0, 25, 50, 75, 100].map((value) => (
+                          <div key={value} className="w-full border-t border-gray-200"></div>
                         ))}
-                      </svg>
+                      </div>
+                      
+                      {/* Chart content */}
+                      <div className="relative h-full pt-2 pb-2">
+                        <svg className="w-full h-full" preserveAspectRatio="none">
+                          {/* Gradient definition */}
+                          <defs>
+                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#3b82f6" />
+                              <stop offset="100%" stopColor="#8b5cf6" />
+                            </linearGradient>
+                            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+                            </linearGradient>
+                          </defs>
+                          
+                          {/* Area under the line */}
+                          {termPerformance.length > 1 && (
+                            <polygon
+                              points={`
+                                ${termPerformance.map((term, i) => 
+                                  `${(i / (termPerformance.length - 1)) * 100},${100 - term.percentage}`
+                                ).join(' ')}
+                                ${100},${100}
+                                ${0},${100}
+                              `}
+                              fill="url(#areaGradient)"
+                            />
+                          )}
+                          
+                          {/* Performance line */}
+                          {termPerformance.length > 1 && (
+                            <polyline
+                              points={termPerformance.map((term, i) => 
+                                `${(i / (termPerformance.length - 1)) * 100},${100 - term.percentage}`
+                              ).join(' ')}
+                              fill="none"
+                              stroke="url(#lineGradient)"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                          
+                          {/* Data points */}
+                          {termPerformance.map((term, i) => (
+                            <g key={term.id}>
+                              <circle
+                                cx={(i / (termPerformance.length - 1)) * 100}
+                                cy={100 - term.percentage}
+                                r="1.5"
+                                fill="white"
+                                stroke="#3b82f6"
+                                strokeWidth="2.5"
+                              />
+                            </g>
+                          ))}
+                        </svg>
+                        
+                        {/* Hover tooltips */}
+                        <div className="absolute inset-0 flex justify-between items-end">
+                          {termPerformance.map((term, i) => (
+                            <div 
+                              key={term.id} 
+                              className="group relative flex-1 h-full cursor-pointer"
+                              style={{ 
+                                bottom: `${term.percentage}%`,
+                              }}
+                            >
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap">
+                                  <div className="font-semibold">{term.name}</div>
+                                  <div className="text-blue-300">{term.percentage}% ({term.grade})</div>
+                                  {term.rank && <div className="text-gray-300">Rank: {term.rank}</div>}
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                  <div className="border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* X-axis labels */}
+                      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs font-medium text-gray-600 pt-2">
+                        {termPerformance.map(term => (
+                          <div key={term.id} className="flex-1 text-center">
+                            <div className="truncate px-1">{term.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Legend and stats */}
+                  <div className="mt-4 flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                        <span className="text-gray-600">Performance Trend</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 text-xs text-gray-500">
+                      <span>Hover over points for details</span>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

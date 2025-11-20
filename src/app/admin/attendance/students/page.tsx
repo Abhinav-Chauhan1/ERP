@@ -363,14 +363,14 @@ export default function StudentAttendancePage() {
                         {currentSectionName} - {format(currentDate, 'EEEE, MMMM d, yyyy')}
                       </h3>
                       {attendanceRecords.length > 0 && (
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {stats.total} students, {stats.present} present ({Math.round(stats.presentPercentage)}%)
                         </div>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                           type="search"
                           placeholder="Search by name or roll..."
@@ -400,7 +400,7 @@ export default function StudentAttendancePage() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : attendanceRecords.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                       <UserX className="h-12 w-12 text-gray-300 mb-2" />
                       <h3 className="text-lg font-medium mb-1">No Students</h3>
                       <p className="max-w-md mb-4">
@@ -408,7 +408,7 @@ export default function StudentAttendancePage() {
                       </p>
                     </div>
                   ) : filteredAttendanceRecords.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                       <Search className="h-12 w-12 text-gray-300 mb-2" />
                       <h3 className="text-lg font-medium mb-1">No Results</h3>
                       <p>No students match your search criteria.</p>
@@ -421,12 +421,12 @@ export default function StudentAttendancePage() {
                             <div className="overflow-x-auto">
                               <table className="w-full text-sm">
                                 <thead>
-                                  <tr className="bg-gray-50 border-b">
-                                    <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                                    <th className="py-3 px-4 text-left font-medium text-gray-500">Roll Number</th>
-                                    <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                                    <th className="py-3 px-4 text-left font-medium text-gray-500">Reason</th>
-                                    <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                                  <tr className="bg-accent border-b">
+                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Roll Number</th>
+                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
+                                    <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -479,7 +479,7 @@ export default function StudentAttendancePage() {
                                                   )}
                                                   {field.value === "LEAVE" && (
                                                     <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                                                      <span className="h-2 w-2 rounded-full bg-primary"></span>
                                                       <span>Leave</span>
                                                     </div>
                                                   )}
@@ -512,7 +512,7 @@ export default function StudentAttendancePage() {
                                                 </SelectItem>
                                                 <SelectItem value="LEAVE">
                                                   <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                                                    <span className="h-2 w-2 rounded-full bg-primary"></span>
                                                     <span>Leave</span>
                                                   </div>
                                                 </SelectItem>
@@ -572,7 +572,7 @@ export default function StudentAttendancePage() {
                         </form>
                       </Form>
                       
-                      <div className="p-4 bg-gray-50 rounded-lg mt-6">
+                      <div className="p-4 bg-accent rounded-lg mt-6">
                         <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                           <div className="flex items-center gap-2">
                             <span className="h-3 w-3 rounded-full bg-green-500"></span>
@@ -591,7 +591,7 @@ export default function StudentAttendancePage() {
                             <span className="text-sm">Half Day: {stats.halfDay}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full bg-blue-500"></span>
+                            <span className="h-3 w-3 rounded-full bg-primary"></span>
                             <span className="text-sm">Leave: {stats.leave}</span>
                           </div>
                         </div>
@@ -633,7 +633,7 @@ export default function StudentAttendancePage() {
                               <SelectItem value="all">All Sections</SelectItem>
                               {classSections.map((cls: any) => (
                                 <div key={cls.id}>
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-gray-500">{cls.name}</div>
+                                  <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">{cls.name}</div>
                                   {cls.sections.map((section: any) => (
                                     <SelectItem key={section.id} value={section.id}>
                                       {cls.name} - {section.name}
@@ -723,31 +723,31 @@ export default function StudentAttendancePage() {
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
                         <div className="text-4xl font-bold text-primary">{reportData.summary.total}</div>
-                        <div className="text-sm text-gray-500">Total Records</div>
+                        <div className="text-sm text-muted-foreground">Total Records</div>
                       </div>
                     </Card>
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
                         <div className="text-4xl font-bold text-green-600">{reportData.summary.present}</div>
-                        <div className="text-sm text-gray-500">Present</div>
+                        <div className="text-sm text-muted-foreground">Present</div>
                       </div>
                     </Card>
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
                         <div className="text-4xl font-bold text-red-600">{reportData.summary.absent}</div>
-                        <div className="text-sm text-gray-500">Absent</div>
+                        <div className="text-sm text-muted-foreground">Absent</div>
                       </div>
                     </Card>
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
                         <div className="text-4xl font-bold text-yellow-600">{reportData.summary.late}</div>
-                        <div className="text-sm text-gray-500">Late</div>
+                        <div className="text-sm text-muted-foreground">Late</div>
                       </div>
                     </Card>
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
-                        <div className="text-4xl font-bold text-blue-600">{reportData.summary.leave}</div>
-                        <div className="text-sm text-gray-500">Leave</div>
+                        <div className="text-4xl font-bold text-primary">{reportData.summary.leave}</div>
+                        <div className="text-sm text-muted-foreground">Leave</div>
                       </div>
                     </Card>
                     <Card className="w-full md:w-auto p-4 border">
@@ -755,7 +755,7 @@ export default function StudentAttendancePage() {
                         <div className="text-4xl font-bold text-primary">
                           {reportData.summary.presentPercentage.toFixed(1)}%
                         </div>
-                        <div className="text-sm text-gray-500">Present %</div>
+                        <div className="text-sm text-muted-foreground">Present %</div>
                       </div>
                     </Card>
                   </div>
@@ -764,14 +764,14 @@ export default function StudentAttendancePage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-gray-50 border-b">
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Roll Number</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Present</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Absent</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Late</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Leave</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Present %</th>
+                          <tr className="bg-accent border-b">
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Roll Number</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Present</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Absent</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Late</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Leave</th>
+                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Present %</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -856,7 +856,7 @@ export default function StudentAttendancePage() {
                         </SelectItem>
                         <SelectItem value="LEAVE">
                           <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                            <span className="h-2 w-2 rounded-full bg-primary"></span>
                             <span>Leave</span>
                           </div>
                         </SelectItem>

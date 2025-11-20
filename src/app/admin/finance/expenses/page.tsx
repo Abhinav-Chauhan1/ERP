@@ -60,13 +60,13 @@ import {
 
 // Mock data for expense categories
 const expenseCategories = [
-  { id: "utilities", name: "Utilities", color: "bg-blue-100 text-blue-800", icon: <Receipt className="h-4 w-4" /> },
+  { id: "utilities", name: "Utilities", color: "bg-primary/10 text-primary", icon: <Receipt className="h-4 w-4" /> },
   { id: "supplies", name: "School Supplies", color: "bg-green-100 text-green-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "maintenance", name: "Maintenance", color: "bg-amber-100 text-amber-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "salary", name: "Staff Salary", color: "bg-purple-100 text-purple-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "events", name: "Events", color: "bg-pink-100 text-pink-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "transport", name: "Transportation", color: "bg-indigo-100 text-indigo-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "other", name: "Other", color: "bg-gray-100 text-gray-800", icon: <Receipt className="h-4 w-4" /> },
+  { id: "other", name: "Other", color: "bg-muted text-gray-800", icon: <Receipt className="h-4 w-4" /> },
 ];
 
 // Payment methods
@@ -309,7 +309,7 @@ export default function ExpensesPage() {
   }
 
   function getCategoryColor(categoryId: string) {
-    return expenseCategories.find(cat => cat.id === categoryId)?.color || "bg-gray-100 text-gray-800";
+    return expenseCategories.find(cat => cat.id === categoryId)?.color || "bg-muted text-gray-800";
   }
 
   return (
@@ -533,7 +533,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.totalAmount?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   {stats?.totalExpenses || 0} expenses recorded
                 </div>
               </div>
@@ -553,7 +553,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.pendingAmount?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">{stats?.pendingExpenses || 0} pending expenses</div>
+                <div className="text-sm text-muted-foreground">{stats?.pendingExpenses || 0} pending expenses</div>
               </div>
               <div className="p-2 bg-amber-50 rounded-md text-amber-700">
                 <Clock className="h-6 w-6" />
@@ -571,7 +571,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.completedAmount?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">{stats?.completedExpenses || 0} completed</div>
+                <div className="text-sm text-muted-foreground">{stats?.completedExpenses || 0} completed</div>
               </div>
               <div className="p-2 bg-green-50 rounded-md text-green-700">
                 <CheckCircle className="h-6 w-6" />
@@ -599,7 +599,7 @@ export default function ExpensesPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
                       placeholder="Search expenses..."
@@ -639,19 +639,19 @@ export default function ExpensesPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500 w-[40px]">
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground w-[40px]">
                         <Checkbox 
                           checked={selectedItems.length === filteredExpenses.length && filteredExpenses.length > 0}
                           onCheckedChange={handleCheckAllItems}
                         />
                       </th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Category</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -665,7 +665,7 @@ export default function ExpensesPage() {
                         </td>
                         <td className="py-3 px-4 align-middle font-medium">
                           {expense.title}
-                          <div className="text-xs text-gray-500">{expense.receiptNumber}</div>
+                          <div className="text-xs text-muted-foreground">{expense.receiptNumber}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <Badge className={getCategoryColor(expense.category)}>
@@ -710,7 +710,7 @@ export default function ExpensesPage() {
                     
                     {filteredExpenses.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-6 text-center text-gray-500">
+                        <td colSpan={7} className="py-6 text-center text-muted-foreground">
                           No expenses found matching your criteria
                         </td>
                       </tr>
@@ -720,7 +720,7 @@ export default function ExpensesPage() {
               </div>
               
               {selectedItems.length > 0 && (
-                <div className="flex items-center justify-between mt-4 p-2 bg-gray-50 rounded-md">
+                <div className="flex items-center justify-between mt-4 p-2 bg-accent rounded-md">
                   <div className="text-sm">
                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                   </div>
@@ -761,7 +761,7 @@ export default function ExpensesPage() {
                     colors={["#ef4444"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No monthly trend data available
                   </div>
                 )}
@@ -786,7 +786,7 @@ export default function ExpensesPage() {
                     colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#6366f1", "#6b7280"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No expense data available
                   </div>
                 )}
@@ -807,11 +807,11 @@ export default function ExpensesPage() {
                   <div className="rounded-md border">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">% of Total</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Trend</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Category</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">% of Total</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Trend</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -828,9 +828,9 @@ export default function ExpensesPage() {
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center">
-                                <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                <div className="w-full bg-muted rounded-full h-2 mr-2">
                                   <div 
-                                    className="bg-blue-600 h-2 rounded-full" 
+                                    className="bg-primary h-2 rounded-full" 
                                     style={{ width: `${stats.totalAmount > 0 ? ((category.amount / stats.totalAmount) * 100).toFixed(1) : 0}%` }}
                                   ></div>
                                 </div>
@@ -849,7 +849,7 @@ export default function ExpensesPage() {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-10 text-gray-500">
+                <div className="text-center py-10 text-muted-foreground">
                   No expense data available
                 </div>
               )}
@@ -879,29 +879,29 @@ export default function ExpensesPage() {
               
               <div className="grid grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
-                  <p className="text-sm text-gray-500">Amount</p>
+                  <p className="text-sm text-muted-foreground">Amount</p>
                   <p className="font-medium">₹{selectedExpense.amount.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Date</p>
+                  <p className="text-sm text-muted-foreground">Date</p>
                   <p className="font-medium">{new Date(selectedExpense.date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Payment Method</p>
+                  <p className="text-sm text-muted-foreground">Payment Method</p>
                   <p className="font-medium">
                     {paymentMethods.find(m => m.value === selectedExpense.paymentMethod)?.label || selectedExpense.paymentMethod}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Paid To</p>
+                  <p className="text-sm text-muted-foreground">Paid To</p>
                   <p className="font-medium">{selectedExpense.paidTo}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Receipt/Reference</p>
+                  <p className="text-sm text-muted-foreground">Receipt/Reference</p>
                   <p className="font-medium">{selectedExpense.receiptNumber || "—"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={
                     selectedExpense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
                     selectedExpense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
@@ -913,17 +913,17 @@ export default function ExpensesPage() {
               </div>
               
               <div>
-                <p className="text-sm text-gray-500 mb-1">Description</p>
+                <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedExpense.description || "No description provided."}</p>
               </div>
               
               {selectedExpense.attachments && selectedExpense.attachments.length > 0 && (
                 <div>
-                  <p className="text-sm text-gray-500 mb-2">Attachments</p>
+                  <p className="text-sm text-muted-foreground mb-2">Attachments</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedExpense.attachments.map((attachment: string, index: number) => (
                       <div key={index} className="border rounded-md p-2 flex items-center">
-                        <Receipt className="h-4 w-4 mr-2 text-blue-500" />
+                        <Receipt className="h-4 w-4 mr-2 text-primary" />
                         <span className="text-sm">{attachment}</span>
                       </div>
                     ))}

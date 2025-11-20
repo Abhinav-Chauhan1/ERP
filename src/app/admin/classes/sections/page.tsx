@@ -390,7 +390,7 @@ export default function SectionsPage() {
                           <FormLabel>
                             Assign as class head teacher
                           </FormLabel>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             This teacher will be responsible for the class.
                           </p>
                         </div>
@@ -419,7 +419,7 @@ export default function SectionsPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4 mb-4 items-end">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search sections by name, teacher, room..."
@@ -457,7 +457,7 @@ export default function SectionsPage() {
                     <div className="flex justify-between">
                       <div>
                         <CardTitle className="text-lg flex items-center gap-2">
-                          <Layers className="h-5 w-5 text-blue-500" />
+                          <Layers className="h-5 w-5 text-primary" />
                           {section.name}
                         </CardTitle>
                         <CardDescription>
@@ -491,21 +491,21 @@ export default function SectionsPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-sm">
                         <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-500" />
+                          <Users className="h-4 w-4 text-muted-foreground" />
                           <span>Students:</span>
                         </div>
                         <span className="font-medium">{section.students} / {section.capacity || 'N/A'}</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-gray-500" />
+                          <Building className="h-4 w-4 text-muted-foreground" />
                           <span>Room:</span>
                         </div>
                         <span className="font-medium">{section.room}</span>
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <div className="flex items-center gap-2">
-                          <School className="h-4 w-4 text-gray-500" />
+                          <School className="h-4 w-4 text-muted-foreground" />
                           <span>Teacher:</span>
                         </div>
                         <span className="font-medium">{section.teacherName}</span>
@@ -528,7 +528,7 @@ export default function SectionsPage() {
             <div className="text-center py-10">
               <Layers className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No sections found</h3>
-              <p className="text-sm text-gray-500 mb-4">Try adjusting your search terms or create a new section</p>
+              <p className="text-sm text-muted-foreground mb-4">Try adjusting your search terms or create a new section</p>
               <Button onClick={handleAddSection}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Section
               </Button>

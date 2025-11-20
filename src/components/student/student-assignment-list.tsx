@@ -128,7 +128,7 @@ export function StudentAssignmentList({
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
-            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
           
           <div className="grid gap-6 md:grid-cols-2">
@@ -143,11 +143,11 @@ export function StudentAssignmentList({
                       <div>
                         <CardTitle>{assignment.title}</CardTitle>
                         <CardDescription className="mt-1 flex items-center">
-                          <BookOpen className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                          <BookOpen className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
                           {/* Render subject name as string, not the object */}
                           {assignment.subject.name}
                           {assignment.subject.code && (
-                            <span className="ml-2 text-xs rounded-md bg-gray-100 px-1.5 py-0.5 text-gray-600">
+                            <span className="ml-2 text-xs rounded-md bg-muted px-1.5 py-0.5">
                               {assignment.subject.code}
                             </span>
                           )}
@@ -181,12 +181,12 @@ export function StudentAssignmentList({
                       )}
                       
                       <div className="flex flex-wrap gap-y-2 gap-x-4 text-sm">
-                        <div className="flex items-center text-gray-500">
+                        <div className="flex items-center text-muted-foreground">
                           <Calendar className="h-3.5 w-3.5 mr-1" />
                           Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}
                         </div>
                         
-                        <div className="flex items-center text-gray-500">
+                        <div className="flex items-center text-muted-foreground">
                           <User className="h-3.5 w-3.5 mr-1" />
                           {assignment.creator ? 
                             `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : 
@@ -194,7 +194,7 @@ export function StudentAssignmentList({
                         </div>
                         
                         {assignment.totalMarks && (
-                          <div className="flex items-center text-gray-500">
+                          <div className="flex items-center text-muted-foreground">
                             <FileText className="h-3.5 w-3.5 mr-1" />
                             {assignment.totalMarks} marks
                           </div>
@@ -204,8 +204,8 @@ export function StudentAssignmentList({
                       {type === "pending" && (
                         <div className={`flex items-center gap-1 text-sm ${
                           new Date(assignment.dueDate) > new Date() 
-                            ? "text-blue-600" 
-                            : "text-red-600"
+                            ? "text-primary" 
+                            : "text-destructive"
                         }`}>
                           <Clock className="h-3.5 w-3.5" />
                           <span>{getTimeStatus(assignment.dueDate)}</span>
@@ -213,7 +213,7 @@ export function StudentAssignmentList({
                       )}
                       
                       {type === "overdue" && (
-                        <div className="flex items-center gap-1 text-sm text-red-600">
+                        <div className="flex items-center gap-1 text-sm text-destructive">
                           <AlertTriangle className="h-3.5 w-3.5" />
                           <span>{getTimeStatus(assignment.dueDate)}</span>
                         </div>
@@ -240,23 +240,23 @@ export function StudentAssignmentList({
               ))
             ) : (
               <div className="col-span-2 text-center py-12">
-                <FileText className="h-12 w-12 mx-auto text-gray-300" />
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
                 <h3 className="mt-4 text-lg font-medium">No matching assignments found</h3>
-                <p className="text-gray-500">Try adjusting your search term</p>
+                <p className="text-muted-foreground">Try adjusting your search term</p>
               </div>
             )}
           </div>
         </>
       ) : (
         <div className="text-center py-12">
-          <FileText className="h-12 w-12 mx-auto text-gray-300" />
+          <FileText className="h-12 w-12 mx-auto text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">
             {type === "pending" && "No pending assignments"}
             {type === "submitted" && "No submitted assignments"}
             {type === "graded" && "No graded assignments"}
             {type === "overdue" && "No overdue assignments"}
           </h3>
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             {type === "pending" && "You don't have any pending assignments."}
             {type === "submitted" && "You haven't submitted any assignments yet."}
             {type === "graded" && "None of your assignments have been graded yet."}

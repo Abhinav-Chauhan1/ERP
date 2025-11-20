@@ -32,7 +32,7 @@ interface ChartProps {
   className?: string;
 }
 
-const defaultColors = ["#3b82f6", "#10b981", "#6366f1", "#f59e0b", "#ef4444"];
+const defaultColors = ["hsl(var(--primary))", "hsl(142, 76%, 36%)", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 export function Chart({
   title,

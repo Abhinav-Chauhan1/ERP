@@ -2,63 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 
 import { ParentSidebar } from "./parent-sidebar";
 import { getTotalUnreadCount } from "@/lib/actions/parent-communication-actions";
 
-interface Child {
-  id: string;
-  name: string;
-  firstName: string;
-  lastName: string;
-  class: string;
-  section: string;
-  isPrimary: boolean;
-}
-
 export function ParentHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [notifications, setNotifications] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedChild, setSelectedChild] = useState<string>("");
-  const [children, setChildren] = useState<Child[]>([]);
-
-  // Fetch children data
-  const fetchChildren = async () => {
-    try {
-      const response = await fetch("/api/parent/children");
-      const data = await response.json();
-      
-      if (data.success && data.children) {
-        setChildren(data.children);
-        
-        // Set selected child from URL or default to first
-        const childIdFromUrl = searchParams.get("childId");
-        if (childIdFromUrl && data.children.some((c: Child) => c.id === childIdFromUrl)) {
-          setSelectedChild(childIdFromUrl);
-        } else if (data.children.length > 0) {
-          setSelectedChild(data.children[0].id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching children:", error);
-    }
-  };
 
   // Fetch real notifications count from database
   const fetchNotificationsCount = async () => {
@@ -74,28 +34,19 @@ export function ParentHeader() {
 
   useEffect(() => {
     setIsMounted(true);
-    fetchChildren();
     fetchNotificationsCount();
 
     // Refresh notifications count every 30 seconds
     const interval = setInterval(fetchNotificationsCount, 30000);
     return () => clearInterval(interval);
   }, []);
-  
-  // Update selected child when URL changes
-  useEffect(() => {
-    const childIdFromUrl = searchParams.get("childId");
-    if (childIdFromUrl && children.some(c => c.id === childIdFromUrl)) {
-      setSelectedChild(childIdFromUrl);
-    }
-  }, [searchParams, children]);
 
   if (!isMounted) {
     return null;
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-white px-6">
+    <div className="flex h-16 items-center justify-between border-b bg-card px-6">
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
@@ -129,37 +80,9 @@ export function ParentHeader() {
         </h1>
       </div>
 
-      <div className="flex items-center gap-4">
-        {children.length > 0 && (
-          <Select 
-            value={selectedChild} 
-            onValueChange={(value) => {
-              setSelectedChild(value);
-              
-              // Update URL with childId for relevant pages
-              if (pathname.includes('/parent/performance') || 
-                  pathname.includes('/parent/fees') || 
-                  pathname.includes('/parent/academics') ||
-                  pathname.includes('/parent/documents')) {
-                const newSearchParams = new URLSearchParams(searchParams.toString());
-                newSearchParams.set('childId', value);
-                router.push(`${pathname}?${newSearchParams.toString()}`);
-              }
-            }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select child" />
-            </SelectTrigger>
-            <SelectContent>
-              {children.map(child => (
-                <SelectItem key={child.id} value={child.id}>
-                  {child.name} - {child.class}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        
+      <div className="flex items-center gap-2">
+        <ColorThemeToggle />
+        <ThemeToggle />
         <Button 
           variant="outline" 
           size="icon" 

@@ -26,7 +26,7 @@ export function AttendanceOverview({ attendancePercentage }: AttendanceOverviewP
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">
+            <span className="text-sm font-medium text-muted-foreground">
               This Semester
             </span>
             <span className={`text-2xl font-bold ${getAttendanceColor(attendancePercentage)}`}>
@@ -42,19 +42,19 @@ export function AttendanceOverview({ attendancePercentage }: AttendanceOverviewP
             } as React.CSSProperties}
           />
           
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>Poor Below 75%</span>
             <span>Average 75-90%</span>
             <span>Excellent 90%+</span>
           </div>
           
-          <div className="pt-2 text-sm text-gray-600">
+          <div className="pt-2 text-sm text-muted-foreground">
             {attendancePercentage >= 90 ? (
               <p>Excellent! Keep up the good attendance.</p>
             ) : attendancePercentage >= 75 ? (
               <p>Good attendance, but try to improve further.</p>
             ) : (
-              <p className="text-red-600 font-medium">
+              <p className="text-destructive font-medium">
                 Warning: Your attendance is below the required minimum of 75%.
               </p>
             )}

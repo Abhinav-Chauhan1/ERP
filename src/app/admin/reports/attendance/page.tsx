@@ -124,7 +124,7 @@ export default function AttendanceReportsPage() {
       title: "Daily Attendance Summary",
       description: "Day-wise attendance records for all classes",
       icon: Calendar,
-      color: "bg-blue-500",
+      color: "bg-primary",
     },
     {
       title: "Monthly Attendance Trends",
@@ -315,8 +315,8 @@ export default function AttendanceReportsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Daily Attendance Summary</h3>
                   <div className="grid gap-4 md:grid-cols-4">
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Total Students</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Total Students</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.totalStudents || 0}</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded">
@@ -339,8 +339,8 @@ export default function AttendanceReportsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Monthly Attendance Trends</h3>
                   <div className="grid gap-4 md:grid-cols-2 mb-4">
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Average Attendance Rate</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Average Attendance Rate</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.averageAttendanceRate?.toFixed(1) || 0}%</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded">
@@ -371,10 +371,10 @@ export default function AttendanceReportsPage() {
                   <div className="space-y-2">
                     <h4 className="font-medium">Students with High Absenteeism</h4>
                     {reportData.data.highAbsenteeism?.slice(0, 10).map((student: any) => (
-                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-accent rounded">
                         <div>
                           <span className="font-medium">{student.studentName}</span>
-                          <div className="text-sm text-gray-600">{student.className}</div>
+                          <div className="text-sm text-muted-foreground">{student.className}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-red-600">{student.absenceCount} days</div>
@@ -390,11 +390,11 @@ export default function AttendanceReportsPage() {
                   <h3 className="font-semibold mb-2">Class-wise Attendance</h3>
                   <div className="space-y-2">
                     {reportData.data?.map((cls: any) => (
-                      <div key={cls.className} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={cls.className} className="flex justify-between items-center p-3 bg-accent rounded">
                         <span className="font-medium">{cls.className}</span>
                         <div className="text-right">
                           <div className="font-bold">{cls.attendanceRate.toFixed(1)}%</div>
-                          <div className="text-sm text-gray-600">{cls.present}/{cls.total} present</div>
+                          <div className="text-sm text-muted-foreground">{cls.present}/{cls.total} present</div>
                         </div>
                       </div>
                     ))}
@@ -411,10 +411,10 @@ export default function AttendanceReportsPage() {
                   </div>
                   <div className="space-y-2">
                     {reportData.data.students?.map((student: any) => (
-                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-accent rounded">
                         <div>
                           <span className="font-medium">{student.studentName}</span>
-                          <div className="text-sm text-gray-600">{student.className}</div>
+                          <div className="text-sm text-muted-foreground">{student.className}</div>
                         </div>
                         <div className="text-green-600 font-bold">100%</div>
                       </div>

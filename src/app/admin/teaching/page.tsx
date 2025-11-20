@@ -403,7 +403,7 @@ export default function TeachingPage() {
           <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                <div className="p-2 bg-primary/10 rounded-md text-primary">
                   {category.icon}
                 </div>
                 <CardTitle className="text-lg">{category.title}</CardTitle>
@@ -414,7 +414,7 @@ export default function TeachingPage() {
               <div className="flex justify-between items-center">
                 <div className="text-3xl font-bold">
                   {statsLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   ) : (
                     stats[category.countKey] || 0
                   )}
@@ -465,7 +465,7 @@ export default function TeachingPage() {
               </div>
               <div className="flex gap-2 w-full md:w-auto">
                 <div className="relative flex-1 md:w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search subjects..."
@@ -499,12 +499,12 @@ export default function TeachingPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Department</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Teachers</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Department</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Teachers</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Classes</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -514,7 +514,7 @@ export default function TeachingPage() {
                           <td className="py-3 px-4 align-middle font-medium">
                             <div>
                               {subject.name}
-                              <div className="text-xs text-gray-500">{subject.code}</div>
+                              <div className="text-xs text-muted-foreground">{subject.code}</div>
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">{subject.department?.name || "—"}</td>
@@ -532,7 +532,7 @@ export default function TeachingPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-500">
+                        <td colSpan={5} className="py-8 text-center text-muted-foreground">
                           {searchTerm || departmentFilter !== "all" 
                             ? "No subjects match your search criteria"
                             : "No subjects found, add one to get started"
@@ -546,7 +546,7 @@ export default function TeachingPage() {
             )}
             {filteredSubjects.length > 0 && (
               <div className="flex justify-between items-center mt-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Showing {filteredSubjects.length} out of {subjects.length} subjects
                 </p>
                 <Link href="/admin/teaching/subjects">
@@ -636,23 +636,23 @@ export default function TeachingPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : activities.length === 0 ? (
-            <div className="text-center py-6 text-gray-500">
+            <div className="text-center py-6 text-muted-foreground">
               No recent activities found
             </div>
           ) : (
             <div className="space-y-4">
               {activities.map((activity) => (
                 <div key={activity.id} className="flex gap-3 pb-4 border-b last:border-0 last:pb-0">
-                  <div className="p-2 bg-blue-50 rounded-full h-fit text-blue-600">
+                  <div className="p-2 bg-primary/10 rounded-full h-fit text-primary">
                     <CheckCircle className="h-4 w-4" />
                   </div>
                   <div>
                     <p className="font-medium text-sm">
                       {activity.type === 'lesson' ? 'Lesson' : 'Syllabus'} {activity.action} {' '}
-                      <span className="text-blue-600">{activity.entityName}</span> 
+                      <span className="text-primary">{activity.entityName}</span> 
                       {activity.subjectName && <span> for {activity.subjectName}</span>}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
                     </p>
                   </div>

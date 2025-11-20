@@ -415,7 +415,7 @@ export default function ParentMeetingsPage() {
   function getStatusBadge(status: string) {
     switch(status) {
       case "SCHEDULED":
-        return <Badge className="bg-blue-100 text-blue-800">Scheduled</Badge>;
+        return <Badge className="bg-primary/10 text-primary">Scheduled</Badge>;
       case "COMPLETED":
         return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case "CANCELLED":
@@ -591,7 +591,7 @@ export default function ParentMeetingsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search meetings..."
@@ -635,20 +635,20 @@ export default function ParentMeetingsPage() {
             <TabsContent value="list">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
                 <div className="rounded-md border">
                   <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Participants</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Schedule</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Location</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Participants</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Schedule</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Location</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -673,17 +673,17 @@ export default function ParentMeetingsPage() {
                                   </Avatar>
                                   <div>
                                     <div className="font-medium">{parentName}</div>
-                                    <div className="text-xs text-gray-500">{studentName}{grade ? `, ${grade}` : ""}</div>
+                                    <div className="text-xs text-muted-foreground">{studentName}{grade ? `, ${grade}` : ""}</div>
                                   </div>
                                 </div>
                               </td>
                               <td className="py-3 px-4 align-middle font-medium">{meeting.purpose || "Meeting"}</td>
                               <td className="py-3 px-4 align-middle">
                                 <div className="flex items-center gap-1.5">
-                                  <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                                   <span>{new Date(meeting.scheduledAt).toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                                   <Clock className="h-3 w-3" />
                                   <span>{new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                   <span>({meeting.duration} min)</span>
@@ -748,7 +748,7 @@ export default function ParentMeetingsPage() {
                         })
                       ) : (
                         <tr>
-                          <td colSpan={6} className="py-10 text-center text-gray-500">
+                          <td colSpan={6} className="py-10 text-center text-muted-foreground">
                             <CalendarX className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                             <p>No meetings found matching your criteria</p>
                             <Button 
@@ -821,7 +821,7 @@ export default function ParentMeetingsPage() {
                   <div className="grid grid-cols-7 gap-2">
                     {/* Day headers */}
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                      <div key={day} className="text-center font-medium text-sm text-gray-500 py-2">
+                      <div key={day} className="text-center font-medium text-sm text-muted-foreground py-2">
                         {day}
                       </div>
                     ))}
@@ -837,7 +837,7 @@ export default function ParentMeetingsPage() {
                       // Empty cells for days before month starts
                       for (let i = 0; i < firstDay; i++) {
                         days.push(
-                          <div key={`empty-${i}`} className="aspect-square p-2 border rounded-lg bg-gray-50" />
+                          <div key={`empty-${i}`} className="aspect-square p-2 border rounded-lg bg-accent" />
                         );
                       }
                       
@@ -856,8 +856,8 @@ export default function ParentMeetingsPage() {
                         days.push(
                           <div
                             key={day}
-                            className={`aspect-square p-2 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                              isToday ? 'border-blue-500 bg-blue-50' : ''
+                            className={`aspect-square p-2 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors ${
+                              isToday ? 'border-blue-500 bg-primary/10' : ''
                             }`}
                             onClick={() => {
                               if (dayMeetings.length > 0) {
@@ -866,7 +866,7 @@ export default function ParentMeetingsPage() {
                               }
                             }}
                           >
-                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : ''}`}>
+                            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
                               {day}
                             </div>
                             {dayMeetings.length > 0 && (
@@ -875,10 +875,10 @@ export default function ParentMeetingsPage() {
                                   <div
                                     key={meeting.id}
                                     className={`text-xs p-1 rounded truncate ${
-                                      meeting.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                                      meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary' :
                                       meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
                                       meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                                      'bg-gray-100 text-gray-700'
+                                      'bg-muted text-gray-700'
                                     }`}
                                   >
                                     {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', { 
@@ -889,7 +889,7 @@ export default function ParentMeetingsPage() {
                                   </div>
                                 ))}
                                 {dayMeetings.length > 2 && (
-                                  <div className="text-xs text-gray-500 text-center">
+                                  <div className="text-xs text-muted-foreground text-center">
                                     +{dayMeetings.length - 2} more
                                   </div>
                                 )}
@@ -937,11 +937,11 @@ export default function ParentMeetingsPage() {
                 <div className="flex flex-col space-y-2">
                   <h2 className="text-xl font-semibold">{selectedMeeting.purpose || "Parent-Teacher Meeting"}</h2>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
                       {new Date(selectedMeeting.scheduledAt).toLocaleDateString()} • {new Date(selectedMeeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span className="text-sm text-gray-600">({selectedMeeting.duration} min)</span>
+                    <span className="text-sm text-muted-foreground">({selectedMeeting.duration} min)</span>
                     {getStatusBadge(selectedMeeting.status)}
                   </div>
                 </div>
@@ -955,20 +955,20 @@ export default function ParentMeetingsPage() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{parentName}</p>
-                        <p className="text-sm text-gray-500">Parent</p>
+                        <p className="text-sm text-muted-foreground">Parent</p>
                       </div>
                     </div>
                     <div className="space-y-1.5 text-sm">
                       <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-500" />
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                         <span>{selectedMeeting.parent?.user?.email || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                         <span>{selectedMeeting.parent?.user?.phone || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-500" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <span>{studentName}{grade ? ` (${grade})` : ""}</span>
                       </div>
                     </div>
@@ -982,16 +982,16 @@ export default function ParentMeetingsPage() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{teacherName}</p>
-                        <p className="text-sm text-gray-500">Teacher</p>
+                        <p className="text-sm text-muted-foreground">Teacher</p>
                       </div>
                     </div>
                     <div className="space-y-1.5 text-sm">
                       <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-gray-500" />
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                         <span>{selectedMeeting.teacher?.user?.email || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                         <span>{selectedMeeting.teacher?.user?.phone || "N/A"}</span>
                       </div>
                     </div>
@@ -1000,13 +1000,13 @@ export default function ParentMeetingsPage() {
                 
                 <div>
                   <h3 className="text-sm font-medium mb-2">Meeting Location</h3>
-                  <p className="text-sm bg-gray-50 p-2.5 rounded">{selectedMeeting.location || "TBD"}</p>
+                  <p className="text-sm bg-accent p-2.5 rounded">{selectedMeeting.location || "TBD"}</p>
                 </div>
                 
                 {selectedMeeting.notes && (
                   <div>
                     <h3 className="text-sm font-medium mb-2">Meeting Notes</h3>
-                    <p className="text-sm bg-gray-50 p-2.5 rounded whitespace-pre-line">{selectedMeeting.notes}</p>
+                    <p className="text-sm bg-accent p-2.5 rounded whitespace-pre-line">{selectedMeeting.notes}</p>
                   </div>
                 )}
               </div>
@@ -1071,7 +1071,7 @@ export default function ParentMeetingsPage() {
               .map((meeting) => (
                 <div
                   key={meeting.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="border rounded-lg p-4 hover:bg-accent/50 cursor-pointer transition-colors"
                   onClick={() => {
                     setSelectedMeeting(meeting);
                     setDayMeetingsDialogOpen(false);
@@ -1081,7 +1081,7 @@ export default function ParentMeetingsPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <h4 className="font-medium">{meeting.title}</h4>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', {
                           hour: 'numeric',
                           minute: '2-digit',
@@ -1091,16 +1091,16 @@ export default function ParentMeetingsPage() {
                     </div>
                     <Badge
                       className={
-                        meeting.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-700' :
+                        meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary' :
                         meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
                         meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
+                        'bg-muted text-gray-700'
                       }
                     >
                       {meeting.status}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <User className="h-4 w-4" />
                       <span>{meeting.parent?.user?.firstName} {meeting.parent?.user?.lastName}</span>
@@ -1111,7 +1111,7 @@ export default function ParentMeetingsPage() {
                     </div>
                   </div>
                   {meeting.location && (
-                    <p className="text-sm text-gray-500 mt-2">📍 {meeting.location}</p>
+                    <p className="text-sm text-muted-foreground mt-2">📍 {meeting.location}</p>
                   )}
                 </div>
               ))}

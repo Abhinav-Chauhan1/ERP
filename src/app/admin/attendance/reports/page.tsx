@@ -281,7 +281,7 @@ export default function AttendanceReportsPage() {
         <Card>
           <CardHeader className="pb-1">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+              <div className="p-2 bg-primary/10 rounded-md text-primary">
                 <Users className="h-5 w-5" />
               </div>
               <CardTitle className="text-base">Student Attendance</CardTitle>
@@ -291,7 +291,7 @@ export default function AttendanceReportsPage() {
           <CardContent>
             <div className="flex flex-col gap-2 items-center justify-center">
               <div className="text-3xl font-bold">{studentAttendanceRate}%</div>
-              <Badge className="bg-blue-100 text-blue-800">
+              <Badge className="bg-primary/10 text-primary">
                 Today: {todayStats?.students?.present || 0} / {todayStats?.students?.total || 0}
               </Badge>
               <Progress value={parseFloat(studentAttendanceRate)} className="w-full mt-2" />
@@ -348,7 +348,7 @@ export default function AttendanceReportsPage() {
             <div className="flex flex-col gap-2 items-center justify-center">
               <div className="text-3xl font-bold">{lowAttendanceCount}</div>
               <Badge className="bg-red-100 text-red-800">High absenteeism</Badge>
-              <div className="w-full mt-2 text-center text-sm text-gray-500">
+              <div className="w-full mt-2 text-center text-sm text-muted-foreground">
                 {consecutiveAbsenceCount} with 3+ consecutive absences
               </div>
             </div>
@@ -390,7 +390,7 @@ export default function AttendanceReportsPage() {
                       <CardDescription className="text-xs">Detailed monthly attendance for each class</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
-                      <div className="text-xs text-gray-500 mb-3">
+                      <div className="text-xs text-muted-foreground mb-3">
                         <div className="flex items-center gap-1 mb-1">
                           <Calendar className="h-3 w-3" />
                           <span>Current month data</span>
@@ -423,7 +423,7 @@ export default function AttendanceReportsPage() {
                       <CardDescription className="text-xs">List of students with high absences</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
-                      <div className="text-xs text-gray-500 mb-3">
+                      <div className="text-xs text-muted-foreground mb-3">
                         <div className="flex items-center gap-1 mb-1">
                           <Calendar className="h-3 w-3" />
                           <span>Last 30 days</span>
@@ -456,7 +456,7 @@ export default function AttendanceReportsPage() {
                       <CardDescription className="text-xs">Teacher attendance overview</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
-                      <div className="text-xs text-gray-500 mb-3">
+                      <div className="text-xs text-muted-foreground mb-3">
                         <div className="flex items-center gap-1 mb-1">
                           <Calendar className="h-3 w-3" />
                           <span>Current month data</span>
@@ -497,19 +497,19 @@ export default function AttendanceReportsPage() {
                     <h4 className="text-sm font-medium mb-3">Student Attendance</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Present</span>
+                        <span className="text-sm text-muted-foreground">Present</span>
                         <Badge className="bg-green-100 text-green-800">
                           {todayStats?.students?.present || 0}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Absent</span>
+                        <span className="text-sm text-muted-foreground">Absent</span>
                         <Badge className="bg-red-100 text-red-800">
                           {todayStats?.students?.absent || 0}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Late</span>
+                        <span className="text-sm text-muted-foreground">Late</span>
                         <Badge className="bg-yellow-100 text-yellow-800">
                           {todayStats?.students?.late || 0}
                         </Badge>
@@ -520,19 +520,19 @@ export default function AttendanceReportsPage() {
                     <h4 className="text-sm font-medium mb-3">Teacher Attendance</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Present</span>
+                        <span className="text-sm text-muted-foreground">Present</span>
                         <Badge className="bg-green-100 text-green-800">
                           {todayStats?.teachers?.present || 0}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Absent</span>
+                        <span className="text-sm text-muted-foreground">Absent</span>
                         <Badge className="bg-red-100 text-red-800">
                           {todayStats?.teachers?.absent || 0}
                         </Badge>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Late</span>
+                        <span className="text-sm text-muted-foreground">Late</span>
                         <Badge className="bg-yellow-100 text-yellow-800">
                           {todayStats?.teachers?.late || 0}
                         </Badge>
@@ -595,27 +595,27 @@ export default function AttendanceReportsPage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-8">
-                  <p className="text-gray-500">Loading class data...</p>
+                  <p className="text-muted-foreground">Loading class data...</p>
                 </div>
               ) : classWiseData.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
-                  <p className="text-gray-500">No attendance data available for the selected period</p>
+                  <p className="text-muted-foreground">No attendance data available for the selected period</p>
                 </div>
               ) : (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Total Records</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Present</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Absent</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Attendance Rate</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Total Records</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Present</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Absent</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Attendance Rate</th>
                       </tr>
                     </thead>
                     <tbody>
                       {classWiseData.map((cls) => (
-                        <tr key={cls.classId} className="border-b hover:bg-gray-50">
+                        <tr key={cls.classId} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">{cls.className}</td>
                           <td className="py-3 px-4 align-middle">{cls.totalRecords}</td>
                           <td className="py-3 px-4 align-middle">
@@ -673,23 +673,23 @@ export default function AttendanceReportsPage() {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Great News!</h3>
-                  <p className="text-gray-500">No students with high absenteeism</p>
+                  <p className="text-muted-foreground">No students with high absenteeism</p>
                 </div>
               ) : (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Admission ID</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Absences</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Admission ID</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Absences</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {lowAttendanceStudents.map((student) => (
-                        <tr key={student.studentId} className="border-b hover:bg-gray-50">
+                        <tr key={student.studentId} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">{student.studentName}</td>
                           <td className="py-3 px-4 align-middle">{student.admissionId}</td>
                           <td className="py-3 px-4 align-middle">{student.class} - {student.section}</td>

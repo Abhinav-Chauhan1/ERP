@@ -108,7 +108,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
                     className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-md"
                   />
                 ) : (
-                  <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold border-4 border-white shadow-md">
+                  <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold border-4 border-white shadow-md">
                     {teacher.user.firstName[0]}
                     {teacher.user.lastName[0]}
                   </div>
@@ -124,45 +124,45 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
               
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                 <div>
-                  <p className="text-sm text-gray-500">Full Name</p>
+                  <p className="text-sm text-muted-foreground">Full Name</p>
                   <p className="font-medium">
                     {teacher.user.firstName} {teacher.user.lastName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-muted-foreground">Email</p>
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
+                    <Mail className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{teacher.user.email}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-sm text-muted-foreground">Phone</p>
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
+                    <Phone className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{teacher.user.phone || "Not provided"}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Employee ID</p>
+                  <p className="text-sm text-muted-foreground">Employee ID</p>
                   <p className="font-medium">{teacher.employeeId}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Qualification</p>
+                  <p className="text-sm text-muted-foreground">Qualification</p>
                   <p className="font-medium">{teacher.qualification || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Join Date</p>
+                  <p className="text-sm text-muted-foreground">Join Date</p>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{formatDate(teacher.joinDate)}</p>
                   </div>
                 </div>
                 {teacher.salary && (
                   <div>
-                    <p className="text-sm text-gray-500">Salary</p>
+                    <p className="text-sm text-muted-foreground">Salary</p>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <p className="font-medium">${teacher.salary.toFixed(2)}</p>
                     </div>
                   </div>
@@ -180,24 +180,24 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="text-center">
-                <p className="text-xs text-gray-500">Present</p>
+                <p className="text-xs text-muted-foreground">Present</p>
                 <p className="text-lg font-bold text-green-600">{presentCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Absent</p>
+                <p className="text-xs text-muted-foreground">Absent</p>
                 <p className="text-lg font-bold text-red-600">{absentCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Late</p>
+                <p className="text-xs text-muted-foreground">Late</p>
                 <p className="text-lg font-bold text-yellow-600">{lateCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-xs text-muted-foreground">Total</p>
                 <p className="text-lg font-bold">{totalAttendanceRecords}</p>
               </div>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
               <div 
                 className="bg-green-500 h-4" 
                 style={{ width: `${attendancePercentage}%` }}
@@ -238,20 +238,20 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
             {teacher.subjects.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {teacher.subjects.map((subjectTeacher) => (
-                  <div key={subjectTeacher.id} className="p-4 rounded-md border bg-gray-50 flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <BookOpen className="h-5 w-5 text-blue-600" />
+                  <div key={subjectTeacher.id} className="p-4 rounded-md border bg-accent flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <BookOpen className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium">{subjectTeacher.subject.name}</p>
-                      <p className="text-xs text-gray-500">{subjectTeacher.subject.code}</p>
+                      <p className="text-xs text-muted-foreground">{subjectTeacher.subject.code}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">No subjects assigned yet</p>
+                <p className="text-sm text-muted-foreground">No subjects assigned yet</p>
                 <Button size="sm" variant="outline" className="mt-2">Assign Subject</Button>
               </div>
             )}
@@ -269,7 +269,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
                 {teacher.classes.map((classTeacher) => (
                   <div key={classTeacher.id} className="p-3 rounded-md border flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <div className="w-2 h-2 rounded-full bg-primary"></div>
                       <span className="font-medium">{classTeacher.class.name}</span>
                     </div>
                     {classTeacher.isClassHead && (
@@ -282,7 +282,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
               </div>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">Not assigned to any classes</p>
+                <p className="text-sm text-muted-foreground">Not assigned to any classes</p>
                 <Button size="sm" variant="outline" className="mt-2">Assign Class</Button>
               </div>
             )}
@@ -300,14 +300,14 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Period</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Basic Salary</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Allowances</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Deductions</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Net Salary</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Payment Date</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Period</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Basic Salary</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Allowances</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Deductions</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Net Salary</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Payment Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -347,9 +347,9 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
               </div>
             ) : (
               <div className="p-8 text-center">
-                <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <h3 className="text-lg font-medium text-gray-900">No Payroll Records</h3>
-                <p className="text-gray-500 mt-1">
+                <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <h3 className="text-lg font-medium">No Payroll Records</h3>
+                <p className="text-muted-foreground mt-1">
                   Payroll information for {currentMonthName} {currentYear} is not available yet.
                 </p>
                 <Button variant="outline" className="mt-4">Process Payroll</Button>

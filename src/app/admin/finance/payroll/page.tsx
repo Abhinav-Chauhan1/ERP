@@ -392,20 +392,20 @@ export default function PayrollPage() {
                 />
                 
                 {selectedStaff && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h3 className="font-medium mb-2 text-blue-800">Staff Information</h3>
+                  <div className="bg-primary/10 p-4 rounded-lg">
+                    <h3 className="font-medium mb-2 text-primary">Staff Information</h3>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <span className="text-gray-500">Employee ID:</span> {selectedStaff.employeeId}
+                        <span className="text-muted-foreground">Employee ID:</span> {selectedStaff.employeeId}
                       </div>
                       <div>
-                        <span className="text-gray-500">Department:</span> {selectedStaff.department}
+                        <span className="text-muted-foreground">Department:</span> {selectedStaff.department}
                       </div>
                       <div>
-                        <span className="text-gray-500">Position:</span> {selectedStaff.position}
+                        <span className="text-muted-foreground">Position:</span> {selectedStaff.position}
                       </div>
                       <div>
-                        <span className="text-gray-500">Annual Salary:</span> ₹{selectedStaff.salary.toLocaleString()}
+                        <span className="text-muted-foreground">Annual Salary:</span> ₹{selectedStaff.salary.toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -527,7 +527,7 @@ export default function PayrollPage() {
                       )}
                     />
                     
-                    <div className="bg-gray-50 p-4 rounded-lg mt-4">
+                    <div className="bg-accent p-4 rounded-lg mt-4">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">Net Salary:</span>
                         <span className="font-bold">$
@@ -609,9 +609,9 @@ export default function PayrollPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border rounded-md p-3 text-center bg-blue-50">
-                  <div className="text-sm text-blue-700 font-medium mb-1">Total Payrolls</div>
-                  <div className="text-2xl font-bold text-blue-800">{stats?.totalPayrolls || 0}</div>
+                <div className="border rounded-md p-3 text-center bg-primary/10">
+                  <div className="text-sm text-primary font-medium mb-1">Total Payrolls</div>
+                  <div className="text-2xl font-bold text-primary">{stats?.totalPayrolls || 0}</div>
                 </div>
                 <div className="border rounded-md p-3 text-center bg-green-50">
                   <div className="text-sm text-green-700 font-medium mb-1">Completed</div>
@@ -667,7 +667,7 @@ export default function PayrollPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search staff or ID..."
@@ -706,13 +706,13 @@ export default function PayrollPage() {
           <div className="rounded-md border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="py-3 px-4 text-left font-medium text-gray-500">Staff</th>
-                  <th className="py-3 px-4 text-left font-medium text-gray-500">Department</th>
-                  <th className="py-3 px-4 text-left font-medium text-gray-500">Month</th>
-                  <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                  <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                  <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                <tr className="bg-accent border-b">
+                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Staff</th>
+                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Department</th>
+                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Month</th>
+                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -720,7 +720,7 @@ export default function PayrollPage() {
                   <tr key={payment.id} className="border-b">
                     <td className="py-3 px-4 align-middle">
                       <div className="font-medium">{payment.staffName}</div>
-                      <div className="text-xs text-gray-500">{payment.employeeId}</div>
+                      <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
                     </td>
                     <td className="py-3 px-4 align-middle">{payment.department}</td>
                     <td className="py-3 px-4 align-middle">
@@ -798,7 +798,7 @@ export default function PayrollPage() {
           {selectedPayment && (
             <Form {...paymentForm}>
               <form onSubmit={paymentForm.handleSubmit(onSubmitPayment)} className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <div className="bg-primary/10 p-4 rounded-lg mb-4">
                   <div className="font-medium mb-2">Payment Details</div>
                   <div className="flex justify-between mb-1">
                     <span>Staff:</span>
@@ -922,7 +922,7 @@ export default function PayrollPage() {
                   <div className="font-bold text-xl">School Name</div>
                   <div className="text-right">
                     <div className="font-bold">SALARY SLIP</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       {getMonthName(selectedPayment.month)} {selectedPayment.year}
                     </div>
                   </div>
@@ -930,14 +930,14 @@ export default function PayrollPage() {
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="text-gray-500 mb-1">Employee Information</div>
+                    <div className="text-muted-foreground mb-1">Employee Information</div>
                     <div className="font-medium">{selectedPayment.staffName}</div>
                     <div>ID: {selectedPayment.employeeId}</div>
                     <div>Department: {selectedPayment.department}</div>
                     <div>Position: {selectedPayment.position}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-gray-500 mb-1">Payment Details</div>
+                    <div className="text-muted-foreground mb-1">Payment Details</div>
                     <div>Date: {selectedPayment.paymentDate ? new Date(selectedPayment.paymentDate).toLocaleDateString() : "Pending"}</div>
                     <div>Mode: {paymentMethods.find(m => m.value === selectedPayment.paymentMethod)?.label || "N/A"}</div>
                     <div>Reference: {selectedPayment.transactionId || "N/A"}</div>
@@ -946,11 +946,11 @@ export default function PayrollPage() {
               </div>
               
               <div className="space-y-4">
-                <div className="text-gray-500 font-medium">Earnings & Deductions</div>
+                <div className="text-muted-foreground font-medium">Earnings & Deductions</div>
                 <div className="border rounded-md">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
+                      <tr className="bg-accent border-b">
                         <th className="py-2 px-4 text-left font-medium">Description</th>
                         <th className="py-2 px-4 text-right font-medium">Amount</th>
                       </tr>
@@ -968,7 +968,7 @@ export default function PayrollPage() {
                         <td className="py-3 px-4">Deductions</td>
                         <td className="py-3 px-4 text-right">-₹{selectedPayment.deductions.toLocaleString()}</td>
                       </tr>
-                      <tr className="bg-gray-50 font-bold">
+                      <tr className="bg-accent font-bold">
                         <td className="py-3 px-4">Net Salary</td>
                         <td className="py-3 px-4 text-right">₹{selectedPayment.netSalary.toLocaleString()}</td>
                       </tr>
@@ -976,7 +976,7 @@ export default function PayrollPage() {
                   </table>
                 </div>
                 
-                <div className="text-center text-xs text-gray-500 pt-4 border-t">
+                <div className="text-center text-xs text-muted-foreground pt-4 border-t">
                   <p>This is a computer generated payslip and does not require a signature.</p>
                 </div>
               </div>

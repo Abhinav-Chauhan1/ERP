@@ -62,14 +62,14 @@ import {
 
 // Budget categories
 const budgetCategories = [
-  { id: "salaries", name: "Staff Salaries", color: "bg-blue-100 text-blue-800" },
+  { id: "salaries", name: "Staff Salaries", color: "bg-primary/10 text-primary" },
   { id: "infrastructure", name: "Infrastructure", color: "bg-purple-100 text-purple-800" },
   { id: "utilities", name: "Utilities", color: "bg-green-100 text-green-800" },
   { id: "supplies", name: "Educational Supplies", color: "bg-amber-100 text-amber-800" },
   { id: "events", name: "School Events", color: "bg-pink-100 text-pink-800" },
   { id: "maintenance", name: "Maintenance", color: "bg-indigo-100 text-indigo-800" },
   { id: "technology", name: "Technology", color: "bg-red-100 text-red-800" },
-  { id: "miscellaneous", name: "Miscellaneous", color: "bg-gray-100 text-gray-800" },
+  { id: "miscellaneous", name: "Miscellaneous", color: "bg-muted text-gray-800" },
 ];
 
 // Schema for budget form
@@ -304,7 +304,7 @@ export default function BudgetPage() {
   }
 
   function getCategoryColor(categoryId: string) {
-    return budgetCategories.find(cat => cat.id === categoryId)?.color || "bg-gray-100 text-gray-800";
+    return budgetCategories.find(cat => cat.id === categoryId)?.color || "bg-muted text-gray-800";
   }
 
   // Calculate percent used for a budget
@@ -496,11 +496,11 @@ export default function BudgetPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.totalAllocated?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   {stats?.totalBudgets || 0} budget items
                 </div>
               </div>
-              <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+              <div className="p-2 bg-primary/10 rounded-md text-primary">
                 <Wallet className="h-6 w-6" />
               </div>
             </div>
@@ -516,7 +516,7 @@ export default function BudgetPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.totalSpent?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">{stats?.utilizationRate?.toFixed(1) || 0}% of total</div>
+                <div className="text-sm text-muted-foreground">{stats?.utilizationRate?.toFixed(1) || 0}% of total</div>
               </div>
               <div className="p-2 bg-green-50 rounded-md text-green-700">
                 <DollarSign className="h-6 w-6" />
@@ -534,7 +534,7 @@ export default function BudgetPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.totalRemaining?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">{stats?.totalAllocated ? ((stats.totalRemaining / stats.totalAllocated) * 100).toFixed(1) : 0}% remaining</div>
+                <div className="text-sm text-muted-foreground">{stats?.totalAllocated ? ((stats.totalRemaining / stats.totalAllocated) * 100).toFixed(1) : 0}% remaining</div>
               </div>
               <div className="p-2 bg-amber-50 rounded-md text-amber-700">
                 <Wallet className="h-6 w-6" />
@@ -552,7 +552,7 @@ export default function BudgetPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">8</div>
-                <div className="text-sm text-gray-500">Different categories</div>
+                <div className="text-sm text-muted-foreground">Different categories</div>
               </div>
               <div className="p-2 bg-purple-50 rounded-md text-purple-700">
                 <BarChart4 className="h-6 w-6" />
@@ -581,7 +581,7 @@ export default function BudgetPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
                       placeholder="Search budgets..."
@@ -623,14 +623,14 @@ export default function BudgetPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Budget</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Category</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Used</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Remaining</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Usage</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Budget</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Category</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Used</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Remaining</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Usage</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -638,7 +638,7 @@ export default function BudgetPage() {
                       <tr key={budget.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
                           <div className="font-medium">{budget.title}</div>
-                          <div className="text-xs text-gray-500">{budget.academicYear}</div>
+                          <div className="text-xs text-muted-foreground">{budget.academicYear}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <Badge className={getCategoryColor(budget.category)}>
@@ -693,7 +693,7 @@ export default function BudgetPage() {
                     
                     {filteredBudgets.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-6 text-center text-gray-500">
+                        <td colSpan={7} className="py-6 text-center text-muted-foreground">
                           No budgets found matching your criteria
                         </td>
                       </tr>
@@ -726,7 +726,7 @@ export default function BudgetPage() {
                     colors={["#3b82f6", "#ef4444"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No monthly trend data available
                   </div>
                 )}
@@ -751,7 +751,7 @@ export default function BudgetPage() {
                     colors={["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#6b7280"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No budget allocation data available
                   </div>
                 )}
@@ -770,14 +770,14 @@ export default function BudgetPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-blue-50 rounded-md text-blue-600">
+                    <div className="p-2 bg-primary/10 rounded-md text-primary">
                       <BarChart4 className="h-5 w-5" />
                     </div>
                     <h3 className="font-medium">Budget Summary Report</h3>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Overview of all budget allocations, including used and remaining amounts
                   </p>
                   <Button variant="outline" size="sm" className="w-full">
@@ -786,14 +786,14 @@ export default function BudgetPage() {
                   </Button>
                 </div>
                 
-                <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-green-50 rounded-md text-green-600">
                       <DollarSign className="h-5 w-5" />
                     </div>
                     <h3 className="font-medium">Expenses Breakdown</h3>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Detailed breakdown of all expenses by category and date
                   </p>
                   <Button variant="outline" size="sm" className="w-full">
@@ -802,14 +802,14 @@ export default function BudgetPage() {
                   </Button>
                 </div>
                 
-                <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-purple-50 rounded-md text-purple-600">
                       <Building className="h-5 w-5" />
                     </div>
                     <h3 className="font-medium">Department Budget Report</h3>
                   </div>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Budget allocation and utilization by department
                   </p>
                   <Button variant="outline" size="sm" className="w-full">
@@ -832,7 +832,7 @@ export default function BudgetPage() {
               <div className="py-10 text-center">
                 <AlertCircle className="h-10 w-10 mx-auto text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Scheduled Reports</h3>
-                <p className="text-sm text-gray-500 max-w-md mx-auto mb-4">
+                <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
                   You haven't set up any scheduled reports yet. Create one to automatically receive reports via email.
                 </p>
                 <Button>Schedule New Report</Button>
@@ -866,9 +866,9 @@ export default function BudgetPage() {
                   <div className="text-sm text-green-700 font-medium mb-1">Allocated Budget</div>
                   <div className="text-2xl font-bold text-green-800">${selectedBudget.allocatedAmount.toLocaleString()}</div>
                 </div>
-                <div className="flex-1 bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm text-blue-700 font-medium mb-1">Used Amount</div>
-                  <div className="text-2xl font-bold text-blue-800">${selectedBudget.usedAmount.toLocaleString()}</div>
+                <div className="flex-1 bg-primary/10 p-4 rounded-lg">
+                  <div className="text-sm text-primary font-medium mb-1">Used Amount</div>
+                  <div className="text-2xl font-bold text-primary">${selectedBudget.usedAmount.toLocaleString()}</div>
                 </div>
                 <div className="flex-1 bg-amber-50 p-4 rounded-lg">
                   <div className="text-sm text-amber-700 font-medium mb-1">Remaining</div>
@@ -894,27 +894,27 @@ export default function BudgetPage() {
               
               <div className="grid grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
-                  <p className="text-sm text-gray-500">Academic Year</p>
+                  <p className="text-sm text-muted-foreground">Academic Year</p>
                   <p className="font-medium">{selectedBudget.academicYear}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className="bg-green-100 text-green-800">
                     {selectedBudget.status}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Start Date</p>
+                  <p className="text-sm text-muted-foreground">Start Date</p>
                   <p className="font-medium">{new Date(selectedBudget.startDate).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">End Date</p>
+                  <p className="text-sm text-muted-foreground">End Date</p>
                   <p className="font-medium">{new Date(selectedBudget.endDate).toLocaleDateString()}</p>
                 </div>
               </div>
               
               <div>
-                <p className="text-sm text-gray-500 mb-1">Description</p>
+                <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedBudget.description || "No description provided."}</p>
               </div>
             </div>

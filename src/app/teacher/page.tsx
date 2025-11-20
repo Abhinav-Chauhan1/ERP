@@ -7,7 +7,7 @@ import { Chart } from "@/components/dashboard/chart";
 import { CalendarWidget } from "@/components/dashboard/calendar-widget";
 import { 
   Users, BookOpen, ClipboardCheck, Calendar, FileText, 
-  Edit, CheckCircle, Clock, FileSpreadsheet, AlertCircle
+  Edit, CheckCircle, Clock, FileSpreadsheet, AlertCircle, Bell, Mail
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTeacherDashboardData } from "@/lib/actions/teacherDashboardActions";
@@ -31,29 +31,15 @@ export default async function TeacherDashboard() {
   }
 
   const { data } = result;
-  const todayClasses = data.todayClasses;
-  const studentAttendanceData = data.studentAttendanceData;
-  const assignmentData = data.assignmentData;
-  const recentLessons = data.recentLessons;
-  const recentAssignments = data.recentAssignments;
-  const pendingTasks = data.pendingTasks;
-  const classPerformanceData = data.classPerformanceData;
-
-  // Mock upcoming events (can be replaced with real data later)
-  const upcomingEvents = [
-    {
-      id: '1',
-      title: 'Mid-term Exam',
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      type: 'exam' as const
-    },
-    {
-      id: '2',
-      title: 'Parent-Teacher Meeting',
-      date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      type: 'meeting' as const
-    },
-  ];
+  const todayClasses = data.todayClasses ?? [];
+  const studentAttendanceData = data.studentAttendanceData ?? [];
+  const assignmentData = data.assignmentData ?? [];
+  const recentLessons = data.recentLessons ?? [];
+  const recentAssignments = data.recentAssignments ?? [];
+  const pendingTasks = data.pendingTasks ?? [];
+  const classPerformanceData = data.classPerformanceData ?? [];
+  const recentAnnouncements = data.recentAnnouncements ?? [];
+  const unreadMessagesCount = data.stats?.unreadMessagesCount ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,28 +53,28 @@ export default async function TeacherDashboard() {
       {/* Stats row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="My Classes"
-          value={data.stats.classesCount.toString()}
-          icon={<Users className="h-5 w-5" />}
-          description="Today's classes"
-        />
-        <StatsCard
-          title="Students"
-          value={data.stats.studentsCount.toString()}
+          title="Total Students"
+          value={(data.stats.studentsCount ?? 0).toString()}
           icon={<Users className="h-5 w-5" />}
           description="Across all classes"
         />
         <StatsCard
-          title="Assignments"
-          value={data.stats.assignmentsNeedingGrading.toString()}
+          title="Pending Assignments"
+          value={(data.stats.assignmentsNeedingGrading ?? 0).toString()}
           icon={<FileText className="h-5 w-5" />}
           description="Need grading"
         />
         <StatsCard
-          title="Attendance"
-          value={`${data.stats.attendancePercentage}%`}
+          title="Upcoming Exams"
+          value={(data.stats.upcomingExamsCount ?? 0).toString()}
+          icon={<Calendar className="h-5 w-5" />}
+          description="Next 7 days"
+        />
+        <StatsCard
+          title="Today's Classes"
+          value={(data.stats.classesCount ?? 0).toString()}
           icon={<ClipboardCheck className="h-5 w-5" />}
-          description="This week"
+          description={`${data.stats.attendancePercentage ?? 0}% attendance`}
         />
       </div>
 
@@ -176,7 +162,92 @@ export default async function TeacherDashboard() {
         </CardContent>
       </Card>
 
-      {/* Add Recent Lessons section before the charts section */}
+      {/* Announcements and Messages */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Recent Announcements
+                </CardTitle>
+                <CardDescription>Latest school announcements</CardDescription>
+              </div>
+              <Link href="/teacher/communication/announcements">
+                <Button variant="outline" size="sm">
+                  View All
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentAnnouncements.length > 0 ? (
+              <div className="space-y-4">
+                {recentAnnouncements.map((announcement) => (
+                  <div key={announcement.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                    <h4 className="font-medium">{announcement.title}</h4>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                      {announcement.content}
+                    </p>
+                    <div className="text-xs text-gray-500 mt-2">
+                      By {announcement.publisherName} • {announcement.createdAt}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Bell className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No recent announcements</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Messages
+                </CardTitle>
+                <CardDescription>Your communication inbox</CardDescription>
+              </div>
+              <Link href="/teacher/communication/messages">
+                <Button variant="outline" size="sm">
+                  View All
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-6 border rounded-lg text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+                  <Mail className="h-8 w-8 text-blue-600" />
+                </div>
+                <h4 className="font-semibold text-lg mb-2">
+                  {unreadMessagesCount > 0 ? `${unreadMessagesCount} Unread Messages` : 'No Unread Messages'}
+                </h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  {unreadMessagesCount > 0 
+                    ? 'You have new messages waiting for your attention'
+                    : 'You\'re all caught up with your messages'}
+                </p>
+                <Link href="/teacher/communication/messages">
+                  <Button>
+                    {unreadMessagesCount > 0 ? 'Read Messages' : 'View Messages'}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Lessons section */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -276,8 +347,13 @@ export default async function TeacherDashboard() {
             <CardDescription>Upcoming events and schedule</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <CalendarWidget events={upcomingEvents} />
+            <CalendarWidget events={[]} />
           </CardContent>
+          <CardFooter>
+            <Link href="/teacher/teaching/timetable" className="w-full">
+              <Button variant="outline" className="w-full">View Full Schedule</Button>
+            </Link>
+          </CardFooter>
         </Card>
       </div>
 

@@ -172,7 +172,7 @@ export default function LessonDetailsPage() {
         <CardContent className="space-y-6">
           <div>
             <h3 className="text-sm font-medium mb-2">Description</h3>
-            <p className="text-gray-700">{lesson.description || "No description provided."}</p>
+            <p className="text-foreground">{lesson.description || "No description provided."}</p>
           </div>
 
           <div>
@@ -185,7 +185,7 @@ export default function LessonDetailsPage() {
                   </Badge>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No classes assigned</p>
+                <p className="text-sm text-muted-foreground">No classes assigned</p>
               )}
             </div>
           </div>
@@ -194,17 +194,17 @@ export default function LessonDetailsPage() {
 
           <div>
             <h3 className="text-sm font-medium mb-2">Lesson Content</h3>
-            <div className="bg-gray-50 p-4 rounded-md">
+            <div className="bg-accent p-4 rounded-md">
               {lesson.content ? (
                 <div>
                   {lesson.content.startsWith('http') ? (
                     <div className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4 text-blue-500" />
+                      <ExternalLink className="h-4 w-4 text-primary" />
                       <a 
                         href={lesson.content} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {lesson.content}
                       </a>
@@ -214,7 +214,7 @@ export default function LessonDetailsPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No content provided</p>
+                <p className="text-sm text-muted-foreground">No content provided</p>
               )}
             </div>
           </div>
@@ -224,14 +224,14 @@ export default function LessonDetailsPage() {
             {resourcesList.length > 0 ? (
               <div className="space-y-2">
                 {resourcesList.map((resource: string, index: number) => (
-                  <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
-                    <FileText className="h-4 w-4 text-blue-500" />
+                  <div key={index} className="flex items-center gap-2 p-2 bg-accent rounded-md">
+                    <FileText className="h-4 w-4 text-primary" />
                     {resource.startsWith('http') ? (
                       <a 
                         href={resource} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline text-sm flex-1 truncate"
+                        className="text-primary hover:underline text-sm flex-1 truncate"
                       >
                         {resource}
                       </a>
@@ -251,12 +251,12 @@ export default function LessonDetailsPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No resources available</p>
+              <p className="text-sm text-muted-foreground">No resources available</p>
             )}
           </div>
         </CardContent>
         <CardFooter className="flex justify-between border-t pt-4">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             <p>Created: {format(new Date(lesson.createdAt), 'MMMM d, yyyy')}</p>
             <p>Last Updated: {format(new Date(lesson.updatedAt), 'MMMM d, yyyy')}</p>
           </div>

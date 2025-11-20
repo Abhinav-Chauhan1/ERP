@@ -133,45 +133,45 @@ export default async function ParentDetailPage({
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4">
               <div>
-                <p className="text-sm text-gray-500">Full Name</p>
+                <p className="text-sm text-muted-foreground">Full Name</p>
                 <p className="font-medium">
                   {parent.user.firstName} {parent.user.lastName}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm text-muted-foreground">Email</p>
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
+                  <Mail className="h-4 w-4 text-muted-foreground" />
                   <p className="font-medium">{parent.user.email}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Primary Phone</p>
+                <p className="text-sm text-muted-foreground">Primary Phone</p>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Phone className="h-4 w-4 text-muted-foreground" />
                   <p className="font-medium">{parent.user.phone || "Not provided"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Alternate Phone</p>
+                <p className="text-sm text-muted-foreground">Alternate Phone</p>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Phone className="h-4 w-4 text-muted-foreground" />
                   <p className="font-medium">{parent.alternatePhone || "Not provided"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Relation</p>
+                <p className="text-sm text-muted-foreground">Relation</p>
                 <p className="font-medium capitalize">{parent.relation?.toLowerCase() || "Not specified"}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Occupation</p>
+                <p className="text-sm text-muted-foreground">Occupation</p>
                 <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-gray-400" />
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <p className="font-medium">{parent.occupation || "Not specified"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Status</p>
+                <p className="text-sm text-muted-foreground">Status</p>
                 <Badge 
                   className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                 >
@@ -179,7 +179,7 @@ export default async function ParentDetailPage({
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Added on</p>
+                <p className="text-sm text-muted-foreground">Added on</p>
                 <p className="font-medium">{formatDate(parent.createdAt)}</p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default async function ParentDetailPage({
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                           {child.student.user.firstName[0]}
                           {child.student.user.lastName[0]}
                         </div>
@@ -221,7 +221,7 @@ export default async function ParentDetailPage({
                             <Badge variant="outline" className="text-xs">Primary</Badge>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {child.student.enrollments.length > 0 
                             ? `${child.student.enrollments[0].class.name} - ${child.student.enrollments[0].section.name}`
                             : "Not enrolled"
@@ -246,8 +246,8 @@ export default async function ParentDetailPage({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center p-4 text-center">
-                <Users className="h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm text-gray-500">No children associated with this parent</p>
+                <Users className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No children associated with this parent</p>
               </div>
             )}
           </CardContent>
@@ -264,12 +264,12 @@ export default async function ParentDetailPage({
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date & Time</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Location</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Teacher</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date & Time</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Location</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -282,7 +282,7 @@ export default async function ParentDetailPage({
                             <Badge 
                               className={
                                 meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                                meeting.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' :
+                                meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary hover:bg-primary/10' :
                                 meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
                                 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
                               }
@@ -299,7 +299,7 @@ export default async function ParentDetailPage({
               </div>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">No meetings recorded yet</p>
+                <p className="text-sm text-muted-foreground">No meetings recorded yet</p>
               </div>
             )}
           </CardContent>

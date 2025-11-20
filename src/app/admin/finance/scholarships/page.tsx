@@ -734,13 +734,13 @@ export default function ScholarshipsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">{stats?.totalRecipients || scholarshipRecipients.length}</div>
-                <div className="text-sm text-gray-500 flex items-center">
+                <div className="text-sm text-muted-foreground flex items-center">
                   <ArrowUp className="h-3 w-3 text-green-500 mr-1" />
                   <span className="text-green-500 mr-1">{stats?.growthPercentage || 0}%</span>
                   <span>vs last year</span>
                 </div>
               </div>
-              <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+              <div className="p-2 bg-primary/10 rounded-md text-primary">
                 <BadgeDollarSign className="h-6 w-6" />
               </div>
             </div>
@@ -756,7 +756,7 @@ export default function ScholarshipsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">₹{stats?.totalAmount?.toLocaleString() || '0'}</div>
-                <div className="text-sm text-gray-500">Total scholarship funds</div>
+                <div className="text-sm text-muted-foreground">Total scholarship funds</div>
               </div>
               <div className="p-2 bg-green-50 rounded-md text-green-700">
                 <DollarSign className="h-6 w-6" />
@@ -774,7 +774,7 @@ export default function ScholarshipsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-3xl font-bold">{stats?.totalPrograms || scholarshipPrograms.length}</div>
-                <div className="text-sm text-gray-500">Different programs</div>
+                <div className="text-sm text-muted-foreground">Different programs</div>
               </div>
               <div className="p-2 bg-purple-50 rounded-md text-purple-700">
                 <BarChart4 className="h-6 w-6" />
@@ -803,7 +803,7 @@ export default function ScholarshipsPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
                       placeholder="Search programs..."
@@ -819,12 +819,12 @@ export default function ScholarshipsPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Funded By</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Recipients</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Funded By</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Recipients</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -832,14 +832,14 @@ export default function ScholarshipsPage() {
                       <tr key={program.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
                           <div className="font-medium">{program.name}</div>
-                          <div className="text-xs text-gray-500">{program.criteria}</div>
+                          <div className="text-xs text-muted-foreground">{program.criteria}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">
                           ₹{getScholarshipAmount(program)}
                         </td>
                         <td className="py-3 px-4 align-middle">{program.fundedBy}</td>
                         <td className="py-3 px-4 align-middle">
-                          <Badge className="bg-blue-100 text-blue-800">
+                          <Badge className="bg-primary/10 text-primary">
                             {program.recipients?.length || 0} students
                           </Badge>
                         </td>
@@ -864,7 +864,7 @@ export default function ScholarshipsPage() {
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={5} className="py-6 text-center text-gray-500">
+                        <td colSpan={5} className="py-6 text-center text-muted-foreground">
                           No scholarship programs found matching your search criteria
                         </td>
                       </tr>
@@ -888,7 +888,7 @@ export default function ScholarshipsPage() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
                       placeholder="Search recipients..."
@@ -915,13 +915,13 @@ export default function ScholarshipsPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Student</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Scholarship</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Period</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Scholarship</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Period</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -929,7 +929,7 @@ export default function ScholarshipsPage() {
                       <tr key={recipient.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
                           <div className="font-medium">{recipient.student?.name || recipient.studentName}</div>
-                          <div className="text-xs text-gray-500">{recipient.student?.class?.name || recipient.grade}</div>
+                          <div className="text-xs text-muted-foreground">{recipient.student?.class?.name || recipient.grade}</div>
                         </td>
                         <td className="py-3 px-4 align-middle">{recipient.scholarship?.name || recipient.scholarshipName}</td>
                         <td className="py-3 px-4 align-middle font-medium">
@@ -937,7 +937,7 @@ export default function ScholarshipsPage() {
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-xs">{new Date(recipient.awardDate).toLocaleDateString()} - {new Date(recipient.endDate).toLocaleDateString()}</span>
                           </div>
                         </td>
@@ -966,7 +966,7 @@ export default function ScholarshipsPage() {
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={6} className="py-6 text-center text-gray-500">
+                        <td colSpan={6} className="py-6 text-center text-muted-foreground">
                           No scholarship recipients found matching your criteria
                         </td>
                       </tr>
@@ -999,7 +999,7 @@ export default function ScholarshipsPage() {
                     colors={["#3b82f6"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No historical data available
                   </div>
                 )}
@@ -1024,7 +1024,7 @@ export default function ScholarshipsPage() {
                     colors={["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#8b5cf6"]}
                   />
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
+                  <div className="text-center py-10 text-muted-foreground">
                     No distribution data available
                   </div>
                 )}
@@ -1072,7 +1072,7 @@ export default function ScholarshipsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-10 text-gray-500">
+                <div className="text-center py-10 text-muted-foreground">
                   No scholarship programs available
                 </div>
               )}
@@ -1095,7 +1095,7 @@ export default function ScholarshipsPage() {
             <div className="space-y-4">
               <div className="flex flex-col space-y-1">
                 <h3 className="text-lg font-semibold">{selectedProgram.name}</h3>
-                <Badge className="bg-blue-100 text-blue-800 w-fit">
+                <Badge className="bg-primary/10 text-primary w-fit">
                   {selectedProgram.recipients?.length || 0} Recipients
                 </Badge>
               </div>
@@ -1107,30 +1107,30 @@ export default function ScholarshipsPage() {
                     {getScholarshipAmount(selectedProgram)}
                   </div>
                 </div>
-                <div className="flex-1 bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm text-blue-700 font-medium mb-1">Duration</div>
-                  <div className="text-lg font-bold text-blue-800">{selectedProgram.duration}</div>
+                <div className="flex-1 bg-primary/10 p-4 rounded-lg">
+                  <div className="text-sm text-primary font-medium mb-1">Duration</div>
+                  <div className="text-lg font-bold text-primary">{selectedProgram.duration}</div>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
-                  <p className="text-sm text-gray-500">Funded By</p>
+                  <p className="text-sm text-muted-foreground">Funded By</p>
                   <p className="font-medium">{selectedProgram.fundedBy}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Created</p>
+                  <p className="text-sm text-muted-foreground">Created</p>
                   <p className="font-medium">{new Date(selectedProgram.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
               
               <div>
-                <p className="text-sm text-gray-500 mb-1">Description</p>
+                <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedProgram.description}</p>
               </div>
               
               <div>
-                <p className="text-sm text-gray-500 mb-1">Eligibility Criteria</p>
+                <p className="text-sm text-muted-foreground mb-1">Eligibility Criteria</p>
                 <p>{selectedProgram.criteria}</p>
               </div>
               
@@ -1139,10 +1139,10 @@ export default function ScholarshipsPage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Student</th>
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Amount</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Student</th>
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1158,14 +1158,14 @@ export default function ScholarshipsPage() {
                         ))}
                       {scholarshipRecipients.filter(r => r.scholarshipId === selectedProgram.id).length > 3 && (
                         <tr>
-                          <td colSpan={3} className="py-2 px-3 text-center text-xs text-gray-500">
+                          <td colSpan={3} className="py-2 px-3 text-center text-xs text-muted-foreground">
                             And {scholarshipRecipients.filter(r => r.scholarshipId === selectedProgram.id).length - 3} more recipients
                           </td>
                         </tr>
                       )}
                       {scholarshipRecipients.filter(r => r.scholarshipId === selectedProgram.id).length === 0 && (
                         <tr>
-                          <td colSpan={3} className="py-3 text-center text-gray-500">
+                          <td colSpan={3} className="py-3 text-center text-muted-foreground">
                             No recipients yet
                           </td>
                         </tr>
@@ -1207,7 +1207,7 @@ export default function ScholarshipsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{selectedRecipient.student?.name || selectedRecipient.studentName}</h3>
-                  <p className="text-sm text-gray-500">{selectedRecipient.student?.class?.name || selectedRecipient.grade}</p>
+                  <p className="text-sm text-muted-foreground">{selectedRecipient.student?.class?.name || selectedRecipient.grade}</p>
                 </div>
                 <Badge className="bg-green-100 text-green-800">
                   {selectedRecipient.status}
@@ -1227,15 +1227,15 @@ export default function ScholarshipsPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
-                  <p className="text-sm text-gray-500">Award Date</p>
+                  <p className="text-sm text-muted-foreground">Award Date</p>
                   <p className="font-medium">{new Date(selectedRecipient.awardDate).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">End Date</p>
+                  <p className="text-sm text-muted-foreground">End Date</p>
                   <p className="font-medium">{new Date(selectedRecipient.endDate).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Academic Performance</p>
+                  <p className="text-sm text-muted-foreground">Academic Performance</p>
                   <div className="flex items-center gap-2">
                     <Progress 
                       value={selectedRecipient.academicPerformance} 
@@ -1251,7 +1251,7 @@ export default function ScholarshipsPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Student ID</p>
+                  <p className="text-sm text-muted-foreground">Student ID</p>
                   <p className="font-medium">
                     {selectedRecipient.student?.admissionId || students.find(s => s.id === selectedRecipient.studentId)?.admissionId || "N/A"}
                   </p>
@@ -1259,14 +1259,14 @@ export default function ScholarshipsPage() {
               </div>
               
               <div>
-                <p className="text-sm text-gray-500 mb-1">Payment Schedule</p>
+                <p className="text-sm text-muted-foreground mb-1">Payment Schedule</p>
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Payment Date</th>
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Amount</th>
-                        <th className="py-2 px-3 text-left font-medium text-gray-500">Status</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Payment Date</th>
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Amount</th>
+                        <th className="py-2 px-3 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>

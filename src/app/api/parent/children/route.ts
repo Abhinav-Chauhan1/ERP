@@ -9,7 +9,7 @@ export async function GET() {
 
     if (!clerkUser) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
@@ -20,7 +20,7 @@ export async function GET() {
 
     if (!dbUser || dbUser.role !== UserRole.PARENT) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
@@ -31,14 +31,18 @@ export async function GET() {
 
     if (!parent) {
       return NextResponse.json(
-        { success: false, message: "Parent record not found" },
+        { success: false, error: "Parent not found" },
         { status: 404 }
       );
     }
 
+    // Get all children
     const parentChildren = await db.studentParent.findMany({
       where: { parentId: parent.id },
-      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      orderBy: [
+        { isPrimary: 'desc' },
+        { createdAt: 'asc' }
+      ],
       include: {
         student: {
           include: {
@@ -51,11 +55,19 @@ export async function GET() {
             },
             enrollments: {
               where: { status: "ACTIVE" },
-              orderBy: { enrollDate: "desc" },
+              orderBy: { enrollDate: 'desc' },
               take: 1,
               include: {
-                class: true,
-                section: true,
+                class: {
+                  select: {
+                    name: true,
+                  },
+                },
+                section: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -65,12 +77,12 @@ export async function GET() {
 
     const children = parentChildren.map((pc) => ({
       id: pc.student.id,
-      name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
-      firstName: pc.student.user.firstName,
-      lastName: pc.student.user.lastName,
-      avatar: pc.student.user.avatar,
-      class: pc.student.enrollments[0]?.class.name || "N/A",
-      section: pc.student.enrollments[0]?.section.name || "N/A",
+      user: {
+        firstName: pc.student.user.firstName,
+        lastName: pc.student.user.lastName,
+        avatar: pc.student.user.avatar,
+      },
+      enrollments: pc.student.enrollments,
       isPrimary: pc.isPrimary,
     }));
 
@@ -81,7 +93,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching children:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch children" },
+      { success: false, error: "Failed to fetch children" },
       { status: 500 }
     );
   }

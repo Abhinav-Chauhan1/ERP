@@ -131,88 +131,184 @@ export default async function ClassRankPage() {
         <CardContent className="pt-0">
           {rankData.length > 0 ? (
             <>
-              {/* Custom rank progression visualization */}
-              <div className="h-64 p-4 relative">
-                <div className="absolute inset-y-0 left-0 w-12 flex flex-col justify-between text-xs text-gray-500">
-                  <div>1</div>
-                  <div>{Math.ceil(classSize / 4)}</div>
-                  <div>{Math.ceil(classSize / 2)}</div>
-                  <div>{Math.ceil(classSize * 3 / 4)}</div>
-                  <div>{classSize}</div>
-                </div>
-                
-                <div className="ml-12 h-full relative">
-                  {/* Background grid lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between">
-                    <div className="border-t border-gray-200 h-px w-full"></div>
-                    <div className="border-t border-gray-200 h-px w-full"></div>
-                    <div className="border-t border-gray-200 h-px w-full"></div>
-                    <div className="border-t border-gray-200 h-px w-full"></div>
-                    <div className="border-t border-gray-200 h-px w-full"></div>
+              {/* Improved rank progression visualization */}
+              <div className="p-6 bg-gradient-to-br from-amber-50 to-white rounded-lg border">
+                <div className="relative h-80 bg-white rounded-lg p-6 border">
+                  {/* Y-axis labels for rank */}
+                  <div className="absolute left-2 top-6 bottom-12 flex flex-col justify-between text-xs font-medium text-gray-600">
+                    <span className="text-green-600">1st</span>
+                    <span>{Math.ceil(classSize / 4)}</span>
+                    <span>{Math.ceil(classSize / 2)}</span>
+                    <span>{Math.ceil(classSize * 3 / 4)}</span>
+                    <span className="text-red-600">{classSize}</span>
                   </div>
                   
-                  {/* X-axis terms */}
-                  <div className="absolute bottom-0 inset-x-0 flex justify-between text-xs text-gray-500">
-                    {rankData.map((data, i) => (
-                      <div key={i} className="transform -translate-x-1/2">{data.term}</div>
-                    ))}
+                  {/* Chart area */}
+                  <div className="ml-12 mr-4 h-full pb-8 relative">
+                    {/* Horizontal grid lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between">
+                      {[0, 1, 2, 3, 4].map((value) => (
+                        <div key={value} className="w-full border-t border-gray-200"></div>
+                      ))}
+                    </div>
+                    
+                    {/* Rank zones (top 10%, top 25%, etc.) */}
+                    <div className="absolute inset-0">
+                      <div className="absolute top-0 w-full h-[10%] bg-green-50 opacity-30"></div>
+                      <div className="absolute top-[10%] w-full h-[15%] bg-blue-50 opacity-30"></div>
+                      <div className="absolute top-[25%] w-full h-[25%] bg-yellow-50 opacity-30"></div>
+                    </div>
+                    
+                    {/* Chart content */}
+                    <div className="relative h-full pt-2 pb-2">
+                      <svg className="w-full h-full" preserveAspectRatio="none">
+                        {/* Gradient definitions */}
+                        <defs>
+                          <linearGradient id="rankGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#ef4444" />
+                          </linearGradient>
+                          <linearGradient id="rankAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Area under rank line */}
+                        {rankData.length > 1 && rankData.some(data => data.rank) && (
+                          <polygon
+                            points={`
+                              ${rankData
+                                .filter(data => data.rank !== null)
+                                .map((data, i) => 
+                                  `${(i / (rankData.length - 1)) * 100},${(data.rank! / classSize) * 100}`
+                                ).join(' ')}
+                              ${100},${100}
+                              ${0},${100}
+                            `}
+                            fill="url(#rankAreaGradient)"
+                          />
+                        )}
+                        
+                        {/* Rank progression line */}
+                        {rankData.length > 1 && rankData.some(data => data.rank) && (
+                          <polyline
+                            points={rankData
+                              .filter(data => data.rank !== null)
+                              .map((data, i) => 
+                                `${(i / (rankData.length - 1)) * 100},${(data.rank! / classSize) * 100}`
+                              ).join(' ')}
+                            fill="none"
+                            stroke="url(#rankGradient)"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        )}
+                        
+                        {/* Data points with medals for top ranks */}
+                        {rankData.map((data, i) => {
+                          if (!data.rank) return null;
+                          const yPos = (data.rank / classSize) * 100;
+                          const xPos = rankData.length > 1 ? (i / (rankData.length - 1)) * 100 : 50;
+                          
+                          return (
+                            <g key={i}>
+                              {/* Outer glow circle */}
+                              <circle
+                                cx={xPos}
+                                cy={yPos}
+                                r="2.5"
+                                fill={data.rank <= 3 ? "#fbbf24" : "#f59e0b"}
+                                opacity="0.3"
+                              />
+                              {/* Main point */}
+                              <circle
+                                cx={xPos}
+                                cy={yPos}
+                                r="1.5"
+                                fill="white"
+                                stroke={data.rank <= 3 ? "#fbbf24" : "#f59e0b"}
+                                strokeWidth="2.5"
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                      
+                      {/* Hover tooltips */}
+                      <div className="absolute inset-0 flex justify-between items-start">
+                        {rankData.map((data, i) => (
+                          <div 
+                            key={i} 
+                            className="group relative flex-1 h-full cursor-pointer"
+                          >
+                            {/* Tooltip */}
+                            {data.rank && (
+                              <div 
+                                className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
+                                style={{ top: `${(data.rank / classSize) * 100}%` }}
+                              >
+                                <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 shadow-lg whitespace-nowrap -translate-y-full mb-2">
+                                  <div className="font-semibold">{data.term}</div>
+                                  <div className="text-amber-300 flex items-center gap-1">
+                                    <Trophy className="h-3 w-3" />
+                                    Rank: {data.rank} / {data.totalStudents}
+                                  </div>
+                                  {data.percentile && (
+                                    <div className="text-blue-300">Top {100 - data.percentile}%</div>
+                                  )}
+                                  {data.percentage && (
+                                    <div className="text-gray-300">Score: {data.percentage}%</div>
+                                  )}
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                                  <div className="border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* X-axis labels */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs font-medium text-gray-600 pt-2">
+                      {rankData.map((data, i) => (
+                        <div key={i} className="flex-1 text-center">
+                          <div className="truncate px-1">{data.term}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  {/* Connect the rank points with lines */}
-                  <svg className="absolute inset-0" viewBox={`0 0 ${rankData.length * 100} 100`} preserveAspectRatio="none">
-                    {rankData.some(data => data.rank) && (
-                      <polyline
-                        points={rankData
-                          .filter(data => data.rank !== null)
-                          .map((data, i) => `${i * 100}, ${(data.rank! / classSize) * 100}`)
-                          .join(' ')}
-                        fill="none"
-                        stroke="#f59e0b"
-                        strokeWidth="2"
-                      />
-                    )}
-                    
-                    <polyline
-                      points={rankData
-                        .map((data, i) => `${i * 100}, ${100 - (data.percentage ?? 0)}`)
-                        .join(' ')}
-                      fill="none"
-                      stroke="#3b82f6"
-                      strokeWidth="2"
-                    />
-                    
-                    {/* Add points */}
-                    {rankData.filter(data => data.rank !== null).map((data, i) => (
-                      <circle
-                        key={`rank-${i}`}
-                        cx={i * 100}
-                        cy={(data.rank! / classSize) * 100}
-                        r="4"
-                        fill="#f59e0b"
-                      />
-                    ))}
-                    
-                    {rankData.map((data, i) => (
-                      <circle
-                        key={`perf-${i}`}
-                        cx={i * 100}
-                        cy={100 - (data.percentage ?? 0)}
-                        r="4"
-                        fill="#3b82f6"
-                      />
-                    ))}
-                  </svg>
                 </div>
                 
-                {/* Legend */}
-                <div className="absolute bottom-0 right-0 flex items-center text-xs">
-                  <div className="flex items-center mr-4">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
-                    <span>Performance %</span>
+                {/* Legend and info */}
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-amber-500 to-red-500"></div>
+                      <span className="text-gray-600">Class Rank (Lower is Better)</span>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-amber-500 mr-1"></div>
-                    <span>Class Rank</span>
+                  <div className="flex gap-4 text-xs text-gray-500">
+                    <span>Hover over points for details</span>
+                  </div>
+                </div>
+                
+                {/* Performance zones legend */}
+                <div className="mt-3 flex gap-4 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-100 border border-green-300"></div>
+                    <span className="text-gray-600">Top 10%</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-blue-100 border border-blue-300"></div>
+                    <span className="text-gray-600">Top 25%</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-yellow-100 border border-yellow-300"></div>
+                    <span className="text-gray-600">Top 50%</span>
                   </div>
                 </div>
               </div>

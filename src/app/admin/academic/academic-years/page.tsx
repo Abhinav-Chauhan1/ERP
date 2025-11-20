@@ -254,7 +254,7 @@ export default function AcademicYearsPage() {
                         <FormLabel>
                           Set as current academic year
                         </FormLabel>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           This will mark this academic year as the active one.
                         </p>
                       </div>
@@ -300,14 +300,14 @@ export default function AcademicYearsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Year Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Terms</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Classes</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Year Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Terms</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Classes</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -320,8 +320,8 @@ export default function AcademicYearsPage() {
                           <span 
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                               year.isCurrent ? 'bg-green-100 text-green-800' : 
-                              new Date(year.startDate) > new Date() ? 'bg-blue-100 text-blue-800' : 
-                              'bg-gray-100 text-gray-800'
+                              new Date(year.startDate) > new Date() ? 'bg-primary/10 text-primary' : 
+                              'bg-muted text-gray-800'
                             }`}
                           >
                             {year.isCurrent ? 'Current' : 

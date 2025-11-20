@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   Users,
   GraduationCap,
@@ -17,6 +18,8 @@ import {
   PenTool,
   PartyPopper,
   LucideIcon,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
@@ -29,7 +32,7 @@ interface SubMenuItem {
 interface RouteItem {
   label: string;
   icon: LucideIcon;
-  href: string;
+  href?: string; // Optional now, as some items are just section headers
   submenu?: SubMenuItem[];
 }
 
@@ -42,8 +45,8 @@ const routes: RouteItem[] = [
   {
     label: "Users",
     icon: Users,
-    href: "/admin/users",
     submenu: [
+      { label: "Overview", href: "/admin/users" },
       { label: "Administrators", href: "/admin/users/administrators" },
       { label: "Teachers", href: "/admin/users/teachers" },
       { label: "Students", href: "/admin/users/students" },
@@ -53,8 +56,8 @@ const routes: RouteItem[] = [
   {
     label: "Academic",
     icon: GraduationCap,
-    href: "/admin/academic",
     submenu: [
+      { label: "Overview", href: "/admin/academic" },
       { label: "Academic Years", href: "/admin/academic/academic-years" },
       { label: "Terms", href: "/admin/academic/terms" },
       { label: "Departments", href: "/admin/academic/departments" },
@@ -66,7 +69,6 @@ const routes: RouteItem[] = [
   {
     label: "Classes",
     icon: School,
-    href: "/admin/classes",
     submenu: [
       { label: "Class List", href: "/admin/classes" },
       { label: "Sections", href: "/admin/classes/sections" },
@@ -76,8 +78,8 @@ const routes: RouteItem[] = [
   {
     label: "Teaching",
     icon: PenTool,
-    href: "/admin/teaching",
     submenu: [
+      { label: "Overview", href: "/admin/teaching" },
       { label: "Subjects", href: "/admin/teaching/subjects" },
       { label: "Lessons", href: "/admin/teaching/lessons" },
       { label: "Timetable", href: "/admin/teaching/timetable" },
@@ -86,8 +88,8 @@ const routes: RouteItem[] = [
   {
     label: "Assessment",
     icon: BookOpen,
-    href: "/admin/assessment",
     submenu: [
+      { label: "Overview", href: "/admin/assessment" },
       { label: "Exam Types", href: "/admin/assessment/exam-types" },
       { label: "Exams", href: "/admin/assessment/exams" },
       { label: "Assignments", href: "/admin/assessment/assignments" },
@@ -98,8 +100,8 @@ const routes: RouteItem[] = [
   {
     label: "Attendance",
     icon: ClipboardCheck,
-    href: "/admin/attendance",
     submenu: [
+      { label: "Overview", href: "/admin/attendance" },
       { label: "Student Attendance", href: "/admin/attendance/students" },
       { label: "Teacher Attendance", href: "/admin/attendance/teachers" },
       { label: "Reports", href: "/admin/attendance/reports" },
@@ -108,8 +110,8 @@ const routes: RouteItem[] = [
   {
     label: "Finance",
     icon: CreditCard,
-    href: "/admin/finance",
     submenu: [
+      { label: "Overview", href: "/admin/finance" },
       { label: "Fee Structure", href: "/admin/finance/fee-structure" },
       { label: "Payments", href: "/admin/finance/payments" },
       { label: "Scholarships", href: "/admin/finance/scholarships" },
@@ -121,8 +123,8 @@ const routes: RouteItem[] = [
   {
     label: "Communication",
     icon: MessageSquare,
-    href: "/admin/communication",
     submenu: [
+      { label: "Overview", href: "/admin/communication" },
       { label: "Announcements", href: "/admin/communication/announcements" },
       { label: "Messages", href: "/admin/communication/messages" },
       { label: "Notifications", href: "/admin/communication/notifications" },
@@ -142,8 +144,8 @@ const routes: RouteItem[] = [
   {
     label: "Reports",
     icon: BarChart3,
-    href: "/admin/reports",
     submenu: [
+      { label: "Overview", href: "/admin/reports" },
       { label: "Academic Reports", href: "/admin/reports/academic" },
       { label: "Financial Reports", href: "/admin/reports/financial" },
       { label: "Attendance Reports", href: "/admin/reports/attendance" },
@@ -159,9 +161,32 @@ const routes: RouteItem[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  // Initialize open sections based on current pathname
+  const toggleSection = (label: string) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
+
+  // Auto-open section if current path matches
+  const isSectionOpen = (route: RouteItem) => {
+    if (!route.submenu) return false;
+    
+    // Check if manually toggled
+    if (openSections[route.label] !== undefined) {
+      return openSections[route.label];
+    }
+    
+    // Auto-open if current path is within this section
+    const basePath = route.submenu[0]?.href.split('/').slice(0, 3).join('/');
+    return pathname.startsWith(basePath);
+  };
   
   return (
-    <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
+    <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
       <div className="p-6 flex items-center gap-2">
         <Link href="/admin">
           <h1 className="text-xl font-bold">School ERP</h1>
@@ -170,31 +195,54 @@ export function AdminSidebar() {
       </div>
       <div className="flex flex-col w-full">
         {routes.map((route) => {
+          const hasSubmenu = route.submenu && route.submenu.length > 0;
+          const isOpen = isSectionOpen(route);
+          
           // Check if this route or any of its submenu items is active
-          const isMainRouteActive = pathname === route.href;
+          const isMainRouteActive = route.href && pathname === route.href;
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
           const isRouteActive = isMainRouteActive || isSubRouteActive;
           
-          // Show submenu when on any page within this section
-          const showSubmenu = route.submenu && pathname.startsWith(route.href);
-          
           return (
-            <div key={route.href}>
-              <Link
-                href={route.href}
-                className={cn(
-                  "text-sm font-medium flex items-center py-3 px-6 transition-colors",
-                  isRouteActive ? 
-                    "text-blue-700 bg-blue-50 border-r-4 border-blue-700" : 
-                    "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
-                )}
-              >
-                <route.icon className="h-5 w-5 mr-3" />
-                {route.label}
-              </Link>
+            <div key={route.label}>
+              {/* Main heading - clickable only if no submenu, otherwise just toggle */}
+              {hasSubmenu ? (
+                <button
+                  onClick={() => toggleSection(route.label)}
+                  className={cn(
+                    "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors",
+                    isRouteActive ? 
+                      "text-primary bg-primary/10" : 
+                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <route.icon className="h-5 w-5 mr-3" />
+                    {route.label}
+                  </div>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              ) : (
+                <Link
+                  href={route.href!}
+                  className={cn(
+                    "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                    isMainRouteActive ? 
+                      "text-primary bg-primary/10 border-r-4 border-primary" : 
+                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                  )}
+                >
+                  <route.icon className="h-5 w-5 mr-3" />
+                  {route.label}
+                </Link>
+              )}
               
               {/* Submenu */}
-              {showSubmenu && (
+              {hasSubmenu && isOpen && (
                 <div className="ml-9 border-l pl-3 my-1">
                   {route.submenu?.map((item) => (
                     <Link
@@ -203,8 +251,8 @@ export function AdminSidebar() {
                       className={cn(
                         "text-xs flex items-center py-2 px-2 rounded transition-colors",
                         pathname === item.href ? 
-                          "text-blue-700 font-medium" : 
-                          "text-gray-600 hover:text-blue-700"
+                          "text-primary font-medium bg-primary/10" : 
+                          "text-muted-foreground hover:text-primary hover:bg-accent"
                       )}
                     >
                       {item.label}

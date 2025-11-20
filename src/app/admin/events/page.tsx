@@ -273,7 +273,7 @@ export default function EventsPage() {
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "UPCOMING":
-        return "bg-blue-100 text-blue-800";
+        return "bg-primary/10 text-primary";
       case "ONGOING":
         return "bg-green-100 text-green-800";
       case "COMPLETED":
@@ -283,7 +283,7 @@ export default function EventsPage() {
       case "POSTPONED":
         return "bg-amber-100 text-amber-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-gray-800";
     }
   };
   
@@ -301,7 +301,7 @@ export default function EventsPage() {
       case "HOLIDAY":
         return "bg-orange-100 text-orange-800";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-gray-800";
     }
   };
 
@@ -608,24 +608,24 @@ export default function EventsPage() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-center text-sm">
-                    <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
+                    <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>{formatDate(event.startDate)}</span>
                     {formatDate(event.startDate) !== formatDate(event.endDate) && 
                       <> - {formatDate(event.endDate)}</>
                     }
                   </div>
                   <div className="flex items-center text-sm">
-                    <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>{formatTime(event.startDate)} - {formatTime(event.endDate)}</span>
                   </div>
                   {event.location && (
                     <div className="flex items-center text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                      <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
                       <span>{event.location}</span>
                     </div>
                   )}
                   <div className="flex items-center text-sm">
-                    <Users className="h-4 w-4 mr-2 text-gray-500" />
+                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>
                       {event._count.participants} 
                       {event.maxParticipants ? ` / ${event.maxParticipants}` : ""} participants
@@ -690,7 +690,7 @@ export default function EventsPage() {
             </div>
             <div className="flex flex-col md:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search events..."
@@ -753,7 +753,7 @@ export default function EventsPage() {
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <svg
-                  className="animate-spin h-8 w-8 text-gray-400"
+                  className="animate-spin h-8 w-8 text-muted-foreground"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -777,13 +777,13 @@ export default function EventsPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Event</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Participants</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Event</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Participants</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -792,7 +792,7 @@ export default function EventsPage() {
                         <td className="py-3 px-4 align-middle font-medium">
                           <div>{event.title}</div>
                           {event.location && (
-                            <div className="text-xs text-gray-500 flex items-center mt-1">
+                            <div className="text-xs text-muted-foreground flex items-center mt-1">
                               <MapPin className="h-3 w-3 mr-1" />
                               {event.location}
                             </div>
@@ -805,11 +805,11 @@ export default function EventsPage() {
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <div>{formatDate(event.startDate)}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground">
                             {formatTime(event.startDate)} - {formatTime(event.endDate)}
                           </div>
                           {formatDate(event.startDate) !== formatDate(event.endDate) && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-muted-foreground">
                               to {formatDate(event.endDate)}
                             </div>
                           )}
@@ -869,7 +869,7 @@ export default function EventsPage() {
               <div className="text-center py-10">
                 <Calendar className="h-10 w-10 mx-auto text-gray-300 mb-2" />
                 <h3 className="text-lg font-medium mb-1">No events found</h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {searchTerm || typeFilter || statusFilter
                     ? "Try adjusting your filters to find what you're looking for"
                     : "Get started by creating your first event"
@@ -1166,7 +1166,7 @@ export default function EventsPage() {
             {selectedEvent && (
               <div className="border rounded-md p-4">
                 <h3 className="font-medium">{selectedEvent.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {formatDate(selectedEvent.startDate)} at {formatTime(selectedEvent.startDate)}
                 </p>
                 {selectedEvent._count && selectedEvent._count.participants > 0 && (

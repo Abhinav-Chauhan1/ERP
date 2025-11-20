@@ -4,6 +4,42 @@ import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+
+// Validation schemas
+const accountSettingsSchema = z.object({
+  studentId: z.string().min(1, "Student ID is required"),
+  email: z.string().email("Invalid email address").optional(),
+  phone: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+});
+
+const notificationSettingsSchema = z.object({
+  studentId: z.string().min(1, "Student ID is required"),
+  emailNotifications: z.boolean().optional(),
+  assignmentReminders: z.boolean().optional(),
+  examReminders: z.boolean().optional(),
+  attendanceAlerts: z.boolean().optional(),
+  feeReminders: z.boolean().optional(),
+  eventNotifications: z.boolean().optional(),
+  announcementNotifications: z.boolean().optional(),
+});
+
+const privacySettingsSchema = z.object({
+  studentId: z.string().min(1, "Student ID is required"),
+  profileVisibility: z.enum(["PUBLIC", "PRIVATE", "CLASSMATES_ONLY"]).optional(),
+  showEmail: z.boolean().optional(),
+  showPhone: z.boolean().optional(),
+});
+
+const appearanceSettingsSchema = z.object({
+  studentId: z.string().min(1, "Student ID is required"),
+  theme: z.enum(["LIGHT", "DARK", "SYSTEM"]).optional(),
+  language: z.string().optional(),
+  dateFormat: z.string().optional(),
+  timeFormat: z.enum(["TWELVE_HOUR", "TWENTY_FOUR_HOUR"]).optional(),
+});
 
 export async function getStudentSettings(studentId: string) {
   try {
@@ -97,6 +133,9 @@ export async function updateAccountSettings(data: {
   emergencyPhone?: string;
 }) {
   try {
+    // Validate input
+    const validated = accountSettingsSchema.parse(data);
+    
     const clerkUser = await currentUser();
     
     if (!clerkUser) {
@@ -115,7 +154,7 @@ export async function updateAccountSettings(data: {
 
     const student = await db.student.findUnique({
       where: {
-        id: data.studentId
+        id: validated.studentId
       }
     });
 
@@ -126,23 +165,23 @@ export async function updateAccountSettings(data: {
     // Update student record
     await db.student.update({
       where: {
-        id: data.studentId
+        id: validated.studentId
       },
       data: {
-        phone: data.phone,
-        emergencyContact: data.emergencyContact,
-        emergencyPhone: data.emergencyPhone
+        phone: validated.phone,
+        emergencyContact: validated.emergencyContact,
+        emergencyPhone: validated.emergencyPhone
       }
     });
 
     // Update user email if provided
-    if (data.email) {
+    if (validated.email) {
       await db.user.update({
         where: {
           id: student.userId
         },
         data: {
-          email: data.email
+          email: validated.email
         }
       });
     }
@@ -150,6 +189,9 @@ export async function updateAccountSettings(data: {
     revalidatePath("/student/settings");
     return { success: true, message: "Account settings updated successfully" };
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.errors[0].message };
+    }
     console.error("Failed to update account settings:", error);
     return { success: false, message: "Failed to update account settings" };
   }
@@ -166,6 +208,9 @@ export async function updateNotificationSettings(data: {
   announcementNotifications?: boolean;
 }) {
   try {
+    // Validate input
+    const validated = notificationSettingsSchema.parse(data);
+    
     const clerkUser = await currentUser();
     
     if (!clerkUser) {
@@ -184,7 +229,7 @@ export async function updateNotificationSettings(data: {
 
     const student = await db.student.findUnique({
       where: {
-        id: data.studentId
+        id: validated.studentId
       }
     });
 
@@ -194,32 +239,35 @@ export async function updateNotificationSettings(data: {
 
     await db.studentSettings.upsert({
       where: {
-        studentId: data.studentId
+        studentId: validated.studentId
       },
       update: {
-        emailNotifications: data.emailNotifications,
-        assignmentReminders: data.assignmentReminders,
-        examReminders: data.examReminders,
-        attendanceAlerts: data.attendanceAlerts,
-        feeReminders: data.feeReminders,
-        eventNotifications: data.eventNotifications,
-        announcementNotifications: data.announcementNotifications
+        emailNotifications: validated.emailNotifications,
+        assignmentReminders: validated.assignmentReminders,
+        examReminders: validated.examReminders,
+        attendanceAlerts: validated.attendanceAlerts,
+        feeReminders: validated.feeReminders,
+        eventNotifications: validated.eventNotifications,
+        announcementNotifications: validated.announcementNotifications
       },
       create: {
-        studentId: data.studentId,
-        emailNotifications: data.emailNotifications ?? true,
-        assignmentReminders: data.assignmentReminders ?? true,
-        examReminders: data.examReminders ?? true,
-        attendanceAlerts: data.attendanceAlerts ?? true,
-        feeReminders: data.feeReminders ?? true,
-        eventNotifications: data.eventNotifications ?? true,
-        announcementNotifications: data.announcementNotifications ?? true
+        studentId: validated.studentId,
+        emailNotifications: validated.emailNotifications ?? true,
+        assignmentReminders: validated.assignmentReminders ?? true,
+        examReminders: validated.examReminders ?? true,
+        attendanceAlerts: validated.attendanceAlerts ?? true,
+        feeReminders: validated.feeReminders ?? true,
+        eventNotifications: validated.eventNotifications ?? true,
+        announcementNotifications: validated.announcementNotifications ?? true
       }
     });
 
     revalidatePath("/student/settings");
     return { success: true, message: "Notification settings updated successfully" };
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.errors[0].message };
+    }
     console.error("Failed to update notification settings:", error);
     return { success: false, message: "Failed to update notification settings" };
   }
@@ -232,6 +280,9 @@ export async function updatePrivacySettings(data: {
   showPhone?: boolean;
 }) {
   try {
+    // Validate input
+    const validated = privacySettingsSchema.parse(data);
+    
     const clerkUser = await currentUser();
     
     if (!clerkUser) {
@@ -250,7 +301,7 @@ export async function updatePrivacySettings(data: {
 
     const student = await db.student.findUnique({
       where: {
-        id: data.studentId
+        id: validated.studentId
       }
     });
 
@@ -260,24 +311,27 @@ export async function updatePrivacySettings(data: {
 
     await db.studentSettings.upsert({
       where: {
-        studentId: data.studentId
+        studentId: validated.studentId
       },
       update: {
-        profileVisibility: data.profileVisibility,
-        showEmail: data.showEmail,
-        showPhone: data.showPhone
+        profileVisibility: validated.profileVisibility,
+        showEmail: validated.showEmail,
+        showPhone: validated.showPhone
       },
       create: {
-        studentId: data.studentId,
-        profileVisibility: data.profileVisibility ?? "PRIVATE",
-        showEmail: data.showEmail ?? false,
-        showPhone: data.showPhone ?? false
+        studentId: validated.studentId,
+        profileVisibility: validated.profileVisibility ?? "PRIVATE",
+        showEmail: validated.showEmail ?? false,
+        showPhone: validated.showPhone ?? false
       }
     });
 
     revalidatePath("/student/settings");
     return { success: true, message: "Privacy settings updated successfully" };
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.errors[0].message };
+    }
     console.error("Failed to update privacy settings:", error);
     return { success: false, message: "Failed to update privacy settings" };
   }
@@ -291,6 +345,9 @@ export async function updateAppearanceSettings(data: {
   timeFormat?: "TWELVE_HOUR" | "TWENTY_FOUR_HOUR";
 }) {
   try {
+    // Validate input
+    const validated = appearanceSettingsSchema.parse(data);
+    
     const clerkUser = await currentUser();
     
     if (!clerkUser) {
@@ -309,7 +366,7 @@ export async function updateAppearanceSettings(data: {
 
     const student = await db.student.findUnique({
       where: {
-        id: data.studentId
+        id: validated.studentId
       }
     });
 
@@ -319,26 +376,29 @@ export async function updateAppearanceSettings(data: {
 
     await db.studentSettings.upsert({
       where: {
-        studentId: data.studentId
+        studentId: validated.studentId
       },
       update: {
-        theme: data.theme,
-        language: data.language,
-        dateFormat: data.dateFormat,
-        timeFormat: data.timeFormat
+        theme: validated.theme,
+        language: validated.language,
+        dateFormat: validated.dateFormat,
+        timeFormat: validated.timeFormat
       },
       create: {
-        studentId: data.studentId,
-        theme: data.theme ?? "LIGHT",
-        language: data.language ?? "en",
-        dateFormat: data.dateFormat ?? "MM/DD/YYYY",
-        timeFormat: data.timeFormat ?? "TWELVE_HOUR"
+        studentId: validated.studentId,
+        theme: validated.theme ?? "LIGHT",
+        language: validated.language ?? "en",
+        dateFormat: validated.dateFormat ?? "MM/DD/YYYY",
+        timeFormat: validated.timeFormat ?? "TWELVE_HOUR"
       }
     });
 
     revalidatePath("/student/settings");
     return { success: true, message: "Appearance settings updated successfully" };
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, message: error.errors[0].message };
+    }
     console.error("Failed to update appearance settings:", error);
     return { success: false, message: "Failed to update appearance settings" };
   }

@@ -388,7 +388,7 @@ export default function SubjectsPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="md:w-2/3">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search subjects..."
@@ -426,15 +426,15 @@ export default function SubjectsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+                    <div className="p-2 bg-primary/10 rounded-md text-primary">
                       <BookOpen className="h-5 w-5" />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{subject.name}</CardTitle>
-                      <p className="text-xs text-gray-500">{subject.code}</p>
+                      <p className="text-xs text-muted-foreground">{subject.code}</p>
                     </div>
                   </div>
-                  <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                  <Badge className="bg-accent text-gray-800 hover:bg-accent">
                     {subject.department}
                   </Badge>
                 </div>
@@ -457,11 +457,11 @@ export default function SubjectsPage() {
                   
                   <div className="flex gap-4 text-sm">
                     <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4 text-gray-500" />
+                      <Users className="h-4 w-4 text-muted-foreground" />
                       <span>{subject.teachers} Teachers</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <FolderOpen className="h-4 w-4 text-gray-500" />
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
                       <span>{subject.classes} Classes</span>
                     </div>
                   </div>
@@ -499,9 +499,9 @@ export default function SubjectsPage() {
 
       {!loading && filteredSubjects.length === 0 && (
         <div className="text-center py-10">
-          <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
           <h3 className="text-lg font-medium mb-1">No subjects found</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {searchTerm || departmentFilter !== "all"
               ? "Try adjusting your filters or search terms"
               : "No subjects have been added yet"}

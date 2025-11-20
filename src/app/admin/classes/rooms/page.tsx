@@ -580,7 +580,7 @@ export default function ClassroomsPage() {
                     <p className="text-sm text-muted-foreground">Total Rooms</p>
                     <p className="text-2xl font-bold">{stats.total}</p>
                   </div>
-                  <Building className="h-8 w-8 text-blue-500" />
+                  <Building className="h-8 w-8 text-primary" />
                 </CardContent>
               </Card>
               <Card>
@@ -616,7 +616,7 @@ export default function ClassroomsPage() {
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search by name, building, or description..."
@@ -773,7 +773,7 @@ export default function ClassroomsPage() {
                   {building}
                   <button 
                     onClick={() => toggleBuildingFilter(building)}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -784,7 +784,7 @@ export default function ClassroomsPage() {
                   {type}
                   <button 
                     onClick={() => toggleRoomTypeFilter(type)}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -795,7 +795,7 @@ export default function ClassroomsPage() {
                   {status}
                   <button 
                     onClick={() => toggleAvailabilityFilter(status)}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -806,7 +806,7 @@ export default function ClassroomsPage() {
                   Projector
                   <button 
                     onClick={() => setFilters(prev => ({ ...prev, hasProjector: false }))}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -817,7 +817,7 @@ export default function ClassroomsPage() {
                   Smart Board
                   <button 
                     onClick={() => setFilters(prev => ({ ...prev, hasSmartBoard: false }))}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -828,7 +828,7 @@ export default function ClassroomsPage() {
                   Air Conditioning
                   <button 
                     onClick={() => setFilters(prev => ({ ...prev, hasAC: false }))}
-                    className="ml-1 rounded-full hover:bg-gray-100 p-0.5"
+                    className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -851,7 +851,7 @@ export default function ClassroomsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
-                        <Building className="h-5 w-5 text-blue-500" />
+                        <Building className="h-5 w-5 text-primary" />
                         {room.name}
                       </CardTitle>
                       <DropdownMenu>
@@ -907,7 +907,7 @@ export default function ClassroomsPage() {
                         <span>Status:</span>
                         <Badge className={`${
                           room.status === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                          'bg-blue-100 text-blue-800 hover:bg-blue-100'
+                          'bg-primary/10 text-primary hover:bg-primary/10'
                         }`}>
                           {room.status}
                         </Badge>
@@ -922,18 +922,18 @@ export default function ClassroomsPage() {
                     
                     <div className="flex flex-wrap gap-1 mb-3">
                       {room.hasProjector && (
-                        <Badge variant="outline" className="text-xs bg-gray-50">Projector</Badge>
+                        <Badge variant="outline" className="text-xs bg-accent">Projector</Badge>
                       )}
                       {room.hasSmartBoard && (
-                        <Badge variant="outline" className="text-xs bg-gray-50">Smart Board</Badge>
+                        <Badge variant="outline" className="text-xs bg-accent">Smart Board</Badge>
                       )}
                       {room.hasAC && (
-                        <Badge variant="outline" className="text-xs bg-gray-50">AC</Badge>
+                        <Badge variant="outline" className="text-xs bg-accent">AC</Badge>
                       )}
                     </div>
                     
                     {room.description && (
-                      <p className="text-xs text-gray-500 line-clamp-2 mt-2">{room.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-2">{room.description}</p>
                     )}
 
                     <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
@@ -963,7 +963,7 @@ export default function ClassroomsPage() {
             <div className="text-center py-10">
               <Building className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No classrooms found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {getActiveFilterCount() > 0 
                   ? "Try adjusting your filters or search terms" 
                   : "No classrooms have been added yet"}

@@ -29,19 +29,19 @@ export function StudentHeader({ student }: StudentHeaderProps) {
             
             <div className="flex flex-wrap gap-x-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <span className="font-medium text-gray-600">ID:</span> 
+                <span className="font-medium">ID:</span> 
                 <span>{student.admissionId}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-medium text-gray-600">Class:</span> 
+                <span className="font-medium">Class:</span> 
                 <span>{currentEnrollment?.class?.name} {currentEnrollment?.section?.name}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-medium text-gray-600">Roll No:</span>
+                <span className="font-medium">Roll No:</span>
                 <span>{currentEnrollment?.rollNumber || student.rollNumber}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-medium text-gray-600">Admission:</span> 
+                <span className="font-medium">Admission:</span> 
                 <span>{format(new Date(student.admissionDate), "MMM d, yyyy")}</span>
               </div>
             </div>

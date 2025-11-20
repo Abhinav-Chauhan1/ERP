@@ -10,6 +10,7 @@ import {
   CreateParentFormData
 } from "@/lib/schemaValidation/usersSchemaValidation";
 import { revalidatePath } from "next/cache";
+import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 
 // Helper function to create base user
 const createBaseUser = async (clerkId: string, userData: {
@@ -20,16 +21,19 @@ const createBaseUser = async (clerkId: string, userData: {
   avatar?: string;
   role: UserRole;
 }) => {
+  // Sanitize inputs
+  const sanitizedData = {
+    clerkId,
+    firstName: sanitizeText(userData.firstName),
+    lastName: sanitizeText(userData.lastName),
+    email: sanitizeEmail(userData.email),
+    phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
+    avatar: userData.avatar,
+    role: userData.role,
+  };
+  
   return await db.user.create({
-    data: {
-      clerkId,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      phone: userData.phone,
-      avatar: userData.avatar,
-      role: userData.role,
-    }
+    data: sanitizedData
   });
 };
 

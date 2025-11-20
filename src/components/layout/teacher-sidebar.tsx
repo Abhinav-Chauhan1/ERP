@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Settings,
   ChevronDown,
-  UserCircle,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -83,11 +82,6 @@ const routes: RouteItem[] = [
     ],
   },
   {
-    label: "Profile",
-    icon: UserCircle,
-    href: "/teacher/profile",
-  },
-  {
     label: "Settings",
     icon: Settings,
     href: "/teacher/settings",
@@ -123,7 +117,7 @@ export function TeacherSidebar() {
   };
 
   return (
-    <div className="h-full border-r flex flex-col overflow-y-auto bg-white shadow-sm">
+    <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
       <div className="p-6 flex items-center gap-2">
         <Link href="/teacher">
           <h1 className="text-xl font-bold">School ERP</h1>
@@ -146,8 +140,8 @@ export function TeacherSidebar() {
                   className={cn(
                     "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors",
                     isRouteActive
-                      ? "text-blue-700 bg-blue-50 border-r-4 border-blue-700"
-                      : "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
+                      ? "text-primary bg-primary/10"
+                      : "text-muted-foreground hover:text-primary hover:bg-accent"
                   )}
                 >
                   <span className="flex items-center">
@@ -172,8 +166,8 @@ export function TeacherSidebar() {
                         className={cn(
                           "text-xs flex items-center py-2 px-2 rounded transition-colors",
                           pathname === item.href
-                            ? "text-blue-700 font-medium"
-                            : "text-gray-600 hover:text-blue-700"
+                            ? "text-primary font-medium bg-primary/10"
+                            : "text-muted-foreground hover:text-primary hover:bg-accent"
                         )}
                       >
                         {item.label}
@@ -193,8 +187,8 @@ export function TeacherSidebar() {
               className={cn(
                 "text-sm font-medium flex items-center py-3 px-6 transition-colors",
                 isRouteActive
-                  ? "text-blue-700 bg-blue-50 border-r-4 border-blue-700"
-                  : "text-gray-600 hover:text-blue-700 hover:bg-blue-50"
+                  ? "text-primary bg-primary/10 border-r-4 border-primary"
+                  : "text-muted-foreground hover:text-primary hover:bg-accent"
               )}
             >
               <route.icon className="h-5 w-5 mr-3" />

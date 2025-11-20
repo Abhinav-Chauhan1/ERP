@@ -17,6 +17,8 @@ import {
   type DownloadReceiptInput,
 } from "@/lib/schemaValidation/parent-fee-schemas";
 import { sanitizeText, sanitizeAlphanumeric } from "@/lib/utils/input-sanitization";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
+import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -339,10 +341,18 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
 
 /**
  * Create a payment record to initiate payment process
- * Requirements: 1.3
+ * Requirements: 1.3, 10.1, 10.2
  */
-export async function createPayment(input: CreatePaymentInput) {
+export async function createPayment(input: CreatePaymentInput & { csrfToken?: string }) {
   try {
+    // Verify CSRF token
+    if (input.csrfToken) {
+      const isCsrfValid = await verifyCsrfToken(input.csrfToken);
+      if (!isCsrfValid) {
+        return { success: false, message: "Invalid CSRF token" };
+      }
+    }
+    
     // Validate input
     const validated = createPaymentSchema.parse(input);
     
@@ -350,6 +360,13 @@ export async function createPayment(input: CreatePaymentInput) {
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
+    }
+    
+    // Rate limiting for payment operations
+    const rateLimitKey = `payment:${parent.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
+    if (!rateLimitResult) {
+      return { success: false, message: "Too many payment requests. Please try again later." };
     }
     
     // Verify parent-child relationship
@@ -431,10 +448,18 @@ export async function createPayment(input: CreatePaymentInput) {
 
 /**
  * Verify payment after gateway confirmation
- * Requirements: 1.3
+ * Requirements: 1.3, 10.1, 10.2
  */
-export async function verifyPayment(input: VerifyPaymentInput) {
+export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: string }) {
   try {
+    // Verify CSRF token
+    if (input.csrfToken) {
+      const isCsrfValid = await verifyCsrfToken(input.csrfToken);
+      if (!isCsrfValid) {
+        return { success: false, message: "Invalid CSRF token" };
+      }
+    }
+    
     // Validate input
     const validated = verifyPaymentSchema.parse(input);
     
@@ -442,6 +467,13 @@ export async function verifyPayment(input: VerifyPaymentInput) {
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
+    }
+    
+    // Rate limiting for payment verification
+    const rateLimitKey = `payment-verify:${parent.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
+    if (!rateLimitResult) {
+      return { success: false, message: "Too many verification requests. Please try again later." };
     }
     
     // Verify parent-child relationship

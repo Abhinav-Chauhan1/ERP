@@ -32,11 +32,11 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="custom-tooltip bg-white p-3 border rounded-md shadow-md">
+        <div className="custom-tooltip bg-card p-3 border rounded-md shadow-md">
           <p className="font-medium">{`${label}`}</p>
-          <p className="text-blue-600">{`Percentage: ${payload[0].value}%`}</p>
+          <p className="text-primary">{`Percentage: ${payload[0].value}%`}</p>
           {payload[0].payload.rank && (
-            <p className="text-amber-600">{`Rank: ${payload[0].payload.rank}`}</p>
+            <p className="text-amber-600 dark:text-amber-400">{`Rank: ${payload[0].payload.rank}`}</p>
           )}
         </div>
       );

@@ -25,17 +25,17 @@ export function TimeTablePreview({ schedule }: TimeTablePreviewProps) {
             {schedule.map((slot, index) => (
               <div key={index} className="flex items-center justify-between rounded-md border p-3">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-blue-50 p-2">
-                    <Clock className="h-4 w-4 text-blue-700" />
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <Clock className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium">{slot.subject}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(slot.startTime), "h:mm a")} - {format(new Date(slot.endTime), "h:mm a")}
                     </p>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   {slot.teacherName}
                 </div>
               </div>
@@ -43,17 +43,17 @@ export function TimeTablePreview({ schedule }: TimeTablePreviewProps) {
             
             <div className="flex justify-end pt-2">
               <Link href="/student/academics/schedule">
-                <Button variant="link" size="sm" className="font-normal text-blue-600">
+                <Button variant="link" size="sm" className="font-normal text-primary">
                   Full schedule <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
           </div>
         ) : (
-          <div className="py-8 text-center text-gray-500">
+          <div className="py-8 text-center text-muted-foreground">
             <p>No classes scheduled for today</p>
             <Link href="/student/academics/schedule">
-              <Button variant="link" size="sm" className="font-normal text-blue-600 mt-2">
+              <Button variant="link" size="sm" className="font-normal text-primary mt-2">
                 View full schedule
               </Button>
             </Link>

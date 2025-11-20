@@ -77,6 +77,32 @@ model Teacher {
   payrolls        Payroll[]  // Added missing relation
   parentMeetings  ParentMeeting[] // Added missing relation
   departments     Department[] @relation("DepartmentTeachers") // Added missing relation
+  settings        TeacherSettings?
+}
+
+model TeacherSettings {
+  id                          String   @id @default(cuid())
+  teacher                     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId                   String   @unique
+  
+  // Notification preferences
+  emailNotifications          Boolean  @default(true)
+  smsNotifications            Boolean  @default(false)
+  pushNotifications           Boolean  @default(true)
+  assignmentReminders         Boolean  @default(true)
+  examReminders               Boolean  @default(true)
+  messageNotifications        Boolean  @default(true)
+  announcementNotifications   Boolean  @default(true)
+  
+  // Appearance settings
+  theme                       String   @default("LIGHT") // LIGHT, DARK, SYSTEM
+  colorTheme                  String   @default("blue") // blue, red, green, purple, orange, teal
+  language                    String   @default("en")
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  
+  @@index([teacherId])
 }
 
 model Student {
@@ -129,6 +155,7 @@ model StudentSettings {
   
   // Appearance settings
   theme                       Theme    @default(LIGHT)
+  colorTheme                  String   @default("blue") // blue, red, green, purple, orange, teal
   language                    String   @default("en")
   dateFormat                  String   @default("MM/DD/YYYY")
   timeFormat                  TimeFormat @default(TWELVE_HOUR)
@@ -194,6 +221,7 @@ model ParentSettings {
   
   // Appearance settings
   theme                       Theme    @default(LIGHT)
+  colorTheme                  String   @default("blue") // blue, red, green, purple, orange, teal
   language                    String   @default("en")
   
   createdAt                   DateTime @default(now())
@@ -566,7 +594,7 @@ model ExamResult {
   updatedAt   DateTime @updatedAt
 
   @@unique([examId, studentId])
-  @@index([studentId])
+  @@index([studentId, examId])
   @@index([examId])
 }
 
@@ -683,6 +711,7 @@ model StudentAttendance {
 
   @@unique([studentId, date, sectionId])
   @@index([studentId, date])
+  @@index([sectionId, date])
   @@index([status])
 }
 
@@ -804,7 +833,7 @@ model FeePayment {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @default(now())
 
-  @@index([studentId])
+  @@index([studentId, status])
   @@index([paymentDate])
   @@index([status])
 }
@@ -1089,52 +1118,59 @@ model EventParticipant {
 
 // System Settings Model
 model SystemSettings {
-  id                    String   @id @default(cuid())
+  id                          String   @id @default(cuid())
   
   // School Information
-  schoolName            String   @default("School Name")
-  schoolEmail           String?
-  schoolPhone           String?
-  schoolAddress         String?
-  schoolWebsite         String?
-  schoolFax             String?
-  timezone              String   @default("UTC")
+  schoolName                  String   @default("School Name")
+  schoolAddress               String?
+  schoolPhone                 String?
+  schoolEmail                 String?
+  schoolLogo                  String?
+  schoolWebsite               String?
+  schoolFax                   String?
+  timezone                    String   @default("UTC")
   
   // Academic Settings
-  currentAcademicYear   String?
-  currentTerm           String?
-  gradingSystem         String   @default("percentage") // percentage, gpa, letter
-  passingGrade          Int      @default(50)
-  autoAttendance        Boolean  @default(false)
-  lateArrivalThreshold  Int      @default(15) // minutes
+  currentAcademicYear         String?
+  currentTerm                 String?
+  defaultGradingScale         String   @default("PERCENTAGE") // PERCENTAGE, GPA, LETTER
+  attendanceThreshold         Int      @default(75) // Minimum attendance percentage
+  lateArrivalMinutes          Int      @default(15) // Minutes after which marked late
+  passingGrade                Int      @default(50)
+  autoAttendance              Boolean  @default(false)
   
   // Notification Settings
-  emailNotifications    Boolean  @default(true)
-  smsNotifications      Boolean  @default(false)
-  pushNotifications     Boolean  @default(true)
-  notifyEnrollment      Boolean  @default(true)
-  notifyPayment         Boolean  @default(true)
-  notifyAttendance      Boolean  @default(true)
-  notifyExamResults     Boolean  @default(true)
-  notifyLeaveApps       Boolean  @default(true)
+  emailEnabled                Boolean  @default(true)
+  smsEnabled                  Boolean  @default(false)
+  pushEnabled                 Boolean  @default(true)
+  notifyEnrollment            Boolean  @default(true)
+  notifyPayment               Boolean  @default(true)
+  notifyAttendance            Boolean  @default(true)
+  notifyExamResults           Boolean  @default(true)
+  notifyLeaveApps             Boolean  @default(true)
   
   // Security Settings
-  twoFactorAuth         Boolean  @default(false)
-  sessionTimeout        Int      @default(30) // minutes
-  passwordExpiry        Int      @default(90) // days
-  autoBackup            Boolean  @default(true)
-  backupFrequency       String   @default("daily") // hourly, daily, weekly
+  sessionTimeout              Int      @default(30) // Minutes
+  passwordMinLength           Int      @default(8)
+  passwordRequireSpecialChar  Boolean  @default(true)
+  passwordRequireNumber       Boolean  @default(true)
+  passwordRequireUppercase    Boolean  @default(true)
+  twoFactorAuth               Boolean  @default(false)
+  passwordExpiry              Int      @default(90) // days
+  autoBackup                  Boolean  @default(true)
+  backupFrequency             String   @default("daily") // hourly, daily, weekly
   
-  // Appearance Settings
-  theme                 String   @default("light") // light, dark, system
-  primaryColor          String   @default("#3b82f6")
-  language              String   @default("en")
-  dateFormat            String   @default("mdy") // mdy, dmy, ymd
-  logoUrl               String?
-  faviconUrl            String?
+  // Appearance Settings (Admin can set default for school)
+  defaultTheme                String   @default("LIGHT") // LIGHT, DARK, SYSTEM
+  defaultColorTheme           String   @default("blue") // blue, red, green, purple, orange, teal
+  primaryColor                String   @default("#3b82f6")
+  language                    String   @default("en")
+  dateFormat                  String   @default("mdy") // mdy, dmy, ymd
+  logoUrl                     String?
+  faviconUrl                  String?
   
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
   
   @@map("system_settings")
 }

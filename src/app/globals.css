@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @layer base {
+  /* Default Blue Theme */
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -63,6 +64,71 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.5% 48%;
+  }
+
+  /* Red Theme */
+  .theme-red {
+    --primary: 0 84.2% 60.2%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 84.2% 60.2%;
+  }
+
+  .dark.theme-red {
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 72.2% 50.6%;
+  }
+
+  /* Green Theme */
+  .theme-green {
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --ring: 142.1 76.2% 36.3%;
+  }
+
+  .dark.theme-green {
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --ring: 142.1 70.6% 45.3%;
+  }
+
+  /* Purple Theme */
+  .theme-purple {
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --ring: 262.1 83.3% 57.8%;
+  }
+
+  .dark.theme-purple {
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --ring: 263.4 70% 50.4%;
+  }
+
+  /* Orange Theme */
+  .theme-orange {
+    --primary: 24.6 95% 53.1%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --ring: 24.6 95% 53.1%;
+  }
+
+  .dark.theme-orange {
+    --primary: 20.5 90.2% 48.2%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --ring: 20.5 90.2% 48.2%;
+  }
+
+  /* Teal Theme */
+  .theme-teal {
+    --primary: 173 80% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 173 80% 40%;
+  }
+
+  .dark.theme-teal {
+    --primary: 172.5 66% 50.4%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 172.5 66% 50.4%;
   }
 }
 

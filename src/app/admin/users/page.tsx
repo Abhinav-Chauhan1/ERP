@@ -87,13 +87,13 @@ export default async function UsersPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Email</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Role</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Added</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Role</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Added</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

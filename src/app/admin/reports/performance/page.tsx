@@ -107,7 +107,7 @@ export default function PerformanceAnalyticsPage() {
       title: "Overall School Performance",
       description: "Comprehensive analysis of institutional performance",
       icon: TrendingUp,
-      color: "bg-blue-500",
+      color: "bg-primary",
     },
     {
       title: "Teacher Performance Metrics",
@@ -289,8 +289,8 @@ export default function PerformanceAnalyticsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Overall School Performance</h3>
                   <div className="grid gap-4 md:grid-cols-4">
-                    <div className="bg-blue-50 p-3 rounded">
-                      <div className="text-sm text-blue-600">Total Exams</div>
+                    <div className="bg-primary/10 p-3 rounded">
+                      <div className="text-sm text-primary">Total Exams</div>
                       <div className="text-xl font-bold">{reportData.data.statistics?.totalExams || 0}</div>
                     </div>
                     <div className="bg-green-50 p-3 rounded">
@@ -314,11 +314,11 @@ export default function PerformanceAnalyticsPage() {
                   <h3 className="font-semibold mb-2">Subject-wise Performance</h3>
                   <div className="space-y-2">
                     {reportData.data?.map((subject: any) => (
-                      <div key={subject.subject} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={subject.subject} className="flex justify-between items-center p-3 bg-accent rounded">
                         <span className="font-medium">{subject.subject}</span>
                         <div className="text-right">
                           <div className="font-bold">{subject.averageMarks?.toFixed(1)}%</div>
-                          <div className="text-sm text-gray-600">{subject.count} exams</div>
+                          <div className="text-sm text-muted-foreground">{subject.count} exams</div>
                         </div>
                       </div>
                     ))}
@@ -331,22 +331,22 @@ export default function PerformanceAnalyticsPage() {
                   <h3 className="font-semibold mb-2">Student Progress Tracking</h3>
                   <div className="space-y-2">
                     {reportData.data?.slice(0, 10).map((student: any) => (
-                      <div key={student.studentId} className="p-3 bg-gray-50 rounded">
+                      <div key={student.studentId} className="p-3 bg-accent rounded">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-medium">{student.studentName}</span>
-                          <span className="text-sm text-gray-600">{student.className}</span>
+                          <span className="text-sm text-muted-foreground">{student.className}</span>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <div>
-                            <div className="text-gray-600">Current Avg</div>
+                            <div className="text-muted-foreground">Current Avg</div>
                             <div className="font-bold">{student.currentAverage?.toFixed(1)}%</div>
                           </div>
                           <div>
-                            <div className="text-gray-600">Previous Avg</div>
+                            <div className="text-muted-foreground">Previous Avg</div>
                             <div className="font-bold">{student.previousAverage?.toFixed(1)}%</div>
                           </div>
                           <div>
-                            <div className="text-gray-600">Improvement</div>
+                            <div className="text-muted-foreground">Improvement</div>
                             <div className={`font-bold ${student.improvement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {student.improvement >= 0 ? '+' : ''}{student.improvement?.toFixed(1)}%
                             </div>
@@ -363,14 +363,14 @@ export default function PerformanceAnalyticsPage() {
                   <h3 className="font-semibold mb-2">Class Rankings</h3>
                   <div className="space-y-2">
                     {reportData.data?.slice(0, 10).map((student: any) => (
-                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                      <div key={student.studentId} className="flex justify-between items-center p-3 bg-accent rounded">
                         <div>
                           <span className="font-medium">#{student.rank} {student.studentName}</span>
-                          <div className="text-sm text-gray-600">{student.className}</div>
+                          <div className="text-sm text-muted-foreground">{student.className}</div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold">{student.averageMarks?.toFixed(1)}%</div>
-                          <div className="text-sm text-gray-600">{student.examCount} exams</div>
+                          <div className="text-sm text-muted-foreground">{student.examCount} exams</div>
                         </div>
                       </div>
                     ))}
@@ -383,10 +383,10 @@ export default function PerformanceAnalyticsPage() {
                   <h3 className="font-semibold mb-2">Grade Distribution</h3>
                   <div className="grid gap-2 md:grid-cols-7">
                     {reportData.data.distribution?.map((grade: any) => (
-                      <div key={grade.grade} className="bg-gray-50 p-3 rounded text-center">
+                      <div key={grade.grade} className="bg-accent p-3 rounded text-center">
                         <div className="font-bold text-lg">{grade.grade}</div>
-                        <div className="text-sm text-gray-600">{grade.count} students</div>
-                        <div className="text-xs text-gray-500">{grade.percentage?.toFixed(1)}%</div>
+                        <div className="text-sm text-muted-foreground">{grade.count} students</div>
+                        <div className="text-xs text-muted-foreground">{grade.percentage?.toFixed(1)}%</div>
                       </div>
                     ))}
                   </div>
@@ -398,7 +398,7 @@ export default function PerformanceAnalyticsPage() {
                   <h3 className="font-semibold mb-2">Performance Trends</h3>
                   <div className="space-y-2">
                     {reportData.data?.slice(0, 10).map((student: any) => (
-                      <div key={student.studentId} className="p-3 bg-gray-50 rounded">
+                      <div key={student.studentId} className="p-3 bg-accent rounded">
                         <div className="flex justify-between items-center">
                           <span className="font-medium">{student.studentName}</span>
                           <div className="text-right">

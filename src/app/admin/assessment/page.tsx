@@ -47,7 +47,7 @@ export default async function AssessmentPage() {
     },
     {
       title: "Exams",
-      icon: <FileText className="h-5 w-5 text-blue-600" />,
+      icon: <FileText className="h-5 w-5 text-primary" />,
       description: "Scheduled assessments",
       href: "/admin/assessment/exams",
       count: overview.exams
@@ -110,7 +110,7 @@ export default async function AssessmentPage() {
           <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div className="p-2 bg-gray-50 rounded-md">
+                <div className="p-2 bg-accent rounded-md">
                   {category.icon}
                 </div>
                 <Badge variant="outline">{category.count}</Badge>
@@ -188,11 +188,11 @@ export default async function AssessmentPage() {
           <CardContent>
             {upcomingExams.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-gray-100 p-6 mb-4">
-                  <CalendarClock className="h-12 w-12 text-gray-400" />
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <CalendarClock className="h-12 w-12 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No upcoming exams</h3>
-                <p className="text-gray-500 mb-6 max-w-sm">
+                <p className="text-muted-foreground mb-6 max-w-sm">
                   Schedule your first exam to get started.
                 </p>
                 <Link href="/admin/assessment/exams/create">
@@ -208,28 +208,28 @@ export default async function AssessmentPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Exam</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {upcomingExams.slice(0, 5).map((exam) => (
-                          <tr key={exam.id} className="border-b hover:bg-gray-50">
+                          <tr key={exam.id} className="border-b hover:bg-accent/50">
                             <td className="py-3 px-4 align-middle">
                               <div className="font-medium">{exam.subject?.name || exam.title}</div>
-                              <div className="text-xs text-gray-500">{exam.examType?.name}</div>
+                              <div className="text-xs text-muted-foreground">{exam.examType?.name}</div>
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center gap-1.5">
-                                <CalendarClock className="h-3.5 w-3.5 text-gray-500" />
+                                <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span>{formatDate(exam.examDate)}</span>
                               </div>
                             </td>
                             <td className="py-3 px-4 align-middle">
-                              <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                              <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
                                 Upcoming
                               </Badge>
                             </td>
@@ -264,11 +264,11 @@ export default async function AssessmentPage() {
           <CardContent>
             {recentAssessments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-gray-100 p-6 mb-4">
-                  <FileText className="h-12 w-12 text-gray-400" />
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <FileText className="h-12 w-12 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No recent assessments</h3>
-                <p className="text-gray-500 mb-6 max-w-sm">
+                <p className="text-muted-foreground mb-6 max-w-sm">
                   Assessments will appear here once completed.
                 </p>
               </div>
@@ -278,19 +278,19 @@ export default async function AssessmentPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Assessment</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                          <th className="py-3 px-4 text-left font-medium text-gray-500">Avg Score</th>
-                          <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Assessment</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Avg Score</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {recentAssessments.slice(0, 5).map((assessment) => (
-                          <tr key={assessment.id} className="border-b hover:bg-gray-50">
+                          <tr key={assessment.id} className="border-b hover:bg-accent/50">
                             <td className="py-3 px-4 align-middle">
                               <div className="font-medium">{assessment.title}</div>
-                              <div className="text-xs text-gray-500">{assessment.subject.name}</div>
+                              <div className="text-xs text-muted-foreground">{assessment.subject.name}</div>
                             </td>
                             <td className="py-3 px-4 align-middle">
                               <Badge variant="outline" className="capitalize">

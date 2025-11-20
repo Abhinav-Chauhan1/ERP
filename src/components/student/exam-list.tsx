@@ -89,7 +89,7 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search exams..."
             className="pl-9"
@@ -133,23 +133,23 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
             <Card key={exam.id} className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row">
-                  <div className="bg-blue-50 p-6 flex items-center justify-center md:w-1/4">
+                  <div className="bg-primary/10 p-6 flex items-center justify-center md:w-1/4">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-blue-700">
+                      <div className="text-3xl font-bold text-primary">
                         {format(new Date(exam.examDate), "dd")}
                       </div>
-                      <div className="text-blue-600">
+                      <div className="text-primary">
                         {format(new Date(exam.examDate), "MMM yyyy")}
                       </div>
                       <Badge 
                         className={`mt-2 ${
                           getDaysUntil(exam.examDate) === "Today" 
-                            ? "bg-red-100 text-red-800"
+                            ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
                             : getDaysUntil(exam.examDate) === "Tomorrow"
-                            ? "bg-amber-100 text-amber-800"
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400"
                             : getDaysUntil(exam.examDate) === "Past"
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-green-100 text-green-800"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
                         }`}
                       >
                         {getDaysUntil(exam.examDate)}
@@ -161,7 +161,7 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-lg">{exam.title}</h3>
-                        <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-2 mt-1 text-sm text-muted-foreground">
                           <Badge variant="outline">{exam.subject}</Badge>
                           <Badge variant="secondary">{exam.examType}</Badge>
                         </div>
@@ -170,7 +170,7 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-blue-600"
+                        className="text-primary"
                         asChild
                       >
                         <Link href={`/student/assessments/${showResults ? 'results' : 'exams'}/${exam.id}`}>
@@ -182,13 +182,13 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
                     
                     <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-sm">
                       <div className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-gray-500" />
+                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
                         <span>
                           {formatTime(exam.startTime)} - {formatTime(exam.endTime)}
                         </span>
                       </div>
                       <div className="flex items-center">
-                        <FileText className="mr-2 h-4 w-4 text-gray-500" />
+                        <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
                         <span>Total Marks: {exam.totalMarks}</span>
                       </div>
                     </div>
@@ -200,9 +200,9 @@ export function ExamList({ exams, emptyMessage, showResults = false }: ExamListP
         </div>
       ) : (
         <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-gray-300" />
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">No exams found</h3>
-          <p className="mt-1 text-gray-500">
+          <p className="mt-1 text-muted-foreground">
             {emptyMessage || "You don't have any upcoming exams"}
           </p>
         </div>

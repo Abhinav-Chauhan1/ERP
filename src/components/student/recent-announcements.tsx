@@ -26,17 +26,17 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
               <div key={announcement.id} className="rounded-md border p-3">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <h4 className="font-medium">{announcement.title}</h4>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {format(new Date(announcement.createdAt), "MMM dd")}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-muted-foreground mb-2">
                   {truncateText(announcement.content, 100)}
                 </p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>By {announcement.publisher.user.firstName} {announcement.publisher.user.lastName}</span>
                   <Link href={`/student/communication/announcements/${announcement.id}`}>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 text-blue-600">
+                    <Button variant="ghost" size="sm" className="h-auto p-0 text-primary">
                       Read more
                     </Button>
                   </Link>
@@ -46,15 +46,15 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
             
             <div className="flex justify-end">
               <Link href="/student/communication/announcements">
-                <Button variant="link" size="sm" className="font-normal text-blue-600">
+                <Button variant="link" size="sm" className="font-normal text-primary">
                   All announcements <ArrowRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
           </div>
         ) : (
-          <div className="py-8 text-center text-gray-500">
-            <MessageSquare className="mx-auto h-8 w-8 text-gray-400" />
+          <div className="py-8 text-center text-muted-foreground">
+            <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground/50" />
             <p className="mt-2">No announcements yet</p>
           </div>
         )}

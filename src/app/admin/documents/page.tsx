@@ -391,7 +391,7 @@ export default function DocumentsPage() {
               <Form {...documentForm}>
                 <form onSubmit={documentForm.handleSubmit(handleCreateDocument)} className="space-y-4">
                   <div className={`border-dashed border-2 border-gray-300 rounded-lg p-8 text-center mb-4 ${
-                    uploading ? 'bg-gray-50' : ''
+                    uploading ? 'bg-accent' : ''
                   }`}>
                     <Input 
                       type="file" 
@@ -406,23 +406,23 @@ export default function DocumentsPage() {
                     >
                       {uploading ? (
                         <>
-                          <Spinner className="h-8 w-8 text-blue-500 mb-2" />
+                          <Spinner className="h-8 w-8 text-primary mb-2" />
                           <span className="text-sm font-medium">Uploading... {uploadProgress}%</span>
                         </>
                       ) : (
                         <>
-                          <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                           <span className="text-sm font-medium">Click to select file or drag and drop</span>
-                          <span className="text-xs text-gray-500 mt-1">PDF, Word, Excel, Images up to 10MB</span>
+                          <span className="text-xs text-muted-foreground mt-1">PDF, Word, Excel, Images up to 10MB</span>
                         </>
                       )}
                     </label>
                     
                     {uploadProgress > 0 && (
                       <div className="w-full mt-4">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-muted rounded-full h-2">
                           <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                            className="bg-primary h-2 rounded-full transition-all duration-300" 
                             style={{ width: `${uploadProgress}%` }}
                           ></div>
                         </div>
@@ -431,10 +431,10 @@ export default function DocumentsPage() {
                   </div>
                   
                   {documentForm.watch("fileName") && (
-                    <div className="flex items-center p-2 bg-blue-50 rounded text-sm mb-4">
-                      <FileText className="h-4 w-4 text-blue-500 mr-2" />
-                      <span className="text-blue-700">{documentForm.watch("fileName")}</span>
-                      <span className="ml-2 text-blue-500">
+                    <div className="flex items-center p-2 bg-primary/10 rounded text-sm mb-4">
+                      <FileText className="h-4 w-4 text-primary mr-2" />
+                      <span className="text-primary">{documentForm.watch("fileName")}</span>
+                      <span className="ml-2 text-primary">
                         ({formatFileSize(documentForm.watch("fileSize"))})
                       </span>
                     </div>
@@ -631,12 +631,12 @@ export default function DocumentsPage() {
               {recentDocs.length > 0 ? (
                 recentDocs.map((doc) => (
                   <div key={doc.id} className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
-                    <div className="p-2 bg-blue-50 rounded-full h-fit text-blue-600">
+                    <div className="p-2 bg-primary/10 rounded-full h-fit text-primary">
                       {getFileIcon(doc.fileType, 16)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{doc.title}</p>
-                      <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <div className="flex items-center text-xs text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
                           <UserIcon className="h-3 w-3" />
                           {doc.user.firstName} {doc.user.lastName}
@@ -667,7 +667,7 @@ export default function DocumentsPage() {
               ) : (
                 <div className="text-center py-8">
                   <FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No recent documents found</p>
+                  <p className="text-muted-foreground">No recent documents found</p>
                 </div>
               )}
             </div>
@@ -690,11 +690,11 @@ export default function DocumentsPage() {
                 documentTypes.map((type) => (
                   <div 
                     key={type.id} 
-                    className="flex justify-between items-center p-2 rounded hover:bg-gray-50"
+                    className="flex justify-between items-center p-2 rounded hover:bg-accent/50"
                   >
                     <div>
                       <p className="font-medium text-sm">{type.name}</p>
-                      <p className="text-xs text-gray-500">{type._count.documents} documents</p>
+                      <p className="text-xs text-muted-foreground">{type._count.documents} documents</p>
                     </div>
                     <Button 
                       variant="ghost" 
@@ -708,7 +708,7 @@ export default function DocumentsPage() {
               ) : (
                 <div className="text-center py-8">
                   <FolderOpen className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No document types found</p>
+                  <p className="text-muted-foreground">No document types found</p>
                 </div>
               )}
             </div>
@@ -737,7 +737,7 @@ export default function DocumentsPage() {
             </div>
             <div className="flex gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Search documents..."
@@ -786,7 +786,7 @@ export default function DocumentsPage() {
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <svg
-                  className="animate-spin h-8 w-8 text-gray-400"
+                  className="animate-spin h-8 w-8 text-muted-foreground"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -810,13 +810,13 @@ export default function DocumentsPage() {
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Document</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Type</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Uploaded By</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Document</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Uploaded By</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -827,7 +827,7 @@ export default function DocumentsPage() {
                             {getFileIcon(doc.fileType, 20)}
                             <div>
                               <p className="font-medium">{doc.title}</p>
-                              <p className="text-xs text-gray-500">{doc.fileName}</p>
+                              <p className="text-xs text-muted-foreground">{doc.fileName}</p>
                             </div>
                           </div>
                         </td>
@@ -835,12 +835,12 @@ export default function DocumentsPage() {
                           {doc.documentType ? (
                             <Badge variant="outline">{doc.documentType.name}</Badge>
                           ) : (
-                            <span className="text-gray-400">—</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium">
+                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
                               {doc.user.firstName.charAt(0)}{doc.user.lastName.charAt(0)}
                             </div>
                             <span>{doc.user.firstName} {doc.user.lastName}</span>
@@ -848,7 +848,7 @@ export default function DocumentsPage() {
                         </td>
                         <td className="py-3 px-4 align-middle">{formatDate(doc.createdAt)}</td>
                         <td className="py-3 px-4 align-middle">
-                          <Badge className={`${doc.isPublic ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          <Badge className={`${doc.isPublic ? 'bg-green-100 text-green-800' : 'bg-muted text-gray-800'}`}>
                             {doc.isPublic ? 'Public' : 'Private'}
                           </Badge>
                         </td>
@@ -880,7 +880,7 @@ export default function DocumentsPage() {
               <div className="text-center py-10">
                 <FileText className="h-10 w-10 mx-auto text-gray-300 mb-2" />
                 <h3 className="text-lg font-medium mb-2">No documents found</h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {searchTerm || typeFilter
                     ? "Try adjusting your filters to find what you're looking for"
                     : "Get started by uploading your first document"

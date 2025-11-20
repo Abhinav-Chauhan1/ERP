@@ -124,15 +124,15 @@ export default function SubjectDetailsPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+              <div className="p-2 bg-primary/10 rounded-md text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-2xl">{subject.name}</CardTitle>
                 <CardDescription className="flex items-center gap-2">
                   <span className="font-semibold">{subject.code}</span>
-                  <span className="text-sm text-gray-500">|</span>
-                  <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                  <span className="text-sm text-muted-foreground">|</span>
+                  <Badge className="bg-muted text-foreground hover:bg-muted">
                     {subject.department}
                   </Badge>
                 </CardDescription>
@@ -141,29 +141,29 @@ export default function SubjectDetailsPage() {
           </CardHeader>
           <CardContent>
             <h3 className="font-medium mb-2">Description</h3>
-            <p className="text-gray-700 mb-4">
+            <p className="text-foreground mb-4">
               {subject.description || "No description available for this subject."}
             </p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="p-4 bg-blue-50 rounded-lg text-center">
-                <BookMarked className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                <span className="text-xs block text-gray-600">Subject Type</span>
+              <div className="p-4 bg-primary/10 rounded-lg text-center">
+                <BookMarked className="h-6 w-6 text-primary mx-auto mb-1" />
+                <span className="text-xs block text-muted-foreground">Subject Type</span>
                 <span className="font-medium">{subject.hasLabs ? "Theory + Lab" : "Theory"}</span>
               </div>
               <div className="p-4 bg-green-50 rounded-lg text-center">
                 <Users className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                <span className="text-xs block text-gray-600">Teachers</span>
+                <span className="text-xs block text-muted-foreground">Teachers</span>
                 <span className="font-medium">{subject.teachers?.length || 0}</span>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg text-center">
                 <GraduationCap className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-                <span className="text-xs block text-gray-600">Classes</span>
+                <span className="text-xs block text-muted-foreground">Classes</span>
                 <span className="font-medium">{subject.classes?.length || 0}</span>
               </div>
               <div className="p-4 bg-amber-50 rounded-lg text-center">
                 <Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" />
-                <span className="text-xs block text-gray-600">Lessons</span>
+                <span className="text-xs block text-muted-foreground">Lessons</span>
                 <span className="font-medium">
                   {subject.syllabus?.units.reduce((total: number, unit: any) => total + (unit.lessons?.length || 0), 0) || 0}
                 </span>
@@ -178,7 +178,7 @@ export default function SubjectDetailsPage() {
                 </Badge>
               ))}
               {(!subject.grades || subject.grades.length === 0) && (
-                <p className="text-sm text-gray-500">No classes assigned to this subject yet.</p>
+                <p className="text-sm text-muted-foreground">No classes assigned to this subject yet.</p>
               )}
             </div>
           </CardContent>
@@ -196,12 +196,12 @@ export default function SubjectDetailsPage() {
               subject.resources.map((resource: any) => (
                 <div key={resource.id} className="flex justify-between items-center p-3 border rounded-md">
                   <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
+                    <div className="p-1.5 bg-primary/10 rounded-md text-primary">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div>
                       <p className="font-medium text-sm">{resource.name}</p>
-                      <p className="text-xs text-gray-500">{resource.type}</p>
+                      <p className="text-xs text-muted-foreground">{resource.type}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" asChild>
@@ -212,7 +212,7 @@ export default function SubjectDetailsPage() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-6 text-gray-500">
+              <div className="text-center py-6 text-muted-foreground">
                 <p className="mb-2">No resources available</p>
               </div>
             )}
@@ -254,10 +254,10 @@ export default function SubjectDetailsPage() {
                 <div className="space-y-6">
                   {subject.syllabus.units?.map((unit: any) => (
                     <div key={unit.id} className="border rounded-lg overflow-hidden">
-                      <div className="bg-gray-50 p-4 border-b">
+                      <div className="bg-accent p-4 border-b">
                         <h3 className="font-medium">{unit.title}</h3>
                         {unit.description && (
-                          <p className="text-sm text-gray-500 mt-1">{unit.description}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{unit.description}</p>
                         )}
                       </div>
                       <div className="divide-y">
@@ -265,13 +265,13 @@ export default function SubjectDetailsPage() {
                           unit.lessons.map((lesson: any) => (
                             <div key={lesson.id} className="p-4 flex justify-between items-center">
                               <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-gray-100 rounded-md text-gray-500">
+                                <div className="p-1.5 bg-muted rounded-md text-muted-foreground">
                                   <BookOpen className="h-4 w-4" />
                                 </div>
                                 <span>{lesson.title}</span>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-sm text-gray-500">{lesson.duration}</span>
+                                <span className="text-sm text-muted-foreground">{lesson.duration}</span>
                                 <Link href={`/admin/academic/syllabus/${subject.syllabus.id}/lessons/${lesson.id}`}>
                                   <Button variant="ghost" size="sm">
                                     View
@@ -281,7 +281,7 @@ export default function SubjectDetailsPage() {
                             </div>
                           ))
                         ) : (
-                          <div className="p-4 text-center text-gray-500">
+                          <div className="p-4 text-center text-muted-foreground">
                             <p>No lessons in this unit</p>
                           </div>
                         )}
@@ -290,7 +290,7 @@ export default function SubjectDetailsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <p className="mb-4">No syllabus has been created for this subject yet.</p>
                   <Link href={`/admin/academic/syllabus?subject=${subject.id}`}>
                     <Button>
@@ -346,7 +346,7 @@ export default function SubjectDetailsPage() {
                         </Avatar>
                         <div className="flex-1">
                           <h3 className="font-medium">{teacher.name}</h3>
-                          <p className="text-sm text-gray-500">{teacher.qualification}</p>
+                          <p className="text-sm text-muted-foreground">{teacher.qualification}</p>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {teacher.classes?.map((cls: string) => (
                               <Badge key={cls} variant="outline" className="text-xs">
@@ -374,7 +374,7 @@ export default function SubjectDetailsPage() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-6 text-gray-500">
+                <div className="text-center py-6 text-muted-foreground">
                   <p>No teachers assigned to this subject yet</p>
                   <Link href={`/admin/teaching/subjects/${subject.id}/assign-teacher`}>
                     <Button variant="outline" className="mt-2">
@@ -409,11 +409,11 @@ export default function SubjectDetailsPage() {
                 <div className="rounded-md border overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Class</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Students</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Teacher</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Students</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -445,7 +445,7 @@ export default function SubjectDetailsPage() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <p className="mb-4">This subject is not currently assigned to any classes.</p>
                   <Link href={`/admin/curriculum?subject=${subject.id}`}>
                     <Button>

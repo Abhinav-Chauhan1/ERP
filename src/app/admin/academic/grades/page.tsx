@@ -291,7 +291,7 @@ export default function GradesPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : grades.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               <GraduationCap className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <h3 className="text-lg font-medium mb-1">No grades found</h3>
               <p className="text-sm mb-4">Create your first grade to get started</p>
@@ -304,13 +304,13 @@ export default function GradesPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Minimum Marks (%)</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Maximum Marks (%)</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">GPA</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Description</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Minimum Marks (%)</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Maximum Marks (%)</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">GPA</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Description</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -320,7 +320,7 @@ export default function GradesPage() {
                           <div className="flex items-center gap-2">
                             <div className={`p-1.5 rounded-full 
                               ${grade.grade.startsWith('A') ? 'bg-green-100 text-green-700' : 
-                              grade.grade.startsWith('B') ? 'bg-blue-100 text-blue-700' : 
+                              grade.grade.startsWith('B') ? 'bg-primary/10 text-primary' : 
                               grade.grade.startsWith('C') ? 'bg-yellow-100 text-yellow-700' : 
                               grade.grade.startsWith('D') ? 'bg-orange-100 text-orange-700' : 
                               'bg-red-100 text-red-700'}`}>

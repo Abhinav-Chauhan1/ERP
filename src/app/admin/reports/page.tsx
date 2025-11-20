@@ -14,7 +14,7 @@ export default function ReportsPage() {
       title: "Academic Reports",
       description: "Student performance, grades, and academic analytics",
       icon: BarChart3,
-      color: "bg-blue-500",
+      color: "bg-primary",
       href: "/admin/reports/academic",
       reports: [
         "Student Performance Reports",
@@ -99,7 +99,7 @@ export default function ReportsPage() {
                 <ul className="space-y-2 mb-4">
                   {category.reports.map((report) => (
                     <li key={report} className="flex items-center text-sm text-muted-foreground">
-                      <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                      <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
                       {report}
                     </li>
                   ))}

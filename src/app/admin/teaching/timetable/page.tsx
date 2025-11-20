@@ -711,7 +711,7 @@ export default function TimetablePage() {
                           <FormLabel>
                             Set as active timetable
                           </FormLabel>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             This will make this timetable the active one. Only one timetable can be active at a time.
                           </p>
                         </div>
@@ -843,7 +843,7 @@ export default function TimetablePage() {
                     Manage class timetable for the selected day
                   </CardDescription>
                 </div>
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
                   {getSlotsForSelectedClassAndDay().length || 0} Periods
                 </Badge>
               </div>
@@ -860,9 +860,9 @@ export default function TimetablePage() {
                     
                     return (
                       <div key={period.id} className="border rounded-md">
-                        <div className="flex items-center justify-between bg-gray-50 p-3 border-b">
+                        <div className="flex items-center justify-between bg-accent p-3 border-b">
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-gray-500" />
+                            <Clock className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{period.time}</span>
                           </div>
                           {!entry && (
@@ -881,21 +881,21 @@ export default function TimetablePage() {
                             <div className="flex flex-col md:flex-row justify-between md:items-center gap-3">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <div className="p-1.5 rounded-full bg-blue-50 text-blue-600">
+                                  <div className="p-1.5 rounded-full bg-primary/10 text-primary">
                                     <BookOpen className="h-4 w-4" />
                                   </div>
                                   <div>
                                     <p className="font-medium">{entry.subject.name}</p>
-                                    <p className="text-xs text-gray-500">{entry.subject.code}</p>
+                                    <p className="text-xs text-muted-foreground">{entry.subject.code}</p>
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-gray-500" />
+                                    <User className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm">{entry.teacher.name}</span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Building className="h-4 w-4 text-gray-500" />
+                                    <Building className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm">{entry.room?.name || "No Room"}</span>
                                   </div>
                                 </div>
@@ -922,7 +922,7 @@ export default function TimetablePage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="p-4 flex justify-center items-center text-gray-400 h-24">
+                          <div className="p-4 flex justify-center items-center text-muted-foreground h-24">
                             <p className="text-sm">No class scheduled for this period</p>
                           </div>
                         )}
@@ -934,7 +934,7 @@ export default function TimetablePage() {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Calendar className="h-12 w-12 text-gray-300 mb-4" />
                   <h3 className="text-lg font-medium mb-1">No Classes Scheduled</h3>
-                  <p className="text-sm text-gray-500 max-w-sm mb-4">
+                  <p className="text-sm text-muted-foreground max-w-sm mb-4">
                     There are no classes scheduled for {classes.find(cls => cls.id === selectedClass)?.name || "this class"} on {formatDayForDisplay(selectedDay)}.
                   </p>
                   <Button onClick={() => handleAddSlot("p1")}>
@@ -944,7 +944,7 @@ export default function TimetablePage() {
               )}
             </CardContent>
             <CardFooter className="border-t pt-4 flex justify-between">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 <p>Last updated: {format(new Date(), 'MMMM d, yyyy')}</p>
               </div>
               <div className="flex gap-2">
@@ -980,7 +980,7 @@ export default function TimetablePage() {
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse">
                         <thead>
-                          <tr className="bg-gray-50">
+                          <tr className="bg-accent">
                             <th className="border p-3 text-left">Time</th>
                             {weekDays.map(day => (
                               <th key={day} className="border p-3 text-left">{formatDayForDisplay(day)}</th>
@@ -1019,7 +1019,7 @@ export default function TimetablePage() {
                                     {slot ? (
                                       <div className="text-xs">
                                         <div className="font-medium">{slot.subject.name}</div>
-                                        <div className="text-gray-500 mt-1 flex flex-col gap-1">
+                                        <div className="text-muted-foreground mt-1 flex flex-col gap-1">
                                           <div className="flex items-center gap-1">
                                             <User className="h-3 w-3" />
                                             {slot.teacher.name}
@@ -1031,7 +1031,7 @@ export default function TimetablePage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div className="text-xs text-gray-400 text-center">-</div>
+                                      <div className="text-xs text-muted-foreground text-center">-</div>
                                     )}
                                   </td>
                                 );
@@ -1086,7 +1086,7 @@ export default function TimetablePage() {
                         <div className="rounded-md border overflow-hidden">
                           <table className="w-full border-collapse">
                             <thead>
-                              <tr className="bg-gray-50">
+                              <tr className="bg-accent">
                                 <th className="border p-3 text-left">Day</th>
                                 <th className="border p-3 text-left">Time</th>
                                 <th className="border p-3 text-left">Class</th>
@@ -1111,7 +1111,7 @@ export default function TimetablePage() {
                                   </td>
                                   <td className="border p-3">
                                     <div className="font-medium">{slot.subject.name}</div>
-                                    <div className="text-xs text-gray-500">{slot.subject.code}</div>
+                                    <div className="text-xs text-muted-foreground">{slot.subject.code}</div>
                                   </td>
                                   <td className="border p-3">{slot.room?.name || "No Room"}</td>
                                 </tr>
@@ -1120,12 +1120,12 @@ export default function TimetablePage() {
                           </table>
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-muted-foreground">
                           <p>No schedule found for this teacher.</p>
                         </div>
                       )
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-muted-foreground">
                         <p>Please select a teacher to view their schedule.</p>
                       </div>
                     )}
@@ -1174,7 +1174,7 @@ export default function TimetablePage() {
                         <div className="rounded-md border overflow-hidden">
                           <table className="w-full border-collapse">
                             <thead>
-                              <tr className="bg-gray-50">
+                              <tr className="bg-accent">
                                 <th className="border p-3 text-left">Day</th>
                                 <th className="border p-3 text-left">Time</th>
                                 <th className="border p-3 text-left">Class</th>
@@ -1199,7 +1199,7 @@ export default function TimetablePage() {
                                   </td>
                                   <td className="border p-3">
                                     <div className="font-medium">{slot.subject.name}</div>
-                                    <div className="text-xs text-gray-500">{slot.subject.code}</div>
+                                    <div className="text-xs text-muted-foreground">{slot.subject.code}</div>
                                   </td>
                                   <td className="border p-3">{slot.teacher.name}</td>
                                 </tr>
@@ -1208,12 +1208,12 @@ export default function TimetablePage() {
                           </table>
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-8 text-muted-foreground">
                           <p>No schedule found for this room.</p>
                         </div>
                       )
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-muted-foreground">
                         <p>Please select a room to view its schedule.</p>
                       </div>
                     )}
@@ -1224,7 +1224,7 @@ export default function TimetablePage() {
           </Tabs>
         </>
       ) : (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium mb-1">No Timetable Selected</h3>
           <p className="text-sm mb-4">

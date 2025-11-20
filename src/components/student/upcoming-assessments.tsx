@@ -33,12 +33,12 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="rounded-md bg-blue-50 p-2">
-                        <FileText className="h-5 w-5 text-blue-700" />
+                      <div className="rounded-md bg-primary/10 p-2">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <h4 className="font-medium">{exam.title}</h4>
-                        <div className="flex flex-wrap gap-2 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <BookOpen className="h-3.5 w-3.5" /> {exam.subject.name}
                           </span>
@@ -48,7 +48,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                         </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="border-blue-200 text-blue-800">
+                    <Badge variant="outline" className="border-primary/20">
                       {exam.examType.name}
                     </Badge>
                   </div>
@@ -56,15 +56,15 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 
                 <div className="flex justify-end">
                   <Link href="/student/assessments/exams">
-                    <Button variant="link" size="sm" className="font-normal text-blue-600">
+                    <Button variant="link" size="sm" className="font-normal text-primary">
                       View all exams <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </div>
               </div>
             ) : (
-              <div className="py-8 text-center text-gray-500">
-                <FileText className="mx-auto h-8 w-8 text-gray-400" />
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2">No upcoming exams</p>
               </div>
             )}
@@ -84,7 +84,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                       </div>
                       <div>
                         <h4 className="font-medium">{assignment.title}</h4>
-                        <div className="flex flex-wrap gap-2 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <BookOpen className="h-3.5 w-3.5" /> {assignment.subject.name}
                           </span>
@@ -104,15 +104,15 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 
                 <div className="flex justify-end">
                   <Link href="/student/assessments/assignments">
-                    <Button variant="link" size="sm" className="font-normal text-blue-600">
+                    <Button variant="link" size="sm" className="font-normal text-primary">
                       View all assignments <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </div>
               </div>
             ) : (
-              <div className="py-8 text-center text-gray-500">
-                <FileText className="mx-auto h-8 w-8 text-gray-400" />
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
                 <p className="mt-2">No pending assignments</p>
               </div>
             )}

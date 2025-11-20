@@ -18,6 +18,8 @@ const publicRoutes = createRouteMatcher([
   "/api/users/sync(.*)"
 ]);
 
+const authRedirectRoute = createRouteMatcher(["/auth-redirect"]);
+
 export default clerkMiddleware(async (auth, req) => {
   // Handle public routes
   if (publicRoutes(req)) {
@@ -29,10 +31,15 @@ export default clerkMiddleware(async (auth, req) => {
   
   // If user is not signed in and tries to access a protected route
   if (!authObject.userId) {
-    // Redirect to sign in
-    const signInUrl = new URL('/sign-in', req.url);
-    signInUrl.searchParams.set('redirect_url', req.url);
-    return NextResponse.redirect(signInUrl);
+    // Redirect to login page
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('redirect_url', req.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Allow auth-redirect route without role checking
+  if (authRedirectRoute(req)) {
+    return NextResponse.next();
   }
 
   // No database operations in middleware!

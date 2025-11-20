@@ -100,14 +100,14 @@ export function ParentsTable({ parents }: ParentsTableProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Email</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Phone</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Children</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Relation</th>
-                <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+              <tr className="bg-accent border-b">
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Phone</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Children</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Relation</th>
+                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +124,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                 </tr>
               ) : (
                 paginatedParents.map((parent) => (
-                  <tr key={parent.id} className="border-b hover:bg-gray-50">
+                  <tr key={parent.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         {parent.user.avatar ? (
@@ -134,7 +134,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-medium">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
                             {parent.user.firstName[0]}
                             {parent.user.lastName[0]}
                           </div>
@@ -162,7 +162,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                             )}
                           </>
                         ) : (
-                          <span className="text-gray-500">No children</span>
+                          <span className="text-muted-foreground">No children</span>
                         )}
                       </div>
                     </td>
@@ -192,7 +192,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
 
       {filteredAndSortedParents.length > 0 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedParents.length)} of {filteredAndSortedParents.length} parents
           </div>
           <Pagination

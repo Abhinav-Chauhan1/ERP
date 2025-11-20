@@ -270,7 +270,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
               
               <div className="space-y-3 max-h-[40vh] overflow-y-auto p-1">
                 {form.watch("periods")?.map((period, index) => (
-                  <div key={period.id || index} className="flex flex-col sm:flex-row items-start sm:items-end gap-3 p-3 border rounded-md bg-gray-50">
+                  <div key={period.id || index} className="flex flex-col sm:flex-row items-start sm:items-end gap-3 p-3 border rounded-md bg-accent">
                     <FormField
                       control={form.control}
                       name={`periods.${index}.name`}

@@ -143,7 +143,7 @@ export function ParentStudentAssociationDialog({ parentId, students }: ParentStu
                               {student.user.firstName} {student.user.lastName}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             ID: {student.admissionId} • 
                             {student.enrollments && student.enrollments[0] 
                               ? ` Class: ${student.enrollments[0].class.name}` 

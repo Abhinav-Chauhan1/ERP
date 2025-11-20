@@ -491,7 +491,7 @@ function SyllabusContent() {
       )}
 
       {!selectedSubjectId && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           <BookText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium mb-1">No Subject Selected</h3>
           <p className="text-sm">Please select a subject to view or create a syllabus</p>
@@ -505,7 +505,7 @@ function SyllabusContent() {
       )}
 
       {selectedSubjectId && !loading && !currentSyllabus && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-muted-foreground">
           <FileText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium mb-1">No Syllabus Found</h3>
           <p className="text-sm mb-4">This subject doesn't have a syllabus yet.</p>
@@ -545,7 +545,7 @@ function SyllabusContent() {
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-4">
                   <div className="text-sm">
-                    <span className="text-gray-500">Subject:</span>{" "}
+                    <span className="text-muted-foreground">Subject:</span>{" "}
                     <span className="font-medium">
                       {currentSyllabus.subject?.name} ({currentSyllabus.subject?.code})
                     </span>
@@ -555,7 +555,7 @@ function SyllabusContent() {
                       href={currentSyllabus.document} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                      className="flex items-center text-sm text-primary hover:text-primary"
                     >
                       <FileText className="h-4 w-4 mr-1" />
                       View Full Syllabus Document
@@ -579,7 +579,7 @@ function SyllabusContent() {
               </div>
 
               {currentSyllabus.units?.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 border rounded-md">
+                <div className="text-center py-8 text-muted-foreground border rounded-md">
                   <Layers className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                   <p>No units have been added to this syllabus yet.</p>
                   <Button variant="outline" className="mt-4" onClick={handleAddUnit}>
@@ -593,13 +593,13 @@ function SyllabusContent() {
                     <AccordionItem key={unit.id} value={unit.id} className="border rounded-md px-4 mb-3">
                       <div className="flex items-center justify-between py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary">
                             <span className="text-sm font-medium">{unit.order}</span>
                           </div>
                           <AccordionTrigger className="hover:no-underline">
                             <div className="text-left">
                               <h3 className="text-base font-medium">{unit.title}</h3>
-                              {unit.description && <p className="text-sm text-gray-500">{unit.description}</p>}
+                              {unit.description && <p className="text-sm text-muted-foreground">{unit.description}</p>}
                             </div>
                           </AccordionTrigger>
                         </div>
@@ -642,20 +642,20 @@ function SyllabusContent() {
                             </Button>
                           </div>
                           {unit.lessons.length === 0 ? (
-                            <div className="text-center py-4 text-gray-500 border rounded-md">
+                            <div className="text-center py-4 text-muted-foreground border rounded-md">
                               <p className="text-sm">No lessons have been added to this unit yet.</p>
                             </div>
                           ) : (
                             <div className="space-y-2">
                               {unit.lessons.map((lesson: any, index: number) => (
-                                <div key={lesson.id} className="flex justify-between items-center p-3 border rounded-md bg-gray-50">
+                                <div key={lesson.id} className="flex justify-between items-center p-3 border rounded-md bg-accent">
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-medium text-gray-700">{index + 1}.</span>
                                       <h5 className="text-sm font-medium">{lesson.title}</h5>
                                     </div>
                                     {lesson.description && (
-                                      <p className="text-xs text-gray-500 mt-1 ml-6">{lesson.description}</p>
+                                      <p className="text-xs text-muted-foreground mt-1 ml-6">{lesson.description}</p>
                                     )}
                                   </div>
                                   <div className="flex gap-1">
@@ -765,12 +765,12 @@ function SyllabusContent() {
               <div className="space-y-2">
                 <FormLabel>Syllabus Document</FormLabel>
                 {uploadedFile ? (
-                  <div className="flex items-center justify-between p-2 border rounded-md bg-blue-50">
+                  <div className="flex items-center justify-between p-2 border rounded-md bg-primary/10">
                     <div className="flex items-center space-x-2">
-                      <FileText className="h-5 w-5 text-blue-500" />
+                      <FileText className="h-5 w-5 text-primary" />
                       <div className="text-sm">
                         <p className="font-medium">{uploadedFile.name}</p>
-                        <p className="text-xs text-gray-500">{(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        <p className="text-xs text-muted-foreground">{(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
                       </div>
                     </div>
                     <Button 
@@ -803,7 +803,7 @@ function SyllabusContent() {
                           </FormItem>
                         )}
                       />
-                      <div className="flex items-center text-sm text-gray-500">
+                      <div className="flex items-center text-sm text-muted-foreground">
                         <span>Or</span>
                         <div className="flex-1 border-t mx-2"></div>
                       </div>

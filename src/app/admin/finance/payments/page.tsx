@@ -385,7 +385,7 @@ export default function PaymentsPage() {
                     {stats.collectionRate.toFixed(1)}%
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-500" />
+                <CheckCircle className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -427,7 +427,7 @@ export default function PaymentsPage() {
               {/* Filters */}
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search by student name or receipt..."
@@ -456,7 +456,7 @@ export default function PaymentsPage() {
                 <div className="text-center py-10">
                   <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No payments found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {searchTerm || statusFilter !== "all"
                       ? "Try adjusting your filters"
                       : "Record your first payment to get started"}
@@ -582,7 +582,7 @@ export default function PaymentsPage() {
                 <div className="text-center py-10">
                   <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">All fees collected!</h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     There are no pending fee payments at the moment
                   </p>
                 </div>

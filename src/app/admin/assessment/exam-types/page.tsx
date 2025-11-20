@@ -210,7 +210,7 @@ export default function ExamTypesPage() {
     
     switch(firstChar) {
       case 'A': return { bg: 'bg-green-50', text: 'text-green-600' };
-      case 'B': return { bg: 'bg-blue-50', text: 'text-blue-600' };
+      case 'B': return { bg: 'bg-primary/10', text: 'text-primary' };
       case 'C': return { bg: 'bg-yellow-50', text: 'text-yellow-600' };
       case 'D': return { bg: 'bg-orange-50', text: 'text-orange-600' };
       default: return { bg: 'bg-red-50', text: 'text-red-600' };
@@ -392,7 +392,7 @@ export default function ExamTypesPage() {
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {examTypes.length === 0 ? (
-            <div className="col-span-3 text-center py-12 text-gray-500">
+            <div className="col-span-3 text-center py-12 text-muted-foreground">
               <ClipboardList className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <h3 className="text-lg font-medium mb-1">No exam types found</h3>
               <p className="text-sm mb-4">Create your first exam type to get started</p>
@@ -411,7 +411,7 @@ export default function ExamTypesPage() {
                         {examType.isActive ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700">Active</Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-gray-50 text-gray-700">Inactive</Badge>
+                          <Badge variant="outline" className="bg-accent text-gray-700">Inactive</Badge>
                         )}
                       </div>
                       <CardDescription className="mt-1">{examType.description}</CardDescription>
@@ -447,20 +447,20 @@ export default function ExamTypesPage() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="border rounded-lg p-3">
-                        <p className="text-xs text-gray-500 mb-1">Weight</p>
+                        <p className="text-xs text-muted-foreground mb-1">Weight</p>
                         <p className="text-lg font-semibold">{examType.weight}%</p>
                       </div>
                       <div className="border rounded-lg p-3">
-                        <p className="text-xs text-gray-500 mb-1">Exams</p>
+                        <p className="text-xs text-muted-foreground mb-1">Exams</p>
                         <p className="text-lg font-semibold">{examType.examsCount}</p>
                       </div>
                     </div>
                     
                     <div className="border rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-2">Features</p>
+                      <p className="text-xs text-muted-foreground mb-2">Features</p>
                       <div className="flex flex-wrap gap-2">
                         {examType.canRetest && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                          <Badge variant="outline" className="bg-primary/10 text-primary">
                             Retests Allowed
                           </Badge>
                         )}
@@ -473,7 +473,7 @@ export default function ExamTypesPage() {
                     </div>
                     
                     <div className="border rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-2">Grade Thresholds</p>
+                      <p className="text-xs text-muted-foreground mb-2">Grade Thresholds</p>
                       <div className="grid grid-cols-5 gap-1 text-center">
                         {examType.gradeThresholds?.map((threshold: any) => (
                           <div 
@@ -489,7 +489,7 @@ export default function ExamTypesPage() {
                             }}
                           >
                             <div className="font-medium mb-1">{threshold.grade}</div>
-                            <div className="text-gray-600">{threshold.minScore}%+</div>
+                            <div className="text-muted-foreground">{threshold.minScore}%+</div>
                           </div>
                         ))}
                       </div>
@@ -532,12 +532,12 @@ export default function ExamTypesPage() {
           <CardDescription>Configure grade scales and passing criteria</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg mb-4">
+          <div className="flex justify-between items-center p-4 bg-primary/10 rounded-lg mb-4">
             <div className="flex items-start gap-3">
-              <ClipboardList className="h-5 w-5 text-blue-600 mt-0.5" />
+              <ClipboardList className="h-5 w-5 text-primary mt-0.5" />
               <div>
                 <h3 className="font-medium text-sm">Universal Grading Scale</h3>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Configure the system-wide grading scale that applies to all exam types by default.
                   Individual exam types can override these settings as needed.
                 </p>
@@ -551,7 +551,7 @@ export default function ExamTypesPage() {
           </div>
 
           <div className="border rounded-lg overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 border-b">
+            <div className="bg-accent px-4 py-3 border-b">
               <h3 className="font-medium">Default Grade Thresholds</h3>
             </div>
             <div className="p-4">
@@ -560,7 +560,7 @@ export default function ExamTypesPage() {
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               ) : grades.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-muted-foreground">
                   <p className="text-sm">No grade thresholds defined yet.</p>
                   <Link href="/admin/academic/grades">
                     <Button variant="outline" size="sm" className="mt-2">
@@ -575,7 +575,7 @@ export default function ExamTypesPage() {
                     return (
                       <div key={grade.id} className={`border rounded-lg p-3 ${colors.bg}`}>
                         <p className="text-center font-medium">{grade.grade}</p>
-                        <p className="text-center text-xs text-gray-600">
+                        <p className="text-center text-xs text-muted-foreground">
                           {grade.minMarks.toFixed(1)}% - {grade.maxMarks.toFixed(1)}%
                         </p>
                         <p className={`text-center text-xs font-medium ${colors.text} mt-1`}>

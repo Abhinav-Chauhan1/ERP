@@ -112,8 +112,8 @@ export function TimetableView({ days, timetable }: TimetableViewProps) {
                         className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-md border"
                       >
                         <div className="flex items-start gap-3 mb-2 sm:mb-0">
-                          <div className="rounded-md bg-blue-50 p-2 flex-shrink-0">
-                            <Clock className="h-5 w-5 text-blue-700" />
+                          <div className="rounded-md bg-primary/10 p-2 flex-shrink-0">
+                            <Clock className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -130,11 +130,11 @@ export function TimetableView({ days, timetable }: TimetableViewProps) {
                         
                         <div className="flex flex-col sm:items-end gap-1 ml-8 sm:ml-0">
                           <div className="flex items-center text-sm">
-                            <BookOpen className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                            <BookOpen className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                             {slot.teacher}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                            <MapPin className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                             {slot.room}
                           </div>
                         </div>

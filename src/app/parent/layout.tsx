@@ -1,4 +1,3 @@
-import { Toaster } from "react-hot-toast";
 import { redirect } from "next/navigation";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
@@ -42,11 +41,10 @@ export default async function ParentLayout({
       </div>
       <main className="md:pl-72 h-full">
         <ParentHeader />
-        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-gray-50">
+        <div className="h-[calc(100%-4rem)] overflow-y-auto bg-background">
           {children}
         </div>
       </main>
-      <Toaster position="top-center" />
     </div>
   );
 }

@@ -272,7 +272,7 @@ export default function AnnouncementsPage() {
                   <p className="text-sm text-muted-foreground">Total Announcements</p>
                   <p className="text-2xl font-bold">{stats.totalAnnouncements}</p>
                 </div>
-                <Megaphone className="h-8 w-8 text-blue-500" />
+                <Megaphone className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -294,7 +294,7 @@ export default function AnnouncementsPage() {
                   <p className="text-sm text-muted-foreground">Archived</p>
                   <p className="text-2xl font-bold">{stats.archivedAnnouncements}</p>
                 </div>
-                <XCircle className="h-8 w-8 text-gray-500" />
+                <XCircle className="h-8 w-8 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>
@@ -317,7 +317,7 @@ export default function AnnouncementsPage() {
           {/* Search and Tabs */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search announcements..."
@@ -340,7 +340,7 @@ export default function AnnouncementsPage() {
             <div className="text-center py-10">
               <Megaphone className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No announcements found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm || activeTab !== "all"
                   ? "Try adjusting your filters"
                   : "Create your first announcement to get started"}
@@ -395,15 +395,16 @@ export default function AnnouncementsPage() {
                     </div>
                   </CardContent>
                   <div className="flex border-t">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 rounded-none"
-                      onClick={() => handleViewAnnouncement(announcement)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
+                    <Link href={`/admin/communication/announcements/${announcement.id}`} className="flex-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full rounded-none"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                    </Link>
                     <Button
                       variant="ghost"
                       size="sm"

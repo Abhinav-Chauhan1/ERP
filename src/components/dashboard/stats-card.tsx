@@ -82,7 +82,7 @@ export function StatsCard({
               <p className="text-xs text-muted-foreground mt-1">{description}</p>
             )}
           </div>
-          <div className="p-2 bg-blue-50 rounded-md text-blue-700">
+          <div className="p-2 bg-primary/10 rounded-md text-primary">
             {icon}
           </div>
         </div>

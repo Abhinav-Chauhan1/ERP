@@ -106,13 +106,13 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
                       <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
                       {subject.name}
                     </CardTitle>
-                    <CardDescription className="mt-1 flex items-center">
+                    <div className="mt-1 flex items-center text-sm text-muted-foreground">
                       <Badge variant="outline" className="font-mono">
                         {subject.code}
                       </Badge>
                       <span className="mx-2">•</span>
                       <span>{subject.department}</span>
-                    </CardDescription>
+                    </div>
                   </div>
                   {subject.hasSyllabus && (
                     <Badge className="bg-green-100 text-green-800 border-green-300">

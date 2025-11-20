@@ -151,7 +151,7 @@ export default function AnnouncementsPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold">Announcements</h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-muted-foreground mt-1">
             Stay updated with school announcements and news
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function AnnouncementsPage() {
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search announcements..."
               value={searchQuery}
@@ -174,7 +174,7 @@ export default function AnnouncementsPage() {
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
                 {(startDate || endDate) && (
-                  <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                  <span className="ml-2 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs">
                     Active
                   </span>
                 )}
@@ -194,7 +194,7 @@ export default function AnnouncementsPage() {
                   <Label>Date Range</Label>
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="startDate" className="text-sm text-gray-600">
+                      <Label htmlFor="startDate" className="text-sm text-muted-foreground">
                         From
                       </Label>
                       <Input
@@ -205,7 +205,7 @@ export default function AnnouncementsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="endDate" className="text-sm text-gray-600">
+                      <Label htmlFor="endDate" className="text-sm text-muted-foreground">
                         To
                       </Label>
                       <Input
@@ -239,12 +239,12 @@ export default function AnnouncementsPage() {
         {/* Announcements List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : announcements.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border">
-            <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">No announcements found</p>
+          <div className="text-center py-12 bg-card rounded-lg border">
+            <Calendar className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground">No announcements found</p>
             {(searchQuery || startDate || endDate) && (
               <Button
                 variant="link"
@@ -276,7 +276,7 @@ export default function AnnouncementsPage() {
         {/* Pagination */}
         {pagination.totalPages > 1 && (
           <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
               {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of{" "}
               {pagination.totalCount} announcements
@@ -321,7 +321,7 @@ export default function AnnouncementsPage() {
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="font-medium">Published by:</span>
                     <span>
                       {selectedAnnouncement.publisher.firstName}{" "}
@@ -330,7 +330,7 @@ export default function AnnouncementsPage() {
                   </div>
 
                   <div className="prose prose-sm max-w-none">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                       {selectedAnnouncement.content}
                     </p>
                   </div>

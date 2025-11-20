@@ -8,6 +8,8 @@ import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 
 import { AdminSidebar } from "./admin-sidebar";
 
@@ -28,7 +30,7 @@ export function AdminHeader() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-white px-6">
+    <div className="flex h-16 items-center justify-between border-b bg-card px-6">
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
@@ -64,7 +66,9 @@ export function AdminHeader() {
         </h1>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <ColorThemeToggle />
+        <ThemeToggle />
         <Link href="/admin/communication/notifications">
           <Button variant="outline" size="icon" className="relative">
             <Bell className="h-5 w-5" />

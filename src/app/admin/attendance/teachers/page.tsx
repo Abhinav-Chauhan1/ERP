@@ -201,7 +201,7 @@ export default function TeacherAttendancePage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Attendance Rate</CardDescription>
-            <CardTitle className="text-3xl text-blue-600">{stats.percentage}%</CardTitle>
+            <CardTitle className="text-3xl text-primary">{stats.percentage}%</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -243,24 +243,24 @@ export default function TeacherAttendancePage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : teachers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <AlertTriangle className="h-12 w-12 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Teachers Found</h3>
-                  <p className="text-gray-500">Add teachers to start marking attendance</p>
+                  <p className="text-muted-foreground">Add teachers to start marking attendance</p>
                 </div>
               ) : (
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Employee ID</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Reason</th>
-                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Teacher</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Employee ID</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
+                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -269,7 +269,7 @@ export default function TeacherAttendancePage() {
                         const record = attendanceRecords.find(r => r.teacherId === teacher.id);
                         
                         return (
-                          <tr key={teacher.id} className="border-b hover:bg-gray-50">
+                          <tr key={teacher.id} className="border-b hover:bg-accent/50">
                             <td className="py-3 px-4 align-middle font-medium">{teacher.name}</td>
                             <td className="py-3 px-4 align-middle">{teacher.employeeId}</td>
                             <td className="py-3 px-4 align-middle">
@@ -282,13 +282,13 @@ export default function TeacherAttendancePage() {
                                       ? "bg-red-100 text-red-800 hover:bg-red-100"
                                       : status === AttendanceStatus.LATE
                                       ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                      : "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                      : "bg-primary/10 text-primary hover:bg-primary/10"
                                   }
                                 >
                                   {status}
                                 </Badge>
                               ) : (
-                                <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+                                <Badge className="bg-muted text-gray-800 hover:bg-muted">
                                   Not Marked
                                 </Badge>
                               )}
@@ -328,13 +328,13 @@ export default function TeacherAttendancePage() {
             <CardContent>
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : attendanceRecords.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Calendar className="h-12 w-12 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Records Found</h3>
-                  <p className="text-gray-500 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     No attendance has been marked for this date
                   </p>
                   <Button onClick={() => setDialogOpen(true)}>
@@ -346,17 +346,17 @@ export default function TeacherAttendancePage() {
                 <div className="rounded-md border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Employee ID</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Status</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Reason</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Teacher</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Employee ID</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {attendanceRecords.map((record) => (
-                        <tr key={record.id} className="border-b hover:bg-gray-50">
+                        <tr key={record.id} className="border-b hover:bg-accent/50">
                           <td className="py-3 px-4 align-middle font-medium">{record.teacherName}</td>
                           <td className="py-3 px-4 align-middle">{record.employeeId}</td>
                           <td className="py-3 px-4 align-middle">
@@ -368,7 +368,7 @@ export default function TeacherAttendancePage() {
                                   ? "bg-red-100 text-red-800 hover:bg-red-100"
                                   : record.status === AttendanceStatus.LATE
                                   ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                  : "bg-primary/10 text-primary hover:bg-primary/10"
                               }
                             >
                               {record.status}

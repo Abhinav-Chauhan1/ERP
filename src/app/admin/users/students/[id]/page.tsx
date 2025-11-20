@@ -123,7 +123,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                     className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-md"
                   />
                 ) : (
-                  <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold border-4 border-white shadow-md">
+                  <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold border-4 border-white shadow-md">
                     {student.user.firstName[0]}
                     {student.user.lastName[0]}
                   </div>
@@ -139,53 +139,53 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                 <div>
-                  <p className="text-sm text-gray-500">Full Name</p>
+                  <p className="text-sm text-muted-foreground">Full Name</p>
                   <p className="font-medium">
                     {student.user.firstName} {student.user.lastName}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-muted-foreground">Email</p>
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-400" />
+                    <Mail className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{student.user.email}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-sm text-muted-foreground">Phone</p>
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
+                    <Phone className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{student.user.phone || "Not provided"}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Date of Birth</p>
+                  <p className="text-sm text-muted-foreground">Date of Birth</p>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium">{formatDate(student.dateOfBirth)}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Gender</p>
+                  <p className="text-sm text-muted-foreground">Gender</p>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <p className="font-medium capitalize">{student.gender.toLowerCase()}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Blood Group</p>
+                  <p className="text-sm text-muted-foreground">Blood Group</p>
                   <p className="font-medium">{student.bloodGroup || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Admission ID</p>
+                  <p className="text-sm text-muted-foreground">Admission ID</p>
                   <p className="font-medium">{student.admissionId}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Admission Date</p>
+                  <p className="text-sm text-muted-foreground">Admission Date</p>
                   <p className="font-medium">{formatDate(student.admissionDate)}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="text-sm text-muted-foreground">Address</p>
                   <p className="font-medium">{student.address || "Not provided"}</p>
                 </div>
               </div>
@@ -200,25 +200,25 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
           <CardContent className="space-y-4">
             {currentEnrollment ? (
               <>
-                <div className="bg-blue-50 p-4 rounded-md border border-blue-100 flex items-center gap-4">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <GraduationCap className="h-6 w-6 text-blue-600" />
+                <div className="bg-primary/10 p-4 rounded-md border border-primary/20 flex items-center gap-4">
+                  <div className="p-2 bg-primary/10 rounded-full">
+                    <GraduationCap className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-blue-600">Current Class</p>
-                    <p className="font-bold text-blue-800">{currentEnrollment.class.name} - {currentEnrollment.section.name}</p>
+                    <p className="text-sm text-primary">Current Class</p>
+                    <p className="font-bold text-primary">{currentEnrollment.class.name} - {currentEnrollment.section.name}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Roll Number</p>
+                  <p className="text-sm text-muted-foreground">Roll Number</p>
                   <p className="font-medium">{currentEnrollment.rollNumber || student.rollNumber || "Not assigned"}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Enrollment Date</p>
+                  <p className="text-sm text-muted-foreground">Enrollment Date</p>
                   <p className="font-medium">{formatDate(currentEnrollment.enrollDate)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-muted-foreground">Status</p>
                   <Badge 
                     className={currentEnrollment.status === 'ACTIVE' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'}
                   >
@@ -228,7 +228,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">Not currently enrolled in any class</p>
+                <p className="text-sm text-muted-foreground">Not currently enrolled in any class</p>
                 <Button size="sm" variant="outline" className="mt-2">Enroll Student</Button>
               </div>
             )}
@@ -253,14 +253,14 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                           {parentRelation.parent.user.firstName[0]}
                           {parentRelation.parent.user.lastName[0]}
                         </div>
                       )}
                       <div>
                         <p className="font-medium">{parentRelation.parent.user.firstName} {parentRelation.parent.user.lastName}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Mail className="h-3 w-3" />
                             <span>{parentRelation.parent.user.email}</span>
@@ -275,7 +275,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge className={parentRelation.isPrimary ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : 'bg-gray-100 text-gray-800 hover:bg-gray-100'}>
+                      <Badge className={parentRelation.isPrimary ? 'bg-primary/10 text-primary hover:bg-primary/10' : 'bg-muted text-foreground hover:bg-muted'}>
                         {parentRelation.isPrimary ? 'Primary Contact' : parentRelation.parent.relation?.toLowerCase() || 'Guardian'}
                       </Badge>
                       <Link href={`/admin/users/parents/${parentRelation.parent.id}`}>
@@ -287,7 +287,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </div>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">No parents or guardians associated</p>
+                <p className="text-sm text-muted-foreground">No parents or guardians associated</p>
                 <Button size="sm" variant="outline" className="mt-2">Add Parent</Button>
               </div>
             )}
@@ -302,24 +302,24 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="text-center">
-                <p className="text-xs text-gray-500">Present</p>
+                <p className="text-xs text-muted-foreground">Present</p>
                 <p className="text-lg font-bold text-green-600">{presentCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Absent</p>
+                <p className="text-xs text-muted-foreground">Absent</p>
                 <p className="text-lg font-bold text-red-600">{absentCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Late</p>
+                <p className="text-xs text-muted-foreground">Late</p>
                 <p className="text-lg font-bold text-yellow-600">{lateCount}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-xs text-muted-foreground">Total</p>
                 <p className="text-lg font-bold">{totalAttendanceRecords}</p>
               </div>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
               <div 
                 className="bg-green-500 h-4" 
                 style={{ width: `${attendancePercentage}%` }}
@@ -361,13 +361,13 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Subject</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Exam</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Date</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Marks</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Grade</th>
-                        <th className="py-3 px-4 text-left font-medium text-gray-500">Result</th>
+                      <tr className="bg-accent border-b">
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Exam</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Marks</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Result</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -375,7 +375,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                         <tr key={result.id} className="border-b">
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-gray-400" />
+                              <BookOpen className="h-4 w-4 text-muted-foreground" />
                               {result.exam.subject.name}
                             </div>
                           </td>
@@ -402,7 +402,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
               </div>
             ) : (
               <div className="text-center p-4">
-                <p className="text-sm text-gray-500">No exam results recorded yet</p>
+                <p className="text-sm text-muted-foreground">No exam results recorded yet</p>
               </div>
             )}
           </CardContent>

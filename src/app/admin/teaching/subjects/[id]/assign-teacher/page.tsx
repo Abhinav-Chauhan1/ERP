@@ -158,7 +158,7 @@ export default function AssignTeacherToSubjectPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Search teachers..." 
                   className="pl-9" 
@@ -168,14 +168,14 @@ export default function AssignTeacherToSubjectPage() {
               </div>
               <div className="border rounded-md h-64 overflow-y-auto p-1">
                 {filteredTeachers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <p>No available teachers found</p>
                   </div>
                 ) : (
                   filteredTeachers.map(teacher => (
                     <div 
                       key={teacher.id} 
-                      className="flex items-center justify-between p-2 hover:bg-gray-100 rounded-md cursor-pointer"
+                      className="flex items-center justify-between p-2 hover:bg-accent/50 rounded-md cursor-pointer"
                       onClick={() => handleAssignTeacher(teacher.id)}
                     >
                       <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export default function AssignTeacherToSubjectPage() {
                         <div>
                           <p className="text-sm font-medium">{teacher.name}</p>
                           {teacher.department && (
-                            <p className="text-xs text-gray-500">{teacher.department}</p>
+                            <p className="text-xs text-muted-foreground">{teacher.department}</p>
                           )}
                         </div>
                       </div>
@@ -231,7 +231,7 @@ export default function AssignTeacherToSubjectPage() {
               <h3 className="text-sm font-medium mb-4">Assigned Teachers ({assignedTeachers.length})</h3>
 
               {assignedTeachers.length === 0 ? (
-                <div className="text-center py-8 border rounded-md text-gray-500">
+                <div className="text-center py-8 border rounded-md text-muted-foreground">
                   <p className="mb-2">No teachers assigned to this subject yet</p>
                   <Button variant="outline" onClick={() => setAssignDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -257,7 +257,7 @@ export default function AssignTeacherToSubjectPage() {
                               {teacher.employeeId}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {teacher.department}
                           </p>
                         </div>

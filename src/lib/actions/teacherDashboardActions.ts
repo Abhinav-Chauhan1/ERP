@@ -2,7 +2,317 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, format } from "date-fns";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, format, addDays } from "date-fns";
+
+/**
+ * Get total number of students taught by a teacher
+ */
+export async function getTotalStudents(teacherId: string) {
+  try {
+    const studentCount = await db.classEnrollment.count({
+      where: {
+        class: {
+          teachers: {
+            some: {
+              teacherId: teacherId,
+            },
+          },
+        },
+        status: "ACTIVE",
+      },
+    });
+
+    return {
+      success: true,
+      data: studentCount,
+    };
+  } catch (error) {
+    console.error("Error fetching total students:", error);
+    return {
+      success: false,
+      error: "Failed to fetch total students",
+    };
+  }
+}
+
+/**
+ * Get pending assignments that need grading
+ */
+export async function getPendingAssignments(teacherId: string) {
+  try {
+    const pendingAssignments = await db.assignment.findMany({
+      where: {
+        creatorId: teacherId,
+        submissions: {
+          some: {
+            status: "SUBMITTED",
+            marks: null,
+          },
+        },
+      },
+      include: {
+        subject: true,
+        classes: {
+          include: {
+            class: true,
+          },
+        },
+        submissions: {
+          where: {
+            status: "SUBMITTED",
+            marks: null,
+          },
+          include: {
+            student: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        dueDate: "asc",
+      },
+    });
+
+    const count = await db.assignment.count({
+      where: {
+        creatorId: teacherId,
+        submissions: {
+          some: {
+            status: "SUBMITTED",
+            marks: null,
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        assignments: pendingAssignments,
+        count: count,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching pending assignments:", error);
+    return {
+      success: false,
+      error: "Failed to fetch pending assignments",
+    };
+  }
+}
+
+/**
+ * Get upcoming exams within the next 7 days
+ */
+export async function getUpcomingExams(teacherId: string) {
+  try {
+    const today = new Date();
+    const nextWeek = addDays(today, 7);
+
+    const upcomingExams = await db.exam.findMany({
+      where: {
+        creatorId: teacherId,
+        examDate: {
+          gte: today,
+          lte: nextWeek,
+        },
+      },
+      include: {
+        subject: true,
+        examType: true,
+        term: true,
+      },
+      orderBy: {
+        examDate: "asc",
+      },
+    });
+
+    const count = upcomingExams.length;
+
+    return {
+      success: true,
+      data: {
+        exams: upcomingExams,
+        count: count,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching upcoming exams:", error);
+    return {
+      success: false,
+      error: "Failed to fetch upcoming exams",
+    };
+  }
+}
+
+/**
+ * Get today's classes from timetable
+ */
+export async function getTodaysClasses(teacherId: string) {
+  try {
+    const today = new Date();
+    const dayName = format(today, "EEEE").toUpperCase() as any;
+
+    const todayClasses = await db.timetableSlot.findMany({
+      where: {
+        subjectTeacher: {
+          teacherId: teacherId,
+        },
+        day: dayName,
+        timetable: {
+          isActive: true,
+        },
+      },
+      include: {
+        class: true,
+        section: true,
+        subjectTeacher: {
+          include: {
+            subject: true,
+          },
+        },
+        room: true,
+      },
+      orderBy: {
+        startTime: "asc",
+      },
+    });
+
+    // Format the classes with status
+    const formattedClasses = todayClasses.map((slot) => {
+      const startTime = new Date(slot.startTime);
+      const endTime = new Date(slot.endTime);
+      const now = new Date();
+
+      const isNow = now >= startTime && now <= endTime;
+      const isCompleted = now > endTime;
+
+      return {
+        id: slot.id,
+        subject: slot.subjectTeacher.subject.name,
+        className: slot.class.name,
+        sectionName: slot.section?.name || null,
+        time: `${format(startTime, "hh:mm a")} - ${format(endTime, "hh:mm a")}`,
+        room: slot.room?.name || "TBA",
+        topic: "Scheduled Lesson",
+        status: isCompleted ? "completed" : isNow ? "next" : "upcoming",
+        classId: slot.classId,
+        sectionId: slot.sectionId,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      };
+    });
+
+    return {
+      success: true,
+      data: formattedClasses,
+    };
+  } catch (error) {
+    console.error("Error fetching today's classes:", error);
+    return {
+      success: false,
+      error: "Failed to fetch today's classes",
+    };
+  }
+}
+
+/**
+ * Get recent announcements
+ */
+export async function getRecentAnnouncements() {
+  try {
+    const today = new Date();
+
+    const announcements = await db.announcement.findMany({
+      where: {
+        isActive: true,
+        startDate: {
+          lte: today,
+        },
+        OR: [
+          {
+            endDate: null,
+          },
+          {
+            endDate: {
+              gte: today,
+            },
+          },
+        ],
+        targetAudience: {
+          has: "TEACHER",
+        },
+      },
+      include: {
+        publisher: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 5,
+    });
+
+    return {
+      success: true,
+      data: announcements,
+    };
+  } catch (error) {
+    console.error("Error fetching recent announcements:", error);
+    return {
+      success: false,
+      error: "Failed to fetch recent announcements",
+    };
+  }
+}
+
+/**
+ * Get unread messages count for a teacher
+ */
+export async function getUnreadMessagesCount(teacherId: string) {
+  try {
+    // First get the user associated with this teacher
+    const teacher = await db.teacher.findUnique({
+      where: {
+        id: teacherId,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!teacher) {
+      return {
+        success: false,
+        error: "Teacher not found",
+      };
+    }
+
+    const unreadCount = await db.message.count({
+      where: {
+        recipientId: teacher.userId,
+        isRead: false,
+      },
+    });
+
+    return {
+      success: true,
+      data: unreadCount,
+    };
+  } catch (error) {
+    console.error("Error fetching unread messages count:", error);
+    return {
+      success: false,
+      error: "Failed to fetch unread messages count",
+    };
+  }
+}
 
 /**
  * Get teacher dashboard data
@@ -55,58 +365,29 @@ export async function getTeacherDashboardData() {
     const startOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
     const endOfThisWeek = endOfWeek(today, { weekStartsOn: 1 });
 
-    // Get today's classes from timetable
-    const todayClasses = await db.timetableSlot.findMany({
-      where: {
-        subjectTeacher: {
-          teacherId: teacher.id,
-        },
-        day: format(today, "EEEE").toUpperCase() as any,
-        timetable: {
-          isActive: true,
-        },
-      },
-      include: {
-        class: true,
-        section: true,
-        subjectTeacher: {
-          include: {
-            subject: true,
-          },
-        },
-        room: true,
-      },
-      orderBy: {
-        startTime: "asc",
-      },
-    });
+    // Use the new helper functions
+    const [
+      todayClassesResult,
+      totalStudentsResult,
+      pendingAssignmentsResult,
+      upcomingExamsResult,
+      recentAnnouncementsResult,
+      unreadMessagesResult,
+    ] = await Promise.all([
+      getTodaysClasses(teacher.id),
+      getTotalStudents(teacher.id),
+      getPendingAssignments(teacher.id),
+      getUpcomingExams(teacher.id),
+      getRecentAnnouncements(),
+      getUnreadMessagesCount(teacher.id),
+    ]);
 
-    // Get total number of students across all classes
-    const studentCount = await db.classEnrollment.count({
-      where: {
-        class: {
-          teachers: {
-            some: {
-              teacherId: teacher.id,
-            },
-          },
-        },
-        status: "ACTIVE",
-      },
-    });
-
-    // Get assignments needing grading
-    const assignmentsNeedingGrading = await db.assignment.count({
-      where: {
-        creatorId: teacher.id,
-        submissions: {
-          some: {
-            status: "SUBMITTED",
-            marks: null,
-          },
-        },
-      },
-    });
+    const todayClasses = (todayClassesResult.success && todayClassesResult.data) ? todayClassesResult.data : [];
+    const studentCount = (totalStudentsResult.success && totalStudentsResult.data !== undefined) ? totalStudentsResult.data : 0;
+    const assignmentsNeedingGrading = (pendingAssignmentsResult.success && pendingAssignmentsResult.data) ? pendingAssignmentsResult.data.count : 0;
+    const upcomingExamsCount = (upcomingExamsResult.success && upcomingExamsResult.data) ? upcomingExamsResult.data.count : 0;
+    const recentAnnouncements = (recentAnnouncementsResult.success && recentAnnouncementsResult.data) ? recentAnnouncementsResult.data : [];
+    const unreadMessagesCount = (unreadMessagesResult.success && unreadMessagesResult.data !== undefined) ? unreadMessagesResult.data : 0;
 
     // Get weekly attendance average
     const attendanceRecords = await db.studentAttendance.findMany({
@@ -331,30 +612,6 @@ export async function getTeacherDashboardData() {
       { status: "Late", count: lateCount },
     ];
 
-    // Format today's classes
-    const formattedTodayClasses = todayClasses.map((slot) => {
-      const startTime = new Date(slot.startTime);
-      const endTime = new Date(slot.endTime);
-      const now = new Date();
-
-      const isNow = now >= startTime && now <= endTime;
-      const isCompleted = now > endTime;
-
-      return {
-        id: slot.id,
-        subject: slot.subjectTeacher.subject.name,
-        className: slot.class.name,
-        sectionName: slot.section?.name || null,
-        time: `${format(startTime, "hh:mm a")} - ${format(endTime, "hh:mm a")}`,
-        room: slot.room?.name || "TBA",
-        topic: "Scheduled Lesson",
-        status: isCompleted ? "completed" : isNow ? "next" : "upcoming",
-        classId: slot.classId,
-        sectionId: slot.sectionId,
-        startTime: slot.startTime,
-      };
-    });
-
     return {
       success: true,
       data: {
@@ -367,8 +624,18 @@ export async function getTeacherDashboardData() {
           studentsCount: studentCount,
           assignmentsNeedingGrading: assignmentsNeedingGrading,
           attendancePercentage: attendancePercentage,
+          upcomingExamsCount: upcomingExamsCount,
+          unreadMessagesCount: unreadMessagesCount,
         },
-        todayClasses: formattedTodayClasses,
+        todayClasses: todayClasses,
+        recentAnnouncements: recentAnnouncements.map((announcement) => ({
+          id: announcement.id,
+          title: announcement.title,
+          content: announcement.content,
+          publisherName: `${announcement.publisher.user.firstName} ${announcement.publisher.user.lastName}`,
+          startDate: format(announcement.startDate, "MMM dd, yyyy"),
+          createdAt: format(announcement.createdAt, "MMM dd, yyyy"),
+        })),
         recentLessons: recentLessons.map((lesson) => ({
           id: lesson.id,
           title: lesson.title,

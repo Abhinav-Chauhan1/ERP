@@ -75,13 +75,21 @@ export default function PaymentHistoryPage() {
       const response = await fetch("/api/parent/children");
       if (response.ok) {
         const data = await response.json();
-        setChildren(data.children || []);
+        
+        // Map API response to expected format
+        const mappedChildren = (data.children || []).map((child: any) => ({
+          id: child.id,
+          name: `${child.user.firstName} ${child.user.lastName}`,
+          class: child.enrollments?.[0]?.class?.name || "N/A",
+        }));
+        
+        setChildren(mappedChildren);
         
         // Set selected child
-        if (childId && data.children.find((c: Child) => c.id === childId)) {
+        if (childId && mappedChildren.find((c: Child) => c.id === childId)) {
           setSelectedChildId(childId);
-        } else if (data.children.length > 0) {
-          setSelectedChildId(data.children[0].id);
+        } else if (mappedChildren.length > 0) {
+          setSelectedChildId(mappedChildren[0].id);
         }
       }
     } catch (error) {

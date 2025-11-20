@@ -329,7 +329,7 @@ function TermsContent() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : terms.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               <Clock className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <h3 className="text-lg font-medium mb-1">No terms found</h3>
               <p className="text-sm mb-4">Create your first academic term to get started</p>
@@ -342,14 +342,14 @@ function TermsContent() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Term Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Academic Year</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Start Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">End Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Duration</th>
-                      <th className="py-3 px-4 text-left font-medium text-gray-500">Exams</th>
-                      <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Term Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Academic Year</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Start Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">End Date</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Exams</th>
+                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
