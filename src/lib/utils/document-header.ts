@@ -15,12 +15,12 @@ export function generateDocumentHeader({
   includeLetterhead = true,
 }: DocumentHeaderOptions): string {
   const schoolName = branding?.schoolName || "School ERP";
-  const logo = branding?.letterheadLogo || branding?.logo;
+  const logo = branding?.letterheadLogo || branding?.logoUrl || branding?.schoolLogo;
   const letterheadText = branding?.letterheadText || "";
-  const address = branding?.address || "";
-  const phone = branding?.phone || "";
-  const email = branding?.email || "";
-  const website = branding?.website || "";
+  const address = branding?.schoolAddress || "";
+  const phone = branding?.schoolPhone || "";
+  const email = branding?.schoolEmail || "";
+  const website = branding?.schoolWebsite || "";
 
   if (!includeLetterhead) {
     return `
@@ -64,7 +64,7 @@ export function generateDocumentFooter({
 }): string {
   const schoolName = branding?.schoolName || "School ERP";
   const footer = branding?.documentFooter || "";
-  const website = branding?.website || "";
+  const website = branding?.schoolWebsite || "";
 
   return `
     <div style="border-top: 2px solid ${branding?.primaryColor || "#3b82f6"}; padding-top: 15px; margin-top: 40px; text-align: center; font-size: 11px; color: #666;">

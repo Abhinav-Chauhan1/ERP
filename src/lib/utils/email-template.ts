@@ -15,14 +15,14 @@ export function generateBrandedEmail({
   branding,
 }: EmailTemplateOptions): string {
   const schoolName = branding?.schoolName || "School ERP";
-  const logo = branding?.emailLogo || branding?.logo;
+  const logo = branding?.emailLogo || branding?.logoUrl || branding?.schoolLogo;
   const primaryColor = branding?.primaryColor || "#3b82f6";
   const footer = branding?.emailFooter || "";
   const signature = branding?.emailSignature || "";
-  const address = branding?.address || "";
-  const phone = branding?.phone || "";
-  const email = branding?.email || "";
-  const website = branding?.website || "";
+  const address = branding?.schoolAddress || "";
+  const phone = branding?.schoolPhone || "";
+  const email = branding?.schoolEmail || "";
+  const website = branding?.schoolWebsite || "";
 
   return `
 <!DOCTYPE html>
@@ -154,10 +154,10 @@ export function generatePlainTextEmail({
   const schoolName = branding?.schoolName || "School ERP";
   const footer = branding?.emailFooter || "";
   const signature = branding?.emailSignature || "";
-  const address = branding?.address || "";
-  const phone = branding?.phone || "";
-  const email = branding?.email || "";
-  const website = branding?.website || "";
+  const address = branding?.schoolAddress || "";
+  const phone = branding?.schoolPhone || "";
+  const email = branding?.schoolEmail || "";
+  const website = branding?.schoolWebsite || "";
 
   return `
 ${schoolName}
