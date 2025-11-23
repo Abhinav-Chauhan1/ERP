@@ -361,7 +361,7 @@ export async function getEnrollmentDistribution() {
 
 export async function getRecentActivities() {
   try {
-    // Get recent activities from various sources
+    // Get recent activities from various sources with timeout protection
     const [recentExams, recentAssignments, recentAnnouncements] = await Promise.all([
       db.exam.findMany({
         take: 2,
@@ -369,35 +369,58 @@ export async function getRecentActivities() {
         include: {
           creator: {
             include: {
-              user: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
           },
-          subject: true,
+          subject: {
+            select: {
+              name: true,
+            },
+          },
         },
-      }),
+      }).catch(() => []),
       db.assignment.findMany({
         take: 2,
         orderBy: { createdAt: 'desc' },
         include: {
           creator: {
             include: {
-              user: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
           },
-          subject: true,
+          subject: {
+            select: {
+              name: true,
+            },
+          },
         },
-      }),
+      }).catch(() => []),
       db.announcement.findMany({
         take: 1,
         orderBy: { createdAt: 'desc' },
         include: {
           publisher: {
             include: {
-              user: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
           },
         },
-      }),
+      }).catch(() => []),
     ]);
 
     const activities = [

@@ -1,10 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from "react";
-import { SchoolBranding } from "@prisma/client";
+import { SystemSettings } from "@prisma/client";
 
 interface BrandingContextType {
-  branding: SchoolBranding | null;
+  branding: SystemSettings | null;
 }
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -14,7 +14,7 @@ export function BrandingProvider({
   branding,
 }: {
   children: ReactNode;
-  branding: SchoolBranding | null;
+  branding: SystemSettings | null;
 }) {
   return (
     <BrandingContext.Provider value={{ branding }}>

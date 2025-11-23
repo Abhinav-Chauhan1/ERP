@@ -11,7 +11,7 @@ import { SessionManager } from "@/components/auth/SessionManager";
 import { WebVitalsTracker } from "@/components/shared/web-vitals-tracker";
 import { WebVitalsDisplay } from "@/components/shared/web-vitals-display";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
-import { getSchoolBranding } from "@/lib/actions/school-branding";
+import { getSystemSettings } from "@/lib/actions/settingsActions";
 
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -26,12 +26,12 @@ const inter = Inter({
 });
 
 export async function generateMetadata() {
-  const brandingResult = await getSchoolBranding();
-  const branding = brandingResult.success ? brandingResult.data : null;
+  const settingsResult = await getSystemSettings();
+  const settings = settingsResult.success ? settingsResult.data : null;
 
   return {
-    title: branding?.schoolName || "School ERP",
-    description: branding?.tagline || "Comprehensive School Management System",
+    title: settings?.schoolName || "School ERP",
+    description: settings?.tagline || "Comprehensive School Management System",
   };
 }
 
@@ -40,17 +40,17 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch school branding
-  const brandingResult = await getSchoolBranding();
-  const branding = brandingResult.success && brandingResult.data ? brandingResult.data : null;
+  // Fetch school settings
+  const settingsResult = await getSystemSettings();
+  const settings = settingsResult.success && settingsResult.data ? settingsResult.data : null;
 
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <head>
-          {branding?.favicon && <link rel="icon" href={branding.favicon} />}
-          {branding?.primaryColor && (
-            <style>{`:root { --primary-color: ${branding.primaryColor}; --secondary-color: ${branding.secondaryColor}; }`}</style>
+          {settings?.faviconUrl && <link rel="icon" href={settings.faviconUrl} />}
+          {settings?.primaryColor && (
+            <style>{`:root { --primary-color: ${settings.primaryColor}; --secondary-color: ${settings.secondaryColor}; }`}</style>
           )}
         </head>
         <body className={inter.className} style={{ '--font-inter': inter.style.fontFamily } as React.CSSProperties}>
@@ -64,7 +64,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <ThemeContextProvider>
-              <BrandingProvider branding={branding}>
+              <BrandingProvider branding={settings}>
                 <AuthProvider>
                   <SessionManager />
                   <KeyboardShortcutsProvider>

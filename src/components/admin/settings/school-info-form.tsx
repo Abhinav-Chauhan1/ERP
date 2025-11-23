@@ -13,9 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { School, Loader2 } from "lucide-react";
+import { School, Loader2, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateSchoolInfo } from "@/lib/actions/settingsActions";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface SchoolInfoFormProps {
   initialData: {
@@ -27,11 +28,17 @@ interface SchoolInfoFormProps {
     schoolFax?: string | null;
     timezone: string;
     schoolLogo?: string | null;
+    tagline?: string | null;
+    facebookUrl?: string | null;
+    twitterUrl?: string | null;
+    linkedinUrl?: string | null;
+    instagramUrl?: string | null;
   };
 }
 
 export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [schoolName, setSchoolName] = useState(initialData.schoolName || "");
   const [schoolEmail, setSchoolEmail] = useState(initialData.schoolEmail || "");
   const [schoolPhone, setSchoolPhone] = useState(initialData.schoolPhone || "");
@@ -39,6 +46,50 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [schoolWebsite, setSchoolWebsite] = useState(initialData.schoolWebsite || "");
   const [schoolFax, setSchoolFax] = useState(initialData.schoolFax || "");
   const [timezone, setTimezone] = useState(initialData.timezone || "UTC");
+  const [schoolLogo, setSchoolLogo] = useState(initialData.schoolLogo || "");
+  const [tagline, setTagline] = useState(initialData.tagline || "");
+  const [facebookUrl, setFacebookUrl] = useState(initialData.facebookUrl || "");
+  const [twitterUrl, setTwitterUrl] = useState(initialData.twitterUrl || "");
+  const [linkedinUrl, setLinkedinUrl] = useState(initialData.linkedinUrl || "");
+  const [instagramUrl, setInstagramUrl] = useState(initialData.instagramUrl || "");
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const result = await uploadToCloudinary(file, {
+        folder: 'school-logos',
+        resource_type: 'image',
+      });
+      
+      setSchoolLogo(result.secure_url);
+      toast.success("Logo uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      toast.error("Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setSchoolLogo("");
+    toast.success("Logo removed");
+  };
 
   const handleSave = async () => {
     // Validation
@@ -62,6 +113,12 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         schoolWebsite: schoolWebsite || undefined,
         schoolFax: schoolFax || undefined,
         timezone,
+        schoolLogo: schoolLogo || undefined,
+        tagline: tagline || undefined,
+        facebookUrl: facebookUrl || undefined,
+        twitterUrl: twitterUrl || undefined,
+        linkedinUrl: linkedinUrl || undefined,
+        instagramUrl: instagramUrl || undefined,
       });
       
       if (result.success) {
@@ -95,6 +152,15 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
                 placeholder="Enter school name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tagline">Tagline / Motto</Label>
+              <Input
+                id="tagline"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder="Enter school tagline"
               />
             </div>
             <div className="space-y-2">
@@ -176,12 +242,6 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
               />
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -189,21 +249,143 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         <CardHeader>
           <CardTitle>Logo & Branding</CardTitle>
           <CardDescription>
-            Upload your school logo and customize branding
+            Upload your school logo or provide a URL
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>School Logo</Label>
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-md border-2 border-dashed border-gray-300 flex items-center justify-center">
-                <School className="h-8 w-8 text-gray-400" />
+            
+            {/* Logo Preview */}
+            {schoolLogo && (
+              <div className="relative inline-block">
+                <div className="p-4 border rounded-md bg-muted/50">
+                  <img
+                    src={schoolLogo}
+                    alt="School logo"
+                    className="h-32 w-32 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  onClick={handleRemoveLogo}
+                  disabled={uploadingLogo || loading}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="outline">Upload Logo</Button>
+            )}
+
+            {/* Upload Button */}
+            <div className="flex gap-2">
+              <div className="relative">
+                <Input
+                  id="logoUpload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo || loading}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('logoUpload')?.click()}
+                  disabled={uploadingLogo || loading}
+                >
+                  {uploadingLogo ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Logo
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
+
+            {/* Manual URL Input */}
+            <div className="space-y-2">
+              <Label htmlFor="schoolLogo" className="text-sm text-muted-foreground">
+                Or enter logo URL manually
+              </Label>
+              <Input
+                id="schoolLogo"
+                value={schoolLogo}
+                onChange={(e) => setSchoolLogo(e.target.value)}
+                placeholder="https://example.com/logo.png"
+                disabled={uploadingLogo || loading}
+              />
+            </div>
+
             <p className="text-sm text-muted-foreground">
-              Recommended size: 200x200px. Max file size: 2MB
+              Recommended size: 200x200px. Max file size: 5MB. Supported formats: JPG, PNG, SVG
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Social Media</CardTitle>
+          <CardDescription>
+            Connect your school's social media profiles
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="facebookUrl">Facebook URL</Label>
+              <Input
+                id="facebookUrl"
+                value={facebookUrl}
+                onChange={(e) => setFacebookUrl(e.target.value)}
+                placeholder="https://facebook.com/yourschool"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="twitterUrl">Twitter URL</Label>
+              <Input
+                id="twitterUrl"
+                value={twitterUrl}
+                onChange={(e) => setTwitterUrl(e.target.value)}
+                placeholder="https://twitter.com/yourschool"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
+              <Input
+                id="linkedinUrl"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                placeholder="https://linkedin.com/company/yourschool"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagramUrl">Instagram URL</Label>
+              <Input
+                id="instagramUrl"
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://instagram.com/yourschool"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </CardContent>
       </Card>

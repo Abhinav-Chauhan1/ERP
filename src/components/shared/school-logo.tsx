@@ -24,9 +24,9 @@ export function SchoolLogo({ className = "", showName = true }: SchoolLogoProps)
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      {branding.logo ? (
+      {branding.schoolLogo ? (
         <Image
-          src={branding.logo}
+          src={branding.schoolLogo}
           alt={`${branding.schoolName} logo`}
           width={40}
           height={40}

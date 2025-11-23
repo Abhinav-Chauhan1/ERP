@@ -58,6 +58,11 @@ export async function updateSchoolInfo(data: {
   schoolFax?: string;
   timezone: string;
   schoolLogo?: string;
+  tagline?: string;
+  facebookUrl?: string;
+  twitterUrl?: string;
+  linkedinUrl?: string;
+  instagramUrl?: string;
 }) {
   try {
     // Authentication check
@@ -92,6 +97,11 @@ export async function updateSchoolInfo(data: {
       schoolFax: data.schoolFax ? sanitizePhoneNumber(data.schoolFax) : undefined,
       timezone: sanitizeText(data.timezone),
       schoolLogo: data.schoolLogo ? sanitizeUrl(data.schoolLogo) : undefined,
+      tagline: data.tagline ? sanitizeText(data.tagline) : undefined,
+      facebookUrl: data.facebookUrl ? sanitizeUrl(data.facebookUrl) : undefined,
+      twitterUrl: data.twitterUrl ? sanitizeUrl(data.twitterUrl) : undefined,
+      linkedinUrl: data.linkedinUrl ? sanitizeUrl(data.linkedinUrl) : undefined,
+      instagramUrl: data.instagramUrl ? sanitizeUrl(data.instagramUrl) : undefined,
     };
     
     const updated = await db.systemSettings.update({
@@ -100,6 +110,7 @@ export async function updateSchoolInfo(data: {
     });
     
     revalidatePath("/admin/settings");
+    revalidatePath("/", "layout");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Error updating school info:", error);
@@ -274,10 +285,18 @@ export async function updateAppearanceSettings(data: {
   defaultTheme: string;
   defaultColorTheme: string;
   primaryColor: string;
+  secondaryColor?: string;
+  accentColor?: string;
   language: string;
   dateFormat: string;
   logoUrl?: string;
   faviconUrl?: string;
+  emailLogo?: string;
+  emailFooter?: string;
+  emailSignature?: string;
+  letterheadLogo?: string;
+  letterheadText?: string;
+  documentFooter?: string;
 }) {
   try {
     // Authentication check
@@ -308,6 +327,7 @@ export async function updateAppearanceSettings(data: {
     });
     
     revalidatePath("/admin/settings");
+    revalidatePath("/", "layout");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Error updating appearance settings:", error);

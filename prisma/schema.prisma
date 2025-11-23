@@ -129,58 +129,58 @@ model Student {
   address          String?
   bloodGroup       String?
   emergencyContact String?
-  
+
   // Indian-specific fields
-  aadhaarNumber    String?  @db.VarChar(12)
-  abcId            String?  @db.VarChar(50) // Academic Bank of Credits ID
-  nationality      String?  @default("Indian")
-  religion         String?
-  caste            String?
-  category         String? // General, OBC, SC, ST, EWS
-  motherTongue     String?
-  birthPlace       String?
-  previousSchool   String?
-  previousClass    String?
-  tcNumber         String? // Transfer Certificate Number
+  aadhaarNumber     String? @db.VarChar(12)
+  abcId             String? @db.VarChar(50) // Academic Bank of Credits ID
+  nationality       String? @default("Indian")
+  religion          String?
+  caste             String?
+  category          String? // General, OBC, SC, ST, EWS
+  motherTongue      String?
+  birthPlace        String?
+  previousSchool    String?
+  previousClass     String?
+  tcNumber          String? // Transfer Certificate Number
   medicalConditions String? @db.Text
-  specialNeeds     String?  @db.Text
-  
+  specialNeeds      String? @db.Text
+
   // Parent/Guardian details
   fatherName       String?
   fatherOccupation String?
   fatherPhone      String?
   fatherEmail      String?
-  fatherAadhaar    String?  @db.VarChar(12)
+  fatherAadhaar    String? @db.VarChar(12)
   motherName       String?
   motherOccupation String?
   motherPhone      String?
   motherEmail      String?
-  motherAadhaar    String?  @db.VarChar(12)
+  motherAadhaar    String? @db.VarChar(12)
   guardianName     String?
   guardianRelation String?
   guardianPhone    String?
   guardianEmail    String?
-  guardianAadhaar  String?  @db.VarChar(12)
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  guardianAadhaar  String? @db.VarChar(12)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relationships
-  parents          StudentParent[]
-  enrollments      ClassEnrollment[]
-  attendance       StudentAttendance[]
-  examResults      ExamResult[]
-  assignments      AssignmentSubmission[]
-  feePayments      FeePayment[]
-  reportCards      ReportCard[] // Added missing relation
-  scholarships     ScholarshipRecipient[] // Added missing relation
-  bookIssues       BookIssue[]
-  bookReservations BookReservation[]
-  routes           StudentRoute[]
-  settings         StudentSettings?
-  phone            String?
-  emergencyPhone   String?
-  examAttempts     ExamAttempt[] // Online exam attempts
+  parents               StudentParent[]
+  enrollments           ClassEnrollment[]
+  attendance            StudentAttendance[]
+  examResults           ExamResult[]
+  assignments           AssignmentSubmission[]
+  feePayments           FeePayment[]
+  reportCards           ReportCard[] // Added missing relation
+  scholarships          ScholarshipRecipient[] // Added missing relation
+  bookIssues            BookIssue[]
+  bookReservations      BookReservation[]
+  routes                StudentRoute[]
+  settings              StudentSettings?
+  phone                 String?
+  emergencyPhone        String?
+  examAttempts          ExamAttempt[] // Online exam attempts
   hostelRoomAllocations HostelRoomAllocation[]
   hostelVisitors        HostelVisitor[]
   hostelComplaints      HostelComplaint[]
@@ -188,7 +188,7 @@ model Student {
   courseDiscussions     CourseDiscussion[] // LMS discussion posts
   quizAttempts          QuizAttempt[] // LMS quiz attempts
   admissionApplication  AdmissionApplication? // Link to original admission application
-  
+
   @@index([aadhaarNumber])
   @@index([abcId])
 }
@@ -1309,11 +1309,11 @@ model AdmissionApplication {
   appliedClass      Class                 @relation(fields: [appliedClassId], references: [id])
   documents         ApplicationDocument[]
   meritListEntries  MeritListEntry[]
-  
+
   // Indian-specific fields
-  aadhaarNumber     String?               @db.VarChar(12)
-  abcId             String?               @db.VarChar(50) // Academic Bank of Credits ID
-  nationality       String?               @default("Indian")
+  aadhaarNumber     String? @db.VarChar(12)
+  abcId             String? @db.VarChar(50) // Academic Bank of Credits ID
+  nationality       String? @default("Indian")
   religion          String?
   caste             String?
   category          String? // General, OBC, SC, ST, EWS
@@ -1321,38 +1321,38 @@ model AdmissionApplication {
   birthPlace        String?
   bloodGroup        String?
   tcNumber          String? // Transfer Certificate Number
-  medicalConditions String?               @db.Text
-  specialNeeds      String?               @db.Text
-  
+  medicalConditions String? @db.Text
+  specialNeeds      String? @db.Text
+
   // Parent/Guardian details
-  fatherName        String?
-  fatherOccupation  String?
-  fatherPhone       String?
-  fatherEmail       String?
-  fatherAadhaar     String?               @db.VarChar(12)
-  motherName        String?
-  motherOccupation  String?
-  motherPhone       String?
-  motherEmail       String?
-  motherAadhaar     String?               @db.VarChar(12)
-  guardianName      String?
-  guardianRelation  String?
-  guardianPhone     String?
-  guardianEmail     String?
-  guardianAadhaar   String?               @db.VarChar(12)
-  annualIncome      Decimal?              @db.Decimal(12, 2)
-  
+  fatherName       String?
+  fatherOccupation String?
+  fatherPhone      String?
+  fatherEmail      String?
+  fatherAadhaar    String?  @db.VarChar(12)
+  motherName       String?
+  motherOccupation String?
+  motherPhone      String?
+  motherEmail      String?
+  motherAadhaar    String?  @db.VarChar(12)
+  guardianName     String?
+  guardianRelation String?
+  guardianPhone    String?
+  guardianEmail    String?
+  guardianAadhaar  String?  @db.VarChar(12)
+  annualIncome     Decimal? @db.Decimal(12, 2)
+
   // Link to created student (when application is accepted)
-  studentId         String?               @unique
-  student           Student?              @relation(fields: [studentId], references: [id])
-  
-  status            ApplicationStatus     @default(SUBMITTED)
-  submittedAt       DateTime              @default(now())
-  reviewedAt        DateTime?
-  reviewedBy        String?
-  remarks           String?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  studentId String?  @unique
+  student   Student? @relation(fields: [studentId], references: [id])
+
+  status      ApplicationStatus @default(SUBMITTED)
+  submittedAt DateTime          @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?
+  remarks     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([status])
   @@index([appliedClassId, status])
@@ -1468,10 +1468,11 @@ model SystemSettings {
   schoolAddress String?
   schoolPhone   String?
   schoolEmail   String?
-  schoolLogo    String?
+  schoolLogo    String? // Main school logo URL
   schoolWebsite String?
   schoolFax     String?
   timezone      String  @default("UTC")
+  tagline       String? // School tagline/motto
 
   // Academic Settings
   currentAcademicYear String?
@@ -1503,14 +1504,32 @@ model SystemSettings {
   autoBackup                 Boolean @default(true)
   backupFrequency            String  @default("daily") // hourly, daily, weekly
 
-  // Appearance Settings (Admin can set default for school)
+  // Appearance & Branding Settings
   defaultTheme      String  @default("LIGHT") // LIGHT, DARK, SYSTEM
   defaultColorTheme String  @default("blue") // blue, red, green, purple, orange, teal
   primaryColor      String  @default("#3b82f6")
+  secondaryColor    String  @default("#8b5cf6")
+  accentColor       String? // Optional accent color
   language          String  @default("en")
   dateFormat        String  @default("mdy") // mdy, dmy, ymd
-  logoUrl           String?
+  logoUrl           String? // Alias for schoolLogo (for backward compatibility)
   faviconUrl        String?
+
+  // Email Branding
+  emailLogo      String? // URL to logo for emails
+  emailFooter    String? // Custom footer text for emails
+  emailSignature String? // Email signature
+
+  // Document Branding
+  letterheadLogo String? // URL to letterhead logo
+  letterheadText String? // Text for letterhead
+  documentFooter String? // Footer text for documents
+
+  // Social Media
+  facebookUrl  String?
+  twitterUrl   String?
+  linkedinUrl  String?
+  instagramUrl String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1825,18 +1844,18 @@ model StudentRoute {
 }
 
 model TransportAttendance {
-  id              String   @id @default(cuid())
-  studentRouteId  String
-  studentRoute    StudentRoute @relation(fields: [studentRouteId], references: [id], onDelete: Cascade)
-  date            DateTime
-  stopName        String // The stop where attendance was recorded
-  attendanceType  TransportAttendanceType // BOARDING or ALIGHTING
-  status          TransportAttendanceStatus @default(PRESENT)
-  recordedAt      DateTime @default(now())
-  recordedBy      String? // User ID who recorded the attendance
-  remarks         String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String                    @id @default(cuid())
+  studentRouteId String
+  studentRoute   StudentRoute              @relation(fields: [studentRouteId], references: [id], onDelete: Cascade)
+  date           DateTime
+  stopName       String // The stop where attendance was recorded
+  attendanceType TransportAttendanceType // BOARDING or ALIGHTING
+  status         TransportAttendanceStatus @default(PRESENT)
+  recordedAt     DateTime                  @default(now())
+  recordedBy     String? // User ID who recorded the attendance
+  remarks        String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
 
   @@unique([studentRouteId, date, stopName, attendanceType])
   @@index([studentRouteId, date])
@@ -1857,21 +1876,21 @@ enum TransportAttendanceStatus {
 
 // Online Examination System Models
 model QuestionBank {
-  id           String       @id @default(cuid())
-  question     String
-  questionType QuestionType // MCQ, TRUE_FALSE, ESSAY
-  options      Json? // For MCQ: array of options like ["Option A", "Option B", "Option C", "Option D"]
+  id            String       @id @default(cuid())
+  question      String
+  questionType  QuestionType // MCQ, TRUE_FALSE, ESSAY
+  options       Json? // For MCQ: array of options like ["Option A", "Option B", "Option C", "Option D"]
   correctAnswer String? // For MCQ and TRUE_FALSE
-  marks        Float
-  subjectId    String
-  subject      Subject      @relation(fields: [subjectId], references: [id])
-  topic        String?
-  difficulty   Difficulty   @default(MEDIUM)
-  createdBy    String
-  teacher      Teacher      @relation(fields: [createdBy], references: [id])
-  usageCount   Int          @default(0) // Track how many times this question has been used
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  marks         Float
+  subjectId     String
+  subject       Subject      @relation(fields: [subjectId], references: [id])
+  topic         String?
+  difficulty    Difficulty   @default(MEDIUM)
+  createdBy     String
+  teacher       Teacher      @relation(fields: [createdBy], references: [id])
+  usageCount    Int          @default(0) // Track how many times this question has been used
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([subjectId, topic])
   @@index([difficulty])
@@ -1892,24 +1911,24 @@ enum Difficulty {
 }
 
 model OnlineExam {
-  id          String   @id @default(cuid())
-  title       String
-  subjectId   String
-  subject     Subject  @relation(fields: [subjectId], references: [id])
-  classId     String
-  class       Class    @relation(fields: [classId], references: [id])
-  duration    Int // Duration in minutes
-  totalMarks  Float
-  questions   Json // Array of question IDs from QuestionBank
-  startTime   DateTime
-  endTime     DateTime
-  instructions String? // Exam instructions for students
-  randomizeQuestions Boolean @default(true) // Whether to randomize question order
-  allowReview Boolean @default(true) // Allow students to review answers before submit
-  createdBy   String
-  teacher     Teacher  @relation(fields: [createdBy], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  title              String
+  subjectId          String
+  subject            Subject  @relation(fields: [subjectId], references: [id])
+  classId            String
+  class              Class    @relation(fields: [classId], references: [id])
+  duration           Int // Duration in minutes
+  totalMarks         Float
+  questions          Json // Array of question IDs from QuestionBank
+  startTime          DateTime
+  endTime            DateTime
+  instructions       String? // Exam instructions for students
+  randomizeQuestions Boolean  @default(true) // Whether to randomize question order
+  allowReview        Boolean  @default(true) // Allow students to review answers before submit
+  createdBy          String
+  teacher            Teacher  @relation(fields: [createdBy], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relationships
   attempts ExamAttempt[]
@@ -1922,20 +1941,20 @@ model OnlineExam {
 }
 
 model ExamAttempt {
-  id          String         @id @default(cuid())
+  id          String            @id @default(cuid())
   examId      String
-  exam        OnlineExam     @relation(fields: [examId], references: [id])
+  exam        OnlineExam        @relation(fields: [examId], references: [id])
   studentId   String
-  student     Student        @relation(fields: [studentId], references: [id])
+  student     Student           @relation(fields: [studentId], references: [id])
   answers     Json // Object mapping question IDs to student answers
   score       Float? // Calculated score (null until graded)
-  startedAt   DateTime       @default(now())
+  startedAt   DateTime          @default(now())
   submittedAt DateTime? // Null if exam is in progress
   status      ExamAttemptStatus @default(IN_PROGRESS)
   ipAddress   String? // Track IP for security
   userAgent   String? // Track browser for security
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@unique([examId, studentId])
   @@index([studentId, status])
@@ -1954,15 +1973,15 @@ enum ExamAttemptStatus {
 
 // Permission-Based Access Control System
 model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g., "CREATE_USER", "UPDATE_USER", "DELETE_USER"
+  id          String           @id @default(cuid())
+  name        String           @unique // e.g., "CREATE_USER", "UPDATE_USER", "DELETE_USER"
   description String?
   resource    String // e.g., "USER", "STUDENT", "TEACHER", "FEE", "EXAM"
   action      PermissionAction // CREATE, READ, UPDATE, DELETE, EXPORT, IMPORT
   category    String? // e.g., "USER_MANAGEMENT", "ACADEMIC", "FINANCE", "COMMUNICATION"
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   // Relationships
   userPermissions UserPermission[]
@@ -2023,7 +2042,7 @@ model RolePermission {
 
 // Hostel Management System Models
 model Hostel {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
   address     String?
   capacity    Int
@@ -2031,13 +2050,13 @@ model Hostel {
   wardenName  String?
   wardenPhone String?
   type        HostelType @default(BOYS) // BOYS, GIRLS, MIXED
-  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, MAINTENANCE
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      String     @default("ACTIVE") // ACTIVE, INACTIVE, MAINTENANCE
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   // Relationships
-  rooms       HostelRoom[]
-  complaints  HostelComplaint[]
+  rooms      HostelRoom[]
+  complaints HostelComplaint[]
 
   @@index([status])
   @@index([type])
@@ -2051,19 +2070,19 @@ enum HostelType {
 }
 
 model HostelRoom {
-  id          String   @id @default(cuid())
-  hostelId    String
-  hostel      Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
-  roomNumber  String
-  floor       Int?
-  roomType    RoomType @default(SHARED) // SINGLE, DOUBLE, SHARED
-  capacity    Int
-  currentOccupancy Int @default(0)
-  amenities   String? // JSON array of amenities like ["AC", "Attached Bathroom", "WiFi"]
-  status      String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED
-  monthlyFee  Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  hostelId         String
+  hostel           Hostel   @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  roomNumber       String
+  floor            Int?
+  roomType         RoomType @default(SHARED) // SINGLE, DOUBLE, SHARED
+  capacity         Int
+  currentOccupancy Int      @default(0)
+  amenities        String? // JSON array of amenities like ["AC", "Attached Bathroom", "WiFi"]
+  status           String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED
+  monthlyFee       Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relationships
   allocations HostelRoomAllocation[]
@@ -2081,18 +2100,18 @@ enum RoomType {
 }
 
 model HostelRoomAllocation {
-  id          String   @id @default(cuid())
-  roomId      String
-  room        HostelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  bedNumber   String?
-  allocatedDate DateTime @default(now())
-  vacatedDate DateTime?
-  status      AllocationStatus @default(ACTIVE)
-  remarks     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String           @id @default(cuid())
+  roomId        String
+  room          HostelRoom       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student          @relation(fields: [studentId], references: [id])
+  bedNumber     String?
+  allocatedDate DateTime         @default(now())
+  vacatedDate   DateTime?
+  status        AllocationStatus @default(ACTIVE)
+  remarks       String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   // Relationships
   feePayments HostelFeePayment[]
@@ -2110,21 +2129,21 @@ enum AllocationStatus {
 }
 
 model HostelVisitor {
-  id          String   @id @default(cuid())
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  visitorName String
-  visitorPhone String?
+  id              String    @id @default(cuid())
+  studentId       String
+  student         Student   @relation(fields: [studentId], references: [id])
+  visitorName     String
+  visitorPhone    String?
   visitorRelation String? // e.g., "Father", "Mother", "Friend", "Relative"
-  purpose     String?
-  checkInTime DateTime @default(now())
-  checkOutTime DateTime?
-  idProofType String? // e.g., "Aadhar", "Driving License", "Passport"
-  idProofNumber String?
-  approvedBy  String? // User ID who approved the visit
-  remarks     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  purpose         String?
+  checkInTime     DateTime  @default(now())
+  checkOutTime    DateTime?
+  idProofType     String? // e.g., "Aadhar", "Driving License", "Passport"
+  idProofNumber   String?
+  approvedBy      String? // User ID who approved the visit
+  remarks         String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([studentId, checkInTime])
   @@index([checkInTime])
@@ -2132,26 +2151,26 @@ model HostelVisitor {
 }
 
 model HostelFeePayment {
-  id            String   @id @default(cuid())
+  id            String               @id @default(cuid())
   allocationId  String
   allocation    HostelRoomAllocation @relation(fields: [allocationId], references: [id])
   month         Int // 1-12
   year          Int
   roomFee       Float
   messFee       Float
-  otherCharges  Float    @default(0)
+  otherCharges  Float                @default(0)
   totalAmount   Float
-  paidAmount    Float    @default(0)
+  paidAmount    Float                @default(0)
   balance       Float
   paymentDate   DateTime?
-  paymentMethod PaymentMethod @default(CASH)
+  paymentMethod PaymentMethod        @default(CASH)
   transactionId String?
   receiptNumber String?
-  status        PaymentStatus @default(PENDING)
+  status        PaymentStatus        @default(PENDING)
   dueDate       DateTime
   remarks       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@unique([allocationId, month, year])
   @@index([allocationId, status])
@@ -2160,23 +2179,23 @@ model HostelFeePayment {
 }
 
 model HostelComplaint {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   hostelId    String
-  hostel      Hostel   @relation(fields: [hostelId], references: [id])
+  hostel      Hostel            @relation(fields: [hostelId], references: [id])
   studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
+  student     Student           @relation(fields: [studentId], references: [id])
   category    ComplaintCategory
   subject     String
   description String
   priority    ComplaintPriority @default(MEDIUM)
-  status      ComplaintStatus @default(PENDING)
+  status      ComplaintStatus   @default(PENDING)
   assignedTo  String? // User ID of person assigned to resolve
   resolvedBy  String? // User ID who resolved the complaint
   resolvedAt  DateTime?
   resolution  String? // Resolution details
   attachments String? // URLs to attached files/images
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([hostelId, status])
   @@index([studentId, status])
@@ -2213,23 +2232,23 @@ enum ComplaintStatus {
 
 // Learning Management System (LMS) Models
 model Course {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
   subjectId   String?
-  subject     Subject? @relation(fields: [subjectId], references: [id])
+  subject     Subject?     @relation(fields: [subjectId], references: [id])
   classId     String?
-  class       Class?   @relation(fields: [classId], references: [id])
+  class       Class?       @relation(fields: [classId], references: [id])
   teacherId   String
-  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  teacher     Teacher      @relation(fields: [teacherId], references: [id])
   thumbnail   String? // URL to course thumbnail image
   duration    Int? // Estimated duration in hours
-  level       CourseLevel @default(BEGINNER)
+  level       CourseLevel  @default(BEGINNER)
   status      CourseStatus @default(DRAFT)
-  isPublished Boolean  @default(false)
+  isPublished Boolean      @default(false)
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   // Relationships
   modules     CourseModule[]
@@ -2286,9 +2305,9 @@ model CourseLesson {
   updatedAt   DateTime     @updatedAt
 
   // Relationships
-  contents  CourseContent[]
-  progress  LessonProgress[]
-  quizzes   LessonQuiz[]
+  contents CourseContent[]
+  progress LessonProgress[]
+  quizzes  LessonQuiz[]
 
   @@index([moduleId, sequence])
   @@map("course_lessons")
@@ -2305,19 +2324,19 @@ enum LessonType {
 }
 
 model CourseContent {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  contentType ContentType
-  title       String?
-  url         String? // URL to video, audio, PDF, etc.
-  content     String? // Text content or embedded HTML
-  duration    Int? // Duration in seconds for video/audio
-  fileSize    Int? // File size in bytes
-  sequence    Int // Order of content items in the lesson
-  isDownloadable Boolean @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id             String       @id @default(cuid())
+  lessonId       String
+  lesson         CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  contentType    ContentType
+  title          String?
+  url            String? // URL to video, audio, PDF, etc.
+  content        String? // Text content or embedded HTML
+  duration       Int? // Duration in seconds for video/audio
+  fileSize       Int? // File size in bytes
+  sequence       Int // Order of content items in the lesson
+  isDownloadable Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([lessonId, sequence])
   @@map("course_contents")
@@ -2336,19 +2355,19 @@ enum ContentType {
 }
 
 model CourseEnrollment {
-  id          String   @id @default(cuid())
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  enrolledAt  DateTime @default(now())
-  completedAt DateTime?
-  progress    Float    @default(0) // Percentage (0-100)
-  status      EnrollmentCourseStatus @default(ACTIVE)
-  lastAccessedAt DateTime?
-  certificateIssued Boolean @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String                 @id @default(cuid())
+  courseId          String
+  course            Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           Student                @relation(fields: [studentId], references: [id])
+  enrolledAt        DateTime               @default(now())
+  completedAt       DateTime?
+  progress          Float                  @default(0) // Percentage (0-100)
+  status            EnrollmentCourseStatus @default(ACTIVE)
+  lastAccessedAt    DateTime?
+  certificateIssued Boolean                @default(false)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
 
   // Relationships
   lessonProgress LessonProgress[]
@@ -2367,19 +2386,19 @@ enum EnrollmentCourseStatus {
 }
 
 model LessonProgress {
-  id           String           @id @default(cuid())
-  enrollmentId String
-  enrollment   CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  lessonId     String
-  lesson       CourseLesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  status       LessonProgressStatus @default(NOT_STARTED)
-  progress     Float            @default(0) // Percentage (0-100)
-  timeSpent    Int              @default(0) // Time spent in seconds
-  startedAt    DateTime?
-  completedAt  DateTime?
+  id             String               @id @default(cuid())
+  enrollmentId   String
+  enrollment     CourseEnrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonId       String
+  lesson         CourseLesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status         LessonProgressStatus @default(NOT_STARTED)
+  progress       Float                @default(0) // Percentage (0-100)
+  timeSpent      Int                  @default(0) // Time spent in seconds
+  startedAt      DateTime?
+  completedAt    DateTime?
   lastAccessedAt DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   @@unique([enrollmentId, lessonId])
   @@index([enrollmentId, status])
@@ -2394,18 +2413,18 @@ enum LessonProgressStatus {
 }
 
 model CourseDiscussion {
-  id          String   @id @default(cuid())
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  title       String
-  content     String
-  isPinned    Boolean  @default(false)
-  isResolved  Boolean  @default(false)
-  viewCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  title      String
+  content    String
+  isPinned   Boolean  @default(false)
+  isResolved Boolean  @default(false)
+  viewCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relationships
   replies DiscussionReply[]
@@ -2433,18 +2452,18 @@ model DiscussionReply {
 }
 
 model LessonQuiz {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  questions   Json // Array of quiz questions with options and correct answers
-  passingScore Float       @default(70) // Percentage required to pass
-  timeLimit   Int? // Time limit in minutes (null for no limit)
-  maxAttempts Int          @default(3) // Maximum number of attempts allowed
-  showCorrectAnswers Boolean @default(true) // Show correct answers after submission
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                 String       @id @default(cuid())
+  lessonId           String
+  lesson             CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  questions          Json // Array of quiz questions with options and correct answers
+  passingScore       Float        @default(70) // Percentage required to pass
+  timeLimit          Int? // Time limit in minutes (null for no limit)
+  maxAttempts        Int          @default(3) // Maximum number of attempts allowed
+  showCorrectAnswers Boolean      @default(true) // Show correct answers after submission
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   // Relationships
   attempts QuizAttempt[]
@@ -2454,63 +2473,25 @@ model LessonQuiz {
 }
 
 model QuizAttempt {
-  id          String     @id @default(cuid())
-  quizId      String
-  quiz        LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     Student    @relation(fields: [studentId], references: [id])
-  answers     Json // Student's answers
-  score       Float? // Score percentage (0-100)
-  isPassed    Boolean    @default(false)
-  attemptNumber Int      @default(1)
-  startedAt   DateTime   @default(now())
-  submittedAt DateTime?
-  timeSpent   Int? // Time spent in seconds
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id            String     @id @default(cuid())
+  quizId        String
+  quiz          LessonQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student    @relation(fields: [studentId], references: [id])
+  answers       Json // Student's answers
+  score         Float? // Score percentage (0-100)
+  isPassed      Boolean    @default(false)
+  attemptNumber Int        @default(1)
+  startedAt     DateTime   @default(now())
+  submittedAt   DateTime?
+  timeSpent     Int? // Time spent in seconds
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   @@index([quizId, studentId])
   @@index([studentId, createdAt])
   @@map("quiz_attempts")
 }
 
-// School Branding and Customization
-model SchoolBranding {
-  id              String   @id @default(cuid())
-  schoolName      String
-  tagline         String?
-  logo            String? // URL to school logo
-  favicon         String? // URL to favicon
-  primaryColor    String   @default("#3b82f6") // Hex color code
-  secondaryColor  String   @default("#8b5cf6") // Hex color code
-  accentColor     String?  // Optional accent color
-  
-  // Email branding
-  emailLogo       String? // URL to logo for emails
-  emailFooter     String? // Custom footer text for emails
-  emailSignature  String? // Email signature
-  
-  // Document branding
-  letterheadLogo  String? // URL to letterhead logo
-  letterheadText  String? // Text for letterhead
-  documentFooter  String? // Footer text for documents
-  
-  // Contact information
-  address         String?
-  phone           String?
-  email           String?
-  website         String?
-  
-  // Social media
-  facebookUrl     String?
-  twitterUrl      String?
-  linkedinUrl     String?
-  instagramUrl    String?
-  
-  // System settings
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("school_branding")
-}
+// DEPRECATED: SchoolBranding model has been merged into SystemSettings
+// This model will be removed in a future migration

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SchoolBranding } from "@prisma/client";
-import { upsertSchoolBranding } from "@/lib/actions/school-branding";
+import { SystemSettings } from "@prisma/client";
+import { updateSchoolInfo, updateAppearanceSettings } from "@/lib/actions/settingsActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload } from "lucide-react";
 
 interface BrandingFormProps {
-  initialData: SchoolBranding | null;
+  initialData: SystemSettings | null;
 }
 
 export default function BrandingForm({ initialData }: BrandingFormProps) {
@@ -23,8 +23,8 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
   const [formData, setFormData] = useState({
     schoolName: initialData?.schoolName || "",
     tagline: initialData?.tagline || "",
-    logo: initialData?.logo || "",
-    favicon: initialData?.favicon || "",
+    logo: initialData?.schoolLogo || "",
+    favicon: initialData?.faviconUrl || "",
     primaryColor: initialData?.primaryColor || "#3b82f6",
     secondaryColor: initialData?.secondaryColor || "#8b5cf6",
     accentColor: initialData?.accentColor || "",
@@ -34,10 +34,10 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
     letterheadLogo: initialData?.letterheadLogo || "",
     letterheadText: initialData?.letterheadText || "",
     documentFooter: initialData?.documentFooter || "",
-    address: initialData?.address || "",
-    phone: initialData?.phone || "",
-    email: initialData?.email || "",
-    website: initialData?.website || "",
+    address: initialData?.schoolAddress || "",
+    phone: initialData?.schoolPhone || "",
+    email: initialData?.schoolEmail || "",
+    website: initialData?.schoolWebsite || "",
     facebookUrl: initialData?.facebookUrl || "",
     twitterUrl: initialData?.twitterUrl || "",
     linkedinUrl: initialData?.linkedinUrl || "",
@@ -56,9 +56,42 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
     setIsLoading(true);
 
     try {
-      const result = await upsertSchoolBranding(formData);
+      // Update school info
+      const schoolInfoResult = await updateSchoolInfo({
+        schoolName: formData.schoolName,
+        schoolEmail: formData.email || undefined,
+        schoolPhone: formData.phone || undefined,
+        schoolAddress: formData.address || undefined,
+        schoolWebsite: formData.website || undefined,
+        schoolLogo: formData.logo || undefined,
+        tagline: formData.tagline || undefined,
+        timezone: initialData?.timezone || "UTC",
+        facebookUrl: formData.facebookUrl || undefined,
+        twitterUrl: formData.twitterUrl || undefined,
+        linkedinUrl: formData.linkedinUrl || undefined,
+        instagramUrl: formData.instagramUrl || undefined,
+      });
 
-      if (result.success) {
+      // Update appearance settings
+      const appearanceResult = await updateAppearanceSettings({
+        defaultTheme: initialData?.defaultTheme || "LIGHT",
+        defaultColorTheme: initialData?.defaultColorTheme || "blue",
+        primaryColor: formData.primaryColor,
+        secondaryColor: formData.secondaryColor,
+        accentColor: formData.accentColor || undefined,
+        language: initialData?.language || "en",
+        dateFormat: initialData?.dateFormat || "mdy",
+        logoUrl: formData.logo || undefined,
+        faviconUrl: formData.favicon || undefined,
+        emailLogo: formData.emailLogo || undefined,
+        emailFooter: formData.emailFooter || undefined,
+        emailSignature: formData.emailSignature || undefined,
+        letterheadLogo: formData.letterheadLogo || undefined,
+        letterheadText: formData.letterheadText || undefined,
+        documentFooter: formData.documentFooter || undefined,
+      });
+
+      if (schoolInfoResult.success && appearanceResult.success) {
         toast({
           title: "Success",
           description: "School branding updated successfully",
@@ -67,7 +100,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to update branding",
+          description: schoolInfoResult.error || appearanceResult.error || "Failed to update branding",
           variant: "destructive",
         });
       }

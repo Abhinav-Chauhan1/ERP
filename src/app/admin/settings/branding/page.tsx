@@ -1,13 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from "react";
-import { getSchoolBranding } from "@/lib/actions/school-branding";
+import { getSystemSettings } from "@/lib/actions/settingsActions";
 import BrandingForm from "@/components/admin/settings/branding-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function BrandingPage() {
-  const result = await getSchoolBranding();
-  const branding = result.success && result.data ? result.data : null;
+  const result = await getSystemSettings();
+  const settings = result.success && result.data ? result.data : null;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -27,7 +27,7 @@ export default async function BrandingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <BrandingForm initialData={branding} />
+            <BrandingForm initialData={settings} />
           </CardContent>
         </Card>
       </Suspense>
