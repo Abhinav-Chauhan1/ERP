@@ -1,33 +1,39 @@
+export const dynamic = 'force-dynamic';
+
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
-import { StudentsTable } from "@/components/users/students-table";
+import { StudentsWithFilters } from "./students-with-filters";
+import { getFilterOptions } from "@/lib/actions/students-filters";
 
 export const metadata = {
   title: "Students - School ERP",
 };
 
 export default async function StudentsPage() {
-  const students = await db.student.findMany({
-    include: {
-      user: true,
-      enrollments: {
-        include: {
-          class: true,
-          section: true,
+  const [students, filterOptions] = await Promise.all([
+    db.student.findMany({
+      include: {
+        user: true,
+        enrollments: {
+          include: {
+            class: true,
+            section: true,
+          },
+          where: {
+            status: "ACTIVE",
+          },
+          take: 1,
         },
-        where: {
-          status: "ACTIVE",
-        },
-        take: 1,
       },
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    getFilterOptions(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,10 +53,14 @@ export default async function StudentsPage() {
 
       <Card>
         <CardHeader className="py-4">
-          <CardTitle className="text-xl">All Students ({students.length})</CardTitle>
+          <CardTitle className="text-xl">All Students</CardTitle>
         </CardHeader>
         <CardContent>
-          <StudentsTable students={students} />
+          <StudentsWithFilters
+            initialStudents={students}
+            classes={filterOptions.classes}
+            sections={filterOptions.sections}
+          />
         </CardContent>
       </Card>
     </div>

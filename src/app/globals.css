@@ -34,6 +34,13 @@
     --ring: 221.2 83.2% 53.3%;
 
     --radius: 0.5rem;
+
+    /* Chart colors */
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 173 80% 40%;
+    --chart-3: 24.6 95% 53.1%;
+    --chart-4: 262.1 83.3% 57.8%;
+    --chart-5: 142.1 76.2% 36.3%;
   }
 
   .dark {
@@ -64,6 +71,13 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.5% 48%;
+
+    /* Chart colors for dark mode */
+    --chart-1: 217.2 91.2% 59.8%;
+    --chart-2: 172.5 66% 50.4%;
+    --chart-3: 20.5 90.2% 48.2%;
+    --chart-4: 263.4 70% 50.4%;
+    --chart-5: 142.1 70.6% 45.3%;
   }
 
   /* Red Theme */
@@ -138,5 +152,101 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Ensure font-display: swap behavior for all fonts */
+    /* This prevents FOIT (Flash of Invisible Text) by showing fallback fonts immediately */
+    font-display: swap;
+  }
+  
+  /* Define fallback font stack for better performance */
+  /* If custom fonts fail to load, these system fonts provide good readability */
+  body {
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', 
+                 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 
+                 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+}
+
+/* Accessibility Enhancements */
+@layer utilities {
+  /* Enhanced Focus Indicators - WCAG 2.1 AA Compliant */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* High contrast focus for interactive elements */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Skip to main content link - visible on focus */
+  .skip-to-main {
+    @apply absolute left-0 top-0 z-[9999] -translate-y-full transform bg-primary px-4 py-2 text-primary-foreground transition-transform focus:translate-y-0;
+  }
+
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Not screen reader only - for when content should be visible */
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  /* Ensure minimum touch target size for mobile (44x44px) */
+  @media (max-width: 768px) {
+    button,
+    a,
+    [role="button"],
+    input[type="checkbox"],
+    input[type="radio"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    * {
+      border-width: 2px;
+    }
+    
+    *:focus-visible {
+      outline: 3px solid currentColor;
+      outline-offset: 2px;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "View your certificates, awards and achievements",
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function StudentAchievementsPage() {
   // Use direct authentication instead of getCurrentUserDetails
   const clerkUser = await currentUser();

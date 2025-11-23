@@ -86,10 +86,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ ev
             <Card>
               <div className="relative">
                 {event.thumbnail ? (
-                  <div 
-                    className="h-64 w-full bg-cover bg-center" 
-                    style={{ backgroundImage: `url(${event.thumbnail})` }}
-                  />
+                  <div className="relative h-64 w-full">
+                    <img
+                      src={event.thumbnail}
+                      alt={event.title}
+                      width={800}
+                      height={256}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="h-64 w-full bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center">
                     <Calendar className="h-16 w-16 text-blue-400" />

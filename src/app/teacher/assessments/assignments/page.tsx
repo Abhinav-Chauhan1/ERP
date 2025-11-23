@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getTeacherAssignments } from "@/lib/actions/teacherAssignmentsActions";
@@ -447,3 +448,4 @@ export default function TeacherAssignmentsPage() {
     </div>
   );
 }
+

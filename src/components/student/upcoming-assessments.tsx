@@ -55,11 +55,11 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 ))}
                 
                 <div className="flex justify-end">
-                  <Link href="/student/assessments/exams">
-                    <Button variant="link" size="sm" className="font-normal text-primary">
+                  <Button variant="link" size="sm" className="font-normal text-primary" asChild>
+                    <Link href="/student/assessments/exams">
                       View all exams <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -103,11 +103,11 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 ))}
                 
                 <div className="flex justify-end">
-                  <Link href="/student/assessments/assignments">
-                    <Button variant="link" size="sm" className="font-normal text-primary">
+                  <Button variant="link" size="sm" className="font-normal text-primary" asChild>
+                    <Link href="/student/assessments/assignments">
                       View all assignments <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </div>
             ) : (

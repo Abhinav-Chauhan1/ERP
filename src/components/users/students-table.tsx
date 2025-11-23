@@ -125,6 +125,8 @@ export function StudentsTable({ students }: StudentsTableProps) {
                           <img
                             src={student.user.avatar}
                             alt={`${student.user.firstName} ${student.user.lastName}`}
+                            width={32}
+                            height={32}
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (

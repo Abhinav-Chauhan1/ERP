@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentForm } from "@/components/parent/fees/payment-form";
@@ -319,3 +320,4 @@ export default function MakePaymentPage() {
     </div>
   );
 }
+

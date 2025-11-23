@@ -1,6 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
+import { rateLimit, getClientIp, createRateLimitResponse } from "@/lib/utils/rate-limit";
+import { isIpWhitelisted, createIpBlockedResponse } from "@/lib/utils/ip-whitelist";
+import { checkPermissionInMiddleware } from "@/lib/utils/permission-middleware";
 
 // Define route access patterns directly in the middleware
 const adminRoutes = createRouteMatcher(["/admin(.*)"]);
@@ -15,12 +18,54 @@ const publicRoutes = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",
-  "/api/users/sync(.*)"
+  "/api/users/sync(.*)",
+  "/api/test-rate-limit(.*)"  // Test endpoint for rate limiting
 ]);
 
 const authRedirectRoute = createRouteMatcher(["/auth-redirect"]);
+const apiRoutes = createRouteMatcher(["/api(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Get client IP for rate limiting and IP whitelisting
+  const clientIp = getClientIp(req.headers);
+  
+  // Apply IP whitelisting to admin routes
+  if (adminRoutes(req)) {
+    if (!isIpWhitelisted(clientIp)) {
+      console.warn(`Blocked admin access from non-whitelisted IP: ${clientIp}`);
+      return createIpBlockedResponse();
+    }
+  }
+  
+  // Apply rate limiting to all API routes
+  if (apiRoutes(req)) {
+    const rateLimitResult = await rateLimit(clientIp);
+    
+    const rateLimitResponse = createRateLimitResponse(rateLimitResult);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+    
+    // Add rate limit headers to successful requests
+    const response = NextResponse.next();
+    response.headers.set("X-RateLimit-Limit", rateLimitResult.limit.toString());
+    response.headers.set("X-RateLimit-Remaining", rateLimitResult.remaining.toString());
+    response.headers.set("X-RateLimit-Reset", rateLimitResult.reset.toString());
+    
+    // Continue with authentication checks for non-public API routes
+    if (!publicRoutes(req)) {
+      const authObject = await auth();
+      if (!authObject.userId) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+    }
+    
+    return response;
+  }
+  
   // Handle public routes
   if (publicRoutes(req)) {
     return NextResponse.next();
@@ -48,7 +93,29 @@ export default clerkMiddleware(async (auth, req) => {
   // Get role from metadata in session claims
   const role = (authObject.sessionClaims?.metadata as { role?: string })?.role;
 
-  // Role-based access control
+  // Check route-level permissions
+  const permissionCheck = checkPermissionInMiddleware(req.nextUrl.pathname, role as UserRole);
+  
+  if (!permissionCheck.allowed) {
+    console.warn(
+      `Permission denied for user ${authObject.userId} (${role}) accessing ${req.nextUrl.pathname}`,
+      `Required: ${permissionCheck.action} ${permissionCheck.resource}`,
+      `Reason: ${permissionCheck.reason}`
+    );
+    
+    // Redirect to appropriate dashboard based on role
+    const redirectMap: Record<string, string> = {
+      [UserRole.ADMIN]: '/admin',
+      [UserRole.TEACHER]: '/teacher',
+      [UserRole.STUDENT]: '/student',
+      [UserRole.PARENT]: '/parent',
+    };
+    
+    const redirectUrl = redirectMap[role as UserRole] || '/';
+    return NextResponse.redirect(new URL(redirectUrl, req.url));
+  }
+
+  // Role-based access control (fallback for routes without specific permissions)
   if (role === UserRole.ADMIN) {
     // Admins can access everything
     return NextResponse.next();

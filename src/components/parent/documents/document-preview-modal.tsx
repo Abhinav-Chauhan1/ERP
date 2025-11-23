@@ -110,6 +110,8 @@ export function DocumentPreviewModal({
                       <img
                         src={document.fileUrl}
                         alt={document.title}
+                        width={800}
+                        height={600}
                         loading="lazy"
                         className="max-w-full max-h-full object-contain"
                       />

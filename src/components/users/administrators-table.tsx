@@ -123,6 +123,8 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
                           <img
                             src={admin.user.avatar}
                             alt={`${admin.user.firstName} ${admin.user.lastName}`}
+                            width={32}
+                            height={32}
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (

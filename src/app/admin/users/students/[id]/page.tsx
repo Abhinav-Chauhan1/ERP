@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,10 +118,13 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex-none flex flex-col items-center gap-2">
                 {student.user.avatar ? (
-                  <img 
+                  <OptimizedImage 
                     src={student.user.avatar} 
                     alt={`${student.user.firstName} ${student.user.lastName}`}
+                    width={128}
+                    height={128}
                     className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-md"
+                    qualityPreset="high"
                   />
                 ) : (
                   <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold border-4 border-white shadow-md">
@@ -247,10 +251,13 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                   <div key={parentRelation.id} className="flex justify-between items-center p-4 rounded-md border">
                     <div className="flex items-center gap-4">
                       {parentRelation.parent.user.avatar ? (
-                        <img 
+                        <OptimizedImage 
                           src={parentRelation.parent.user.avatar} 
                           alt={`${parentRelation.parent.user.firstName} ${parentRelation.parent.user.lastName}`}
+                          width={40}
+                          height={40}
                           className="h-10 w-10 rounded-full object-cover"
+                          qualityPreset="medium"
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">

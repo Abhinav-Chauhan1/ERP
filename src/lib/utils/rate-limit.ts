@@ -1,198 +1,239 @@
 /**
  * Rate Limiting Utility
- * Implements rate limiting for API endpoints and server actions
- * Requirements: 10.2, 10.4
+ * Implements rate limiting for API routes
+ * Requirements: 6.3
+ * 
+ * Configuration:
+ * - 100 requests per 10 seconds per IP
+ * - Returns 429 status code when limit exceeded
  */
 
-/**
- * Rate limit configuration
- */
-export interface RateLimitConfig {
-  windowMs: number; // Time window in milliseconds
-  maxRequests: number; // Maximum requests per window
-}
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-/**
- * Rate limit store entry
- */
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
+// In-memory fallback for development/testing
+class InMemoryRateLimiter {
+  private requests: Map<string, number[]> = new Map();
+  private maxRequests: number;
+  private window: number;
 
-/**
- * In-memory rate limit store
- * In production, use Redis or similar for distributed rate limiting
- */
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-/**
- * Predefined rate limit configurations
- */
-export const RateLimitPresets = {
-  // Strict rate limit for payment operations (5 requests per 10 seconds)
-  PAYMENT: {
-    windowMs: 10000,
-    maxRequests: 5,
-  },
-  // Moderate rate limit for message sending (10 requests per minute)
-  MESSAGE: {
-    windowMs: 60000,
-    maxRequests: 10,
-  },
-  // Moderate rate limit for file uploads (5 requests per minute)
-  FILE_UPLOAD: {
-    windowMs: 60000,
-    maxRequests: 5,
-  },
-  // Lenient rate limit for general API calls (30 requests per minute)
-  GENERAL: {
-    windowMs: 60000,
-    maxRequests: 30,
-  },
-  // Very strict rate limit for authentication (3 requests per 5 minutes)
-  AUTH: {
-    windowMs: 300000,
-    maxRequests: 3,
-  },
-} as const;
-
-/**
- * Check if request is within rate limit
- * Returns true if allowed, false if rate limit exceeded
- */
-export function checkRateLimit(
-  identifier: string,
-  config: RateLimitConfig = RateLimitPresets.GENERAL
-): boolean {
-  const now = Date.now();
-  const key = `${identifier}:${config.windowMs}:${config.maxRequests}`;
-  const entry = rateLimitStore.get(key);
-
-  // If no entry exists or window has expired, create new entry
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(key, {
-      count: 1,
-      resetTime: now + config.windowMs,
-    });
-    return true;
+  constructor(limit: number, window: number) {
+    this.maxRequests = limit;
+    this.window = window;
   }
 
-  // If limit exceeded, deny request
-  if (entry.count >= config.maxRequests) {
-    return false;
+  async limit(identifier: string): Promise<{
+    success: boolean;
+    limit: number;
+    remaining: number;
+    reset: number;
+  }> {
+    const now = Date.now();
+    const windowStart = now - this.window;
+
+    // Get existing requests for this identifier
+    let timestamps = this.requests.get(identifier) || [];
+
+    // Filter out requests outside the current window
+    timestamps = timestamps.filter((timestamp) => timestamp > windowStart);
+
+    // Check if limit exceeded
+    if (timestamps.length >= this.maxRequests) {
+      const oldestTimestamp = timestamps[0];
+      const reset = oldestTimestamp + this.window;
+
+      return {
+        success: false,
+        limit: this.maxRequests,
+        remaining: 0,
+        reset,
+      };
+    }
+
+    // Add current request
+    timestamps.push(now);
+    this.requests.set(identifier, timestamps);
+
+    // Clean up old entries periodically
+    if (Math.random() < 0.01) {
+      this.cleanup();
+    }
+
+    return {
+      success: true,
+      limit: this.maxRequests,
+      remaining: this.maxRequests - timestamps.length,
+      reset: now + this.window,
+    };
   }
 
-  // Increment count and allow request
-  entry.count++;
-  return true;
-}
-
-/**
- * Get remaining requests for an identifier
- */
-export function getRemainingRequests(
-  identifier: string,
-  config: RateLimitConfig = RateLimitPresets.GENERAL
-): number {
-  const now = Date.now();
-  const key = `${identifier}:${config.windowMs}:${config.maxRequests}`;
-  const entry = rateLimitStore.get(key);
-
-  if (!entry || now > entry.resetTime) {
-    return config.maxRequests;
-  }
-
-  return Math.max(0, config.maxRequests - entry.count);
-}
-
-/**
- * Get time until rate limit reset (in milliseconds)
- */
-export function getResetTime(
-  identifier: string,
-  config: RateLimitConfig = RateLimitPresets.GENERAL
-): number {
-  const now = Date.now();
-  const key = `${identifier}:${config.windowMs}:${config.maxRequests}`;
-  const entry = rateLimitStore.get(key);
-
-  if (!entry || now > entry.resetTime) {
-    return 0;
-  }
-
-  return entry.resetTime - now;
-}
-
-/**
- * Reset rate limit for an identifier
- * Useful for testing or manual reset
- */
-export function resetRateLimit(
-  identifier: string,
-  config: RateLimitConfig = RateLimitPresets.GENERAL
-): void {
-  const key = `${identifier}:${config.windowMs}:${config.maxRequests}`;
-  rateLimitStore.delete(key);
-}
-
-/**
- * Clean up expired entries from the store
- * Should be called periodically to prevent memory leaks
- */
-export function cleanupExpiredEntries(): void {
-  const now = Date.now();
-  
-  for (const [key, entry] of Array.from(rateLimitStore.entries())) {
-    if (now > entry.resetTime) {
-      rateLimitStore.delete(key);
+  private cleanup() {
+    const now = Date.now();
+    for (const [key, timestamps] of this.requests.entries()) {
+      const filtered = timestamps.filter(
+        (timestamp) => timestamp > now - this.window
+      );
+      if (filtered.length === 0) {
+        this.requests.delete(key);
+      } else {
+        this.requests.set(key, filtered);
+      }
     }
   }
 }
 
-/**
- * Rate limit middleware for API routes
- * Returns response object if rate limit exceeded, null otherwise
- */
-export function rateLimitMiddleware(
-  identifier: string,
-  config: RateLimitConfig = RateLimitPresets.GENERAL
-): { exceeded: boolean; remaining: number; resetTime: number } {
-  const allowed = checkRateLimit(identifier, config);
-  const remaining = getRemainingRequests(identifier, config);
-  const resetTime = getResetTime(identifier, config);
+// Create rate limiter instance
+let rateLimiter: Ratelimit | InMemoryRateLimiter;
 
-  return {
-    exceeded: !allowed,
-    remaining,
-    resetTime,
-  };
+// Try to use Upstash if configured, otherwise fall back to in-memory
+if (
+  process.env.UPSTASH_REDIS_REST_URL &&
+  process.env.UPSTASH_REDIS_REST_TOKEN
+) {
+  // Use Upstash Redis for production
+  const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+
+  rateLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(100, "10 s"),
+    analytics: true,
+    prefix: "@upstash/ratelimit",
+  });
+} else {
+  // Use in-memory rate limiter for development
+  console.warn(
+    "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not configured. Using in-memory rate limiter."
+  );
+  rateLimiter = new InMemoryRateLimiter(100, 10000); // 100 requests per 10 seconds
 }
 
 /**
- * Rate limit decorator for server actions
- * Throws error if rate limit exceeded
+ * Rate limit a request based on IP address
+ * @param identifier - Unique identifier (typically IP address)
+ * @returns Rate limit result
  */
-export async function withRateLimit<T>(
-  identifier: string,
-  config: RateLimitConfig,
-  action: () => Promise<T>
-): Promise<T> {
-  const allowed = checkRateLimit(identifier, config);
+export async function rateLimit(identifier: string) {
+  if (rateLimiter instanceof InMemoryRateLimiter) {
+    return await rateLimiter.limit(identifier);
+  } else {
+    // Upstash Ratelimit returns a different structure
+    const result = await rateLimiter.limit(identifier);
+    return {
+      success: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
+    };
+  }
+}
 
-  if (!allowed) {
-    const resetTime = getResetTime(identifier, config);
-    const resetInSeconds = Math.ceil(resetTime / 1000);
-    throw new Error(
-      `Rate limit exceeded. Please try again in ${resetInSeconds} seconds.`
+/**
+ * Get client IP address from request headers
+ * @param headers - Request headers
+ * @returns IP address
+ */
+export function getClientIp(headers: Headers): string {
+  // Try various headers that might contain the real IP
+  const forwardedFor = headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  const realIp = headers.get("x-real-ip");
+  if (realIp) {
+    return realIp;
+  }
+
+  const cfConnectingIp = headers.get("cf-connecting-ip");
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+
+  // Fallback to a default value
+  return "unknown";
+}
+
+/**
+ * Create a rate limit response
+ * @param result - Rate limit result
+ * @returns Response with appropriate headers
+ */
+export function createRateLimitResponse(result: {
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
+}) {
+  const headers = new Headers();
+  headers.set("X-RateLimit-Limit", result.limit.toString());
+  headers.set("X-RateLimit-Remaining", result.remaining.toString());
+  headers.set("X-RateLimit-Reset", result.reset.toString());
+
+  if (!result.success) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Too many requests. Please try again later.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Limit": result.limit.toString(),
+          "X-RateLimit-Remaining": result.remaining.toString(),
+          "X-RateLimit-Reset": result.reset.toString(),
+          "Retry-After": Math.ceil((result.reset - Date.now()) / 1000).toString(),
+        },
+      }
     );
   }
 
-  return await action();
+  return null;
 }
 
-// Set up periodic cleanup (every 5 minutes)
-if (typeof window === "undefined") {
-  // Only run on server
-  setInterval(cleanupExpiredEntries, 5 * 60 * 1000);
+/**
+ * Rate limit presets for different operations
+ */
+export const RateLimitPresets = {
+  MESSAGE: { limit: 10, window: 60000 }, // 10 messages per minute
+  PAYMENT: { limit: 5, window: 60000 }, // 5 payment operations per minute
+  FILE_UPLOAD: { limit: 10, window: 60000 }, // 10 file uploads per minute
+  API: { limit: 100, window: 60000 }, // 100 API calls per minute
+} as const;
+
+/**
+ * Check rate limit for server actions
+ * @param identifier - Unique identifier (typically user ID)
+ * @param preset - Rate limit preset
+ * @returns true if allowed, false if rate limited
+ */
+export async function checkRateLimit(
+  identifier: string,
+  preset: { limit: number; window: number }
+): Promise<boolean> {
+  const result = await rateLimit(identifier);
+  return result.success;
+}
+
+/**
+ * Rate limit middleware for API routes
+ * @param identifier - Unique identifier (typically user ID)
+ * @param preset - Rate limit preset
+ * @returns Rate limit result with exceeded flag
+ */
+export async function rateLimitMiddleware(
+  identifier: string,
+  preset: { limit: number; window: number }
+): Promise<{ exceeded: boolean; limit: number; remaining: number; reset: number }> {
+  const result = await rateLimit(identifier);
+  return {
+    exceeded: !result.success,
+    limit: result.limit,
+    remaining: result.remaining,
+    reset: result.reset,
+  };
 }

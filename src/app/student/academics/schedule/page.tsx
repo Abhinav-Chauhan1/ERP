@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Metadata } from "next";
 import { getStudentTimetable } from "@/lib/actions/student-academics-actions";
 import { TimetableView } from "@/components/student/timetable-view";

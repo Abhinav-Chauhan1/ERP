@@ -15,6 +15,7 @@ export const CACHE_TAGS = {
   PARENTS: "parents",
   ADMINS: "admins",
   CLASSES: "classes",
+  SECTIONS: "sections",
   SUBJECTS: "subjects",
   MESSAGES: "messages",
   NOTIFICATIONS: "notifications",
@@ -27,6 +28,15 @@ export const CACHE_TAGS = {
   TIMETABLE: "timetable",
   SETTINGS: "settings",
   DASHBOARD: "dashboard",
+  ACADEMIC_YEARS: "academic-years",
+  TERMS: "terms",
+  DEPARTMENTS: "departments",
+  ROOMS: "rooms",
+  GRADES: "grades",
+  RESULTS: "results",
+  DOCUMENTS: "documents",
+  LIBRARY: "library",
+  TRANSPORT: "transport",
 } as const;
 
 export const CACHE_DURATION = {
@@ -48,6 +58,12 @@ export const CACHE_DURATION = {
   TIMETABLE: 1800, // 30 minutes
   SETTINGS: 3600, // 1 hour
   DROPDOWN_DATA: 600, // 10 minutes
+  ACADEMIC_YEARS: 3600, // 1 hour - as per requirements
+  TERMS: 3600, // 1 hour - as per requirements
+  CLASSES: 1800, // 30 minutes
+  SUBJECTS: 1800, // 30 minutes
+  LIBRARY: 300, // 5 minutes
+  TRANSPORT: 600, // 10 minutes
 } as const;
 
 /**
@@ -234,6 +250,18 @@ export const CACHE_CONFIG = {
     tags: [CACHE_TAGS.USERS],
     revalidate: CACHE_DURATION.MEDIUM,
   },
+  students: {
+    tags: [CACHE_TAGS.STUDENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  teachers: {
+    tags: [CACHE_TAGS.TEACHERS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  parents: {
+    tags: [CACHE_TAGS.PARENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
   
   // Dashboard data
   dashboardStats: {
@@ -256,17 +284,91 @@ export const CACHE_CONFIG = {
   },
   
   // Academic data
+  academicYears: {
+    tags: [CACHE_TAGS.ACADEMIC_YEARS],
+    revalidate: CACHE_DURATION.ACADEMIC_YEARS,
+  },
+  terms: {
+    tags: [CACHE_TAGS.TERMS],
+    revalidate: CACHE_DURATION.TERMS,
+  },
   timetable: {
     tags: [CACHE_TAGS.TIMETABLE],
     revalidate: CACHE_DURATION.TIMETABLE,
   },
   classes: {
     tags: [CACHE_TAGS.CLASSES],
+    revalidate: CACHE_DURATION.CLASSES,
+  },
+  sections: {
+    tags: [CACHE_TAGS.SECTIONS],
     revalidate: CACHE_DURATION.LONG,
   },
   subjects: {
     tags: [CACHE_TAGS.SUBJECTS],
+    revalidate: CACHE_DURATION.SUBJECTS,
+  },
+  departments: {
+    tags: [CACHE_TAGS.DEPARTMENTS],
     revalidate: CACHE_DURATION.LONG,
+  },
+  rooms: {
+    tags: [CACHE_TAGS.ROOMS],
+    revalidate: CACHE_DURATION.LONG,
+  },
+  
+  // Assessment data
+  exams: {
+    tags: [CACHE_TAGS.EXAMS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  assignments: {
+    tags: [CACHE_TAGS.ASSIGNMENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  grades: {
+    tags: [CACHE_TAGS.GRADES],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  results: {
+    tags: [CACHE_TAGS.RESULTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  
+  // Attendance data
+  attendance: {
+    tags: [CACHE_TAGS.ATTENDANCE],
+    revalidate: CACHE_DURATION.SHORT,
+  },
+  
+  // Financial data
+  feePayments: {
+    tags: [CACHE_TAGS.FEE_PAYMENTS],
+    revalidate: CACHE_DURATION.SHORT,
+  },
+  
+  // Events
+  events: {
+    tags: [CACHE_TAGS.EVENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  
+  // Documents
+  documents: {
+    tags: [CACHE_TAGS.DOCUMENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  
+  // Library
+  library: {
+    tags: [CACHE_TAGS.LIBRARY],
+    revalidate: CACHE_DURATION.LIBRARY,
+  },
+  
+  // Transport
+  transport: {
+    tags: [CACHE_TAGS.TRANSPORT],
+    revalidate: CACHE_DURATION.TRANSPORT,
   },
   
   // Settings

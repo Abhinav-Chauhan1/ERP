@@ -119,10 +119,16 @@ export function EventCard({
   return (
     <Card className="h-full flex flex-col overflow-hidden">
       {event.thumbnail ? (
-        <div 
-          className="h-40 w-full bg-cover bg-center bg-gray-100" 
-          style={{ backgroundImage: `url(${event.thumbnail})` }}
-        />
+        <div className="relative h-40 w-full bg-gray-100">
+          <img
+            src={event.thumbnail}
+            alt={event.title}
+            width={400}
+            height={160}
+            loading="lazy"
+            className="w-full h-full object-cover"
+          />
+        </div>
       ) : (
         <div className="h-40 w-full bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center">
           <Calendar className="h-10 w-10 text-blue-500" />

@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Assessments | Student Portal",
   description: "View your exams, assignments, and academic evaluations",

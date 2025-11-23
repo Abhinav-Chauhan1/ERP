@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { NotificationList } from "@/components/student/communication";
 import { 
@@ -131,3 +132,4 @@ export default function StudentNotificationsPage() {
     </div>
   );
 }
+

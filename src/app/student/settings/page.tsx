@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
@@ -9,6 +11,7 @@ import { AccountSettings } from "@/components/student/settings/account-settings"
 import { NotificationSettings } from "@/components/student/settings/notification-settings";
 import { PrivacySettings } from "@/components/student/settings/privacy-settings";
 import { AppearanceSettings } from "@/components/student/settings/appearance-settings";
+import { SecuritySettings } from "@/components/student/settings/security-settings";
 import { getStudentSettings } from "@/lib/actions/student-settings-actions";
 
 export const metadata: Metadata = {
@@ -58,10 +61,11 @@ export default async function StudentSettingsPage() {
       </div>
 
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl mb-8">
+        <TabsList className="grid grid-cols-5 w-full max-w-3xl mb-8">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
 
@@ -75,6 +79,10 @@ export default async function StudentSettingsPage() {
 
         <TabsContent value="privacy" className="space-y-6">
           <PrivacySettings studentId={student.id} settings={settings} />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <SecuritySettings />
         </TabsContent>
 
         <TabsContent value="appearance" className="space-y-6">

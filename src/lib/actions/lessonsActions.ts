@@ -9,7 +9,15 @@ export async function getLessons() {
   try {
     const lessons = await db.lesson.findMany({
       include: {
-        subject: true,
+        subject: {
+          include: {
+            classes: {
+              include: {
+                class: true,
+              },
+            },
+          },
+        },
         syllabusUnit: true,
       },
       orderBy: {
@@ -17,15 +25,10 @@ export async function getLessons() {
       },
     });
     
-    // Transform data for the UI
-    const formattedLessons = await Promise.all(lessons.map(async (lesson) => {
-      // Get classes associated with the subject
-      const subjectClasses = await db.subjectClass.findMany({
-        where: { subjectId: lesson.subjectId },
-        include: { class: true },
-      });
-      
-      const grades = subjectClasses.map(sc => sc.class.name);
+    // Transform data for the UI (optimized to prevent N+1 query)
+    const formattedLessons = lessons.map((lesson) => {
+      // Get classes associated with the subject from included data
+      const grades = lesson.subject.classes.map(sc => sc.class.name);
 
       return {
         id: lesson.id,
@@ -44,7 +47,7 @@ export async function getLessons() {
         content: lesson.content || "",
         syllabusUnitId: lesson.syllabusUnitId || "",
       };
-    }));
+    });
     
     return { success: true, data: formattedLessons };
   } catch (error) {

@@ -11,6 +11,7 @@ import {
 } from "@/lib/schemaValidation/usersSchemaValidation";
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
+import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 
 // Helper function to create base user
 const createBaseUser = async (clerkId: string, userData: {
@@ -75,6 +76,20 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
         }
       });
 
+      // Log the creation
+      await logCreate(
+        user.id,
+        'administrator',
+        administrator.id,
+        {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          position: data.position,
+          department: data.department,
+        }
+      );
+
       revalidatePath('/admin/users');
       return { user, administrator };
     });
@@ -135,6 +150,20 @@ export async function createTeacher(data: CreateTeacherFormData) {
           salary: data.salary,
         }
       });
+
+      // Log the creation
+      await logCreate(
+        user.id,
+        'teacher',
+        teacher.id,
+        {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          employeeId: data.employeeId,
+          qualification: data.qualification,
+        }
+      );
 
       revalidatePath('/admin/users');
       return { user, teacher };
@@ -201,6 +230,21 @@ export async function createStudent(data: CreateStudentFormData) {
         }
       });
 
+      // Log the creation
+      await logCreate(
+        user.id,
+        'student',
+        student.id,
+        {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          admissionId: data.admissionId,
+          rollNumber: data.rollNumber,
+          gender: data.gender,
+        }
+      );
+
       revalidatePath('/admin/users');
       return { user, student };
     });
@@ -260,6 +304,20 @@ export async function createParent(data: CreateParentFormData) {
           relation: data.relation,
         }
       });
+
+      // Log the creation
+      await logCreate(
+        user.id,
+        'parent',
+        parent.id,
+        {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          occupation: data.occupation,
+          relation: data.relation,
+        }
+      );
 
       revalidatePath('/admin/users');
       return { user, parent };
@@ -579,6 +637,12 @@ export async function syncClerkUser(clerkId: string, userData: {
 // Delete user
 export async function deleteUser(userId: string) {
   try {
+    const { userId: currentUserId } = await auth();
+    
+    if (!currentUserId) {
+      throw new Error('Unauthorized');
+    }
+
     const user = await db.user.findUnique({
       where: { id: userId }
     });
@@ -586,6 +650,19 @@ export async function deleteUser(userId: string) {
     if (!user) {
       throw new Error('User not found');
     }
+
+    // Log the deletion before actually deleting
+    await logDelete(
+      currentUserId,
+      'user',
+      userId,
+      {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+      }
+    );
 
     // Delete from Clerk
     const clerk = await clerkClient();

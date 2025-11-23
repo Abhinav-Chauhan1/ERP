@@ -118,6 +118,8 @@ export function EventDetailModal({
               <img
                 src={event.thumbnail}
                 alt={event.title}
+                width={800}
+                height={192}
                 loading="lazy"
                 className="w-full h-full object-cover"
               />

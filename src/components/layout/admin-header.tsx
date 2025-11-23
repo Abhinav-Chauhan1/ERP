@@ -4,25 +4,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
+import { GlobalSearch } from "@/components/shared/global-search";
+import { NotificationCenter } from "@/components/shared/notification-center";
 
 import { AdminSidebar } from "./admin-sidebar";
 
 export function AdminHeader() {
   const pathname = usePathname();
-  const [notifications, setNotifications] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Simulate fetching notifications count
   useEffect(() => {
     setIsMounted(true);
-    // This would be replaced with an actual API call
-    setNotifications(5);
   }, []);
 
   if (!isMounted) {
@@ -30,20 +27,25 @@ export function AdminHeader() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-card px-6">
+    <div className="flex h-16 items-center justify-between border-b bg-card px-6 gap-4">
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="md:hidden"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
+          <SheetContent side="left" className="p-0" aria-label="Navigation menu">
             <AdminSidebar />
           </SheetContent>
         </Sheet>
-        <Link href="/admin" className="md:hidden">
+        <Link href="/admin" className="md:hidden" aria-label="Go to admin dashboard">
           <h1 className="text-xl font-bold">School ERP</h1>
         </Link>
       </div>
@@ -66,19 +68,15 @@ export function AdminHeader() {
         </h1>
       </div>
 
+      {/* Global Search - Hidden on mobile, visible on tablet and up */}
+      <div className="hidden sm:block flex-1 max-w-md mx-4">
+        <GlobalSearch />
+      </div>
+
       <div className="flex items-center gap-2">
         <ColorThemeToggle />
         <ThemeToggle />
-        <Link href="/admin/communication/notifications">
-          <Button variant="outline" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {notifications > 0 && (
-              <Badge className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs">
-                {notifications}
-              </Badge>
-            )}
-          </Button>
-        </Link>
+        <NotificationCenter />
         <UserButton afterSignOutUrl="/login" />
       </div>
     </div>

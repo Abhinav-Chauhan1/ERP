@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -1057,3 +1058,4 @@ export default function SyllabusPage() {
     </Suspense>
   );
 }
+

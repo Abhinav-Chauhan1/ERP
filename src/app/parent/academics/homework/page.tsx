@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HomeworkList } from "@/components/parent/academics/homework-list";
@@ -203,3 +204,4 @@ export default function HomeworkPage() {
     </div>
   );
 }
+

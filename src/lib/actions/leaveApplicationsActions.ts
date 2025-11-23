@@ -352,31 +352,60 @@ export async function getLeaveApplications(
       ]
     });
 
-    // Fetch applicant details
-    const enhancedApplications = await Promise.all(leaveApplications.map(async (app) => {
+    // Fetch applicant details (optimized to prevent N+1 query)
+    // Separate student and teacher IDs
+    const studentIds = leaveApplications
+      .filter(app => app.applicantType === "STUDENT")
+      .map(app => app.applicantId);
+    const teacherIds = leaveApplications
+      .filter(app => app.applicantType === "TEACHER")
+      .map(app => app.applicantId);
+
+    // Batch fetch all students and teachers
+    const [students, teachers] = await Promise.all([
+      studentIds.length > 0 ? db.student.findMany({
+        where: { id: { in: studentIds } },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            }
+          },
+          enrollments: {
+            where: { status: "ACTIVE" },
+            include: {
+              class: true,
+              section: true
+            }
+          }
+        }
+      }) : Promise.resolve([]),
+      teacherIds.length > 0 ? db.teacher.findMany({
+        where: { id: { in: teacherIds } },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            }
+          }
+        }
+      }) : Promise.resolve([])
+    ]);
+
+    // Create lookup maps
+    const studentMap = new Map(students.map(s => [s.id, s]));
+    const teacherMap = new Map(teachers.map(t => [t.id, t]));
+
+    // Enhance applications with applicant details
+    const enhancedApplications = leaveApplications.map((app) => {
       let applicantDetails = null;
       
       if (app.applicantType === "STUDENT") {
-        const student = await db.student.findUnique({
-          where: { id: app.applicantId },
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                avatar: true,
-              }
-            },
-            enrollments: {
-              where: { status: "ACTIVE" },
-              include: {
-                class: true,
-                section: true
-              }
-            }
-          }
-        });
-        
+        const student = studentMap.get(app.applicantId);
         if (student) {
           applicantDetails = {
             name: `${student.user.firstName} ${student.user.lastName}`,
@@ -387,19 +416,7 @@ export async function getLeaveApplications(
           };
         }
       } else if (app.applicantType === "TEACHER") {
-        const teacher = await db.teacher.findUnique({
-          where: { id: app.applicantId },
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                avatar: true,
-              }
-            }
-          }
-        });
-        
+        const teacher = teacherMap.get(app.applicantId);
         if (teacher) {
           applicantDetails = {
             name: `${teacher.user.firstName} ${teacher.user.lastName}`,
@@ -414,7 +431,7 @@ export async function getLeaveApplications(
         applicant: applicantDetails,
         duration: Math.round((new Date(app.toDate).getTime() - new Date(app.fromDate).getTime()) / (1000 * 60 * 60 * 24)) + 1,
       };
-    }));
+    });
     
     return { success: true, data: enhancedApplications };
   } catch (error) {

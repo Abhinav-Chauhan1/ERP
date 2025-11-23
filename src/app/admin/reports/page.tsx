@@ -1,11 +1,12 @@
 "use client";
 
+
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   BarChart3, DollarSign, Users, TrendingUp,
-  FileText, Download, Calendar, ArrowRight
+  FileText, Download, Calendar, ArrowRight, GitCompare
 } from "lucide-react";
 
 export default function ReportsPage() {
@@ -122,22 +123,33 @@ export default function ReportsPage() {
           <CardDescription>Common reporting tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-4">
             <Button variant="outline" className="justify-start">
               <Download className="mr-2 h-4 w-4" />
               Export All Data
             </Button>
-            <Button variant="outline" className="justify-start">
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedule Report
-            </Button>
-            <Button variant="outline" className="justify-start">
-              <FileText className="mr-2 h-4 w-4" />
-              Custom Report Builder
-            </Button>
+            <Link href="/admin/reports/scheduled">
+              <Button variant="outline" className="justify-start w-full">
+                <Calendar className="mr-2 h-4 w-4" />
+                Scheduled Reports
+              </Button>
+            </Link>
+            <Link href="/admin/reports/builder">
+              <Button variant="outline" className="justify-start w-full">
+                <FileText className="mr-2 h-4 w-4" />
+                Custom Report Builder
+              </Button>
+            </Link>
+            <Link href="/admin/reports/comparative">
+              <Button variant="outline" className="justify-start w-full">
+                <GitCompare className="mr-2 h-4 w-4" />
+                Comparative Analysis
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+

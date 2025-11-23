@@ -1,39 +1,44 @@
-import { SkeletonForm } from "@/components/shared/loading/skeleton-form";
-import { Card, CardContent } from "@/components/ui/card";
+import { SkeletonCard } from "@/components/shared/loading/skeleton-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function StudentProfileLoading() {
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
-      <Skeleton className="h-8 w-48" />
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-96" />
+      </div>
 
       {/* Profile Card */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Avatar */}
-            <div className="flex flex-col items-center gap-2">
-              <Skeleton className="h-32 w-32 rounded-full" />
-              <Skeleton className="h-9 w-32" />
-            </div>
-            
-            {/* Info */}
+          <div className="flex items-start gap-6">
+            <Skeleton className="h-32 w-32 rounded-full" />
             <div className="flex-1 space-y-4">
-              <Skeleton className="h-8 w-64" />
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="space-y-1">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Details Form */}
-      <SkeletonForm fields={6} showHeader={false} />
+      {/* Additional Info */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <SkeletonCard contentLines={5} />
+        <SkeletonCard contentLines={5} />
+      </div>
     </div>
   );
 }

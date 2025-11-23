@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { AnnouncementList } from "@/components/student/communication";
 import { getAnnouncements } from "@/lib/actions/student-communication-actions";
@@ -78,3 +79,4 @@ export default function StudentAnnouncementsPage() {
     </div>
   );
 }
+

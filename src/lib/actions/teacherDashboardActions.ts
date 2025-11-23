@@ -543,33 +543,46 @@ export async function getTeacherDashboardData() {
       };
     });
 
-    // Get student attendance data for chart
-    const studentAttendanceData = await Promise.all(
-      classes.slice(0, 4).map(async (cls) => {
-        const attendanceForClass = await db.studentAttendance.findMany({
-          where: {
-            date: {
-              gte: startOfThisWeek,
-              lte: endOfThisWeek,
-            },
-            section: {
-              classId: cls.id,
-            },
+    // Get student attendance data for chart (optimized to prevent N+1 query)
+    const classIds = classes.slice(0, 4).map(cls => cls.id);
+    const classAttendanceRecords = await db.studentAttendance.findMany({
+      where: {
+        date: {
+          gte: startOfThisWeek,
+          lte: endOfThisWeek,
+        },
+        section: {
+          classId: {
+            in: classIds,
           },
-        });
+        },
+      },
+      include: {
+        section: {
+          select: {
+            classId: true,
+          },
+        },
+      },
+    });
 
-        const present = attendanceForClass.filter(
-          (record) => record.status === "PRESENT"
-        ).length;
-        const absent = attendanceForClass.length - present;
+    // Group attendance by class
+    const studentAttendanceData = classes.slice(0, 4).map((cls) => {
+      const attendanceForClass = classAttendanceRecords.filter(
+        (record) => record.section.classId === cls.id
+      );
 
-        return {
-          class: cls.name,
-          present: present,
-          absent: absent,
-        };
-      })
-    );
+      const present = attendanceForClass.filter(
+        (record) => record.status === "PRESENT"
+      ).length;
+      const absent = attendanceForClass.length - present;
+
+      return {
+        class: cls.name,
+        present: present,
+        absent: absent,
+      };
+    });
 
     // Get assignment status data
     const allAssignments = await db.assignment.findMany({

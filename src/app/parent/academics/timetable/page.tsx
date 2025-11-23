@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TimetableGrid } from "@/components/parent/academics/timetable-grid";
@@ -269,3 +270,4 @@ export default function TimetablePage() {
     </div>
   );
 }
+

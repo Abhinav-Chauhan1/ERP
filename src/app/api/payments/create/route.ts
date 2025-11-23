@@ -73,10 +73,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Rate limiting check
-    const rateLimitResult = rateLimitMiddleware(parent.id, RateLimitPresets.PAYMENT);
+    const rateLimitResult = await rateLimitMiddleware(parent.id, RateLimitPresets.PAYMENT);
     
     if (rateLimitResult.exceeded) {
-      const resetInSeconds = Math.ceil(rateLimitResult.resetTime / 1000);
+      const resetInSeconds = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
       return NextResponse.json(
         { 
           success: false, 

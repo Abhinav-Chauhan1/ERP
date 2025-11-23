@@ -57,7 +57,7 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             onClick={() => setChartType('bar')}
           >
             <BarChart2 className="h-4 w-4 mr-1" />
-            Bar
+            <span className="hidden sm:inline">Bar</span>
           </Button>
           <Button
             type="button"
@@ -67,28 +67,32 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
             onClick={() => setChartType('line')}
           >
             <LineChartIcon className="h-4 w-4 mr-1" />
-            Line
+            <span className="hidden sm:inline">Line</span>
           </Button>
         </div>
       </div>
       
-      <div className="h-72">
+      <div className="h-72 md:h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           {chartType === 'bar' ? (
             <BarChart
               data={data}
-              margin={{ top: 20, right: 30, left: 0, bottom: 30 }}
+              margin={{ top: 20, right: 10, left: -10, bottom: 30 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
                 tickMargin={10}
+                angle={-45}
+                textAnchor="end"
+                height={60}
               />
               <YAxis 
                 domain={[0, 100]} 
                 tickCount={6}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
+                width={40}
               />
               <Tooltip content={<CustomTooltip />} />
               <Bar 
@@ -101,18 +105,22 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
           ) : (
             <LineChart
               data={data}
-              margin={{ top: 20, right: 30, left: 0, bottom: 30 }}
+              margin={{ top: 20, right: 10, left: -10, bottom: 30 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis 
                 dataKey="name" 
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
                 tickMargin={10}
+                angle={-45}
+                textAnchor="end"
+                height={60}
               />
               <YAxis 
                 domain={[0, 100]} 
                 tickCount={6}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
+                width={40}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line 
@@ -121,8 +129,8 @@ export function PerformanceChart({ data }: PerformanceChartProps) {
                 name="Performance"
                 stroke="#3b82f6" 
                 strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
               />
             </LineChart>
           )}

@@ -125,6 +125,8 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                           <img
                             src={teacher.user.avatar}
                             alt={`${teacher.user.firstName} ${teacher.user.lastName}`}
+                            width={32}
+                            height={32}
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
@@ -145,9 +147,11 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                         {teacher.subjects.length > 0 ? (
                           <>
                             {teacher.subjects.slice(0, 2).map((subjectTeacher) => (
-                              <Badge key={subjectTeacher.id} variant="outline" className="text-xs">
-                                {subjectTeacher.subject.name}
-                              </Badge>
+                              subjectTeacher.subject ? (
+                                <Badge key={subjectTeacher.id} variant="outline" className="text-xs">
+                                  {subjectTeacher.subject.name}
+                                </Badge>
+                              ) : null
                             ))}
                             {teacher.subjects.length > 2 && (
                               <Badge variant="outline" className="text-xs">
@@ -169,12 +173,12 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                       </Badge>
                     </td>
                     <td className="py-3 px-4 align-middle text-right">
-                      <Link href={`/admin/users/teachers/${teacher.id}`}>
-                        <Button variant="ghost" size="sm">View</Button>
-                      </Link>
-                      <Link href={`/admin/users/teachers/${teacher.id}/edit`}>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </Link>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/admin/users/teachers/${teacher.id}`}>View</Link>
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/admin/users/teachers/${teacher.id}/edit`}>Edit</Link>
+                      </Button>
                     </td>
                   </tr>
                 ))

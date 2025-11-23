@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
   LucideIcon,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
@@ -48,11 +49,18 @@ const routes: RouteItem[] = [
     ],
   },
   {
+    label: "Courses",
+    icon: Video,
+    href: "/teacher/courses",
+  },
+  {
     label: "Assessments",
     icon: FileText,
     submenu: [
       { label: "Assignments", href: "/teacher/assessments/assignments" },
       { label: "Exams", href: "/teacher/assessments/exams" },
+      { label: "Online Exams", href: "/teacher/assessments/online-exams" },
+      { label: "Question Bank", href: "/teacher/assessments/question-bank" },
       { label: "Results", href: "/teacher/assessments/results" },
     ],
   },

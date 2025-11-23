@@ -1,8 +1,10 @@
 "use client";
 
+
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { 
   Card, 
   CardContent, 
@@ -460,10 +462,13 @@ function TeacherStudentsContent() {
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0">
                             {student.avatar ? (
-                              <img 
+                              <OptimizedImage 
                                 src={student.avatar} 
                                 alt={student.name} 
+                                width={40}
+                                height={40}
                                 className="h-10 w-10 rounded-full"
+                                qualityPreset="medium"
                               />
                             ) : (
                               <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -582,3 +587,4 @@ export default function TeacherStudentsPage() {
     </Suspense>
   );
 }
+

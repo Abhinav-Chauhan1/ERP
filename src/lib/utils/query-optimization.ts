@@ -1,150 +1,108 @@
 /**
- * Query Optimization Utilities
- * Provides helpers for optimizing database queries with pagination, caching, and performance monitoring
+ * Database Query Optimization Utilities
+ * 
+ * Provides utilities for optimizing Prisma queries to prevent N+1 problems,
+ * implement efficient pagination, and use proper indexing strategies.
  */
 
-import { db } from "@/lib/db";
+import { Prisma } from '@prisma/client';
 
 /**
  * Standard pagination configuration
  */
-export const PAGINATION_DEFAULTS = {
-  DEFAULT_PAGE: 1,
-  DEFAULT_LIMIT: 50,
-  MAX_LIMIT: 100,
-  MIN_LIMIT: 1,
-} as const;
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginationResult<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
 
 /**
- * Validate and normalize pagination parameters
+ * Normalize pagination parameters
  */
-export function normalizePagination(page?: number, limit?: number) {
-  const normalizedPage = Math.max(
-    PAGINATION_DEFAULTS.MIN_LIMIT,
-    page || PAGINATION_DEFAULTS.DEFAULT_PAGE
-  );
-  
-  const normalizedLimit = Math.min(
-    PAGINATION_DEFAULTS.MAX_LIMIT,
-    Math.max(PAGINATION_DEFAULTS.MIN_LIMIT, limit || PAGINATION_DEFAULTS.DEFAULT_LIMIT)
-  );
-  
+export function normalizePagination(page: number = 1, limit: number = 50) {
+  const normalizedPage = Math.max(1, page);
+  const normalizedLimit = Math.min(100, Math.max(1, limit));
   const skip = (normalizedPage - 1) * normalizedLimit;
   
   return {
     page: normalizedPage,
     limit: normalizedLimit,
     skip,
-    take: normalizedLimit,
+    take: normalizedLimit
   };
 }
 
 /**
  * Calculate pagination metadata
  */
-export function calculatePaginationMeta(
-  totalCount: number,
-  page: number,
-  limit: number
-) {
+export function calculatePaginationMeta(totalCount: number, page: number, limit: number) {
   const totalPages = Math.ceil(totalCount / limit);
-  const hasNextPage = page < totalPages;
-  const hasPreviousPage = page > 1;
   
   return {
     page,
     limit,
     totalCount,
     totalPages,
-    hasNextPage,
-    hasPreviousPage,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1
   };
 }
 
 /**
- * Monitor slow queries and log warnings
+ * Monitored query wrapper for performance tracking
  */
 export async function monitoredQuery<T>(
   queryFn: () => Promise<T>,
-  queryName: string,
-  slowThreshold: number = 1000
+  queryName: string
 ): Promise<T> {
-  const start = Date.now();
-  
-  try {
-    const result = await queryFn();
-    const duration = Date.now() - start;
-    
-    if (duration > slowThreshold) {
-      console.warn(
-        `[SLOW QUERY] ${queryName} took ${duration}ms (threshold: ${slowThreshold}ms)`
-      );
-    }
-    
-    return result;
-  } catch (error) {
-    const duration = Date.now() - start;
-    console.error(
-      `[QUERY ERROR] ${queryName} failed after ${duration}ms:`,
-      error
-    );
-    throw error;
-  }
+  return QueryPerformanceMonitor.monitor(queryName, queryFn);
 }
 
 /**
- * Common select fields for user data (optimized)
- */
-export const USER_SELECT_MINIMAL = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-  avatar: true,
-  role: true,
-} as const;
-
-export const USER_SELECT_BASIC = {
-  ...USER_SELECT_MINIMAL,
-  phone: true,
-  active: true,
-} as const;
-
-/**
- * Common select fields for message data (optimized)
+ * Select fields for message list queries
  */
 export const MESSAGE_SELECT_LIST = {
   id: true,
   subject: true,
   content: true,
   isRead: true,
-  readAt: true,
   createdAt: true,
-  attachments: true,
+  readAt: true,
   sender: {
-    select: USER_SELECT_MINIMAL,
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+      role: true
+    }
   },
   recipient: {
-    select: USER_SELECT_MINIMAL,
-  },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+      role: true
+    }
+  }
 } as const;
 
 /**
- * Common select fields for notification data (optimized)
- */
-export const NOTIFICATION_SELECT_LIST = {
-  id: true,
-  title: true,
-  message: true,
-  type: true,
-  isRead: true,
-  readAt: true,
-  link: true,
-  createdAt: true,
-} as const;
-
-/**
- * Common select fields for announcement data (optimized)
+ * Select fields for announcement list queries
  */
 export const ANNOUNCEMENT_SELECT_LIST = {
   id: true,
@@ -153,109 +111,252 @@ export const ANNOUNCEMENT_SELECT_LIST = {
   startDate: true,
   endDate: true,
   isActive: true,
-  attachments: true,
+  targetAudience: true,
   createdAt: true,
-  publisher: {
+  author: {
     select: {
-      user: {
-        select: {
-          firstName: true,
-          lastName: true,
-          avatar: true,
-        },
-      },
-    },
-  },
+      id: true,
+      firstName: true,
+      lastName: true,
+      role: true
+    }
+  }
 } as const;
 
 /**
- * Common select fields for student data (optimized)
+ * Minimal user select for contact lists
  */
-export const STUDENT_SELECT_MINIMAL = {
+export const USER_SELECT_MINIMAL = {
   id: true,
-  admissionNumber: true,
-  user: {
-    select: USER_SELECT_MINIMAL,
-  },
+  firstName: true,
+  lastName: true,
+  email: true,
+  avatar: true,
+  role: true
 } as const;
 
 /**
- * Common select fields for teacher data (optimized)
- */
-export const TEACHER_SELECT_MINIMAL = {
-  id: true,
-  employeeId: true,
-  user: {
-    select: USER_SELECT_MINIMAL,
-  },
-} as const;
-
-/**
- * Common select fields for class data (optimized)
+ * Minimal class select for dropdowns
  */
 export const CLASS_SELECT_MINIMAL = {
   id: true,
-  name: true,
-  grade: true,
+  name: true
 } as const;
 
 /**
- * Common select fields for subject data (optimized)
+ * Minimal subject select for dropdowns
  */
 export const SUBJECT_SELECT_MINIMAL = {
   id: true,
   name: true,
-  code: true,
+  code: true
 } as const;
 
 /**
- * Batch query helper to execute multiple queries in parallel
+ * Calculate pagination skip and take values
  */
-export async function batchQueries<T extends Record<string, Promise<any>>>(
-  queries: T
-): Promise<{ [K in keyof T]: Awaited<T[K]> }> {
-  const keys = Object.keys(queries) as Array<keyof T>;
-  const promises = keys.map((key) => queries[key]);
+export function getPaginationParams(params: PaginationParams) {
+  const page = Math.max(1, params.page || 1);
+  const pageSize = Math.min(100, Math.max(1, params.pageSize || 50)); // Max 100, default 50
+  const skip = (page - 1) * pageSize;
   
-  const results = await Promise.all(promises);
-  
-  return keys.reduce((acc, key, index) => {
-    acc[key] = results[index];
-    return acc;
-  }, {} as { [K in keyof T]: Awaited<T[K]> });
+  return { page, pageSize, skip, take: pageSize };
 }
 
 /**
- * Cache configuration for Next.js revalidation
+ * Create pagination result
  */
-export const CACHE_REVALIDATION = {
-  STATIC: 3600, // 1 hour for static content
-  DYNAMIC: 60, // 1 minute for dynamic content
-  REALTIME: 0, // No cache for real-time data
-  DAILY: 86400, // 24 hours for daily data
-} as const;
+export function createPaginationResult<T>(
+  data: T[],
+  totalCount: number,
+  params: PaginationParams
+): PaginationResult<T> {
+  const { page, pageSize } = getPaginationParams(params);
+  const totalPages = Math.ceil(totalCount / pageSize);
+  
+  return {
+    data,
+    pagination: {
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
+}
 
 /**
- * Helper to create optimized where clauses for date ranges
+ * Optimized student query with all relations
+ * Prevents N+1 queries by including all necessary relations
  */
-export function createDateRangeWhere(
-  startDate?: Date,
-  endDate?: Date,
-  field: string = "createdAt"
-) {
-  if (!startDate && !endDate) {
-    return undefined;
+export const optimizedStudentInclude = {
+  user: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+    },
+  },
+  enrollments: {
+    include: {
+      class: {
+        include: {
+          academicYear: true,
+        },
+      },
+      section: true,
+    },
+  },
+  parents: {
+    include: {
+      parent: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+    },
+  },
+  attendance: {
+    take: 30, // Last 30 days
+    orderBy: {
+      date: 'desc' as const,
+    },
+  },
+  examResults: {
+    take: 10, // Last 10 exams
+    orderBy: {
+      createdAt: 'desc' as const,
+    },
+    include: {
+      exam: {
+        select: {
+          title: true,
+          totalMarks: true,
+          examDate: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.StudentInclude;
+
+/**
+ * Optimized teacher query with relations
+ */
+export const optimizedTeacherInclude = {
+  user: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+    },
+  },
+  subjects: {
+    include: {
+      subject: true,
+    },
+  },
+  classes: {
+    include: {
+      class: true,
+    },
+  },
+} satisfies Prisma.TeacherInclude;
+
+/**
+ * Optimized class query with relations
+ */
+export const optimizedClassInclude = {
+  academicYear: true,
+  sections: {
+    include: {
+      _count: {
+        select: {
+          enrollments: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ClassInclude;
+
+/**
+ * Optimized attendance query
+ * Uses composite indexes on (studentId, date) and (sectionId, date, status)
+ */
+export function getOptimizedAttendanceQuery(filters: {
+  studentId?: string;
+  sectionId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  status?: string;
+}) {
+  const where: Prisma.StudentAttendanceWhereInput = {};
+  
+  if (filters.studentId) {
+    where.studentId = filters.studentId;
   }
   
-  const where: any = {};
+  if (filters.sectionId) {
+    where.sectionId = filters.sectionId;
+  }
   
-  if (startDate || endDate) {
-    where[field] = {};
-    if (startDate) {
-      where[field].gte = startDate;
+  if (filters.startDate || filters.endDate) {
+    where.date = {};
+    if (filters.startDate) {
+      where.date.gte = filters.startDate;
     }
-    if (endDate) {
-      where[field].lte = endDate;
+    if (filters.endDate) {
+      where.date.lte = filters.endDate;
+    }
+  }
+  
+  if (filters.status) {
+    where.status = filters.status as any;
+  }
+  
+  return where;
+}
+
+/**
+ * Optimized fee payment query
+ * Uses composite indexes on (studentId, status, paymentDate)
+ */
+export function getOptimizedFeePaymentQuery(filters: {
+  studentId?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+}) {
+  const where: Prisma.FeePaymentWhereInput = {};
+  
+  if (filters.studentId) {
+    where.studentId = filters.studentId;
+  }
+  
+  if (filters.status) {
+    where.status = filters.status as any;
+  }
+  
+  if (filters.startDate || filters.endDate) {
+    where.paymentDate = {};
+    if (filters.startDate) {
+      where.paymentDate.gte = filters.startDate;
+    }
+    if (filters.endDate) {
+      where.paymentDate.lte = filters.endDate;
     }
   }
   
@@ -263,52 +364,171 @@ export function createDateRangeWhere(
 }
 
 /**
- * Helper to create optimized search where clauses
+ * Optimized exam result query
+ * Uses composite indexes on (studentId, examId) and (examId, marks)
  */
-export function createSearchWhere(
-  search: string | undefined,
-  fields: string[]
-) {
-  if (!search || fields.length === 0) {
-    return undefined;
+export function getOptimizedExamResultQuery(filters: {
+  studentId?: string;
+  examId?: string;
+  minMarks?: number;
+  maxMarks?: number;
+}) {
+  const where: Prisma.ExamResultWhereInput = {};
+  
+  if (filters.studentId) {
+    where.studentId = filters.studentId;
   }
   
+  if (filters.examId) {
+    where.examId = filters.examId;
+  }
+  
+  if (filters.minMarks !== undefined || filters.maxMarks !== undefined) {
+    where.marks = {};
+    if (filters.minMarks !== undefined) {
+      where.marks.gte = filters.minMarks;
+    }
+    if (filters.maxMarks !== undefined) {
+      where.marks.lte = filters.maxMarks;
+    }
+  }
+  
+  return where;
+}
+
+/**
+ * Batch query helper to prevent N+1 queries
+ * Fetches related data in a single query
+ */
+export async function batchFetch<T, K extends keyof T>(
+  items: T[],
+  key: K,
+  fetchFn: (ids: T[K][]) => Promise<Map<T[K], any>>
+): Promise<T[]> {
+  const ids = items.map(item => item[key]);
+  const uniqueIds = [...new Set(ids)];
+  
+  const relatedData = await fetchFn(uniqueIds);
+  
+  return items.map(item => ({
+    ...item,
+    [key]: relatedData.get(item[key]),
+  }));
+}
+
+/**
+ * Query performance monitoring
+ */
+export class QueryPerformanceMonitor {
+  private static slowQueryThreshold = 1000; // 1 second
+  
+  static async monitor<T>(
+    queryName: string,
+    queryFn: () => Promise<T>
+  ): Promise<T> {
+    const startTime = Date.now();
+    
+    try {
+      const result = await queryFn();
+      const duration = Date.now() - startTime;
+      
+      if (duration > this.slowQueryThreshold) {
+        console.warn(`⚠️ Slow query detected: ${queryName} took ${duration}ms`);
+        // In production, send to monitoring service
+        // await logSlowQuery(queryName, duration);
+      }
+      
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ Query failed: ${queryName} after ${duration}ms`, error);
+      throw error;
+    }
+  }
+}
+
+/**
+ * Cursor-based pagination for large datasets
+ * More efficient than offset-based pagination for large tables
+ */
+export interface CursorPaginationParams {
+  cursor?: string;
+  take?: number;
+}
+
+export interface CursorPaginationResult<T> {
+  data: T[];
+  nextCursor?: string;
+  hasMore: boolean;
+}
+
+export function createCursorPaginationResult<T extends { id: string }>(
+  data: T[],
+  take: number
+): CursorPaginationResult<T> {
+  const hasMore = data.length > take;
+  const items = hasMore ? data.slice(0, take) : data;
+  const nextCursor = hasMore ? items[items.length - 1].id : undefined;
+  
   return {
-    OR: fields.map((field) => ({
+    data: items,
+    nextCursor,
+    hasMore,
+  };
+}
+
+/**
+ * Optimized search query with full-text search
+ */
+export function createSearchQuery(searchTerm: string, fields: string[]) {
+  if (!searchTerm || searchTerm.trim().length === 0) {
+    return {};
+  }
+  
+  const term = searchTerm.trim();
+  
+  return {
+    OR: fields.map(field => ({
       [field]: {
-        contains: search,
-        mode: "insensitive" as const,
+        contains: term,
+        mode: 'insensitive' as const,
       },
     })),
   };
 }
 
 /**
- * Optimized count with caching hint
+ * Aggregate query optimization
+ * Use database aggregations instead of fetching all records
  */
-export async function cachedCount(
-  model: any,
-  where: any,
-  cacheTime: number = CACHE_REVALIDATION.DYNAMIC
-) {
-  return await model.count({ where });
-}
-
-/**
- * Helper to merge where clauses
- */
-export function mergeWhereClauses(...clauses: (any | undefined)[]) {
-  const validClauses = clauses.filter(Boolean);
+export const aggregateQueries = {
+  /**
+   * Get student count by class
+   */
+  studentCountByClass: {
+    _count: {
+      id: true,
+    },
+    groupBy: ['sectionId'] as const,
+  },
   
-  if (validClauses.length === 0) {
-    return {};
-  }
+  /**
+   * Get average marks by exam
+   */
+  averageMarksByExam: {
+    _avg: {
+      marks: true,
+    },
+    groupBy: ['examId'] as const,
+  },
   
-  if (validClauses.length === 1) {
-    return validClauses[0];
-  }
-  
-  return {
-    AND: validClauses,
-  };
-}
+  /**
+   * Get attendance statistics
+   */
+  attendanceStats: {
+    _count: {
+      id: true,
+    },
+    groupBy: ['status'] as const,
+  },
+};

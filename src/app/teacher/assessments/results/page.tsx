@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getTeacherResults } from "@/lib/actions/teacherResultsActions";
@@ -521,3 +522,4 @@ function calculateOverallAverage(exams: any[], assignments: any[]) {
   
   return Math.round(weightedAvg);
 }
+

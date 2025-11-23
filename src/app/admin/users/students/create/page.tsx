@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -408,3 +409,4 @@ export default function CreateStudentPage() {
     </div>
   );
 }
+

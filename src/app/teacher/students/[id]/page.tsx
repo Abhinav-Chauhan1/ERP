@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { 
   Card, 
   CardContent, 
@@ -170,10 +171,13 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
             <div className="flex flex-col items-center text-center">
               <div className="mb-4">
                 {student.avatar ? (
-                  <img 
+                  <OptimizedImage 
                     src={student.avatar} 
                     alt={student.name} 
+                    width={96}
+                    height={96}
                     className="h-24 w-24 rounded-full"
+                    qualityPreset="high"
                   />
                 ) : (
                   <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">

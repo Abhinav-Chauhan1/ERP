@@ -1,32 +1,38 @@
+export const dynamic = 'force-dynamic';
+
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
-import { ParentsTable } from "@/components/users/parents-table";
+import { ParentsWithFilters } from "./parents-with-filters";
+import { getParentFilterOptions } from "@/lib/actions/parents-filters";
 
 export const metadata = {
   title: "Parents - School ERP",
 };
 
 export default async function ParentsPage() {
-  const parents = await db.parent.findMany({
-    include: {
-      user: true,
-      children: {
-        include: {
-          student: {
-            include: {
-              user: true
-            }
-          }
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  });
+  const [parents, filterOptions] = await Promise.all([
+    db.parent.findMany({
+      include: {
+        user: true,
+        children: {
+          include: {
+            student: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    getParentFilterOptions(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -46,10 +52,13 @@ export default async function ParentsPage() {
 
       <Card>
         <CardHeader className="py-4">
-          <CardTitle className="text-xl">All Parents ({parents.length})</CardTitle>
+          <CardTitle className="text-xl">All Parents</CardTitle>
         </CardHeader>
         <CardContent>
-          <ParentsTable parents={parents} />
+          <ParentsWithFilters
+            initialParents={parents}
+            occupations={filterOptions.occupations}
+          />
         </CardContent>
       </Card>
     </div>

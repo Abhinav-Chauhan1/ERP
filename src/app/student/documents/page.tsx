@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { File, FileText, UploadCloud, FolderIcon, Download } from "lucide-react";

@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Metadata } from "next";
+import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { getCurrentUserDetails } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Clock, Download, FileText, BookOpen } from "lucide-react";
 import { format } from "date-fns";
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Lesson Materials | Student Portal",
@@ -19,15 +21,23 @@ export default async function LessonMaterialPage({
   params: Promise<{ id: string }> 
 }) {
   const params = await paramsPromise;
-  const userDetails = await getCurrentUserDetails();
+  const clerkUser = await currentUser();
   
-  if (!userDetails?.dbUser || userDetails.dbUser.role !== "STUDENT") {
+  if (!clerkUser) {
+    redirect("/login");
+  }
+
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: clerkUser.id }
+  });
+  
+  if (!dbUser || dbUser.role !== "STUDENT") {
     redirect("/login");
   }
   
   const student = await db.student.findUnique({
     where: {
-      userId: userDetails.dbUser.id
+      userId: dbUser.id
     },
     include: {
       enrollments: {

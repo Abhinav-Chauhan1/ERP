@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getReportCards } from "@/lib/actions/student-assessment-actions";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Report Cards | Student Portal",
   description: "View your term and annual report cards",

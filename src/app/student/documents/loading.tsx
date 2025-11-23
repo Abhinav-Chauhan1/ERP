@@ -1,14 +1,26 @@
-import { SkeletonTable } from "@/components/shared/loading/skeleton-table";
+import { SkeletonList } from "@/components/shared/loading/skeleton-list";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StudentDocumentsLoading() {
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
-      <Skeleton className="h-8 w-48" />
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-40" />
+      </div>
 
-      {/* Table */}
-      <SkeletonTable rows={8} columns={4} showHeader={false} />
+      {/* Search and Filters */}
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-10 flex-1 max-w-md" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      {/* Documents List */}
+      <SkeletonList items={6} />
     </div>
   );
 }

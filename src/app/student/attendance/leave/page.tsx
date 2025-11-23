@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Metadata } from "next";
 import { format } from "date-fns";
 import { FileText, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";

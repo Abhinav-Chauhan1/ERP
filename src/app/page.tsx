@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { auth } from "@clerk/nextjs/server";
@@ -13,17 +15,17 @@ export default async function Home() {
         </div>
         <div className="flex items-center gap-4">
           {userId ? (
-            <Link href="/admin">
-              <Button>Dashboard</Button>
-            </Link>
+            <Button asChild>
+              <Link href="/admin">Dashboard</Link>
+            </Button>
           ) : (
             <>
-              <Link href="/login">
-                <Button variant="ghost">Login</Button>
-              </Link>
-              <Link href="/register">
-                <Button>Sign Up</Button>
-              </Link>
+              <Button variant="ghost" asChild>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/register">Sign Up</Link>
+              </Button>
             </>
           )}
         </div>
@@ -38,14 +40,9 @@ export default async function Home() {
           teachers, classes, assessments, finances, and more.
         </p>
         <div className="flex gap-4">
-          <Link href="/register">
-            <Button size="lg">Get Started</Button>
-          </Link>
-          <Link href="#features">
-            <Button variant="outline" size="lg">
-              Learn More
-            </Button>
-          </Link>
+          <Button size="lg" asChild>
+            <Link href="/register">Get Started</Link>
+          </Button>
         </div>
       </main>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -966,3 +967,4 @@ export default function BudgetPage() {
     </div>
   );
 }
+

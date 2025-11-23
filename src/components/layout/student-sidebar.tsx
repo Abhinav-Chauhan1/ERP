@@ -45,6 +45,11 @@ const routes: RouteItem[] = [
     ]
   },
   {
+    label: "Courses",
+    icon: GraduationCap,
+    href: "/student/courses",
+  },
+  {
     label: "Assessments",
     icon: FileText,
     href: "/student/assessments",

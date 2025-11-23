@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { 
   Calendar, Clock, Check, X, AlertTriangle, FileText, 
@@ -883,3 +884,4 @@ export default function LeaveApplicationsPage() {
     </div>
   );
 }
+

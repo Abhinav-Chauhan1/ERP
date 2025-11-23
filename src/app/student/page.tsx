@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AttendanceOverview } from "@/components/student/attendance-overview";
@@ -89,3 +90,4 @@ export default function StudentDashboard() {
     </div>
   );
 }
+

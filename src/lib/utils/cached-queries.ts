@@ -238,8 +238,77 @@ export const getActiveAcademicYear = cachedQuery(
   },
   {
     name: "active-academic-year",
-    tags: [CACHE_TAGS.SETTINGS],
-    revalidate: CACHE_DURATION.STATIC,
+    tags: [CACHE_TAGS.ACADEMIC_YEARS],
+    revalidate: CACHE_DURATION.ACADEMIC_YEARS,
+  }
+);
+
+/**
+ * Cached query for getting all academic years
+ * Cache for 1 hour since academic years rarely change
+ */
+export const getAllAcademicYears = cachedQuery(
+  async () => {
+    return await db.academicYear.findMany({
+      orderBy: {
+        startDate: "desc",
+      },
+    });
+  },
+  {
+    name: "all-academic-years",
+    tags: [CACHE_TAGS.ACADEMIC_YEARS],
+    revalidate: CACHE_DURATION.ACADEMIC_YEARS,
+  }
+);
+
+/**
+ * Cached query for getting terms for an academic year
+ * Cache for 1 hour since terms rarely change
+ */
+export const getTermsByAcademicYear = cachedQuery(
+  async (academicYearId: string) => {
+    return await db.term.findMany({
+      where: {
+        academicYearId: academicYearId,
+      },
+      orderBy: {
+        startDate: "asc",
+      },
+    });
+  },
+  {
+    name: "terms-by-academic-year",
+    tags: [CACHE_TAGS.TERMS],
+    revalidate: CACHE_DURATION.TERMS,
+  }
+);
+
+/**
+ * Cached query for getting active term
+ * Cache for 1 hour since active term rarely changes
+ */
+export const getActiveTerm = cachedQuery(
+  async () => {
+    const today = new Date();
+    return await db.term.findFirst({
+      where: {
+        startDate: {
+          lte: today,
+        },
+        endDate: {
+          gte: today,
+        },
+      },
+      orderBy: {
+        startDate: "desc",
+      },
+    });
+  },
+  {
+    name: "active-term",
+    tags: [CACHE_TAGS.TERMS],
+    revalidate: CACHE_DURATION.TERMS,
   }
 );
 
@@ -353,6 +422,146 @@ export const getFeeTypes = cachedQuery(
     name: "fee-types",
     tags: [CACHE_TAGS.FEE_PAYMENTS],
     revalidate: CACHE_DURATION.STATIC,
+  }
+);
+
+/**
+ * Cached query for getting sections by class
+ * Cache for 30 minutes since sections rarely change
+ */
+export const getSectionsByClass = cachedQuery(
+  async (classId: string) => {
+    return await db.classSection.findMany({
+      where: {
+        classId: classId,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+  },
+  {
+    name: "sections-by-class",
+    tags: [CACHE_TAGS.SECTIONS],
+    revalidate: CACHE_DURATION.LONG,
+  }
+);
+
+/**
+ * Cached query for getting all departments
+ * Cache for 1 hour since departments rarely change
+ */
+export const getAllDepartments = cachedQuery(
+  async () => {
+    return await db.department.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
+  },
+  {
+    name: "all-departments",
+    tags: [CACHE_TAGS.DEPARTMENTS],
+    revalidate: CACHE_DURATION.STATIC,
+  }
+);
+
+/**
+ * Cached query for getting all rooms
+ * Cache for 1 hour since rooms rarely change
+ */
+export const getAllRooms = cachedQuery(
+  async () => {
+    return await db.classRoom.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
+  },
+  {
+    name: "all-rooms",
+    tags: [CACHE_TAGS.ROOMS],
+    revalidate: CACHE_DURATION.STATIC,
+  }
+);
+
+/**
+ * Cached query for getting students by class
+ * Cache for 5 minutes since student enrollments can change
+ */
+export const getStudentsByClass = cachedQuery(
+  async (classId: string, sectionId?: string) => {
+    return await db.student.findMany({
+      where: {
+        enrollments: {
+          some: {
+            classId: classId,
+            ...(sectionId && { sectionId }),
+            status: "ACTIVE",
+          },
+        },
+      },
+      select: {
+        id: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        rollNumber: true,
+      },
+      orderBy: {
+        rollNumber: "asc",
+      },
+    });
+  },
+  {
+    name: "students-by-class",
+    tags: [CACHE_TAGS.STUDENTS, CACHE_TAGS.CLASSES],
+    revalidate: CACHE_DURATION.MEDIUM,
+  }
+);
+
+/**
+ * Cached query for getting teachers by department
+ * Cache for 30 minutes since teacher assignments rarely change
+ */
+export const getTeachersByDepartment = cachedQuery(
+  async (departmentId: string) => {
+    return await db.teacher.findMany({
+      where: {
+        departments: {
+          some: {
+            id: departmentId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        employeeId: true,
+      },
+      orderBy: {
+        user: {
+          firstName: "asc",
+        },
+      },
+    });
+  },
+  {
+    name: "teachers-by-department",
+    tags: [CACHE_TAGS.TEACHERS, CACHE_TAGS.DEPARTMENTS],
+    revalidate: CACHE_DURATION.LONG,
   }
 );
 

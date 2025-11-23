@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { Metadata } from "next";
 import { getStudentSubjects } from "@/lib/actions/student-academics-actions";
 import { StudentSubjectList } from "@/components/student/student-subject-list";

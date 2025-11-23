@@ -1,28 +1,24 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonStats } from "@/components/shared/loading/skeleton-stats";
+import { SkeletonTable } from "@/components/shared/loading/skeleton-table";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function FeesLoading() {
+export default function ParentFeesLoading() {
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
       <div className="space-y-2">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-72" />
+        <Skeleton className="h-4 w-96" />
       </div>
 
-      {/* Fee overview card */}
-      <div className="space-y-4">
-        <Skeleton className="h-64 w-full" />
-        
-        {/* Payment history table */}
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      </div>
+      {/* Child Selector */}
+      <Skeleton className="h-10 w-64" />
+
+      {/* Stats Cards */}
+      <SkeletonStats count={3} />
+
+      {/* Fee Details Table */}
+      <SkeletonTable rows={6} columns={5} showHeader={true} showPagination={false} />
     </div>
   );
 }

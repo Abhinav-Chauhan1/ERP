@@ -1,18 +1,30 @@
-import { SkeletonTable } from "@/components/shared/loading/skeleton-table";
-import { SkeletonStats } from "@/components/shared/loading/skeleton-stats";
+import { SkeletonList } from "@/components/shared/loading/skeleton-list";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StudentAssessmentsLoading() {
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
-      <Skeleton className="h-8 w-48" />
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-96" />
+      </div>
 
-      {/* Stats */}
-      <SkeletonStats count={3} />
+      {/* Tabs */}
+      <div className="flex gap-2 border-b">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-32" />
+        ))}
+      </div>
 
-      {/* Table */}
-      <SkeletonTable rows={8} columns={5} showHeader={false} />
+      {/* Filters */}
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+
+      {/* Assessments List */}
+      <SkeletonList items={6} />
     </div>
   );
 }

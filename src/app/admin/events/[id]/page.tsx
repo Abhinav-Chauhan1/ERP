@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast"; // Replace useToast with react-hot-toast
@@ -795,10 +796,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       {/* Event thumbnail */}
       {event.thumbnail && (
         <div className="h-48 sm:h-64 md:h-80 w-full relative rounded-lg overflow-hidden mb-2">
-          <img 
+          <OptimizedImage 
             src={event.thumbnail} 
             alt={event.title} 
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
+            className="object-cover"
+            qualityPreset="high"
+            aboveFold
           />
         </div>
       )}

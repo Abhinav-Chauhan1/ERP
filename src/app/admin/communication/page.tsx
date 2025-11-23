@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -114,6 +115,22 @@ export default function CommunicationsPage() {
       color: "bg-purple-50 text-purple-700"
     },
     {
+      title: "Bulk Messaging",
+      icon: <Send className="h-5 w-5" />,
+      description: "Send bulk SMS & emails",
+      href: "/admin/communication/bulk-messaging",
+      count: "—",
+      color: "bg-blue-50 text-blue-700"
+    },
+    {
+      title: "Message History",
+      icon: <FileText className="h-5 w-5" />,
+      description: "View sent messages & analytics",
+      href: "/admin/communication/history",
+      count: "—",
+      color: "bg-cyan-50 text-cyan-700"
+    },
+    {
       title: "Notifications",
       icon: <Bell className="h-5 w-5" />,
       description: "System alerts & notices",
@@ -128,22 +145,6 @@ export default function CommunicationsPage() {
       href: "/admin/communication/parent-meetings",
       count: meetingStats?.scheduledMeetings || 0,
       color: "bg-green-50 text-green-700"
-    },
-    {
-      title: "Email Templates",
-      icon: <FileText className="h-5 w-5" />,
-      description: "Standardized email formats",
-      href: "/admin/communication/templates",
-      count: "—",
-      color: "bg-red-50 text-red-700"
-    },
-    {
-      title: "SMS Alerts",
-      icon: <Send className="h-5 w-5" />,
-      description: "Text notification system",
-      href: "/admin/communication/sms",
-      count: "—",
-      color: "bg-indigo-50 text-indigo-700"
     },
   ];
 
@@ -547,3 +548,4 @@ export default function CommunicationsPage() {
     </div>
   );
 }
+

@@ -15,7 +15,8 @@ import {
 
 interface DateRangePickerProps {
   value?: DateRange | undefined;
-  onValueChange: (value: DateRange | undefined) => void;
+  onChange?: (value: DateRange | undefined) => void;
+  onValueChange?: (value: DateRange | undefined) => void;
   className?: string;
   align?: "start" | "center" | "end";
   calendarClassName?: string;
@@ -23,11 +24,13 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({
   value,
+  onChange,
   onValueChange,
   className,
   align = "end",
   calendarClassName,
 }: DateRangePickerProps) {
+  const handleChange = onChange || onValueChange;
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -60,7 +63,7 @@ export function DateRangePicker({
             mode="range"
             defaultMonth={value?.from}
             selected={value}
-            onSelect={onValueChange}
+            onSelect={handleChange}
             numberOfMonths={2}
             className={cn("border-0", calendarClassName)}
           />
@@ -72,7 +75,7 @@ export function DateRangePicker({
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => onValueChange(undefined)}
+                onClick={() => handleChange?.(undefined)}
               >
                 Clear
               </Button>
@@ -81,7 +84,7 @@ export function DateRangePicker({
                 onClick={() => {
                   if (value?.from) {
                     const to = value.to || value.from;
-                    onValueChange({ from: value.from, to });
+                    handleChange?.({ from: value.from, to });
                   }
                 }}
               >

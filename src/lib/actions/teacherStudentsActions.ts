@@ -804,10 +804,10 @@ export async function getTeacherStudentsPerformance() {
       );
 
       const scores = classStudents.flatMap(s => [
-        ...s.examResults.map(er => er.marksObtained / er.exam.totalMarks * 100),
+        ...s.examResults.map(er => er.marks / er.exam.totalMarks * 100),
         ...s.assignments
-          .filter(as => as.grade !== null)
-          .map(as => as.grade!)
+          .filter(as => as.marks !== null)
+          .map(as => as.marks!)
       ]);
 
       const average = scores.length > 0 
@@ -830,8 +830,8 @@ export async function getTeacherStudentsPerformance() {
     
     students.forEach(student => {
       student.examResults.forEach(result => {
-        const subjectName = result.exam.name;
-        const percentage = (result.marksObtained / result.exam.totalMarks) * 100;
+        const subjectName = result.exam.title;
+        const percentage = (result.marks / result.exam.totalMarks) * 100;
         
         if (!subjectPerformance[subjectName]) {
           subjectPerformance[subjectName] = { total: 0, count: 0, passed: 0 };
@@ -854,10 +854,10 @@ export async function getTeacherStudentsPerformance() {
     // Calculate student averages
     const studentAverages = students.map(student => {
       const scores = [
-        ...student.examResults.map(er => er.marksObtained / er.exam.totalMarks * 100),
+        ...student.examResults.map(er => er.marks / er.exam.totalMarks * 100),
         ...student.assignments
-          .filter(as => as.grade !== null)
-          .map(as => as.grade!)
+          .filter(as => as.marks !== null)
+          .map(as => as.marks!)
       ];
 
       const average = scores.length > 0 

@@ -3,6 +3,8 @@ import { Calendar, Clock } from "lucide-react";
 import { ExamList } from "@/components/student/exam-list";
 import { getUpcomingExams } from "@/lib/actions/student-assessment-actions";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Upcoming Exams | Student Portal",
   description: "View your upcoming exam schedule",

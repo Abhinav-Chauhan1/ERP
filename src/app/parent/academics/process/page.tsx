@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { redirect } from "next/navigation";
 import { getChildAcademicProcess } from "@/lib/actions/parent-academic-actions";
 import { AcademicProgressTracker } from "@/components/parent/academics/academic-progress-tracker";

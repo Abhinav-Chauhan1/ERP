@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { 
   Card, 
   CardContent, 
@@ -200,10 +201,13 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
           <CardContent>
             <div className="rounded-lg border bg-gray-50 p-8 flex items-center justify-center min-h-[400px]">
               {document.fileType?.startsWith('image/') ? (
-                <img 
+                <OptimizedImage 
                   src={document.fileUrl} 
                   alt={document.title} 
+                  width={800}
+                  height={400}
                   className="max-w-full max-h-[400px] object-contain" 
+                  qualityPreset="high"
                 />
               ) : (
                 <div className="text-center">

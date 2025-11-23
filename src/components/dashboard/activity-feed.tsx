@@ -1,3 +1,4 @@
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
 
@@ -36,10 +37,13 @@ export function ActivityFeed({
               <div className="relative mt-1">
                 {activity.user.image ? (
                   <div className="h-8 w-8 rounded-full bg-muted overflow-hidden">
-                    <img 
+                    <OptimizedImage 
                       src={activity.user.image} 
                       alt={activity.user.name}
+                      width={32}
+                      height={32}
                       className="h-full w-full object-cover"
+                      qualityPreset="medium"
                     />
                   </div>
                 ) : (

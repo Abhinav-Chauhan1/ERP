@@ -1,4 +1,4 @@
-import { SkeletonCard } from "@/components/shared/loading/skeleton-card";
+import { SkeletonList } from "@/components/shared/loading/skeleton-list";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeacherCommunicationLoading() {
@@ -6,16 +6,25 @@ export default function TeacherCommunicationLoading() {
     <div className="h-full p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-32" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-10 w-40" />
       </div>
 
-      {/* Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <SkeletonCard contentLines={4} showFooter />
-        <SkeletonCard contentLines={4} showFooter />
-        <SkeletonCard contentLines={4} showFooter />
+      {/* Tabs */}
+      <div className="flex gap-2 border-b">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-32" />
+        ))}
       </div>
+
+      {/* Search */}
+      <Skeleton className="h-10 w-full max-w-md" />
+
+      {/* Messages List */}
+      <SkeletonList items={8} showHeader={false} />
     </div>
   );
 }

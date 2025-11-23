@@ -1,7 +1,9 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { 
   ChevronLeft, Search, Download, FileText, 
   Filter, Calendar, BookOpen, GraduationCap, 
@@ -740,10 +742,13 @@ export default function ResultsPage() {
                 <div className="md:w-1/4">
                   <div className="w-24 h-24 rounded-full bg-muted mx-auto overflow-hidden">
                     {selectedStudentDetails.student.photo ? (
-                      <img 
+                      <OptimizedImage 
                         src={selectedStudentDetails.student.photo} 
                         alt={selectedStudentDetails.student.name} 
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover"
+                        qualityPreset="high"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -883,3 +888,4 @@ export default function ResultsPage() {
     </div>
   );
 }
+

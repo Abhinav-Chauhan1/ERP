@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentHistoryTable } from "@/components/parent/fees/payment-history-table";
@@ -218,3 +219,4 @@ export default function PaymentHistoryPage() {
     </div>
   );
 }
+

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Lock, Shield, AlertCircle } from "lucide-react";
 import { changePassword } from "@/lib/actions/parent-settings-actions";
+import { TwoFactorSettings } from "@/components/shared/settings/two-factor-settings";
 import { toast } from "react-hot-toast";
 
 export function SecuritySettings() {
@@ -56,6 +57,9 @@ export function SecuritySettings() {
 
   return (
     <div className="space-y-6">
+      {/* Two-Factor Authentication */}
+      <TwoFactorSettings />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -144,10 +148,6 @@ export function SecuritySettings() {
           </div>
 
           <div className="space-y-3 pt-2">
-            <div className="flex justify-between py-2 border-b">
-              <span className="text-sm text-gray-500">Two-Factor Authentication</span>
-              <span className="text-sm font-medium text-gray-400">Coming Soon</span>
-            </div>
             <div className="flex justify-between py-2 border-b">
               <span className="text-sm text-gray-500">Login History</span>
               <Button variant="outline" size="sm" disabled>

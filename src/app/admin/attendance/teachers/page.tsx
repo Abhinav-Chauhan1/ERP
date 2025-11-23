@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -471,3 +472,4 @@ export default function TeacherAttendancePage() {
     </div>
   );
 }
+

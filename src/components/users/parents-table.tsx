@@ -131,6 +131,8 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                           <img
                             src={parent.user.avatar}
                             alt={`${parent.user.firstName} ${parent.user.lastName}`}
+                            width={32}
+                            height={32}
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (

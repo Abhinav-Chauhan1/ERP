@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -203,10 +204,13 @@ export default async function ParentDetailPage({
                   <div key={child.id} className="flex items-center justify-between p-3 rounded-md border">
                     <div className="flex items-center gap-3">
                       {child.student.user.avatar ? (
-                        <img 
+                        <OptimizedImage 
                           src={child.student.user.avatar} 
                           alt={`${child.student.user.firstName} ${child.student.user.lastName}`}
+                          width={40}
+                          height={40}
                           className="h-10 w-10 rounded-full object-cover"
+                          qualityPreset="medium"
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">

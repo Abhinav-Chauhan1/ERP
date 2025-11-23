@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Settings, CheckCheck } from "lucide-react";
@@ -279,3 +280,4 @@ export default function NotificationsPage() {
     </div>
   );
 }
+

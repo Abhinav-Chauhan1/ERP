@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { Loader2, Search, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -343,3 +344,4 @@ export default function AnnouncementsPage() {
     </div>
   );
 }
+

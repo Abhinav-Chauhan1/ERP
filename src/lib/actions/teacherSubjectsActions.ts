@@ -180,22 +180,28 @@ export async function getTeacherSubjectDetails(subjectId: string) {
       throw new Error("Subject not found");
     }
 
-    // Get classes where this subject is taught
-    const classes = await Promise.all(subject.classes.map(async (sc) => {
-      const sections = await db.classSection.findMany({
-        where: {
-          classId: sc.class.id,
+    // Get classes where this subject is taught (optimized to prevent N+1 query)
+    const classIds = subject.classes.map(sc => sc.class.id);
+    const allSections = await db.classSection.findMany({
+      where: {
+        classId: {
+          in: classIds,
         },
-        select: {
-          id: true,
-          name: true,
-          enrollments: {
-            select: {
-              id: true,
-            },
+      },
+      select: {
+        id: true,
+        name: true,
+        classId: true,
+        enrollments: {
+          select: {
+            id: true,
           },
         },
-      });
+      },
+    });
+
+    const classes = subject.classes.map((sc) => {
+      const sections = allSections.filter(section => section.classId === sc.class.id);
 
       return {
         id: sc.class.id,
@@ -207,7 +213,7 @@ export async function getTeacherSubjectDetails(subjectId: string) {
         })),
         totalStudents: sections.reduce((sum, section) => sum + section.enrollments.length, 0),
       };
-    }));
+    });
 
     // Transform the syllabus data
     const syllabusData = subject.syllabus.map(s => ({

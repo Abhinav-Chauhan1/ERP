@@ -17,12 +17,15 @@ import {
   School,
   PenTool,
   PartyPopper,
+  Library,
+  Building2,
   LucideIcon,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
+import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
   label: string;
@@ -132,6 +135,33 @@ const routes: RouteItem[] = [
     ],
   },
   {
+    label: "Library",
+    icon: Library,
+    submenu: [
+      { label: "Overview", href: "/admin/library" },
+      { label: "Books", href: "/admin/library/books" },
+      { label: "Issues", href: "/admin/library/issues" },
+      { label: "Reservations", href: "/admin/library/reservations" },
+      { label: "Reports", href: "/admin/library/reports" },
+    ],
+  },
+  {
+    label: "Hostel",
+    icon: Building2,
+    submenu: [
+      { label: "Overview", href: "/admin/hostel" },
+      { label: "Rooms", href: "/admin/hostel/rooms" },
+      { label: "Visitors", href: "/admin/hostel/visitors" },
+      { label: "Fees", href: "/admin/hostel/fees" },
+      { label: "Complaints", href: "/admin/hostel/complaints" },
+    ],
+  },
+  {
+    label: "Admissions",
+    icon: GraduationCap,
+    href: "/admin/admissions",
+  },
+  {
     label: "Events",
     icon: PartyPopper,
     href: "/admin/events",
@@ -187,13 +217,13 @@ export function AdminSidebar() {
   
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
-      <div className="p-6 flex items-center gap-2">
+      <div className="p-4 md:p-6">
         <Link href="/admin">
-          <h1 className="text-xl font-bold">School ERP</h1>
-          <p className="text-xs text-muted-foreground">Admin Portal</p>
+          <SchoolLogo showName={true} />
+          <p className="text-xs text-muted-foreground mt-1">Admin Portal</p>
         </Link>
       </div>
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full pb-4">
         {routes.map((route) => {
           const hasSubmenu = route.submenu && route.submenu.length > 0;
           const isOpen = isSectionOpen(route);
@@ -210,49 +240,49 @@ export function AdminSidebar() {
                 <button
                   onClick={() => toggleSection(route.label)}
                   className={cn(
-                    "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors",
+                    "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                     isRouteActive ? 
                       "text-primary bg-primary/10" : 
-                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                      "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
-                  <div className="flex items-center">
-                    <route.icon className="h-5 w-5 mr-3" />
-                    {route.label}
+                  <div className="flex items-center gap-3">
+                    <route.icon className="h-5 w-5 md:h-5 md:w-5 flex-shrink-0" />
+                    <span>{route.label}</span>
                   </div>
                   {isOpen ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
                   )}
                 </button>
               ) : (
                 <Link
                   href={route.href!}
                   className={cn(
-                    "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                    "text-sm md:text-base font-medium flex items-center py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                     isMainRouteActive ? 
                       "text-primary bg-primary/10 border-r-4 border-primary" : 
-                      "text-muted-foreground hover:text-primary hover:bg-accent"
+                      "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
-                  <route.icon className="h-5 w-5 mr-3" />
-                  {route.label}
+                  <route.icon className="h-5 w-5 md:h-5 md:w-5 mr-3 flex-shrink-0" />
+                  <span>{route.label}</span>
                 </Link>
               )}
               
               {/* Submenu */}
               {hasSubmenu && isOpen && (
-                <div className="ml-9 border-l pl-3 my-1">
+                <div className="ml-8 md:ml-9 border-l pl-3 my-1">
                   {route.submenu?.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "text-xs flex items-center py-2 px-2 rounded transition-colors",
+                        "text-xs md:text-sm flex items-center py-2.5 md:py-2 px-2 rounded transition-colors min-h-[40px]",
                         pathname === item.href ? 
                           "text-primary font-medium bg-primary/10" : 
-                          "text-muted-foreground hover:text-primary hover:bg-accent"
+                          "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                       )}
                     >
                       {item.label}
@@ -267,7 +297,7 @@ export function AdminSidebar() {
       <div className="mt-auto p-4 border-t">
         <div className="flex items-center gap-x-2">
           <UserButton afterSignOutUrl="/login" />
-          <span className="text-sm font-medium">Admin Account</span>
+          <span className="text-xs md:text-sm font-medium">Admin Account</span>
         </div>
       </div>
     </div>
