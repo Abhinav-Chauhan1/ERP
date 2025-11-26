@@ -19,9 +19,9 @@ export function AttendanceOverview({ attendancePercentage }: AttendanceOverviewP
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Attendance Overview</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Attendance Overview</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -29,33 +29,46 @@ export function AttendanceOverview({ attendancePercentage }: AttendanceOverviewP
             <span className="text-sm font-medium text-muted-foreground">
               This Semester
             </span>
-            <span className={`text-2xl font-bold ${getAttendanceColor(attendancePercentage)}`}>
+            <span className={`text-3xl font-bold ${getAttendanceColor(attendancePercentage)}`}>
               {attendancePercentage}%
             </span>
           </div>
           
           <Progress 
             value={attendancePercentage} 
-            className="h-2"
+            className="h-3"
             style={{
               "--progress-color": getProgressColor(attendancePercentage)
             } as React.CSSProperties}
           />
           
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Poor Below 75%</span>
-            <span>Average 75-90%</span>
-            <span>Excellent 90%+</span>
+          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground text-center">
+            <div>
+              <div className="font-medium">Poor</div>
+              <div>&lt;75%</div>
+            </div>
+            <div>
+              <div className="font-medium">Average</div>
+              <div>75-90%</div>
+            </div>
+            <div>
+              <div className="font-medium">Excellent</div>
+              <div>90%+</div>
+            </div>
           </div>
           
-          <div className="pt-2 text-sm text-muted-foreground">
+          <div className="pt-2 text-sm">
             {attendancePercentage >= 90 ? (
-              <p>Excellent! Keep up the good attendance.</p>
+              <p className="text-green-600 dark:text-green-400 font-medium">
+                ✓ Excellent! Keep up the good attendance.
+              </p>
             ) : attendancePercentage >= 75 ? (
-              <p>Good attendance, but try to improve further.</p>
+              <p className="text-amber-600 dark:text-amber-400 font-medium">
+                Good attendance, but try to improve further.
+              </p>
             ) : (
               <p className="text-destructive font-medium">
-                Warning: Your attendance is below the required minimum of 75%.
+                ⚠ Warning: Your attendance is below the required minimum of 75%.
               </p>
             )}
           </div>

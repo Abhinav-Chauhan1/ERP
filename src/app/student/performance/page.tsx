@@ -55,51 +55,58 @@ export default async function PerformancePage() {
   ];
   
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Academic Performance</h1>
-        <p className="text-gray-500">
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Academic Performance</h1>
+        <p className="text-muted-foreground mt-1">
           View and analyze your academic progress and achievements
         </p>
       </div>
       
-      <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">Current Performance Status</h2>
-            <p className="text-gray-600">Overall Grade: <span className="font-bold">{summary.grade}</span></p>
-          </div>
-          
-          <div className="flex flex-col items-center bg-white px-6 py-3 rounded-lg shadow-sm">
-            <span className="text-gray-500 text-sm">Overall Percentage</span>
-            <span className="text-3xl font-bold text-blue-600">{summary.overallPercentage}%</span>
-          </div>
-          
-          {summary.rank && (
-            <div className="flex flex-col items-center bg-white px-6 py-3 rounded-lg shadow-sm">
-              <span className="text-gray-500 text-sm">Class Rank</span>
-              <span className="text-3xl font-bold text-amber-600">{summary.rank}</span>
+      {/* Performance Summary Card with Gradient */}
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-1">Current Performance Status</h2>
+              <p className="text-blue-100">Overall Grade: <span className="font-bold text-white">{summary.grade}</span></p>
             </div>
-          )}
+            
+            <div className="flex gap-4">
+              <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm px-6 py-4 rounded-lg border border-white/20">
+                <span className="text-blue-100 text-sm mb-1">Overall Percentage</span>
+                <span className="text-3xl font-bold">{summary.overallPercentage}%</span>
+              </div>
+              
+              {summary.rank && (
+                <div className="flex flex-col items-center bg-white/10 backdrop-blur-sm px-6 py-4 rounded-lg border border-white/20">
+                  <span className="text-blue-100 text-sm mb-1">Class Rank</span>
+                  <span className="text-3xl font-bold">{summary.rank}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </Card>
       
+      {/* Navigation Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {performanceLinks.map((link) => (
-          <Card key={link.href}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-lg">
-                <div className={`rounded-lg p-2 mr-3 ${link.color}`}>
+          <Card key={link.href} className="overflow-hidden hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className={`rounded-lg p-2 ${link.color}`}>
                   <link.icon className="h-6 w-6" />
                 </div>
-                {link.title}
-              </CardTitle>
+                <CardTitle className="text-lg">{link.title}</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-gray-500 mb-4">{link.description}</p>
-              <Button asChild className="w-full mt-2">
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground text-sm">{link.description}</p>
+              <Button asChild className="w-full min-h-[44px]">
                 <Link href={link.href}>
-                  Access {link.title}
+                  View Details
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

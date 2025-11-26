@@ -36,21 +36,32 @@ export default async function StudentAttendanceReportPage() {
   const currentDate = new Date();
   
   return (
-    <div className="container p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">My Attendance</h1>
-          <p className="text-gray-500">
-            Class: {currentClass} {currentSection}
-          </p>
-        </div>
-        <div className="flex items-center bg-gray-100 px-3 py-2 rounded-md">
-          <CalendarIcon className="h-5 w-5 text-gray-500 mr-2" />
-          <span className="font-medium">
-            Current Month: {format(currentDate, 'MMMM yyyy')}
-          </span>
-        </div>
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Attendance Report</h1>
+        <p className="text-muted-foreground mt-1">
+          Track your attendance record • Class: {currentClass} {currentSection}
+        </p>
       </div>
+      
+      {/* Attendance Summary */}
+      <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-green-900 mb-1">Current Attendance</p>
+              <div className="text-5xl font-bold text-green-900">{statistics.attendancePercentage}%</div>
+              <p className="text-sm text-green-700 mt-2">
+                {statistics.presentDays} present out of {statistics.totalDays} days
+              </p>
+            </div>
+            <div className="w-32 h-32 relative flex items-center justify-center">
+              <CheckCircle2 className="h-16 w-16 text-green-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <AttendanceStatsCards 
         presentDays={statistics.presentDays}
@@ -61,11 +72,11 @@ export default async function StudentAttendanceReportPage() {
         attendancePercentage={statistics.attendancePercentage}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Attendance Trend</CardTitle>
+              <CardTitle className="text-xl">Attendance Trend</CardTitle>
               <CardDescription>Monthly attendance percentage over time</CardDescription>
             </CardHeader>
             <CardContent>
@@ -76,7 +87,7 @@ export default async function StudentAttendanceReportPage() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle>Attendance Status</CardTitle>
+              <CardTitle className="text-xl">Attendance Status</CardTitle>
               <CardDescription>Legend for attendance marks</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -86,7 +97,7 @@ export default async function StudentAttendanceReportPage() {
                 </div>
                 <div>
                   <p className="font-medium">Present</p>
-                  <p className="text-sm text-gray-500">Attended the class</p>
+                  <p className="text-sm text-muted-foreground">Attended the class</p>
                 </div>
               </div>
               
@@ -96,7 +107,7 @@ export default async function StudentAttendanceReportPage() {
                 </div>
                 <div>
                   <p className="font-medium">Absent</p>
-                  <p className="text-sm text-gray-500">Not present in class</p>
+                  <p className="text-sm text-muted-foreground">Not present in class</p>
                 </div>
               </div>
               
@@ -106,7 +117,7 @@ export default async function StudentAttendanceReportPage() {
                 </div>
                 <div>
                   <p className="font-medium">Late</p>
-                  <p className="text-sm text-gray-500">Arrived late to class</p>
+                  <p className="text-sm text-muted-foreground">Arrived late to class</p>
                 </div>
               </div>
               
@@ -116,7 +127,7 @@ export default async function StudentAttendanceReportPage() {
                 </Badge>
                 <div>
                   <p className="font-medium">Leave</p>
-                  <p className="text-sm text-gray-500">On approved leave</p>
+                  <p className="text-sm text-muted-foreground">On approved leave</p>
                 </div>
               </div>
             </CardContent>
@@ -124,9 +135,9 @@ export default async function StudentAttendanceReportPage() {
         </div>
       </div>
       
-      <Card className="mt-8">
+      <Card>
         <CardHeader>
-          <CardTitle>Monthly Calendar View</CardTitle>
+          <CardTitle className="text-xl">Monthly Calendar View</CardTitle>
           <CardDescription>
             Attendance for {format(currentDate, 'MMMM yyyy')}
           </CardDescription>

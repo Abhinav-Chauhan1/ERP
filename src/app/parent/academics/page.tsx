@@ -27,18 +27,16 @@ export default async function ParentAcademicsPage() {
   
   if (!children || children.length === 0) {
     return (
-      <div className="container p-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-muted-foreground">No children found in your account. Please contact the school administration.</p>
-              <Button className="mt-4" asChild>
-                <a href="/parent">Return to Dashboard</a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-muted-foreground">No children found in your account. Please contact the school administration.</p>
+            <Button className="mt-4" asChild>
+              <a href="/parent">Return to Dashboard</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
   
@@ -47,16 +45,14 @@ export default async function ParentAcademicsPage() {
   const academicData = await getChildAcademicProcess(firstChildId);
   
   return (
-    <div className="container p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Academic Process</h1>
-          <p className="text-gray-500">Track your children's academic progress</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Academic Process</h1>
+        <p className="text-muted-foreground">Track your children's academic progress</p>
       </div>
       
       <Tabs defaultValue={firstChildId} className="space-y-6">
-        <TabsList className="mb-4">
+        <TabsList>
           {children.map(child => (
             <TabsTrigger key={child.id} value={child.id}>
               {child.user.firstName} {child.user.lastName}
@@ -80,24 +76,24 @@ export default async function ParentAcademicsPage() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-medium text-sm text-gray-500">Current Class</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">Current Class</h3>
                     <p className="text-lg font-semibold">
                       {academicData.currentEnrollment 
                         ? `${academicData.currentEnrollment.class.name} - ${academicData.currentEnrollment.section.name}` 
                         : "Not enrolled in any class"}
                     </p>
                     
-                    <h3 className="font-medium text-sm text-gray-500 mt-4">Roll Number</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground mt-4">Roll Number</h3>
                     <p className="text-lg font-semibold">
                       {academicData.student.rollNumber || "Not assigned"}
                     </p>
                   </div>
                   
                   <div>
-                    <h3 className="font-medium text-sm text-gray-500">Admission ID</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground">Admission ID</h3>
                     <p className="text-lg font-semibold">{academicData.student.admissionId}</p>
                     
-                    <h3 className="font-medium text-sm text-gray-500 mt-4">Enrollment Status</h3>
+                    <h3 className="font-medium text-sm text-muted-foreground mt-4">Enrollment Status</h3>
                     <p className="text-lg font-semibold">
                       {academicData.currentEnrollment?.status || "Not available"}
                     </p>
@@ -125,17 +121,17 @@ export default async function ParentAcademicsPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium">{subject.name}</h3>
-                            <p className="text-sm text-gray-500">Code: {subject.code}</p>
+                            <p className="text-sm text-muted-foreground">Code: {subject.code}</p>
                           </div>
                           <Link 
                             href={`/parent/academics/subjects/${subject.id}?childId=${child.id}`} 
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-primary hover:text-primary/80"
                           >
                             <ChevronRight className="h-5 w-5" />
                           </Link>
                         </div>
                         <div className="mt-2">
-                          <p className="text-xs text-gray-500">Teacher(s):</p>
+                          <p className="text-xs text-muted-foreground">Teacher(s):</p>
                           <ul className="text-sm">
                             {subject.teachers.map((teacher: { id: string; name: string }) => (
                               <li key={teacher.id}>{teacher.name}</li>
@@ -146,7 +142,7 @@ export default async function ParentAcademicsPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-4">No subjects assigned yet</p>
+                  <p className="text-center text-muted-foreground py-4">No subjects assigned yet</p>
                 )}
               </CardContent>
             </Card>
@@ -174,7 +170,7 @@ export default async function ParentAcademicsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
-                        <tr className="bg-gray-50">
+                        <tr className="bg-muted">
                           <th className="border px-4 py-2 text-left">Day</th>
                           <th className="border px-4 py-2 text-left">Time</th>
                           <th className="border px-4 py-2 text-left">Subject</th>
@@ -184,7 +180,7 @@ export default async function ParentAcademicsPage() {
                       </thead>
                       <tbody>
                         {academicData.timetable.slice(0, 5).map((slot, index) => (
-                          <tr key={index} className="border-b hover:bg-gray-50">
+                          <tr key={index} className="border-b hover:bg-muted/50">
                             <td className="border px-4 py-2">{slot.day}</td>
                             <td className="border px-4 py-2">
                               {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
@@ -201,7 +197,7 @@ export default async function ParentAcademicsPage() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-4">No timetable available</p>
+                  <p className="text-center text-muted-foreground py-4">No timetable available</p>
                 )}
               </CardContent>
             </Card>
@@ -232,29 +228,29 @@ export default async function ParentAcademicsPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="font-medium">{assignment.title}</h3>
-                            <p className="text-sm text-gray-500">Subject: {assignment.subject.name}</p>
+                            <p className="text-sm text-muted-foreground">Subject: {assignment.subject.name}</p>
                           </div>
                           <div className="text-right">
                             <div className={`text-sm font-medium ${
-                              new Date(assignment.dueDate) < new Date() ? 'text-red-600' : 'text-blue-600'
+                              new Date(assignment.dueDate) < new Date() ? 'text-destructive' : 'text-primary'
                             }`}>
                               Due: {new Date(assignment.dueDate).toLocaleDateString()}
                             </div>
                             <div className={`text-xs ${
-                              assignment.submissions.length > 0 ? 'text-green-600' : 'text-amber-600'
+                              assignment.submissions.length > 0 ? 'text-green-600 dark:text-green-500' : 'text-amber-600 dark:text-amber-500'
                             }`}>
                               {assignment.submissions.length > 0 ? 'Submitted' : 'Pending'}
                             </div>
                           </div>
                         </div>
                         {assignment.description && (
-                          <p className="text-sm text-gray-600 mt-2">{assignment.description}</p>
+                          <p className="text-sm text-muted-foreground mt-2">{assignment.description}</p>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-gray-500 py-4">No assignments available</p>
+                  <p className="text-center text-muted-foreground py-4">No assignments available</p>
                 )}
               </CardContent>
             </Card>

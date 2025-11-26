@@ -405,7 +405,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                             href={file.url} 
                             target="_blank" 
                             rel="noreferrer"
-                            className="text-sm text-blue-600 hover:underline"
+                            className="text-sm text-primary hover:underline"
                           >
                             {file.name}
                           </a>
@@ -496,7 +496,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                               href={resource.startsWith('http') ? resource : `https://${resource}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                              className="flex items-center gap-2 text-sm text-primary hover:underline"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                               {resource.length > 40 ? `${resource.substring(0, 40)}...` : resource}

@@ -84,8 +84,7 @@ export default function TeacherMessagesPage() {
         // Mark as read if it's an inbox message
         if (activeTab === "inbox" && !result.data.isRead) {
           await markAsRead({ id: messageId, type: "message" });
-          // Refresh messages list to update read status
-          fetchMessages();
+          // Don't refresh here to avoid issues
         }
       } else {
         toast.error(result.message || "Failed to fetch message details");
@@ -96,12 +95,13 @@ export default function TeacherMessagesPage() {
       toast.error("An error occurred while fetching message details");
       setSelectedMessageId(null);
     }
-  }, [activeTab, fetchMessages]);
+  }, [activeTab]);
 
-  // Initial load
+  // Load messages when dependencies change
   useEffect(() => {
     fetchMessages();
-  }, [fetchMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, pagination.page, filters.search, filters.isRead]);
 
   // Load contacts when compose dialog opens
   useEffect(() => {
@@ -140,6 +140,7 @@ export default function TeacherMessagesPage() {
   const handleFilterChange = (newFilters: { isRead?: boolean; search?: string }) => {
     setFilters(newFilters);
     setPagination((prev) => ({ ...prev, page: 1 }));
+    // Don't call fetchMessages here - let the useEffect handle it
   };
 
   const handleBulkDelete = async (messageIds: string[]) => {

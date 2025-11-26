@@ -47,12 +47,12 @@ export function StudentProfileEdit({ student }: StudentProfileEditProps) {
   };
 
   return (
-    <Card className="shadow-md">
-      <CardHeader className="pb-3">
-        <CardTitle>Update Profile</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader>
+        <CardTitle className="text-xl">Update Profile</CardTitle>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="phone" className="text-sm font-medium">
               Phone Number
@@ -63,6 +63,7 @@ export function StudentProfileEdit({ student }: StudentProfileEditProps) {
               value={formData.phone}
               onChange={handleChange}
               placeholder="Your phone number"
+              className="min-h-[44px]"
             />
           </div>
 
@@ -76,6 +77,7 @@ export function StudentProfileEdit({ student }: StudentProfileEditProps) {
               value={formData.address}
               onChange={handleChange}
               placeholder="Your address"
+              className="min-h-[44px]"
             />
           </div>
 
@@ -89,11 +91,12 @@ export function StudentProfileEdit({ student }: StudentProfileEditProps) {
               value={formData.emergencyContact}
               onChange={handleChange}
               placeholder="Emergency contact number"
+              className="min-h-[44px]"
             />
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading} className="w-full min-h-[44px]">
             {isLoading ? "Updating..." : "Update Profile"}
           </Button>
         </CardFooter>

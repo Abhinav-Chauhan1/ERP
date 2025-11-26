@@ -14,6 +14,8 @@ const documentFilterSchema = z.object({
   startDate: z.date().optional(),
   endDate: z.date().optional(),
   searchTerm: z.string().optional(),
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(20),
 });
 
 type DocumentFilter = z.infer<typeof documentFilterSchema>;
@@ -123,24 +125,41 @@ export async function getDocuments(filters: DocumentFilter) {
       ];
     }
     
-    // Fetch documents
-    const documents = await db.document.findMany({
-      where,
-      include: {
-        documentType: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    // Calculate pagination
+    const skip = (validated.page - 1) * validated.limit;
     
-    return { success: true, data: documents };
+    // Fetch documents with pagination
+    const [documents, total] = await Promise.all([
+      db.document.findMany({
+        where,
+        include: {
+          documentType: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: validated.limit,
+        skip,
+      }),
+      db.document.count({ where }),
+    ]);
+    
+    return { 
+      success: true, 
+      data: documents,
+      pagination: {
+        total,
+        page: validated.page,
+        limit: validated.limit,
+        totalPages: Math.ceil(total / validated.limit),
+      }
+    };
   } catch (error) {
     console.error("Failed to fetch documents:", error);
     if (error instanceof z.ZodError) {

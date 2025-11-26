@@ -66,11 +66,11 @@ export function MessageDetail({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-purple-100 text-purple-700 border-purple-200";
+        return "bg-secondary text-secondary-foreground border-secondary/30";
       case "TEACHER":
-        return "bg-blue-100 text-blue-700 border-blue-200";
+        return "bg-primary/10 text-primary border-primary/30";
       case "STUDENT":
-        return "bg-green-100 text-green-700 border-green-200";
+        return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800";
       case "PARENT":
         return "bg-orange-100 text-orange-700 border-orange-200";
       default:
@@ -121,7 +121,7 @@ export function MessageDetail({
               variant="outline"
               size="sm"
               onClick={() => onDelete(message.id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -147,7 +147,7 @@ export function MessageDetail({
             <div className="flex items-start gap-3">
               <Avatar className="h-12 w-12">
                 <AvatarImage src={message.sender.avatar || undefined} />
-                <AvatarFallback className="bg-blue-100 text-blue-700">
+                <AvatarFallback className="bg-primary/10 text-primary">
                   {getInitials(message.sender.firstName, message.sender.lastName)}
                 </AvatarFallback>
               </Avatar>
@@ -224,8 +224,8 @@ export function MessageDetail({
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="h-10 w-10 bg-blue-100 rounded flex items-center justify-center flex-shrink-0">
-                          <Paperclip className="h-5 w-5 text-blue-600" />
+                        <div className="h-10 w-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
+                          <Paperclip className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">

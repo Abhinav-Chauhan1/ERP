@@ -38,8 +38,8 @@ export default function TeacherSettingsError({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">
+          <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+            <p className="text-sm text-destructive">
               {error.message || "An unexpected error occurred"}
             </p>
             {error.digest && (

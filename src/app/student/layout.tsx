@@ -1,8 +1,8 @@
 "use client";
 
-import { Toaster } from "react-hot-toast";
 import { StudentSidebar } from "@/components/layout/student-sidebar";
 import { StudentHeader } from "@/components/layout/student-header";
+import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
 
 export default function StudentLayout({
   children
@@ -10,7 +10,7 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-full relative">
+    <UserThemeWrapper userRole="student">
       <nav 
         className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
         aria-label="Student navigation"
@@ -28,6 +28,6 @@ export default function StudentLayout({
           {children}
         </main>
       </div>
-    </div>
+    </UserThemeWrapper>
   );
 }

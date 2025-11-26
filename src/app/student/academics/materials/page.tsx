@@ -57,10 +57,11 @@ export default async function LearningMaterialsPage({
   const subjects = await getStudentSubjects();
   
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Learning Materials</h1>
-        <p className="text-gray-500">
+    <div className="flex flex-col gap-4 p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Learning Materials</h1>
+        <p className="text-muted-foreground mt-1">
           Access all your course materials and resources
         </p>
       </div>
@@ -89,28 +90,28 @@ export default async function LearningMaterialsPage({
             if (subjectLessons.length === 0) return null;
             
             return (
-              <Card key={subject.id} className="mb-6">
+              <Card key={subject.id} className="mb-6 hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center text-lg">
-                    <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
+                    <BookOpen className="h-5 w-5 mr-2 text-primary" />
                     {subject.name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {subjectLessons.slice(0, 3).map((lesson) => (
-                      <div key={lesson.id} className="flex items-start p-3 rounded-md border">
-                        <div className="rounded-md bg-blue-50 p-2 flex-shrink-0">
-                          <FileText className="h-5 w-5 text-blue-700" />
+                      <div key={lesson.id} className="flex items-start p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                        <div className="rounded-md bg-primary/10 p-2 flex-shrink-0">
+                          <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div className="ml-3 flex-grow">
                           <h3 className="font-medium">{lesson.title}</h3>
-                          <div className="text-sm text-gray-500 mt-1">
+                          <div className="text-sm text-muted-foreground mt-1">
                             {lesson.description?.substring(0, 60)}
                             {lesson.description && lesson.description.length > 60 ? "..." : ""}
                           </div>
                           {lesson.duration && (
-                            <div className="flex items-center mt-1 text-xs text-gray-500">
+                            <div className="flex items-center mt-1 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3 mr-1" />
                               Duration: {lesson.duration} minutes
                             </div>
@@ -119,7 +120,7 @@ export default async function LearningMaterialsPage({
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="ml-auto text-blue-600 flex-shrink-0"
+                          className="ml-auto flex-shrink-0"
                           asChild
                         >
                           <Link href={`/student/academics/materials/${lesson.id}`}>
@@ -134,7 +135,7 @@ export default async function LearningMaterialsPage({
                         <Button 
                           variant="link" 
                           size="sm" 
-                          className="font-normal text-blue-600"
+                          className="font-normal"
                           asChild
                         >
                           <Link href={`/student/academics/materials?subject=${subject.id}`}>
@@ -153,10 +154,12 @@ export default async function LearningMaterialsPage({
             const units = subject.syllabus?.units || [];
             return !units.some(unit => 'lessons' in unit && (unit as SyllabusUnit).lessons.length > 0);
           }) && (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-4 text-lg font-medium">No Materials Available</h3>
-              <p className="mt-1 text-gray-500">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-6 mb-4">
+                <FileText className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Materials Available</h3>
+              <p className="text-muted-foreground max-w-sm">
                 There are no learning materials uploaded for your subjects yet
               </p>
             </div>
@@ -168,7 +171,7 @@ export default async function LearningMaterialsPage({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center text-lg">
-                  <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
+                  <BookOpen className="h-5 w-5 mr-2 text-primary" />
                   {subject.name} Materials
                 </CardTitle>
               </CardHeader>
@@ -182,17 +185,17 @@ export default async function LearningMaterialsPage({
                         {'lessons' in unit && unit.lessons && (unit.lessons as Lesson[]).length > 0 ? (
                           <div className="space-y-3">
                             {(unit.lessons as Lesson[]).map((lesson: Lesson) => (
-                              <div key={lesson.id} className="flex items-start p-3 rounded-md border">
-                                <div className="rounded-md bg-blue-50 p-2 flex-shrink-0">
-                                  <FileText className="h-5 w-5 text-blue-700" />
+                              <div key={lesson.id} className="flex items-start p-3 rounded-lg border hover:bg-accent/50 transition-colors">
+                                <div className="rounded-md bg-primary/10 p-2 flex-shrink-0">
+                                  <FileText className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="ml-3 flex-grow">
                                   <h4 className="font-medium">{lesson.title}</h4>
-                                  <div className="text-sm text-gray-500 mt-1">
+                                  <div className="text-sm text-muted-foreground mt-1">
                                     {lesson.description}
                                   </div>
                                   {lesson.duration && (
-                                    <div className="flex items-center mt-1 text-xs text-gray-500">
+                                    <div className="flex items-center mt-1 text-xs text-muted-foreground">
                                       <Clock className="h-3 w-3 mr-1" />
                                       Duration: {lesson.duration} minutes
                                     </div>
@@ -203,7 +206,6 @@ export default async function LearningMaterialsPage({
                                     <Button 
                                       variant="outline" 
                                       size="sm"
-                                      className="text-blue-600"
                                     >
                                       <Download className="h-4 w-4 mr-1" />
                                       Resources
@@ -222,7 +224,7 @@ export default async function LearningMaterialsPage({
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-6 text-gray-500 border rounded-md">
+                          <div className="text-center py-6 text-muted-foreground border rounded-md">
                             No lessons available for this unit
                           </div>
                         )}
@@ -230,10 +232,12 @@ export default async function LearningMaterialsPage({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <FileText className="mx-auto h-12 w-12 text-gray-300" />
-                    <h3 className="mt-4 text-lg font-medium">No Materials Available</h3>
-                    <p className="mt-1 text-gray-500">
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="rounded-full bg-muted p-6 mb-4">
+                      <FileText className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">No Materials Available</h3>
+                    <p className="text-muted-foreground max-w-sm">
                       There are no learning materials uploaded for this subject yet
                     </p>
                   </div>

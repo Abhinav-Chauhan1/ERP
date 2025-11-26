@@ -184,33 +184,57 @@ export function NotificationList({
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-primary/10 rounded-md text-primary">
+                <Bell className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Notifications
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-3xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unread</CardTitle>
-            <BellOff className="h-4 w-4 text-muted-foreground" />
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-100 rounded-md text-blue-600">
+                <BellOff className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Unread
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.unread}</div>
+            <div className="text-3xl font-bold">{stats.unread}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Requires attention
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Read</CardTitle>
-            <CheckCheck className="h-4 w-4 text-muted-foreground" />
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-green-100 rounded-md text-green-600">
+                <CheckCheck className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Read
+              </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.total - stats.unread}</div>
+            <div className="text-3xl font-bold">{stats.total - stats.unread}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              All caught up
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -285,88 +309,93 @@ export function NotificationList({
               ))}
             </TabsList>
 
-            <TabsContent value={activeTab} className="space-y-2">
+            <TabsContent value={activeTab}>
               {/* Notification List */}
               {displayNotifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No notifications found</p>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="rounded-full bg-muted p-6 mb-4">
+                    <Bell className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No notifications</h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm">
+                    You're all caught up! No new notifications at this time.
+                  </p>
                 </div>
               ) : (
-                displayNotifications.map((notification) => {
+                <div className="divide-y">
+                  {displayNotifications.map((notification) => {
                   const NotificationContent = (
                     <div
                       className={cn(
-                        "flex items-start gap-3 p-4 rounded-lg border transition-colors",
-                        !notification.isRead && "bg-blue-50/50 border-blue-200",
-                        notification.link && "cursor-pointer hover:bg-gray-50"
+                        "p-4 hover:bg-accent transition-colors",
+                        !notification.isRead && "bg-blue-50/50",
+                        notification.link && "cursor-pointer"
                       )}
                     >
-                      {/* Icon */}
-                      <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0",
-                        getNotificationColor(notification.type)
-                      )}>
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex-1 min-w-0">
-                            <p className={cn(
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center",
+                            getNotificationColor(notification.type)
+                          )}>
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className={cn(
                               "text-sm font-semibold",
-                              !notification.isRead && "text-gray-900"
+                              !notification.isRead && "text-foreground"
                             )}>
                               {notification.title}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {notification.message}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {!notification.isRead && (
-                              <div className="h-2 w-2 rounded-full bg-blue-600" />
-                            )}
-                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                            </h4>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                               {format(new Date(notification.createdAt), "MMM d, h:mm a")}
                             </span>
                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {formatNotificationType(notification.type)}
-                          </Badge>
-                          {!notification.isRead && onMarkAsRead && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onMarkAsRead(notification.id);
-                              }}
-                              className="h-6 text-xs"
-                            >
-                              Mark as read
-                            </Button>
-                          )}
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {!notification.isRead && (
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                Unread
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {formatNotificationType(notification.type)}
+                            </Badge>
+                            {!notification.isRead && onMarkAsRead && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  onMarkAsRead(notification.id);
+                                }}
+                                className="h-6 text-xs"
+                              >
+                                Mark as read
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   );
 
-                  return notification.link ? (
-                    <Link key={notification.id} href={notification.link}>
-                      {NotificationContent}
-                    </Link>
-                  ) : (
-                    <div key={notification.id}>
-                      {NotificationContent}
-                    </div>
-                  );
-                })
+                    return notification.link ? (
+                      <Link key={notification.id} href={notification.link}>
+                        {NotificationContent}
+                      </Link>
+                    ) : (
+                      <div key={notification.id}>
+                        {NotificationContent}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </TabsContent>
           </Tabs>

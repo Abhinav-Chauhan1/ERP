@@ -13,7 +13,7 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Announcements</CardTitle>
-        <Link href="/parent/communication/announcements" className="text-sm text-blue-600 hover:underline">
+        <Link href="/parent/communication/announcements" className="text-sm text-primary hover:underline">
           View All
         </Link>
       </CardHeader>
@@ -23,10 +23,10 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
             {announcements.map((announcement) => (
               <div key={announcement.id} className="border-b pb-4 last:border-0 last:pb-0">
                 <h3 className="font-medium text-sm">{announcement.title}</h3>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                   {announcement.content}
                 </p>
-                <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+                <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
                   <span>
                     By: {announcement.publisher.user.firstName} {announcement.publisher.user.lastName}
                   </span>
@@ -46,8 +46,8 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
           </div>
         ) : (
           <div className="text-center py-6">
-            <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500">No announcements available</p>
+            <Bell className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-muted-foreground">No announcements available</p>
           </div>
         )}
       </CardContent>

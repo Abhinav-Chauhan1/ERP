@@ -13,18 +13,20 @@ export function SecuritySettings() {
       {/* Two-Factor Authentication */}
       <TwoFactorSettings />
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Account Security</CardTitle>
+          <CardTitle className="text-xl">Account Security</CardTitle>
           <CardDescription>
             Manage your password and active sessions
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Password */}
-          <div className="flex items-start justify-between p-4 border rounded-lg">
+          <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
             <div className="flex items-start gap-3">
-              <Key className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Key className="h-5 w-5 text-primary" />
+              </div>
               <div>
                 <h3 className="font-medium">Password</h3>
                 <p className="text-sm text-muted-foreground">
@@ -33,16 +35,18 @@ export function SecuritySettings() {
               </div>
             </div>
             <Link href="/student/profile/change-password">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="min-h-[40px]">
                 Change Password
               </Button>
             </Link>
           </div>
 
           {/* Active Sessions */}
-          <div className="flex items-start justify-between p-4 border rounded-lg">
+          <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
             <div className="flex items-start gap-3">
-              <Shield className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Shield className="h-5 w-5 text-primary" />
+              </div>
               <div>
                 <h3 className="font-medium">Active Sessions</h3>
                 <p className="text-sm text-muted-foreground">
@@ -65,13 +69,13 @@ export function SecuritySettings() {
           </div>
 
           {/* Security Notice */}
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-medium text-amber-900 dark:text-amber-100">
+              <h3 className="font-medium text-amber-900">
                 Security Best Practices
               </h3>
-              <ul className="text-sm text-amber-800 dark:text-amber-200 mt-2 space-y-1 list-disc list-inside">
+              <ul className="text-sm text-amber-800 mt-2 space-y-1 list-disc list-inside">
                 <li>Use a strong, unique password</li>
                 <li>Enable two-factor authentication</li>
                 <li>Don't share your account credentials</li>

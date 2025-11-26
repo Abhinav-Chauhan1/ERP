@@ -48,18 +48,18 @@ export default async function ResultsPage() {
     : 0;
   
   return (
-    <div className="container p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Exam Results</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold tracking-tight">Exam Results</h1>
+          <p className="text-muted-foreground mt-1">
             View your exam results and performance analysis
           </p>
         </div>
         
         {totalResults > 0 && (
-          <div className="flex items-center bg-blue-50 text-blue-800 px-4 py-2 rounded-md">
-            <BarChart className="h-5 w-5 mr-2 text-blue-600" />
+          <div className="flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded-md">
+            <BarChart className="h-5 w-5 mr-2" />
             <span className="text-sm font-medium">
               Overall: {averagePercentage}% ({passingResults}/{totalResults} passed)
             </span>
@@ -71,26 +71,32 @@ export default async function ResultsPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Performance Summary</CardTitle>
+              <CardTitle className="text-xl">Performance Summary</CardTitle>
               <CardDescription>Your overall exam performance</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="rounded-lg border p-4">
-                  <div className="text-sm font-medium text-gray-500 mb-1">Average Score</div>
-                  <div className="text-2xl font-bold">{averagePercentage}%</div>
-                </div>
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <CardContent className="pt-6">
+                    <div className="text-sm font-medium text-blue-900 mb-1">Average Score</div>
+                    <div className="text-3xl font-bold text-blue-900">{averagePercentage}%</div>
+                  </CardContent>
+                </Card>
                 
-                <div className="rounded-lg border p-4">
-                  <div className="text-sm font-medium text-gray-500 mb-1">Pass Rate</div>
-                  <div className="text-2xl font-bold">{passingPercentage}%</div>
-                  <div className="text-sm text-gray-500">{passingResults} of {totalResults} exams</div>
-                </div>
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <CardContent className="pt-6">
+                    <div className="text-sm font-medium text-green-900 mb-1">Pass Rate</div>
+                    <div className="text-3xl font-bold text-green-900">{passingPercentage}%</div>
+                    <div className="text-sm text-green-700 mt-1">{passingResults} of {totalResults} exams</div>
+                  </CardContent>
+                </Card>
                 
-                <div className="rounded-lg border p-4">
-                  <div className="text-sm font-medium text-gray-500 mb-1">Total Exams</div>
-                  <div className="text-2xl font-bold">{totalResults}</div>
-                </div>
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <CardContent className="pt-6">
+                    <div className="text-sm font-medium text-purple-900 mb-1">Total Exams</div>
+                    <div className="text-3xl font-bold text-purple-900">{totalResults}</div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
@@ -108,90 +114,92 @@ export default async function ResultsPage() {
               <TabsContent key={term} value={term}>
                 <Card>
                   <CardHeader>
-                    <CardTitle>{term} Results</CardTitle>
+                    <CardTitle className="text-xl">{term} Results</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="rounded-md border overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Exam
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Subject
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Date
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Marks
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Percentage
-                            </th>
-                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Details
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {termResults.map(result => (
-                            <tr key={result.id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="font-medium">{result.examTitle}</div>
-                                <div className="text-sm text-gray-500">{result.examType}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {result.subject}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {format(new Date(result.examDate), "MMM d, yyyy")}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                {result.isAbsent ? (
-                                  <Badge variant="outline" className="text-red-700 border-red-200">Absent</Badge>
-                                ) : (
-                                  <span>{result.marks}/{result.totalMarks}</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                {result.isAbsent ? (
-                                  <span>-</span>
-                                ) : (
-                                  <Badge className={`${
-                                    result.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                                    result.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                                    result.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    {result.percentage}%
-                                  </Badge>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-center">
-                                {result.isAbsent ? (
-                                  <Badge variant="destructive">Absent</Badge>
-                                ) : result.isPassing ? (
-                                  <Badge variant="outline" className="border-green-500 text-green-700">Pass</Badge>
-                                ) : (
-                                  <Badge variant="destructive">Fail</Badge>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right">
-                                <Button variant="ghost" className="text-blue-600" asChild>
-                                  <Link href={`/student/assessments/results/${result.examId}`}>
-                                    View
-                                  </Link>
-                                </Button>
-                              </td>
+                    <div className="rounded-md border">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-accent border-b">
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                                Exam
+                              </th>
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                                Subject
+                              </th>
+                              <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                                Date
+                              </th>
+                              <th className="py-3 px-4 text-center font-medium text-muted-foreground">
+                                Marks
+                              </th>
+                              <th className="py-3 px-4 text-center font-medium text-muted-foreground">
+                                Percentage
+                              </th>
+                              <th className="py-3 px-4 text-center font-medium text-muted-foreground">
+                                Status
+                              </th>
+                              <th className="py-3 px-4 text-right font-medium text-muted-foreground">
+                                Details
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {termResults.map(result => (
+                              <tr key={result.id} className="border-b hover:bg-accent/50">
+                                <td className="py-3 px-4 align-middle">
+                                  <div className="font-medium">{result.examTitle}</div>
+                                  <div className="text-sm text-muted-foreground">{result.examType}</div>
+                                </td>
+                                <td className="py-3 px-4 align-middle">
+                                  {result.subject}
+                                </td>
+                                <td className="py-3 px-4 align-middle">
+                                  {format(new Date(result.examDate), "MMM d, yyyy")}
+                                </td>
+                                <td className="py-3 px-4 align-middle text-center">
+                                  {result.isAbsent ? (
+                                    <Badge variant="outline" className="text-red-700 border-red-200">Absent</Badge>
+                                  ) : (
+                                    <span className="font-medium">{result.marks}/{result.totalMarks}</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 align-middle text-center">
+                                  {result.isAbsent ? (
+                                    <span>-</span>
+                                  ) : (
+                                    <Badge className={`${
+                                      result.percentage >= 90 ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                      result.percentage >= 75 ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' :
+                                      result.percentage >= 60 ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                                      'bg-red-100 text-red-800 hover:bg-red-100'
+                                    }`}>
+                                      {result.percentage}%
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 align-middle text-center">
+                                  {result.isAbsent ? (
+                                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>
+                                  ) : result.isPassing ? (
+                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Pass</Badge>
+                                  ) : (
+                                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Fail</Badge>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 align-middle text-right">
+                                  <Button variant="ghost" size="sm" asChild>
+                                    <Link href={`/student/assessments/results/${result.examId}`}>
+                                      View
+                                    </Link>
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -200,10 +208,12 @@ export default async function ResultsPage() {
           </Tabs>
         </div>
       ) : (
-        <div className="text-center py-12">
-          <FileCheck className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-4 text-lg font-medium">No Results Available</h3>
-          <p className="mt-1 text-gray-500">
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="rounded-full bg-muted p-6 mb-4">
+            <FileCheck className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No Results Available</h3>
+          <p className="text-muted-foreground max-w-sm">
             Your exam results will appear here once they are published
           </p>
         </div>

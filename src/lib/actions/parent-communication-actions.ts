@@ -159,10 +159,12 @@ export async function getMessages(filters: GetMessagesInput) {
       isRead: message.isRead,
       readAt: message.readAt,
       createdAt: message.createdAt,
+      attachments: message.attachments,
       sender: {
         id: message.sender.id,
         firstName: message.sender.firstName,
         lastName: message.sender.lastName,
+        email: message.sender.email,
         avatar: message.sender.avatar,
         role: message.sender.role
       },
@@ -170,6 +172,7 @@ export async function getMessages(filters: GetMessagesInput) {
         id: message.recipient.id,
         firstName: message.recipient.firstName,
         lastName: message.recipient.lastName,
+        email: message.recipient.email,
         avatar: message.recipient.avatar,
         role: message.recipient.role
       },
@@ -876,5 +879,77 @@ export async function getTotalUnreadCount() {
   } catch (error) {
     console.error("Error fetching total unread count:", error);
     return { success: false, message: "Failed to fetch unread count" };
+  }
+}
+
+/**
+ * Get available recipients (teachers and admins) for composing messages
+ * Requirements: 2.1
+ */
+export async function getAvailableRecipients() {
+  try {
+    // Get current parent
+    const parentData = await getCurrentParent();
+    if (!parentData) {
+      return { success: false, message: "Unauthorized" };
+    }
+    
+    // Get all teachers and admins (only active users)
+    const recipients = await db.user.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              { role: UserRole.TEACHER },
+              { role: UserRole.ADMIN },
+            ]
+          },
+          { active: true }
+        ]
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        avatar: true,
+        role: true,
+        teacher: {
+          select: {
+            id: true,
+            subjects: {
+              select: {
+                subject: {
+                  select: {
+                    name: true,
+                  }
+                }
+              }
+            }
+          }
+        },
+        administrator: {
+          select: {
+            id: true,
+            position: true,
+            department: true,
+          }
+        }
+      },
+      orderBy: [
+        { role: 'asc' },
+        { firstName: 'asc' },
+      ]
+    });
+    
+    console.log(`Found ${recipients.length} available recipients (teachers and admins) for parent`);
+    
+    return {
+      success: true,
+      data: recipients
+    };
+  } catch (error) {
+    console.error("Error fetching recipients:", error);
+    return { success: false, message: "Failed to fetch recipients" };
   }
 }

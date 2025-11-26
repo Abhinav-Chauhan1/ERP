@@ -84,8 +84,8 @@ export function ChildSelector({ selectedChildId }: ChildSelectorProps) {
 
   return (
     <Select value={selectedChildId} onValueChange={handleChildChange}>
-      <SelectTrigger className="w-[250px]">
-        <User className="h-4 w-4 mr-2" />
+      <SelectTrigger className="w-[250px]" aria-label="Select a child to view">
+        <User className="h-4 w-4 mr-2" aria-hidden="true" />
         <SelectValue placeholder="Select a child" />
       </SelectTrigger>
       <SelectContent>

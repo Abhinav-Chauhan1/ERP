@@ -1,856 +1,709 @@
 # Implementation Plan
 
-## Phase 1: Critical Features - Fee Management System
+This implementation plan converts the Parent Dashboard completion design into a series of discrete, actionable coding tasks. Each task builds incrementally on previous tasks, with all code integrated and no orphaned components. The plan focuses exclusively on tasks that involve writing, modifying, or testing code.
 
-- [x] 1. Set up fee management infrastructure
+## Task List
 
+- [x] 1. Database Schema and Migrations
 
 
 
 
-  - Create validation schemas for fee operations using Zod
-  - Create TypeScript types for fee data structures
-  - Set up error handling utilities for payment operations
-  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-- [x] 2. Implement fee server actions
+- [x] 1.1 Add ParentSettings model to Prisma schema
 
 
+  - Add ParentSettings model with all notification, communication, privacy, and appearance fields
+  - Add relation to Parent model with cascade delete
+  - Add index on parentId field
+  - _Requirements: 6.1, 6.2, 6.5_
 
 
-- [ ] 2. Implement fee server actions
+- [x] 1.2 Create and run database migration
 
-- [x] 2.1 Create parent-fee-actions.ts with core fee operations
+  - Generate Prisma migration for ParentSettings model
+  - Run migration on development database
+  - Verify model exists and relations work
+  - Update Prisma client
+  - _Requirements: 6.1_
 
 
-  - Implement `getFeeOverview(childId)` to fetch fee breakdown and payment status
-  - Implement `getPaymentHistory(childId, filters)` with pagination and filtering
-  - Implement `createPayment(paymentData)` to initiate payment process
-  - Implement `verifyPayment(transactionId)` for payment confirmation
-  - Implement `downloadReceipt(paymentId)` to generate PDF receipts
-  - _Requirements: 1.1, 1.2, 1.3_
+- [x] 1.3 Create seed script for default parent settings
 
-- [x] 3. Integrate payment gateway
+  - Write script to create default ParentSettings for existing parents
+  - Test script on development database
+  - Verify all existing parents have settings records
+  - _Requirements: 6.2_
 
-
-
-
-
-- [x] 3.1 Set up Razorpay payment integration
-
-
-  - Create payment-gateway.ts utility with Razorpay SDK
-  - Implement `createPaymentOrder()` function
-  - Implement `verifyPaymentSignature()` for payment confirmation
-  - Add webhook handler for payment status updates
-  - _Requirements: 1.3_
-
-- [x] 3.2 Create payment API routes
-
-
-  - Create `/api/payments/create` endpoint
-  - Create `/api/payments/verify` endpoint for signature verification
-  - Create `/api/payments/webhook` endpoint for Razorpay callbacks
-  - Add rate limiting to payment endpoints
-  - _Requirements: 1.3, 10.2_
-
-- [x] 4. Build fee UI components
-
-
-
-
-
-
-
-
-
-- [x] 4.1 Create FeeBreakdownCard component
-
-
-
-
-  - Display total fees, paid amount, pending amount
-  - Show fee breakdown by category with visual indicators
-  - Add overdue fee alerts
-  - _Requirements: 1.1_
-
-- [x] 4.2 Create PaymentHistoryTable component
-
-
-
-  - Display payment records with date, amount, method, status
-  - Implement sorting and filtering
-  - Add download receipt button for each payment
-  - Implement pagination
-  - _Requirements: 1.2_
-
-- [x] 4.3 Create PaymentForm component
-
-
-
-  - Build form with fee selection and amount input
-  - Add payment method selection
-  - Implement form validation
-  - Add loading states during payment processing
-  - _Requirements: 1.3_
-
-- [x] 4.4 Create PaymentGatewayModal component
-
-
-
-  - Integrate Razorpay checkout for payment processing
-  - Handle payment submission and signature verification
-  - Show success/error states
-  - _Requirements: 1.3_
-
-- [x] 5. Create fee management pages
-
-
-
-
-
-- [x] 5.1 Create fee overview page at /parent/fees/overview
-
-
-  - Display FeeBreakdownCard for selected child
-  - Show payment deadlines and overdue alerts
-  - Add child selector for multi-child families
-  - Implement export to PDF functionality
-  - _Requirements: 1.1, 3.5_
-
-
-- [x] 5.2 Create payment history page at /parent/fees/history
-
-  - Display PaymentHistoryTable with all payments
-  - Add date range and status filters
-  - Implement search functionality
-  - _Requirements: 1.2_
-
-
-- [x] 5.3 Create make payment page at /parent/fees/payment
-
-  - Display PaymentForm with fee selection
-  - Integrate PaymentGatewayModal
-  - Handle payment flow and redirects
-  - _Requirements: 1.3_
-
-
-- [x] 5.4 Create payment success and failure pages
-
-  - Create /parent/fees/payment/success page with confirmation
-  - Create /parent/fees/payment/failed page with retry option
-  - Display transaction details and receipt download
-  - _Requirements: 1.3, 1.5_
-
-- [x] 5.5 Create fees redirect page at /parent/fees
-
-
-  - Redirect to /parent/fees/overview
-  - _Requirements: 1.1_
-
-## Phase 2: Critical Features - Communication System
-- [x] 6. Set up communication infrastructure
-
-  - Create validation schemas for messages and announcements
-  - Create TypeScript types for communication data
-  - Set up notification utilities
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-
-- [x] 7. Implement communication server actions
-
-
-
-
-- [x] 7.1 Create parent-communication-actions.ts
-
-
-  - Implement `getMessages(type, filters)` for inbox/sent/drafts
-  - Implement `sendMessage(messageData)` to compose and send messages
-  - Implement `getAnnouncements(filters)` with category and date filtering
-  - Implement `getNotifications(filters)` grouped by type
-  - Implement `markAsRead(id, type)` for messages and notifications
-  - Implement `deleteMessage(id)` with soft delete
-  - _Requirements: 2.1, 2.2, 2.3, 2.4_
-
-- [x] 8. Build communication UI components
-
-
-
-
-
-
-- [x] 8.1 Create MessageList component
-
-  - Display messages in list format with sender, subject, date
-  - Show read/unread status with visual indicators
-  - Add message selection for bulk actions
-  - Implement search and filtering
-  - _Requirements: 2.1_
-
-- [x] 8.2 Create MessageDetail component
-
-
-  - Display full message content with attachments
-  - Add reply and forward buttons
-  - Show message thread if applicable
-  - _Requirements: 2.1_
-
-- [x] 8.3 Create ComposeMessage component
-
-
-  - Build form with recipient selection, subject, and body
-  - Add rich text editor for message content
-  - Implement file attachment with size validation (10MB limit)
-  - Add draft saving functionality
-  - _Requirements: 2.1, 10.5_
-
-- [x] 8.4 Create AnnouncementCard component
-
-
-  - Display announcement with title, content, date, category
-  - Show read/unread status
-  - Add expand/collapse for long content
-  - Display attachments with download links
-  - _Requirements: 2.2_
-
-- [x] 8.5 Create NotificationList component
-
-
-  - Display notifications grouped by type
-  - Show timestamp and notification content
-  - Add action buttons (view details, dismiss)
-  - Implement mark all as read functionality
-  - _Requirements: 2.4_
-
-- [x] 9. Create communication pages
-
-
-
-
-
-- [x] 9.1 Create messages page at /parent/communication/messages
-
-
-  - Display MessageList with inbox/sent/drafts tabs
-  - Integrate MessageDetail in side panel or modal
-  - Add ComposeMessage modal
-  - Implement real-time message updates
-  - _Requirements: 2.1_
-
-- [x] 9.2 Create announcements page at /parent/communication/announcements
-
-
-  - Display announcements using AnnouncementCard components
-  - Add category and date range filters
-  - Implement search functionality
-  - Show announcement detail in modal
-  - _Requirements: 2.2_
-
-- [x] 9.3 Create notifications center at /parent/communication/notifications
-
-
-  - Display NotificationList with all notification types
-  - Add notification type filter
-  - Implement clear all notifications
-  - Show notification preferences link
-  - _Requirements: 2.4_
-
-- [x] 9.4 Create communication redirect page at /parent/communication
-
-
-  - Redirect to /parent/communication/messages
-  - _Requirements: 2.1_
-
-- [x] 9.5 Update ParentHeader component
-
-
-  - Update notification badge with real unread count from database
-  - Add click handler to navigate to notifications page
-  - _Requirements: 2.5_
-
-## Phase 3: Critical Features - Performance Tracking
+- [ ]* 1.4 Write property test for default settings creation
+  - **Property 22: Default Settings Creation**
+  - **Validates: Requirements 6.2**
 -
 
-- [x] 10. Set up performance tracking infrastructure
-
-
-
-
-  - Create TypeScript types for exam results and reports
-  - Create utility functions for grade calculations
-  - Set up PDF generation utility for report cards
-  - _Requirements: 3.1, 3.2, 3.3, 3.4_
-
-- [x] 11. Implement performance server actions
+- [x] 2. Server Actions - Meeting Management
 
 
 
 
 
-- [x] 11.1 Create parent-performance-actions.ts
-
-
-  - Implement `getExamResults(childId, filters)` with term and subject filtering
-  - Implement `getProgressReports(childId, term)` with complete report data
-  - Implement `getPerformanceAnalytics(childId)` for charts and trends
-  - Implement `downloadReportCard(childId, term)` to generate PDF
-  - Implement `getClassComparison(childId, examId)` for class average comparison
-  - _Requirements: 3.1, 3.2, 3.4_
-
-- [x] 12. Build performance UI components
+- [x] 2.1 Create parent-meeting-actions.ts file
 
 
 
+  - Implement scheduleMeeting action with validation
+  - Implement getUpcomingMeetings action
+  - Implement getMeetingHistory action with filters
+  - Implement cancelMeeting action
+  - Implement rescheduleMeeting action
+  - Implement getTeacherAvailability action
+  - Add proper error handling and logging
+  - _Requirements: 7.1, 7.2, 7.3_
 
+- [ ]* 2.2 Write property test for teacher availability accuracy
+  - **Property 1: Teacher Availability Accuracy**
+  - **Validates: Requirements 1.2**
 
-- [x] 12.1 Create ExamResultsTable component
+- [ ]* 2.3 Write property test for meeting creation completeness
+  - **Property 2: Meeting Creation Completeness**
+  - **Validates: Requirements 1.3**
 
+- [ ]* 2.4 Write property test for meeting cancellation side effects
+  - **Property 4: Meeting Cancellation Side Effects**
+  - **Validates: Requirements 1.5**
 
-  - Display subject-wise marks, grades, and class average
-  - Show rank/position if available
-  - Add sorting by subject, marks, or date
-  - Highlight below-average performance
-  - _Requirements: 3.1_
+- [ ]* 2.5 Write property test for meeting reschedule persistence
+  - **Property 5: Meeting Reschedule Persistence**
+  - **Validates: Requirements 1.6**
 
-- [x] 12.2 Create PerformanceChart component
-
-
-  - Create line chart for grade trends over time
-  - Add subject selector for individual subject trends
-  - Show comparison with class average
-  - Use recharts or similar library
-  - _Requirements: 3.1, 3.3_
-
-- [x] 12.3 Create ProgressReportCard component
-
-
-  - Display overall performance summary
-  - Show teacher comments and remarks
-  - Display attendance correlation
-  - Show strengths and improvement areas
-  - _Requirements: 3.2_
-
-- [x] 12.4 Create GradeTrendChart component
-
-
-  - Create bar chart for subject-wise performance
-  - Show grade distribution
-  - Add term comparison
-  - _Requirements: 3.3_
-
-- [x] 13. Create performance tracking pages
+- [x] 3. Server Actions - Settings Management
 
 
 
 
-- [x] 13.1 Create exam results page at /parent/performance/results
+- [x] 3.1 Create parent-settings-actions.ts file
 
 
-  - Display ExamResultsTable with all exam results
-  - Add term/semester and exam type filters
-  - Integrate PerformanceChart for trends
-  - Add child selector for multi-child families
-  - Implement export to PDF functionality
-  - _Requirements: 3.1, 3.4, 3.5_
+  - Implement getSettings action
+  - Implement updateProfile action with validation
+  - Implement updateNotificationPreferences action
+  - Implement changePassword action with security checks
+  - Implement uploadAvatar action with Cloudinary integration
+  - Implement removeAvatar action
+  - Add proper error handling and logging
+  - _Requirements: 7.4, 7.5, 7.6_
 
-- [x] 13.2 Create progress reports page at /parent/performance/reports
+- [ ]* 3.2 Write property test for profile update validation
+  - **Property 7: Profile Update Validation and Persistence**
+  - **Validates: Requirements 2.2**
+
+- [ ]* 3.3 Write property test for notification preferences persistence
+  - **Property 8: Notification Preferences Persistence**
+  - **Validates: Requirements 2.3**
+
+- [ ]* 3.4 Write property test for password change validation
+  - **Property 9: Password Change Validation**
+  - **Validates: Requirements 2.6**
+
+- [ ]* 3.5 Write property test for avatar upload validation
+  - **Property 10: Avatar Upload Validation**
+  - **Validates: Requirements 2.7**
+-
+
+- [x] 4. Theme Consistency Implementation
 
 
-  - Display ProgressReportCard for each term
-  - Show GradeTrendChart for visual analysis
-  - Add term selector
-  - Implement download report card functionality
-  - _Requirements: 3.2, 3.4_
 
-- [x] 13.3 Create performance redirect page at /parent/performance
+- [x] 4.1 Apply theme-orange class to parent layout
 
 
-  - Redirect to /parent/performance/results
-  - _Requirements: 3.1_
+  - Update src/app/parent/layout.tsx to add theme-orange class to root div
+  - Ensure layout structure matches admin/teacher/student dashboards exactly (sidebar width: w-72, header height: h-16, main content: h-[calc(100%-4rem)])
+  - Verify sidebar, header, and main content areas use same structure as other dashboards
+  - Test theme application in light and dark modes
+  - _Requirements: 3.1, 3.2_
 
-## Phase 4: Important Features - Meeting Management
+- [x] 4.2 Update ParentSidebar to match other dashboard sidebars
 
-- [ ] 14. Set up meeting management infrastructure
-  - Create validation schemas for meeting operations
-  - Create TypeScript types for meeting data
-  - Set up email notification utility for meetings
-  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 15. Implement meeting server actions
-- [ ] 15.1 Create parent-meeting-actions.ts
-  - Implement `scheduleMeeting(meetingData)` to create meeting requests
-  - Implement `getUpcomingMeetings(parentId)` with sorting by date
-  - Implement `getMeetingHistory(parentId, filters)` with pagination
-  - Implement `cancelMeeting(meetingId)` with notification to teacher
-  - Implement `rescheduleMeeting(meetingId, newDate)` with availability check
-  - Implement `getTeacherAvailability(teacherId)` for calendar display
-  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - Review AdminSidebar, TeacherSidebar, and StudentSidebar for structure reference
+  - Replace all hardcoded colors with CSS variables (text-muted-foreground, text-primary, bg-accent, bg-primary/10, etc.)
+  - Ensure sidebar uses same component structure: logo section, navigation items, collapsible sections, user section
+  - Apply consistent active state styling: text-primary bg-primary/10 border-r-4 border-primary
+  - Apply consistent hover state styling: hover:text-primary hover:bg-accent
+  - Ensure minimum touch target sizes (min-h-[44px])
+  - Test active states and hover effects
+  - _Requirements: 3.4, 3.6, 3.10_
 
-- [ ] 16. Build meeting UI components
-- [ ] 16.1 Create MeetingScheduleForm component
-  - Build form with teacher selection, date/time picker, purpose
-  - Add meeting mode selection (in-person/online)
-  - Integrate with teacher availability calendar
+- [x] 4.3 Update ParentHeader to match other dashboard headers
+
+
+  - Review AdminHeader, TeacherHeader, and StudentHeader for structure reference
+  - Replace all hardcoded colors with CSS variables
+  - Ensure header uses same height (h-16) and structure as other dashboards
+  - Apply consistent border and background: border-b bg-card
+  - Ensure mobile menu button, page title, search, and actions use same patterns
+  - Test responsive behavior on mobile, tablet, and desktop
+  - _Requirements: 3.4, 3.10_
+
+- [x] 4.4 Audit and update all parent dashboard page layouts
+
+
+  - Review all pages in src/app/parent/ directory
+  - Ensure all pages use consistent padding (p-4 md:p-6)
+  - Ensure all pages use consistent gap spacing (gap-4 or gap-6)
+  - Ensure page headers follow pattern: text-2xl font-bold tracking-tight for h1, text-muted-foreground for description
+  - Replace any hardcoded colors with CSS variables
+  - _Requirements: 3.4, 3.7_
+
+- [x] 4.5 Audit and update all parent components
+
+
+  - Audit all components in src/components/parent/ directory
+  - Replace hardcoded colors with CSS variables (text-gray-500 → text-muted-foreground, bg-white → bg-card, text-blue-600 → text-primary, etc.)
+  - Update card components to use consistent styling matching other dashboards
+  - Update button components to use standard shadcn/ui variants (default, outline, ghost, destructive)
+  - Ensure all interactive elements have minimum touch targets (min-h-[44px])
+  - Test all components with theme-orange class applied
+  - _Requirements: 3.3, 3.4, 3.5, 3.8, 3.9_
+
+- [ ]* 4.6 Write property test for hardcoded color absence
+  - **Property 12: Hardcoded Color Absence**
+  - **Validates: Requirements 3.4**
+
+- [ ]* 4.7 Write property test for layout structure consistency
+  - **Property 12a: Layout Structure Consistency**
+  - **Validates: Requirements 3.2**
+
+- [ ]* 4.8 Write property test for component pattern consistency
+  - **Property 12b: Component Pattern Consistency**
+  - **Validates: Requirements 3.3, 3.5**
+
+- [x] 5. Meeting Management UI Components
+
+
+
+
+- [x] 5.1 Create MeetingScheduleForm component
+
+
+  - Build form with teacher selector, date picker, time picker, mode selector, purpose input
   - Implement form validation
-  - _Requirements: 4.1_
+  - Integrate with scheduleMeeting action
+  - Add loading states and error handling
+  - _Requirements: 1.2, 1.3_
 
-- [ ] 16.2 Create MeetingCard component
-  - Display meeting details (teacher, date, time, mode)
-  - Add status indicator (scheduled, completed, cancelled)
-  - Show action buttons (join, reschedule, cancel)
-  - Display meeting notes if available
-  - _Requirements: 4.2, 4.3_
+- [x] 5.2 Create TeacherAvailabilityCalendar component
 
-- [ ] 16.3 Create TeacherAvailabilityCalendar component
-  - Display teacher's available time slots
-  - Show booked slots as disabled
-  - Allow date and time selection
-  - Highlight selected slot
-  - _Requirements: 4.1_
 
-- [ ] 16.4 Create MeetingDetailModal component
-  - Show complete meeting information
-  - Display meeting notes and action items
+  - Build calendar view showing available time slots
+  - Integrate with getTeacherAvailability action
+  - Implement slot selection
+  - Show booked slots as unavailable
+  - _Requirements: 1.2_
+
+- [x] 5.3 Create MeetingCard component
+
+
+  - Display meeting information (teacher, date, time, mode, status)
+  - Add action buttons (join, cancel, reschedule)
+  - Implement responsive design
+  - _Requirements: 1.4_
+
+- [ ]* 5.4 Write property test for meeting display completeness
+  - **Property 3: Meeting Display Completeness**
+  - **Validates: Requirements 1.4**
+
+- [x] 5.5 Create MeetingDetailModal component
+
+
+  - Display full meeting details
+  - Show meeting notes and outcomes
   - Add reschedule and cancel options
-  - Show join meeting link for online meetings
-  - _Requirements: 4.2, 4.3, 4.4_
+  - Implement modal open/close logic
+  - _Requirements: 1.8_
 
-- [ ] 17. Create meeting management pages
-- [ ] 17.1 Create schedule meeting page at /parent/meetings/schedule
-  - Display MeetingScheduleForm
-  - Integrate TeacherAvailabilityCalendar
-  - Handle meeting request submission
-  - Show confirmation message
+- [ ]* 5.6 Write property test for meeting history completeness
+  - **Property 6: Meeting History Completeness**
+  - **Validates: Requirements 1.8**
+
+- [x] 6. Meeting Management Pages
+
+
+
+
+- [x] 6.1 Create meetings page structure
+
+
+  - Create /parent/meetings/page.tsx (redirect to upcoming)
+  - Create /parent/meetings/schedule/page.tsx
+  - Create /parent/meetings/upcoming/page.tsx
+  - Create /parent/meetings/history/page.tsx
+  - Add proper loading states with Suspense
+  - _Requirements: 1.1_
+
+- [x] 6.2 Implement schedule meeting page
+
+
+  - Integrate MeetingScheduleForm component
+  - Integrate TeacherAvailabilityCalendar component
+  - Handle form submission and navigation
+  - Add success/error feedback
+  - _Requirements: 1.2, 1.3_
+
+- [x] 6.3 Implement upcoming meetings page
+
+
+  - Fetch and display upcoming meetings
+  - Integrate MeetingCard components
+  - Add filtering and sorting options
+  - Implement cancel and reschedule actions
+  - _Requirements: 1.4, 1.5, 1.6_
+
+- [x] 6.4 Implement meeting history page
+
+
+  - Fetch and display past meetings
+  - Show meeting notes and outcomes
+  - Add date range filtering
+  - Implement pagination
+  - _Requirements: 1.8_
+
+- [x] 6.5 Update ParentSidebar with meetings navigation
+
+
+  - Add "Meetings" menu item with icon
+  - Add submenu for Schedule, Upcoming, History
+  - Test navigation and active states
+  - _Requirements: 1.1_
+-
+
+- [ ] 7. Settings UI Components
+
+- [x] 7.1 Create ProfileEditForm component
+
+
+  - Build form with firstName, lastName, phone fields
+  - Implement form validation
+  - Integrate with updateProfile action
+  - Add loading states and error handling
+  - _Requirements: 2.2_
+
+- [x] 7.2 Create NotificationPreferences component
+
+
+  - Build toggles for all notification types
+  - Add contact method selector
+  - Add notification frequency selector
+  - Integrate with updateNotificationPreferences action
+  - _Requirements: 2.3_
+
+- [ ]* 7.3 Write property test for settings persistence round trip
+  - **Property 11: Settings Persistence Round Trip**
+  - **Validates: Requirements 2.9**
+
+- [x] 7.4 Create SecuritySettings component
+
+
+  - Build password change form
+  - Implement current password verification
+  - Add password strength indicator
+  - Integrate with changePassword action
+  - _Requirements: 2.6_
+
+- [x] 7.5 Create AvatarUpload component
+
+
+
+  - Build file input with drag-and-drop
+  - Implement image preview
+  - Add file validation (type, size)
+  - Integrate with uploadAvatar action
+  - Add remove avatar functionality
+  - _Requirements: 2.7_
+-
+
+- [ ] 8. Settings Page Implementation
+
+- [x] 8.1 Create settings page with tabs
+
+  - Create /parent/settings/page.tsx
+  - Implement tabbed interface (Profile, Notifications, Security, Appearance)
+  - Integrate all settings components
+  - Add proper loading states
+  - _Requirements: 2.1_
+
+- [x] 8.2 Implement profile tab
+
+  - Integrate ProfileEditForm component
+  - Integrate AvatarUpload component
+  - Handle form submission
+  - Add success/error feedback
+  - _Requirements: 2.2, 2.7_
+
+- [x] 8.3 Implement notifications tab
+
+  - Integrate NotificationPreferences component
+  - Handle preference updates
+  - Add success/error feedback
+  - _Requirements: 2.3, 2.4, 2.5_
+
+- [x] 8.4 Implement security tab
+
+  - Integrate SecuritySettings component
+  - Handle password changes
+  - Add two-factor authentication toggle (if applicable)
+  - Add success/error feedback
+  - _Requirements: 2.6_
+
+- [x] 8.5 Implement appearance tab
+
+
+  - Add theme selector (light/dark)
+  - Add language selector
+  - Handle preference updates
+  - _Requirements: 2.8_
+
+- [x] 9. Dashboard Enhancement Components
+
+
+
+
+
+
+
+- [x] 9.1 Create QuickActionsPanel component
+
+
+  - Build grid of action cards (Pay Fees, Send Message, Schedule Meeting, View Reports)
+  - Add icons and colors for each action
+  - Implement navigation on click
+  - Make responsive
   - _Requirements: 4.1_
 
-- [ ] 17.2 Create upcoming meetings page at /parent/meetings/upcoming
-  - Display upcoming meetings using MeetingCard components
-  - Add join meeting button for online meetings
-  - Integrate MeetingDetailModal for details
-  - Show meeting reminders
+- [x] 9.2 Create PerformanceSummaryCards component
+
+
+  - Fetch and display latest exam results for each child
+  - Show attendance percentage
+  - Show pending assignments count
+  - Show grade trend indicators
+  - Support multiple children
   - _Requirements: 4.2_
 
-- [ ] 17.3 Create meeting history page at /parent/meetings/history
-  - Display past meetings with status
-  - Add date range filter
-  - Show meeting notes and summaries
-  - Implement search functionality
+- [ ]* 9.3 Write property test for performance summary completeness
+  - **Property 13: Performance Summary Completeness**
+  - **Validates: Requirements 4.2**
+
+- [x] 9.4 Create CalendarWidget component
+
+
+  - Build mini calendar view
+  - Fetch and display upcoming events and meetings
+  - Add event markers on dates
+  - Implement click to view details
+  - Add month navigation
   - _Requirements: 4.3_
 
-- [ ] 17.4 Create meetings redirect page at /parent/meetings
-  - Redirect to /parent/meetings/upcoming
-  - _Requirements: 4.2_
+- [ ]* 9.5 Write property test for calendar widget event display
+  - **Property 14: Calendar Widget Event Display**
+  - **Validates: Requirements 4.3**
 
-## Phase 5: Important Features - Academic Completion
-
-- [x] 18. Implement academic server actions extensions
+- [x] 9.6 Create RecentActivityFeed component
 
 
+  - Fetch recent activities (assignments, exams, announcements, etc.)
+  - Display in timeline format with icons
+  - Show timestamps
+  - Make items clickable
+  - Implement load more functionality
+  - _Requirements: 4.4_
+
+- [ ]* 9.7 Write property test for activity feed chronological order
+  - **Property 15: Activity Feed Chronological Order**
+  - **Validates: Requirements 4.4**
+
+- [x]  
+- [x] 10.1 Update dashboard page structure
+
+  - Refactor /parent/page.tsx to include new sections
+  - Add QuickActionsPanel section
+  - Add PerformanceSummaryCards section
+  - Add CalendarWidget section
+  - Add RecentActivityFeed section
+  - Implement proper grid layout
+  - Add Suspense boundaries for each section
+  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+- [x] 10.2 Create dashboard skeleton loaders
 
 
-- [x] 18.1 Extend parent-academic-actions.ts
+  - Create skeleton for QuickActionsPanel
+  - Create skeleton for PerformanceSummaryCards
+  - Create skeleton for CalendarWidget
+  - Create skeleton for RecentActivityFeed
+  - _Requirements: 9.1_
+
+- [ ]* 10.3 Write property test for multi-child data aggregation
+  - **Property 16: Multi-Child Data Aggregation**
+  - **Validates: Requirements 4.7**
+- [x] 11. Children Management Enhancements
 
 
-  - Implement `getClassSchedule(childId)` for weekly timetable
-  - Implement `getHomework(childId, filters)` with status filtering
-  - Implement `getFullTimetable(childId, week)` for complete view
-  - Update `getChildAcademicProcess(childId)` with curriculum completion
-  - _Requirements: 5.1, 5.2, 5.3, 5.4_
--
-
-- [x] 19. Build academic UI components
 
 
+- [ ] 11. Children Management Enhancements
+
+- [x] 11.1 Enhance child profile pages
 
 
-- [x] 19.1 Create TimetableGrid component
-
-
-  - Display weekly timetable in grid format
-  - Show subject, teacher, room for each period
-  - Highlight current class
-  - Add color coding by subject
+  - Update /parent/children/[id]/page.tsx
+  - Add comprehensive academic information section
+  - Add current grades display
+  - Add attendance records section
+  - Add assignments section
+  - Add behavior records section
   - _Requirements: 5.1_
 
-- [x] 19.2 Create HomeworkList component
+- [ ]* 11.2 Write property test for child profile information completeness
+  - **Property 17: Child Profile Information Completeness**
+  - **Validates: Requirements 5.1**
+
+- [x] 11.3 Create detailed attendance view
 
 
-  - Display assignments with subject, due date, status
-  - Show pending vs completed with visual indicators
-  - Add marks/feedback if graded
-  - Implement sorting by due date
+  - Build calendar visualization for attendance
+  - Add attendance statistics (percentage, total days, absences)
+  - Add filtering by date range
   - _Requirements: 5.2_
 
-- [x] 19.3 Create AssignmentDetailCard component
+- [ ]* 11.4 Write property test for attendance history display
+  - **Property 18: Attendance History Display**
+  - **Validates: Requirements 5.2**
+
+- [x] 11.5 Create child comparison view
 
 
-  - Display assignment details and instructions
-  - Show submission status and date
-  - Display marks and feedback if graded
-  - Show attachments with download links
-  - _Requirements: 5.2_
-
-- [x] 19.4 Create AcademicProgressTracker component
-
-
-  - Display curriculum completion status
-  - Show learning milestones
-  - Add subject-wise progress bars
-  - Display academic year progress
-  - _Requirements: 5.4_
-
-- [x] 20. Create academic pages
-
-
-
-
-
-- [x] 20.1 Create class schedule page at /parent/academics/schedule
-
-
-  - Display TimetableGrid with weekly view
-  - Add child selector
-  - Implement print schedule functionality
-  - Show current class highlight
-  - _Requirements: 5.1, 3.5_
-
-- [x] 20.2 Create homework page at /parent/academics/homework
-
-
-  - Display HomeworkList with all assignments
-  - Add subject and status filters
-  - Integrate AssignmentDetailCard in modal
-  - Implement search functionality
-  - _Requirements: 5.2_
-
-- [x] 20.3 Create full timetable page at /parent/academics/timetable
-
-
-  - Display comprehensive timetable view
-  - Add week selector
-  - Implement print and export to PDF functionality
-  - Show all periods with complete details
+  - Build comparison page at /parent/children/compare
+  - Display performance metrics side-by-side
+  - Add charts for visual comparison
+  - Support selecting which children to compare
   - _Requirements: 5.3_
 
-- [x] 20.4 Complete academic process page at /parent/academics/process
+- [ ]* 11.6 Write property test for child comparison accuracy
+  - **Property 19: Child Comparison Accuracy**
+  - **Validates: Requirements 5.3**
 
+- [x] 11.7 Implement child-specific document filtering
 
-  - Replace stub with AcademicProgressTracker
-  - Display curriculum completion status
-  - Show learning milestones
-  - Add subject-wise progress visualization
-  - _Requirements: 5.4_
 
-## Phase 6: Important Features - Settings & Profile
--
+  - Update document pages to filter by selected child
+  - Add child selector to document pages
+  - Verify filtering logic
+  - _Requirements: 5.5_
 
-- [x] 21. Set up settings infrastructure
+- [ ]* 11.8 Write property test for document filtering accuracy
+  - **Property 20: Document Filtering Accuracy**
+  - **Validates: Requirements 5.5**
 
+- [x] 11.9 Create performance visualization components
 
 
+  - Build chart components for academic trends
+  - Add grade trend charts
+  - Add attendance trend charts
+  - Add assignment completion charts
+  - Integrate with child profile pages
+  - _Requirements: 5.6_
 
-  - Add ParentSettings model to Prisma schema
-  - Run database migration
-  - Create validation schemas for settings
-  - Create TypeScript types for settings data
-  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+- [ ]* 11.10 Write property test for performance visualization data accuracy
+  - **Property 21: Performance Visualization Data Accuracy**
+  - **Validates: Requirements 5.6**
 
+- [x] 12. Accessibility Implementation
 
 
-- [x] 22. Implement settings server actions
 
 
 
-- [ ] 22.1 Create parent-settings-actions.ts
-  - Implement `getSettings(parentId)` to fetch current settings
-  - Implement `updateProfile(profileData)` with validation
+- [x] 12.1 Add ARIA labels to all interactive elements
 
 
+  - Audit all parent dashboard components
+  - Add aria-label or aria-labelledby to buttons, links, inputs
+  - Add aria-expanded for expandable sections
+  - Add aria-controls for related elements
+  - Test with screen reader
+  - _Requirements: 8.3_
 
-  - Implement `changePassword(passwordData)` via Clerk API
+- [ ]* 12.2 Write property test for ARIA label presence
+  - **Property 31: ARIA Label Presence**
+  - **Validates: Requirements 8.3**
 
+- [x] 12.3 Verify color contrast compliance
 
-  - Implement `updateNotificationPreferences(preferences)` for all notification types
-  - Implement `uploadAvatar(file)` with file validation and Cloudinary upload
-  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 23. Build settings UI components
+  - Test all text/background combinations
+  - Ensure WCAG AA compliance (4.5:1 for normal text, 3:1 for large text)
+  - Fix any contrast issues
+  - _Requirements: 8.4_
 
+- [ ]* 12.4 Write property test for color contrast compliance
+  - **Property 32: Color Contrast Compliance**
+  - **Validates: Requirements 8.4**
 
+- [x] 12.5 Add alt text to all images
 
-- [ ] 23.1 Create ProfileEditForm component
-  - Build form with name, email, phone, address fields
-  - Add form validation
-  - Implement save functionality
 
-  - Show success/error messages
+  - Audit all image elements
+  - Add descriptive alt text
+  - Test with screen reader
+  - _Requirements: 8.6_
 
-  - _Requirements: 6.1, 6.2_
+- [ ]* 12.6 Write property test for image alt text presence
+  - **Property 33: Image Alt Text Presence**
+  - **Validates: Requirements 8.6**
 
-- [ ] 23.2 Create NotificationPreferences component
-  - Create toggles for each notification type (email, SMS, push)
+- [x] 13. Performance Optimization
 
 
-  - Add frequency settings (immediate, daily, weekly)
-  - Implement save functionality
-  - Show current preferences
-  - _Requirements: 6.3_
 
 
-- [ ] 23.3 Create SecuritySettings component
-  - Add password change form with current password verification
-  - Implement password strength indicator
-  - Add two-factor authentication toggle
-  - Show last password change date
-  - _Requirements: 6.4_
+- [x] 13.1 Implement image optimization
 
-- [ ] 23.4 Create AvatarUpload component
-  - Add file input with drag-and-drop
-  - Show image preview before upload
-  - Validate file type and size (5MB limit)
-  - Display current avatar
-  - _Requirements: 6.5, 10.5_
 
-- [x] 24. Create settings page
+  - Use Next.js Image component for all images
+  - Add lazy loading to images
+  - Optimize avatar images
+  - Test image loading performance
+  - _Requirements: 9.6_
 
+- [ ]* 13.2 Write property test for image optimization
+  - **Property 34: Image Optimization**
+  - **Validates: Requirements 9.6**
 
+- [x] 13.3 Add caching to server actions
 
-- [x] 24.1 Create settings page at /parent/settings
 
-  - Display ProfileEditForm with current profile data
-  - Integrate AvatarUpload component
-  - Add NotificationPreferences section
-  - Add SecuritySettings section
-  - Implement tabbed interface for organization
-  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - Implement caching for dashboard data (5 minutes)
+  - Implement caching for settings data (10 minutes)
+  - Implement caching for child data (5 minutes)
+  - Add cache invalidation on mutations
+  - _Requirements: 9.5_
 
-## Phase 7: Additional Features - Documents & Events
+- [x] 13.4 Implement pagination for large lists
 
-- [x] 25. Implement document management
 
+  - Add pagination to meeting history
+  - Add pagination to activity feed
+  - Add pagination to document lists
+  - Test with large datasets
+  - _Requirements: 9.5_
 
+- [-] 14. Error Handling and Validation
 
-- [x] 25.1 Create parent-document-actions.ts
 
+- [x] 14.1 Implement comprehensive form validation
 
-  - Implement `getDocuments(childId, filters)` with category and date filtering
-  - Implement `downloadDocument(documentId)` with signed URL generation
-  - Implement `previewDocument(documentId)` for supported file types
-  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [x] 25.2 Build document UI components
+  - Add validation to all forms
+  - Display inline error messages
+  - Prevent submission with invalid data
+  - Preserve user input on errors
+  - _Requirements: 10.1, 10.4, 10.6_
 
+- [ ]* 14.2 Write property test for required field validation
+  - **Property 36: Required Field Validation**
+  - **Validates: Requirements 10.4**
 
-  - Create DocumentGrid component for grid/list view
-  - Create DocumentCard component with preview thumbnail
-  - Create DocumentPreviewModal component for PDF and image preview
-  - _Requirements: 7.1, 7.2_
+- [ ]* 14.3 Write property test for form state preservation
+  - **Property 38: Form State Preservation**
+  - **Validates: Requirements 10.6**
 
-- [x] 25.3 Create documents page at /parent/documents
+- [x] 14.4 Improve error messages
 
 
-  - Display DocumentGrid with all documents
-  - Add category and date range filters
-  - Integrate DocumentPreviewModal
-  - Implement search and bulk download functionality
-  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-- [x] 26. Implement event management
 
+  - Ensure all error messages are user-friendly
+  - Remove technical details from user-facing errors
+  - Add specific error messages for file uploads
+  - Test error scenarios
+  - _Requirements: 10.2, 10.5_
 
+- [ ]* 14.5 Write property test for error message user-friendliness
+  - **Property 35: Error Message User-Friendliness**
+  - **Validates: Requirements 10.2**
 
-- [ ] 26. Implement event management
+- [ ]* 14.6 Write property test for file upload error specificity
+  - **Property 37: File Upload Error Specificity**
+  - **Validates: Requirements 10.5**
 
-- [x] 26.1 Create parent-event-actions.ts
+- [ ] 15. Additional Property Tests
+- [ ]* 15.1 Write property test for settings update timestamp
+  - **Property 23: Settings Update Timestamp**
+  - **Validates: Requirements 6.3**
 
+- [ ]* 15.2 Write property test for settings query completeness
+  - **Property 24: Settings Query Completeness**
+  - **Validates: Requirements 6.4**
 
-  - Implement `getEvents(filters)` with type and date filtering
-  - Implement `registerForEvent(eventId, childId)` with validation
-  - Implement `cancelEventRegistration(registrationId)` with confirmation
-  - Implement `getRegisteredEvents(childId)` for tracking
-  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+- [ ]* 15.3 Write property test for settings cascade deletion
+  - **Property 25: Settings Cascade Deletion**
+  - **Validates: Requirements 6.5**
 
-- [x] 26.2 Build event UI components
+- [ ]* 15.4 Write property test for meeting schedule success
+  - **Property 26: Meeting Schedule Success**
+  - **Validates: Requirements 7.2**
 
+- [ ]* 15.5 Write property test for teacher availability exclusion
+  - **Property 27: Teacher Availability Exclusion**
+  - **Validates: Requirements 7.3**
 
-  - Create EventCalendar component with month view
-  - Create EventCard component with event details
-  - Create EventDetailModal component with registration form
-  - Create EventRegistrationForm component
-  - _Requirements: 8.1, 8.2_
+- [ ]* 15.6 Write property test for notification preferences validation
+  - **Property 28: Notification Preferences Validation**
+  - **Validates: Requirements 7.5**
 
-- [x] 26.3 Create events page at /parent/events
+- [ ]* 15.7 Write property test for password change security
+  - **Property 29: Password Change Security**
+  - **Validates: Requirements 7.6**
 
+- [ ]* 15.8 Write property test for server action error messages
+  - **Property 30: Server Action Error Messages**
+  - **Validates: Requirements 7.7**
 
-  - Display EventCalendar with all school events
-  - Show upcoming events list using EventCard
-  - Integrate EventDetailModal for details and registration
-  - Add event type and date filters
-  - Implement search functionality
-  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-
-## Phase 8: Code Quality & Optimization
--
-
-- [x] 27. Implement comprehensive error handling
-
-
-
-
-- [x] 27.1 Add error boundaries to major sections
-
-
-  - Create error.tsx files for each major route
-  - Implement fallback UI with retry options
-  - Add error logging
-  - _Requirements: 9.1, 9.2, 9.5_
-
-- [x] 27.2 Add loading states
-
-
-
-  - Create loading.tsx files with skeleton loaders
-  - Implement Suspense boundaries for async components
-  - Add loading spinners for form submissions
-  - _Requirements: 9.3_
-
-- [x] 27.3 Implement form validation
-
-
-  - Add Zod schemas for all forms
-  - Implement client-side validation with error messages
-  - Add server-side validation in actions
-  - _Requirements: 9.2_
-
-- [x] 27.4 Add toast notifications
-
-
-  - Implement success toast for all successful operations
-  - Add error toast for failed operations
-  - Show informational toasts for important events
-  - _Requirements: 9.4_
-
-- [x] 28. Implement security measures
-
-
-
-
-- [x] 28.1 Add CSRF protection
-
-
-  - Implement CSRF tokens for all forms
-  - Add token verification in server actions
-  - _Requirements: 10.1, 10.2_
-
-
-- [x] 28.2 Implement rate limiting
-
-  - Add rate limiting to payment endpoints
-  - Add rate limiting to message sending
-  - Add rate limiting to file uploads
-  - _Requirements: 10.2, 10.4_
-
-
-- [x] 28.3 Add input sanitization
-
-  - Sanitize all user inputs
-  - Validate file uploads
-  - Prevent XSS attacks
-  - _Requirements: 10.1, 10.5_
-
-- [x] 29. Optimize performance
-
-
-
-
-
-
-
-- [x] 29.1 Implement database optimizations
-
-  - Add indexes to frequently queried fields
-  - Optimize Prisma queries with select
-  - Implement pagination for all large datasets (50 items per page)
-  - _Requirements: 10.3, 10.4_
-
-
-- [x] 29.2 Implement caching
-
-  - Add React Server Component caching
-  - Implement stale-while-revalidate pattern
-  - Cache static content
-  - _Requirements: 10.3_
-
-- [x] 29.3 Optimize frontend
-
-
-  - Implement code splitting for large components
-  - Add lazy loading for images
-  - Optimize bundle size
-  - _Requirements: 10.3_
-
-
-- [x] 29.4 Add request debouncing
-
-  - Implement debouncing for search inputs (300ms)
-  - Add throttling for rapid API calls
-  - _Requirements: 10.4_
-
-## Phase 9: Testing & Documentation
-
-- [ ]* 30. Write tests
-- [ ]* 30.1 Write unit tests for server actions
-  - Test fee actions with mock database
-  - Test communication actions
-  - Test performance actions
-  - Test meeting actions
+- [ ] 16. Final Testing and Polish
+- [ ] 16.1 Run all tests and fix failures
+  - Run all unit tests
+  - Run all property-based tests
+  - Fix any failing tests
+  - Ensure test coverage > 80%
   - _Requirements: All_
 
-- [ ]* 30.2 Write integration tests
-  - Test payment flow end-to-end
-  - Test message sending and receiving
-  - Test meeting scheduling flow
-  - _Requirements: 1.3, 2.1, 4.1_
+- [ ] 16.2 Perform accessibility audit
+  - Run axe-core on all pages
+  - Test with screen reader (NVDA/JAWS/VoiceOver)
+  - Test keyboard navigation
+  - Fix any accessibility issues
+  - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ]* 30.3 Perform manual testing
-  - Test all pages load correctly
-  - Test forms validate properly
-  - Test responsive design on mobile
-  - Test accessibility with screen reader
-  - _Requirements: 9.1, 9.2, 9.3, 9.4_
+- [ ] 16.3 Performance testing
+  - Run Lighthouse audit on all pages
+  - Verify page load times < 3 seconds
+  - Check bundle size
+  - Optimize if needed
+  - _Requirements: 9.5_
 
-- [ ]* 31. Create documentation
-  - Document all server actions with JSDoc comments
-  - Create user guide for parents
-  - Document environment variables
-  - Add deployment guide
-  - _Requirements: All_
+- [ ] 16.4 Cross-browser testing
+  - Test on Chrome, Firefox, Safari, Edge
+  - Test on mobile devices (iOS, Android)
+  - Fix any browser-specific issues
+  - _Requirements: 8.1_
 
-## Phase 10: Deployment Preparation
+- [ ] 16.5 Visual regression testing
+  - Compare parent dashboard with other dashboards
+  - Verify theme consistency
+  - Check responsive layouts
+  - Fix any visual inconsistencies
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
 
-- [ ] 32. Prepare for production deployment
-- [ ] 32.1 Set up environment variables
-  - Configure production database URL
-  - Add payment gateway credentials
-  - Set up email service API keys
-  - Configure file storage credentials
-  - _Requirements: 10.1, 10.2_
+- [ ] 17. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 32.2 Run security audit
-  - Check for exposed secrets
-  - Verify HTTPS configuration
-  - Test authentication flows
-  - Verify authorization checks
-  - _Requirements: 10.1, 10.2, 10.5_
-
-- [ ] 32.3 Perform load testing
-  - Test with multiple concurrent users
-  - Verify database performance
-  - Check API response times
-  - Test payment gateway under load
-  - _Requirements: 10.3, 10.4_
-
-- [ ] 32.4 Deploy to production
-  - Run database migrations
-  - Deploy application to hosting platform
-  - Configure CDN for static assets
-  - Set up monitoring and alerts
-  - _Requirements: All_

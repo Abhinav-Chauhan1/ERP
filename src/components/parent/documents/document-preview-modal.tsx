@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { X, Download, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -106,14 +107,14 @@ export function DocumentPreviewModal({
               {document.isPreviewable ? (
                 <>
                   {document.fileType?.startsWith('image/') ? (
-                    <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-                      <img
+                    <div className="flex items-center justify-center h-full bg-muted rounded-lg relative">
+                      <Image
                         src={document.fileUrl}
                         alt={document.title}
-                        width={800}
-                        height={600}
-                        loading="lazy"
-                        className="max-w-full max-h-full object-contain"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
+                        className="object-contain"
+                        priority={false}
                       />
                     </div>
                   ) : document.fileType === 'application/pdf' ? (

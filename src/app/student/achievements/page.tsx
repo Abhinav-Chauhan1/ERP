@@ -59,19 +59,30 @@ export default async function StudentAchievementsPage() {
   } = await getStudentAchievements();
 
   return (
-    <div className="container p-6">
-      <h1 className="text-2xl font-bold mb-6">My Achievements</h1>
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Achievements</h1>
+        <p className="text-muted-foreground mt-1">
+          Track your certificates, awards, and extra-curricular activities
+        </p>
+      </div>
       
       <Tabs defaultValue="certificates" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mb-8">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
           <TabsTrigger value="certificates">Certificates</TabsTrigger>
           <TabsTrigger value="awards">Awards</TabsTrigger>
           <TabsTrigger value="extra-curricular">Extra-curricular</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="certificates" className="space-y-6">
+        <TabsContent value="certificates" className="space-y-6 mt-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Certificates</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Certificates</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your academic and professional certificates
+              </p>
+            </div>
             <AchievementDialogTrigger title="Add Certificate">
               <CertificateForm categories={categories.certificate} />
             </AchievementDialogTrigger>
@@ -80,38 +91,42 @@ export default async function StudentAchievementsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {certificates.length > 0 ? (
               certificates.map(certificate => (
-                <Card key={certificate.id} className="overflow-hidden">
+                <Card key={certificate.id} className="overflow-hidden hover:shadow-md transition-shadow">
                   {certificate.imageUrl && (
-                    <div className="h-48 w-full bg-gray-100 relative">
+                    <div className="h-48 w-full bg-muted relative">
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Scroll className="h-12 w-12 text-gray-400" />
+                        <Scroll className="h-12 w-12 text-muted-foreground" />
                       </div>
                     </div>
                   )}
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start gap-2">
                       <CardTitle className="text-lg">{certificate.title}</CardTitle>
-                      <Badge variant="outline">{certificate.category}</Badge>
+                      <Badge variant="outline" className="flex-shrink-0">{certificate.category}</Badge>
                     </div>
                     <CardDescription>
                       Issued on {format(new Date(certificate.issueDate), "MMMM d, yyyy")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-500 mb-2">
+                    <p className="text-sm text-muted-foreground mb-3">
                       {certificate.description}
                     </p>
-                    <p className="text-sm flex items-center text-gray-500">
-                      <User className="h-3.5 w-3.5 mr-2" />
-                      Issued by: {certificate.issuedBy}
-                    </p>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <User className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span>Issued by: {certificate.issuedBy}</span>
+                    </div>
                   </CardContent>
                   <CardFooter className="border-t pt-3 flex justify-end">
                     <form action={async () => {
                       "use server";
                       await deleteAchievement(certificate.id, "certificate");
                     }}>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
+                      >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
@@ -120,10 +135,12 @@ export default async function StudentAchievementsPage() {
                 </Card>
               ))
             ) : (
-              <div className="col-span-full text-center py-12">
-                <Scroll className="h-12 w-12 mx-auto text-gray-400" />
-                <h3 className="mt-4 text-lg font-medium">No certificates yet</h3>
-                <p className="text-sm text-gray-500">
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <Scroll className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                   Your certificates will appear here when added
                 </p>
               </div>
@@ -131,41 +148,53 @@ export default async function StudentAchievementsPage() {
           </div>
         </TabsContent>
         
-        <TabsContent value="awards">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Awards</h2>
+        <TabsContent value="awards" className="space-y-6 mt-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Awards</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Recognition and honors you've received
+              </p>
+            </div>
             <AchievementDialogTrigger title="Add Award">
               <AwardForm categories={categories.award} />
             </AchievementDialogTrigger>
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-4">
             {awards.length > 0 ? (
               awards.map(award => (
-                <Card key={award.id} className="overflow-hidden">
-                  <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <Card key={award.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="bg-amber-100 p-3 rounded-full">
-                          <Award className="h-6 w-6 text-amber-600" />
+                        <div className="p-3 bg-amber-100 rounded-lg text-amber-600 flex-shrink-0">
+                          <Award className="h-6 w-6" />
                         </div>
-                        <CardTitle className="text-lg">{award.title}</CardTitle>
+                        <div>
+                          <CardTitle className="text-lg">{award.title}</CardTitle>
+                          <CardDescription className="mt-1">
+                            {award.category}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <Badge>{award.category}</Badge>
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 flex-shrink-0">
+                        {award.category}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-700 mb-4">
+                    <p className="text-sm text-muted-foreground mb-4">
                       {award.description}
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Awarded on {format(new Date(award.awardDate), "MMMM d, yyyy")}
+                    <div className="flex flex-col sm:flex-row gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span>Awarded on {format(new Date(award.awardDate), "MMMM d, yyyy")}</span>
                       </div>
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 mr-2" />
-                        Presenter: {award.presenter}
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 flex-shrink-0" />
+                        <span>Presenter: {award.presenter}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -174,7 +203,11 @@ export default async function StudentAchievementsPage() {
                       "use server";
                       await deleteAchievement(award.id, "award");
                     }}>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
+                      >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
@@ -183,10 +216,12 @@ export default async function StudentAchievementsPage() {
                 </Card>
               ))
             ) : (
-              <div className="text-center py-12">
-                <Award className="h-12 w-12 mx-auto text-gray-400" />
-                <h3 className="mt-4 text-lg font-medium">No awards yet</h3>
-                <p className="text-sm text-gray-500">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <Award className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No awards yet</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                   Your awards will appear here when added
                 </p>
               </div>
@@ -194,9 +229,14 @@ export default async function StudentAchievementsPage() {
           </div>
         </TabsContent>
         
-        <TabsContent value="extra-curricular">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Extra-curricular Activities</h2>
+        <TabsContent value="extra-curricular" className="space-y-6 mt-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Extra-curricular Activities</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your participation in clubs, sports, and other activities
+              </p>
+            </div>
             <AchievementDialogTrigger title="Add Activity">
               <ExtraCurricularForm categories={categories.extraCurricular} />
             </AchievementDialogTrigger>
@@ -205,28 +245,39 @@ export default async function StudentAchievementsPage() {
           <div className="space-y-4">
             {extraCurricular.length > 0 ? (
               extraCurricular.map(activity => (
-                <Card key={activity.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                      <CardTitle className="text-lg">{activity.activity}</CardTitle>
-                      <Badge variant="outline">{activity.category}</Badge>
+                <Card key={activity.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="p-2 bg-primary/10 rounded-md text-primary">
+                            <Medal className="h-5 w-5" />
+                          </div>
+                          <CardTitle className="text-lg">{activity.activity}</CardTitle>
+                        </div>
+                        <CardDescription>
+                          {activity.role} • {activity.duration}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline" className="flex-shrink-0">{activity.category}</Badge>
                     </div>
-                    <CardDescription>
-                      {activity.role} • {activity.duration}
-                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">Achievements: </span>
-                      {activity.achievements}
-                    </p>
+                    <div className="text-sm">
+                      <span className="font-medium text-foreground">Achievements: </span>
+                      <span className="text-muted-foreground">{activity.achievements}</span>
+                    </div>
                   </CardContent>
                   <CardFooter className="border-t pt-3 flex justify-end">
                     <form action={async () => {
                       "use server";
                       await deleteAchievement(activity.id, "extraCurricular");
                     }}>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
+                      >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </Button>
@@ -235,10 +286,12 @@ export default async function StudentAchievementsPage() {
                 </Card>
               ))
             ) : (
-              <div className="text-center py-12">
-                <Medal className="h-12 w-12 mx-auto text-gray-400" />
-                <h3 className="mt-4 text-lg font-medium">No extra-curricular activities yet</h3>
-                <p className="text-sm text-gray-500">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full bg-muted p-6 mb-4">
+                  <Medal className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No extra-curricular activities yet</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                   Your extra-curricular activities will appear here when added
                 </p>
               </div>

@@ -19,21 +19,14 @@ export default async function ParentChildrenOverviewPage() {
   const { children } = await getMyChildren();
   
   return (
-    <div className="container max-w-7xl mx-auto p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Users className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">My Children</h1>
-              <p className="text-muted-foreground">
-                {children.length} {children.length === 1 ? 'child' : 'children'} registered
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">My Children</h1>
+          <p className="text-muted-foreground">
+            {children.length} {children.length === 1 ? 'child' : 'children'} registered
+          </p>
         </div>
         <Button variant="outline" asChild>
           <Link href="/parent">

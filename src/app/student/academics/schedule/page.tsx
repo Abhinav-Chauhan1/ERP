@@ -13,10 +13,11 @@ export default async function ClassSchedulePage() {
   const { timetable, days } = await getStudentTimetable();
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Class Schedule</h1>
-        <p className="text-gray-500">
+    <div className="flex flex-col gap-4 p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Class Schedule</h1>
+        <p className="text-muted-foreground mt-1">
           View your weekly class timetable
         </p>
       </div>

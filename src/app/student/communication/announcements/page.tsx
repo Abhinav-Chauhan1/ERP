@@ -57,9 +57,12 @@ export default function StudentAnnouncementsPage() {
   };
 
   return (
-    <div className="h-full p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Announcements</h1>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Announcements</h1>
+        <p className="text-muted-foreground mt-1">
+          Stay updated with important announcements
+        </p>
       </div>
 
       {loading ? (

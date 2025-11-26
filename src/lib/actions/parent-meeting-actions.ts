@@ -7,18 +7,18 @@ import { z } from "zod";
 
 // Validation schemas
 const scheduleMeetingSchema = z.object({
-  teacherId: z.string().min(1, "Teacher is required"),
-  scheduledDate: z.string().min(1, "Date is required"),
-  duration: z.number().min(15, "Duration must be at least 15 minutes").max(180, "Duration cannot exceed 180 minutes").default(30),
+  teacherId: z.string().min(1, "Please select a teacher"),
+  scheduledDate: z.string().min(1, "Please select a date and time"),
+  duration: z.number().min(15, "Meeting duration must be at least 15 minutes").max(180, "Meeting duration cannot exceed 3 hours").default(30),
   location: z.string().optional(),
-  mode: z.enum(["IN_PERSON", "ONLINE"]).default("IN_PERSON"),
-  purpose: z.string().min(1, "Purpose is required"),
+  mode: z.enum(["IN_PERSON", "ONLINE"], { errorMap: () => ({ message: "Please select a meeting mode" }) }).default("IN_PERSON"),
+  purpose: z.string().min(1, "Please provide a purpose for the meeting"),
   description: z.string().optional(),
 });
 
 const rescheduleMeetingSchema = z.object({
   meetingId: z.string().min(1, "Meeting ID is required"),
-  newDate: z.string().min(1, "New date is required"),
+  newDate: z.string().min(1, "Please select a new date and time"),
 });
 
 const cancelMeetingSchema = z.object({
@@ -44,7 +44,7 @@ export async function scheduleMeeting(formData: FormData) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to schedule a meeting" };
     }
 
     // 2. Get parent from database
@@ -54,7 +54,7 @@ export async function scheduleMeeting(formData: FormData) {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Validate input
@@ -85,7 +85,7 @@ export async function scheduleMeeting(formData: FormData) {
     });
 
     if (!teacher) {
-      return { success: false, message: "Teacher not found" };
+      return { success: false, message: "The selected teacher could not be found. Please try again." };
     }
 
     // 5. Check for scheduling conflicts
@@ -184,7 +184,7 @@ export async function scheduleMeeting(formData: FormData) {
       return { success: false, message: error.errors[0].message };
     }
     console.error("Error scheduling meeting:", error);
-    return { success: false, message: "Failed to schedule meeting" };
+    return { success: false, message: "Unable to schedule the meeting. Please try again or contact support if the problem persists." };
   }
 }
 
@@ -197,7 +197,7 @@ export async function getUpcomingMeetings(parentId: string) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to view your meetings" };
     }
 
     // 2. Get user from database
@@ -207,12 +207,12 @@ export async function getUpcomingMeetings(parentId: string) {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Verify parent ID matches authenticated user
     if (user.parent.id !== parentId) {
-      return { success: false, message: "Unauthorized access" };
+      return { success: false, message: "You don't have permission to view these meetings." };
     }
 
     // 4. Fetch upcoming meetings
@@ -249,7 +249,7 @@ export async function getUpcomingMeetings(parentId: string) {
     return { success: true, data: meetings };
   } catch (error) {
     console.error("Error fetching upcoming meetings:", error);
-    return { success: false, message: "Failed to fetch upcoming meetings" };
+    return { success: false, message: "Unable to load your upcoming meetings. Please refresh the page or try again later." };
   }
 }
 
@@ -269,7 +269,7 @@ export async function getMeetingHistory(params: {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to view your meeting history" };
     }
 
     // 2. Get user from database
@@ -279,12 +279,12 @@ export async function getMeetingHistory(params: {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Verify parent ID matches authenticated user
     if (user.parent.id !== params.parentId) {
-      return { success: false, message: "Unauthorized access" };
+      return { success: false, message: "You don't have permission to view this meeting history." };
     }
 
     // 4. Validate input
@@ -358,7 +358,7 @@ export async function getMeetingHistory(params: {
       return { success: false, message: error.errors[0].message };
     }
     console.error("Error fetching meeting history:", error);
-    return { success: false, message: "Failed to fetch meeting history" };
+    return { success: false, message: "Unable to load your meeting history. Please refresh the page or try again later." };
   }
 }
 
@@ -371,7 +371,7 @@ export async function cancelMeeting(formData: FormData) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to cancel a meeting" };
     }
 
     // 2. Get user from database
@@ -381,7 +381,7 @@ export async function cancelMeeting(formData: FormData) {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Validate input
@@ -411,20 +411,20 @@ export async function cancelMeeting(formData: FormData) {
     });
 
     if (!meeting) {
-      return { success: false, message: "Meeting not found" };
+      return { success: false, message: "Meeting not found. It may have been deleted." };
     }
 
     if (meeting.parentId !== user.parent.id) {
-      return { success: false, message: "Unauthorized to cancel this meeting" };
+      return { success: false, message: "You don't have permission to cancel this meeting." };
     }
 
     // 5. Check if meeting can be cancelled
     if (meeting.status === "CANCELLED") {
-      return { success: false, message: "Meeting is already cancelled" };
+      return { success: false, message: "This meeting has already been cancelled." };
     }
 
     if (meeting.status === "COMPLETED") {
-      return { success: false, message: "Cannot cancel a completed meeting" };
+      return { success: false, message: "Cannot cancel a meeting that has already been completed." };
     }
 
     // 6. Update meeting status
@@ -460,7 +460,7 @@ export async function cancelMeeting(formData: FormData) {
       return { success: false, message: error.errors[0].message };
     }
     console.error("Error cancelling meeting:", error);
-    return { success: false, message: "Failed to cancel meeting" };
+    return { success: false, message: "Unable to cancel the meeting. Please try again or contact support if the problem persists." };
   }
 }
 
@@ -473,7 +473,7 @@ export async function rescheduleMeeting(formData: FormData) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to reschedule a meeting" };
     }
 
     // 2. Get user from database
@@ -483,7 +483,7 @@ export async function rescheduleMeeting(formData: FormData) {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Validate input
@@ -513,20 +513,20 @@ export async function rescheduleMeeting(formData: FormData) {
     });
 
     if (!meeting) {
-      return { success: false, message: "Meeting not found" };
+      return { success: false, message: "Meeting not found. It may have been deleted." };
     }
 
     if (meeting.parentId !== user.parent.id) {
-      return { success: false, message: "Unauthorized to reschedule this meeting" };
+      return { success: false, message: "You don't have permission to reschedule this meeting." };
     }
 
     // 5. Check if meeting can be rescheduled
     if (meeting.status === "CANCELLED") {
-      return { success: false, message: "Cannot reschedule a cancelled meeting" };
+      return { success: false, message: "Cannot reschedule a cancelled meeting. Please schedule a new meeting instead." };
     }
 
     if (meeting.status === "COMPLETED") {
-      return { success: false, message: "Cannot reschedule a completed meeting" };
+      return { success: false, message: "Cannot reschedule a meeting that has already been completed." };
     }
 
     // 6. Check for scheduling conflicts
@@ -586,7 +586,7 @@ export async function rescheduleMeeting(formData: FormData) {
       return { success: false, message: error.errors[0].message };
     }
     console.error("Error rescheduling meeting:", error);
-    return { success: false, message: "Failed to reschedule meeting" };
+    return { success: false, message: "Unable to reschedule the meeting. Please try again or contact support if the problem persists." };
   }
 }
 
@@ -599,7 +599,7 @@ export async function getTeacherAvailability(teacherId: string, date: string) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to view teacher availability" };
     }
 
     // 2. Verify teacher exists
@@ -616,7 +616,7 @@ export async function getTeacherAvailability(teacherId: string, date: string) {
     });
 
     if (!teacher) {
-      return { success: false, message: "Teacher not found" };
+      return { success: false, message: "The selected teacher could not be found." };
     }
 
     // 3. Get all meetings for the teacher on the specified date
@@ -689,7 +689,7 @@ export async function getTeacherAvailability(teacherId: string, date: string) {
     };
   } catch (error) {
     console.error("Error fetching teacher availability:", error);
-    return { success: false, message: "Failed to fetch teacher availability" };
+    return { success: false, message: "Unable to load teacher availability. Please try again later." };
   }
 }
 
@@ -702,7 +702,7 @@ export async function getTeachersForMeetings() {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to view teachers" };
     }
 
     // 2. Get user from database
@@ -712,7 +712,7 @@ export async function getTeachersForMeetings() {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Fetch all active teachers
@@ -742,7 +742,7 @@ export async function getTeachersForMeetings() {
     return { success: true, data: teachers };
   } catch (error) {
     console.error("Error fetching teachers:", error);
-    return { success: false, message: "Failed to fetch teachers" };
+    return { success: false, message: "Unable to load the list of teachers. Please refresh the page or try again later." };
   }
 }
 
@@ -755,7 +755,7 @@ export async function getMeetingById(meetingId: string) {
     // 1. Authentication check
     const { userId } = await auth();
     if (!userId) {
-      return { success: false, message: "Unauthorized" };
+      return { success: false, message: "Please sign in to view meeting details" };
     }
 
     // 2. Get user from database
@@ -765,7 +765,7 @@ export async function getMeetingById(meetingId: string) {
     });
 
     if (!user || !user.parent) {
-      return { success: false, message: "Parent not found" };
+      return { success: false, message: "Parent account not found. Please contact support." };
     }
 
     // 3. Fetch meeting
@@ -801,17 +801,17 @@ export async function getMeetingById(meetingId: string) {
     });
 
     if (!meeting) {
-      return { success: false, message: "Meeting not found" };
+      return { success: false, message: "Meeting not found. It may have been deleted." };
     }
 
     // 4. Verify parent owns this meeting
     if (meeting.parentId !== user.parent.id) {
-      return { success: false, message: "Unauthorized access" };
+      return { success: false, message: "You don't have permission to view this meeting." };
     }
 
     return { success: true, data: meeting };
   } catch (error) {
     console.error("Error fetching meeting:", error);
-    return { success: false, message: "Failed to fetch meeting details" };
+    return { success: false, message: "Unable to load meeting details. Please try again later." };
   }
 }

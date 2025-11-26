@@ -1249,6 +1249,45 @@ async function main() {
         isRead: false,
       },
     }),
+    prisma.message.create({
+      data: {
+        senderId: studentUsers[0].id,
+        recipientId: teacherUsers[0].id,
+        subject: 'Assignment Submission',
+        content: 'Please find attached my assignment for review.',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+          'https://res.cloudinary.com/demo/image/upload/docs/sample.pdf'
+        ]),
+        isRead: false,
+      },
+    }),
+    prisma.message.create({
+      data: {
+        senderId: teacherUsers[0].id,
+        recipientId: studentUsers[0].id,
+        subject: 'Homework Materials',
+        content: 'Here are the materials for this week\'s homework.',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/docs/homework.pdf'
+        ]),
+        isRead: true,
+        readAt: new Date('2024-09-17'),
+      },
+    }),
+    prisma.message.create({
+      data: {
+        senderId: parentUsers[0].id,
+        recipientId: teacherUsers[1].id,
+        subject: 'Hello',
+        content: 'Testing',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+          'https://res.cloudinary.com/demo/raw/upload/sample.pdf'
+        ]),
+        isRead: false,
+      },
+    }),
   ]);
 
   // 24. Create Announcements
@@ -1382,6 +1421,7 @@ async function main() {
         location: 'School Sports Ground',
         organizer: 'Sports Department',
         type: 'Sports',
+        category: 'SCHOOL_EVENT',
         status: 'UPCOMING',
         maxParticipants: 200,
         registrationDeadline: new Date('2024-11-10'),
@@ -1397,9 +1437,86 @@ async function main() {
         location: 'School Auditorium',
         organizer: 'Science Department',
         type: 'Academic',
+        category: 'SCHOOL_EVENT',
         status: 'UPCOMING',
         maxParticipants: 100,
         registrationDeadline: new Date('2024-11-30'),
+        isPublic: true,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        title: 'Mathematics Department Meeting',
+        description: 'Monthly department meeting to discuss curriculum updates and student progress',
+        startDate: new Date('2024-11-20T14:00:00'),
+        endDate: new Date('2024-11-20T16:00:00'),
+        location: 'Conference Room A',
+        organizer: 'Mathematics Department',
+        type: 'Meeting',
+        category: 'TEACHER_MEETING',
+        status: 'UPCOMING',
+        maxParticipants: 20,
+        registrationDeadline: new Date('2024-11-18'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        title: 'Parent-Teacher Conference - Fall 2024',
+        description: 'Scheduled meetings with parents to discuss student progress and concerns',
+        startDate: new Date('2024-11-25T09:00:00'),
+        endDate: new Date('2024-11-25T17:00:00'),
+        location: 'Various Classrooms',
+        organizer: 'Administration',
+        type: 'Conference',
+        category: 'PARENT_TEACHER_CONFERENCE',
+        status: 'UPCOMING',
+        maxParticipants: 150,
+        registrationDeadline: new Date('2024-11-22'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        title: 'Professional Development Workshop: Modern Teaching Methods',
+        description: 'Workshop on integrating technology and modern pedagogical approaches in the classroom',
+        startDate: new Date('2024-12-10T09:00:00'),
+        endDate: new Date('2024-12-10T15:00:00'),
+        location: 'Main Auditorium',
+        organizer: 'Professional Development Committee',
+        type: 'Workshop',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        status: 'UPCOMING',
+        maxParticipants: 50,
+        registrationDeadline: new Date('2024-12-05'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        title: 'Winter Break',
+        description: 'School closed for winter holidays',
+        startDate: new Date('2024-12-21T00:00:00'),
+        endDate: new Date('2025-01-05T23:59:59'),
+        location: 'N/A',
+        organizer: 'Administration',
+        type: 'Holiday',
+        category: 'HOLIDAY',
+        status: 'UPCOMING',
+        isPublic: true,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        title: 'Mid-term Examinations',
+        description: 'Mid-term examinations for all grades',
+        startDate: new Date('2024-10-14T09:00:00'),
+        endDate: new Date('2024-10-18T15:00:00'),
+        location: 'All Classrooms',
+        organizer: 'Examination Department',
+        type: 'Examination',
+        category: 'EXAM',
+        status: 'COMPLETED',
         isPublic: true,
       },
     }),
@@ -1430,6 +1547,91 @@ async function main() {
         userId: studentUsers[0].id,
         role: 'ATTENDEE',
         registrationDate: new Date('2024-11-20'),
+      },
+    }),
+  ]);
+
+  // 29a. Create Event RSVPs for Teachers
+  console.log('📅 Creating event RSVPs for teachers...');
+  await Promise.all([
+    // Mathematics Department Meeting RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[2].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[2].id,
+        userId: teacherUsers[1].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    // Parent-Teacher Conference RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[3].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[3].id,
+        userId: teacherUsers[1].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[3].id,
+        userId: teacherUsers[2].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[3].id,
+        userId: teacherUsers[3].id,
+        status: 'DECLINED',
+      },
+    }),
+    // Professional Development Workshop RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[4].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[4].id,
+        userId: teacherUsers[1].id,
+        status: 'MAYBE',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[4].id,
+        userId: teacherUsers[2].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[4].id,
+        userId: teacherUsers[3].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        eventId: events[4].id,
+        userId: teacherUsers[4].id,
+        status: 'PENDING',
       },
     }),
   ]);
@@ -1547,6 +1749,40 @@ async function main() {
         language: 'en',
       },
     }),
+    prisma.parentSettings.create({
+      data: {
+        parentId: parents[2].id,
+        emailNotifications: true,
+        smsNotifications: false,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        examResultNotifications: true,
+        announcementNotifications: true,
+        meetingReminders: true,
+        preferredContactMethod: 'EMAIL',
+        notificationFrequency: 'IMMEDIATE',
+        theme: 'LIGHT',
+        language: 'en',
+      },
+    }),
+    prisma.parentSettings.create({
+      data: {
+        parentId: parents[3].id,
+        emailNotifications: true,
+        smsNotifications: true,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        examResultNotifications: true,
+        announcementNotifications: true,
+        meetingReminders: true,
+        preferredContactMethod: 'SMS',
+        notificationFrequency: 'WEEKLY_DIGEST',
+        theme: 'DARK',
+        language: 'en',
+      },
+    }),
   ]);
 
   // 33. Create Syllabus and Lessons
@@ -1628,6 +1864,317 @@ async function main() {
     }),
   ]);
 
+  // 35. Create Teacher Documents
+  console.log('📄 Creating teacher documents...');
+  await Promise.all([
+    // Sarah Johnson's documents
+    prisma.document.create({
+      data: {
+        title: 'Mathematics Teaching Certificate',
+        description: 'State Board Teaching Certificate for Mathematics',
+        fileName: 'math-teaching-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/sample-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 524288,
+        userId: teacherUsers[0].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,qualification,mathematics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Algebra Lesson Plan - Grade 10',
+        description: 'Comprehensive lesson plan for teaching algebra to Grade 10 students',
+        fileName: 'algebra-lesson-plan.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/lesson-plan.pdf',
+        fileType: 'application/pdf',
+        fileSize: 256000,
+        userId: teacherUsers[0].id,
+        category: 'LESSON_PLAN',
+        isPublic: false,
+        tags: 'lesson plan,algebra,grade 10',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Mathematics Curriculum 2024-2025',
+        description: 'Updated mathematics curriculum for the academic year',
+        fileName: 'math-curriculum-2024.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/curriculum.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1048576,
+        userId: teacherUsers[0].id,
+        category: 'CURRICULUM',
+        isPublic: false,
+        tags: 'curriculum,mathematics,2024-2025',
+      },
+    }),
+    // Michael Chen's documents
+    prisma.document.create({
+      data: {
+        title: 'Physics PhD Certificate',
+        description: 'Doctorate degree in Physics from State University',
+        fileName: 'phd-certificate.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/phd-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 614400,
+        userId: teacherUsers[1].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,phd,physics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Physics Lab Safety Guidelines',
+        description: 'Safety protocols and guidelines for physics laboratory',
+        fileName: 'lab-safety.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/safety.pdf',
+        fileType: 'application/pdf',
+        fileSize: 204800,
+        userId: teacherUsers[1].id,
+        category: 'POLICY',
+        isPublic: false,
+        tags: 'safety,laboratory,physics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Mechanics Teaching Materials',
+        description: 'Supplementary teaching materials for mechanics unit',
+        fileName: 'mechanics-materials.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/teaching-materials.pdf',
+        fileType: 'application/pdf',
+        fileSize: 819200,
+        userId: teacherUsers[1].id,
+        category: 'TEACHING_MATERIAL',
+        isPublic: false,
+        tags: 'teaching materials,mechanics,physics',
+      },
+    }),
+    // Emily Rodriguez's documents
+    prisma.document.create({
+      data: {
+        title: 'English Literature MA Certificate',
+        description: 'Master of Arts in English Literature',
+        fileName: 'ma-english-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/ma-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 491520,
+        userId: teacherUsers[2].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,english',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Shakespeare Unit Lesson Plans',
+        description: 'Complete lesson plans for teaching Shakespeare',
+        fileName: 'shakespeare-lessons.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/shakespeare.pdf',
+        fileType: 'application/pdf',
+        fileSize: 358400,
+        userId: teacherUsers[2].id,
+        category: 'LESSON_PLAN',
+        isPublic: false,
+        tags: 'lesson plan,shakespeare,literature',
+      },
+    }),
+    // David Williams's documents
+    prisma.document.create({
+      data: {
+        title: 'Chemistry MSc Certificate',
+        description: 'Master of Science in Chemistry',
+        fileName: 'msc-chemistry-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/msc-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 512000,
+        userId: teacherUsers[3].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,chemistry',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'Organic Chemistry Lab Manual',
+        description: 'Laboratory manual for organic chemistry experiments',
+        fileName: 'organic-chem-lab.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/lab-manual.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1536000,
+        userId: teacherUsers[3].id,
+        category: 'TEACHING_MATERIAL',
+        isPublic: false,
+        tags: 'lab manual,organic chemistry,experiments',
+      },
+    }),
+    // Lisa Anderson's documents
+    prisma.document.create({
+      data: {
+        title: 'History MA Certificate',
+        description: 'Master of Arts in History',
+        fileName: 'ma-history-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/history-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 460800,
+        userId: teacherUsers[4].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,history',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        title: 'World History Curriculum Guide',
+        description: 'Comprehensive curriculum guide for world history',
+        fileName: 'world-history-curriculum.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/history-curriculum.pdf',
+        fileType: 'application/pdf',
+        fileSize: 921600,
+        userId: teacherUsers[4].id,
+        category: 'CURRICULUM',
+        isPublic: false,
+        tags: 'curriculum,world history,guide',
+      },
+    }),
+  ]);
+
+  // 36. Create Teacher Achievements
+  console.log('🏆 Creating teacher achievements...');
+  await Promise.all([
+    // Sarah Johnson's achievements
+    prisma.achievement.create({
+      data: {
+        title: 'Best Mathematics Teacher Award 2023',
+        description: 'Awarded for outstanding contribution to mathematics education and student success',
+        category: 'AWARD',
+        date: new Date('2023-06-15'),
+        teacherId: teachers[0].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/award-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Advanced Teaching Methods Certification',
+        description: 'Completed 40-hour certification program on modern teaching methodologies',
+        category: 'CERTIFICATION',
+        date: new Date('2024-03-20'),
+        teacherId: teachers[0].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/teaching-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'STEM Education Workshop',
+        description: 'Attended 3-day workshop on integrating STEM principles in mathematics education',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-07-10'),
+        teacherId: teachers[0].id,
+        documents: [],
+      },
+    }),
+    // Michael Chen's achievements
+    prisma.achievement.create({
+      data: {
+        title: 'Published Research Paper on Quantum Mechanics',
+        description: 'Research paper published in Journal of Physics Education',
+        category: 'PUBLICATION',
+        date: new Date('2024-02-28'),
+        teacherId: teachers[1].id,
+        documents: [
+          'https://res.cloudinary.com/demo/image/upload/research-paper.pdf',
+          'https://res.cloudinary.com/demo/image/upload/journal-acceptance.pdf',
+        ],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Excellence in Science Teaching Award',
+        description: 'State-level recognition for innovative physics teaching methods',
+        category: 'AWARD',
+        date: new Date('2023-11-05'),
+        teacherId: teachers[1].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/state-award.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Laboratory Safety Certification',
+        description: 'Advanced certification in laboratory safety and management',
+        category: 'CERTIFICATION',
+        date: new Date('2024-01-15'),
+        teacherId: teachers[1].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/safety-cert.pdf'],
+      },
+    }),
+    // Emily Rodriguez's achievements
+    prisma.achievement.create({
+      data: {
+        title: 'Creative Writing Workshop Facilitator',
+        description: 'Led summer creative writing workshop for advanced students',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-06-25'),
+        teacherId: teachers[2].id,
+        documents: [],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Outstanding Educator Recognition',
+        description: 'Recognized by Parent-Teacher Association for exceptional dedication',
+        category: 'RECOGNITION',
+        date: new Date('2024-05-10'),
+        teacherId: teachers[2].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/pta-recognition.pdf'],
+      },
+    }),
+    // David Williams's achievements
+    prisma.achievement.create({
+      data: {
+        title: 'Chemistry Olympiad Coach Certification',
+        description: 'Certified to coach students for national chemistry olympiad',
+        category: 'CERTIFICATION',
+        date: new Date('2024-04-12'),
+        teacherId: teachers[3].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/olympiad-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Green Chemistry Initiative',
+        description: 'Implemented eco-friendly chemistry lab practices',
+        category: 'RECOGNITION',
+        date: new Date('2024-08-20'),
+        teacherId: teachers[3].id,
+        documents: [],
+      },
+    }),
+    // Lisa Anderson's achievements
+    prisma.achievement.create({
+      data: {
+        title: 'Historical Research Grant',
+        description: 'Received grant for research on local historical sites',
+        category: 'AWARD',
+        date: new Date('2024-01-30'),
+        teacherId: teachers[4].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/grant-award.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        title: 'Digital History Tools Workshop',
+        description: 'Completed training on using digital tools for history education',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-09-05'),
+        teacherId: teachers[4].id,
+        documents: [],
+      },
+    }),
+  ]);
+
   console.log('✅ Database seeding completed successfully!');
   console.log('\n📊 Summary:');
   console.log('- System Settings: 1');
@@ -1640,7 +2187,10 @@ async function main() {
   console.log('- Subjects: 5');
   console.log('- Exams: 3');
   console.log('- Assignments: 3');
-  console.log('- Events: 2');
+  console.log('- Events: 7 (including teacher-specific events)');
+  console.log('- Event RSVPs: 11 (teacher RSVPs for meetings and workshops)');
+  console.log('- Teacher Documents: 12 (certificates, lesson plans, curricula)');
+  console.log('- Teacher Achievements: 12 (awards, certifications, publications)');
   console.log('- And much more...\n');
 }
 

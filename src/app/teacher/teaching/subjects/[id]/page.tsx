@@ -99,9 +99,9 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
                   {subject.completedTopics}/{subject.totalTopics}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div 
-                  className="bg-emerald-500 h-2 rounded-full" 
+                  className="bg-primary h-2 rounded-full" 
                   style={{ width: `${subject.progress}%` }}
                 ></div>
               </div>
@@ -267,8 +267,8 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
                 <div className="p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
-                      <div className="p-2 bg-blue-50 border border-blue-100 rounded">
-                        <FileText className="h-5 w-5 text-blue-600" />
+                      <div className="p-2 bg-primary/10 border border-primary/20 rounded">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <h3 className="font-medium">Linear Equations Worksheet</h3>
@@ -286,8 +286,8 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
                 <div className="p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3">
-                      <div className="p-2 bg-purple-50 border border-purple-100 rounded">
-                        <FileText className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-secondary border border-secondary/20 rounded">
+                        <FileText className="h-5 w-5 text-secondary-foreground" />
                       </div>
                       <div>
                         <h3 className="font-medium">Quadratic Equations Presentation</h3>

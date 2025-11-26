@@ -55,20 +55,27 @@ export default async function PerformanceTrendsPage() {
   };
   
   return (
-    <div className="container p-6">
-      <h1 className="text-2xl font-bold mb-6">Performance Trends</h1>
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Performance Trends</h1>
+        <p className="text-muted-foreground mt-1">
+          Analyze your academic performance trends over time
+        </p>
+      </div>
       
+      {/* Tabbed Content */}
       <Tabs defaultValue="progress" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full max-w-md mb-8">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
           <TabsTrigger value="progress">Progress</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="exams">Exams</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="progress" className="space-y-6">
+        <TabsContent value="progress" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Term-by-Term Progress</CardTitle>
+              <CardTitle className="text-xl">Term-by-Term Progress</CardTitle>
               <CardDescription>
                 Track your overall performance across academic terms
               </CardDescription>
@@ -251,10 +258,10 @@ export default async function PerformanceTrendsPage() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="subjects" className="space-y-6">
+        <TabsContent value="subjects" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Subject Performance Over Time</CardTitle>
+              <CardTitle className="text-xl">Subject Performance Over Time</CardTitle>
               <CardDescription>
                 Compare how your performance changed across subjects
               </CardDescription>
@@ -299,10 +306,10 @@ export default async function PerformanceTrendsPage() {
           </Card>
         </TabsContent>
         
-        <TabsContent value="exams" className="space-y-6">
+        <TabsContent value="exams" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Exam Performance Timeline</CardTitle>
+              <CardTitle className="text-xl">Exam Performance Timeline</CardTitle>
               <CardDescription>
                 Your performance in individual exams over time
               </CardDescription>

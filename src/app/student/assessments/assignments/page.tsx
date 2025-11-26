@@ -5,7 +5,7 @@ import { Metadata } from "next";
 import { db } from "@/lib/db";
 import { StudentAssignmentList } from "@/components/student/student-assignment-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UploadCloud, CheckCircle, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
 
@@ -157,58 +157,45 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
 );
 
   return (
-    <div className="container p-6">
-      <h1 className="text-2xl font-bold mb-6">My Assignments</h1>
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Assignments</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your assignments and submissions
+        </p>
+      </div>
       
+      {/* Tabs */}
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid grid-cols-4 mb-8">
-          <TabsTrigger value="pending" className="flex gap-2 items-center">
-            <div className="relative">
-              <UploadCloud className="h-4 w-4" />
-              {pending.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {pending.length}
-                </span>
-              )}
-            </div>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="pending" className="relative">
             Pending
+            {pending.length > 0 && (
+              <Badge className="ml-2 bg-amber-500">{pending.length}</Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="submitted" className="flex gap-2 items-center">
-            <div className="relative">
-              <CheckCircle className="h-4 w-4" />
-              {submitted.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {submitted.length}
-                </span>
-              )}
-            </div>
+          <TabsTrigger value="submitted">
             Submitted
+            {submitted.length > 0 && (
+              <Badge className="ml-2 bg-blue-500">{submitted.length}</Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="graded" className="flex gap-2 items-center">
-            <div className="relative">
-              <CheckCircle className="h-4 w-4" />
-              {graded.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {graded.length}
-                </span>
-              )}
-            </div>
+          <TabsTrigger value="graded">
             Graded
+            {graded.length > 0 && (
+              <Badge className="ml-2 bg-green-500">{graded.length}</Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="overdue" className="flex gap-2 items-center">
-            <div className="relative">
-              <X className="h-4 w-4" />
-              {overdue.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {overdue.length}
-                </span>
-              )}
-            </div>
+          <TabsTrigger value="overdue">
             Overdue
+            {overdue.length > 0 && (
+              <Badge className="ml-2 bg-red-500">{overdue.length}</Badge>
+            )}
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="pending">
+        <TabsContent value="pending" className="space-y-4 mt-6">
           <StudentAssignmentList 
             assignments={pending as any} 
             studentId={student.id} 
@@ -216,7 +203,7 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
           />
         </TabsContent>
         
-        <TabsContent value="submitted">
+        <TabsContent value="submitted" className="space-y-4 mt-6">
           <StudentAssignmentList 
             assignments={submitted as any} 
             studentId={student.id} 
@@ -224,7 +211,7 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
           />
         </TabsContent>
         
-        <TabsContent value="graded">
+        <TabsContent value="graded" className="space-y-4 mt-6">
           <StudentAssignmentList 
             assignments={graded as any} 
             studentId={student.id} 
@@ -232,7 +219,7 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
           />
         </TabsContent>
         
-        <TabsContent value="overdue">
+        <TabsContent value="overdue" className="space-y-4 mt-6">
           <StudentAssignmentList 
             assignments={overdue as any} 
             studentId={student.id} 

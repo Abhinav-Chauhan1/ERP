@@ -117,7 +117,8 @@ export function MessageList({
         isRead: readFilter === "all" ? undefined : readFilter === "read",
       });
     }
-  }, [debouncedSearchQuery, readFilter, onFilterChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery, readFilter]);
 
   const handleReadFilterChange = (value: string) => {
     setReadFilter(value);
@@ -146,8 +147,8 @@ export function MessageList({
     return content.substring(0, maxLength) + "...";
   };
 
-  const hasAttachments = (attachments: string | null) => {
-    return attachments !== null && attachments.length > 0;
+  const hasAttachments = (attachments: string | null | undefined) => {
+    return attachments !== null && attachments !== undefined && attachments.length > 0;
   };
 
   return (

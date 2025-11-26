@@ -13,9 +13,9 @@ interface UpcomingAssessmentsProps {
 
 export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsProps) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Upcoming Assessments</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Upcoming Assessments</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="exams">
@@ -30,7 +30,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 {exams.map((exam) => (
                   <div 
                     key={exam.id} 
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       <div className="rounded-md bg-primary/10 p-2">
@@ -38,7 +38,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                       </div>
                       <div>
                         <h4 className="font-medium">{exam.title}</h4>
-                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-2 mt-1 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <BookOpen className="h-3.5 w-3.5" /> {exam.subject.name}
                           </span>
@@ -48,7 +48,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                         </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="border-primary/20">
+                    <Badge variant="outline" className="border-primary/20 bg-primary/5">
                       {exam.examType.name}
                     </Badge>
                   </div>
@@ -76,15 +76,15 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                 {assignments.map((assignment) => (
                   <div 
                     key={assignment.id} 
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="rounded-md bg-amber-50 p-2">
-                        <FileText className="h-5 w-5 text-amber-700" />
+                      <div className="rounded-md bg-amber-100 dark:bg-amber-900/30 p-2">
+                        <FileText className="h-5 w-5 text-amber-700 dark:text-amber-400" />
                       </div>
                       <div>
                         <h4 className="font-medium">{assignment.title}</h4>
-                        <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                        <div className="flex flex-wrap gap-2 mt-1 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <BookOpen className="h-3.5 w-3.5" /> {assignment.subject.name}
                           </span>
@@ -95,7 +95,7 @@ export function UpcomingAssessments({ exams, assignments }: UpcomingAssessmentsP
                       </div>
                     </div>
                     <div>
-                      <Badge variant={isPastDue(assignment.dueDate) ? "destructive" : "outline"} className={isPastDue(assignment.dueDate) ? "" : "border-amber-200 text-amber-800"}>
+                      <Badge variant={isPastDue(assignment.dueDate) ? "destructive" : "outline"} className={isPastDue(assignment.dueDate) ? "" : "border-amber-200 text-amber-800 bg-amber-50 dark:bg-amber-900/20"}>
                         {isPastDue(assignment.dueDate) ? "Overdue" : "Due soon"}
                       </Badge>
                     </div>

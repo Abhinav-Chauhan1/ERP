@@ -66,7 +66,7 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 justify-between">
         <div className="relative flex items-center w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search subjects..."
             className="pl-9"
@@ -99,11 +99,11 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSubjects.map(subject => (
             <Card key={subject.id} className="overflow-hidden">
-              <CardHeader className="bg-blue-50 pb-4">
+              <CardHeader className="bg-primary/5 pb-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="flex items-center">
-                      <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
+                      <BookOpen className="h-5 w-5 mr-2 text-primary" />
                       {subject.name}
                     </CardTitle>
                     <div className="mt-1 flex items-center text-sm text-muted-foreground">
@@ -115,7 +115,7 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
                     </div>
                   </div>
                   {subject.hasSyllabus && (
-                    <Badge className="bg-green-100 text-green-800 border-green-300">
+                    <Badge variant="secondary">
                       <BookMarked className="h-3 w-3 mr-1" />
                       Syllabus
                     </Badge>
@@ -124,24 +124,24 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
               </CardHeader>
               <CardContent className="p-4">
                 <h4 className="text-sm font-medium mb-2 flex items-center">
-                  <GraduationCap className="h-4 w-4 mr-1 text-gray-500" />
+                  <GraduationCap className="h-4 w-4 mr-1 text-muted-foreground" />
                   Instructors
                 </h4>
                 <div className="space-y-2">
                   {subject.teachers.map(teacher => (
                     <div key={teacher.id} className="flex items-center text-sm">
-                      <User className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                      <User className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                       {teacher.name}
                     </div>
                   ))}
                   {subject.teachers.length === 0 && (
-                    <div className="text-sm text-gray-500">No instructors assigned</div>
+                    <div className="text-sm text-muted-foreground">No instructors assigned</div>
                   )}
                 </div>
               </CardContent>
               <CardFooter className="p-4 pt-0 flex justify-end">
                 <Link href={`/student/academics/subjects/${subject.id}`}>
-                  <Button variant="ghost" className="text-blue-600">
+                  <Button variant="ghost" className="text-primary">
                     View Details
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -152,9 +152,9 @@ export function StudentSubjectList({ subjects }: StudentSubjectListProps) {
         </div>
       ) : (
         <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-gray-300" />
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground/30" />
           <h3 className="mt-4 text-lg font-medium">No subjects found</h3>
-          <p className="mt-1 text-gray-500">
+          <p className="mt-1 text-muted-foreground">
             Try adjusting your search or filter criteria
           </p>
         </div>

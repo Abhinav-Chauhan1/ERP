@@ -39,78 +39,73 @@ export function PerformanceSummaryCard({
 
   return (
     <Card className="overflow-hidden">
-      <div className="h-2 bg-primary"></div>
-      <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Overall Performance */}
+          <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-primary/10 p-3">
-                <BarChart2 className="h-6 w-6 text-primary" />
+              <div className="rounded-lg bg-white/10 backdrop-blur-sm p-3 border border-white/20">
+                <BarChart2 className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-medium text-muted-foreground">Overall Performance</h3>
-                <div className="flex items-baseline gap-2">
+                <h3 className="text-sm font-medium text-blue-100">Overall Performance</h3>
+                <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-3xl font-bold">{overallPercentage}%</span>
-                  <Badge 
-                    className={`${getGradeColor(grade)} bg-opacity-10 border-current`}
-                  >
+                  <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/20">
                     Grade {grade}
                   </Badge>
                 </div>
               </div>
             </div>
             
-            <Progress 
-              value={overallPercentage} 
-              className="h-2"
-              style={{ 
-                "--progress-background": "rgba(0,0,0,0.1)",
-                "--progress-foreground": getProgressColor(overallPercentage)
-              } as React.CSSProperties}
-            />
+            <div className="bg-white/10 rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-white rounded-full transition-all"
+                style={{ width: `${overallPercentage}%` }}
+              ></div>
+            </div>
             
-            <div className="pt-2 grid grid-cols-2 gap-4">
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Total Exams</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="h-4 w-4 text-blue-100" />
+                  <span className="text-sm text-blue-100">Total Exams</span>
                 </div>
-                <div className="mt-1 text-lg font-semibold">{totalExams}</div>
+                <div className="text-2xl font-bold">{totalExams}</div>
               </div>
               
-              <div className="rounded-md border p-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Class</span>
+              <div className="rounded-lg bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-blue-100" />
+                  <span className="text-sm text-blue-100">Class</span>
                 </div>
-                <div className="mt-1 text-lg font-semibold">{className}</div>
+                <div className="text-2xl font-bold">{className}</div>
               </div>
             </div>
           </div>
           
-          <div className="bg-accent rounded-lg p-6 flex flex-col justify-center items-center">
-            <div className="text-center">
-              <div className="rounded-full bg-amber-100 dark:bg-amber-900/30 p-3 inline-flex mx-auto mb-3">
-                <Award className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="text-sm text-muted-foreground mb-1">Class Rank</div>
-              {rank ? (
-                <>
-                  <div className="text-4xl font-bold text-amber-600 dark:text-amber-400">{rank}</div>
-                  <div className="text-muted-foreground mt-1">Great achievement!</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-xl font-medium mt-2">Not Available</div>
-                  <div className="text-muted-foreground mt-1 text-sm">
-                    Rank will be updated after result finalization
-                  </div>
-                </>
-              )}
+          {/* Class Rank */}
+          <div className="flex flex-col justify-center items-center text-center bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
+            <div className="rounded-full bg-amber-500/20 p-3 mb-3">
+              <Award className="h-8 w-8 text-amber-300" />
             </div>
+            <div className="text-sm text-blue-100 mb-2">Class Rank</div>
+            {rank ? (
+              <>
+                <div className="text-4xl font-bold mb-1">{rank}</div>
+                <div className="text-sm text-blue-100">Great achievement!</div>
+              </>
+            ) : (
+              <>
+                <div className="text-xl font-medium mb-1">Not Available</div>
+                <div className="text-sm text-blue-100">
+                  Rank will be updated after result finalization
+                </div>
+              </>
+            )}
           </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 }

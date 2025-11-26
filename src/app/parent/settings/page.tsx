@@ -39,13 +39,11 @@ export default async function ParentSettingsPage() {
   
   if (!settingsResult.success || !settingsResult.data) {
     return (
-      <div className="h-full p-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">
-              Failed to load settings. Please try again later.
-            </p>
-          </div>
+      <div className="max-w-5xl mx-auto space-y-4">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <p className="text-destructive">
+            Failed to load settings. Please try again later.
+          </p>
         </div>
       </div>
     );
@@ -54,20 +52,18 @@ export default async function ParentSettingsPage() {
   const { profile, settings } = settingsResult.data;
   
   return (
-    <div className="h-full p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your profile, notifications, and security preferences
-          </p>
-        </div>
-        
-        <SettingsPageClient 
-          profile={profile}
-          settings={settings}
-        />
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your profile, notifications, and security preferences
+        </p>
       </div>
+      
+      <SettingsPageClient 
+        profile={profile}
+        settings={settings}
+      />
     </div>
   );
 }

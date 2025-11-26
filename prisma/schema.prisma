@@ -44,6 +44,7 @@ model User {
   auditLogs        AuditLog[]
   messageHistory   MessageHistory[] @relation("MessageHistorySentBy")
   userPermissions  UserPermission[]
+  eventRSVPs       EventRSVP[]
 }
 
 enum UserRole {
@@ -90,6 +91,7 @@ model Teacher {
   questionBanks     QuestionBank[] // Online exam questions created
   onlineExams       OnlineExam[] // Online exams created
   courses           Course[] // LMS courses created
+  achievements      Achievement[] // Teacher achievements
 }
 
 model TeacherSettings {
@@ -285,6 +287,8 @@ model ParentSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([parentId])
 }
 
 enum ContactMethod {
@@ -1112,51 +1116,66 @@ model DocumentType {
 }
 
 model Document {
-  id             String        @id @default(cuid())
+  id             String            @id @default(cuid())
   title          String
   description    String?
   fileName       String
   fileUrl        String
   fileType       String? // MIME type
   fileSize       Int? // Size in bytes
-  user           User          @relation(fields: [userId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
   userId         String
-  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType?     @relation(fields: [documentTypeId], references: [id])
   documentTypeId String?
-  isPublic       Boolean       @default(false)
+  category       DocumentCategory? // New category field for teacher documents
+  isPublic       Boolean           @default(false)
   tags           String? // Comma-separated tags
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now())
 
   @@index([userId])
   @@index([documentTypeId])
+  @@index([category])
   @@index([createdAt])
+}
+
+enum DocumentCategory {
+  CERTIFICATE
+  ID_PROOF
+  TEACHING_MATERIAL
+  LESSON_PLAN
+  CURRICULUM
+  POLICY
+  OTHER
 }
 
 // Event management
 model Event {
-  id                   String      @id @default(cuid())
+  id                   String         @id @default(cuid())
   title                String
-  description          String?
+  description          String?        @db.Text
   startDate            DateTime
   endDate              DateTime
   location             String?
   organizer            String? // Person or department organizing
   type                 String? // e.g., "Academic", "Cultural", "Sports"
-  status               EventStatus @default(UPCOMING)
+  category             EventCategory? // New category field for teacher events
+  status               EventStatus    @default(UPCOMING)
   maxParticipants      Int?
   registrationDeadline DateTime?
-  isPublic             Boolean     @default(true)
+  isPublic             Boolean        @default(true)
   thumbnail            String? // URL to event image
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @default(now())
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @default(now())
 
   // Relationships
   participants EventParticipant[]
+  rsvps        EventRSVP[]
 
   @@index([startDate])
   @@index([status])
   @@index([type])
+  @@index([category])
 }
 
 enum EventStatus {
@@ -1165,6 +1184,16 @@ enum EventStatus {
   COMPLETED
   CANCELLED
   POSTPONED
+}
+
+enum EventCategory {
+  SCHOOL_EVENT
+  TEACHER_MEETING
+  PARENT_TEACHER_CONFERENCE
+  PROFESSIONAL_DEVELOPMENT
+  HOLIDAY
+  EXAM
+  OTHER
 }
 
 model EventParticipant {
@@ -1182,6 +1211,55 @@ model EventParticipant {
   @@unique([eventId, userId])
   @@index([userId])
   @@index([eventId])
+}
+
+model EventRSVP {
+  id        String     @id @default(cuid())
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  status    RSVPStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+enum RSVPStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  MAYBE
+}
+
+// Achievement management
+model Achievement {
+  id          String              @id @default(cuid())
+  title       String
+  description String?             @db.Text
+  category    AchievementCategory
+  date        DateTime
+  teacher     Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId   String
+  documents   String[] // Array of document URLs
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([teacherId])
+  @@index([category])
+  @@index([date])
+}
+
+enum AchievementCategory {
+  AWARD
+  CERTIFICATION
+  PROFESSIONAL_DEVELOPMENT
+  PUBLICATION
+  RECOGNITION
+  OTHER
 }
 
 // Audit Log Model for tracking all system actions

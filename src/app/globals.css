@@ -26,8 +26,8 @@
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 50%; /* Darkened for WCAG AA compliance (4.5:1 with white) */
+    --destructive-foreground: 0 0% 100%; /* Pure white for better contrast */
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -121,15 +121,15 @@
 
   /* Orange Theme */
   .theme-orange {
-    --primary: 24.6 95% 53.1%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --ring: 24.6 95% 53.1%;
+    --primary: 24.6 95% 39.5%; /* Darkened for WCAG AA compliance (4.5:1 with white) */
+    --primary-foreground: 0 0% 100%; /* Pure white for better contrast */
+    --ring: 24.6 95% 39.5%;
   }
 
   .dark.theme-orange {
-    --primary: 20.5 90.2% 48.2%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --ring: 20.5 90.2% 48.2%;
+    --primary: 20.5 90.2% 65%; /* Lightened for WCAG AA compliance in dark mode */
+    --primary-foreground: 222.2 84% 4.9%; /* Dark background color for better contrast */
+    --ring: 20.5 90.2% 65%;
   }
 
   /* Teal Theme */

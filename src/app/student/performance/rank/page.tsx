@@ -43,65 +43,72 @@ export default async function ClassRankPage() {
   };
   
   return (
-    <div className="container p-6">
-      <h1 className="text-2xl font-bold mb-6">Class Rank Analysis</h1>
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Class Rank Analysis</h1>
+        <p className="text-muted-foreground mt-1">
+          View your position and ranking in class
+        </p>
+      </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50">
-          <CardHeader>
-            <CardTitle className="text-center">Current Rank</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <div className="relative mb-2">
-              <div className="flex items-center justify-center bg-blue-100 w-24 h-24 rounded-full mb-2">
-                <span className="text-4xl font-bold text-blue-700">
-                  {currentRank || '-'}
-                </span>
-              </div>
-              {getRankMedal(currentRank) && (
-                <div className="absolute -top-2 -right-2">
-                  {getRankMedal(currentRank)}
+      {/* Stats Cards Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="overflow-hidden">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-6 text-white">
+            <CardTitle className="text-center text-lg mb-4">Current Rank</CardTitle>
+            <CardContent className="flex flex-col items-center p-0">
+              <div className="relative mb-3">
+                <div className="flex items-center justify-center bg-white/20 backdrop-blur-sm w-24 h-24 rounded-full border-4 border-white/30">
+                  <span className="text-4xl font-bold">
+                    {currentRank || '-'}
+                  </span>
                 </div>
+                {getRankMedal(currentRank) && (
+                  <div className="absolute -top-2 -right-2 bg-white rounded-full p-1">
+                    {getRankMedal(currentRank)}
+                  </div>
+                )}
+              </div>
+              <p className="text-center text-blue-100 text-sm">
+                out of {classSize} students
+              </p>
+              {currentRank && classSize && (
+                <Badge className="mt-2 bg-white/20 text-white border-white/30">
+                  {getPercentileText(Math.round(((classSize - currentRank) / classSize) * 100))}
+                </Badge>
               )}
-            </div>
-            <p className="text-center text-gray-500">
-              out of {classSize} students
-            </p>
-            {currentRank && classSize && (
-              <Badge className="mt-2 bg-blue-100 text-blue-800 border-blue-200">
-                {getPercentileText(Math.round(((classSize - currentRank) / classSize) * 100))}
-              </Badge>
-            )}
-          </CardContent>
+            </CardContent>
+          </div>
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Percentile</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Percentile</CardTitle>
             <CardDescription>Your position relative to classmates</CardDescription>
           </CardHeader>
           <CardContent>
             {currentRank && classSize ? (
               <>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-500">Bottom</span>
-                  <span className="text-xl font-bold text-blue-600">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm text-muted-foreground">Bottom</span>
+                  <span className="text-2xl font-bold text-primary">
                     {Math.round(((classSize - currentRank) / classSize) * 100)}%
                   </span>
-                  <span className="text-sm text-gray-500">Top</span>
+                  <span className="text-sm text-muted-foreground">Top</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="w-full bg-muted rounded-full h-3">
                   <div 
-                    className="bg-blue-600 h-2.5 rounded-full" 
+                    className="bg-primary h-3 rounded-full transition-all" 
                     style={{ width: `${Math.round(((classSize - currentRank) / classSize) * 100)}%` }}
                   ></div>
                 </div>
-                <p className="text-center text-sm text-gray-500 mt-2">
+                <p className="text-center text-sm text-muted-foreground mt-3">
                   You are performing better than {Math.round(((classSize - currentRank) / classSize) * 100)}% of your classmates
                 </p>
               </>
             ) : (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-muted-foreground">
                 No ranking data available
               </div>
             )}
@@ -109,28 +116,29 @@ export default async function ClassRankPage() {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Class Size</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Class Size</CardTitle>
             <CardDescription>Total number of students in your class</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
-            <div className="bg-gray-100 rounded-full p-4 mb-2">
-              <Users className="h-10 w-10 text-gray-600" />
+            <div className="bg-primary/10 rounded-full p-4 mb-3">
+              <Users className="h-10 w-10 text-primary" />
             </div>
             <div className="text-3xl font-bold">{classSize}</div>
-            <p className="text-sm text-gray-500 mt-1">Students</p>
+            <p className="text-sm text-muted-foreground mt-1">Students</p>
           </CardContent>
         </Card>
       </div>
       
+      {/* Rank Progression Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Rank Progression</CardTitle>
+          <CardTitle className="text-xl">Rank Progression</CardTitle>
           <CardDescription>
             How your rank has changed over time
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent>
           {rankData.length > 0 ? (
             <>
               {/* Improved rank progression visualization */}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface AppearanceSettingsProps {
 }
 
 export function AppearanceSettings({ studentId, settings }: AppearanceSettingsProps) {
+  const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     theme: settings?.theme || "LIGHT",
@@ -22,6 +24,23 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
     dateFormat: settings?.dateFormat || "MM/DD/YYYY",
     timeFormat: settings?.timeFormat || "TWELVE_HOUR"
   });
+
+  // Sync form data with current theme
+  useEffect(() => {
+    if (theme) {
+      setFormData(prev => ({
+        ...prev,
+        theme: theme.toUpperCase()
+      }));
+    }
+  }, [theme]);
+
+  const handleThemeChange = (value: string) => {
+    // Update local state
+    setFormData({ ...formData, theme: value });
+    // Apply theme immediately using next-themes
+    setTheme(value.toLowerCase());
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +65,9 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="text-xl flex items-center gap-2">
           <Palette className="h-5 w-5" />
           Appearance Settings
         </CardTitle>
@@ -58,7 +77,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="theme" className="flex items-center gap-2">
                 <Sun className="h-4 w-4" />
@@ -66,11 +85,9 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
               </Label>
               <Select
                 value={formData.theme}
-                onValueChange={(value) => 
-                  setFormData({ ...formData, theme: value as any })
-                }
+                onValueChange={handleThemeChange}
               >
-                <SelectTrigger id="theme">
+                <SelectTrigger id="theme" className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -94,7 +111,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Choose your preferred color theme
               </p>
             </div>
@@ -110,7 +127,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
                   setFormData({ ...formData, language: value })
                 }
               >
-                <SelectTrigger id="language">
+                <SelectTrigger id="language" className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -122,13 +139,13 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
                   <SelectItem value="ar">العربية</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Select your preferred language
               </p>
             </div>
 
             <div className="pt-4 border-t">
-              <h3 className="text-sm font-medium mb-4">Date & Time Format</h3>
+              <h3 className="text-lg font-semibold mb-4">Date & Time Format</h3>
               
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -142,7 +159,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
                       setFormData({ ...formData, dateFormat: value })
                     }
                   >
-                    <SelectTrigger id="dateFormat">
+                    <SelectTrigger id="dateFormat" className="min-h-[44px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -173,7 +190,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
                       setFormData({ ...formData, timeFormat: value as any })
                     }
                   >
-                    <SelectTrigger id="timeFormat">
+                    <SelectTrigger id="timeFormat" className="min-h-[44px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -190,7 +207,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
             </div>
 
             <div className="pt-4 border-t">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <div className="flex gap-3">
                   <Palette className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
@@ -205,7 +222,7 @@ export function AppearanceSettings({ studentId, settings }: AppearanceSettingsPr
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="min-h-[44px]">
               {loading ? "Saving..." : "Save Appearance Settings"}
             </Button>
           </div>

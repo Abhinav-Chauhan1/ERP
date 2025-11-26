@@ -22,15 +22,15 @@ export default async function PaymentHistoryPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case PaymentStatus.COMPLETED:
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
       case PaymentStatus.PARTIAL:
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Partial</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Partial</Badge>;
       case PaymentStatus.PENDING:
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Pending</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Pending</Badge>;
       case PaymentStatus.FAILED:
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Failed</Badge>;
       case PaymentStatus.REFUNDED:
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">Refunded</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Refunded</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -42,91 +42,100 @@ export default async function PaymentHistoryPage() {
   };
 
   return (
-    <div className="container p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Button variant="outline" size="sm" asChild>
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" className="min-h-[44px] min-w-[44px]" asChild>
           <Link href="/student/fees">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Fees
+            <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Payment History</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Payment History</h1>
+          <p className="text-muted-foreground mt-1">
+            View all your fee payment transactions and download receipts
+          </p>
+        </div>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Payment Transactions</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl">Your Payment Transactions</CardTitle>
           <CardDescription>
-            View all your fee payment transactions and download receipts
+            Complete history of all fee payments
           </CardDescription>
         </CardHeader>
         <CardContent>
           {payments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Receipt No.
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Method
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Receipt
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {payments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {format(new Date(payment.paymentDate), "MMM dd, yyyy")}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {payment.receiptNumber || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        ${payment.paidAmount.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatPaymentMethod(payment.paymentMethod)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {getStatusBadge(payment.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {payment.status === PaymentStatus.COMPLETED ? (
-                          <Button size="sm" variant="outline" className="gap-1">
-                            <Download className="h-3 w-3" />
-                            <span className="text-xs">Receipt</span>
-                          </Button>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Unavailable</span>
-                        )}
-                      </td>
+            <div className="rounded-md border">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-accent border-b">
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                        Payment Date
+                      </th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                        Receipt No.
+                      </th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                        Amount
+                      </th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">
+                        Method
+                      </th>
+                      <th className="py-3 px-4 text-center font-medium text-muted-foreground">
+                        Status
+                      </th>
+                      <th className="py-3 px-4 text-center font-medium text-muted-foreground">
+                        Receipt
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {payments.map((payment) => (
+                      <tr key={payment.id} className="border-b hover:bg-accent/50 last:border-b-0">
+                        <td className="py-3 px-4 align-middle">
+                          {format(new Date(payment.paymentDate), "MMM dd, yyyy")}
+                        </td>
+                        <td className="py-3 px-4 align-middle">
+                          {payment.receiptNumber || "-"}
+                        </td>
+                        <td className="py-3 px-4 align-middle font-semibold">
+                          ${payment.paidAmount.toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 align-middle">
+                          {formatPaymentMethod(payment.paymentMethod)}
+                        </td>
+                        <td className="py-3 px-4 align-middle text-center">
+                          {getStatusBadge(payment.status)}
+                        </td>
+                        <td className="py-3 px-4 align-middle text-center">
+                          {payment.status === PaymentStatus.COMPLETED ? (
+                            <Button size="sm" variant="outline" className="gap-1 min-h-[36px]">
+                              <Download className="h-3 w-3" />
+                              <span className="text-xs">Receipt</span>
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Unavailable</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="text-center py-12">
-              <Receipt className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium mb-1">No Payment History</h3>
-              <p className="text-gray-500 mb-6">
+              <div className="rounded-full bg-muted p-6 mb-4 inline-block">
+                <Receipt className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Payment History</h3>
+              <p className="text-muted-foreground mb-6">
                 You haven't made any fee payments yet.
               </p>
-              <Button asChild>
+              <Button className="min-h-[44px]" asChild>
                 <Link href="/student/fees/due">
                   View Due Payments
                 </Link>
@@ -136,34 +145,37 @@ export default async function PaymentHistoryPage() {
         </CardContent>
       </Card>
       
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Payment Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
-              All payment receipts are available for download once payment is confirmed.
-              Receipts are official documents and can be used for reimbursement or tax purposes.
-            </p>
-            
-            <div className="bg-blue-50 p-4 rounded-md">
-              <h4 className="font-medium text-blue-800 mb-2">Need Help with Payments?</h4>
-              <p className="text-sm text-blue-700">
-                For any payment-related queries or issues with receipts, please contact the finance office:
-              </p>
-              <p className="text-sm text-blue-800 mt-1">
-                <strong>Email:</strong> finance@schoolerp.edu<br />
-                <strong>Phone:</strong> (123) 456-7890<br />
-                <strong>Office Hours:</strong> Monday to Friday, 9:00 AM - 4:00 PM
-              </p>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5 text-primary" />
+            Payment Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            All payment receipts are available for download once payment is confirmed.
+            Receipts are official documents and can be used for reimbursement or tax purposes.
+          </p>
+          
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3">
+              <FileText className="h-5 w-5 text-blue-700 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-800 mb-2">Need Help with Payments?</h4>
+                <p className="text-sm text-blue-700 mb-3">
+                  For any payment-related queries or issues with receipts, please contact the finance office:
+                </p>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p><strong>Email:</strong> finance@schoolerp.edu</p>
+                  <p><strong>Phone:</strong> (123) 456-7890</p>
+                  <p><strong>Office Hours:</strong> Monday to Friday, 9:00 AM - 4:00 PM</p>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { UpcomingAssessments } from "@/components/student/upcoming-assessments";
 import { SubjectPerformance } from "@/components/student/subject-performance";
 import { TimeTablePreview } from "@/components/student/timetable-preview";
 import { RecentAnnouncements } from "@/components/student/recent-announcements";
-import { StudentHeader } from "@/components/student/student-header";
 import { DashboardStats } from "@/components/student/dashboard-stats";
 import { 
   getStudentDashboardData, 
@@ -64,9 +63,18 @@ export default function StudentDashboard() {
   const currentEnrollment = student.enrollments[0];
   
   return (
-    <div className="flex flex-col gap-4">
-      <StudentHeader student={student} />
+    <div className="flex flex-col gap-6">
+      {/* Welcome Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Welcome back, {student.user.firstName}!
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Here's what's happening with your studies today
+        </p>
+      </div>
       
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <DashboardStats 
           attendancePercentage={attendancePercentage}
@@ -76,6 +84,7 @@ export default function StudentDashboard() {
         />
       </div>
 
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <UpcomingAssessments exams={upcomingExams} assignments={pendingAssignments} />

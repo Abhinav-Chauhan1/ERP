@@ -88,9 +88,9 @@ export default async function DocumentsPage({ searchParams: searchParamsPromise 
   
   if (children.length === 0) {
     return (
-      <div className="h-full p-6">
-        <h1 className="text-2xl font-bold mb-4">Documents</h1>
-        <p className="text-gray-700">No children found in your account.</p>
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+        <p className="text-muted-foreground">No children found in your account.</p>
       </div>
     );
   }

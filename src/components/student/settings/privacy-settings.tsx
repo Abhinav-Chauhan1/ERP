@@ -46,9 +46,9 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="text-xl flex items-center gap-2">
           <Shield className="h-5 w-5" />
           Privacy Settings
         </CardTitle>
@@ -58,7 +58,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="profileVisibility">Profile Visibility</Label>
               <Select
@@ -67,7 +67,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
                   setFormData({ ...formData, profileVisibility: value as any })
                 }
               >
-                <SelectTrigger id="profileVisibility">
+                <SelectTrigger id="profileVisibility" className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -76,7 +76,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
                       <Eye className="h-4 w-4" />
                       <div>
                         <div className="font-medium">Public</div>
-                        <div className="text-xs text-gray-500">Everyone can see your profile</div>
+                        <div className="text-xs text-muted-foreground">Everyone can see your profile</div>
                       </div>
                     </div>
                   </SelectItem>
@@ -85,7 +85,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
                       <Eye className="h-4 w-4" />
                       <div>
                         <div className="font-medium">Classmates Only</div>
-                        <div className="text-xs text-gray-500">Only your classmates can see</div>
+                        <div className="text-xs text-muted-foreground">Only your classmates can see</div>
                       </div>
                     </div>
                   </SelectItem>
@@ -94,25 +94,25 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
                       <EyeOff className="h-4 w-4" />
                       <div>
                         <div className="font-medium">Private</div>
-                        <div className="text-xs text-gray-500">Only you and teachers can see</div>
+                        <div className="text-xs text-muted-foreground">Only you and teachers can see</div>
                       </div>
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Choose who can view your profile information
               </p>
             </div>
 
             <div className="pt-4 border-t">
-              <h3 className="text-sm font-medium mb-4">Contact Information Visibility</h3>
+              <h3 className="text-lg font-semibold mb-4">Contact Information Visibility</h3>
               
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between py-3">
                   <div className="space-y-0.5">
                     <Label htmlFor="showEmail">Show Email Address</Label>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Allow others to see your email address
                     </p>
                   </div>
@@ -125,10 +125,10 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between py-3">
                   <div className="space-y-0.5">
                     <Label htmlFor="showPhone">Show Phone Number</Label>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Allow others to see your phone number
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
             </div>
 
             <div className="pt-4 border-t">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <div className="flex gap-3">
                   <Lock className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
@@ -160,7 +160,7 @@ export function PrivacySettings({ studentId, settings }: PrivacySettingsProps) {
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="min-h-[44px]">
               {loading ? "Saving..." : "Save Privacy Settings"}
             </Button>
           </div>

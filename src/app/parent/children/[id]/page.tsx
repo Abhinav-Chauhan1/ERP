@@ -120,6 +120,146 @@ export default async function ChildDetailPage({
         </div>
       </div>
       
+      {/* Comprehensive Academic Information */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Current Grades Summary */}
+        <div className="lg:col-span-2">
+          <div className="bg-card rounded-lg border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-primary" />
+                Current Grades
+              </h2>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/parent/children/${childId}/performance`}>
+                  View Analytics
+                </Link>
+              </Button>
+            </div>
+            {childDetails.examResults && childDetails.examResults.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {childDetails.examResults.slice(0, 6).map((result: any) => (
+                  <div key={result.id} className="bg-muted rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-medium">{result.exam.subject.name}</h3>
+                        <p className="text-xs text-muted-foreground">{result.exam.title}</p>
+                      </div>
+                      <Badge variant={
+                        (result.marks / result.exam.totalMarks * 100) >= 90 ? "default" :
+                        (result.marks / result.exam.totalMarks * 100) >= 75 ? "secondary" : "outline"
+                      }>
+                        {result.grade || `${(result.marks / result.exam.totalMarks * 100).toFixed(0)}%`}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Score</span>
+                      <span className="font-semibold">{result.marks}/{result.exam.totalMarks}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No grades available yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Attendance Summary Card */}
+        <div className="bg-card rounded-lg border p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Attendance
+          </h2>
+          <div className="text-center mb-4">
+            <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 mb-2">
+              <span className="text-3xl font-bold text-primary">
+                {childDetails.attendanceStats.percentage.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-950 rounded">
+              <span className="text-sm">Present</span>
+              <span className="font-semibold">{childDetails.attendanceStats.presentDays} days</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-red-50 dark:bg-red-950 rounded">
+              <span className="text-sm">Absent</span>
+              <span className="font-semibold">{childDetails.attendanceStats.absentDays} days</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-amber-50 dark:bg-amber-950 rounded">
+              <span className="text-sm">Late</span>
+              <span className="font-semibold">{childDetails.attendanceStats.lateDays} days</span>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="w-full" asChild>
+            <Link href={`/parent/children/${childId}/attendance`}>
+              View Calendar
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Assignments Section */}
+      <div className="bg-card rounded-lg border p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <School className="h-5 w-5 text-primary" />
+          Current Assignments
+        </h2>
+        {childDetails.assignments && childDetails.assignments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {childDetails.assignments.map((assignment: any) => (
+              <div key={assignment.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium">{assignment.title}</h3>
+                  <Badge variant={assignment.submissions.length > 0 ? "default" : "secondary"}>
+                    {assignment.submissions.length > 0 ? "Submitted" : "Pending"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">{assignment.subject.name}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  Due: {format(new Date(assignment.dueDate), "MMM d, yyyy")}
+                </div>
+                {assignment.description && (
+                  <p className="text-sm mt-2 line-clamp-2">{assignment.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No current assignments</p>
+        )}
+      </div>
+
+      {/* Behavior Records Section */}
+      <div className="bg-card rounded-lg border p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-primary" />
+          Behavior Records
+        </h2>
+        {childDetails.behaviorRecords && childDetails.behaviorRecords.length > 0 ? (
+          <div className="space-y-3">
+            {childDetails.behaviorRecords.map((record: any) => (
+              <div key={record.id} className="border-l-4 border-primary pl-4 py-2">
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className="font-medium">{record.title}</h3>
+                  <Badge variant={record.type === 'POSITIVE' ? 'default' : record.type === 'NEGATIVE' ? 'destructive' : 'secondary'}>
+                    {record.type}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{record.description}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(new Date(record.date), "MMM d, yyyy")} • {record.teacher?.user?.firstName} {record.teacher?.user?.lastName}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-8">No behavior records</p>
+        )}
+      </div>
+
       {/* Tabs */}
       <ChildDetailTabs childDetails={childDetails} />
     </div>

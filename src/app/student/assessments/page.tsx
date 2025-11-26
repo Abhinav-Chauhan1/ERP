@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FileText, GraduationCap, Pencil, ChartPie, ChevronRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, GraduationCap, Pencil, ChartPie, FileQuestion, ClipboardList } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
@@ -111,72 +112,133 @@ export default async function AssessmentsPage() {
     }
   });
 
-  const assessmentLinks = [
+  const assessmentStats = [
     {
       title: "Upcoming Exams",
-      description: "View your scheduled exams and prepare ahead",
-      icon: FileText,
-      href: "/student/assessments/exams",
-      count: upcomingExamsCount
+      count: upcomingExamsCount,
+      icon: FileQuestion,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      subtitle: upcomingExamsCount > 0 ? "Next exam soon" : "No upcoming exams"
     },
     {
-      title: "Assignments",
-      description: "Manage and submit your pending assignments",
-      icon: Pencil,
-      href: "/student/assessments/assignments",
-      count: pendingAssignmentsCount
+      title: "Pending Assignments",
+      count: pendingAssignmentsCount,
+      icon: ClipboardList,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
+      subtitle: pendingAssignmentsCount > 0 ? `${pendingAssignmentsCount} due soon` : "All caught up"
     },
     {
       title: "Exam Results",
-      description: "Check your performance in past exams",
+      count: pastExamsCount,
       icon: ChartPie,
-      href: "/student/assessments/results",
-      count: pastExamsCount
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      subtitle: "Published results"
     },
     {
       title: "Report Cards",
-      description: "Access your term and annual report cards",
+      count: reportCardsCount,
       icon: GraduationCap,
-      href: "/student/assessments/report-cards",
-      count: reportCardsCount
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+      subtitle: "Available reports"
+    }
+  ];
+
+  const assessmentLinks = [
+    {
+      title: "Exams",
+      description: "View upcoming exams",
+      icon: FileQuestion,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      href: "/student/assessments/exams"
+    },
+    {
+      title: "Assignments",
+      description: "Manage assignments",
+      icon: Pencil,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
+      href: "/student/assessments/assignments"
+    },
+    {
+      title: "Results",
+      description: "View exam results",
+      icon: ChartPie,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      href: "/student/assessments/results"
+    },
+    {
+      title: "Report Cards",
+      description: "Access report cards",
+      icon: GraduationCap,
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+      href: "/student/assessments/report-cards"
     }
   ];
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Assessments</h1>
-        <p className="text-gray-500">
-          View and manage your exams, assignments, and academic evaluations
+    <div className="p-6 space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Assessments</h1>
+        <p className="text-muted-foreground mt-1">
+          Exams, assignments, and results
         </p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {assessmentLinks.map((item) => (
-          <Card key={item.href}>
+      
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {assessmentStats.map((stat) => (
+          <Card key={stat.title}>
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-lg">
-                <div className="bg-blue-50 p-2 rounded-lg mr-3">
-                  <item.icon className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center gap-2">
+                <div className={`p-2 ${stat.iconBg} rounded-md ${stat.iconColor}`}>
+                  <stat.icon className="h-5 w-5" />
                 </div>
-                {item.title}
-                {item.count > 0 && (
-                  <div className="ml-2 bg-blue-100 text-blue-800 text-xs rounded-full px-2 py-0.5">
-                    {item.count}
-                  </div>
-                )}
-              </CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-500 mb-4">{item.description}</p>
-              <Button asChild className="w-full mt-2">
-                <Link href={item.href}>
-                  Access {item.title}
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+              <div className="text-3xl font-bold">{stat.count}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.subtitle}
+              </p>
             </CardContent>
           </Card>
+        ))}
+      </div>
+      
+      {/* Navigation Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {assessmentLinks.map((item) => (
+          <Link key={item.href} href={item.href}>
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 ${item.iconBg} rounded-lg ${item.iconColor}`}>
+                    <item.icon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl">{item.title}</CardTitle>
+                    <CardDescription>{item.description}</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full">
+                  View All {item.title}
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

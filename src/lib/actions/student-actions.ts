@@ -19,6 +19,7 @@ export async function getStudentProfile() {
     include: {
       student: {
         include: {
+          user: true,
           enrollments: {
             include: {
               class: true,

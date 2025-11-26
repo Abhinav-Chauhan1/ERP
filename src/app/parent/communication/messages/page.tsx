@@ -14,6 +14,7 @@ import {
   markMessageAsRead,
   deleteMessage,
   sendMessage,
+  getAvailableRecipients,
 } from "@/lib/actions/parent-communication-actions";
 import { toast } from "react-hot-toast";
 
@@ -101,15 +102,38 @@ export default function MessagesPage() {
 
   // Load recipients for compose
   const loadRecipients = async () => {
-    // In a real implementation, this would fetch teachers and admins
-    // For now, we'll use a placeholder
-    setRecipients([]);
+    try {
+      const result = await getAvailableRecipients();
+      if (result.success && result.data) {
+        // Transform the data to match the expected format
+        const formattedRecipients = result.data.map((user: any) => ({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar,
+        }));
+        setRecipients(formattedRecipients);
+      } else {
+        console.error("Failed to load recipients:", result.message);
+      }
+    } catch (error) {
+      console.error("Error loading recipients:", error);
+    }
   };
 
   useEffect(() => {
     loadMessages(activeTab, 1, filters);
-    loadRecipients();
-  }, [activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, filters.search, filters.isRead]);
+
+  // Load recipients when compose dialog opens
+  useEffect(() => {
+    if (isComposeOpen && recipients.length === 0) {
+      loadRecipients();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComposeOpen]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value as "inbox" | "sent" | "drafts");
@@ -150,7 +174,7 @@ export default function MessagesPage() {
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters);
     setPagination((prev) => ({ ...prev, page: 1 }));
-    loadMessages(activeTab, 1, newFilters);
+    // Don't call loadMessages here - let the useEffect handle it
   };
 
   const handleBulkDelete = async (messageIds: string[]) => {
@@ -208,10 +232,12 @@ export default function MessagesPage() {
     attachments?: string[];
   }) => {
     try {
-      // Convert attachments array to string if needed
+      // Convert attachments array to JSON string if needed
       const messageData = {
         ...data,
-        attachments: data.attachments ? data.attachments.join(',') : undefined
+        attachments: data.attachments && data.attachments.length > 0 
+          ? (typeof data.attachments === 'string' ? data.attachments : JSON.stringify(data.attachments))
+          : undefined
       };
       const result = await sendMessage(messageData);
       if (result.success) {
@@ -273,6 +299,10 @@ export default function MessagesPage() {
             onReply={activeTab === "inbox" ? handleReply : undefined}
             onForward={handleForward}
             onDelete={handleDelete}
+            onDownloadAttachment={(url, fileName) => {
+              // Open attachment in new tab for download
+              window.open(url, "_blank");
+            }}
           />
         ) : (
           <Tabs value={activeTab} onValueChange={handleTabChange}>

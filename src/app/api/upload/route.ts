@@ -1,22 +1,44 @@
 /**
  * File Upload API Route
- * Handles file uploads with rate limiting and validation
- * Requirements: 10.2, 10.4, 10.5
+ * Handles file uploads with comprehensive security checks
+ * Requirements: 1.2, 9.5
+ * 
+ * Security Features:
+ * - Authentication verification
+ * - Rate limiting (10 uploads per minute per user)
+ * - CSRF token validation
+ * - File type validation (client-declared MIME type)
+ * - File size validation
+ * - Magic number verification (server-side content check)
+ * - Filename sanitization
+ * - Cloudinary integration with signed uploads
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { rateLimitMiddleware, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
-import { sanitizeFileName, validateFileUpload } from "@/lib/utils/file-security";
+import { 
+  sanitizeFileName, 
+  validateFileUploadSecure,
+  generateSecureFileName,
+  getFileExtension
+} from "@/lib/utils/file-security";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 /**
  * POST /api/upload
- * Upload a file with security checks
+ * Upload a file with comprehensive security checks
+ * 
+ * Request body (multipart/form-data):
+ * - file: File to upload
+ * - csrf_token: CSRF token for request validation
+ * - folder: Optional folder path in Cloudinary
+ * - category: Optional file category (avatar, document, attachment, general)
  */
 export async function POST(req: NextRequest) {
   try {
-    // Verify user is authenticated
+    // 1. Verify user is authenticated
     const user = await currentUser();
     
     if (!user) {
@@ -26,7 +48,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Rate limiting check
+    // 2. Rate limiting check (10 uploads per minute per user)
     const rateLimitResult = await rateLimitMiddleware(user.id, RateLimitPresets.FILE_UPLOAD);
     
     if (rateLimitResult.exceeded) {
@@ -42,17 +64,20 @@ export async function POST(req: NextRequest) {
           headers: {
             'Retry-After': resetInSeconds.toString(),
             'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
           }
         }
       );
     }
 
-    // Parse form data
+    // 3. Parse form data
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const csrfToken = formData.get("csrf_token") as string | null;
+    const folder = formData.get("folder") as string | null;
+    const category = formData.get("category") as string | null;
 
-    // Verify CSRF token
+    // 4. Verify CSRF token
     const isCsrfValid = await verifyCsrfToken(csrfToken);
     
     if (!isCsrfValid) {
@@ -62,6 +87,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 5. Validate file exists
     if (!file) {
       return NextResponse.json(
         { success: false, message: "No file provided" },
@@ -69,8 +95,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate file
-    const validation = validateFileUpload(file);
+    // 6. Validate file with magic number check (server-side)
+    const validation = await validateFileUploadSecure(
+      file, 
+      category as any || "general"
+    );
     
     if (!validation.valid) {
       return NextResponse.json(
@@ -79,21 +108,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sanitize filename
-    const sanitizedFileName = sanitizeFileName(file.name);
+    // 7. Generate secure filename
+    const secureFileName = generateSecureFileName(file.name);
+    const sanitizedOriginalName = sanitizeFileName(file.name);
 
-    // Here you would typically upload to cloud storage (Cloudinary, S3, etc.)
-    // For now, we'll just return success with the sanitized filename
+    // 8. Upload to Cloudinary with folder structure
+    const uploadFolder = folder || `uploads/${user.id}`;
     
-    return NextResponse.json({
-      success: true,
-      data: {
-        fileName: sanitizedFileName,
-        fileSize: file.size,
-        fileType: file.type,
-      },
-      message: "File uploaded successfully"
-    });
+    try {
+      const uploadResult = await uploadToCloudinary(file, {
+        folder: uploadFolder,
+        publicId: secureFileName.replace(getFileExtension(secureFileName), ""),
+        resource_type: "auto",
+      });
+
+      // 9. Return success with upload details
+      return NextResponse.json({
+        success: true,
+        data: {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+          fileName: sanitizedOriginalName,
+          secureFileName: secureFileName,
+          fileSize: uploadResult.bytes,
+          fileType: uploadResult.format,
+          resourceType: uploadResult.resource_type,
+        },
+        message: "File uploaded successfully"
+      });
+
+    } catch (uploadError) {
+      console.error("Cloudinary upload error:", uploadError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Failed to upload file to storage. Please try again." 
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error("Error uploading file:", error);

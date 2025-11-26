@@ -147,7 +147,7 @@ export function DocumentList({
           {filteredDocuments.map((doc) => (
             <div 
               key={doc.id} 
-              className="flex flex-col sm:flex-row sm:items-center gap-4 border rounded-lg p-4 transition-colors hover:bg-gray-50"
+              className="flex flex-col sm:flex-row sm:items-center gap-4 border rounded-lg p-4 transition-colors hover:bg-accent"
             >
               <div className="flex-shrink-0">
                 {getFileIcon(doc.fileType, doc.fileName)}
@@ -156,7 +156,7 @@ export function DocumentList({
               <div className="flex-grow min-w-0">
                 <h3 className="font-medium truncate">{doc.title}</h3>
                 {doc.description && (
-                  <p className="text-sm text-gray-500 line-clamp-1">{doc.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{doc.description}</p>
                 )}
                 
                 <div className="flex flex-wrap gap-2 mt-2">
@@ -170,14 +170,14 @@ export function DocumentList({
                     <Badge 
                       key={index} 
                       variant="secondary" 
-                      className="text-xs bg-gray-100"
+                      className="text-xs"
                     >
                       {tag.trim()}
                     </Badge>
                   ))}
                 </div>
                 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                   <span>Added: {format(new Date(doc.createdAt), "MMM d, yyyy")}</span>
                   {doc.fileSize && <span>Size: {formatFileSize(doc.fileSize)}</span>}
                   {showUploader && doc.user && (
@@ -194,7 +194,7 @@ export function DocumentList({
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="gap-1"
+                    className="gap-1 min-h-[40px]"
                     asChild
                   >
                     <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
@@ -209,8 +209,8 @@ export function DocumentList({
                     <AlertDialogTrigger asChild>
                       <Button 
                         size="sm" 
-                        variant="destructive" 
-                        className="gap-1"
+                        variant="outline"
+                        className="gap-1 min-h-[40px] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span className="sm:hidden md:inline">Delete</span>
@@ -244,10 +244,12 @@ export function DocumentList({
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 border rounded-lg">
-          <AlertTriangle className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium mb-1">No documents found</h3>
-          <p className="text-gray-500">
+        <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg">
+          <div className="rounded-full bg-muted p-6 mb-4">
+            <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+          <p className="text-muted-foreground max-w-sm">
             {emptyMessage}
           </p>
         </div>

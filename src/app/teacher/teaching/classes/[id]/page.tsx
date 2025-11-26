@@ -85,12 +85,12 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                 <p className="text-gray-500 text-xs">Total Students</p>
                 <p className="text-2xl font-bold">{classInfo.totalStudents}</p>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-gray-500 text-xs">Today's Attendance</p>
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <p className="text-muted-foreground text-xs">Today's Attendance</p>
                 <div className="flex justify-center items-center gap-2">
-                  <p className="text-2xl font-bold text-green-600">{classInfo.presentToday}</p>
-                  <p className="text-sm text-gray-500">/</p>
-                  <p className="text-2xl font-bold text-red-500">{classInfo.absentToday}</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-500">{classInfo.presentToday}</p>
+                  <p className="text-sm text-muted-foreground">/</p>
+                  <p className="text-2xl font-bold text-destructive">{classInfo.absentToday}</p>
                 </div>
               </div>
             </div>
@@ -148,8 +148,8 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                       <p className="text-2xl font-bold text-green-600">{session.present}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-red-500">Absent</p>
-                      <p className="text-2xl font-bold text-red-500">{session.absent}</p>
+                      <p className="text-xs text-destructive">Absent</p>
+                      <p className="text-2xl font-bold text-destructive">{session.absent}</p>
                     </div>
                   </div>
                   <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
@@ -249,9 +249,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                         <div className="flex items-center">
                           <div 
                             className={`h-2 w-2 rounded-full mr-2 ${
-                              student.attendance >= 90 ? 'bg-green-500' :
-                              student.attendance >= 80 ? 'bg-amber-500' :
-                              'bg-red-500'
+                              student.attendance >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                              student.attendance >= 80 ? 'bg-warning' :
+                              'bg-destructive'
                             }`}
                           ></div>
                           <span className="text-sm">{student.attendance}%</span>
@@ -261,10 +261,10 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                         <div className="flex items-center">
                           <div 
                             className={`h-2 w-2 rounded-full mr-2 ${
-                              student.performance >= 90 ? 'bg-green-500' :
-                              student.performance >= 80 ? 'bg-blue-500' :
-                              student.performance >= 70 ? 'bg-amber-500' :
-                              'bg-red-500'
+                              student.performance >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                              student.performance >= 80 ? 'bg-primary' :
+                              student.performance >= 70 ? 'bg-warning' :
+                              'bg-destructive'
                             }`}
                           ></div>
                           <span className="text-sm">{student.performance}%</span>
@@ -273,9 +273,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge
                           className={`${
-                            student.lastAssignment === 'Completed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                            student.lastAssignment === 'Late' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
-                            'bg-red-100 text-red-800 hover:bg-red-100'
+                            student.lastAssignment === 'Completed' ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-950 dark:text-green-400' :
+                            student.lastAssignment === 'Late' ? 'bg-warning/10 text-warning hover:bg-warning/10' :
+                            'bg-destructive/10 text-destructive hover:bg-destructive/10'
                           }`}
                         >
                           {student.lastAssignment}
@@ -362,9 +362,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                         <span className="text-sm">Grading Progress</span>
                         <span className="text-sm font-medium">{Math.round((assignment.graded / assignment.submitted) * 100)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div 
-                          className="bg-blue-500 h-2 rounded-full" 
+                          className="bg-primary h-2 rounded-full" 
                           style={{ width: `${(assignment.graded / assignment.submitted) * 100}%` }}
                         ></div>
                       </div>
@@ -412,7 +412,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                         <td className="px-6 py-4 whitespace-nowrap">{exam.duration}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{exam.totalMarks}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={exam.status === 'Upcoming' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}>
+                          <Badge className={exam.status === 'Upcoming' ? 'bg-warning/10 text-warning' : 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400'}>
                             {exam.status}
                           </Badge>
                         </td>

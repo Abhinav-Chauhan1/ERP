@@ -11,31 +11,31 @@ export function StudentAcademicDetails({ student }: StudentAcademicDetailsProps)
   
   return (
     <div className="space-y-6">
-      <Card className="shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle>Current Enrollment</CardTitle>
+      <Card className="overflow-hidden hover:shadow-md transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-xl">Current Enrollment</CardTitle>
         </CardHeader>
         <CardContent>
           {currentEnrollment ? (
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Class</p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Class</p>
                 <p className="text-lg font-bold">{currentEnrollment.class.name}</p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Section</p>
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Section</p>
                 <p className="text-lg font-bold">{currentEnrollment.section.name}</p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Roll Number</p>
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Roll Number</p>
                 <p className="text-lg font-bold">{currentEnrollment.rollNumber || "Not assigned"}</p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Enrollment Date</p>
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Enrollment Date</p>
                 <p className="text-lg font-bold">{format(new Date(currentEnrollment.enrollDate), "PPP")}</p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Status</p>
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Status</p>
                 <Badge 
                   className={
                     currentEnrollment.status === "ACTIVE"
@@ -48,57 +48,68 @@ export function StudentAcademicDetails({ student }: StudentAcademicDetailsProps)
                   {currentEnrollment.status.replace("_", " ")}
                 </Badge>
               </div>
-              <div className="bg-slate-50 p-4 rounded-md">
-                <p className="text-sm font-semibold text-gray-500">Admission ID</p>
+              <div className="bg-accent p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Admission ID</p>
                 <p className="text-lg font-bold">{student.admissionId}</p>
               </div>
             </div>
           ) : (
-            <p className="text-center text-gray-500">No enrollment information available</p>
+            <p className="text-center text-muted-foreground py-8">No enrollment information available</p>
           )}
         </CardContent>
       </Card>
       
-      <Card className="shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle>Academic Records</CardTitle>
+      <Card className="overflow-hidden hover:shadow-md transition-shadow">
+        <CardHeader>
+          <CardTitle className="text-xl">Academic Records</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg overflow-hidden">
-            <div className="grid grid-cols-12 bg-slate-100 p-3">
-              <div className="col-span-3 font-semibold">Academic Year</div>
-              <div className="col-span-2 font-semibold">Class</div>
-              <div className="col-span-2 font-semibold">Section</div>
-              <div className="col-span-2 font-semibold">Roll No.</div>
-              <div className="col-span-3 font-semibold">Status</div>
+          <div className="rounded-md border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-accent border-b">
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Academic Year</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Section</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Roll No.</th>
+                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {student.enrollments && student.enrollments.length > 0 ? (
+                    student.enrollments.map((enrollment: any) => (
+                      <tr key={enrollment.id} className="border-b hover:bg-accent/50">
+                        <td className="py-3 px-4 align-middle">{enrollment.class.academicYear?.name || "2023-2024"}</td>
+                        <td className="py-3 px-4 align-middle font-medium">{enrollment.class.name}</td>
+                        <td className="py-3 px-4 align-middle">{enrollment.section.name}</td>
+                        <td className="py-3 px-4 align-middle">{enrollment.rollNumber || "N/A"}</td>
+                        <td className="py-3 px-4 align-middle">
+                          <Badge 
+                            variant="outline"
+                            className={
+                              enrollment.status === "ACTIVE"
+                                ? "border-green-500 text-green-700"
+                                : enrollment.status === "GRADUATED"
+                                ? "border-blue-500 text-blue-700"
+                                : "border-amber-500 text-amber-700"
+                            }
+                          >
+                            {enrollment.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="text-center text-muted-foreground py-8">
+                        No academic records available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            
-            {student.enrollments && student.enrollments.length > 0 ? (
-              student.enrollments.map((enrollment: any) => (
-                <div key={enrollment.id} className="grid grid-cols-12 p-3 border-t">
-                  <div className="col-span-3">{enrollment.class.academicYear?.name || "2023-2024"}</div>
-                  <div className="col-span-2">{enrollment.class.name}</div>
-                  <div className="col-span-2">{enrollment.section.name}</div>
-                  <div className="col-span-2">{enrollment.rollNumber || "N/A"}</div>
-                  <div className="col-span-3">
-                    <Badge 
-                      variant="outline"
-                      className={
-                        enrollment.status === "ACTIVE"
-                          ? "border-green-500 text-green-700"
-                          : enrollment.status === "GRADUATED"
-                          ? "border-blue-500 text-blue-700"
-                          : "border-amber-500 text-amber-700"
-                      }
-                    >
-                      {enrollment.status.replace("_", " ")}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-500 p-4">No academic records available</p>
-            )}
           </div>
         </CardContent>
       </Card>

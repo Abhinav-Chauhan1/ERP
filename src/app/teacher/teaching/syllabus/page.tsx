@@ -77,9 +77,9 @@ export default async function TeacherSyllabusPage() {
                   <span className="text-gray-500">Progress</span>
                   <span className="font-medium">{subject.progress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className="bg-blue-500 h-2 rounded-full transition-all"
+                    className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${subject.progress}%` }}
                   ></div>
                 </div>
@@ -163,11 +163,11 @@ export default async function TeacherSyllabusPage() {
                   <div key={subject.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {subject.progress >= 75 ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500" />
                       ) : subject.progress >= 50 ? (
-                        <Clock className="h-4 w-4 text-yellow-500" />
+                        <Clock className="h-4 w-4 text-warning" />
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <AlertCircle className="h-4 w-4 text-destructive" />
                       )}
                       <span className="text-sm font-medium">{subject.name}</span>
                     </div>

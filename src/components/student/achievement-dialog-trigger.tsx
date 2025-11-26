@@ -22,14 +22,14 @@ export function AchievementDialogTrigger({ title, children }: AchievementDialogT
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="min-h-[44px]">
           <PlusCircle className="h-4 w-4 mr-2" />
           {title}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-xl">{title}</DialogTitle>
         </DialogHeader>
         {/* Clone children and add onSuccess prop to close dialog */}
         {React.cloneElement(children as React.ReactElement, {

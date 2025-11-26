@@ -15,28 +15,28 @@ export function RecentAnnouncements({ announcements }: RecentAnnouncementsProps)
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Recent Announcements</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Recent Announcements</CardTitle>
       </CardHeader>
       <CardContent>
         {announcements.length > 0 ? (
           <div className="space-y-4">
             {announcements.map((announcement) => (
-              <div key={announcement.id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <h4 className="font-medium">{announcement.title}</h4>
-                  <span className="text-xs text-muted-foreground">
+              <div key={announcement.id} className="rounded-lg border p-4 hover:bg-accent/50 transition-colors">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h4 className="font-medium line-clamp-1">{announcement.title}</h4>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {format(new Date(announcement.createdAt), "MMM dd")}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                   {truncateText(announcement.content, 100)}
                 </p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>By {announcement.publisher.user.firstName} {announcement.publisher.user.lastName}</span>
                   <Link href={`/student/communication/announcements/${announcement.id}`}>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 text-primary">
+                    <Button variant="ghost" size="sm" className="h-auto p-0 text-primary hover:underline">
                       Read more
                     </Button>
                   </Link>

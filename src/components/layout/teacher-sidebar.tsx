@@ -13,11 +13,16 @@ import {
   MessageSquare,
   Settings,
   ChevronDown,
+  ChevronRight,
   LucideIcon,
   Video,
+  FolderOpen,
+  Award,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@clerk/nextjs";
+import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
   label: string;
@@ -82,6 +87,21 @@ const routes: RouteItem[] = [
     ],
   },
   {
+    label: "Documents",
+    icon: FolderOpen,
+    href: "/teacher/documents",
+  },
+  {
+    label: "Events",
+    icon: Calendar,
+    href: "/teacher/events",
+  },
+  {
+    label: "Achievements",
+    icon: Award,
+    href: "/teacher/achievements",
+  },
+  {
     label: "Communication",
     icon: MessageSquare,
     submenu: [
@@ -126,10 +146,10 @@ export function TeacherSidebar() {
 
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
-      <div className="p-6 flex items-center gap-2">
+      <div className="p-4 md:p-6">
         <Link href="/teacher">
-          <h1 className="text-xl font-bold">School ERP</h1>
-          <p className="text-xs text-muted-foreground">Teacher Portal</p>
+          <SchoolLogo showName={true} />
+          <p className="text-xs text-muted-foreground mt-1">Teacher Portal</p>
         </Link>
       </div>
       <div className="flex flex-col w-full">
@@ -146,36 +166,35 @@ export function TeacherSidebar() {
                 <button
                   onClick={() => toggleMenu(route.label)}
                   className={cn(
-                    "w-full text-sm font-medium flex items-center justify-between py-3 px-6 transition-colors",
+                    "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                     isRouteActive
                       ? "text-primary bg-primary/10"
-                      : "text-muted-foreground hover:text-primary hover:bg-accent"
+                      : "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
-                  <span className="flex items-center">
-                    <route.icon className="h-5 w-5 mr-3" />
-                    {route.label}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 transition-transform duration-200",
-                      isOpen ? "transform rotate-180" : ""
-                    )}
-                  />
+                  <div className="flex items-center gap-3">
+                    <route.icon className="h-5 w-5 flex-shrink-0" />
+                    <span>{route.label}</span>
+                  </div>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                  )}
                 </button>
 
                 {/* Submenu */}
                 {isOpen && (
-                  <div className="ml-9 border-l pl-3 my-1">
+                  <div className="ml-8 md:ml-9 border-l pl-3 my-1">
                     {route.submenu.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
                         className={cn(
-                          "text-xs flex items-center py-2 px-2 rounded transition-colors",
+                          "text-xs md:text-sm flex items-center py-2.5 md:py-2 px-2 rounded transition-colors min-h-[40px]",
                           pathname === item.href
                             ? "text-primary font-medium bg-primary/10"
-                            : "text-muted-foreground hover:text-primary hover:bg-accent"
+                            : "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                         )}
                       >
                         {item.label}
@@ -193,14 +212,14 @@ export function TeacherSidebar() {
               key={route.href}
               href={route.href!}
               className={cn(
-                "text-sm font-medium flex items-center py-3 px-6 transition-colors",
+                "text-sm md:text-base font-medium flex items-center py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                 isRouteActive
                   ? "text-primary bg-primary/10 border-r-4 border-primary"
-                  : "text-muted-foreground hover:text-primary hover:bg-accent"
+                  : "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
               )}
             >
-              <route.icon className="h-5 w-5 mr-3" />
-              {route.label}
+              <route.icon className="h-5 w-5 mr-3 flex-shrink-0" />
+              <span>{route.label}</span>
             </Link>
           );
         })}

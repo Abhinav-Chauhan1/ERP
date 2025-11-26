@@ -5,7 +5,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/utils/cache";
 
 // Schema for validating child detail requests
 const childDetailSchema = z.object({
@@ -54,6 +55,7 @@ async function getCurrentParent() {
 
 /**
  * Get all children of a parent with basic details
+ * Cached for 5 minutes (300 seconds) as per requirements 9.5
  */
 export async function getMyChildren() {
   const result = await getCurrentParent();
@@ -64,39 +66,53 @@ export async function getMyChildren() {
   
   const { parent, dbUser } = result;
   
-  // Get all children of this parent
-  const parentChildren = await db.studentParent.findMany({
-    where: {
-      parentId: parent.id
-    },
-    include: {
-      student: {
+  // Cached function to fetch children data
+  const getCachedChildrenData = unstable_cache(
+    async (parentId: string) => {
+      // Get all children of this parent
+      const parentChildren = await db.studentParent.findMany({
+        where: {
+          parentId
+        },
         include: {
-          user: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true,
-              avatar: true,
-            }
-          },
-          enrollments: {
-            orderBy: {
-              enrollDate: 'desc'
-            },
-            take: 1,
+          student: {
             include: {
-              class: true,
-              section: true
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  avatar: true,
+                }
+              },
+              enrollments: {
+                orderBy: {
+                  enrollDate: 'desc'
+                },
+                take: 1,
+                include: {
+                  class: true,
+                  section: true
+                }
+              }
             }
           }
+        },
+        orderBy: {
+          isPrimary: 'desc'
         }
-      }
+      });
+      
+      return parentChildren;
     },
-    orderBy: {
-      isPrimary: 'desc'
+    [`parent-children-${parent.id}`],
+    {
+      tags: [CACHE_TAGS.STUDENTS, CACHE_TAGS.PARENTS, `parent-${parent.id}`],
+      revalidate: 300 // 5 minutes
     }
-  });
+  );
+  
+  const parentChildren = await getCachedChildrenData(parent.id);
   
   // Get subjects for each child
   const enrichedChildren = await Promise.all(
@@ -353,6 +369,31 @@ let examResults: ExamResult[] = [];
   const paidAmount = feePayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
   const pendingAmount = totalFees - paidAmount;
   
+  // Get behavior records
+  // TODO: Uncomment when behaviorRecord model is added to schema
+  // const behaviorRecords = await db.behaviorRecord.findMany({
+  //   where: {
+  //     studentId: student.id
+  //   },
+  //   include: {
+  //     teacher: {
+  //       include: {
+  //         user: {
+  //           select: {
+  //             firstName: true,
+  //             lastName: true
+  //           }
+  //         }
+  //       }
+  //     }
+  //   },
+  //   orderBy: {
+  //     date: 'desc'
+  //   },
+  //   take: 10
+  // });
+  const behaviorRecords: any[] = [];
+  
   // Calculate attendance statistics
   const totalDays = attendanceRecords.length;
   const presentDays = attendanceRecords.filter(record => record.status === "PRESENT").length;
@@ -382,6 +423,7 @@ let examResults: ExamResult[] = [];
       pendingAmount,
       payments: feePayments
     },
+    behaviorRecords,
     isPrimary: parentChild.isPrimary
   };
 }

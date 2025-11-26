@@ -15,15 +15,16 @@ export function TimeTablePreview({ schedule }: TimeTablePreviewProps) {
   const [currentDay] = useState(format(new Date(), "EEEE"));
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Today's Schedule ({currentDay})</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Today's Schedule</CardTitle>
+        <p className="text-sm text-muted-foreground">{currentDay}</p>
       </CardHeader>
       <CardContent>
         {schedule.length > 0 ? (
           <div className="space-y-3">
             {schedule.map((slot, index) => (
-              <div key={index} className="flex items-center justify-between rounded-md border p-3">
+              <div key={index} className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="rounded-md bg-primary/10 p-2">
                     <Clock className="h-4 w-4 text-primary" />

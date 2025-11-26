@@ -48,9 +48,9 @@ interface AnnouncementCardProps {
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   ACADEMIC: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
-  EVENT: { bg: "bg-purple-500/10", text: "text-purple-600 dark:text-purple-400", border: "border-purple-500/20" },
-  HOLIDAY: { bg: "bg-green-500/10", text: "text-green-600 dark:text-green-400", border: "border-green-500/20" },
-  URGENT: { bg: "bg-red-500/10", text: "text-red-600 dark:text-red-400", border: "border-red-500/20" },
+  EVENT: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
+  HOLIDAY: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
+  URGENT: { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/20" },
   GENERAL: { bg: "bg-accent", text: "text-foreground", border: "border-border" },
 };
 
@@ -127,7 +127,7 @@ export function AnnouncementCard({
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {getCategoryBadge(category)}
               {!announcement.isActive && (
-                <Badge variant="outline" className="text-xs bg-gray-100">
+                <Badge variant="outline" className="text-xs bg-muted">
                   Expired
                 </Badge>
               )}

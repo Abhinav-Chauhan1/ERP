@@ -794,3 +794,427 @@
 - Test each task before moving to next
 - Keep stakeholders updated on progress
 - Have buffer time for unexpected issues
+
+
+---
+
+## Phase 7: Theme Implementation (Integrated with all phases)
+
+### Task 7.1: Apply Theme to Dashboard Page
+**Priority:** High  
+**Estimated Time:** 2 hours  
+**Dependencies:** Task 1.1, Task 1.2
+
+**Acceptance Criteria:**
+- [ ] Dashboard matches admin dashboard theme
+- [ ] Stats cards use gradient backgrounds
+- [ ] Proper spacing and grid layout
+- [ ] Hover effects on cards
+- [ ] Responsive design works
+- [ ] Icons and colors consistent
+
+**Implementation Steps:**
+1. Open `src/app/student/page.tsx`
+2. Apply theme classes from theme-design.md
+3. Update stats cards with proper styling
+4. Add gradient backgrounds
+5. Implement hover effects
+6. Test responsive behavior
+7. Verify color consistency
+
+**Files to Modify:**
+- `src/app/student/page.tsx`
+- `src/components/student/dashboard-stats.tsx`
+- `src/components/student/attendance-overview.tsx`
+- `src/components/student/upcoming-assessments.tsx`
+
+**Testing:**
+- Visual comparison with admin dashboard
+- Test on mobile, tablet, desktop
+- Verify light/dark mode
+- Check hover effects
+
+---
+
+### Task 7.2: Apply Theme to Course Pages
+**Priority:** High  
+**Estimated Time:** 3 hours  
+**Dependencies:** Task 4.1, Task 4.2
+
+**Acceptance Criteria:**
+- [ ] Course list page matches theme
+- [ ] Course cards have proper styling
+- [ ] Course detail page matches theme
+- [ ] Lesson viewer matches theme
+- [ ] Progress bars styled correctly
+- [ ] Module navigation styled correctly
+
+**Implementation Steps:**
+1. Apply theme to course list page
+2. Style course cards with thumbnails
+3. Add hover effects and shadows
+4. Apply theme to course detail page
+5. Style lesson viewer components
+6. Add proper spacing and layout
+7. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/courses/page.tsx`
+- `src/app/student/courses/[courseId]/page.tsx`
+- `src/app/student/courses/[courseId]/lessons/[lessonId]/page.tsx`
+- `src/components/student/course-detail.tsx`
+- `src/components/student/lesson-viewer.tsx`
+
+**Testing:**
+- Visual comparison with theme spec
+- Test all course card states
+- Test lesson viewer with different content types
+- Verify responsive design
+
+---
+
+### Task 7.3: Apply Theme to Academics Pages
+**Priority:** Medium  
+**Estimated Time:** 2 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Academics overview matches theme
+- [ ] Navigation cards styled correctly
+- [ ] Schedule page matches theme
+- [ ] Subjects page matches theme
+- [ ] Consistent spacing and colors
+
+**Implementation Steps:**
+1. Apply theme to academics overview
+2. Style navigation cards
+3. Apply theme to schedule page
+4. Apply theme to subjects page
+5. Apply theme to curriculum page
+6. Apply theme to materials page
+7. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/academics/page.tsx`
+- `src/app/student/academics/schedule/page.tsx`
+- `src/app/student/academics/subjects/page.tsx`
+- `src/app/student/academics/curriculum/page.tsx`
+- `src/app/student/academics/materials/page.tsx`
+
+---
+
+### Task 7.4: Apply Theme to Assessments Pages
+**Priority:** Medium  
+**Estimated Time:** 3 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Assessments overview matches theme
+- [ ] Stats cards styled correctly
+- [ ] Exams page matches theme
+- [ ] Assignments page with tabs matches theme
+- [ ] Results page matches theme
+- [ ] Report cards page matches theme
+
+**Implementation Steps:**
+1. Apply theme to assessments overview
+2. Style stats cards with icons
+3. Apply theme to exams page
+4. Style assignments page with tabs
+5. Apply theme to results page
+6. Apply theme to report cards page
+7. Test all badge variants
+8. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/assessments/page.tsx`
+- `src/app/student/assessments/exams/page.tsx`
+- `src/app/student/assessments/assignments/page.tsx`
+- `src/app/student/assessments/results/page.tsx`
+- `src/app/student/assessments/report-cards/page.tsx`
+
+---
+
+### Task 7.5: Apply Theme to Performance Pages
+**Priority:** Medium  
+**Estimated Time:** 2 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Performance overview matches theme
+- [ ] Summary cards with gradients
+- [ ] Subject performance table styled
+- [ ] Charts styled correctly
+- [ ] Trend indicators styled
+
+**Implementation Steps:**
+1. Apply theme to performance overview
+2. Add gradient backgrounds to summary cards
+3. Style subject performance table
+4. Style performance charts
+5. Add trend indicators with icons
+6. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/performance/overview/page.tsx`
+- `src/app/student/performance/subjects/page.tsx`
+- `src/app/student/performance/trends/page.tsx`
+- `src/app/student/performance/rank/page.tsx`
+- `src/components/student/performance-chart.tsx`
+- `src/components/student/subject-performance-table.tsx`
+
+---
+
+### Task 7.6: Apply Theme to Attendance Pages
+**Priority:** Medium  
+**Estimated Time:** 2 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Attendance report matches theme
+- [ ] Summary card with gradient
+- [ ] Stats cards styled correctly
+- [ ] Calendar styled with proper colors
+- [ ] Legend styled correctly
+- [ ] Leave application page matches theme
+
+**Implementation Steps:**
+1. Apply theme to attendance report
+2. Add gradient to summary card
+3. Style stats cards with icons
+4. Style attendance calendar
+5. Add proper day state colors
+6. Style calendar legend
+7. Apply theme to leave application page
+8. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/attendance/report/page.tsx`
+- `src/app/student/attendance/leave/page.tsx`
+- `src/components/student/attendance-calendar.tsx`
+- `src/components/student/attendance-stats-cards.tsx`
+
+---
+
+### Task 7.7: Apply Theme to Fees Pages
+**Priority:** Medium  
+**Estimated Time:** 2 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [x] Fee details page matches theme
+- [x] Summary card with gradient
+- [x] Fee breakdown table styled
+- [x] Payment status badges styled
+- [x] Alert for overdue styled correctly
+- [x] Payment history page matches theme
+
+**Implementation Steps:**
+1. Apply theme to fee details page
+2. Add gradient to summary card
+3. Style fee breakdown table
+4. Style payment status badges
+5. Add overdue alert styling
+6. Apply theme to payment history
+7. Apply theme to due payments
+8. Apply theme to scholarships page
+9. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/fees/details/page.tsx`
+- `src/app/student/fees/payments/page.tsx`
+- `src/app/student/fees/due/page.tsx`
+- `src/app/student/fees/scholarships/page.tsx`
+- `src/components/student/fee-details-table.tsx`
+- `src/components/student/payment-dialog.tsx`
+
+---
+
+### Task 7.8: Apply Theme to Communication Pages
+**Priority:** High  
+**Estimated Time:** 2 hours  
+**Dependencies:** Task 5.4
+
+**Acceptance Criteria:**
+- [ ] Messages page matches theme
+- [ ] Message list styled correctly
+- [ ] Unread messages highlighted
+- [ ] Message detail styled correctly
+- [ ] Announcements page matches theme
+- [ ] Notifications page matches theme
+
+**Implementation Steps:**
+1. Apply theme to messages page
+2. Style message list items
+3. Add unread message highlighting
+4. Style message detail view
+5. Apply theme to announcements page
+6. Apply theme to notifications page
+7. Style notification groups
+8. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/communication/messages/page.tsx`
+- `src/app/student/communication/announcements/page.tsx`
+- `src/app/student/communication/notifications/page.tsx`
+- `src/components/student/communication/message-list.tsx`
+- `src/components/student/communication/message-detail.tsx`
+- `src/components/student/communication/announcement-list.tsx`
+- `src/components/student/communication/notification-list.tsx`
+
+---
+
+### Task 7.9: Apply Theme to Profile & Settings Pages
+**Priority:** Medium  
+**Estimated Time:** 2 hours  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Profile page matches theme
+- [ ] Profile header with gradient
+- [ ] Info cards styled correctly
+- [ ] Settings page matches theme
+- [ ] Settings tabs styled correctly
+- [ ] Form inputs styled correctly
+
+**Implementation Steps:**
+1. Apply theme to profile page
+2. Add gradient to profile header
+3. Style profile info cards
+4. Apply theme to settings page
+5. Style settings tabs
+6. Style form inputs and switches
+7. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/profile/page.tsx`
+- `src/app/student/settings/page.tsx`
+- `src/components/student/student-profile-info.tsx`
+- `src/components/student/student-profile-edit.tsx`
+- `src/components/student/settings/account-settings.tsx`
+- `src/components/student/settings/notification-settings.tsx`
+- `src/components/student/settings/privacy-settings.tsx`
+- `src/components/student/settings/appearance-settings.tsx`
+
+---
+
+### Task 7.10: Apply Theme to Documents & Events Pages
+**Priority:** Low  
+**Estimated Time:** 1 hour  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Documents page matches theme
+- [ ] Document list styled correctly
+- [ ] Upload form styled correctly
+- [ ] Events page matches theme
+- [ ] Event cards styled correctly
+
+**Implementation Steps:**
+1. Apply theme to documents page
+2. Style document list
+3. Style upload form
+4. Apply theme to events page
+5. Style event cards
+6. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/documents/page.tsx`
+- `src/app/student/events/page.tsx`
+- `src/components/student/document-list.tsx`
+- `src/components/student/event-card.tsx`
+
+---
+
+### Task 7.11: Apply Theme to Achievements Page
+**Priority:** Low  
+**Estimated Time:** 1 hour  
+**Dependencies:** None
+
+**Acceptance Criteria:**
+- [ ] Achievements page matches theme
+- [ ] Achievement cards styled correctly
+- [ ] Tabs styled correctly
+- [ ] Add achievement dialog styled
+
+**Implementation Steps:**
+1. Apply theme to achievements page
+2. Style achievement cards
+3. Style tabs
+4. Style add achievement dialog
+5. Test responsive behavior
+
+**Files to Modify:**
+- `src/app/student/achievements/page.tsx`
+- `src/components/student/achievement-dialog-trigger.tsx`
+
+---
+
+### Task 7.12: Theme Consistency Audit
+**Priority:** High  
+**Estimated Time:** 3 hours  
+**Dependencies:** All theme tasks
+
+**Acceptance Criteria:**
+- [ ] All pages use consistent colors
+- [ ] All pages use consistent spacing
+- [ ] All pages use consistent typography
+- [ ] All pages use consistent components
+- [ ] Light mode works correctly
+- [ ] Dark mode works correctly
+- [ ] All hover effects work
+- [ ] All focus states work
+
+**Implementation Steps:**
+1. Review all pages for color consistency
+2. Review all pages for spacing consistency
+3. Review all pages for typography consistency
+4. Test light mode on all pages
+5. Test dark mode on all pages
+6. Test hover effects on all interactive elements
+7. Test focus states for accessibility
+8. Document any inconsistencies
+9. Fix all inconsistencies
+10. Re-test all pages
+
+**Testing:**
+- Visual comparison with admin dashboard
+- Side-by-side comparison of similar pages
+- Theme toggle test on all pages
+- Accessibility audit
+- Responsive design test
+
+---
+
+## Updated Summary
+
+**Total Estimated Time with Theme:** 100 hours (~2.5 weeks with one developer)
+
+**Theme Implementation Time:** 20 hours
+
+**Critical Path with Theme:**
+1. UI Updates with Theme (Tasks 1.1, 1.2, 7.1)
+2. Course Backend (Task 2.1)
+3. Course Components with Theme (Tasks 3.1, 3.2, 7.2)
+4. Course Pages with Theme (Tasks 4.1, 4.2, 7.2)
+5. Message Composition with Theme (Tasks 5.1, 5.2, 5.4, 7.8)
+6. Testing & Polish (Tasks 6.1, 6.2, 6.4)
+7. Theme Consistency Audit (Task 7.12)
+
+**Parallel Work Opportunities:**
+- Theme tasks can be done in parallel with feature implementation
+- Multiple pages can be themed simultaneously
+- Theme audit can start as soon as first few pages are complete
+
+**Theme Implementation Priority:**
+1. **High Priority:** Dashboard, Courses, Messages (most visible)
+2. **Medium Priority:** Academics, Assessments, Performance, Attendance, Fees
+3. **Low Priority:** Documents, Events, Achievements, Profile
+
+**Success Criteria:**
+- [ ] All pages match admin dashboard design
+- [ ] Consistent theme across all pages
+- [ ] Light and dark modes work perfectly
+- [ ] Responsive design on all screen sizes
+- [ ] Accessibility standards met
+- [ ] User feedback positive on UI/UX

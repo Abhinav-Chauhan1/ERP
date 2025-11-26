@@ -108,25 +108,25 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
   
   // Determine overall performance level
   const getPerformanceLevel = (percentage: number) => {
-    if (percentage >= 90) return { level: "Excellent", color: "text-green-600" };
-    if (percentage >= 75) return { level: "Good", color: "text-blue-600" };
-    if (percentage >= 60) return { level: "Average", color: "text-amber-600" };
-    return { level: "Needs Improvement", color: "text-red-600" };
+    if (percentage >= 90) return { level: "Excellent", color: "text-green-600 dark:text-green-500" };
+    if (percentage >= 75) return { level: "Good", color: "text-primary" };
+    if (percentage >= 60) return { level: "Average", color: "text-warning" };
+    return { level: "Needs Improvement", color: "text-destructive" };
   };
   
   // Get attendance status badge
   const getAttendanceStatusBadge = (status: string) => {
     switch (status) {
       case "PRESENT":
-        return <Badge className="bg-green-100 text-green-800">Present</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400">Present</Badge>;
       case "ABSENT":
-        return <Badge className="bg-red-100 text-red-800">Absent</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive">Absent</Badge>;
       case "LATE":
-        return <Badge className="bg-amber-100 text-amber-800">Late</Badge>;
+        return <Badge className="bg-warning/10 text-warning">Late</Badge>;
       case "LEAVE":
-        return <Badge className="bg-blue-100 text-blue-800">Leave</Badge>;
+        return <Badge className="bg-primary/10 text-primary">Leave</Badge>;
       case "HALF_DAY":
-        return <Badge className="bg-purple-100 text-purple-800">Half Day</Badge>;
+        return <Badge className="bg-secondary text-secondary-foreground">Half Day</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
@@ -290,10 +290,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                       <div className="text-2xl font-bold">{student.attendanceStats.percentage}%</div>
                       <div className={`${
                         student.attendanceStats.percentage >= 90 
-                          ? 'text-green-600' 
+                          ? 'text-green-600 dark:text-green-500' 
                           : student.attendanceStats.percentage >= 75 
-                          ? 'text-amber-600' 
-                          : 'text-red-600'
+                          ? 'text-warning' 
+                          : 'text-destructive'
                       }`}>
                         ({student.attendanceStats.present}/{student.attendanceStats.total} days)
                       </div>
@@ -355,10 +355,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                               <div className="flex justify-center">
                                 <Badge
                                   className={`${
-                                    subject.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                                    subject.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                                    subject.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                                    'bg-red-100 text-red-800'
+                                    subject.percentage >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400' :
+                                    subject.percentage >= 75 ? 'bg-primary/10 text-primary' :
+                                    subject.percentage >= 60 ? 'bg-warning/10 text-warning' :
+                                    'bg-destructive/10 text-destructive'
                                   }`}
                                 >
                                   {subject.percentage}%
@@ -370,10 +370,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                 <Badge
                                   variant="outline"
                                   className={`${
-                                    subject.assignments.percentage >= 90 ? 'border-green-500 text-green-800' :
-                                    subject.assignments.percentage >= 75 ? 'border-blue-500 text-blue-800' :
-                                    subject.assignments.percentage >= 60 ? 'border-amber-500 text-amber-800' :
-                                    'border-red-500 text-red-800'
+                                    subject.assignments.percentage >= 90 ? 'border-green-600 text-green-800 dark:border-green-500 dark:text-green-400' :
+                                    subject.assignments.percentage >= 75 ? 'border-primary text-primary' :
+                                    subject.assignments.percentage >= 60 ? 'border-warning text-warning' :
+                                    'border-destructive text-destructive'
                                   }`}
                                 >
                                   {subject.assignments.percentage}%
@@ -384,10 +384,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                               <div className="w-full bg-gray-200 rounded-full h-1.5">
                                 <div 
                                   className={`h-1.5 rounded-full ${
-                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 90 ? 'bg-green-500' :
-                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 75 ? 'bg-blue-500' :
-                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 60 ? 'bg-amber-500' :
-                                    'bg-red-500'
+                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 75 ? 'bg-primary' :
+                                    Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3) >= 60 ? 'bg-warning' :
+                                    'bg-destructive'
                                   }`}
                                   style={{ width: `${Math.round(subject.percentage * 0.7 + subject.assignments.percentage * 0.3)}%` }}
                                 ></div>
@@ -421,10 +421,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                           <div className="flex justify-between mb-1">
                             <div className="font-medium">{exam.title}</div>
                             <Badge className={`${
-                              exam.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                              exam.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                              exam.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
+                              exam.percentage >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400' :
+                              exam.percentage >= 75 ? 'bg-primary/10 text-primary' :
+                              exam.percentage >= 60 ? 'bg-warning/10 text-warning' :
+                              'bg-destructive/10 text-destructive'
                             }`}>
                               {exam.percentage}%
                             </Badge>
@@ -449,10 +449,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                           <div className="flex justify-between mb-1">
                             <div className="font-medium">{assignment.title}</div>
                             <Badge className={`${
-                              assignment.status === "GRADED" ? 'bg-green-100 text-green-800' :
-                              assignment.status === "SUBMITTED" ? 'bg-blue-100 text-blue-800' :
-                              assignment.status === "PENDING" ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
+                              assignment.status === "GRADED" ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400' :
+                              assignment.status === "SUBMITTED" ? 'bg-primary/10 text-primary' :
+                              assignment.status === "PENDING" ? 'bg-warning/10 text-warning' :
+                              'bg-destructive/10 text-destructive'
                             }`}>
                               {assignment.status === "GRADED" ? "Graded" : 
                                assignment.status === "SUBMITTED" ? "Submitted" :
@@ -486,20 +486,20 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="font-bold text-2xl text-green-600">{student.attendanceStats.present}</div>
                         <div className="text-xs text-gray-500">days</div>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <h4 className="text-xs text-gray-500">Absent</h4>
-                        <div className="font-bold text-2xl text-red-600">{student.attendanceStats.absent}</div>
-                        <div className="text-xs text-gray-500">days</div>
+                      <div className="p-3 bg-muted rounded-lg">
+                        <h4 className="text-xs text-muted-foreground">Absent</h4>
+                        <div className="font-bold text-2xl text-destructive">{student.attendanceStats.absent}</div>
+                        <div className="text-xs text-muted-foreground">days</div>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <h4 className="text-xs text-gray-500">Late</h4>
-                        <div className="font-bold text-2xl text-amber-600">{student.attendanceStats.late}</div>
-                        <div className="text-xs text-gray-500">days</div>
+                      <div className="p-3 bg-muted rounded-lg">
+                        <h4 className="text-xs text-muted-foreground">Late</h4>
+                        <div className="font-bold text-2xl text-warning">{student.attendanceStats.late}</div>
+                        <div className="text-xs text-muted-foreground">days</div>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <h4 className="text-xs text-gray-500">Leave</h4>
-                        <div className="font-bold text-2xl text-blue-600">{student.attendanceStats.leave}</div>
-                        <div className="text-xs text-gray-500">days</div>
+                      <div className="p-3 bg-muted rounded-lg">
+                        <h4 className="text-xs text-muted-foreground">Leave</h4>
+                        <div className="font-bold text-2xl text-primary">{student.attendanceStats.leave}</div>
+                        <div className="text-xs text-muted-foreground">days</div>
                       </div>
                     </div>
                     
@@ -511,9 +511,9 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div 
                           className={`h-2.5 rounded-full ${
-                            student.attendanceStats.percentage >= 90 ? 'bg-green-500' :
-                            student.attendanceStats.percentage >= 75 ? 'bg-amber-500' :
-                            'bg-red-500'
+                            student.attendanceStats.percentage >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                            student.attendanceStats.percentage >= 75 ? 'bg-warning' :
+                            'bg-destructive'
                           }`}
                           style={{ width: `${student.attendanceStats.percentage}%` }}
                         ></div>
@@ -616,10 +616,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <Badge
                                   className={`${
-                                    exam.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                                    exam.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                                    exam.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                                    'bg-red-100 text-red-800'
+                                    exam.percentage >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400' :
+                                    exam.percentage >= 75 ? 'bg-primary/10 text-primary' :
+                                    exam.percentage >= 60 ? 'bg-warning/10 text-warning' :
+                                    'bg-destructive/10 text-destructive'
                                   }`}
                                 >
                                   {exam.percentage}%
@@ -670,10 +670,10 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <Badge className={`${
-                                  assignment.status === "GRADED" ? 'bg-green-100 text-green-800' :
-                                  assignment.status === "SUBMITTED" ? 'bg-blue-100 text-blue-800' :
-                                  assignment.status === "PENDING" ? 'bg-amber-100 text-amber-800' :
-                                  'bg-red-100 text-red-800'
+                                  assignment.status === "GRADED" ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400' :
+                                  assignment.status === "SUBMITTED" ? 'bg-primary/10 text-primary' :
+                                  assignment.status === "PENDING" ? 'bg-warning/10 text-warning' :
+                                  'bg-destructive/10 text-destructive'
                                 }`}>
                                   {assignment.status === "GRADED" ? "Graded" : 
                                    assignment.status === "SUBMITTED" ? "Submitted" :
@@ -681,7 +681,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                                    "Late"}
                                 </Badge>
                                 {assignment.isLate && (
-                                  <Badge variant="outline" className="ml-1 border-red-300 text-red-700">Late</Badge>
+                                  <Badge variant="outline" className="ml-1 border-destructive/30 text-destructive">Late</Badge>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -724,7 +724,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
             <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <User className="h-5 w-5" />
               </div>
               <div>
@@ -744,7 +744,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+              <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
                 <Building className="h-5 w-5" />
               </div>
               <div>
@@ -752,7 +752,7 @@ export default function StudentDetailsPage({ params }: { params: Promise<{ id: s
                 <p className="text-sm text-gray-500 mt-1">{student.address}</p>
                 <div className="mt-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <AlertCircle className="h-4 w-4 text-destructive" />
                     <span className="font-medium">Emergency: {student.contactInfo.emergencyContact}</span>
                   </div>
                 </div>

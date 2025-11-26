@@ -103,9 +103,12 @@ export default function StudentNotificationsPage() {
   };
 
   return (
-    <div className="h-full p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Notifications</h1>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+        <p className="text-muted-foreground mt-1">
+          View and manage your notifications
+        </p>
       </div>
 
       {loading ? (

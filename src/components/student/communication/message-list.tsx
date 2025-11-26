@@ -91,7 +91,8 @@ export function MessageList({
         isRead: readFilter === "all" ? undefined : readFilter === "read",
       });
     }
-  }, [debouncedSearchQuery, readFilter, onFilterChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery, readFilter]);
 
   const handleReadFilterChange = (value: string) => {
     setReadFilter(value);
@@ -144,85 +145,94 @@ export function MessageList({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="p-0">
         {/* Message List */}
-        <div className="space-y-2">
-          {/* Messages */}
-          {messages.length === 0 ? (
-            <div className="text-center py-12">
-              <Mail className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No messages found</p>
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="rounded-full bg-muted p-6 mb-4">
+              <Mail className="h-12 w-12 text-muted-foreground" />
             </div>
-          ) : (
-            messages.map((message) => {
+            <h3 className="text-lg font-semibold mb-2">No messages</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              You don't have any messages yet. Start a conversation with your teachers.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {messages.map((message) => {
               const displayUser = type === "sent" ? message.recipient : message.sender;
 
               return (
                 <div
                   key={message.id}
                   className={cn(
-                    "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors hover:bg-gray-50",
-                    !message.isRead && type === "inbox" && "bg-blue-50/50 border-blue-200"
+                    "p-4 hover:bg-accent cursor-pointer transition-colors",
+                    !message.isRead && type === "inbox" && "bg-blue-50/50"
                   )}
                   onClick={() => onMessageClick(message.id)}
                 >
-                  {/* Read/Unread Icon */}
-                  <div className="pt-1">
-                    {message.isRead || type === "sent" ? (
-                      <MailOpen className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <Mail className="h-5 w-5 text-blue-600" />
-                    )}
-                  </div>
-
-                  {/* Avatar */}
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={displayUser.avatar || undefined} />
-                    <AvatarFallback className="bg-blue-100 text-blue-700">
-                      {getInitials(displayUser.firstName, displayUser.lastName)}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  {/* Message Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex-1 min-w-0">
-                        <p className={cn(
-                          "text-sm truncate",
-                          !message.isRead && type === "inbox" ? "font-semibold" : "font-medium"
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center",
+                        !message.isRead && type === "inbox" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        {message.isRead || type === "sent" ? (
+                          <MailOpen className={cn(
+                            "h-5 w-5",
+                            !message.isRead && type === "inbox" ? "text-primary" : "text-muted-foreground"
+                          )} />
+                        ) : (
+                          <Mail className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className={cn(
+                          "text-sm",
+                          !message.isRead && type === "inbox" ? "font-semibold" : "font-medium text-muted-foreground"
                         )}>
                           {displayUser.firstName} {displayUser.lastName}
-                        </p>
-                        <p className={cn(
-                          "text-sm truncate",
-                          !message.isRead && type === "inbox" ? "font-semibold text-gray-900" : "text-gray-700"
-                        )}>
-                          {message.subject || "(No Subject)"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {hasAttachments(message.attachments) && (
-                          <Badge variant="outline" className="text-xs">
-                            📎
-                          </Badge>
-                        )}
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                        </h4>
+                        <span className="text-xs text-muted-foreground">
                           {format(new Date(message.createdAt), "MMM d")}
                         </span>
                       </div>
+                      <p className={cn(
+                        "text-sm mb-1",
+                        !message.isRead && type === "inbox" ? "font-medium" : "text-muted-foreground"
+                      )}>
+                        {message.subject || "(No Subject)"}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {truncateContent(message.content)}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        {!message.isRead && type === "inbox" && (
+                          <Badge className="bg-blue-100 text-blue-800 text-xs">
+                            Unread
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {displayUser.role === "TEACHER" ? "Teacher" : displayUser.role === "ADMIN" ? "Admin" : "Student"}
+                        </Badge>
+                        {hasAttachments(message.attachments) && (
+                          <Badge variant="outline" className="text-xs">
+                            📎 Attachment
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {truncateContent(message.content)}
-                    </p>
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
+        {pagination.totalPages > 1 && messages.length > 0 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t">
             <p className="text-sm text-gray-500">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}

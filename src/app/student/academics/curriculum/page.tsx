@@ -26,10 +26,11 @@ export default async function CurriculumPage() {
   }, {});
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Curriculum Overview</h1>
-        <p className="text-gray-500">
+    <div className="flex flex-col gap-4 p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Curriculum Overview</h1>
+        <p className="text-muted-foreground mt-1">
           Explore the syllabus and curriculum for all your subjects
         </p>
       </div>
@@ -38,7 +39,7 @@ export default async function CurriculumPage() {
         {Object.entries(departments).map(([department, departmentSubjects]) => (
           <Card key={department}>
             <CardHeader>
-              <CardTitle>{department}</CardTitle>
+              <CardTitle className="text-xl">{department}</CardTitle>
               <CardDescription>
                 {departmentSubjects.length} subject{departmentSubjects.length !== 1 ? 's' : ''}
               </CardDescription>
@@ -46,28 +47,28 @@ export default async function CurriculumPage() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {departmentSubjects.map(subject => (
-                  <div key={subject.id} className="border rounded-md p-4">
+                  <div key={subject.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-medium flex items-center">
-                          <BookOpen className="h-4 w-4 mr-2 text-blue-600" />
+                          <BookOpen className="h-4 w-4 mr-2 text-primary" />
                           {subject.name}
                         </h3>
-                        <p className="text-sm text-gray-500 mt-1">{subject.code}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{subject.code}</p>
                       </div>
                       {subject.hasSyllabus ? (
-                        <Badge className="bg-green-100 text-green-800 border-green-300">
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                           <BookMarked className="h-3 w-3 mr-1" />
                           Syllabus
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-gray-500">
+                        <Badge variant="outline" className="text-muted-foreground">
                           No Syllabus
                         </Badge>
                       )}
                     </div>
                     <div className="mt-4 flex justify-end">
-                      <Button variant="ghost" size="sm" className="text-blue-600" asChild>
+                      <Button variant="ghost" size="sm" asChild>
                         <Link href={`/student/academics/subjects/${subject.id}?tab=curriculum`}>
                           View Details <ChevronRight className="h-4 w-4 ml-1" />
                         </Link>

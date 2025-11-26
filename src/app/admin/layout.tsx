@@ -2,6 +2,7 @@
 
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminHeader } from "@/components/layout/admin-header";
+import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
 
 export default function AdminLayout({
   children
@@ -9,7 +10,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-full relative">
+    <UserThemeWrapper userRole="admin">
       <nav 
         className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
         aria-label="Admin navigation"
@@ -27,6 +28,6 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
-    </div>
+    </UserThemeWrapper>
   );
 }

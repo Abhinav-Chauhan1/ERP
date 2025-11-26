@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { NotificationCenter } from "@/components/shared/notification-center";
+import { SchoolLogo } from "@/components/shared/school-logo";
 
 import { TeacherSidebar } from "./teacher-sidebar";
 
@@ -31,9 +32,12 @@ export function TeacherHeader() {
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="md:hidden">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="md:hidden"
+            >
               <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
@@ -41,7 +45,7 @@ export function TeacherHeader() {
           </SheetContent>
         </Sheet>
         <Link href="/teacher" className="md:hidden">
-          <h1 className="text-xl font-bold">School ERP</h1>
+          <SchoolLogo showName={true} />
         </Link>
       </div>
 

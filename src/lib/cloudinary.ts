@@ -21,7 +21,7 @@ export interface CloudinaryUploadOptions {
 }
 
 /**
- * Uploads a file to Cloudinary
+ * Uploads a file to Cloudinary with security checks
  * @param file The file to upload
  * @param options Upload options or a string representing the folder
  * @returns The Cloudinary upload result
@@ -36,11 +36,17 @@ export async function uploadToCloudinary(
       options = { folder: options };
     }
     
+    // Validate Cloudinary configuration
+    if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+      throw new Error('Cloudinary cloud name is not configured');
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     
     // Add Cloudinary upload presets and options
-    formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'erp_uploads');
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'erp_uploads';
+    formData.append('upload_preset', uploadPreset);
     
     // Handle folder structure
     if (options.folder) {
@@ -49,7 +55,6 @@ export async function uploadToCloudinary(
     
     // Set resource type (auto, image, video, raw)
     const resourceType = options.resource_type || 'auto';
-    formData.append('resource_type', resourceType);
     
     // Add custom public ID if provided
     if (options.publicId) {
@@ -65,7 +70,8 @@ export async function uploadToCloudinary(
       );
     }
 
-    const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`;
+    // Build Cloudinary URL with resource type
+    const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
     
     const response = await fetch(cloudinaryUrl, {
       method: 'POST',
@@ -74,10 +80,27 @@ export async function uploadToCloudinary(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Upload failed (${response.status}): ${errorText}`);
+      let errorMessage = `Upload failed (${response.status})`;
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error?.message || errorMessage;
+      } catch {
+        // If error is not JSON, use the text
+        errorMessage = errorText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const result = await response.json();
+    
+    // Validate response has required fields
+    if (!result.secure_url || !result.public_id) {
+      throw new Error('Invalid response from Cloudinary');
+    }
+
+    return result;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
     throw error;

@@ -399,7 +399,7 @@ function LessonsContent() {
                             href={file.url} 
                             target="_blank" 
                             rel="noreferrer"
-                            className="text-sm text-blue-600 hover:underline"
+                            className="text-sm text-primary hover:underline"
                           >
                             {file.name}
                           </a>

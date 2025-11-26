@@ -79,6 +79,7 @@ export const MESSAGE_SELECT_LIST = {
   isRead: true,
   createdAt: true,
   readAt: true,
+  attachments: true,
   sender: {
     select: {
       id: true,

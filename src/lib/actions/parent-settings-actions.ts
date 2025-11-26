@@ -15,10 +15,11 @@ import {
   type UpdateNotificationPreferencesInput,
   type AvatarUrlInput,
 } from "@/lib/schemaValidation/parent-settings-schemas";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
+import { CACHE_TAGS } from "@/lib/utils/cache";
 
 /**
  * Helper function to get current parent and verify authentication
@@ -49,6 +50,7 @@ async function getCurrentParent() {
 /**
  * Get settings for a parent including profile and preferences
  * Requirements: 6.1, 6.2, 6.3
+ * Cached for 10 minutes (600 seconds) as per requirements 9.5
  */
 export async function getSettings(input?: GetSettingsInput) {
   try {
@@ -65,37 +67,50 @@ export async function getSettings(input?: GetSettingsInput) {
       return { success: false, message: "Access denied" };
     }
     
-    // Get or create parent settings
-    let settings = await db.parentSettings.findUnique({
-      where: { parentId: parent.id }
-    });
-    
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await db.parentSettings.create({
-        data: {
-          parentId: parent.id
+    // Cached function to fetch settings data
+    const getCachedSettingsData = unstable_cache(
+      async (parentId: string) => {
+        // Get or create parent settings
+        let settings = await db.parentSettings.findUnique({
+          where: { parentId }
+        });
+        
+        // Create default settings if they don't exist
+        if (!settings) {
+          settings = await db.parentSettings.create({
+            data: {
+              parentId
+            }
+          });
         }
-      });
-    }
-
-    
-    // Get parent profile with user data
-    const profile = await db.parent.findUnique({
-      where: { id: parent.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            avatar: true
+        
+        // Get parent profile with user data
+        const profile = await db.parent.findUnique({
+          where: { id: parentId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                avatar: true
+              }
+            }
           }
-        }
+        });
+        
+        return { settings, profile };
+      },
+      [`parent-settings-${parent.id}`],
+      {
+        tags: [CACHE_TAGS.SETTINGS, CACHE_TAGS.PARENTS, `parent-${parent.id}`],
+        revalidate: 600 // 10 minutes
       }
-    });
+    );
+    
+    const { settings, profile } = await getCachedSettingsData(parent.id);
     
     if (!profile) {
       return { success: false, message: "Profile not found" };
@@ -137,7 +152,7 @@ export async function getSettings(input?: GetSettingsInput) {
     };
   } catch (error) {
     console.error("Error fetching settings:", error);
-    return { success: false, message: "Failed to fetch settings" };
+    return { success: false, message: "Unable to load your settings. Please refresh the page or try again later." };
   }
 }
 
@@ -206,7 +221,10 @@ export async function updateProfile(input: UpdateProfileInput) {
       }
     }
     
-    // Revalidate settings page
+    // Invalidate cache and revalidate settings page
+    revalidateTag(CACHE_TAGS.SETTINGS);
+    revalidateTag(CACHE_TAGS.PARENTS);
+    revalidateTag(`parent-${parent.id}`);
     revalidatePath("/parent/settings");
     
     return {
@@ -215,10 +233,10 @@ export async function updateProfile(input: UpdateProfileInput) {
     };
   } catch (error) {
     console.error("Error updating profile:", error);
-    if (error instanceof Error) {
+    if (error instanceof Error && error.message.includes("validation")) {
       return { success: false, message: error.message };
     }
-    return { success: false, message: "Failed to update profile" };
+    return { success: false, message: "Unable to update your profile. Please check your information and try again." };
   }
 }
 
@@ -271,15 +289,15 @@ export async function changePassword(input: ChangePasswordInput) {
       console.error("Error changing password via Clerk:", clerkError);
       return { 
         success: false, 
-        message: "Failed to change password. Please try using the 'Forgot Password' option." 
+        message: "Unable to change your password at this time. Please use the 'Forgot Password' option or contact support for assistance." 
       };
     }
   } catch (error) {
     console.error("Error changing password:", error);
-    if (error instanceof Error) {
+    if (error instanceof Error && error.message.includes("validation")) {
       return { success: false, message: error.message };
     }
-    return { success: false, message: "Failed to change password" };
+    return { success: false, message: "An unexpected error occurred while changing your password. Please try again or contact support if the problem persists." };
   }
 }
 
@@ -336,7 +354,10 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
       });
     }
     
-    // Revalidate settings page
+    // Invalidate cache and revalidate settings page
+    revalidateTag(CACHE_TAGS.SETTINGS);
+    revalidateTag(CACHE_TAGS.PARENTS);
+    revalidateTag(`parent-${parent.id}`);
     revalidatePath("/parent/settings");
     
     return {
@@ -345,10 +366,10 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
     };
   } catch (error) {
     console.error("Error updating notification preferences:", error);
-    if (error instanceof Error) {
+    if (error instanceof Error && error.message.includes("validation")) {
       return { success: false, message: error.message };
     }
-    return { success: false, message: "Failed to update notification preferences" };
+    return { success: false, message: "Unable to update your notification preferences. Please try again." };
   }
 }
 
@@ -416,7 +437,10 @@ export async function uploadAvatar(formData: FormData) {
         // Continue even if Clerk update fails - database is source of truth
       }
       
-      // Revalidate settings page
+      // Invalidate cache and revalidate settings page
+      revalidateTag(CACHE_TAGS.SETTINGS);
+      revalidateTag(CACHE_TAGS.PARENTS);
+      revalidateTag(CACHE_TAGS.USERS);
       revalidatePath("/parent/settings");
       
       return {
@@ -428,14 +452,14 @@ export async function uploadAvatar(formData: FormData) {
       };
     } catch (uploadError) {
       console.error("Error uploading to Cloudinary:", uploadError);
-      return { success: false, message: "Failed to upload avatar" };
+      return { success: false, message: "Unable to upload your profile picture. Please check your internet connection and try again." };
     }
   } catch (error) {
     console.error("Error uploading avatar:", error);
-    if (error instanceof Error) {
+    if (error instanceof Error && error.message.includes("validation")) {
       return { success: false, message: error.message };
     }
-    return { success: false, message: "Failed to upload avatar" };
+    return { success: false, message: "An unexpected error occurred while uploading your profile picture. Please try again." };
   }
 }
 
@@ -476,7 +500,10 @@ export async function updateAvatarUrl(input: AvatarUrlInput) {
       // Continue even if Clerk update fails - database is source of truth
     }
     
-    // Revalidate settings page
+    // Invalidate cache and revalidate settings page
+    revalidateTag(CACHE_TAGS.SETTINGS);
+    revalidateTag(CACHE_TAGS.PARENTS);
+    revalidateTag(CACHE_TAGS.USERS);
     revalidatePath("/parent/settings");
     
     return {
@@ -488,9 +515,62 @@ export async function updateAvatarUrl(input: AvatarUrlInput) {
     };
   } catch (error) {
     console.error("Error updating avatar URL:", error);
-    if (error instanceof Error) {
+    if (error instanceof Error && error.message.includes("validation")) {
       return { success: false, message: error.message };
     }
-    return { success: false, message: "Failed to update avatar" };
+    return { success: false, message: "Unable to update your profile picture. Please try again." };
+  }
+}
+
+
+/**
+ * Remove avatar (set to null)
+ * Requirements: 6.5, 7.4
+ */
+export async function removeAvatar() {
+  try {
+    // Get current parent
+    const parentData = await getCurrentParent();
+    if (!parentData) {
+      return { success: false, message: "Unauthorized" };
+    }
+    
+    const { user } = parentData;
+    
+    // Update user avatar to null in database
+    await db.user.update({
+      where: { id: user.id },
+      data: { avatar: null }
+    });
+    
+    // Update avatar in Clerk
+    try {
+      const clerk = await clerkClient();
+      await clerk.users.updateUser(user.clerkId, {
+        publicMetadata: {
+          avatar: null
+        }
+      });
+    } catch (clerkError) {
+      console.error("Error updating Clerk avatar:", clerkError);
+      // Continue even if Clerk update fails - database is source of truth
+    }
+    
+    // Invalidate cache and revalidate settings page
+    revalidateTag(CACHE_TAGS.SETTINGS);
+    revalidateTag(CACHE_TAGS.PARENTS);
+    revalidateTag(CACHE_TAGS.USERS);
+    revalidatePath("/parent/settings");
+    
+    return {
+      success: true,
+      message: "Avatar removed successfully"
+    };
+  } catch (error) {
+    console.error("Error removing avatar:", error);
+    if (error instanceof Error && error.message.includes("validation")) {
+      return { success: false, message: error.message };
+    }
+    return { success: false, message: "Unable to remove your profile picture. Please try again." };
   }
 }

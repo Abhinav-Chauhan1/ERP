@@ -11,8 +11,8 @@ interface ChildrenCardsProps {
 export function ChildrenCards({ children }: ChildrenCardsProps) {
   if (!children || children.length === 0) {
     return (
-      <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
-        <p className="text-yellow-700">No children are associated with your account. Please contact the school administration.</p>
+      <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-md border border-amber-200 dark:border-amber-800">
+        <p className="text-amber-700 dark:text-amber-300">No children are associated with your account. Please contact the school administration.</p>
       </div>
     );
   }
@@ -37,28 +37,28 @@ export function ChildrenCards({ children }: ChildrenCardsProps) {
                   <h3 className="font-bold text-lg flex items-center gap-2">
                     {child.user.firstName} {child.user.lastName}
                     {child.isPrimary && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Primary</span>
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Primary</span>
                     )}
                   </h3>
                   
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <GraduationCap className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <GraduationCap className="h-4 w-4" />
                       {currentEnrollment.class?.name || 'No Class'}
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Book className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Book className="h-4 w-4" />
                       Section: {currentEnrollment.section?.name || 'N/A'}
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
                       Roll #: {child.rollNumber || 'N/A'}
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-4 w-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
                       ID: {child.admissionId}
                     </div>
                   </div>

@@ -94,9 +94,9 @@ export function NotificationSettings({ studentId, settings }: NotificationSettin
   ];
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="text-xl flex items-center gap-2">
           <Bell className="h-5 w-5" />
           Notification Preferences
         </CardTitle>
@@ -107,16 +107,16 @@ export function NotificationSettings({ studentId, settings }: NotificationSettin
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {notificationOptions.map((option) => (
-            <div key={option.id} className="flex items-start justify-between space-x-4 py-3 border-b last:border-0">
+            <div key={option.id} className="flex items-start justify-between space-x-4 py-4 border-b last:border-0">
               <div className="flex items-start space-x-3 flex-1">
-                <div className="bg-blue-50 p-2 rounded-lg mt-1">
-                  <option.icon className="h-4 w-4 text-blue-600" />
+                <div className="bg-primary/10 p-2 rounded-lg mt-1">
+                  <option.icon className="h-4 w-4 text-primary" />
                 </div>
                 <div className="space-y-1 flex-1">
                   <Label htmlFor={option.id} className="text-sm font-medium cursor-pointer">
                     {option.label}
                   </Label>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     {option.description}
                   </p>
                 </div>
@@ -132,7 +132,7 @@ export function NotificationSettings({ studentId, settings }: NotificationSettin
           ))}
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="min-h-[44px]">
               {loading ? "Saving..." : "Save Preferences"}
             </Button>
           </div>

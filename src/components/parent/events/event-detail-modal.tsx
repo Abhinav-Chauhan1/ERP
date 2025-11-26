@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import Image from "next/image";
 import { Calendar, MapPin, Users, Clock, X, CheckCircle2, AlertCircle } from "lucide-react";
 import {
   Dialog,
@@ -114,14 +115,14 @@ export function EventDetailModal({
 
           {/* Thumbnail */}
           {event.thumbnail && (
-            <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 relative">
-              <img
+            <div className="w-full h-48 rounded-lg overflow-hidden bg-muted relative">
+              <Image
                 src={event.thumbnail}
                 alt={event.title}
-                width={800}
-                height={192}
-                loading="lazy"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover"
+                priority={false}
               />
             </div>
           )}

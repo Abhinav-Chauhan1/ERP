@@ -72,12 +72,15 @@ export function ParentHeader({ parent, children, onChildChange }: ParentHeaderPr
       {children.length > 0 && (
         <div className="flex items-center gap-2 bg-white p-2 rounded-md border">
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 focus:outline-none">
+            <DropdownMenuTrigger 
+              className="flex items-center gap-2 focus:outline-none"
+              aria-label="Select child to view"
+            >
               <Avatar className="h-8 w-8">
                 {children.find(child => child.id === selectedChild)?.user?.avatar ? (
                   <AvatarImage 
                     src={children.find(child => child.id === selectedChild)?.user?.avatar} 
-                    alt="Selected child" 
+                    alt={`${children.find(child => child.id === selectedChild)?.user?.firstName || "Selected child"}'s profile picture`}
                   />
                 ) : (
                   <AvatarFallback>
@@ -89,7 +92,7 @@ export function ParentHeader({ parent, children, onChildChange }: ParentHeaderPr
               <span className="font-medium">
                 {children.find(child => child.id === selectedChild)?.user?.firstName || "Select Child"}
               </span>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Select a child</DropdownMenuLabel>
@@ -99,10 +102,14 @@ export function ParentHeader({ parent, children, onChildChange }: ParentHeaderPr
                   key={child.id} 
                   onClick={() => handleChildChange(child.id)}
                   className="cursor-pointer"
+                  role="menuitem"
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={child.user.avatar} alt={child.user.firstName} />
+                      <AvatarImage 
+                        src={child.user.avatar} 
+                        alt={`${child.user.firstName} ${child.user.lastName}'s profile picture`}
+                      />
                       <AvatarFallback>
                         {child.user.firstName.charAt(0)}{child.user.lastName.charAt(0)}
                       </AvatarFallback>

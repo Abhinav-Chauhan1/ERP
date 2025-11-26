@@ -111,19 +111,19 @@ export function AttendanceCalendar({ attendanceData }: AttendanceCalendarProps) 
         <div className="flex gap-2">
           <button
             onClick={prevMonth}
-            className="p-2 rounded-md hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-accent transition-colors"
           >
             &lt;
           </button>
           <button
             onClick={currentMonthHandler}
-            className="p-2 rounded-md hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-accent transition-colors"
           >
             Today
           </button>
           <button
             onClick={nextMonth}
-            className="p-2 rounded-md hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1) > new Date()}
           >
             &gt;
@@ -132,45 +132,83 @@ export function AttendanceCalendar({ attendanceData }: AttendanceCalendarProps) 
       </div>
       
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {/* Weekday headers */}
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-          <div key={i} className="h-10 flex items-center justify-center font-medium text-sm">
+          <div key={i} className="text-center text-sm font-medium text-muted-foreground p-2">
             {day}
           </div>
         ))}
         
         {/* Empty spaces for days before the first of the month */}
         {Array.from({ length: startDay }).map((_, i) => (
-          <div key={`empty-${i}`} className="h-14 border rounded-md bg-gray-50"></div>
+          <div key={`empty-${i}`} className="aspect-square p-2 rounded-md bg-muted/30"></div>
         ))}
         
         {/* Calendar days */}
         {calendarDays.map((day, i) => {
           const isToday = isSameDay(day, new Date());
           const isWeekendDay = isWeekend(day);
+          const attendance = attendanceData.find(
+            (record) => isSameDay(new Date(record.date), day)
+          );
+          
+          let bgClass = "hover:bg-accent";
+          if (isToday) {
+            bgClass = "bg-primary text-primary-foreground";
+          } else if (attendance?.status === "PRESENT") {
+            bgClass = "bg-green-100 border-2 border-green-500";
+          } else if (attendance?.status === "ABSENT") {
+            bgClass = "bg-red-100 border-2 border-red-500";
+          } else if (attendance?.status === "LATE") {
+            bgClass = "bg-amber-100 border-2 border-amber-500";
+          } else if (attendance?.status === "LEAVE") {
+            bgClass = "bg-blue-100 border-2 border-blue-500";
+          } else if (isWeekendDay) {
+            bgClass = "bg-muted/30";
+          }
           
           return (
             <div 
               key={i}
               className={cn(
-                "h-14 border rounded-md flex flex-col items-center justify-center relative",
-                isToday && "border-blue-500 border-2",
-                isWeekendDay && "bg-gray-50"
+                "aspect-square p-2 rounded-md flex items-center justify-center cursor-pointer transition-colors",
+                bgClass
               )}
             >
               <span className={cn(
-                "text-sm absolute top-1 right-2",
-                isToday && "font-bold text-blue-600"
+                "text-sm",
+                isToday && "font-bold"
               )}>
                 {format(day, 'd')}
               </span>
-              <div className="mt-2">
-                {getStatusIcon(day)}
-              </div>
             </div>
           );
         })}
+      </div>
+      
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-green-500"></div>
+          <span className="text-sm text-muted-foreground">Present</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-red-500"></div>
+          <span className="text-sm text-muted-foreground">Absent</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-amber-500"></div>
+          <span className="text-sm text-muted-foreground">Late</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-blue-500"></div>
+          <span className="text-sm text-muted-foreground">Leave</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-primary"></div>
+          <span className="text-sm text-muted-foreground">Today</span>
+        </div>
       </div>
     </div>
   );

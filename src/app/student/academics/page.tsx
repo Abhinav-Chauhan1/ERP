@@ -9,7 +9,7 @@ import {
   Presentation, 
   ChevronRight 
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getStudentAcademicDetails } from "@/lib/actions/student-academics-actions";
 
@@ -53,65 +53,62 @@ export default async function AcademicsPage() {
   ];
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Academics</h1>
-        <p className="text-gray-500">
-          Class: {currentEnrollment.class.name} {currentEnrollment.section.name} • 
-          Academic Year: {currentEnrollment.class.academicYear.name}
+    <div className="flex flex-col gap-4 p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Academics</h1>
+        <p className="text-muted-foreground mt-1">
+          Your academic information and resources
         </p>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Academic Information</CardTitle>
-          <CardDescription>Your current enrollment details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border p-3">
-              <div className="text-sm font-medium text-gray-500">Class</div>
-              <div className="mt-1 text-lg font-semibold">{currentEnrollment.class.name}</div>
+      {/* Academic Info Card */}
+      <Card className="bg-primary/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Class</p>
+              <p className="text-lg font-semibold">{currentEnrollment.class.name}</p>
             </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-sm font-medium text-gray-500">Section</div>
-              <div className="mt-1 text-lg font-semibold">{currentEnrollment.section.name}</div>
+            <div>
+              <p className="text-sm text-muted-foreground">Section</p>
+              <p className="text-lg font-semibold">{currentEnrollment.section.name}</p>
             </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-sm font-medium text-gray-500">Roll Number</div>
-              <div className="mt-1 text-lg font-semibold">{currentEnrollment.rollNumber || "N/A"}</div>
+            <div>
+              <p className="text-sm text-muted-foreground">Roll Number</p>
+              <p className="text-lg font-semibold">{currentEnrollment.rollNumber || "N/A"}</p>
             </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-sm font-medium text-gray-500">Academic Year</div>
-              <div className="mt-1 text-lg font-semibold">{currentEnrollment.class.academicYear.name}</div>
+            <div>
+              <p className="text-sm text-muted-foreground">Academic Year</p>
+              <p className="text-lg font-semibold">{currentEnrollment.class.academicYear.name}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Navigation Cards Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {academicFeatures.map((feature) => (
-          <Card key={feature.href}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className={`rounded-lg p-2 mr-3 ${feature.color}`}>
-                    <feature.icon className="h-6 w-6" />
+          <Link key={feature.href} href={feature.href}>
+            <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-md ${feature.color}`}>
+                    <feature.icon className="h-5 w-5" />
                   </div>
-                  <CardTitle>{feature.title}</CardTitle>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
                 </div>
-              </div>
-              <CardDescription>{feature.description}</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button asChild>
-                <Link href={feature.href}>
-                  Access {feature.title}
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

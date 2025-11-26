@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,12 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { NotificationCenter } from "@/components/shared/notification-center";
+import { SchoolLogo } from "@/components/shared/school-logo";
 
 import { ParentSidebar } from "./parent-sidebar";
 
 export function ParentHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -32,21 +32,26 @@ export function ParentHeader() {
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="md:hidden"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
+          <SheetContent side="left" className="p-0" aria-label="Navigation menu">
             <ParentSidebar />
           </SheetContent>
         </Sheet>
-        <Link href="/parent" className="md:hidden">
-          <h1 className="text-xl font-bold">School ERP</h1>
+        <Link href="/parent" className="md:hidden" aria-label="Go to parent dashboard">
+          <SchoolLogo showName={true} />
         </Link>
       </div>
 
-      <div className="hidden md:flex items-center space-x-4">
+      <div className="hidden md:block">
         <h1 className="text-xl font-semibold">
           {pathname === "/parent" && "Dashboard"}
           {pathname.startsWith("/parent/children") && "My Children"}

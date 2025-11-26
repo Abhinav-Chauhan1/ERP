@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -7,12 +8,14 @@ import {
   Paperclip,
   Calendar,
   Mail,
+  Reply,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MessageReplyForm } from "./message-reply-form";
 
 interface MessageDetailProps {
   message: {
@@ -42,15 +45,24 @@ interface MessageDetailProps {
   };
   onBack: () => void;
   onDownloadAttachment?: (url: string, fileName: string) => void;
+  onReplySuccess?: () => void;
 }
 
 export function MessageDetail({
   message,
   onBack,
   onDownloadAttachment,
+  onReplySuccess,
 }: MessageDetailProps) {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  const handleReplySuccess = () => {
+    setShowReplyForm(false);
+    onReplySuccess?.();
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -92,6 +104,12 @@ export function MessageDetail({
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Messages
         </Button>
+        {!showReplyForm && (
+          <Button onClick={() => setShowReplyForm(true)} className="min-h-[44px]">
+            <Reply className="h-4 w-4 mr-2" />
+            Reply
+          </Button>
+        )}
       </div>
 
       {/* Message Card */}
@@ -217,6 +235,20 @@ export function MessageDetail({
           )}
         </CardContent>
       </Card>
+
+      {/* Reply Form */}
+      {showReplyForm && (
+        <MessageReplyForm
+          originalMessage={{
+            id: message.id,
+            subject: message.subject,
+            content: message.content,
+            sender: message.sender,
+          }}
+          onReply={handleReplySuccess}
+          onCancel={() => setShowReplyForm(false)}
+        />
+      )}
     </div>
   );
 }

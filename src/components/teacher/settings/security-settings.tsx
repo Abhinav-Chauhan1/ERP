@@ -65,8 +65,8 @@ export function SecuritySettings() {
           </div>
 
           {/* Security Notice */}
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/30 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
             <div>
               <h3 className="font-medium text-amber-900 dark:text-amber-100">
                 Security Best Practices

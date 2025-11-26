@@ -33,14 +33,22 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
 
     // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      toast.error(`File size (${sizeMB}MB) exceeds the 5MB limit. Please choose a smaller image.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
     // Validate file type
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
-      toast.error("File must be a JPEG, PNG, or WebP image");
+      const fileExtension = file.name.split('.').pop()?.toUpperCase() || "unknown";
+      toast.error(`File type ${fileExtension} is not supported. Please upload a JPEG, PNG, or WebP image.`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
@@ -48,6 +56,12 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
+    };
+    reader.onerror = () => {
+      toast.error("Unable to read the selected file. Please try again.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     };
     reader.readAsDataURL(file);
 
@@ -65,7 +79,7 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
       const result = await uploadAvatar(formData);
 
       if (result.success && result.data) {
-        toast.success(result.message || "Avatar uploaded successfully");
+        toast.success(result.message || "Your profile picture has been updated successfully");
         setPreview(result.data.avatarUrl);
         
         // Call optional callback
@@ -73,13 +87,14 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
           onAvatarUpdate(result.data.avatarUrl);
         }
       } else {
-        toast.error(result.message || "Failed to upload avatar");
+        // Provide specific error message from server or generic fallback
+        toast.error(result.message || "Unable to upload your profile picture. Please try again or contact support if the problem persists.");
         // Revert preview on error
         setPreview(currentAvatar);
       }
     } catch (error) {
       console.error("Avatar upload error:", error);
-      toast.error("Failed to upload avatar");
+      toast.error("An unexpected error occurred while uploading your profile picture. Please try again.");
       // Revert preview on error
       setPreview(currentAvatar);
     } finally {
@@ -91,12 +106,33 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
     }
   };
 
-  const handleRemove = () => {
-    setPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleRemove = async () => {
+    setLoading(true);
+    try {
+      // Import removeAvatar action
+      const { removeAvatar } = await import("@/lib/actions/parent-settings-actions");
+      const result = await removeAvatar();
+      
+      if (result.success) {
+        setPreview(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        toast.success("Your profile picture has been removed");
+        
+        // Call optional callback
+        if (onAvatarUpdate) {
+          onAvatarUpdate("");
+        }
+      } else {
+        toast.error(result.message || "Unable to remove your profile picture. Please try again.");
+      }
+    } catch (error) {
+      console.error("Avatar removal error:", error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    toast.success("Avatar removed");
   };
 
   const handleButtonClick = () => {
@@ -119,14 +155,18 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
           {/* Avatar Display */}
           <div className="relative">
             <Avatar className="h-32 w-32">
-              <AvatarImage src={preview || undefined} alt={userName} />
+              <AvatarImage 
+                src={preview || undefined} 
+                alt={`${userName}'s profile picture`}
+              />
               <AvatarFallback className="text-2xl">
                 {getInitials(userName)}
               </AvatarFallback>
             </Avatar>
             {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full" aria-live="polite">
+                <Loader2 className="h-8 w-8 text-white animate-spin" aria-hidden="true" />
+                <span className="sr-only">Uploading avatar...</span>
               </div>
             )}
           </div>
@@ -138,6 +178,7 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
             accept="image/jpeg,image/jpg,image/png,image/webp"
             onChange={handleFileSelect}
             className="hidden"
+            aria-label="Upload profile picture"
           />
 
           {/* Action Buttons */}
@@ -147,8 +188,9 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
               variant="outline"
               onClick={handleButtonClick}
               disabled={loading}
+              aria-label={preview ? "Change profile photo" : "Upload profile photo"}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
               {preview ? "Change Photo" : "Upload Photo"}
             </Button>
             
@@ -158,15 +200,16 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
                 variant="outline"
                 onClick={handleRemove}
                 disabled={loading}
+                aria-label="Remove profile photo"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 Remove
               </Button>
             )}
           </div>
 
           {/* Info Text */}
-          <p className="text-xs text-center text-gray-500 max-w-xs">
+          <p className="text-xs text-center text-muted-foreground max-w-xs">
             Recommended: Square image, at least 200x200 pixels. 
             Accepted formats: JPEG, PNG, WebP. Maximum size: 5MB.
           </p>

@@ -239,28 +239,49 @@ export function validateDocumentFile(file: File): { valid: boolean; error?: stri
 }
 
 /**
+ * File signatures (magic numbers) for common file types
+ * Used to verify file content matches declared MIME type
+ */
+const FILE_SIGNATURES: Record<string, number[][]> = {
+  // Images
+  "image/jpeg": [[0xFF, 0xD8, 0xFF]],
+  "image/png": [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+  "image/gif": [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]],
+  "image/webp": [[0x52, 0x49, 0x46, 0x46]], // RIFF header
+  
+  // Documents
+  "application/pdf": [[0x25, 0x50, 0x44, 0x46]],
+  
+  // Office documents (ZIP-based)
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [[0x50, 0x4B, 0x03, 0x04]],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [[0x50, 0x4B, 0x03, 0x04]],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [[0x50, 0x4B, 0x03, 0x04]],
+  
+  // Legacy Office documents
+  "application/msword": [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
+  "application/vnd.ms-excel": [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
+  "application/vnd.ms-powerpoint": [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
+  
+  // Archives
+  "application/zip": [[0x50, 0x4B, 0x03, 0x04], [0x50, 0x4B, 0x05, 0x06]],
+  "application/x-rar-compressed": [[0x52, 0x61, 0x72, 0x21, 0x1A, 0x07]],
+};
+
+/**
  * Check if file content matches its declared MIME type
  * This is a basic check using file signatures (magic numbers)
  */
 export async function verifyFileSignature(file: File): Promise<boolean> {
   try {
-    // Read first few bytes of the file
-    const buffer = await file.slice(0, 8).arrayBuffer();
+    // Read first 16 bytes of the file (enough for most signatures)
+    const buffer = await file.slice(0, 16).arrayBuffer();
     const bytes = new Uint8Array(buffer);
     
-    // Check common file signatures
-    const signatures: Record<string, number[][]> = {
-      "image/jpeg": [[0xFF, 0xD8, 0xFF]],
-      "image/png": [[0x89, 0x50, 0x4E, 0x47]],
-      "image/gif": [[0x47, 0x49, 0x46, 0x38]],
-      "application/pdf": [[0x25, 0x50, 0x44, 0x46]],
-      "application/zip": [[0x50, 0x4B, 0x03, 0x04], [0x50, 0x4B, 0x05, 0x06]],
-    };
-    
-    const expectedSignatures = signatures[file.type];
+    const expectedSignatures = FILE_SIGNATURES[file.type];
     
     if (!expectedSignatures) {
       // If we don't have a signature for this type, allow it
+      // (for text files and other types without magic numbers)
       return true;
     }
     

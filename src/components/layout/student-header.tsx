@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -32,16 +32,21 @@ export function StudentHeader() {
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="md:hidden"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
+          <SheetContent side="left" className="p-0" aria-label="Navigation menu">
             <StudentSidebar />
           </SheetContent>
         </Sheet>
-        <Link href="/student" className="md:hidden">
+        <Link href="/student" className="md:hidden" aria-label="Go to student dashboard">
           <h1 className="text-xl font-bold">School ERP</h1>
         </Link>
       </div>
@@ -50,6 +55,7 @@ export function StudentHeader() {
         <h1 className="text-xl font-semibold">
           {pathname === "/student" && "Dashboard"}
           {pathname.startsWith("/student/academics") && "Academics"}
+          {pathname.startsWith("/student/courses") && "Courses"}
           {pathname.startsWith("/student/assessments") && "Assessments"}
           {pathname.startsWith("/student/performance") && "Performance"}
           {pathname.startsWith("/student/attendance") && "Attendance"}

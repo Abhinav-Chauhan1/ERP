@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart as BarChartIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, Cell } from 'recharts';
 
 interface SubjectPerformanceProps {
@@ -16,18 +17,18 @@ export function SubjectPerformance({ data }: SubjectPerformanceProps) {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Subject Performance</CardTitle>
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Subject Performance</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length > 0 ? (
-          <div className="h-[250px] w-full pt-4">
+          <div className="h-[280px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data}
                 margin={{ top: 20, right: 30, left: 0, bottom: 30 }}
-                barSize={30}
+                barSize={32}
               >
                 <XAxis 
                   dataKey="subject" 
@@ -40,13 +41,23 @@ export function SubjectPerformance({ data }: SubjectPerformanceProps) {
                 <Tooltip
                   formatter={(value) => [`${value}%`, 'Performance']}
                   cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '0.5rem',
+                  }}
                 />
                 <Bar 
                   dataKey="percentage" 
-                  radius={[4, 4, 0, 0]}
-                  fillOpacity={0.8}
+                  radius={[6, 6, 0, 0]}
+                  fillOpacity={0.9}
                 >
-                  <LabelList dataKey="percentage" position="top" formatter={(value: number) => `${value}%`} />
+                  <LabelList 
+                    dataKey="percentage" 
+                    position="top" 
+                    formatter={(value: number) => `${value}%`}
+                    style={{ fontSize: '12px', fontWeight: 600 }}
+                  />
                   {data.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`}
@@ -58,8 +69,11 @@ export function SubjectPerformance({ data }: SubjectPerformanceProps) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="py-8 text-center text-muted-foreground">
-            <p>No performance data available yet</p>
+          <div className="py-12 text-center">
+            <div className="rounded-full bg-muted p-6 mx-auto w-fit mb-4">
+              <BarChartIcon className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">No performance data available yet</p>
           </div>
         )}
       </CardContent>

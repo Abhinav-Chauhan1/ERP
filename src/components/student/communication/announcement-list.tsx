@@ -132,7 +132,7 @@ export function AnnouncementList({
           {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search announcements..."
                 value={searchQuery}
@@ -159,9 +159,14 @@ export function AnnouncementList({
         {/* Announcement List */}
         <div className="space-y-4">
           {announcements.length === 0 ? (
-            <div className="text-center py-12">
-              <Megaphone className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No announcements found</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-6 mb-4">
+                <Megaphone className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No announcements</h3>
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                There are no announcements at this time. Check back later for updates.
+              </p>
             </div>
           ) : (
             announcements.map((announcement) => {

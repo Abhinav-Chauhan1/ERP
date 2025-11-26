@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
+import { useRef } from "react";
+import { Paperclip, X } from "lucide-react";
 
 // Import server actions
 import {
@@ -77,6 +80,9 @@ export default function MessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form
   const form = useForm<MessageFormValues>({
@@ -152,8 +158,85 @@ export default function MessagesPage() {
     });
     setRecipientSearch("");
     setShowRecipientDropdown(false);
+    setAttachments([]);
     setComposeDialogOpen(true);
   }
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_FILE_TYPES = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        errors.push(`${file.name} exceeds 10MB limit`);
+        return;
+      }
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        errors.push(`${file.name} is not a supported file type`);
+        return;
+      }
+      validFiles.push(file);
+    });
+
+    if (errors.length > 0) {
+      toast.error(errors.join(", "));
+    }
+
+    setAttachments((prev) => [...prev, ...validFiles]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Handle remove attachment
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  // Upload attachments to Cloudinary
+  const uploadAttachments = async (): Promise<string> => {
+    const uploadedUrls: string[] = [];
+
+    for (const file of attachments) {
+      try {
+        const { uploadToCloudinary } = await import("@/lib/cloudinary");
+        const result = await uploadToCloudinary(file, {
+          folder: "messages/attachments",
+          resource_type: "auto",
+        });
+        uploadedUrls.push(result.secure_url);
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+    }
+
+    return JSON.stringify(uploadedUrls);
+  };
 
   // Handle view message
   async function handleViewMessage(message: any) {
@@ -190,12 +273,30 @@ export default function MessagesPage() {
   // Submit compose message
   async function onSubmitMessage(values: MessageFormValues) {
     try {
-      const result = await sendMessage(values);
+      setUploadingAttachments(true);
+
+      // Upload attachments if any
+      let attachmentUrls = "";
+      if (attachments.length > 0) {
+        try {
+          attachmentUrls = await uploadAttachments();
+        } catch (error) {
+          toast.error("Failed to upload attachments");
+          setUploadingAttachments(false);
+          return;
+        }
+      }
+
+      const result = await sendMessage({
+        ...values,
+        attachments: attachmentUrls || undefined,
+      });
 
       if (result.success) {
         toast.success("Message sent successfully");
         setComposeDialogOpen(false);
         form.reset();
+        setAttachments([]);
         fetchAllData();
       } else {
         toast.error(result.error || "Failed to send message");
@@ -203,6 +304,8 @@ export default function MessagesPage() {
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("An unexpected error occurred");
+    } finally {
+      setUploadingAttachments(false);
     }
   }
 
@@ -554,13 +657,100 @@ export default function MessagesPage() {
                   </FormItem>
                 )}
               />
+
+              {/* Attachments */}
+              <div className="space-y-2">
+                <Label>Attachments</Label>
+                <div className="space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAttachments}
+                  >
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Attach Files
+                  </Button>
+                  <p className="text-xs text-gray-500">
+                    Maximum file size: 10MB. Supported formats: Images, PDF, Word, Excel
+                  </p>
+
+                  {/* Attachment List */}
+                  {attachments.length > 0 && (
+                    <div className="space-y-2 mt-3">
+                      {attachments.map((file, index) => {
+                        const isImage = file.type.startsWith("image/");
+                        const previewUrl = isImage ? URL.createObjectURL(file) : null;
+
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 border rounded-lg"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {isImage && previewUrl ? (
+                                <img
+                                  src={previewUrl}
+                                  alt={file.name}
+                                  className="h-10 w-10 object-cover rounded flex-shrink-0"
+                                />
+                              ) : (
+                                <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(file.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveAttachment(index)}
+                              disabled={uploadingAttachments}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setComposeDialogOpen(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setComposeDialogOpen(false)}
+                  disabled={uploadingAttachments}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  <Send className="mr-2 h-4 w-4" />
-                  Send Message
+                <Button type="submit" disabled={uploadingAttachments}>
+                  {uploadingAttachments ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Message
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -595,6 +785,54 @@ export default function MessagesPage() {
               <div className="prose prose-sm max-w-none">
                 <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
               </div>
+
+              {/* Attachments */}
+              {selectedMessage.attachments && (() => {
+                try {
+                  const attachmentUrls = JSON.parse(selectedMessage.attachments);
+                  if (attachmentUrls && attachmentUrls.length > 0) {
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Attachments:</p>
+                        <div className="space-y-2">
+                          {attachmentUrls.map((url: string, index: number) => {
+                            const fileName = url.split("/").pop() || `attachment-${index + 1}`;
+                            const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                            
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50"
+                              >
+                                {isImage ? (
+                                  <img
+                                    src={url}
+                                    alt={fileName}
+                                    className="h-10 w-10 object-cover rounded flex-shrink-0"
+                                  />
+                                ) : (
+                                  <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                )}
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:underline flex-1 truncate"
+                                >
+                                  {fileName}
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                } catch (error) {
+                  console.error("Error parsing attachments:", error);
+                }
+                return null;
+              })()}
             </div>
           )}
           <DialogFooter>

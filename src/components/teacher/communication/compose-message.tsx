@@ -7,12 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +81,7 @@ export function ComposeMessage({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recipientSearchOpen, setRecipientSearchOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,14 +132,21 @@ export function ComposeMessage({
   };
 
   const uploadAttachments = async (): Promise<string> => {
-    // In a real implementation, this would upload files to a storage service
-    // and return the URLs as a JSON string. For now, we'll return placeholder URLs.
     const uploadedUrls: string[] = [];
 
     for (const file of attachments) {
-      // Simulate upload
-      const url = `https://storage.example.com/${Date.now()}-${file.name}`;
-      uploadedUrls.push(url);
+      try {
+        // Upload to Cloudinary
+        const { uploadToCloudinary } = await import("@/lib/cloudinary");
+        const result = await uploadToCloudinary(file, {
+          folder: "messages/attachments",
+          resource_type: "auto",
+        });
+        uploadedUrls.push(result.secure_url);
+      } catch (error) {
+        console.error(`Failed to upload ${file.name}:`, error);
+        throw new Error(`Failed to upload ${file.name}`);
+      }
     }
 
     return JSON.stringify(uploadedUrls);
@@ -192,6 +207,12 @@ export function ComposeMessage({
 
   const handleClose = () => {
     if (!isSubmitting) {
+      // Clean up object URLs to prevent memory leaks
+      attachments.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          URL.revokeObjectURL(URL.createObjectURL(file));
+        }
+      });
       onClose();
     }
   };
@@ -199,11 +220,11 @@ export function ComposeMessage({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-purple-100 text-purple-700 border-purple-200";
+        return "bg-secondary text-secondary-foreground border-secondary/30";
       case "TEACHER":
-        return "bg-blue-100 text-blue-700 border-blue-200";
+        return "bg-primary/10 text-primary border-primary/30";
       case "STUDENT":
-        return "bg-green-100 text-green-700 border-green-200";
+        return "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800";
       case "PARENT":
         return "bg-orange-100 text-orange-700 border-orange-200";
       default:
@@ -233,23 +254,66 @@ export function ComposeMessage({
           {/* Recipient */}
           <div className="space-y-2">
             <Label htmlFor="recipient">To *</Label>
-            <Select value={recipientId} onValueChange={setRecipientId}>
-              <SelectTrigger id="recipient">
-                <SelectValue placeholder="Select recipient" />
-              </SelectTrigger>
-              <SelectContent>
-                {recipients.map((recipient) => (
-                  <SelectItem key={recipient.id} value={recipient.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{recipient.firstName} {recipient.lastName}</span>
-                      <Badge variant="outline" className={getRoleBadgeColor(recipient.role)}>
-                        {recipient.role}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={recipientSearchOpen} onOpenChange={setRecipientSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={recipientSearchOpen}
+                  className="w-full justify-between min-h-[44px]"
+                >
+                  {recipientId
+                    ? (() => {
+                        const selected = recipients.find((r) => r.id === recipientId);
+                        return selected ? (
+                          <div className="flex items-center gap-2">
+                            <span>{selected.firstName} {selected.lastName}</span>
+                            <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
+                              {selected.role}
+                            </Badge>
+                          </div>
+                        ) : "Select recipient";
+                      })()
+                    : "Select recipient"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search recipients..." className="h-10" />
+                  <CommandList className="max-h-[300px]">
+                    <CommandEmpty>No recipient found.</CommandEmpty>
+                    <CommandGroup>
+                      {recipients.map((recipient) => (
+                        <CommandItem
+                          key={recipient.id}
+                          value={`${recipient.firstName} ${recipient.lastName} ${recipient.email} ${recipient.role}`}
+                          onSelect={() => {
+                            setRecipientId(recipient.id);
+                            setRecipientSearchOpen(false);
+                          }}
+                          className="flex items-center gap-2 py-3 cursor-pointer"
+                        >
+                          <Check
+                            className={`h-4 w-4 shrink-0 ${
+                              recipientId === recipient.id ? "opacity-100" : "opacity-0"
+                            }`}
+                          />
+                          <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
+                            <span className="font-medium truncate">
+                              {recipient.firstName} {recipient.lastName}
+                            </span>
+                            <Badge variant="outline" className={`${getRoleBadgeColor(recipient.role)} shrink-0`}>
+                              {recipient.role}
+                            </Badge>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Subject */}
@@ -311,31 +375,44 @@ export function ComposeMessage({
               {/* Attachment List */}
               {attachments.length > 0 && (
                 <div className="space-y-2 mt-3">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 border rounded-lg"
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{file.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveAttachment(index)}
-                        disabled={isSubmitting}
+                  {attachments.map((file, index) => {
+                    const isImage = file.type.startsWith('image/');
+                    const previewUrl = isImage ? URL.createObjectURL(file) : null;
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 border rounded-lg"
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {isImage && previewUrl ? (
+                            <img 
+                              src={previewUrl} 
+                              alt={file.name}
+                              className="h-10 w-10 object-cover rounded flex-shrink-0"
+                            />
+                          ) : (
+                            <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAttachment(index)}
+                          disabled={isSubmitting}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

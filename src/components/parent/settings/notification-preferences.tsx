@@ -135,14 +135,14 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
             {notificationOptions.map((option) => (
               <div key={option.id} className="flex items-start justify-between space-x-4 py-3 border-b last:border-0">
                 <div className="flex items-start space-x-3 flex-1">
-                  <div className="bg-blue-50 p-2 rounded-lg mt-1">
-                    <option.icon className="h-4 w-4 text-blue-600" />
+                  <div className="bg-primary/10 p-2 rounded-lg mt-1" aria-hidden="true">
+                    <option.icon className="h-4 w-4 text-primary" />
                   </div>
                   <div className="space-y-1 flex-1">
                     <Label htmlFor={option.id} className="text-sm font-medium cursor-pointer">
                       {option.label}
                     </Label>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground" id={`${option.id}-description`}>
                       {option.description}
                     </p>
                   </div>
@@ -153,6 +153,8 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
                   onCheckedChange={(checked) => 
                     setFormData({ ...formData, [option.id]: checked })
                   }
+                  aria-label={option.label}
+                  aria-describedby={`${option.id}-description`}
                 />
               </div>
             ))}
@@ -170,7 +172,10 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
                   setFormData({ ...formData, preferredContactMethod: value })
                 }
               >
-                <SelectTrigger id="preferredContactMethod">
+                <SelectTrigger 
+                  id="preferredContactMethod"
+                  aria-label="Select preferred contact method"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,7 +184,7 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
                   <SelectItem value="BOTH">Both Email and SMS</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Choose your preferred method for important communications
               </p>
             </div>
@@ -192,7 +197,10 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
                   setFormData({ ...formData, notificationFrequency: value })
                 }
               >
-                <SelectTrigger id="notificationFrequency">
+                <SelectTrigger 
+                  id="notificationFrequency"
+                  aria-label="Select notification frequency"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,7 +209,7 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
                   <SelectItem value="WEEKLY_DIGEST">Weekly Digest</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Choose how often you want to receive notifications
               </p>
             </div>

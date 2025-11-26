@@ -232,12 +232,12 @@ export default function TeacherTimetablePage() {
                         <th 
                           key={day} 
                           className={`border p-2 text-center w-[14.67%] ${
-                            isToday(day) ? 'bg-emerald-50' : 'bg-gray-50'
+                            isToday(day) ? 'bg-primary/10' : 'bg-muted'
                           }`}
                         >
                           {day}
                           {isToday(day) && (
-                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-primary/20 text-primary rounded-full">
                               Today
                             </span>
                           )}
@@ -284,10 +284,10 @@ export default function TeacherTimetablePage() {
                                   <div 
                                     key={event.id}
                                     className={`p-2 m-0.5 rounded h-full ${
-                                      event.type === 'class' ? 'bg-blue-50 border-blue-200 border' :
-                                      event.type === 'duty' ? 'bg-amber-50 border-amber-200 border' :
-                                      event.type === 'meeting' ? 'bg-purple-50 border-purple-200 border' :
-                                      'bg-gray-50'
+                                      event.type === 'class' ? 'bg-primary/10 border-primary/30 border' :
+                                      event.type === 'duty' ? 'bg-warning/10 border-warning/30 border' :
+                                      event.type === 'meeting' ? 'bg-secondary border-secondary/30 border' :
+                                      'bg-muted'
                                     }`}
                                   >
                                     <p className="font-medium text-sm mb-1">{event.subject}</p>
@@ -315,19 +315,19 @@ export default function TeacherTimetablePage() {
               
               <div className="flex flex-wrap gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+                  <div className="w-3 h-3 bg-primary/20 border border-primary/30 rounded"></div>
                   <span className="text-sm">Classes</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded"></div>
+                  <div className="w-3 h-3 bg-secondary border border-secondary/30 rounded"></div>
                   <span className="text-sm">Meetings</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded"></div>
+                  <div className="w-3 h-3 bg-warning/20 border border-warning/30 rounded"></div>
                   <span className="text-sm">Duties</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
+                  <div className="w-3 h-3 bg-muted border border-border rounded"></div>
                   <span className="text-sm">Breaks</span>
                 </div>
               </div>
@@ -340,11 +340,11 @@ export default function TeacherTimetablePage() {
                   
                   return (
                     <Card key={day} className="overflow-hidden">
-                      <CardHeader className={`py-3 ${isToday(day) ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                      <CardHeader className={`py-3 ${isToday(day) ? 'bg-primary/10' : 'bg-muted'}`}>
                         <div className="flex justify-between items-center">
                           <CardTitle className="text-lg">{day}</CardTitle>
                           {isToday(day) && (
-                            <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">
+                            <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full">
                               Today
                             </span>
                           )}
@@ -358,10 +358,10 @@ export default function TeacherTimetablePage() {
                               <div 
                                 key={event.id}
                                 className={`p-3 rounded-lg border ${
-                                  event.type === 'class' ? 'bg-blue-50 border-blue-200' :
-                                  event.type === 'duty' ? 'bg-amber-50 border-amber-200' :
-                                  event.type === 'meeting' ? 'bg-purple-50 border-purple-200' :
-                                  'bg-gray-50 border-gray-200'
+                                  event.type === 'class' ? 'bg-primary/10 border-primary/30' :
+                                  event.type === 'duty' ? 'bg-warning/10 border-warning/30' :
+                                  event.type === 'meeting' ? 'bg-secondary border-secondary/30' :
+                                  'bg-muted border-border'
                                 }`}
                               >
                                 <div className="flex justify-between items-start">

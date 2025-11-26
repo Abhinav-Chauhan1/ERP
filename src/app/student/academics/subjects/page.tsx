@@ -13,10 +13,11 @@ export default async function StudentSubjectsPage() {
   const subjects = await getStudentSubjects();
 
   return (
-    <div className="container p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">My Subjects</h1>
-        <p className="text-gray-500">
+    <div className="flex flex-col gap-4 p-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Subjects</h1>
+        <p className="text-muted-foreground mt-1">
           View and explore all your enrolled subjects
         </p>
       </div>

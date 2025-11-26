@@ -3,13 +3,17 @@ export const dynamic = 'force-dynamic';
 import { Suspense } from "react";
 import {
   HeaderSection,
-  AttendanceFeesSection,
-  MeetingsAnnouncementsSection,
+  QuickActionsSection,
+  PerformanceSummarySection,
+  CalendarWidgetSection,
+  RecentActivityFeedSection,
 } from "./dashboard-sections";
 import {
   HeaderSkeleton,
-  AttendanceFeesSkeleton,
-  MeetingsAnnouncementsSkeleton,
+  QuickActionsSkeleton,
+  PerformanceSummarySkeleton,
+  CalendarWidgetSkeleton,
+  RecentActivityFeedSkeleton,
 } from "./dashboard-skeletons";
 
 /**
@@ -18,21 +22,32 @@ import {
  */
 export default function ParentDashboard() {
   return (
-    <div className="h-full p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header and Children Cards - Wrapped in Suspense */}
       <Suspense fallback={<HeaderSkeleton />}>
         <HeaderSection />
       </Suspense>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Attendance and Fees - Wrapped in Suspense */}
-        <Suspense fallback={<AttendanceFeesSkeleton />}>
-          <AttendanceFeesSection />
+      {/* Quick Actions Panel */}
+      <Suspense fallback={<QuickActionsSkeleton />}>
+        <QuickActionsSection />
+      </Suspense>
+      
+      {/* Performance Summary Cards */}
+      <Suspense fallback={<PerformanceSummarySkeleton />}>
+        <PerformanceSummarySection />
+      </Suspense>
+      
+      {/* Calendar Widget and Activity Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Calendar Widget - Wrapped in Suspense */}
+        <Suspense fallback={<CalendarWidgetSkeleton />}>
+          <CalendarWidgetSection />
         </Suspense>
         
-        {/* Meetings and Announcements - Wrapped in Suspense */}
-        <Suspense fallback={<MeetingsAnnouncementsSkeleton />}>
-          <MeetingsAnnouncementsSection />
+        {/* Recent Activity Feed - Wrapped in Suspense */}
+        <Suspense fallback={<RecentActivityFeedSkeleton />}>
+          <RecentActivityFeedSection />
         </Suspense>
       </div>
     </div>

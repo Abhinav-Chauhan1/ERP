@@ -66,19 +66,19 @@ export function SubjectDetail({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="bg-blue-50 pb-4">
+        <CardHeader className="bg-primary/5 pb-4">
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
               <CardTitle className="text-2xl flex items-center">
-                <BookOpen className="h-6 w-6 mr-2 text-blue-600" />
+                <BookOpen className="h-6 w-6 mr-2 text-primary" />
                 {subject.name}
               </CardTitle>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant="outline" className="font-mono">
                   {subject.code}
                 </Badge>
-                <span className="text-gray-500">•</span>
-                <span className="text-gray-500">{subject.department}</span>
+                <span className="text-muted-foreground">•</span>
+                <span className="text-muted-foreground">{subject.department}</span>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -104,7 +104,7 @@ export function SubjectDetail({
             {subject.description && (
               <div>
                 <h3 className="text-sm font-medium mb-1">Description</h3>
-                <p className="text-gray-600 text-sm">{subject.description}</p>
+                <p className="text-muted-foreground text-sm">{subject.description}</p>
               </div>
             )}
             
@@ -116,12 +116,12 @@ export function SubjectDetail({
                     key={teacher.id} 
                     className="flex items-center p-3 rounded-md border"
                   >
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                       <User className="h-4 w-4" />
                     </div>
                     <div className="ml-3">
                       <h4 className="font-medium">{teacher.name}</h4>
-                      <div className="flex items-center text-sm text-gray-500">
+                      <div className="flex items-center text-sm text-muted-foreground">
                         <MailIcon className="h-3 w-3 mr-1" />
                         {teacher.email}
                       </div>
@@ -129,7 +129,7 @@ export function SubjectDetail({
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="ml-auto text-blue-600"
+                      className="ml-auto text-primary"
                       asChild
                     >
                       <Link href={`/student/communication/messages/compose?teacherId=${teacher.id}`}>
@@ -139,7 +139,7 @@ export function SubjectDetail({
                   </div>
                 ))}
                 {teachers.length === 0 && (
-                  <div className="text-gray-500 text-sm">No instructors assigned yet</div>
+                  <div className="text-muted-foreground text-sm">No instructors assigned yet</div>
                 )}
               </div>
             </div>
@@ -162,30 +162,30 @@ export function SubjectDetail({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                <div className="p-4 rounded-lg bg-primary/5 border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-blue-800">Upcoming Assignments</h3>
-                    <FileText className="h-5 w-5 text-blue-500" />
+                    <h3 className="text-sm font-medium">Upcoming Assignments</h3>
+                    <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <p className="text-2xl font-bold mt-2">
                     {assignments.filter(a => new Date(a.dueDate) > new Date()).length}
                   </p>
                 </div>
                 
-                <div className="p-4 rounded-lg bg-amber-50 border border-amber-100">
+                <div className="p-4 rounded-lg bg-secondary/50 border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-amber-800">Pending Exams</h3>
-                    <FileQuestion className="h-5 w-5 text-amber-500" />
+                    <h3 className="text-sm font-medium">Pending Exams</h3>
+                    <FileQuestion className="h-5 w-5 text-secondary-foreground" />
                   </div>
                   <p className="text-2xl font-bold mt-2">
                     {exams.filter(e => new Date(e.examDate) > new Date()).length}
                   </p>
                 </div>
                 
-                <div className="p-4 rounded-lg bg-green-50 border border-green-100">
+                <div className="p-4 rounded-lg bg-accent border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-green-800">Available Materials</h3>
-                    <School className="h-5 w-5 text-green-500" />
+                    <h3 className="text-sm font-medium">Available Materials</h3>
+                    <School className="h-5 w-5 text-accent-foreground" />
                   </div>
                   <p className="text-2xl font-bold mt-2">
                     {lessons.length}
@@ -205,17 +205,17 @@ export function SubjectDetail({
                   <div className="space-y-3">
                     {lessons.slice(0, 3).map(lesson => (
                       <div key={lesson.id} className="flex items-start p-3 rounded-md border">
-                        <BookOpen className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <BookOpen className="h-5 w-5 text-primary mt-0.5" />
                         <div className="ml-3">
                           <h4 className="font-medium text-sm">{lesson.title}</h4>
                           {lesson.description && (
-                            <p className="text-gray-500 text-sm line-clamp-1">{lesson.description}</p>
+                            <p className="text-muted-foreground text-sm line-clamp-1">{lesson.description}</p>
                           )}
                         </div>
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="ml-auto text-blue-600"
+                          className="ml-auto text-primary"
                           asChild
                         >
                           <Link href={`/student/academics/materials/${lesson.id}`}>
@@ -228,7 +228,7 @@ export function SubjectDetail({
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-blue-600"
+                        className="text-primary"
                         asChild
                       >
                         <Link href={`/student/academics/materials?subject=${subject.id}`}>
@@ -238,7 +238,7 @@ export function SubjectDetail({
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-gray-500">
+                  <div className="text-center py-4 text-muted-foreground">
                     No materials available yet
                   </div>
                 )}
@@ -276,13 +276,13 @@ export function SubjectDetail({
                             className="flex items-start p-3 rounded-md border"
                           >
                             {isAssignment ? (
-                              <FileText className="h-5 w-5 text-amber-600 mt-0.5" />
+                              <FileText className="h-5 w-5 text-primary mt-0.5" />
                             ) : (
-                              <FileQuestion className="h-5 w-5 text-red-600 mt-0.5" />
+                              <FileQuestion className="h-5 w-5 text-primary mt-0.5" />
                             )}
                             <div className="ml-3">
                               <h4 className="font-medium text-sm">{item.title}</h4>
-                              <div className="flex items-center text-gray-500 text-xs mt-1">
+                              <div className="flex items-center text-muted-foreground text-xs mt-1">
                                 <Calendar className="h-3 w-3 mr-1" />
                                 {format(
                                   new Date(isAssignment ? item.dueDate : item.examDate),
@@ -297,7 +297,7 @@ export function SubjectDetail({
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="ml-auto text-blue-600"
+                              className="ml-auto text-primary"
                               asChild
                             >
                               <Link href={
@@ -313,7 +313,7 @@ export function SubjectDetail({
                       })}
                   </div>
                 ) : (
-                  <div className="text-center py-4 text-gray-500">
+                  <div className="text-center py-4 text-muted-foreground">
                     No upcoming activities
                   </div>
                 )}
@@ -334,7 +334,7 @@ export function SubjectDetail({
                     <div>
                       <h3 className="font-medium">{syllabus.title}</h3>
                       {syllabus.description && (
-                        <p className="text-gray-600 text-sm mt-1">{syllabus.description}</p>
+                        <p className="text-muted-foreground text-sm mt-1">{syllabus.description}</p>
                       )}
                     </div>
                     
@@ -349,21 +349,21 @@ export function SubjectDetail({
                   <div className="space-y-4">
                     {syllabus.units.map((unit: any) => (
                       <div key={unit.id} className="border rounded-md overflow-hidden">
-                        <div className="p-4 bg-gray-50 border-b">
+                        <div className="p-4 bg-muted/30 border-b">
                           <h3 className="font-medium">Unit {unit.order}: {unit.title}</h3>
                           {unit.description && (
-                            <p className="text-gray-600 text-sm mt-1">{unit.description}</p>
+                            <p className="text-muted-foreground text-sm mt-1">{unit.description}</p>
                           )}
                         </div>
                         {unit.lessons.length > 0 ? (
                           <div className="divide-y">
                             {unit.lessons.map((lesson: any) => (
                               <div key={lesson.id} className="flex items-center p-3">
-                                <BookOpen className="h-4 w-4 text-blue-600" />
+                                <BookOpen className="h-4 w-4 text-primary" />
                                 <div className="ml-3">
                                   <h4 className="text-sm font-medium">{lesson.title}</h4>
                                   {lesson.duration && (
-                                    <div className="flex items-center text-gray-500 text-xs mt-1">
+                                    <div className="flex items-center text-muted-foreground text-xs mt-1">
                                       <Clock className="h-3 w-3 mr-1" />
                                       {lesson.duration} minutes
                                     </div>
@@ -372,7 +372,7 @@ export function SubjectDetail({
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="ml-auto text-blue-600"
+                                  className="ml-auto text-primary"
                                   asChild
                                 >
                                   <Link href={`/student/academics/materials/${lesson.id}`}>
@@ -383,7 +383,7 @@ export function SubjectDetail({
                             ))}
                           </div>
                         ) : (
-                          <div className="p-4 text-center text-gray-500 text-sm">
+                          <div className="p-4 text-center text-muted-foreground text-sm">
                             No lessons available for this unit
                           </div>
                         )}
@@ -391,8 +391,8 @@ export function SubjectDetail({
                     ))}
                     
                     {syllabus.units.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        <BookMarked className="h-12 w-12 text-gray-300 mx-auto" />
+                      <div className="text-center py-8 text-muted-foreground">
+                        <BookMarked className="h-12 w-12 text-muted-foreground/30 mx-auto" />
                         <h3 className="mt-4 font-medium">No units defined</h3>
                         <p className="text-sm mt-1">The syllabus structure has not been defined yet</p>
                       </div>
@@ -400,8 +400,8 @@ export function SubjectDetail({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <BookMarked className="h-16 w-16 text-gray-300 mx-auto" />
+                <div className="text-center py-12 text-muted-foreground">
+                  <BookMarked className="h-16 w-16 text-muted-foreground/30 mx-auto" />
                   <h3 className="mt-4 text-lg font-medium">No Syllabus Available</h3>
                   <p className="text-sm mt-1">The syllabus for this subject hasn't been uploaded yet</p>
                 </div>
@@ -419,32 +419,32 @@ export function SubjectDetail({
               {assignments.length > 0 ? (
                 <div className="space-y-4">
                   <div className="rounded-md border overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y">
+                      <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Title
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Due Date
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Marks
                           </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Action
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="divide-y">
                         {assignments.map(assignment => (
                           <tr key={assignment.id}>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <FileText className="h-4 w-4 text-blue-600 mr-2" />
+                                <FileText className="h-4 w-4 text-primary mr-2" />
                                 <span className="font-medium">{assignment.title}</span>
                               </div>
                             </td>
@@ -453,8 +453,8 @@ export function SubjectDetail({
                                 new Date(assignment.dueDate) < new Date() && 
                                 assignment.status !== "SUBMITTED" && 
                                 assignment.status !== "GRADED" 
-                                  ? "text-red-600" 
-                                  : "text-gray-600"
+                                  ? "text-destructive" 
+                                  : "text-muted-foreground"
                               }`}>
                                 {format(new Date(assignment.dueDate), "MMM dd, yyyy")}
                               </span>
@@ -463,15 +463,13 @@ export function SubjectDetail({
                               {assignment.totalMarks}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <Badge className={`${
-                                assignment.status === "GRADED" 
-                                  ? "bg-green-100 text-green-800 border-green-300" 
-                                  : assignment.status === "SUBMITTED" 
-                                  ? "bg-blue-100 text-blue-800 border-blue-300"
+                              <Badge variant={
+                                assignment.status === "GRADED" || assignment.status === "SUBMITTED"
+                                  ? "secondary"
                                   : new Date(assignment.dueDate) < new Date()
-                                  ? "bg-red-100 text-red-800 border-red-300"
-                                  : "bg-amber-100 text-amber-800 border-amber-300"
-                              }`}>
+                                  ? "destructive"
+                                  : "default"
+                              }>
                                 {assignment.status === "GRADED" 
                                   ? "Graded" 
                                   : assignment.status === "SUBMITTED" 
@@ -507,8 +505,8 @@ export function SubjectDetail({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <FileText className="h-16 w-16 text-gray-300 mx-auto" />
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto" />
                   <h3 className="mt-4 text-lg font-medium">No Assignments</h3>
                   <p className="text-sm mt-1">No assignments have been given for this subject yet</p>
                 </div>
@@ -526,35 +524,35 @@ export function SubjectDetail({
               {exams.length > 0 ? (
                 <div className="space-y-4">
                   <div className="rounded-md border overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y">
+                      <thead className="bg-muted/50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Exam Name
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Type
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Date
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Total Marks
                           </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Action
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="divide-y">
                         {exams.map(exam => (
                           <tr key={exam.id}>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <FileQuestion className="h-4 w-4 text-blue-600 mr-2" />
+                                <FileQuestion className="h-4 w-4 text-primary mr-2" />
                                 <span className="font-medium">{exam.title}</span>
                               </div>
                             </td>
@@ -570,13 +568,13 @@ export function SubjectDetail({
                               {exam.totalMarks}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <Badge className={`${
+                              <Badge variant={
                                 exam.result
-                                  ? "bg-green-100 text-green-800 border-green-300" 
+                                  ? "secondary"
                                   : new Date(exam.examDate) < new Date()
-                                  ? "bg-blue-100 text-blue-800 border-blue-300"
-                                  : "bg-amber-100 text-amber-800 border-amber-300"
-                              }`}>
+                                  ? "default"
+                                  : "outline"
+                              }>
                                 {exam.result
                                   ? "Results Available" 
                                   : new Date(exam.examDate) < new Date()
@@ -604,8 +602,8 @@ export function SubjectDetail({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <FileQuestion className="h-16 w-16 text-gray-300 mx-auto" />
+                <div className="text-center py-12 text-muted-foreground">
+                  <FileQuestion className="h-16 w-16 text-muted-foreground/30 mx-auto" />
                   <h3 className="mt-4 text-lg font-medium">No Exams</h3>
                   <p className="text-sm mt-1">No exams have been scheduled for this subject yet</p>
                 </div>

@@ -207,7 +207,6 @@ function TeacherStudentsContent() {
               className="w-[250px] pl-9"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
           
@@ -286,10 +285,10 @@ function TeacherStudentsContent() {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className={`h-2 rounded-full ${
-                    classStats.avgAttendance >= 90 ? 'bg-green-500' :
-                    classStats.avgAttendance >= 80 ? 'bg-emerald-500' :
-                    classStats.avgAttendance >= 70 ? 'bg-amber-500' :
-                    'bg-red-500'
+                    classStats.avgAttendance >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                    classStats.avgAttendance >= 80 ? 'bg-primary' :
+                    classStats.avgAttendance >= 70 ? 'bg-warning' :
+                    'bg-destructive'
                   }`}
                   style={{ width: `${classStats.avgAttendance}%` }}
                 ></div>
@@ -307,10 +306,10 @@ function TeacherStudentsContent() {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className={`h-2 rounded-full ${
-                    classStats.avgPerformance >= 90 ? 'bg-green-500' :
-                    classStats.avgPerformance >= 75 ? 'bg-emerald-500' :
-                    classStats.avgPerformance >= 60 ? 'bg-amber-500' :
-                    'bg-red-500'
+                    classStats.avgPerformance >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                    classStats.avgPerformance >= 75 ? 'bg-primary' :
+                    classStats.avgPerformance >= 60 ? 'bg-warning' :
+                    'bg-destructive'
                   }`}
                   style={{ width: `${classStats.avgPerformance}%` }}
                 ></div>
@@ -494,10 +493,10 @@ function TeacherStudentsContent() {
                         <div className="flex items-center justify-center">
                           <div 
                             className={`h-2.5 w-2.5 rounded-full mr-2 ${
-                              student.metrics.attendancePercentage >= 90 ? 'bg-green-500' :
-                              student.metrics.attendancePercentage >= 80 ? 'bg-emerald-500' :
-                              student.metrics.attendancePercentage >= 70 ? 'bg-amber-500' :
-                              'bg-red-500'
+                              student.metrics.attendancePercentage >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                              student.metrics.attendancePercentage >= 80 ? 'bg-primary' :
+                              student.metrics.attendancePercentage >= 70 ? 'bg-warning' :
+                              'bg-destructive'
                             }`}
                           ></div>
                           <span className="text-sm font-medium">
@@ -521,10 +520,10 @@ function TeacherStudentsContent() {
                         <div className="flex items-center justify-center">
                           <div 
                             className={`h-2.5 w-2.5 rounded-full mr-2 ${
-                              student.metrics.assignmentCompletionRate >= 90 ? 'bg-green-500' :
-                              student.metrics.assignmentCompletionRate >= 75 ? 'bg-emerald-500' :
-                              student.metrics.assignmentCompletionRate >= 60 ? 'bg-amber-500' :
-                              'bg-red-500'
+                              student.metrics.assignmentCompletionRate >= 90 ? 'bg-green-600 dark:bg-green-500' :
+                              student.metrics.assignmentCompletionRate >= 75 ? 'bg-primary' :
+                              student.metrics.assignmentCompletionRate >= 60 ? 'bg-warning' :
+                              'bg-destructive'
                             }`}
                           ></div>
                           <span className="text-sm font-medium">

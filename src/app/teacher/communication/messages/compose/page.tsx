@@ -229,8 +229,6 @@ export default function ComposeMessagePage() {
                 <PopoverTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    role="combobox" 
-                    aria-expanded={openRecipient}
                     className="h-8 px-2 text-sm"
                   >
                     Add recipient...

@@ -14,21 +14,23 @@ export default async function ExamsPage() {
   const exams = await getUpcomingExams();
   
   return (
-    <div className="container p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Upcoming Exams</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold tracking-tight">Upcoming Exams</h1>
+          <p className="text-muted-foreground mt-1">
             View your upcoming exam schedule and prepare accordingly
           </p>
         </div>
         
-        <div className="flex items-center bg-blue-50 text-blue-800 px-4 py-2 rounded-md">
-          <Clock className="h-5 w-5 mr-2 text-blue-600" />
-          <span className="text-sm font-medium">
-            {exams.length} upcoming {exams.length === 1 ? "exam" : "exams"}
-          </span>
-        </div>
+        {exams.length > 0 && (
+          <div className="flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded-md">
+            <Calendar className="h-5 w-5 mr-2" />
+            <span className="text-sm font-medium">
+              {exams.length} upcoming {exams.length === 1 ? "exam" : "exams"}
+            </span>
+          </div>
+        )}
       </div>
 
       <ExamList exams={exams} emptyMessage="You don't have any upcoming exams scheduled" />

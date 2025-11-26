@@ -284,7 +284,7 @@ export default function AnnouncementsPage() {
                   <p className="text-sm text-muted-foreground">Active</p>
                   <p className="text-2xl font-bold">{stats.activeAnnouncements}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <CheckCircle className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -339,7 +339,7 @@ export default function AnnouncementsPage() {
           {/* Announcements List */}
           {filteredAnnouncements.length === 0 ? (
             <div className="text-center py-10">
-              <Megaphone className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+              <Megaphone className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No announcements found</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm || activeTab !== "all"
@@ -436,7 +436,7 @@ export default function AnnouncementsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="flex-1 rounded-none border-l text-red-500 hover:text-red-600"
+                      className="flex-1 rounded-none border-l text-destructive hover:text-destructive/90"
                       onClick={() => handleDeleteAnnouncement(announcement.id)}
                     >
                       <Trash2 className="h-4 w-4 mr-1" />

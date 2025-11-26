@@ -117,9 +117,9 @@ export function EventCard({
   };
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
+    <Card className="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow">
       {event.thumbnail ? (
-        <div className="relative h-40 w-full bg-gray-100">
+        <div className="relative h-40 w-full bg-muted">
           <img
             src={event.thumbnail}
             alt={event.title}
@@ -130,8 +130,8 @@ export function EventCard({
           />
         </div>
       ) : (
-        <div className="h-40 w-full bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center">
-          <Calendar className="h-10 w-10 text-blue-500" />
+        <div className="h-40 w-full bg-gradient-to-r from-primary/10 to-primary/20 flex items-center justify-center">
+          <Calendar className="h-10 w-10 text-primary" />
         </div>
       )}
       
@@ -151,31 +151,31 @@ export function EventCard({
       
       <CardContent className="flex-1">
         {event.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
             {event.description}
           </p>
         )}
         
         <div className="space-y-2 text-sm">
           <div className="flex items-start">
-            <Calendar className="h-4 w-4 mr-2 mt-0.5 text-gray-500" />
+            <Calendar className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
             <div>
               <p>{dateDisplay}</p>
-              <p className="text-gray-500">{timeDisplay}</p>
+              <p className="text-muted-foreground">{timeDisplay}</p>
             </div>
           </div>
           
           {event.location && (
             <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-              <span className="text-gray-600">{event.location}</span>
+              <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span className="text-muted-foreground">{event.location}</span>
             </div>
           )}
           
           {event.maxParticipants && (
             <div className="flex items-center">
-              <Users className="h-4 w-4 mr-2 text-gray-500" />
-              <span className="text-gray-600">
+              <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span className="text-muted-foreground">
                 {event.maxParticipants} maximum participants
               </span>
             </div>
@@ -183,8 +183,8 @@ export function EventCard({
           
           {event.registrationDeadline && (
             <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-2 text-gray-500" />
-              <span className="text-gray-600">
+              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span className="text-muted-foreground">
                 Registration deadline: {format(new Date(event.registrationDeadline), "MMM d, yyyy")}
               </span>
             </div>
@@ -206,14 +206,14 @@ export function EventCard({
             </div>
             
             <div className="flex gap-2 w-full">
-              <Button variant="outline" className="flex-1" asChild>
+              <Button variant="outline" className="flex-1 min-h-[44px]" asChild>
                 <a href={`/student/events/${event.id}`}>View Details</a>
               </Button>
               
               {!isPast && event.status !== EventStatus.CANCELLED && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800" disabled={isLoading}>
+                    <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 min-h-[44px]" disabled={isLoading}>
                       Cancel
                     </Button>
                   </AlertDialogTrigger>
@@ -239,15 +239,15 @@ export function EventCard({
             </div>
           </div>
         ) : isPast ? (
-          <Button variant="outline" className="w-full" disabled>
+          <Button variant="outline" className="w-full min-h-[44px]" disabled>
             Event Ended
           </Button>
         ) : isOngoing ? (
-          <Button className="w-full" asChild>
+          <Button className="w-full min-h-[44px]" asChild>
             <a href={`/student/events/${event.id}`}>View Details</a>
           </Button>
         ) : event.status === EventStatus.CANCELLED ? (
-          <Button variant="outline" className="w-full" disabled>
+          <Button variant="outline" className="w-full min-h-[44px]" disabled>
             Event Cancelled
           </Button>
         ) : (

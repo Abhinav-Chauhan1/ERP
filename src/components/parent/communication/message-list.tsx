@@ -40,6 +40,7 @@ interface MessageListItem {
     id: string;
     firstName: string;
     lastName: string;
+    email: string;
     avatar: string | null;
     role: string;
   };
@@ -47,9 +48,11 @@ interface MessageListItem {
     id: string;
     firstName: string;
     lastName: string;
+    email: string;
     avatar: string | null;
     role: string;
   };
+  attachments?: string | null;
   hasAttachments: boolean;
 }
 
@@ -119,7 +122,8 @@ export function MessageList({
         isRead: readFilter === "all" ? undefined : readFilter === "read",
       });
     }
-  }, [debouncedSearchQuery, readFilter, onFilterChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery, readFilter]);
 
   const handleReadFilterChange = (value: string) => {
     setReadFilter(value);
@@ -292,7 +296,7 @@ export function MessageList({
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {message.hasAttachments && (
+                        {(message.hasAttachments || (message.attachments && message.attachments.length > 0)) && (
                           <Badge variant="outline" className="text-xs">
                             📎
                           </Badge>
