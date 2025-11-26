@@ -1,20 +1,21 @@
 "use client";
 
 import dynamic from 'next/dynamic';
+import type { ComponentType } from 'react';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BarChart2, LineChart as LineChartIcon } from "lucide-react";
 
 // Dynamically import recharts to avoid SSR issues
-const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
-const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
-const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
-const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const Line = dynamic(() => import('recharts').then(mod => mod.Line as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
 
 interface PerformanceData {
   name: string;

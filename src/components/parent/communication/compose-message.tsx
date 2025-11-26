@@ -157,7 +157,7 @@ export function ComposeMessage({
       }
     }
 
-    return JSON.stringify(uploadedUrls);
+    return uploadedUrls;
   };
 
   const handleSend = async () => {
