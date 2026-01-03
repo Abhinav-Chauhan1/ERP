@@ -37,8 +37,8 @@ const studentImportSchema = z.object({
   address: z.string().optional(),
   bloodGroup: z.string().optional(),
   emergencyContact: z.string().optional(),
-  classId: z.string().min(1, "Class ID is required"),
-  sectionId: z.string().min(1, "Section ID is required"),
+  classId: z.string().optional(), // Optional - can be provided via UI selector
+  sectionId: z.string().optional(), // Optional - can be provided via UI selector
   rollNumber: z.string().optional(),
 });
 
@@ -80,17 +80,17 @@ export async function validateImportData(
   errors: Array<{ row: number; field?: string; message: string }>;
 }> {
   const errors: Array<{ row: number; field?: string; message: string }> = [];
-  
+
   const schema =
     type === "student"
       ? studentImportSchema
       : type === "teacher"
-      ? teacherImportSchema
-      : parentImportSchema;
+        ? teacherImportSchema
+        : parentImportSchema;
 
   data.forEach((row, index) => {
     const rowNumber = index + 2; // +2 because index starts at 0 and row 1 is header
-    
+
     try {
       schema.parse(row);
     } catch (error) {
@@ -121,11 +121,13 @@ export async function validateImportData(
  */
 export async function importStudents(
   data: StudentImportData[],
-  duplicateHandling: DuplicateHandling = "skip"
+  duplicateHandling: DuplicateHandling = "skip",
+  defaultClassId?: string,
+  defaultSectionId?: string
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -154,11 +156,15 @@ export async function importStudents(
       // Validate the row
       const validated = studentImportSchema.parse(row);
 
+      // Use provided values or fall back to defaults
+      const classId = validated.classId || defaultClassId;
+      const sectionId = validated.sectionId || defaultSectionId;
+
       // Check if student already exists
       const existingStudent = await db.student.findFirst({
         where: {
           OR: [
-            { 
+            {
               user: {
                 email: validated.email
               }
@@ -200,41 +206,52 @@ export async function importStudents(
         // If "create", fall through to create a new record with different ID
       }
 
+      // Verify class ID is available (either from CSV or defaults)
+      if (!classId) {
+        result.errors.push({
+          row: rowNumber,
+          field: "classId",
+          message: "Class ID is required - provide in CSV or select from dropdown",
+        });
+        result.summary.failed++;
+        continue;
+      }
+
       // Verify class exists
       const classExists = await db.class.findUnique({
-        where: { id: validated.classId },
+        where: { id: classId },
       });
 
       if (!classExists) {
         result.errors.push({
           row: rowNumber,
           field: "classId",
-          message: `Class with ID ${validated.classId} not found`,
+          message: `Class with ID ${classId} not found`,
         });
         result.summary.failed++;
         continue;
       }
 
-      // Verify section exists (required for enrollment)
-      if (!validated.sectionId) {
+      // Verify section ID is available
+      if (!sectionId) {
         result.errors.push({
           row: rowNumber,
           field: "sectionId",
-          message: "Section ID is required for enrollment",
+          message: "Section ID is required - provide in CSV or select from dropdown",
         });
         result.summary.failed++;
         continue;
       }
 
       const sectionExists = await db.classSection.findUnique({
-        where: { id: validated.sectionId },
+        where: { id: sectionId },
       });
 
       if (!sectionExists) {
         result.errors.push({
           row: rowNumber,
           field: "sectionId",
-          message: `Section with ID ${validated.sectionId} not found`,
+          message: `Section with ID ${sectionId} not found`,
         });
         result.summary.failed++;
         continue;
@@ -268,8 +285,8 @@ export async function importStudents(
       await db.classEnrollment.create({
         data: {
           studentId: newStudent.id,
-          classId: validated.classId,
-          sectionId: validated.sectionId,
+          classId: classId,
+          sectionId: sectionId,
           rollNumber: validated.rollNumber,
           enrollDate: new Date(),
           status: "ACTIVE",
@@ -279,7 +296,7 @@ export async function importStudents(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -314,8 +331,8 @@ export async function importTeachers(
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -347,7 +364,7 @@ export async function importTeachers(
       const existingTeacher = await db.teacher.findFirst({
         where: {
           OR: [
-            { 
+            {
               user: {
                 email: validated.email
               }
@@ -423,7 +440,7 @@ export async function importTeachers(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -458,8 +475,8 @@ export async function importParents(
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -504,7 +521,7 @@ export async function importParents(
 
       // Check if parent already exists
       const existingParent = await db.parent.findFirst({
-        where: { 
+        where: {
           user: {
             email: validated.email
           }
@@ -529,7 +546,7 @@ export async function importParents(
               occupation: validated.occupation,
             },
           });
-          
+
           // Create parent-student association if it doesn't exist
           const existingAssociation = await db.studentParent.findFirst({
             where: {
@@ -582,7 +599,7 @@ export async function importParents(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -599,8 +616,8 @@ export async function importParents(
       } else {
         result.errors.push({
           row: rowNumber,
-           
-        message: "Unknown error occurred",
+
+          message: "Unknown error occurred",
         });
       }
     }

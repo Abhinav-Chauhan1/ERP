@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db";
 import { StudentsWithFilters } from "./students-with-filters";
 import { getFilterOptions } from "@/lib/actions/students-filters";
+import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
 export const metadata = {
   title: "Students - School ERP",
@@ -44,11 +45,18 @@ export default async function StudentsPage() {
             Manage student records and enrollments
           </p>
         </div>
-        <Link href="/admin/users/students/create">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <BulkImportDialog
+            defaultImportType="student"
+            classes={filterOptions.classes}
+            sections={filterOptions.sections}
+          />
+          <Link href="/admin/users/students/create">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -56,13 +56,32 @@ import {
 
 type ImportType = "student" | "teacher" | "parent";
 
-interface BulkImportDialogProps {
-  trigger?: React.ReactNode;
+interface ClassOption {
+  id: string;
+  name: string;
 }
 
-export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
+interface SectionOption {
+  id: string;
+  name: string;
+  classId: string;
+}
+
+interface BulkImportDialogProps {
+  trigger?: React.ReactNode;
+  classes?: ClassOption[];
+  sections?: SectionOption[];
+  defaultImportType?: ImportType;
+}
+
+export function BulkImportDialog({
+  trigger,
+  classes = [],
+  sections = [],
+  defaultImportType = "student"
+}: BulkImportDialogProps) {
   const [open, setOpen] = useState(false);
-  const [importType, setImportType] = useState<ImportType>("student");
+  const [importType, setImportType] = useState<ImportType>(defaultImportType);
   const [duplicateHandling, setDuplicateHandling] = useState<DuplicateHandling>("skip");
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[]>([]);
@@ -71,8 +90,25 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [currentStep, setCurrentStep] = useState<"upload" | "validate" | "import" | "result">("upload");
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Filter sections based on selected class
+  const filteredSections = useMemo(() => {
+    if (!selectedClassId) return [];
+    return sections.filter((section) => section.classId === selectedClassId);
+  }, [selectedClassId, sections]);
+
+  // Reset section when class changes
+  useEffect(() => {
+    setSelectedSectionId("");
+  }, [selectedClassId]);
+
+  // Check if classes/sections are available (for showing selectors)
+  const hasClassData = classes.length > 0;
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -111,7 +147,7 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
     try {
       const result = await validateImportData(parsedData, importType);
       setValidationErrors(result.errors);
-      
+
       if (result.valid) {
         toast.success("Validation successful! Ready to import.");
         setCurrentStep("import");
@@ -135,9 +171,15 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
     setIsImporting(true);
     try {
       let result: ImportResult;
-      
+
       if (importType === "student") {
-        result = await importStudents(parsedData, duplicateHandling);
+        // Pass selected class/section as defaults for rows that don't have them
+        result = await importStudents(
+          parsedData,
+          duplicateHandling,
+          hasClassData && selectedClassId ? selectedClassId : undefined,
+          hasClassData && selectedSectionId ? selectedSectionId : undefined
+        );
       } else if (importType === "teacher") {
         result = await importTeachers(parsedData, duplicateHandling);
       } else {
@@ -167,6 +209,8 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
     setValidationErrors([]);
     setImportResult(null);
     setCurrentStep("upload");
+    setSelectedClassId("");
+    setSelectedSectionId("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -182,36 +226,67 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
     let sampleData: string[] = [];
 
     if (importType === "student") {
-      headers = [
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "admissionId",
-        "dateOfBirth",
-        "gender",
-        "address",
-        "bloodGroup",
-        "emergencyContact",
-        "classId",
-        "sectionId",
-        "rollNumber",
-      ];
-      sampleData = [
-        "John",
-        "Doe",
-        "john.doe@example.com",
-        "+1234567890",
-        "STU001",
-        "2010-01-15",
-        "MALE",
-        "123 Main St",
-        "O+",
-        "+1234567891",
-        "class-id-here",
-        "section-id-here",
-        "1",
-      ];
+      // If class/section selectors are available, don't include classId/sectionId in template
+      // since they'll be selected via the UI
+      if (hasClassData && selectedClassId && selectedSectionId) {
+        headers = [
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "admissionId",
+          "dateOfBirth",
+          "gender",
+          "address",
+          "bloodGroup",
+          "emergencyContact",
+          "rollNumber",
+        ];
+        sampleData = [
+          "John",
+          "Doe",
+          "john.doe@example.com",
+          "+1234567890",
+          "STU001",
+          "2010-01-15",
+          "MALE",
+          "123 Main St",
+          "O+",
+          "+1234567891",
+          "1",
+        ];
+      } else {
+        headers = [
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "admissionId",
+          "dateOfBirth",
+          "gender",
+          "address",
+          "bloodGroup",
+          "emergencyContact",
+          "classId",
+          "sectionId",
+          "rollNumber",
+        ];
+        sampleData = [
+          "John",
+          "Doe",
+          "john.doe@example.com",
+          "+1234567890",
+          "STU001",
+          "2010-01-15",
+          "MALE",
+          "123 Main St",
+          "O+",
+          "+1234567891",
+          "class-id-here",
+          "section-id-here",
+          "1",
+        ];
+      }
     } else if (importType === "teacher") {
       headers = [
         "firstName",
@@ -332,6 +407,59 @@ export function BulkImportDialog({ trigger }: BulkImportDialogProps) {
                     </div>
                   </RadioGroup>
                 </div>
+
+                {/* Class/Section selectors for student imports */}
+                {importType === "student" && hasClassData && (
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4 text-blue-500" />
+                      <Label className="text-sm font-medium">Class Assignment (Optional)</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Select class and section below to apply to all imported students.
+                      You can also include classId/sectionId columns in your CSV to override this per-student.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="classSelect">Class</Label>
+                        <Select
+                          value={selectedClassId}
+                          onValueChange={setSelectedClassId}
+                        >
+                          <SelectTrigger id="classSelect">
+                            <SelectValue placeholder="Select a class..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {classes.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="sectionSelect">Section</Label>
+                        <Select
+                          value={selectedSectionId}
+                          onValueChange={setSelectedSectionId}
+                          disabled={!selectedClassId}
+                        >
+                          <SelectTrigger id="sectionSelect">
+                            <SelectValue placeholder={selectedClassId ? "Select a section..." : "Select class first"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredSections.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <Alert>
                   <Info className="h-4 w-4" />

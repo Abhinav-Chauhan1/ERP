@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getUsersOverview, getRecentUsers } from "@/lib/actions/userActions";
+import { getFilterOptions } from "@/lib/actions/students-filters";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
 export default async function UsersPage() {
-  const [overviewResult, recentUsersResult] = await Promise.all([
+  const [overviewResult, recentUsersResult, filterOptions] = await Promise.all([
     getUsersOverview(),
     getRecentUsers(10),
+    getFilterOptions(),
   ]);
 
   const overview = (overviewResult.success && overviewResult.data) ? overviewResult.data : {
@@ -23,27 +25,27 @@ export default async function UsersPage() {
   const recentUsers = (recentUsersResult.success && recentUsersResult.data) ? recentUsersResult.data : [];
 
   const usersOverview = [
-    { 
-      title: "Administrators", 
-      count: overview.administrators, 
+    {
+      title: "Administrators",
+      count: overview.administrators,
       description: "School administrators",
       href: "/admin/users/administrators",
     },
-    { 
-      title: "Teachers", 
-      count: overview.teachers, 
+    {
+      title: "Teachers",
+      count: overview.teachers,
       description: "Teaching staff members",
       href: "/admin/users/teachers",
     },
-    { 
-      title: "Students", 
-      count: overview.students, 
+    {
+      title: "Students",
+      count: overview.students,
       description: "Enrolled students",
       href: "/admin/users/students",
     },
-    { 
-      title: "Parents", 
-      count: overview.parents, 
+    {
+      title: "Parents",
+      count: overview.parents,
       description: "Student parents/guardians",
       href: "/admin/users/parents",
     }
@@ -53,7 +55,10 @@ export default async function UsersPage() {
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-          <BulkImportDialog />
+          <BulkImportDialog
+            classes={filterOptions.classes}
+            sections={filterOptions.sections}
+          />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -108,7 +113,7 @@ export default async function UsersPage() {
                         </td>
                         <td className="py-3 px-4 align-middle">{user.date}</td>
                         <td className="py-3 px-4 align-middle">
-                          <Badge 
+                          <Badge
                             className={user.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'}
                           >
                             {user.status}
