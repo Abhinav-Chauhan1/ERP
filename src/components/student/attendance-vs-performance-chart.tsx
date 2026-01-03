@@ -1,18 +1,5 @@
 "use client";
 
-import dynamic from 'next/dynamic';
-import type { ComponentType } from 'react';
-
-// Dynamically import recharts to avoid SSR issues
-const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const Line = dynamic(() => import('recharts').then(mod => mod.Line as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const Legend = dynamic(() => import('recharts').then(mod => mod.Legend as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer as unknown as ComponentType<any>), { ssr: false }) as ComponentType<any>;
-
 interface AttendancePerformanceData {
   month: string;
   year: number;
@@ -25,23 +12,6 @@ interface AttendanceVsPerformanceChartProps {
 }
 
 export function AttendanceVsPerformanceChart({ data }: AttendanceVsPerformanceChartProps) {
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="custom-tooltip bg-white p-3 border rounded-md shadow-md">
-          <p className="font-medium">{`${label}`}</p>
-          <p className="text-green-600">{`Attendance: ${payload[0].value}%`}</p>
-          {payload[1]?.value && (
-            <p className="text-blue-600">{`Performance: ${payload[1].value}%`}</p>
-          )}
-        </div>
-      );
-    }
-  
-    return null;
-  };
-
-  // If no data provided, use sample data
   const chartData = data?.length > 0 ? data : [
     { month: 'Jan', year: 2023, attendance: 95, performance: 88 },
     { month: 'Feb', year: 2023, attendance: 92, performance: 85 },
@@ -51,46 +21,71 @@ export function AttendanceVsPerformanceChart({ data }: AttendanceVsPerformanceCh
     { month: 'Jun', year: 2023, attendance: 96, performance: 90 },
   ];
 
+  const maxValue = 100;
+  const chartHeight = 200;
+  const chartWidth = chartData.length * 60;
+  const getY = (v: number) => chartHeight - (v / maxValue) * chartHeight;
+
   return (
     <div className="h-72">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis 
-            dataKey="month" 
-            tick={{ fontSize: 12 }}
-            tickMargin={10}
+      <div className="relative h-full">
+        <svg viewBox={`0 0 ${chartWidth + 40} ${chartHeight + 50}`} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+          {/* Grid lines */}
+          {[0, 25, 50, 75, 100].map((v, i) => (
+            <g key={i}>
+              <line x1="40" y1={getY(v)} x2={chartWidth + 40} y2={getY(v)} stroke="#e5e7eb" strokeWidth="1" />
+              <text x="35" y={getY(v) + 4} textAnchor="end" className="text-[10px] fill-gray-500">{v}</text>
+            </g>
+          ))}
+
+          {/* Attendance line (green) */}
+          <polyline
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth="2"
+            points={chartData.map((d, i) => `${i * 60 + 60},${getY(d.attendance)}`).join(' ')}
+            style={{ animation: 'drawLine 1s ease-out forwards' }}
           />
-          <YAxis 
-            domain={[0, 100]} 
-            tickCount={6}
-            tick={{ fontSize: 12 }}
+
+          {/* Performance line (blue) */}
+          <polyline
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="2"
+            points={chartData.filter(d => d.performance !== null).map((d, i) => `${chartData.indexOf(d) * 60 + 60},${getY(d.performance!)}`).join(' ')}
+            style={{ animation: 'drawLine 1s ease-out forwards' }}
           />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ bottom: 0 }} />
-          <Line 
-            type="monotone" 
-            dataKey="attendance" 
-            name="Attendance"
-            stroke="#22c55e" 
-            strokeWidth={2}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="performance" 
-            name="Performance"
-            stroke="#3b82f6" 
-            strokeWidth={2}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+
+          {/* Data points and labels */}
+          {chartData.map((d, i) => (
+            <g key={i}>
+              <circle cx={i * 60 + 60} cy={getY(d.attendance)} r="5" fill="#22c55e" className="transition-all hover:r-7" />
+              {d.performance !== null && (
+                <circle cx={i * 60 + 60} cy={getY(d.performance)} r="5" fill="#3b82f6" className="transition-all hover:r-7" />
+              )}
+              <text x={i * 60 + 60} y={chartHeight + 20} textAnchor="middle" className="text-[10px] fill-gray-600">{d.month}</text>
+            </g>
+          ))}
+        </svg>
+
+        {/* Legend */}
+        <div className="flex justify-center gap-6 mt-2">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-xs">Attendance</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-xs">Performance</span>
+          </div>
+        </div>
+      </div>
+      <style jsx>{`
+        @keyframes drawLine {
+          from { stroke-dashoffset: 1000; stroke-dasharray: 1000; }
+          to { stroke-dashoffset: 0; }
+        }
+      `}</style>
     </div>
   );
 }

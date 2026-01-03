@@ -17,20 +17,10 @@ import {
 import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-} from "recharts";
+  SimpleBarChart,
+  SimplePieChart,
+  SimpleLineChart,
+} from "@/components/ui/charts";
 
 export default function ReceiptAnalyticsPage() {
   const [timeRange, setTimeRange] = useState("7d");
@@ -193,15 +183,14 @@ export default function ReceiptAnalyticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={turnaroundData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
+            <SimpleBarChart
+              data={turnaroundData}
+              dataKey="count"
+              xAxisKey="range"
+              fill="#3b82f6"
+              height={300}
+              legendLabel="Receipts"
+            />
           </CardContent>
         </Card>
 
@@ -214,25 +203,13 @@ export default function ReceiptAnalyticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={rejectionReasons}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ reason, percentage }) => `${reason} (${percentage}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {rejectionReasons.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <SimplePieChart
+              data={rejectionReasons}
+              dataKey="count"
+              nameKey="reason"
+              colors={COLORS}
+              height={300}
+            />
           </CardContent>
         </Card>
 
@@ -245,18 +222,16 @@ export default function ReceiptAnalyticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="verified" stroke="#10b981" strokeWidth={2} />
-                <Line type="monotone" dataKey="rejected" stroke="#ef4444" strokeWidth={2} />
-                <Line type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            <SimpleLineChart
+              data={monthlyTrends}
+              lines={[
+                { dataKey: "verified", stroke: "#10b981", name: "Verified" },
+                { dataKey: "rejected", stroke: "#ef4444", name: "Rejected" },
+                { dataKey: "pending", stroke: "#f59e0b", name: "Pending" },
+              ]}
+              xAxisKey="month"
+              height={300}
+            />
           </CardContent>
         </Card>
 
@@ -269,15 +244,14 @@ export default function ReceiptAnalyticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={agingData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="days" label={{ value: "Days Pending", position: "insideBottom", offset: -5 }} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#f59e0b" />
-              </BarChart>
-            </ResponsiveContainer>
+            <SimpleBarChart
+              data={agingData}
+              dataKey="count"
+              xAxisKey="days"
+              fill="#f59e0b"
+              height={300}
+              legendLabel="Days Pending"
+            />
           </CardContent>
         </Card>
 
