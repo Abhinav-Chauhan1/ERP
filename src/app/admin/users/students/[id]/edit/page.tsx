@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateStudent } from "@/lib/actions/usersAction";
+import { updateStudent, updateUserPassword } from "@/lib/actions/usersAction";
 import { getStudentWithDetails } from "@/lib/actions/studentActions";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
@@ -58,6 +58,23 @@ export default function EditStudentPage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const handlePasswordUpdate = async () => {
+    try {
+      if (!newPassword) return;
+      setPasswordLoading(true);
+      await updateUserPassword(id, newPassword);
+      toast.success("Password updated successfully");
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Error updating password:", error);
+      toast.error(error.message || "Failed to update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const form = useForm<EditStudentFormData>({
     resolver: zodResolver(editStudentSchema),
@@ -84,7 +101,7 @@ export default function EditStudentPage() {
       try {
         setLoading(true);
         console.log("Fetching student with ID:", id);
-        
+
         const student = await getStudentWithDetails(id);
         console.log("Fetched student data:", student);
 
@@ -475,14 +492,49 @@ export default function EditStudentPage() {
           <CardDescription>Manage account security settings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="font-medium">Reset Password</h3>
-              <p className="text-sm text-muted-foreground">
-                Send a password reset link to the student
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-medium">Reset Password</h3>
+                <p className="text-sm text-muted-foreground">
+                  Send a password reset link to the student
+                </p>
+              </div>
+              <Button variant="outline">Send Reset Link</Button>
             </div>
-            <Button variant="outline">Send Reset Link</Button>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium">Manual Password Update</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manually set a new password for this user
+                </p>
+              </div>
+              <div className="flex items-end gap-4 max-w-md">
+                <div className="grid w-full gap-1.5">
+                  <FormLabel htmlFor="new-password">New Password</FormLabel>
+                  <Input
+                    id="new-password"
+                    type="text"
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={handlePasswordUpdate}
+                  disabled={passwordLoading || !newPassword}
+                >
+                  {passwordLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Update"
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

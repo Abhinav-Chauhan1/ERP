@@ -12,6 +12,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
+import { hashPassword } from "@/lib/password";
+import { hash } from "bcryptjs";
 
 // Helper function to create base user
 const createBaseUser = async (userData: {
@@ -593,3 +595,58 @@ export async function getUsersByRole(role: UserRole) {
     orderBy: { createdAt: 'desc' }
   });
 }
+
+// Update user password
+export async function updateUserPassword(userId: string, newPassword: string) {
+  try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+    const currentUserRole = session?.user?.role;
+
+    if (!currentUserId) {
+      throw new Error('Unauthorized');
+    }
+
+    // Only admins can change passwords for now (or the user themselves, but this action is used by admin)
+    if (currentUserRole !== UserRole.ADMIN) {
+      throw new Error('Unauthorized: Only administrators can update other users passwords');
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash the new password using our Web Crypto compatible utility
+    const hashedPassword = await hashPassword(newPassword);
+
+    // Update in database
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword
+      }
+    });
+
+    // Log the password change
+    await logUpdate(
+      currentUserId,
+      'user',
+      userId,
+      {
+        before: { passwordChanged: false },
+        after: { passwordChanged: true }
+      }
+    );
+
+    revalidatePath('/admin/users');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating password:', error);
+    throw new Error('Failed to update password');
+  }
+}
+
