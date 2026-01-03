@@ -1,8 +1,4 @@
 import bcrypt from "bcryptjs"
-import { webcrypto } from "node:crypto";
-
-const crypto = globalThis.crypto || webcrypto;
-
 
 const SALT_ROUNDS = 12
 
@@ -10,6 +6,23 @@ const SALT_ROUNDS = 12
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEY_LEN = 256;
 const PBKDF2_DIGEST = "SHA-256";
+
+// Helper to access crypto in different environments
+function getCrypto() {
+  if (typeof globalThis.crypto !== 'undefined') {
+    return globalThis.crypto;
+  }
+  // Safe fallback for Node.js environment that might not have global crypto yet
+  try {
+    // Dynamically require crypto to avoid Webpack errors in browser builds
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('crypto').webcrypto;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+const crypto = getCrypto();
 
 /**
  * Hashes a password using Web Crypto API (PBKDF2)
@@ -26,6 +39,8 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 async function hashPasswordWebCrypto(password: string): Promise<string> {
+  if (!crypto || !crypto.subtle) throw new Error("Web Crypto API not available");
+
   const enc = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
@@ -52,13 +67,15 @@ async function hashPasswordWebCrypto(password: string): Promise<string> {
   const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
 
   // Convert to hex strings for storage
-  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
-  const hashHex = Array.from(new Uint8Array(exportedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const saltHex = Array.from(salt).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(exportedKey)).map((b: number) => b.toString(16).padStart(2, '0')).join('');
 
   return `pbkdf2:${saltHex}:${hashHex}`;
 }
 
 async function verifyPasswordWebCrypto(password: string, storedHash: string): Promise<boolean> {
+  if (!crypto || !crypto.subtle) return false;
+
   const [type, saltHex, hashHex] = storedHash.split(':');
 
   if (type !== 'pbkdf2') return false;
@@ -88,7 +105,7 @@ async function verifyPasswordWebCrypto(password: string, storedHash: string): Pr
   );
 
   const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
-  const derivedHashHex = Array.from(new Uint8Array(exportedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const derivedHashHex = Array.from(new Uint8Array(exportedKey)).map((b: number) => b.toString(16).padStart(2, '0')).join('');
 
   return hashHex === derivedHashHex;
 }
