@@ -24,57 +24,87 @@ function getCrypto() {
 
 const crypto = getCrypto();
 
+// Polyfill TextEncoder if missing (paranoid check for some Node envs)
+if (typeof globalThis.TextEncoder === 'undefined') {
+  try {
+    /* eslint-disable-next-line */
+    const { TextEncoder } = require('util');
+    globalThis.TextEncoder = TextEncoder;
+  } catch (e) {
+    console.error("Failed to polyfill TextEncoder", e);
+  }
+}
+
 /**
  * Hashes a password using Web Crypto API (PBKDF2)
  * @param password - The plaintext password to hash
  * @returns Promise resolving to the hashed password string (format: salt:hash)
  */
 export async function hashPassword(password: string): Promise<string> {
+  console.log("hashPassword called");
   // Use Web Crypto API if available (Node.js 15+ or Edge Runtime)
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
+  if (typeof crypto !== 'undefined' && (crypto.subtle || (crypto as any).webcrypto?.subtle)) {
+    console.log("Using Web Crypto API");
     return hashPasswordWebCrypto(password);
   }
+  console.log("Web Crypto API not available (crypto undefined or subtle undefined). Falling back to bcrypt.");
+  console.log("Crypto type:", typeof crypto);
+  if (typeof crypto !== 'undefined') {
+    console.log("Crypto keys:", Object.keys(crypto));
+  }
+
   // Fallback to bcrypt if Web Crypto is weirdly not available (shouldn't happen in modern envs)
   return bcrypt.hash(password, SALT_ROUNDS);
 }
 
 async function hashPasswordWebCrypto(password: string): Promise<string> {
-  if (!crypto || !crypto.subtle) throw new Error("Web Crypto API not available");
+  // Access subtle from crypto or potentially webcrypto property if using node require directly returned module
+  const subtle = crypto.subtle || (crypto as any).webcrypto?.subtle;
+  if (!subtle) throw new Error("Web Crypto API not available");
 
-  const enc = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits", "deriveKey"]
-  );
+  try {
+    const enc = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    console.log("Salt generated");
 
-  const derivedKey = await crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: salt,
-      iterations: PBKDF2_ITERATIONS,
-      hash: PBKDF2_DIGEST,
-    },
-    keyMaterial,
-    { name: "HMAC", hash: PBKDF2_DIGEST, length: PBKDF2_KEY_LEN },
-    true,
-    ["sign", "verify"]
-  );
+    const keyMaterial = await subtle.importKey(
+      "raw",
+      enc.encode(password),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits", "deriveKey"]
+    );
+    console.log("Key imported");
 
-  const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
+    const derivedKey = await subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: PBKDF2_ITERATIONS,
+        hash: PBKDF2_DIGEST,
+      },
+      keyMaterial,
+      { name: "HMAC", hash: PBKDF2_DIGEST, length: PBKDF2_KEY_LEN },
+      true,
+      ["sign", "verify"]
+    );
 
-  // Convert to hex strings for storage
-  const saltHex = Array.from(salt).map((b: any) => b.toString(16).padStart(2, '0')).join('');
-  const hashHex = Array.from(new Uint8Array(exportedKey)).map((b: any) => b.toString(16).padStart(2, '0')).join('');
+    const exportedKey = await subtle.exportKey("raw", derivedKey);
 
-  return `pbkdf2:${saltHex}:${hashHex}`;
+    // Convert to hex strings for storage
+    const saltHex = Array.from(salt).map((b: any) => b.toString(16).padStart(2, '0')).join('');
+    const hashHex = Array.from(new Uint8Array(exportedKey)).map((b: any) => b.toString(16).padStart(2, '0')).join('');
+
+    return `pbkdf2:${saltHex}:${hashHex}`;
+  } catch (error) {
+    console.error("Error in hashPasswordWebCrypto:", error);
+    throw error;
+  }
 }
 
 async function verifyPasswordWebCrypto(password: string, storedHash: string): Promise<boolean> {
-  if (!crypto || !crypto.subtle) return false;
+  const subtle = crypto?.subtle || (crypto as any)?.webcrypto?.subtle;
+  if (!subtle) return false;
 
   const [type, saltHex, hashHex] = storedHash.split(':');
 
@@ -83,7 +113,7 @@ async function verifyPasswordWebCrypto(password: string, storedHash: string): Pr
   const enc = new TextEncoder();
   const salt = new Uint8Array(saltHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
 
-  const keyMaterial = await crypto.subtle.importKey(
+  const keyMaterial = await subtle.importKey(
     "raw",
     enc.encode(password),
     { name: "PBKDF2" },
@@ -91,7 +121,7 @@ async function verifyPasswordWebCrypto(password: string, storedHash: string): Pr
     ["deriveBits", "deriveKey"]
   );
 
-  const derivedKey = await crypto.subtle.deriveKey(
+  const derivedKey = await subtle.deriveKey(
     {
       name: "PBKDF2",
       salt: salt,
@@ -104,7 +134,7 @@ async function verifyPasswordWebCrypto(password: string, storedHash: string): Pr
     ["sign", "verify"]
   );
 
-  const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
+  const exportedKey = await subtle.exportKey("raw", derivedKey);
   const derivedHashHex = Array.from(new Uint8Array(exportedKey)).map((b: any) => b.toString(16).padStart(2, '0')).join('');
 
   return hashHex === derivedHashHex;

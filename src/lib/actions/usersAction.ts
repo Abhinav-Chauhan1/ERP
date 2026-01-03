@@ -646,7 +646,7 @@ export async function updateUserPassword(userId: string, newPassword: string) {
     return { success: true };
   } catch (error) {
     console.error('Error updating password:', error);
-    throw new Error('Failed to update password');
+    throw error; // Throw original error to see details in client/logs
   }
 }
 

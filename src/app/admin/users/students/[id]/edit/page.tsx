@@ -61,12 +61,17 @@ export default function EditStudentPage() {
   const [error, setError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const handlePasswordUpdate = async () => {
     try {
       if (!newPassword) return;
+      if (!userId) {
+        toast.error("User ID not found");
+        return;
+      }
       setPasswordLoading(true);
-      await updateUserPassword(id, newPassword);
+      await updateUserPassword(userId, newPassword);
       toast.success("Password updated successfully");
       setNewPassword("");
     } catch (error: any) {
@@ -108,10 +113,11 @@ export default function EditStudentPage() {
 
         if (!student) {
           console.error("Student not found with ID:", id);
-          toast.error("Student not found");
-          router.push("/admin/users/students");
+          setError("Student not found");
           return;
         }
+
+        setUserId(student.userId);
 
         form.reset({
           firstName: student.user.firstName,
@@ -119,7 +125,7 @@ export default function EditStudentPage() {
           email: student.user.email,
           phone: student.user.phone || "",
           role: UserRole.STUDENT,
-          active: student.user.active,
+          active: student.user.active ?? true,
           admissionId: student.admissionId,
           admissionDate: new Date(student.admissionDate),
           rollNumber: student.rollNumber || "",
@@ -129,16 +135,16 @@ export default function EditStudentPage() {
           bloodGroup: student.bloodGroup || "",
           emergencyContact: student.emergencyContact || "",
         });
-      } catch (error) {
-        console.error("Error fetching student:", error);
-        toast.error("Failed to load student data");
+      } catch (err) {
+        console.error("Error fetching student:", err);
+        setError("Failed to fetch student details");
       } finally {
         setLoading(false);
       }
     };
 
     fetchStudent();
-  }, [id, router, form]);
+  }, [id, form]);
 
   const onSubmit = async (data: EditStudentFormData) => {
     try {
