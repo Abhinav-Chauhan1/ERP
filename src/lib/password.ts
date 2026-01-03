@@ -15,7 +15,7 @@ function getCrypto() {
   // Safe fallback for Node.js environment that might not have global crypto yet
   try {
     // Dynamically require crypto to avoid Webpack errors in browser builds
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    /* eslint-disable-next-line */
     return require('crypto').webcrypto;
   } catch (e) {
     return undefined;
@@ -67,8 +67,8 @@ async function hashPasswordWebCrypto(password: string): Promise<string> {
   const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
 
   // Convert to hex strings for storage
-  const saltHex = Array.from(salt).map((b: number) => b.toString(16).padStart(2, '0')).join('');
-  const hashHex = Array.from(new Uint8Array(exportedKey)).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  const saltHex = Array.from(salt).map((b: any) => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(exportedKey)).map((b: any) => b.toString(16).padStart(2, '0')).join('');
 
   return `pbkdf2:${saltHex}:${hashHex}`;
 }
@@ -105,7 +105,7 @@ async function verifyPasswordWebCrypto(password: string, storedHash: string): Pr
   );
 
   const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
-  const derivedHashHex = Array.from(new Uint8Array(exportedKey)).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+  const derivedHashHex = Array.from(new Uint8Array(exportedKey)).map((b: any) => b.toString(16).padStart(2, '0')).join('');
 
   return hashHex === derivedHashHex;
 }
