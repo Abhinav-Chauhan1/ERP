@@ -14,8 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
 import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,7 +58,7 @@ export default function CreateStudentPage() {
       router.push("/admin/users/students");
     } catch (error: any) {
       console.error("Error creating student:", error);
-      
+
       let errorMessage = "Failed to create student. Please try again.";
 
       if (error instanceof Error) {
@@ -197,32 +196,13 @@ export default function CreateStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Admission Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date > new Date()}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <AnimatedDatePicker
+                          date={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date()}
+                          startYear={2000}
+                          endYear={new Date().getFullYear() + 1}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -233,32 +213,13 @@ export default function CreateStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Date of Birth</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date > new Date()}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <AnimatedDatePicker
+                          date={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date()}
+                          startYear={1950}
+                          endYear={new Date().getFullYear()}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}

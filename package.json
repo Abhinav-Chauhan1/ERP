@@ -67,6 +67,7 @@
     "csv-stringify": "6.6.0",
     "date-fns": "3.6.0",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.26",
     "ics": "3.8.1",
     "isomorphic-dompurify": "2.35.0",
     "jsbarcode": "3.12.1",

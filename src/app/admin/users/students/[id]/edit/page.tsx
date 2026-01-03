@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { DatePicker } from "@/components/ui/date-picker";
+import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
 
 // Create a standalone edit schema instead of using omit
 const editStudentSchema = z.object({
@@ -319,7 +319,7 @@ export default function EditStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Admission Date</FormLabel>
-                        <DatePicker
+                        <AnimatedDatePicker
                           date={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date()}
@@ -336,7 +336,7 @@ export default function EditStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Date of Birth</FormLabel>
-                        <DatePicker
+                        <AnimatedDatePicker
                           date={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date()}
