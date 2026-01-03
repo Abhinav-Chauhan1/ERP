@@ -26,6 +26,8 @@ interface DatePickerProps {
   disabled?: (date: Date) => boolean;
   placeholder?: string;
   className?: string;
+  startYear?: number;
+  endYear?: number;
 }
 
 export function DatePicker({
@@ -34,9 +36,21 @@ export function DatePicker({
   disabled,
   placeholder = "Select date",
   className,
+  startYear = 1900,
+  endYear = new Date().getFullYear() + 20,
 }: DatePickerProps) {
   // This state is used for the month/year navigation
   const [navMonth, setNavMonth] = React.useState<Date>(date || new Date());
+
+  // Generate years array
+  const years = React.useMemo(() => {
+    const years = [];
+    for (let i = startYear; i <= endYear; i++) {
+      years.push(i);
+    }
+    // Return reversed so most recent years are at top if desired, or sort appropriately
+    return years.sort((a, b) => b - a); // Descending order
+  }, [startYear, endYear]);
 
   return (
     <Popover>
@@ -76,10 +90,10 @@ export function DatePicker({
                   setNavMonth(newMonth);
                 }}
               >
-                <SelectTrigger className="h-8 w-[90px] px-2 py-0 text-sm">
+                <SelectTrigger className="h-8 w-[100px] px-2 py-0 text-sm">
                   <SelectValue placeholder={format(navMonth, "MMMM")} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="max-h-[200px]">
                   {Array.from({ length: 12 }, (_, i) => (
                     <SelectItem key={i} value={i.toString()}>
                       {format(new Date(navMonth.getFullYear(), i, 1), "MMMM")}
@@ -102,15 +116,12 @@ export function DatePicker({
                 <SelectTrigger className="h-8 w-[80px] px-2 py-0 text-sm">
                   <SelectValue placeholder={navMonth.getFullYear().toString()} />
                 </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 20 }, (_, i) => {
-                    const yearValue = new Date().getFullYear() - 5 + i;
-                    return (
-                      <SelectItem key={i} value={yearValue.toString()}>
-                        {yearValue}
-                      </SelectItem>
-                    );
-                  })}
+                <SelectContent position="popper" className="max-h-[200px]">
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -124,29 +135,34 @@ export function DatePicker({
             </button>
           </div>
         </div>
-        
+
         <Calendar
           mode="single"
           selected={date}
-          onSelect={onSelect}
+          onSelect={(selected) => {
+            onSelect(selected);
+            if (selected) {
+              setNavMonth(selected); // Sync nav view with selection if needed, or keeping it independent is fine. But usually good UX.
+            }
+          }}
           month={navMonth}
           onMonthChange={setNavMonth}
           initialFocus
           disabled={disabled}
           className="rounded-md border shadow"
           classNames={{
+            day_hidden: "invisible",
+            caption: "hidden",
+            nav: "hidden",
+            head_cell: "text-muted-foreground rounded-md w-9 font-normal text-xs",
+            table: "w-full border-collapse space-y-1",
+            cell: "text-center text-sm relative p-0 focus-within:relative focus-within:z-20",
+            day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground",
             day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
             day_today: "bg-accent text-accent-foreground",
             day_outside: "text-muted-foreground opacity-50",
             day_disabled: "text-muted-foreground opacity-50",
             day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-            day_hidden: "invisible",
-            caption: "hidden", // Hide the default caption since we have our own custom one
-            nav: "hidden", // Hide the default navigation since we have our own custom one
-            head_cell: "text-muted-foreground rounded-md w-9 font-normal text-xs",
-            table: "w-full border-collapse space-y-1",
-            cell: "text-center text-sm relative p-0 focus-within:relative focus-within:z-20",
-            day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground",
           }}
         />
       </PopoverContent>
