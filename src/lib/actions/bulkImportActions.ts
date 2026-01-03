@@ -3,6 +3,38 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { parse, isValid } from "date-fns";
+
+/**
+ * Helper to parse dates from various formats
+ */
+function parseImportDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+
+  // Try standard constructor first (handles ISO strings YYYY-MM-DD)
+  const date = new Date(dateStr);
+  if (isValid(date)) return date;
+
+  // Try common CSV formats
+  const formats = [
+    'd/M/yyyy',
+    'dd/MM/yyyy',
+    'M/d/yyyy',
+    'MM/dd/yyyy',
+    'dd-MM-yyyy',
+    'd-M-yyyy',
+    'yyyy/MM/dd',
+    'yyyy.MM.dd'
+  ];
+
+  const now = new Date();
+  for (const fmt of formats) {
+    const parsed = parse(dateStr, fmt, now);
+    if (isValid(parsed)) return parsed;
+  }
+
+  throw new Error(`Invalid date format: ${dateStr}. Please use YYYY-MM-DD or DD/MM/YYYY`);
+}
 
 // Types for import results
 export type ImportResult = {
@@ -192,7 +224,7 @@ export async function importStudents(
                   phone: validated.phone,
                 }
               },
-              dateOfBirth: new Date(validated.dateOfBirth),
+              dateOfBirth: parseImportDate(validated.dateOfBirth),
               gender: validated.gender,
               address: validated.address,
               bloodGroup: validated.bloodGroup,
@@ -272,7 +304,7 @@ export async function importStudents(
           },
           admissionId: validated.admissionId,
           admissionDate: new Date(),
-          dateOfBirth: new Date(validated.dateOfBirth),
+          dateOfBirth: parseImportDate(validated.dateOfBirth),
           gender: validated.gender,
           address: validated.address,
           bloodGroup: validated.bloodGroup,
@@ -391,7 +423,7 @@ export async function importTeachers(
                 }
               },
               qualification: validated.qualification,
-              joinDate: new Date(validated.joinDate),
+              joinDate: parseImportDate(validated.joinDate),
               salary: validated.salary ? parseFloat(validated.salary) : undefined,
             },
           });
@@ -432,7 +464,7 @@ export async function importTeachers(
           },
           employeeId: validated.employeeId,
           qualification: validated.qualification,
-          joinDate: new Date(validated.joinDate),
+          joinDate: parseImportDate(validated.joinDate),
           salary: validated.salary ? parseFloat(validated.salary) : undefined,
         },
       });
