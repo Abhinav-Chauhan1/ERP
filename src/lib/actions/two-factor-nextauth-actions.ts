@@ -109,8 +109,8 @@ export async function enableTwoFactor(
     }
 
     // Encrypt secret and backup codes
-    const encryptedSecret = encrypt(secret)
-    const encryptedBackupCodes = encrypt(JSON.stringify(backupCodes))
+    const encryptedSecret = await encrypt(secret)
+    const encryptedBackupCodes = await encrypt(JSON.stringify(backupCodes))
 
     // Update user in database
     await db.user.update({
@@ -161,7 +161,7 @@ export async function disableTwoFactor(token: string): Promise<TwoFactorVerifyRe
     }
 
     // Decrypt secret
-    const secret = decrypt(user.twoFactorSecret)
+    const secret = await decrypt(user.twoFactorSecret)
 
     // Verify the token
     const isValid = verifyTOTPToken(token, secret)
@@ -254,7 +254,7 @@ export async function regenerateBackupCodes(token: string): Promise<{
     }
 
     // Decrypt secret
-    const secret = decrypt(user.twoFactorSecret)
+    const secret = await decrypt(user.twoFactorSecret)
 
     // Verify the token
     const isValid = verifyTOTPToken(token, secret)
@@ -265,7 +265,7 @@ export async function regenerateBackupCodes(token: string): Promise<{
 
     // Generate new backup codes
     const backupCodes = generateBackupCodes(10)
-    const encryptedBackupCodes = encrypt(JSON.stringify(backupCodes))
+    const encryptedBackupCodes = await encrypt(JSON.stringify(backupCodes))
 
     // Update user in database
     await db.user.update({

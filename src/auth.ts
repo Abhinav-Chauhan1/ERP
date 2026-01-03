@@ -133,7 +133,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               // Import backup code verification utility
               const { verifyBackupCode, decrypt } = await import("@/lib/utils/two-factor")
 
-              const backupResult = verifyBackupCode(
+              const backupResult = await verifyBackupCode(
                 credentials.totpCode as string,
                 user.twoFactorBackupCodes
               )
@@ -152,7 +152,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 // Log backup code usage
                 const { log2FABackupCodeUsed } = await import("@/lib/services/auth-audit-service")
                 const remainingCount = backupResult.remainingCodes
-                  ? JSON.parse(decrypt(backupResult.remainingCodes)).length
+                  ? JSON.parse(await decrypt(backupResult.remainingCodes)).length
                   : 0
                 await log2FABackupCodeUsed(user.id, remainingCount)
               }

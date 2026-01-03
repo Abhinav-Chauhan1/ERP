@@ -2,8 +2,6 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { UserRole } from "@prisma/client";
-import { rateLimit, getClientIp, createRateLimitResponse } from "@/lib/utils/rate-limit";
-import { isIpWhitelisted, createIpBlockedResponse } from "@/lib/utils/ip-whitelist";
 import { checkPermissionInMiddleware } from "@/lib/utils/permission-middleware";
 
 // Use Node.js runtime instead of Edge Runtime for compatibility with bcryptjs and crypto
@@ -53,6 +51,10 @@ const apiRoutePatterns = ["/api"];
 export default auth(async (req) => {
   const session = req.auth;
   const pathname = req.nextUrl.pathname;
+
+  // Dynamic imports for Edge Runtime compatibility
+  const { rateLimit, getClientIp, createRateLimitResponse } = await import("@/lib/utils/rate-limit");
+  const { isIpWhitelisted, createIpBlockedResponse } = await import("@/lib/utils/ip-whitelist");
 
   // Get client IP for rate limiting and IP whitelisting
   const clientIp = getClientIp(req.headers);
