@@ -1,4 +1,8 @@
 import bcrypt from "bcryptjs"
+import { webcrypto } from "node:crypto";
+
+const crypto = globalThis.crypto || webcrypto;
+
 
 const SALT_ROUNDS = 12
 
