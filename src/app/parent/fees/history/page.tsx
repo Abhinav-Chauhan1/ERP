@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PaymentHistoryTable } from "@/components/parent/fees/payment-history-table";
 import { getPaymentHistory, downloadReceipt } from "@/lib/actions/parent-fee-actions";
@@ -42,7 +42,7 @@ export default function PaymentHistoryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const childId = searchParams.get("childId");
-  
+
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -58,34 +58,22 @@ export default function PaymentHistoryPage() {
     search: ""
   });
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Fetch children on mount
-  useEffect(() => {
-    fetchChildren();
-  }, []);
-  
-  // Fetch payment history when child or filters change
-  useEffect(() => {
-    if (selectedChildId) {
-      fetchPaymentHistory();
-    }
-  }, [selectedChildId, pagination.page, filters]);
-  
-  const fetchChildren = async () => {
+
+  const fetchChildren = useCallback(async () => {
     try {
       const response = await fetch("/api/parent/children");
       if (response.ok) {
         const data = await response.json();
-        
+
         // Map API response to expected format
         const mappedChildren = (data.children || []).map((child: any) => ({
           id: child.id,
           name: `${child.user.firstName} ${child.user.lastName}`,
           class: child.enrollments?.[0]?.class?.name || "N/A",
         }));
-        
+
         setChildren(mappedChildren);
-        
+
         // Set selected child
         if (childId && mappedChildren.find((c: Child) => c.id === childId)) {
           setSelectedChildId(childId);
@@ -97,11 +85,11 @@ export default function PaymentHistoryPage() {
       console.error("Error fetching children:", error);
       toast.error("Failed to load children");
     }
-  };
-  
-  const fetchPaymentHistory = async () => {
+  }, [childId]);
+
+  const fetchPaymentHistory = useCallback(async () => {
     if (!selectedChildId) return;
-    
+
     setIsLoading(true);
     try {
       const result = await getPaymentHistory({
@@ -111,7 +99,7 @@ export default function PaymentHistoryPage() {
         status: filters.status ? filters.status as any : undefined,
         paymentMethod: filters.paymentMethod ? filters.paymentMethod as any : undefined,
       });
-      
+
       if (result.success && result.data) {
         setPayments(result.data.payments);
         setPagination(result.data.pagination);
@@ -124,18 +112,30 @@ export default function PaymentHistoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-  
+  }, [selectedChildId, pagination.page, pagination.limit, filters.status, filters.paymentMethod]);
+
+  // Fetch children on mount
+  useEffect(() => {
+    fetchChildren();
+  }, [fetchChildren]);
+
+  // Fetch payment history when child or filters change
+  useEffect(() => {
+    if (selectedChildId) {
+      fetchPaymentHistory();
+    }
+  }, [selectedChildId, fetchPaymentHistory]);
+
   const handleChildChange = (newChildId: string) => {
     setSelectedChildId(newChildId);
     router.push(`/parent/fees/history?childId=${newChildId}`);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
-  
+
   const handlePageChange = (newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
-  
+
   const handleFilterChange = (newFilters: {
     status?: string;
     paymentMethod?: string;
@@ -144,16 +144,16 @@ export default function PaymentHistoryPage() {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setPagination(prev => ({ ...prev, page: 1 }));
   };
-  
+
   const handleDownloadReceipt = async (paymentId: string) => {
     if (!selectedChildId) return;
-    
+
     try {
       const result = await downloadReceipt({
         paymentId,
         childId: selectedChildId
       });
-      
+
       if (result.success) {
         toast.success("Receipt downloaded successfully");
         // In a real implementation, this would trigger a PDF download
@@ -166,7 +166,7 @@ export default function PaymentHistoryPage() {
       toast.error("Failed to download receipt");
     }
   };
-  
+
   if (isLoading && payments.length === 0) {
     return (
       <div className="h-full p-6 space-y-6">
@@ -181,7 +181,7 @@ export default function PaymentHistoryPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
@@ -190,7 +190,7 @@ export default function PaymentHistoryPage() {
           <h1 className="text-2xl font-bold">Payment History</h1>
           <p className="text-gray-600 mt-1">View all past payments and receipts</p>
         </div>
-        
+
         {/* Child Selector */}
         {children.length > 1 && (
           <Select value={selectedChildId} onValueChange={handleChildChange}>
@@ -207,7 +207,7 @@ export default function PaymentHistoryPage() {
           </Select>
         )}
       </div>
-      
+
       {/* Payment History Table */}
       <PaymentHistoryTable
         payments={payments}

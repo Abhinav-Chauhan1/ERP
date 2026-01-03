@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
+import {
   ChevronLeft, Plus, Trash2, Search, Check, X, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,11 +23,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 
-import { 
-  getSubjectById, 
-  getTeachersForAssignment, 
-  assignTeacherToSubject, 
-  removeTeacherFromSubject 
+import {
+  getSubjectById,
+  getTeachersForAssignment,
+  assignTeacherToSubject,
+  removeTeacherFromSubject
 } from "@/lib/actions/subjectTeacherActions";
 
 export default function AssignTeacherToSubjectPage() {
@@ -45,21 +45,17 @@ export default function AssignTeacherToSubjectPage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, [subjectId]);
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Get subject details with assigned teachers
       const subjectResult = await getSubjectById(subjectId);
-      
+
       if (subjectResult.success && subjectResult.data) {
         setSubject(subjectResult.data);
-        
+
         if (subjectResult.data.teachers) {
           setAssignedTeachers(subjectResult.data.teachers);
         }
@@ -68,16 +64,16 @@ export default function AssignTeacherToSubjectPage() {
         toast.error(subjectResult.error || "Failed to fetch subject details");
         return;
       }
-      
+
       // Get available teachers for assignment
       const teachersResult = await getTeachersForAssignment(subjectId);
-      
+
       if (teachersResult.success) {
         setAvailableTeachers(teachersResult.data || []);
       } else {
         toast.error(teachersResult.error || "Failed to fetch available teachers");
       }
-      
+
     } catch (err) {
       console.error(err);
       setError("An unexpected error occurred");
@@ -85,12 +81,16 @@ export default function AssignTeacherToSubjectPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [subjectId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   async function handleAssignTeacher(teacherId: string) {
     try {
       const result = await assignTeacherToSubject(subjectId, teacherId);
-      
+
       if (result.success) {
         toast.success("Teacher assigned successfully");
         fetchData(); // Refresh data
@@ -106,10 +106,10 @@ export default function AssignTeacherToSubjectPage() {
 
   async function handleRemoveTeacher() {
     if (!selectedTeacherId) return;
-    
+
     try {
       const result = await removeTeacherFromSubject(subjectId, selectedTeacherId);
-      
+
       if (result.success) {
         toast.success("Teacher removed successfully");
         fetchData(); // Refresh data
@@ -125,7 +125,7 @@ export default function AssignTeacherToSubjectPage() {
   }
 
   // Filter available teachers based on search term
-  const filteredTeachers = availableTeachers.filter(teacher => 
+  const filteredTeachers = availableTeachers.filter(teacher =>
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     teacher.department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -159,9 +159,9 @@ export default function AssignTeacherToSubjectPage() {
             <div className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search teachers..." 
-                  className="pl-9" 
+                <Input
+                  placeholder="Search teachers..."
+                  className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -173,8 +173,8 @@ export default function AssignTeacherToSubjectPage() {
                   </div>
                 ) : (
                   filteredTeachers.map(teacher => (
-                    <div 
-                      key={teacher.id} 
+                    <div
+                      key={teacher.id}
                       className="flex items-center justify-between p-2 hover:bg-accent/50 rounded-md cursor-pointer"
                       onClick={() => handleAssignTeacher(teacher.id)}
                     >
@@ -222,7 +222,7 @@ export default function AssignTeacherToSubjectPage() {
                 {subject?.name} {subject?.code && `(${subject.code})`}
               </CardTitle>
               <CardDescription>
-                {subject?.department 
+                {subject?.department
                   ? `Department: ${subject.department}`
                   : "Manage teacher assignments for this subject"}
               </CardDescription>
@@ -241,8 +241,8 @@ export default function AssignTeacherToSubjectPage() {
               ) : (
                 <div className="space-y-2">
                   {assignedTeachers.map(teacher => (
-                    <div 
-                      key={teacher.id} 
+                    <div
+                      key={teacher.id}
                       className="flex items-center justify-between p-3 border rounded-md"
                     >
                       <div className="flex items-center gap-3">
@@ -262,9 +262,9 @@ export default function AssignTeacherToSubjectPage() {
                           </p>
                         </div>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-red-500"
                         onClick={() => {
                           setSelectedTeacherId(teacher.id);

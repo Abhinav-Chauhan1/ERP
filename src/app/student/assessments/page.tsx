@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { UserRole } from "@prisma/client";
+import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,23 +19,23 @@ export const metadata: Metadata = {
 
 export default async function AssessmentsPage() {
   // Use currentUser directly instead of getCurrentUserDetails which is causing the error
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -191,7 +192,7 @@ export default async function AssessmentsPage() {
           Exams, assignments, and results
         </p>
       </div>
-      
+
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {assessmentStats.map((stat) => (
@@ -215,7 +216,7 @@ export default async function AssessmentsPage() {
           </Card>
         ))}
       </div>
-      
+
       {/* Navigation Cards */}
       <div className="grid gap-4 md:grid-cols-2">
         {assessmentLinks.map((item) => (

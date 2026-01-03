@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { NotificationCenter } from "@/components/shared/notification-center";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { StudentSidebar } from "./student-sidebar";
 
@@ -43,6 +44,9 @@ export function StudentHeader() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0" aria-label="Navigation menu">
+            <VisuallyHidden>
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </VisuallyHidden>
             <StudentSidebar />
           </SheetContent>
         </Sheet>

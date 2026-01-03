@@ -225,18 +225,18 @@ export function ChildDetailTabs({ childDetails }: ChildDetailTabsProps) {
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-md bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Total Fees</p>
-                  <p className="font-medium">${childDetails.feeStats.totalFees.toFixed(2)}</p>
+                  <p className="font-medium">₹{childDetails.feeStats.totalFees.toFixed(2)}</p>
                 </div>
                 <div className="rounded-md bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Paid</p>
-                  <p className="font-medium text-green-600">${childDetails.feeStats.paidAmount.toFixed(2)}</p>
+                  <p className="font-medium text-green-600">₹{childDetails.feeStats.paidAmount.toFixed(2)}</p>
                 </div>
               </div>
               
               {childDetails.feeStats.pendingAmount > 0 && (
                 <div className="bg-amber-50 p-3 rounded-md">
                   <p className="text-xs text-amber-700">Pending Payment</p>
-                  <p className="font-medium text-amber-700">${childDetails.feeStats.pendingAmount.toFixed(2)}</p>
+                  <p className="font-medium text-amber-700">₹{childDetails.feeStats.pendingAmount.toFixed(2)}</p>
                 </div>
               )}
               
@@ -432,16 +432,16 @@ export function ChildDetailTabs({ childDetails }: ChildDetailTabsProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded-md p-4">
                 <p className="text-sm text-gray-500">Total Fee Amount</p>
-                <p className="text-xl font-bold">${childDetails.feeStats.totalFees.toFixed(2)}</p>
+                <p className="text-xl font-bold">₹{childDetails.feeStats.totalFees.toFixed(2)}</p>
               </div>
               <div className="bg-green-50 rounded-md p-4">
                 <p className="text-sm text-gray-500">Amount Paid</p>
-                <p className="text-xl font-bold text-green-600">${childDetails.feeStats.paidAmount.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600">₹{childDetails.feeStats.paidAmount.toFixed(2)}</p>
               </div>
               <div className={`rounded-md p-4 ${childDetails.feeStats.pendingAmount > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
                 <p className="text-sm text-gray-500">Pending Amount</p>
                 <p className={`text-xl font-bold ${childDetails.feeStats.pendingAmount > 0 ? 'text-amber-600' : ''}`}>
-                  ${childDetails.feeStats.pendingAmount.toFixed(2)}
+                  ₹{childDetails.feeStats.pendingAmount.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -464,7 +464,7 @@ export function ChildDetailTabs({ childDetails }: ChildDetailTabsProps) {
                       <TableRow key={payment.id}>
                         <TableCell>{format(new Date(payment.paymentDate), "MMM d, yyyy")}</TableCell>
                         <TableCell>{payment.receiptNumber || "-"}</TableCell>
-                        <TableCell>${payment.paidAmount.toFixed(2)}</TableCell>
+                        <TableCell>₹{payment.paidAmount.toFixed(2)}</TableCell>
                         <TableCell>{formatPaymentMethod(payment.paymentMethod)}</TableCell>
                         <TableCell>
                           <Badge

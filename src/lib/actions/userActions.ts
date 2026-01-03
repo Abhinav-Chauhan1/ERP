@@ -68,7 +68,6 @@ export async function getAllUsers(role?: UserRole) {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
-        clerkId: true,
         firstName: true,
         lastName: true,
         email: true,

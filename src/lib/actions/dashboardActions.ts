@@ -107,7 +107,7 @@ export async function getTodaysAttendance() {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -348,8 +348,8 @@ export async function getEnrollmentDistribution() {
     });
 
     const data = classes.map((cls) => ({
-      grade: cls.name,
-      students: cls._count.enrollments,
+      name: cls.name,
+      value: cls._count.enrollments,
     }));
 
     return { success: true, data };

@@ -43,13 +43,31 @@ export const updateNotificationPreferencesSchema = z.object({
   emailNotifications: z.boolean().optional(),
   smsNotifications: z.boolean().optional(),
   pushNotifications: z.boolean().optional(),
+  whatsappNotifications: z.boolean().optional(),
   feeReminders: z.boolean().optional(),
   attendanceAlerts: z.boolean().optional(),
   examResultNotifications: z.boolean().optional(),
   announcementNotifications: z.boolean().optional(),
   meetingReminders: z.boolean().optional(),
-  preferredContactMethod: z.enum(["EMAIL", "SMS", "BOTH"]).optional(),
+  preferredContactMethod: z.enum(["EMAIL", "SMS", "WHATSAPP", "EMAIL_AND_SMS", "EMAIL_AND_WHATSAPP", "SMS_AND_WHATSAPP", "ALL", "BOTH"]).optional(),
   notificationFrequency: z.enum(["IMMEDIATE", "DAILY_DIGEST", "WEEKLY_DIGEST"]).optional(),
+  whatsappOptIn: z.boolean().optional(),
+  whatsappNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid WhatsApp number format. Use E.164 format (e.g., +919876543210)").optional().nullable(),
+  preferredLanguage: z.string().min(2, "Language code must be at least 2 characters").max(5, "Language code must be less than 5 characters").optional(),
+}).refine((data) => {
+  // Validate that WhatsApp number is provided if WhatsApp is selected as contact method
+  const whatsappSelected = data.preferredContactMethod === "WHATSAPP" || 
+                           data.preferredContactMethod === "EMAIL_AND_WHATSAPP" || 
+                           data.preferredContactMethod === "SMS_AND_WHATSAPP" || 
+                           data.preferredContactMethod === "ALL";
+  
+  if (whatsappSelected && !data.whatsappNumber) {
+    return false;
+  }
+  return true;
+}, {
+  message: "WhatsApp number is required when WhatsApp is selected as a contact method",
+  path: ["whatsappNumber"],
 });
 
 export type UpdateNotificationPreferencesInput = z.infer<typeof updateNotificationPreferencesSchema>;

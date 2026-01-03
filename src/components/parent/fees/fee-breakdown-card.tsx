@@ -103,7 +103,7 @@ export function FeeBreakdownCard({
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Payment Overdue</AlertTitle>
             <AlertDescription>
-              You have ${overdueAmount.toFixed(2)} in overdue fees. Please make a payment as soon as possible.
+              You have ₹{overdueAmount.toFixed(2)} in overdue fees. Please make a payment as soon as possible.
             </AlertDescription>
           </Alert>
         )}
@@ -112,23 +112,23 @@ export function FeeBreakdownCard({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">Total Fees</p>
-            <p className="text-lg font-bold">${totalFees.toFixed(2)}</p>
+            <p className="text-lg font-bold">₹{totalFees.toFixed(2)}</p>
           </div>
 
           <div className="bg-green-50 p-3 rounded-lg">
             <p className="text-xs text-green-600 mb-1">Paid Amount</p>
-            <p className="text-lg font-bold text-green-700">${paidAmount.toFixed(2)}</p>
+            <p className="text-lg font-bold text-green-700">₹{paidAmount.toFixed(2)}</p>
           </div>
 
           <div className="bg-blue-50 p-3 rounded-lg">
             <p className="text-xs text-blue-600 mb-1">Pending</p>
-            <p className="text-lg font-bold text-blue-700">${pendingAmount.toFixed(2)}</p>
+            <p className="text-lg font-bold text-blue-700">₹{pendingAmount.toFixed(2)}</p>
           </div>
 
           {overdueAmount > 0 && (
             <div className="bg-red-50 p-3 rounded-lg">
               <p className="text-xs text-red-600 mb-1">Overdue</p>
-              <p className="text-lg font-bold text-red-700">${overdueAmount.toFixed(2)}</p>
+              <p className="text-lg font-bold text-red-700">₹{overdueAmount.toFixed(2)}</p>
             </div>
           )}
         </div>
@@ -170,12 +170,12 @@ export function FeeBreakdownCard({
                     {getStatusBadge(item.status)}
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>Amount: ${item.amount.toFixed(2)}</span>
+                    <span>Amount: ₹{item.amount.toFixed(2)}</span>
                     {item.paidAmount > 0 && (
-                      <span className="text-green-600">Paid: ${item.paidAmount.toFixed(2)}</span>
+                      <span className="text-green-600">Paid: ₹{item.paidAmount.toFixed(2)}</span>
                     )}
                     {item.balance > 0 && (
-                      <span className="text-red-600">Balance: ${item.balance.toFixed(2)}</span>
+                      <span className="text-red-600">Balance: ₹{item.balance.toFixed(2)}</span>
                     )}
                     {item.dueDate && (
                       <span>Due: {format(item.dueDate, "MMM d, yyyy")}</span>

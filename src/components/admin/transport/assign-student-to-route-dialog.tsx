@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -65,12 +65,24 @@ export function AssignStudentToRouteDialog({
     },
   });
 
+  const loadStudents = useCallback(async (search?: string) => {
+    try {
+      setSearching(true);
+      const availableStudents = await getAvailableStudentsForRoute(routeId, search);
+      setStudents(availableStudents);
+    } catch (error) {
+      toast.error("Failed to load students");
+    } finally {
+      setSearching(false);
+    }
+  }, [routeId]);
+
   // Load available students when dialog opens
   useEffect(() => {
     if (open) {
       loadStudents();
     }
-  }, [open]);
+  }, [open, loadStudents]);
 
   // Search students with debounce
   useEffect(() => {
@@ -81,19 +93,7 @@ export function AssignStudentToRouteDialog({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, open]);
-
-  const loadStudents = async (search?: string) => {
-    try {
-      setSearching(true);
-      const availableStudents = await getAvailableStudentsForRoute(routeId, search);
-      setStudents(availableStudents);
-    } catch (error) {
-      toast.error("Failed to load students");
-    } finally {
-      setSearching(false);
-    }
-  };
+  }, [searchQuery, open, loadStudents]);
 
   const onSubmit = async (data: z.infer<typeof studentRouteSchema>) => {
     try {

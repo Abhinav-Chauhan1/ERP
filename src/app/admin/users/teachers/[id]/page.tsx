@@ -167,7 +167,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
                     <p className="text-sm text-muted-foreground">Salary</p>
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <p className="font-medium">${teacher.salary.toFixed(2)}</p>
+                      <p className="font-medium">₹{teacher.salary.toFixed(2)}</p>
                     </div>
                   </div>
                 )}
@@ -322,10 +322,10 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
                             <td className="py-3 px-4 align-middle font-medium">
                               {monthName} {payroll.year}
                             </td>
-                            <td className="py-3 px-4 align-middle">${payroll.basicSalary.toFixed(2)}</td>
-                            <td className="py-3 px-4 align-middle">${payroll.allowances.toFixed(2)}</td>
-                            <td className="py-3 px-4 align-middle">-${payroll.deductions.toFixed(2)}</td>
-                            <td className="py-3 px-4 align-middle font-semibold">${payroll.netSalary.toFixed(2)}</td>
+                            <td className="py-3 px-4 align-middle">₹{payroll.basicSalary.toFixed(2)}</td>
+                            <td className="py-3 px-4 align-middle">₹{payroll.allowances.toFixed(2)}</td>
+                            <td className="py-3 px-4 align-middle">-₹{payroll.deductions.toFixed(2)}</td>
+                            <td className="py-3 px-4 align-middle font-semibold">₹{payroll.netSalary.toFixed(2)}</td>
                             <td className="py-3 px-4 align-middle">
                               <Badge 
                                 className={

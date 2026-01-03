@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,11 +41,7 @@ export default function HostelFeesPage() {
   const [otherCharges, setOtherCharges] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
 
-  useEffect(() => {
-    loadFees();
-  }, [statusFilter]);
-
-  const loadFees = async () => {
+  const loadFees = useCallback(async () => {
     setLoading(true);
     try {
       const status = statusFilter === "all" ? undefined : statusFilter;
@@ -61,7 +57,11 @@ export default function HostelFeesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    loadFees();
+  }, [loadFees]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

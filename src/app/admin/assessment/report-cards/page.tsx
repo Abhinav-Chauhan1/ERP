@@ -1,12 +1,12 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Search, Download, FileText, 
-  Printer, Mail, Eye, Filter, Loader2, 
-  AlertCircle, CheckCircle
+import {
+  ChevronLeft, Search, Download, FileText,
+  Printer, Mail, Eye, Filter, Loader2,
+  AlertCircle, CheckCircle, Settings
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -32,21 +31,20 @@ import { format } from "date-fns";
 
 // Import schema validation and server actions
 import { reportCardRemarksSchema, ReportCardRemarksValues } from "@/lib/schemaValidation/reportCardsSchemaValidation";
-import { 
-  getReportCards, 
-  getReportCardById, 
+import {
+  getReportCards,
+  getReportCardById,
   getReportCardFilters,
-  generateReportCard,
   updateReportCardRemarks,
   publishReportCard,
+  batchPublishReportCards,
   calculateClassRanks,
-  getStudentsForReportCard
 } from "@/lib/actions/reportCardsActions";
 
 export default function ReportCardsPage() {
   const [viewReportCardDialogOpen, setViewReportCardDialogOpen] = useState(false);
   const [addRemarksDialogOpen, setAddRemarksDialogOpen] = useState(false);
-  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [selectedReportCard, setSelectedReportCard] = useState<any>(null);
   const [reportCards, setReportCards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +55,11 @@ export default function ReportCardsPage() {
   const [classFilter, setClassFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewTab, setViewTab] = useState("published");
+  const [sendNotification, setSendNotification] = useState(true);
   const [filterOptions, setFilterOptions] = useState<any>({
     terms: [],
     classes: []
   });
-  const [students, setStudents] = useState<any[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const remarksForm = useForm<ReportCardRemarksValues>({
     resolver: zodResolver(reportCardRemarksSchema),
@@ -73,23 +70,10 @@ export default function ReportCardsPage() {
     },
   });
 
-  const generateForm = useForm({
-    defaultValues: {
-      studentId: "",
-      termId: "",
-      sendNotification: false
-    }
-  });
-
-  useEffect(() => {
-    fetchReportCards();
-    fetchFilterOptions();
-  }, [viewTab]);
-
-  async function fetchFilterOptions() {
+  const fetchFilterOptions = useCallback(async () => {
     try {
       const result = await getReportCardFilters();
-      
+
       if (result.success) {
         setFilterOptions(result.data);
       } else {
@@ -99,22 +83,22 @@ export default function ReportCardsPage() {
       console.error("Error fetching filter options:", err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
 
-  async function fetchReportCards() {
+  const fetchReportCards = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const published = viewTab === "published" ? true : 
-                       viewTab === "draft" ? false : undefined;
-      
+      const published = viewTab === "published" ? true :
+        viewTab === "draft" ? false : undefined;
+
       const result = await getReportCards({
         published,
         termId: termFilter !== "all" ? termFilter : undefined,
         classId: classFilter !== "all" ? classFilter : undefined
       });
-      
+
       if (result.success) {
         setReportCards(result.data || []);
       } else {
@@ -128,33 +112,41 @@ export default function ReportCardsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [viewTab, termFilter, classFilter]);
 
-  async function fetchStudents() {
-    setLoadingStudents(true);
+  useEffect(() => {
+    fetchReportCards();
+    fetchFilterOptions();
+  }, [fetchReportCards, fetchFilterOptions]);
+
+  async function handleCalculateRanks() {
+    if (termFilter === "all" || classFilter === "all") {
+      toast.error("Please select both a term and a class to calculate ranks");
+      return;
+    }
+
     try {
-      const result = await getStudentsForReportCard();
-      
+      const result = await calculateClassRanks(termFilter, classFilter);
+
       if (result.success) {
-        setStudents(result.data || []);
+        toast.success("Class ranks calculated successfully");
+        fetchReportCards();
       } else {
-        toast.error(result.error || "Failed to fetch students");
+        toast.error(result.error || "Failed to calculate ranks");
       }
     } catch (err) {
-      console.error("Error fetching students:", err);
+      console.error("Error calculating ranks:", err);
       toast.error("An unexpected error occurred");
-    } finally {
-      setLoadingStudents(false);
     }
   }
 
   async function handleViewReportCard(id: string) {
     setDetailsLoading(true);
     setSelectedReportCard(null);
-    
+
     try {
       const result = await getReportCardById(id);
-      
+
       if (result.success) {
         setSelectedReportCard(result.data);
         setViewReportCardDialogOpen(true);
@@ -179,16 +171,25 @@ export default function ReportCardsPage() {
     setAddRemarksDialogOpen(true);
   }
 
-  async function handlePublishReportCard(id: string, sendNotification = false) {
+  function handleOpenPublishDialog(reportCard: any) {
+    setSelectedReportCard(reportCard);
+    setSendNotification(true);
+    setPublishDialogOpen(true);
+  }
+
+  async function handlePublishReportCard() {
+    if (!selectedReportCard) return;
+
     try {
       const result = await publishReportCard({
-        id,
+        id: selectedReportCard.id,
         sendNotification
       });
-      
+
       if (result.success) {
         toast.success("Report card published successfully");
         fetchReportCards();
+        setPublishDialogOpen(false);
         setViewReportCardDialogOpen(false);
       } else {
         toast.error(result.error || "Failed to publish report card");
@@ -199,66 +200,10 @@ export default function ReportCardsPage() {
     }
   }
 
-  async function handleGenerateReportCard() {
-    try {
-      const values = generateForm.getValues();
-      
-      if (!values.studentId || !values.termId) {
-        toast.error("Please select a student and term");
-        return;
-      }
-      
-      const result = await generateReportCard(values.studentId, values.termId);
-      
-      if (result.success) {
-        toast.success("Report card generated successfully");
-        setGenerateDialogOpen(false);
-        generateForm.reset();
-        fetchReportCards();
-      } else {
-        toast.error(result.error || "Failed to generate report card");
-      }
-    } catch (err) {
-      console.error("Error generating report card:", err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
-  async function handleCalculateRanks() {
-    if (termFilter === "all" || classFilter === "all") {
-      toast.error("Please select both a term and a class to calculate ranks");
-      return;
-    }
-    
-    try {
-      const result = await calculateClassRanks(termFilter, classFilter);
-      
-      if (result.success) {
-        toast.success("Class ranks calculated successfully");
-        fetchReportCards();
-      } else {
-        toast.error(result.error || "Failed to calculate ranks");
-      }
-    } catch (err) {
-      console.error("Error calculating ranks:", err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
-  function handleOpenGenerateDialog() {
-    generateForm.reset({
-      studentId: "",
-      termId: "",
-      sendNotification: false
-    });
-    fetchStudents();
-    setGenerateDialogOpen(true);
-  }
-
   async function onRemarksSubmit(values: ReportCardRemarksValues) {
     try {
       const result = await updateReportCardRemarks(values);
-      
+
       if (result.success) {
         toast.success("Remarks updated successfully");
         setAddRemarksDialogOpen(false);
@@ -278,7 +223,7 @@ export default function ReportCardsPage() {
       const isPublished = statusFilter === "published";
       if (rc.isPublished !== isPublished) return false;
     }
-    
+
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       return (
@@ -287,7 +232,7 @@ export default function ReportCardsPage() {
         rc.grade.toLowerCase().includes(lowerSearch)
       );
     }
-    
+
     return true;
   });
 
@@ -307,9 +252,16 @@ export default function ReportCardsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Report Cards</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleOpenGenerateDialog}>
-            <FileText className="mr-2 h-4 w-4" /> Generate Report Card
-          </Button>
+          <Link href="/admin/assessment/report-cards/templates">
+            <Button variant="outline">
+              <Settings className="mr-2 h-4 w-4" /> Manage Templates
+            </Button>
+          </Link>
+          <Link href="/admin/assessment/report-cards/generate">
+            <Button variant="outline">
+              <FileText className="mr-2 h-4 w-4" /> Generate Report Card
+            </Button>
+          </Link>
           <Button variant="outline" onClick={handleCalculateRanks}>
             Calculate Ranks
           </Button>
@@ -332,11 +284,11 @@ export default function ReportCardsPage() {
               <label htmlFor="search" className="text-sm font-medium block mb-1">Search</label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  id="search" 
-                  placeholder="Search by student name or ID..." 
-                  className="pl-9" 
-                  value={searchTerm} 
+                <Input
+                  id="search"
+                  placeholder="Search by student name or ID..."
+                  className="pl-9"
+                  value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
@@ -426,9 +378,9 @@ export default function ReportCardsPage() {
                             <div className="flex items-center gap-1.5">
                               <Badge className={
                                 reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                                reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
-                                reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                "bg-red-100 text-red-800"
+                                  reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
+                                    reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                      "bg-red-100 text-red-800"
                               }>
                                 {reportCard.overallGrade || "-"}
                               </Badge>
@@ -441,9 +393,9 @@ export default function ReportCardsPage() {
                             {reportCard.publishDate && format(new Date(reportCard.publishDate), 'MMM d, yyyy')}
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleViewReportCard(reportCard.id)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
@@ -511,9 +463,9 @@ export default function ReportCardsPage() {
                             <div className="flex items-center gap-1.5">
                               <Badge className={
                                 reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                                reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
-                                reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                "bg-red-100 text-red-800"
+                                  reportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
+                                    reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                      "bg-red-100 text-red-800"
                               }>
                                 {reportCard.overallGrade || "-"}
                               </Badge>
@@ -528,25 +480,25 @@ export default function ReportCardsPage() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleViewReportCard(reportCard.id)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleAddRemarks(reportCard)}
                             >
                               Add Remarks
                             </Button>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
-                              onClick={() => handlePublishReportCard(reportCard.id)}
+                              onClick={() => handleOpenPublishDialog(reportCard)}
                             >
                               Publish
                             </Button>
@@ -579,7 +531,7 @@ export default function ReportCardsPage() {
               {selectedReportCard?.grade} | {selectedReportCard?.section} | {selectedReportCard?.term}
             </DialogDescription>
           </DialogHeader>
-          
+
           {detailsLoading ? (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -598,9 +550,9 @@ export default function ReportCardsPage() {
                     <p className="text-sm">Term: {selectedReportCard.term}</p>
                     <p className="text-sm">Academic Year: {selectedReportCard.academicYear}</p>
                     <p className="text-sm">Generated on: {
-                      selectedReportCard.publishDate 
-                      ? format(new Date(selectedReportCard.publishDate), 'MMM d, yyyy') 
-                      : "Not issued yet"
+                      selectedReportCard.publishDate
+                        ? format(new Date(selectedReportCard.publishDate), 'MMM d, yyyy')
+                        : "Not issued yet"
                     }</p>
                   </div>
                 </div>
@@ -614,15 +566,15 @@ export default function ReportCardsPage() {
                       <span className="text-sm">Overall Grade:</span>
                       <Badge className={
                         selectedReportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                        selectedReportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
-                        selectedReportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                        "bg-red-100 text-red-800"
+                          selectedReportCard.overallGrade?.startsWith('B') ? "bg-primary/10 text-primary" :
+                            selectedReportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                              "bg-red-100 text-red-800"
                       }>
                         {selectedReportCard.overallGrade || "-"}
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="border rounded-lg p-4">
                       <p className="text-sm text-muted-foreground">Overall Percentage</p>
@@ -638,7 +590,7 @@ export default function ReportCardsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-medium mb-2">Subject Results</h3>
                   <div className="rounded-md border overflow-hidden">
@@ -663,9 +615,9 @@ export default function ReportCardsPage() {
                               <td className="py-3 px-4">
                                 <Badge className={
                                   result.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                                  result.grade.startsWith('B') ? "bg-primary/10 text-primary" :
-                                  result.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
+                                    result.grade.startsWith('B') ? "bg-primary/10 text-primary" :
+                                      result.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                        "bg-red-100 text-red-800"
                                 }>
                                   {result.grade}
                                 </Badge>
@@ -683,7 +635,7 @@ export default function ReportCardsPage() {
                     </table>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium mb-2">Teacher's Remarks</h3>
@@ -693,7 +645,7 @@ export default function ReportCardsPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium mb-2">Principal's Remarks</h3>
                     <div className="border rounded-lg p-4">
@@ -710,7 +662,7 @@ export default function ReportCardsPage() {
               No details available
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewReportCardDialogOpen(false)}>
               Close
@@ -720,7 +672,7 @@ export default function ReportCardsPage() {
               Print Report Card
             </Button>
             {selectedReportCard && !selectedReportCard.isPublished && (
-              <Button onClick={() => handlePublishReportCard(selectedReportCard.id)}>
+              <Button onClick={() => handleOpenPublishDialog(selectedReportCard)}>
                 Publish
               </Button>
             )}
@@ -728,9 +680,62 @@ export default function ReportCardsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Publish Confirmation Dialog */}
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish Report Card</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to publish this report card? Once published, it will be visible to the student and their parents.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="sendNotification"
+                checked={sendNotification}
+                onChange={(e) => setSendNotification(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300"
+              />
+              <div className="flex-1">
+                <label htmlFor="sendNotification" className="text-sm font-medium cursor-pointer">
+                  Send notification to student and parents
+                </label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  An in-app notification will be sent to inform them that the report card is now available.
+                </p>
+              </div>
+            </div>
+
+            {selectedReportCard && (
+              <div className="rounded-lg border p-4 bg-muted/50">
+                <h4 className="text-sm font-medium mb-2">Report Card Details</h4>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-muted-foreground">Student:</span> {selectedReportCard.studentName}</p>
+                  <p><span className="text-muted-foreground">Term:</span> {selectedReportCard.term}</p>
+                  <p><span className="text-muted-foreground">Grade:</span> {selectedReportCard.overallGrade} ({selectedReportCard.percentage?.toFixed(1)}%)</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePublishReportCard}>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Publish Report Card
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Remarks Dialog */}
       <Dialog open={addRemarksDialogOpen} onOpenChange={setAddRemarksDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add Remarks</DialogTitle>
             <DialogDescription>
@@ -746,17 +751,23 @@ export default function ReportCardsPage() {
                   <FormItem>
                     <FormLabel>Teacher's Remarks</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Comments on student's performance, areas of improvement, etc."
                         rows={4}
+                        maxLength={500}
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="flex justify-between items-center">
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">
+                        {field.value?.length || 0}/500 characters
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={remarksForm.control}
                 name="principalRemarks"
@@ -764,119 +775,46 @@ export default function ReportCardsPage() {
                   <FormItem>
                     <FormLabel>Principal's Remarks</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Principal's comments and recommendations"
                         rows={4}
+                        maxLength={500}
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="flex justify-between items-center">
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">
+                        {field.value?.length || 0}/500 characters
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
-                <Button variant="outline" onClick={() => setAddRemarksDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAddRemarksDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  Save Remarks
+                <Button type="submit" disabled={remarksForm.formState.isSubmitting}>
+                  {remarksForm.formState.isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Remarks"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
-
-      {/* Generate Report Card Dialog */}
-      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generate Report Card</DialogTitle>
-            <DialogDescription>
-              Generate a new report card from existing exam results
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label htmlFor="studentId" className="text-sm font-medium">Student</label>
-              <Select 
-                onValueChange={(value) => generateForm.setValue("studentId", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingStudents ? (
-                    <SelectItem value="loading" disabled>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
-                      Loading students...
-                    </SelectItem>
-                  ) : students.length > 0 ? (
-                    students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name} ({student.admissionId})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No students found</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label htmlFor="termId" className="text-sm font-medium">Term</label>
-              <Select 
-                onValueChange={(value) => generateForm.setValue("termId", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a term" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filterOptions.terms.length > 0 ? (
-                    filterOptions.terms.map((term: any) => (
-                      <SelectItem key={term.id} value={term.id}>
-                        {term.name} ({term.academicYear.name})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No terms found</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="sendNotification" 
-                checked={generateForm.watch("sendNotification")}
-                onCheckedChange={(checked) => 
-                  generateForm.setValue("sendNotification", checked as boolean)
-                }
-              />
-              <label
-                htmlFor="sendNotification"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Send notification to student and parents
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleGenerateReportCard}
-              disabled={!generateForm.watch("studentId") || !generateForm.watch("termId")}
-            >
-              Generate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
-

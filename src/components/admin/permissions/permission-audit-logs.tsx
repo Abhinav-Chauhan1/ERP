@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,10 +40,10 @@ interface PermissionAuditLogsProps {
   limit?: number;
 }
 
-export function PermissionAuditLogs({ 
-  userId: initialUserId, 
-  resource: initialResource, 
-  limit = 50 
+export function PermissionAuditLogs({
+  userId: initialUserId,
+  resource: initialResource,
+  limit = 50
 }: PermissionAuditLogsProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +51,7 @@ export function PermissionAuditLogs({
   const [userId, setUserId] = useState(initialUserId || '');
   const [resource, setResource] = useState(initialResource || '');
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -62,13 +62,13 @@ export function PermissionAuditLogs({
       params.append('limit', limit.toString());
 
       const response = await fetch(`/api/permissions/audit-logs?${params.toString()}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch audit logs');
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         setLogs(data.logs);
       } else {
@@ -80,11 +80,11 @@ export function PermissionAuditLogs({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, resource, limit]);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [fetchLogs]);
 
   const handleFilter = () => {
     fetchLogs();
@@ -174,9 +174,8 @@ export function PermissionAuditLogs({
               return (
                 <div
                   key={log.id}
-                  className={`border rounded-lg p-4 ${
-                    isDenied ? 'border-red-200 bg-red-50' : 'border-gray-200'
-                  }`}
+                  className={`border rounded-lg p-4 ${isDenied ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -261,13 +260,13 @@ export function PermissionDenialStats() {
         setError(null);
 
         const response = await fetch('/api/permissions/audit-logs?stats=true');
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch statistics');
         }
 
         const data = await response.json();
-        
+
         if (data.success) {
           setStats(data.stats);
         } else {

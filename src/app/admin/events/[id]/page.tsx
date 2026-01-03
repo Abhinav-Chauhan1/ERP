@@ -7,10 +7,10 @@ import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast"; // Replace useToast with react-hot-toast
-import { 
-  ChevronLeft, Calendar, Clock, MapPin, Users, User, 
+import {
+  ChevronLeft, Calendar, Clock, MapPin, Users, User,
   Edit, Trash2, Share2, Download, Tag, Globe, Lock,
-  CheckCircle2, XCircle, Clock4, AlertCircle, MoreVertical, 
+  CheckCircle2, XCircle, Clock4, AlertCircle, MoreVertical,
   Plus, UserPlus, Mail, MessageSquare
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -54,19 +54,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { 
-  eventParticipantSchema, 
+import {
+  eventParticipantSchema,
   eventSchemaWithRefinement,
   type EventFormDataWithRefinement,
   type EventParticipantData
 } from "@/lib/schemaValidation/eventSchemaValidation";
-import { 
-  getEvent, 
-  updateEvent, 
-  deleteEvent, 
-  updateEventStatus, 
-  addParticipant, 
-  removeParticipant, 
+import {
+  getEvent,
+  updateEvent,
+  deleteEvent,
+  updateEventStatus,
+  addParticipant,
+  removeParticipant,
   markAttendance,
   getEventParticipants
 } from "@/lib/actions/eventActions";
@@ -117,7 +117,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     params.then(p => setEventId(p.id));
   }, [params]);
-  
+
   // Initialize edit form
   const editForm = useForm<EventFormDataWithRefinement>({
     resolver: zodResolver(eventSchemaWithRefinement),
@@ -130,7 +130,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       status: "UPCOMING",
     },
   });
-  
+
   // Initialize add participant form
   const participantForm = useForm<z.infer<typeof addParticipantSchema>>({
     resolver: zodResolver(addParticipantSchema),
@@ -138,19 +138,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       role: "ATTENDEE",
     },
   });
-  
+
   // Fetch event data
   useEffect(() => {
     if (!eventId) return;
-    
+
     const fetchEventData = async () => {
       setLoading(true);
       try {
         const result = await getEvent(eventId);
-        
+
         if (result.success && result.data) { // Add check for result.data
           setEvent(result.data);
-          
+
           // Initialize edit form with event data
           editForm.reset({
             title: result.data.title,
@@ -159,8 +159,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             endDate: new Date(result.data.endDate),
             location: result.data.location || "",
             organizer: result.data.organizer || "",
-            type: result.data.type && ['ACADEMIC', 'CULTURAL', 'SPORTS', 'ADMINISTRATIVE', 'HOLIDAY', 'OTHER'].includes(result.data.type) 
-              ? result.data.type as "ACADEMIC" | "CULTURAL" | "SPORTS" | "ADMINISTRATIVE" | "HOLIDAY" | "OTHER" 
+            type: result.data.type && ['ACADEMIC', 'CULTURAL', 'SPORTS', 'ADMINISTRATIVE', 'HOLIDAY', 'OTHER'].includes(result.data.type)
+              ? result.data.type as "ACADEMIC" | "CULTURAL" | "SPORTS" | "ADMINISTRATIVE" | "HOLIDAY" | "OTHER"
               : undefined,
             status: result.data.status,
             maxParticipants: result.data.maxParticipants || undefined,
@@ -168,7 +168,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             isPublic: result.data.isPublic,
             thumbnail: result.data.thumbnail || "",
           });
-          
+
           // Also fetch participants if successful
           fetchParticipants(eventId);
         } else {
@@ -183,15 +183,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         setLoading(false);
       }
     };
-    
+
     fetchEventData();
   }, [eventId, router, editForm]);
-  
+
   // Fetch participants
   const fetchParticipants = async (eventId: string) => {
     try {
       const result = await getEventParticipants(eventId);
-      
+
       if (result.success && result.data) { // Add check for result.data
         setParticipants(result.data);
       } else {
@@ -208,7 +208,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     setUsersLoading(true);
     try {
       const result = await getUsersForDropdown();
-      
+
       if (result.success && result.data) {
         setUsers(result.data);
       } else {
@@ -222,22 +222,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Load users when add participant dialog opens
   useEffect(() => {
     if (addParticipantDialogOpen && users.length === 0) {
       fetchUsers();
     }
-  }, [addParticipantDialogOpen]);
-  
+  }, [addParticipantDialogOpen, users.length]);
+
   // Handle event update
   const handleUpdateEvent = async (data: EventFormDataWithRefinement) => {
     try {
       const result = await updateEvent(eventId, data);
-      
+
       if (result.success && result.data) { // Add check for result.data
         toast.success("Event updated successfully");
         setEditDialogOpen(false);
-        
+
         // Update the local state
         setEvent(result.data);
       } else {
@@ -248,12 +247,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("An unexpected error occurred");
     }
   };
-  
+
   // Handle event deletion
   const handleDeleteEvent = async () => {
     try {
       const result = await deleteEvent(eventId);
-      
+
       if (result.success) {
         toast.success("Event deleted successfully");
         router.push("/admin/events");
@@ -267,15 +266,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       setDeleteDialogOpen(false);
     }
   };
-  
+
   // Handle status update
   const handleStatusUpdate = async (newStatus: string) => {
     try {
       const result = await updateEventStatus(eventId, newStatus as any);
-      
+
       if (result.success && result.data) { // Add check for result.data
         toast.success(`Event status updated to ${newStatus}`);
-        
+
         // Update the local state
         setEvent({ ...event, status: newStatus });
       } else {
@@ -286,7 +285,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("An unexpected error occurred");
     }
   };
-  
+
   // Handle add participant
   const handleAddParticipant = async (data: z.infer<typeof addParticipantSchema>) => {
     try {
@@ -296,14 +295,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         role: data.role,
         attended: false,
       };
-      
+
       const result = await addParticipant(participantData);
-      
+
       if (result.success && result.data) { // Add check for result.data
         toast.success("Participant added successfully");
         setAddParticipantDialogOpen(false);
         participantForm.reset();
-        
+
         // Refresh participants list
         fetchParticipants(eventId);
       } else {
@@ -314,15 +313,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("An unexpected error occurred");
     }
   };
-  
+
   // Handle remove participant
   const handleRemoveParticipant = async (userId: string) => {
     try {
       const result = await removeParticipant(eventId, userId);
-      
+
       if (result.success) {
         toast.success("Participant removed successfully");
-        
+
         // Refresh participants list
         fetchParticipants(eventId);
       } else {
@@ -333,15 +332,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("An unexpected error occurred");
     }
   };
-  
+
   // Handle mark attendance
   const handleMarkAttendance = async (userId: string, attended: boolean) => {
     try {
       const result = await markAttendance(eventId, userId, attended);
-      
+
       if (result.success && result.data) { // Add check for result.data
         toast.success("Attendance recorded successfully");
-        
+
         // Refresh participants list
         fetchParticipants(eventId);
       } else {
@@ -352,7 +351,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("An unexpected error occurred");
     }
   };
-  
+
   // Handle share event
   const handleShareEvent = () => {
     try {
@@ -370,7 +369,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       console.error("Error sharing:", error);
     }
   };
-  
+
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -388,7 +387,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return "bg-muted text-muted-foreground";
     }
   };
-  
+
   // Get status icon
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -406,7 +405,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return <AlertCircle className="h-4 w-4 mr-1" />;
     }
   };
-  
+
   // Get type badge color
   const getTypeBadgeColor = (type: string) => {
     switch (type) {
@@ -424,7 +423,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return "bg-gray-100 text-gray-800";
     }
   };
-  
+
   // Mock users for participant selection
   // In a real app, you would fetch these from the database
   const mockUsers = [
@@ -435,7 +434,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     { id: "user5", name: "Michael Brown", role: "Student" },
     { id: "user6", name: "Jessica Miller", role: "Teacher" },
   ];
-  
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
@@ -443,7 +442,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       </div>
     );
   }
-  
+
   if (!event) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh]">
@@ -462,14 +461,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Calculate event progress (for ongoing events)
   const calculateProgress = () => {
     if (!event || event.status !== "ONGOING") return 0;
-    
+
     const start = new Date(event.startDate).getTime();
     const end = new Date(event.endDate).getTime();
     const now = new Date().getTime();
-    
+
     if (now <= start) return 0;
     if (now >= end) return 100;
-    
+
     return Math.round(((now - start) / (end - start)) * 100);
   };
 
@@ -489,7 +488,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             {event.status}
           </Badge>
         </div>
-        
+
         <div className="flex gap-2">
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
             <DialogTrigger asChild>
@@ -520,15 +519,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={editForm.control}
                       name="type"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Event Type</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
                             <FormControl>
@@ -550,7 +549,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={editForm.control}
                     name="description"
@@ -558,10 +557,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Enter event description" 
-                            className="min-h-20" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Enter event description"
+                            className="min-h-20"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -569,7 +568,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
@@ -578,8 +577,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <FormItem>
                           <FormLabel>Start Date and Time*</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="datetime-local" 
+                            <Input
+                              type="datetime-local"
                               {...field}
                               value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                             />
@@ -588,7 +587,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={editForm.control}
                       name="endDate"
@@ -596,8 +595,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <FormItem>
                           <FormLabel>End Date and Time*</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="datetime-local" 
+                            <Input
+                              type="datetime-local"
                               {...field}
                               value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                             />
@@ -607,7 +606,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
@@ -622,7 +621,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={editForm.control}
                       name="organizer"
@@ -637,7 +636,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
@@ -646,9 +645,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <FormItem>
                           <FormLabel>Maximum Participants</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="Leave empty for unlimited" 
+                            <Input
+                              type="number"
+                              placeholder="Leave empty for unlimited"
                               {...field}
                               value={field.value || ""}
                               onChange={e => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value))}
@@ -658,7 +657,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={editForm.control}
                       name="registrationDeadline"
@@ -666,8 +665,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <FormItem>
                           <FormLabel>Registration Deadline</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="datetime-local" 
+                            <Input
+                              type="datetime-local"
                               {...field}
                               value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value || ""}
                             />
@@ -677,7 +676,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
@@ -685,8 +684,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
                             <FormControl>
@@ -706,7 +705,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={editForm.control}
                       name="thumbnail"
@@ -714,9 +713,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <FormItem>
                           <FormLabel>Thumbnail URL</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Image URL for event thumbnail" 
-                              {...field} 
+                            <Input
+                              placeholder="Image URL for event thumbnail"
+                              {...field}
                               value={field.value || ""}
                             />
                           </FormControl>
@@ -725,7 +724,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={editForm.control}
                     name="isPublic"
@@ -748,10 +747,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </FormItem>
                     )}
                   />
-                  
+
                   <DialogFooter>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       type="button"
                       onClick={() => setEditDialogOpen(false)}
                     >
@@ -763,7 +762,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </Form>
             </DialogContent>
           </Dialog>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -792,13 +791,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </DropdownMenu>
         </div>
       </div>
-      
+
       {/* Event thumbnail */}
       {event.thumbnail && (
         <div className="h-48 sm:h-64 md:h-80 w-full relative rounded-lg overflow-hidden mb-2">
-          <OptimizedImage 
-            src={event.thumbnail} 
-            alt={event.title} 
+          <OptimizedImage
+            src={event.thumbnail}
+            alt={event.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
             className="object-cover"
@@ -807,7 +806,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
       )}
-      
+
       {/* Progress bar for ongoing events */}
       {event.status === "ONGOING" && (
         <div className="mb-4">
@@ -818,7 +817,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <Progress value={calculateProgress()} className="w-full" />
         </div>
       )}
-      
+
       <Tabs defaultValue="details" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -826,7 +825,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             Participants {event._count?.participants > 0 && `(${event._count.participants})`}
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="details">
           <div className="grid gap-4 md:grid-cols-3">
             <Card className="md:col-span-2">
@@ -849,7 +848,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Location */}
                 {event.location && (
                   <div className="flex items-start gap-3">
@@ -862,7 +861,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 )}
-                
+
                 {/* Organizer */}
                 {event.organizer && (
                   <div className="flex items-start gap-3">
@@ -875,7 +874,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 )}
-                
+
                 {/* Participants */}
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-full bg-amber-50">
@@ -884,7 +883,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div>
                     <h3 className="font-medium">Participants</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {event._count?.participants || 0} {event.maxParticipants 
+                      {event._count?.participants || 0} {event.maxParticipants
                         ? `/ ${event.maxParticipants} (${Math.round((event._count?.participants || 0) / event.maxParticipants * 100)}% filled)`
                         : "registered"}
                     </p>
@@ -895,7 +894,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </div>
                 </div>
-                
+
                 {/* Event Type */}
                 {event.type && (
                   <div className="flex items-start gap-3">
@@ -912,11 +911,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 )}
-                
+
                 {/* Public/Private */}
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-full bg-accent">
-                    {event.isPublic 
+                    {event.isPublic
                       ? <Globe className="h-5 w-5 text-muted-foreground" />
                       : <Lock className="h-5 w-5 text-muted-foreground" />
                     }
@@ -930,7 +929,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Description</CardTitle>
@@ -943,8 +942,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </CardContent>
               <CardFooter className="flex justify-between border-t pt-4">
-                <Select 
-                  value={event.status} 
+                <Select
+                  value={event.status}
                   onValueChange={handleStatusUpdate}
                 >
                   <SelectTrigger className="w-[180px]">
@@ -958,7 +957,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <SelectItem value="POSTPONED">Postponed</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Details
@@ -967,7 +966,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="participants">
           <Card>
             <CardHeader className="flex flex-col sm:flex-row justify-between gap-2">
@@ -1021,7 +1020,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               {formatDate(participant.registrationDate)} {formatTime(participant.registrationDate)}
                             </td>
                             <td className="py-3 px-4 align-middle">
-                              <Checkbox 
+                              <Checkbox
                                 checked={participant.attended}
                                 onCheckedChange={(checked) => {
                                   handleMarkAttendance(participant.userId, !!checked);
@@ -1029,8 +1028,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               />
                             </td>
                             <td className="py-3 px-4 align-middle text-right">
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => {
                                   // Open dialog to message participant
@@ -1038,8 +1037,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               >
                                 <Mail className="h-4 w-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handleRemoveParticipant(participant.userId)}
                               >
@@ -1068,7 +1067,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* Add Participant Dialog */}
       <Dialog open={addParticipantDialogOpen} onOpenChange={setAddParticipantDialogOpen}>
         <DialogContent>
@@ -1104,7 +1103,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={participantForm.control}
                 name="role"
@@ -1128,7 +1127,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setAddParticipantDialogOpen(false)}>
                   Cancel
@@ -1139,7 +1138,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </Form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
@@ -1164,14 +1163,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteEvent}
             >
               Delete

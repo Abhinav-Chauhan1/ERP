@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { hasPermission } from '@/lib/utils/permissions';
@@ -11,29 +11,14 @@ const prisma = new PrismaClient();
  * Server actions for permission management
  */
 
-/**
- * Helper function to get database user ID from Clerk user ID
- */
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  const user = await prisma.user.findUnique({
-    where: { clerkId: clerkUserId },
-    select: { id: true },
-  });
-  return user?.id || null;
-}
-
 // Get all permissions
 export async function getAllPermissions() {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     // Check if user has permission to read settings
@@ -60,15 +45,11 @@ export async function getAllPermissions() {
 // Get permissions by category
 export async function getPermissionsByCategory() {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canRead = await hasPermission(userId, 'SETTINGS', 'READ' as PermissionAction);
@@ -105,15 +86,11 @@ export async function getPermissionsByCategory() {
 // Get role permissions
 export async function getRolePermissions(role: UserRole) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canRead = await hasPermission(userId, 'SETTINGS', 'READ' as PermissionAction);
@@ -136,15 +113,11 @@ export async function getRolePermissions(role: UserRole) {
 // Assign permission to role
 export async function assignPermissionToRole(role: UserRole, permissionId: string) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);
@@ -195,15 +168,11 @@ export async function assignPermissionToRole(role: UserRole, permissionId: strin
 // Remove permission from role
 export async function removePermissionFromRole(role: UserRole, permissionId: string) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);
@@ -231,15 +200,11 @@ export async function removePermissionFromRole(role: UserRole, permissionId: str
 // Get user permissions
 export async function getUserPermissions(targetUserId: string) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canRead = await hasPermission(userId, 'SETTINGS', 'READ' as PermissionAction);
@@ -266,15 +231,11 @@ export async function assignPermissionToUser(
   expiresAt?: Date
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);
@@ -332,15 +293,11 @@ export async function assignPermissionToUser(
 // Remove custom permission from user
 export async function removePermissionFromUser(targetUserId: string, permissionId: string) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);
@@ -368,15 +325,11 @@ export async function removePermissionFromUser(targetUserId: string, permissionI
 // Get all users with their roles
 export async function getUsersForPermissionManagement() {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canRead = await hasPermission(userId, 'SETTINGS', 'READ' as PermissionAction);
@@ -410,15 +363,11 @@ export async function getUsersForPermissionManagement() {
 // Bulk assign permissions to role
 export async function bulkAssignPermissionsToRole(role: UserRole, permissionIds: string[]) {
   try {
-    const { userId: clerkUserId } = await auth();
-    if (!clerkUserId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    // Get database user ID
-    const userId = await getDbUserId(clerkUserId);
     if (!userId) {
-      return { success: false, error: 'User not found in database' };
+      return { success: false, error: 'Unauthorized' };
     }
 
     const canUpdate = await hasPermission(userId, 'SETTINGS', 'UPDATE' as PermissionAction);

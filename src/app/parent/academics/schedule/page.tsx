@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { getClassSchedule } from "@/lib/actions/parent-academic-actions";
@@ -10,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
 import { ChildSelector } from "@/components/parent/child-selector";
 import { PrintScheduleButton } from "@/components/parent/academics/print-schedule-button";
+import { auth } from "@/auth";
 
 // Enable caching with revalidation
 export const revalidate = 1800; // Revalidate every 30 minutes
@@ -25,28 +25,28 @@ export default async function ClassSchedulePage({
 
   // If no childId provided, get the first child
   if (!childId) {
-    const clerkUser = await currentUser();
-    
-    if (!clerkUser) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
       redirect("/login");
     }
-    
+
     const dbUser = await db.user.findUnique({
-      where: { clerkId: clerkUser.id }
+      where: { id: session.user.id }
     });
-    
+
     if (!dbUser || dbUser.role !== UserRole.PARENT) {
       redirect("/login");
     }
-    
+
     const parent = await db.parent.findUnique({
       where: { userId: dbUser.id }
     });
-    
+
     if (!parent) {
       redirect("/login");
     }
-    
+
     // Get first child
     const firstChild = await db.studentParent.findFirst({
       where: { parentId: parent.id },
@@ -56,11 +56,11 @@ export default async function ClassSchedulePage({
       ],
       select: { studentId: true }
     });
-    
+
     if (!firstChild) {
       redirect("/parent");
     }
-    
+
     // Redirect with childId
     redirect(`/parent/academics/schedule?childId=${firstChild.studentId}`);
   }

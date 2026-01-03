@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@/lib/auth-helpers';
 import { db } from '@/lib/db';
 import { UserRole } from '@prisma/client';
 import { createPaymentOrder } from '@/lib/utils/payment-gateway';
@@ -19,27 +19,27 @@ import { z } from 'zod';
  */
 async function getCurrentParent() {
   const clerkUser = await currentUser();
-  
+
   if (!clerkUser) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: clerkUser.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     return null;
   }
-  
+
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
     }
   });
-  
+
   return parent;
 }
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   try {
     // Get current parent
     const parent = await getCurrentParent();
-    
+
     if (!parent) {
       return NextResponse.json(
         { success: false, message: 'Unauthorized' },
@@ -74,16 +74,16 @@ export async function POST(req: NextRequest) {
 
     // Rate limiting check
     const rateLimitResult = await rateLimitMiddleware(parent.id, RateLimitPresets.PAYMENT);
-    
+
     if (rateLimitResult.exceeded) {
       const resetInSeconds = Math.ceil((rateLimitResult.reset - Date.now()) / 1000);
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: `Too many requests. Please try again in ${resetInSeconds} seconds.`,
           retryAfter: resetInSeconds
         },
-        { 
+        {
           status: 429,
           headers: {
             'Retry-After': resetInSeconds.toString(),
@@ -95,18 +95,18 @@ export async function POST(req: NextRequest) {
 
     // Parse and validate request body
     const body = await req.json();
-    
+
     // Verify CSRF token
     const csrfToken = body.csrf_token || req.headers.get('x-csrf-token');
     const isCsrfValid = await verifyCsrfToken(csrfToken);
-    
+
     if (!isCsrfValid) {
       return NextResponse.json(
         { success: false, message: 'Invalid CSRF token' },
         { status: 403 }
       );
     }
-    
+
     const validated = paymentGatewayOrderSchema.parse(body);
 
     // Verify parent-child relationship
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       parent.id,
       validated.childId
     );
-    
+
     if (!hasAccess) {
       return NextResponse.json(
         { success: false, message: 'Access denied' },
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     const invalidFeeTypes = validated.feeTypeIds.filter(
       id => !validFeeTypeIds.includes(id)
     );
-    
+
     if (invalidFeeTypes.length > 0) {
       return NextResponse.json(
         { success: false, message: 'Invalid fee types selected' },
@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Error creating payment order:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, message: 'Invalid request data', errors: error.errors },

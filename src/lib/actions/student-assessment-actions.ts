@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -22,18 +22,13 @@ export async function getAssignmentSubmissionSchema() {
  * Get the current student's details with active enrollment
  */
 async function getStudentWithEnrollment() {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     throw new Error("Authentication required");
   }
 
-  const clerkUser = await currentUser();
-  if (!clerkUser) {
-    throw new Error("User not found");
-  }
-
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id },
+    where: { id: session.user.id },
   });
 
   if (!dbUser || dbUser.role !== "STUDENT") {

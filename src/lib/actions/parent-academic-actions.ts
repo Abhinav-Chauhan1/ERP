@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
@@ -18,9 +18,7 @@ export async function getChildAcademicProcess(childId: string) {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -257,9 +255,7 @@ export async function getClassSchedule(childId: string) {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -367,9 +363,7 @@ export async function getHomework(
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -497,9 +491,7 @@ export async function getFullTimetable(childId: string, week?: Date) {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -615,9 +607,7 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {

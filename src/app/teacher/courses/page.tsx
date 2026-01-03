@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { redirect } from 'next/navigation';
 import { db as prisma } from '@/lib/db';
 import Link from 'next/link';
@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Plus, Users, MessageSquare } from 'lucide-react';
+import Image from "next/image";
 
 export default async function TeacherCoursesPage() {
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
 
   if (!userId) {
     redirect('/login');
@@ -88,15 +90,21 @@ export default async function TeacherCoursesPage() {
             return (
               <Link key={course.id} href={`/teacher/courses/${course.id}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  {course.thumbnail && (
-                    <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                      <img
+                  <div className="relative aspect-video w-full overflow-hidden rounded-t-lg">
+                    {course.thumbnail ? (
+                      <Image
                         src={course.thumbnail}
                         alt={course.title}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <BookOpen className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">
                       <Badge variant={course.isPublished ? 'default' : 'secondary'}>

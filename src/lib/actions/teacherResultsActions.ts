@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -9,7 +9,8 @@ import { revalidatePath } from "next/cache";
  */
 export async function getTeacherResults(classId?: string, subjectId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -18,9 +19,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -249,7 +248,8 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
  */
 export async function getExamResultDetails(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -258,9 +258,7 @@ export async function getExamResultDetails(examId: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -393,7 +391,8 @@ export async function getExamResultDetails(examId: string) {
  */
 export async function getAssignmentResultDetails(assignmentId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -402,9 +401,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -544,7 +541,8 @@ export async function getAssignmentResultDetails(assignmentId: string) {
  */
 export async function updateExamResults(examId: string, results: any[]) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -553,9 +551,7 @@ export async function updateExamResults(examId: string, results: any[]) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -616,7 +612,8 @@ export async function updateExamResults(examId: string, results: any[]) {
  */
 export async function getStudentPerformanceData(studentId: string, subjectId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -625,9 +622,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -808,7 +803,8 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
  */
 export async function getClassPerformanceData(classId: string, subjectId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -817,9 +813,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 

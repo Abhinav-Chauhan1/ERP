@@ -13,20 +13,20 @@ export interface ToastOptions {
   duration?: number;
 }
 
+const showToast = ({ title, description, variant = 'default', duration = 3000 }: ToastOptions) => {
+  const message = description || title || '';
+
+  switch (variant) {
+    case 'success':
+      return toast.success(message, { duration });
+    case 'destructive':
+      return toast.error(message, { duration });
+    default:
+      return toast(message, { duration });
+  }
+};
+
 export function useToast() {
-  const showToast = ({ title, description, variant = 'default', duration = 3000 }: ToastOptions) => {
-    const message = description || title || '';
-    
-    switch (variant) {
-      case 'success':
-        return toast.success(message, { duration });
-      case 'destructive':
-        return toast.error(message, { duration });
-      default:
-        return toast(message, { duration });
-    }
-  };
-  
   return {
     toast: showToast,
   };

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { UserRole, LessonProgressStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,25 +10,24 @@ import { z } from "zod";
  * Helper function to get current student and verify authentication
  */
 async function getCurrentStudent() {
-  const clerkUser = await currentUser();
-  
+  const session = await auth();
+  const clerkUser = session?.user;
+
   if (!clerkUser) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    },
+    where: { id: clerkUser.id },
     include: {
       student: true
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT || !dbUser.student) {
     return null;
   }
-  
+
   return { user: dbUser, student: dbUser.student };
 }
 
@@ -46,15 +45,15 @@ export async function getCourseById(courseId: string) {
   try {
     // Validate input
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Fetch course with all related data
     const course = await db.course.findUnique({
       where: { id: validatedCourseId },
@@ -99,17 +98,17 @@ export async function getCourseById(courseId: string) {
         }
       }
     });
-    
+
     if (!course) {
       return { success: false, message: "Course not found" };
     }
-    
+
     // Extract enrollment data
     const enrollment = course.enrollments[0] || null;
-    
+
     // Remove enrollments array from course object
     const { enrollments, ...courseData } = course;
-    
+
     return {
       success: true,
       data: {
@@ -134,15 +133,15 @@ export async function enrollInCourse(courseId: string) {
   try {
     // Validate input
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Verify course exists and is published
     const course = await db.course.findUnique({
       where: { id: validatedCourseId },
@@ -158,15 +157,15 @@ export async function enrollInCourse(courseId: string) {
         }
       }
     });
-    
+
     if (!course) {
       return { success: false, message: "Course not found" };
     }
-    
+
     if (!course.isPublished) {
       return { success: false, message: "Course is not available for enrollment" };
     }
-    
+
     // Check if already enrolled
     const existingEnrollment = await db.courseEnrollment.findFirst({
       where: {
@@ -174,11 +173,11 @@ export async function enrollInCourse(courseId: string) {
         courseId: validatedCourseId
       }
     });
-    
+
     if (existingEnrollment) {
       return { success: false, message: "Already enrolled in this course" };
     }
-    
+
     // Create enrollment and initialize lesson progress
     const enrollment = await db.courseEnrollment.create({
       data: {
@@ -189,10 +188,10 @@ export async function enrollInCourse(courseId: string) {
         lastAccessedAt: new Date()
       }
     });
-    
+
     // Create lesson progress records for all lessons
     const allLessons = course.modules.flatMap(module => module.lessons);
-    
+
     if (allLessons.length > 0) {
       await db.lessonProgress.createMany({
         data: allLessons.map(lesson => ({
@@ -204,11 +203,11 @@ export async function enrollInCourse(courseId: string) {
         }))
       });
     }
-    
+
     // Revalidate course pages
     revalidatePath('/student/courses');
     revalidatePath(`/student/courses/${courseId}`);
-    
+
     return {
       success: true,
       data: enrollment,
@@ -231,15 +230,15 @@ export async function unenrollFromCourse(courseId: string) {
   try {
     // Validate input
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Find enrollment
     const enrollment = await db.courseEnrollment.findFirst({
       where: {
@@ -247,11 +246,11 @@ export async function unenrollFromCourse(courseId: string) {
         courseId: validatedCourseId
       }
     });
-    
+
     if (!enrollment) {
       return { success: false, message: "Not enrolled in this course" };
     }
-    
+
     // Update enrollment status to DROPPED
     await db.courseEnrollment.update({
       where: { id: enrollment.id },
@@ -259,11 +258,11 @@ export async function unenrollFromCourse(courseId: string) {
         status: 'DROPPED'
       }
     });
-    
+
     // Revalidate course pages
     revalidatePath('/student/courses');
     revalidatePath(`/student/courses/${courseId}`);
-    
+
     return {
       success: true,
       message: "Successfully unenrolled from course"
@@ -285,15 +284,15 @@ export async function getModulesByCourse(courseId: string) {
   try {
     // Validate input
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Get enrollment to check access
     const enrollment = await db.courseEnrollment.findFirst({
       where: {
@@ -302,11 +301,11 @@ export async function getModulesByCourse(courseId: string) {
         status: 'ACTIVE'
       }
     });
-    
+
     if (!enrollment) {
       return { success: false, message: "Not enrolled in this course" };
     }
-    
+
     // Fetch modules with lessons and progress
     const modules = await db.courseModule.findMany({
       where: { courseId: validatedCourseId },
@@ -327,7 +326,7 @@ export async function getModulesByCourse(courseId: string) {
       },
       orderBy: { sequence: 'asc' }
     });
-    
+
     return {
       success: true,
       data: modules
@@ -350,15 +349,15 @@ export async function getLessonById(lessonId: string, courseId: string) {
     // Validate input
     const validatedLessonId = lessonIdSchema.parse(lessonId);
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Verify enrollment
     const enrollment = await db.courseEnrollment.findFirst({
       where: {
@@ -367,11 +366,11 @@ export async function getLessonById(lessonId: string, courseId: string) {
         status: 'ACTIVE'
       }
     });
-    
+
     if (!enrollment) {
       return { success: false, message: "Not enrolled in this course" };
     }
-    
+
     // Fetch lesson with content and progress
     const lesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
@@ -402,11 +401,11 @@ export async function getLessonById(lessonId: string, courseId: string) {
         }
       }
     });
-    
+
     if (!lesson) {
       return { success: false, message: "Lesson not found" };
     }
-    
+
     // Get lesson progress or create default
     const lessonProgress = lesson.progress[0] || {
       status: LessonProgressStatus.NOT_STARTED,
@@ -414,21 +413,21 @@ export async function getLessonById(lessonId: string, courseId: string) {
       timeSpent: 0,
       completedAt: null
     };
-    
+
     // Find previous and next lessons
     const currentSequence = lesson.sequence;
     const moduleLessons = lesson.module.lessons;
-    
+
     const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
     const previousLesson = currentIndex > 0 ? moduleLessons[currentIndex - 1] : null;
     const nextLesson = currentIndex < moduleLessons.length - 1 ? moduleLessons[currentIndex + 1] : null;
-    
+
     // Update last accessed time
     await db.courseEnrollment.update({
       where: { id: enrollment.id },
       data: { lastAccessedAt: new Date() }
     });
-    
+
     // Update lesson progress last accessed time
     if (lesson.progress[0]) {
       await db.lessonProgress.update({
@@ -436,7 +435,7 @@ export async function getLessonById(lessonId: string, courseId: string) {
         data: { lastAccessedAt: new Date() }
       });
     }
-    
+
     return {
       success: true,
       data: {
@@ -469,15 +468,15 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
     // Validate input
     const validatedLessonId = lessonIdSchema.parse(lessonId);
     const validatedEnrollmentId = enrollmentIdSchema.parse(enrollmentId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Verify enrollment belongs to student
     const enrollment = await db.courseEnrollment.findUnique({
       where: { id: validatedEnrollmentId },
@@ -495,11 +494,11 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
         }
       }
     });
-    
+
     if (!enrollment || enrollment.studentId !== student.id) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Find or create lesson progress
     let lessonProgress = await db.lessonProgress.findFirst({
       where: {
@@ -507,7 +506,7 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
         lessonId: validatedLessonId
       }
     });
-    
+
     if (!lessonProgress) {
       lessonProgress = await db.lessonProgress.create({
         data: {
@@ -530,22 +529,22 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
         }
       });
     }
-    
+
     // Recalculate course progress
     const totalLessons = enrollment.course.modules.reduce(
       (sum, module) => sum + module.lessons.length,
       0
     );
-    
+
     const completedLessons = await db.lessonProgress.count({
       where: {
         enrollmentId: validatedEnrollmentId,
         status: LessonProgressStatus.COMPLETED
       }
     });
-    
+
     const courseProgress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
-    
+
     // Update enrollment progress
     await db.courseEnrollment.update({
       where: { id: validatedEnrollmentId },
@@ -555,10 +554,10 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
         status: courseProgress === 100 ? 'COMPLETED' : 'ACTIVE'
       }
     });
-    
+
     // Revalidate course pages
     revalidatePath(`/student/courses/${enrollment.courseId}`);
-    
+
     return {
       success: true,
       data: {
@@ -590,24 +589,24 @@ export async function updateLessonProgress(
     const validatedLessonId = lessonIdSchema.parse(lessonId);
     const validatedEnrollmentId = enrollmentIdSchema.parse(enrollmentId);
     const validatedProgress = progressSchema.parse(progress);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Verify enrollment belongs to student
     const enrollment = await db.courseEnrollment.findUnique({
       where: { id: validatedEnrollmentId }
     });
-    
+
     if (!enrollment || enrollment.studentId !== student.id) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Find or create lesson progress
     let lessonProgress = await db.lessonProgress.findFirst({
       where: {
@@ -615,14 +614,14 @@ export async function updateLessonProgress(
         lessonId: validatedLessonId
       }
     });
-    
+
     const now = new Date();
-    const status = validatedProgress >= 100 
-      ? LessonProgressStatus.COMPLETED 
-      : validatedProgress > 0 
-        ? LessonProgressStatus.IN_PROGRESS 
+    const status = validatedProgress >= 100
+      ? LessonProgressStatus.COMPLETED
+      : validatedProgress > 0
+        ? LessonProgressStatus.IN_PROGRESS
         : LessonProgressStatus.NOT_STARTED;
-    
+
     if (!lessonProgress) {
       lessonProgress = await db.lessonProgress.create({
         data: {
@@ -646,7 +645,7 @@ export async function updateLessonProgress(
         }
       });
     }
-    
+
     return {
       success: true,
       data: lessonProgress,
@@ -669,15 +668,15 @@ export async function getCourseProgress(courseId: string) {
   try {
     // Validate input
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { student } = studentData;
-    
+
     // Get enrollment with progress
     const enrollment = await db.courseEnrollment.findFirst({
       where: {
@@ -712,30 +711,30 @@ export async function getCourseProgress(courseId: string) {
         }
       }
     });
-    
+
     if (!enrollment) {
       return { success: false, message: "Not enrolled in this course" };
     }
-    
+
     // Calculate statistics
     const totalLessons = enrollment.course.modules.reduce(
       (sum, module) => sum + module.lessons.length,
       0
     );
-    
+
     const completedLessons = enrollment.lessonProgress.filter(
       p => p.status === LessonProgressStatus.COMPLETED
     ).length;
-    
+
     const inProgressLessons = enrollment.lessonProgress.filter(
       p => p.status === LessonProgressStatus.IN_PROGRESS
     ).length;
-    
+
     const totalTimeSpent = enrollment.lessonProgress.reduce(
       (sum, p) => sum + p.timeSpent,
       0
     );
-    
+
     return {
       success: true,
       data: {
@@ -770,13 +769,13 @@ export async function getNextLesson(currentLessonId: string, courseId: string) {
     // Validate input
     const validatedLessonId = lessonIdSchema.parse(currentLessonId);
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Get current lesson
     const currentLesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
@@ -795,22 +794,22 @@ export async function getNextLesson(currentLessonId: string, courseId: string) {
         }
       }
     });
-    
+
     if (!currentLesson) {
       return { success: false, message: "Lesson not found" };
     }
-    
+
     // Find next lesson in same module
     const moduleLessons = currentLesson.module.lessons;
     const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
-    
+
     if (currentIndex < moduleLessons.length - 1) {
       return {
         success: true,
         data: moduleLessons[currentIndex + 1]
       };
     }
-    
+
     // If no next lesson in current module, find first lesson of next module
     const nextModule = await db.courseModule.findFirst({
       where: {
@@ -830,14 +829,14 @@ export async function getNextLesson(currentLessonId: string, courseId: string) {
       },
       orderBy: { sequence: 'asc' }
     });
-    
+
     if (nextModule && nextModule.lessons.length > 0) {
       return {
         success: true,
         data: nextModule.lessons[0]
       };
     }
-    
+
     return {
       success: true,
       data: null,
@@ -861,13 +860,13 @@ export async function getPreviousLesson(currentLessonId: string, courseId: strin
     // Validate input
     const validatedLessonId = lessonIdSchema.parse(currentLessonId);
     const validatedCourseId = courseIdSchema.parse(courseId);
-    
+
     // Get current student
     const studentData = await getCurrentStudent();
     if (!studentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Get current lesson
     const currentLesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
@@ -886,22 +885,22 @@ export async function getPreviousLesson(currentLessonId: string, courseId: strin
         }
       }
     });
-    
+
     if (!currentLesson) {
       return { success: false, message: "Lesson not found" };
     }
-    
+
     // Find previous lesson in same module
     const moduleLessons = currentLesson.module.lessons;
     const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
-    
+
     if (currentIndex > 0) {
       return {
         success: true,
         data: moduleLessons[currentIndex - 1]
       };
     }
-    
+
     // If no previous lesson in current module, find last lesson of previous module
     const previousModule = await db.courseModule.findFirst({
       where: {
@@ -921,14 +920,14 @@ export async function getPreviousLesson(currentLessonId: string, courseId: strin
       },
       orderBy: { sequence: 'desc' }
     });
-    
+
     if (previousModule && previousModule.lessons.length > 0) {
       return {
         success: true,
         data: previousModule.lessons[0]
       };
     }
-    
+
     return {
       success: true,
       data: null,

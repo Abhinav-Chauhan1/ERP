@@ -7,25 +7,35 @@ import {
   LeaveApplicationUpdateFormValues,
   LeaveApprovalFormValues
 } from "../schemaValidation/leaveApplicationsSchemaValidation";
+import { sendLeaveNotification } from "@/lib/services/communication-service";
 
 // Create a new leave application
 export async function createLeaveApplication(data: LeaveApplicationFormValues) {
   try {
     // Validate applicant exists based on type
+    let applicantName = '';
+    let applicantUserId = '';
+    
     if (data.applicantType === "STUDENT") {
       const student = await db.student.findUnique({
-        where: { id: data.applicantId }
+        where: { id: data.applicantId },
+        include: { user: true },
       });
       if (!student) {
         return { success: false, error: "Student not found" };
       }
+      applicantName = `${student.user.firstName} ${student.user.lastName}`;
+      applicantUserId = student.userId;
     } else if (data.applicantType === "TEACHER") {
       const teacher = await db.teacher.findUnique({
-        where: { id: data.applicantId }
+        where: { id: data.applicantId },
+        include: { user: true },
       });
       if (!teacher) {
         return { success: false, error: "Teacher not found" };
       }
+      applicantName = `${teacher.user.firstName} ${teacher.user.lastName}`;
+      applicantUserId = teacher.userId;
     }
 
     // Check for overlapping leave applications
@@ -60,6 +70,46 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
         remarks: data.remarks,
       }
     });
+    
+    // Send notification for leave submission
+    // Requirements: 6.1, 6.4
+    try {
+      await sendLeaveNotification({
+        applicantId: applicantUserId,
+        applicantName,
+        leaveType: data.reason || 'Leave',
+        startDate: data.fromDate,
+        endDate: data.toDate,
+        status: 'SUBMITTED',
+        isTeacher: data.applicantType === 'TEACHER',
+      }).catch(error => {
+        console.error('Failed to send leave submission notification:', error);
+      });
+
+      // If teacher leave, notify administrators
+      // Requirement: 6.5
+      if (data.applicantType === 'TEACHER') {
+        const admins = await db.user.findMany({
+          where: { role: 'ADMIN' },
+        });
+
+        for (const admin of admins) {
+          await sendLeaveNotification({
+            applicantId: admin.id,
+            applicantName: `Admin (${admin.firstName} ${admin.lastName})`,
+            leaveType: `Teacher Leave: ${applicantName}`,
+            startDate: data.fromDate,
+            endDate: data.toDate,
+            status: 'SUBMITTED',
+            isTeacher: false,
+          }).catch(error => {
+            console.error('Failed to send admin notification:', error);
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending leave notification:', notificationError);
+    }
     
     revalidatePath("/admin/attendance/leave-applications");
     return { success: true, data: leaveApplication };
@@ -151,6 +201,41 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
       };
     }
 
+    // Get applicant details for notification
+    let applicantName = '';
+    let applicantUserId = '';
+    
+    if (existingApplication.applicantType === "STUDENT") {
+      const student = await db.student.findUnique({
+        where: { id: existingApplication.applicantId },
+        include: { user: true },
+      });
+      if (student) {
+        applicantName = `${student.user.firstName} ${student.user.lastName}`;
+        applicantUserId = student.userId;
+      }
+    } else if (existingApplication.applicantType === "TEACHER") {
+      const teacher = await db.teacher.findUnique({
+        where: { id: existingApplication.applicantId },
+        include: { user: true },
+      });
+      if (teacher) {
+        applicantName = `${teacher.user.firstName} ${teacher.user.lastName}`;
+        applicantUserId = teacher.userId;
+      }
+    }
+
+    // Get approver name
+    let approverName = '';
+    if (data.approvedById) {
+      const approver = await db.user.findUnique({
+        where: { id: data.approvedById },
+      });
+      if (approver) {
+        approverName = `${approver.firstName} ${approver.lastName}`;
+      }
+    }
+
     const leaveApplication = await db.leaveApplication.update({
       where: { id: data.id },
       data: {
@@ -160,6 +245,26 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
         remarks: data.remarks,
       }
     });
+    
+    // Send notification for approval/rejection
+    // Requirements: 6.2, 6.3, 6.4
+    try {
+      await sendLeaveNotification({
+        applicantId: applicantUserId,
+        applicantName,
+        leaveType: existingApplication.reason || 'Leave',
+        startDate: existingApplication.fromDate,
+        endDate: existingApplication.toDate,
+        status: data.status,
+        approverName,
+        rejectionReason: data.status === 'REJECTED' ? data.remarks : undefined,
+        isTeacher: existingApplication.applicantType === 'TEACHER',
+      }).catch(error => {
+        console.error('Failed to send leave status notification:', error);
+      });
+    } catch (notificationError) {
+      console.error('Error sending leave notification:', notificationError);
+    }
     
     // If leave is approved, automatically mark attendance as LEAVE
     if (data.status === "APPROVED") {

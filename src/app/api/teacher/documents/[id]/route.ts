@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { getCloudinaryPublicId, deleteFromCloudinary } from "@/lib/cloudinary";
 
@@ -9,9 +9,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -20,7 +21,7 @@ export async function DELETE(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -62,12 +63,12 @@ export async function DELETE(
       const publicId = getCloudinaryPublicId(document.fileUrl);
       if (publicId) {
         // Determine resource type from file type
-        const resourceType = document.fileType?.startsWith('image/') 
-          ? 'image' 
+        const resourceType = document.fileType?.startsWith('image/')
+          ? 'image'
           : document.fileType?.startsWith('video/')
-          ? 'video'
-          : 'raw';
-        
+            ? 'video'
+            : 'raw';
+
         await deleteFromCloudinary(publicId, resourceType);
       }
     } catch (cloudinaryError) {
@@ -102,9 +103,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -113,7 +115,7 @@ export async function GET(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },

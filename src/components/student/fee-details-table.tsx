@@ -104,7 +104,7 @@ export function FeeDetailsTable({ feeItems, payments }: FeeDetailsTableProps) {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-2">
             {badge}
-            <span className="text-xs text-muted-foreground">${payment?.paidAmount.toFixed(2)} paid</span>
+            <span className="text-xs text-muted-foreground">₹{payment?.paidAmount.toFixed(2)} paid</span>
           </div>
           <Button size="sm" variant="outline" className="w-full min-h-[36px]">
             Pay Balance
@@ -151,7 +151,7 @@ export function FeeDetailsTable({ feeItems, payments }: FeeDetailsTableProps) {
                 <TableRow key={item.id} className="hover:bg-accent/50">
                   <TableCell className="font-medium align-middle">{item.feeType.name}</TableCell>
                   <TableCell className="text-right font-semibold align-middle">
-                    ${item.amount.toFixed(2)}
+                    ₹{item.amount.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-center align-middle">
                     {item.dueDate ? (

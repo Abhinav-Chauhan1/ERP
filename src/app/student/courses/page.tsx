@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { redirect } from 'next/navigation';
 import { db as prisma } from '@/lib/db';
 import Link from 'next/link';
@@ -9,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { BookOpen, Clock, Award } from 'lucide-react';
+import Image from "next/image";
 
 export default async function StudentCoursesPage() {
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
 
   if (!userId) {
     redirect('/login');
@@ -19,7 +21,7 @@ export default async function StudentCoursesPage() {
 
   // First find the user by Clerk ID
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
   });
 
   if (!user) {
@@ -132,11 +134,13 @@ export default async function StudentCoursesPage() {
                 <Link key={enrollment.id} href={`/student/courses/${course.id}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
                     {course.thumbnail && (
-                      <div className="aspect-video w-full overflow-hidden">
-                        <img
+                      <div className="relative aspect-video w-full overflow-hidden">
+                        <Image
                           src={course.thumbnail}
                           alt={course.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized
                         />
                       </div>
                     )}
@@ -208,11 +212,13 @@ export default async function StudentCoursesPage() {
                 <Link key={course.id} href={`/student/courses/${course.id}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
                     {course.thumbnail && (
-                      <div className="aspect-video w-full overflow-hidden">
-                        <img
+                      <div className="relative aspect-video w-full overflow-hidden">
+                        <Image
                           src={course.thumbnail}
                           alt={course.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized
                         />
                       </div>
                     )}

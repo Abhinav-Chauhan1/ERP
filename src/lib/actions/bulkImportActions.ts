@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 
 // Types for import results
 export type ImportResult = {
@@ -123,7 +123,8 @@ export async function importStudents(
   data: StudentImportData[],
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     return {
@@ -248,7 +249,7 @@ export async function importStudents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              clerkId: `temp_${validated.email}_${Date.now()}`, // Temporary clerk ID until user signs up
+              // User will be created without clerkId
               role: "STUDENT",
             }
           },
@@ -312,7 +313,8 @@ export async function importTeachers(
   data: TeacherImportData[],
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     return {
@@ -407,7 +409,7 @@ export async function importTeachers(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              clerkId: `temp_${validated.email}_${Date.now()}`, // Temporary clerk ID until user signs up
+              // User will be created without clerkId
               role: "TEACHER",
             }
           },
@@ -455,7 +457,8 @@ export async function importParents(
   data: ParentImportData[],
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     return {
@@ -559,7 +562,7 @@ export async function importParents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              clerkId: `temp_${validated.email}_${Date.now()}`, // Temporary clerk ID until user signs up
+              // User will be created without clerkId
               role: "PARENT",
             }
           },

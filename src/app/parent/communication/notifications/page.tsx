@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Settings, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ export default function NotificationsPage() {
   });
 
   // Load notifications
-  const loadNotifications = async (
+  const loadNotifications = useCallback(async (
     page: number = 1,
     type?: string
   ) => {
@@ -87,11 +87,11 @@ export default function NotificationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.limit]);
 
   useEffect(() => {
     loadNotifications(1, typeFilter);
-  }, [typeFilter]);
+  }, [typeFilter, loadNotifications]);
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {

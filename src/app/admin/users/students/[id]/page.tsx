@@ -1,83 +1,183 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import { formatDate } from "@/lib/utils";
-import { db } from "@/lib/db";
 import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap, Calendar, User } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, GraduationCap, Calendar, User, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
+import { studentEnrollmentSchema, StudentEnrollmentFormValues } from "@/lib/schemaValidation/classesSchemaValidation";
+import { enrollStudentInClass } from "@/lib/actions/classesActions";
 
-interface StudentDetailPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function StudentDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
 
-export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
-  const { id } = await params;
+  const [student, setStudent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
-  const student = await db.student.findUnique({
-    where: { id },
-    include: {
-      user: true,
-      parents: {
-        include: {
-          parent: {
-            include: {
-              user: true
-            }
-          }
-        }
-      },
-      enrollments: {
-        include: {
-          class: true,
-          section: true,
-        },
-        where: {
-          status: "ACTIVE"
-        },
-        take: 1
-      },
-      examResults: {
-        include: {
-          exam: {
-            include: {
-              subject: true
-            }
-          }
-        },
-        orderBy: {
-          exam: {
-            examDate: 'desc'
-          }
-        },
-        take: 5
-      },
-      attendance: {
-        orderBy: {
-          date: 'desc'
-        },
-        take: 10
-      }
+  const enrollmentForm = useForm<StudentEnrollmentFormValues>({
+    resolver: zodResolver(studentEnrollmentSchema),
+    defaultValues: {
+      studentId: id,
+      classId: "",
+      sectionId: "",
+      rollNumber: "",
+      status: "ACTIVE",
     },
   });
 
+  const fetchStudentDetails = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/students/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch student details");
+      }
+      const data = await response.json();
+      setStudent(data);
+    } catch (error) {
+      console.error("Error fetching student:", error);
+      toast.error("Failed to load student details");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchStudentDetails();
+  }, [fetchStudentDetails]);
+
+  const fetchClasses = useCallback(async () => {
+    setLoadingClasses(true);
+    try {
+      const response = await fetch("/api/classes");
+      if (!response.ok) {
+        throw new Error("Failed to fetch classes");
+      }
+      const data = await response.json();
+      setClasses(data);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      toast.error("Failed to load classes");
+    } finally {
+      setLoadingClasses(false);
+    }
+  }, []);
+
+  const fetchSections = useCallback(async (classId: string) => {
+    try {
+      const response = await fetch(`/api/classes/${classId}/sections`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch sections");
+      }
+      const data = await response.json();
+      setSections(data);
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+      toast.error("Failed to load sections");
+    }
+  }, []);
+
+  function handleEnrollStudent() {
+    enrollmentForm.reset({
+      studentId: id,
+      classId: "",
+      sectionId: "",
+      rollNumber: "",
+      status: "ACTIVE",
+    });
+    fetchClasses();
+    setEnrollDialogOpen(true);
+  }
+
+  async function onEnrollmentSubmit(values: StudentEnrollmentFormValues) {
+    try {
+      const result = await enrollStudentInClass(values);
+
+      if (result.success) {
+        toast.success("Student enrolled successfully");
+        setEnrollDialogOpen(false);
+        fetchStudentDetails();
+      } else {
+        toast.error(result.error || "Failed to enroll student");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  const watchClassId = enrollmentForm.watch("classId");
+
+  useEffect(() => {
+    if (watchClassId) {
+      fetchSections(watchClassId);
+      enrollmentForm.setValue("sectionId", "");
+    }
+  }, [watchClassId, fetchSections, enrollmentForm]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!student) {
-    notFound();
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Student not found</p>
+      </div>
+    );
   }
 
   // Calculate attendance statistics
-  const totalAttendanceRecords = student.attendance.length;
-  const presentCount = student.attendance.filter(record => record.status === 'PRESENT').length;
-  const absentCount = student.attendance.filter(record => record.status === 'ABSENT').length;
-  const lateCount = student.attendance.filter(record => record.status === 'LATE').length;
-  
-  const attendancePercentage = totalAttendanceRecords > 0 
-    ? Math.round((presentCount / totalAttendanceRecords) * 100) 
+  const totalAttendanceRecords = student.attendance?.length || 0;
+  const presentCount = student.attendance?.filter((record: any) => record.status === 'PRESENT').length || 0;
+  const absentCount = student.attendance?.filter((record: any) => record.status === 'ABSENT').length || 0;
+  const lateCount = student.attendance?.filter((record: any) => record.status === 'LATE').length || 0;
+
+  const attendancePercentage = totalAttendanceRecords > 0
+    ? Math.round((presentCount / totalAttendanceRecords) * 100)
     : 0;
 
-  const currentEnrollment = student.enrollments[0];
+  const currentEnrollment = student.enrollments?.[0];
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,8 +218,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex-none flex flex-col items-center gap-2">
                 {student.user.avatar ? (
-                  <OptimizedImage 
-                    src={student.user.avatar} 
+                  <OptimizedImage
+                    src={student.user.avatar}
                     alt={`${student.user.firstName} ${student.user.lastName}`}
                     width={128}
                     height={128}
@@ -133,14 +233,14 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                   </div>
                 )}
                 <div className="text-center">
-                  <Badge 
+                  <Badge
                     className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                   >
                     {student.user.active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </div>
-              
+
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-y-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Full Name</p>
@@ -223,7 +323,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge 
+                  <Badge
                     className={currentEnrollment.status === 'ACTIVE' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'}
                   >
                     {currentEnrollment.status}
@@ -233,7 +333,9 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             ) : (
               <div className="text-center p-4">
                 <p className="text-sm text-muted-foreground">Not currently enrolled in any class</p>
-                <Button size="sm" variant="outline" className="mt-2">Enroll Student</Button>
+                <Button size="sm" variant="outline" className="mt-2" onClick={handleEnrollStudent}>
+                  Enroll Student
+                </Button>
               </div>
             )}
           </CardContent>
@@ -247,12 +349,12 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
           <CardContent>
             {student.parents.length > 0 ? (
               <div className="space-y-4">
-                {student.parents.map((parentRelation) => (
+                {student.parents.map((parentRelation: any) => (
                   <div key={parentRelation.id} className="flex justify-between items-center p-4 rounded-md border">
                     <div className="flex items-center gap-4">
                       {parentRelation.parent.user.avatar ? (
-                        <OptimizedImage 
-                          src={parentRelation.parent.user.avatar} 
+                        <OptimizedImage
+                          src={parentRelation.parent.user.avatar}
                           alt={`${parentRelation.parent.user.firstName} ${parentRelation.parent.user.lastName}`}
                           width={40}
                           height={40}
@@ -327,8 +429,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             </div>
 
             <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
-              <div 
-                className="bg-green-500 h-4" 
+              <div
+                className="bg-green-500 h-4"
                 style={{ width: `${attendancePercentage}%` }}
               ></div>
             </div>
@@ -337,14 +439,14 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             </p>
 
             <div className="space-y-2 mt-4">
-              {student.attendance.slice(0, 5).map((record) => (
+              {student.attendance.slice(0, 5).map((record: any) => (
                 <div key={record.id} className="flex justify-between items-center text-sm">
                   <span>{formatDate(record.date)}</span>
-                  <Badge 
+                  <Badge
                     className={
-                      record.status === 'PRESENT' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                      record.status === 'ABSENT' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
-                      'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                      record.status === 'PRESENT' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                        record.status === 'ABSENT' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
+                          'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
                     }
                   >
                     {record.status}
@@ -378,7 +480,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                       </tr>
                     </thead>
                     <tbody>
-                      {student.examResults.map((result) => (
+                      {student.examResults.map((result: any) => (
                         <tr key={result.id} className="border-b">
                           <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-2">
@@ -391,10 +493,10 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                           <td className="py-3 px-4 align-middle font-semibold">{result.marks} / {result.exam.totalMarks}</td>
                           <td className="py-3 px-4 align-middle">{result.grade || "-"}</td>
                           <td className="py-3 px-4 align-middle">
-                            <Badge 
+                            <Badge
                               className={
-                                result.marks >= result.exam.passingMarks 
-                                  ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                                result.marks >= result.exam.passingMarks
+                                  ? 'bg-green-100 text-green-800 hover:bg-green-100'
                                   : 'bg-red-100 text-red-800 hover:bg-red-100'
                               }
                             >
@@ -415,6 +517,137 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
           </CardContent>
         </Card>
       </div>
+
+      {/* Enroll Student Dialog */}
+      <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enroll Student</DialogTitle>
+            <DialogDescription>
+              Enroll {student.user.firstName} {student.user.lastName} in a class
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...enrollmentForm}>
+            <form onSubmit={enrollmentForm.handleSubmit(onEnrollmentSubmit)} className="space-y-4">
+              <FormField
+                control={enrollmentForm.control}
+                name="classId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a class" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingClasses ? (
+                          <div className="flex justify-center items-center py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          </div>
+                        ) : classes.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            No classes found
+                          </div>
+                        ) : (
+                          classes.map((cls: any) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="sectionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Section</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={!watchClassId}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a section" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {sections.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            {watchClassId ? "No sections found" : "Select a class first"}
+                          </div>
+                        ) : (
+                          sections.map((section: any) => (
+                            <SelectItem key={section.id} value={section.id}>
+                              {section.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="rollNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Roll Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. 101, A-23, etc." {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={enrollmentForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="TRANSFERRED">Transferred</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEnrollDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Enroll Student</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Loader2, Search, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +65,7 @@ export default function AnnouncementsPage() {
   });
 
   // Load announcements
-  const loadAnnouncements = async (
+  const loadAnnouncements = useCallback(async (
     page: number = 1,
     search: string = "",
     dateStart?: string,
@@ -105,11 +105,11 @@ export default function AnnouncementsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.limit]);
 
   useEffect(() => {
     loadAnnouncements();
-  }, []);
+  }, [loadAnnouncements]);
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);

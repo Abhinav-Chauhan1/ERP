@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole, PaymentStatus, PaymentMethod } from "@prisma/client";
 import {
@@ -32,9 +32,7 @@ async function getCurrentParent() {
   }
   
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -64,8 +62,44 @@ async function verifyParentChildRelationship(
 }
 
 /**
+ * Helper function to get the correct fee amount for a fee type based on class
+ * Checks for class-specific amount first, falls back to default amount
+ * Requirements: 12.2, 12.3
+ */
+async function getFeeAmountForClass(feeTypeId: string, classId: string | undefined): Promise<number> {
+  if (!classId) {
+    // If no class ID, get default amount
+    const feeType = await db.feeType.findUnique({
+      where: { id: feeTypeId }
+    });
+    return feeType?.amount || 0;
+  }
+
+  // Check for class-specific amount
+  const classAmount = await db.feeTypeClassAmount.findUnique({
+    where: {
+      feeTypeId_classId: {
+        feeTypeId,
+        classId
+      }
+    }
+  });
+
+  if (classAmount) {
+    return classAmount.amount;
+  }
+
+  // Fall back to default amount
+  const feeType = await db.feeType.findUnique({
+    where: { id: feeTypeId }
+  });
+  
+  return feeType?.amount || 0;
+}
+
+/**
  * Get fee overview for a child including breakdown and payment status
- * Requirements: 1.1
+ * Requirements: 12.1, 12.4
  */
 export async function getFeeOverview(input: FeeOverviewInput) {
   try {
@@ -115,15 +149,39 @@ export async function getFeeOverview(input: FeeOverviewInput) {
     
     const currentEnrollment = student.enrollments[0];
     const academicYearId = currentEnrollment.class.academicYearId;
+    const classId = currentEnrollment.class.id;
     
-    // Get active fee structure for the student's class
+    // Get active fee structure for the student's class using FeeStructureClass junction table
+    // This supports the new class-based system while maintaining backward compatibility
+    // Requirements: 12.1, 12.4
     const feeStructure = await db.feeStructure.findFirst({
       where: {
         academicYearId,
         isActive: true,
         OR: [
-          { applicableClasses: { contains: currentEnrollment.class.name } },
-          { applicableClasses: null }
+          // New system: Query via FeeStructureClass junction table
+          {
+            classes: {
+              some: {
+                classId: classId
+              }
+            }
+          },
+          // Backward compatibility: Fall back to text-based search if no junction table entries exist
+          {
+            AND: [
+              {
+                classes: {
+                  none: {}
+                }
+              },
+              {
+                applicableClasses: {
+                  contains: currentEnrollment.class.name
+                }
+              }
+            ]
+          }
         ]
       },
       include: {
@@ -132,7 +190,12 @@ export async function getFeeOverview(input: FeeOverviewInput) {
             feeType: true
           }
         },
-        academicYear: true
+        academicYear: true,
+        classes: {
+          include: {
+            class: true
+          }
+        }
       }
     });
     
@@ -165,43 +228,53 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       }
     });
     
-    // Calculate totals
-    const totalFees = feeStructure.items.reduce((sum, item) => sum + item.amount, 0);
+    // Calculate totals using class-specific amounts
+    // Requirements: 12.2, 12.3
+    let totalFees = 0;
+    for (const item of feeStructure.items) {
+      const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
+      totalFees += correctAmount;
+    }
+    
     const paidAmount = payments
       .filter(p => p.status === PaymentStatus.COMPLETED)
       .reduce((sum, p) => sum + p.paidAmount, 0);
     const pendingAmount = totalFees - paidAmount;
     
-    // Calculate fee items with status
+    // Calculate fee items with status using class-specific amounts
+    // Requirements: 12.2, 12.3
     const now = new Date();
-    const feeItems = feeStructure.items.map(item => {
-      const itemPayments = payments.filter(p => 
-        p.status === PaymentStatus.COMPLETED
-      );
-      const itemPaidAmount = itemPayments.reduce((sum, p) => sum + p.paidAmount, 0);
-      const itemBalance = item.amount - itemPaidAmount;
-      
-      let status: "PAID" | "PENDING" | "OVERDUE" | "PARTIAL";
-      if (itemBalance <= 0) {
-        status = "PAID";
-      } else if (itemPaidAmount > 0) {
-        status = "PARTIAL";
-      } else if (item.dueDate && item.dueDate < now) {
-        status = "OVERDUE";
-      } else {
-        status = "PENDING";
-      }
-      
-      return {
-        id: item.id,
-        name: item.feeType.name,
-        amount: item.amount,
-        dueDate: item.dueDate,
-        status,
-        paidAmount: itemPaidAmount,
-        balance: itemBalance > 0 ? itemBalance : 0
-      };
-    });
+    const feeItems = await Promise.all(
+      feeStructure.items.map(async (item) => {
+        const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
+        const itemPayments = payments.filter(p => 
+          p.status === PaymentStatus.COMPLETED
+        );
+        const itemPaidAmount = itemPayments.reduce((sum, p) => sum + p.paidAmount, 0);
+        const itemBalance = correctAmount - itemPaidAmount;
+        
+        let status: "PAID" | "PENDING" | "OVERDUE" | "PARTIAL";
+        if (itemBalance <= 0) {
+          status = "PAID";
+        } else if (itemPaidAmount > 0) {
+          status = "PARTIAL";
+        } else if (item.dueDate && item.dueDate < now) {
+          status = "OVERDUE";
+        } else {
+          status = "PENDING";
+        }
+        
+        return {
+          id: item.id,
+          name: item.feeType.name,
+          amount: correctAmount,
+          dueDate: item.dueDate,
+          status,
+          paidAmount: itemPaidAmount,
+          balance: itemBalance > 0 ? itemBalance : 0
+        };
+      })
+    );
     
     // Calculate overdue amount
     const overdueAmount = feeItems
@@ -242,7 +315,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
 
 /**
  * Get payment history for a child with pagination and filtering
- * Requirements: 1.2
+ * Requirements: 12.2, 12.3
  */
 export async function getPaymentHistory(filters: PaymentHistoryFilter) {
   try {
@@ -260,6 +333,23 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
+    
+    // Get student's class for class-specific amount calculations
+    const student = await db.student.findUnique({
+      where: { id: validated.childId },
+      include: {
+        enrollments: {
+          where: { status: "ACTIVE" },
+          orderBy: { enrollDate: 'desc' },
+          take: 1,
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+    
+    const classId = student?.enrollments[0]?.class?.id;
     
     // Build where clause
     const where: any = {
@@ -305,7 +395,8 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
       take: validated.limit
     });
     
-    // Format payment records
+    // Format payment records with class-specific amounts reflected
+    // Requirements: 12.2, 12.3
     const paymentRecords = payments.map(payment => ({
       id: payment.id,
       amount: payment.amount,
@@ -341,7 +432,7 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
 
 /**
  * Create a payment record to initiate payment process
- * Requirements: 1.3, 10.1, 10.2
+ * Requirements: 12.2, 12.3
  */
 export async function createPayment(input: CreatePaymentInput & { csrfToken?: string }) {
   try {
@@ -375,6 +466,24 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
       return { success: false, message: "Access denied" };
     }
     
+    // Get student's class for class-specific amount calculations
+    // Requirements: 12.2, 12.3
+    const student = await db.student.findUnique({
+      where: { id: validated.childId },
+      include: {
+        enrollments: {
+          where: { status: "ACTIVE" },
+          orderBy: { enrollDate: 'desc' },
+          take: 1,
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+    
+    const classId = student?.enrollments[0]?.class?.id;
+    
     // Verify fee structure exists and is active
     const feeStructure = await db.feeStructure.findUnique({
       where: { id: validated.feeStructureId },
@@ -391,7 +500,8 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
       return { success: false, message: "Invalid fee structure" };
     }
     
-    // Verify fee type IDs are valid
+    // Verify fee type IDs are valid and calculate correct amounts
+    // Requirements: 12.2, 12.3
     const validFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
     const invalidFeeTypes = validated.feeTypeIds.filter(id => !validFeeTypeIds.includes(id));
     if (invalidFeeTypes.length > 0) {
@@ -409,7 +519,8 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
       ? sanitizeText(validated.remarks)
       : null;
     
-    // Create payment record
+    // Create payment record with class-specific amounts
+    // Requirements: 12.2, 12.3
     const payment = await db.feePayment.create({
       data: {
         studentId: validated.childId,
@@ -574,7 +685,7 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
 
 /**
  * Generate and download receipt for a payment
- * Requirements: 1.3
+ * Requirements: 12.2, 12.3
  */
 export async function downloadReceipt(input: DownloadReceiptInput) {
   try {
@@ -639,6 +750,21 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
       return { success: false, message: "Access denied" };
     }
     
+    // Get class ID for class-specific amounts
+    // Requirements: 12.2, 12.3
+    const classId = payment.student.enrollments[0]?.class?.id;
+    
+    // Prepare fee items with class-specific amounts
+    const feeItems = await Promise.all(
+      payment.feeStructure.items.map(async (item) => {
+        const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
+        return {
+          name: item.feeType.name,
+          amount: correctAmount
+        };
+      })
+    );
+    
     // Prepare receipt data
     const receiptData = {
       receiptNumber: payment.receiptNumber,
@@ -662,10 +788,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
         name: payment.feeStructure.name,
         academicYear: payment.feeStructure.academicYear.name
       },
-      feeItems: payment.feeStructure.items.map(item => ({
-        name: item.feeType.name,
-        amount: item.amount
-      }))
+      feeItems
     };
     
     // Note: Actual PDF generation would be done by a PDF utility

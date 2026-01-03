@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Download, Search, Filter, Grid3x3, List, Loader2 } from "lucide-react";
@@ -14,10 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DocumentGrid } from "@/components/parent/documents/document-grid";
-import { 
-  getDocuments, 
+import {
+  getDocuments,
   downloadDocument,
-  getDocumentCategories 
+  getDocumentCategories
 } from "@/lib/actions/parent-document-actions";
 import { toast } from "react-hot-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,44 +42,36 @@ interface DocumentsPageClientProps {
   selectedChildId: string;
 }
 
-export function DocumentsPageClient({ 
-  children, 
-  selectedChildId 
+export function DocumentsPageClient({
+  children,
+  selectedChildId
 }: DocumentsPageClientProps) {
   const router = useRouter();
   const [documents, setDocuments] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  
+
   // Preview modal
   const [previewDocumentId, setPreviewDocumentId] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  useEffect(() => {
-    loadDocuments();
-  }, [selectedChildId, selectedCategory, startDate, endDate]);
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     const result = await getDocumentCategories();
     if (result.success) {
       setCategories(result.data);
     }
-  };
+  }, []);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {
@@ -113,7 +105,17 @@ export function DocumentsPageClient({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedChildId, selectedCategory, startDate, endDate, searchTerm]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+
 
   const handleSearch = () => {
     loadDocuments();
@@ -170,7 +172,7 @@ export function DocumentsPageClient({
             View and download documents for {selectedChild.name}
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Child Selector */}
           {children.length > 1 && (
@@ -187,7 +189,7 @@ export function DocumentsPageClient({
               </SelectContent>
             </Select>
           )}
-          
+
           {/* View Mode Toggle */}
           <div className="flex gap-1 border rounded-lg p-1">
             <Button
@@ -272,9 +274,9 @@ export function DocumentsPageClient({
               Clear Filters
             </Button>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleBulkDownload}
                 disabled={documents.length === 0}
               >
@@ -298,7 +300,7 @@ export function DocumentsPageClient({
               {documents.length} {documents.length === 1 ? 'document' : 'documents'} found
             </p>
           </div>
-          
+
           <DocumentGrid
             documents={documents}
             onPreview={handlePreview}

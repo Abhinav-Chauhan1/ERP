@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
@@ -25,33 +25,35 @@ interface PageProps {
   }>;
 }
 
+import { auth } from "@/auth";
+
 export default async function ParentAttendancePage({ searchParams: searchParamsPromise }: PageProps) {
   const searchParams = await searchParamsPromise;
   let childId = searchParams.childId;
 
   // Get current user
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id }
+    where: { id: session.user.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     redirect("/login");
   }
-  
+
   const parent = await db.parent.findUnique({
     where: { userId: dbUser.id }
   });
-  
+
   if (!parent) {
     redirect("/login");
   }
-  
+
   // Get all children
   const parentChildren = await db.studentParent.findMany({
     where: { parentId: parent.id },
@@ -78,7 +80,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
       }
     }
   });
-  
+
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
     name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
@@ -90,7 +92,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
     sectionId: pc.student.enrollments[0]?.sectionId,
     isPrimary: pc.isPrimary
   }));
-  
+
   if (children.length === 0) {
     return (
       <div className="space-y-4">
@@ -99,19 +101,19 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
       </div>
     );
   }
-  
+
   // If no childId, redirect with first child
   if (!childId) {
     redirect(`/parent/attendance?childId=${children[0].id}`);
   }
-  
+
   const selectedChild = children.find(c => c.id === childId) || children[0];
-  
+
   // Fetch attendance records for the current month
   const currentDate = new Date();
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  
+
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
       studentId: selectedChild.id,
@@ -131,7 +133,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
       date: 'desc'
     }
   });
-  
+
   // Calculate statistics
   const totalDays = attendanceRecords.length;
   const presentDays = attendanceRecords.filter(r => r.status === "PRESENT").length;
@@ -139,10 +141,10 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
   const lateDays = attendanceRecords.filter(r => r.status === "LATE").length;
   const leaveDays = attendanceRecords.filter(r => r.status === "LEAVE").length;
   const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-  
+
   // Get all days in current month for calendar view
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,7 +154,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           Track daily attendance and patterns
         </p>
       </div>
-      
+
       {/* Child Selector */}
       {children.length > 1 && (
         <Tabs value={childId}>
@@ -167,7 +169,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           </TabsList>
         </Tabs>
       )}
-      
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
@@ -190,7 +192,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">
@@ -209,7 +211,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">
@@ -228,7 +230,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">
@@ -247,7 +249,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">
@@ -267,7 +269,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Attendance Progress */}
       <Card>
         <CardHeader>
@@ -285,7 +287,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
               </div>
               <Progress value={attendancePercentage} className="h-3" />
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
               <div className="text-center p-3 bg-muted rounded-lg">
                 <p className="text-2xl font-bold">{totalDays}</p>
@@ -307,7 +309,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Calendar View */}
       <Card>
         <CardHeader>
@@ -322,17 +324,17 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
                 {day}
               </div>
             ))}
-            
+
             {/* Empty cells for days before month starts */}
             {Array.from({ length: monthStart.getDay() }).map((_, i) => (
               <div key={`empty-${i}`} className="p-2" />
             ))}
-            
+
             {/* Days of month */}
             {daysInMonth.map(day => {
               const record = attendanceRecords.find(r => isSameDay(new Date(r.date), day));
               const isToday = isSameDay(day, new Date());
-              
+
               return (
                 <div
                   key={day.toISOString()}
@@ -359,7 +361,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
               );
             })}
           </div>
-          
+
           {/* Legend */}
           <div className="flex flex-wrap gap-4 mt-6 pt-6 border-t">
             <div className="flex items-center gap-2">
@@ -385,7 +387,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Recent Records */}
       <Card>
         <CardHeader>
@@ -398,11 +400,10 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
               {attendanceRecords.slice(0, 15).map((record) => (
                 <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                      record.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-950' :
-                      record.status === 'ABSENT' ? 'bg-red-100 dark:bg-red-950' :
-                      record.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-950' : 'bg-purple-100 dark:bg-purple-950'
-                    }`}>
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${record.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-950' :
+                        record.status === 'ABSENT' ? 'bg-red-100 dark:bg-red-950' :
+                          record.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-950' : 'bg-purple-100 dark:bg-purple-950'
+                      }`}>
                       {record.status === 'PRESENT' && <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />}
                       {record.status === 'ABSENT' && <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />}
                       {record.status === 'LATE' && <Clock className="h-5 w-5 text-amber-600 dark:text-amber-500" />}
@@ -418,8 +419,8 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
                   </div>
                   <Badge variant={
                     record.status === 'PRESENT' ? 'default' :
-                    record.status === 'ABSENT' ? 'destructive' :
-                    record.status === 'LATE' ? 'secondary' : 'outline'
+                      record.status === 'ABSENT' ? 'destructive' :
+                        record.status === 'LATE' ? 'secondary' : 'outline'
                   }>
                     {record.status}
                   </Badge>

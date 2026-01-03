@@ -9,6 +9,7 @@ import { SubjectPerformance } from "@/components/student/subject-performance";
 import { TimeTablePreview } from "@/components/student/timetable-preview";
 import { RecentAnnouncements } from "@/components/student/recent-announcements";
 import { DashboardStats } from "@/components/student/dashboard-stats";
+import { StudentCalendarWidgetSection } from "@/components/student/calendar-widget-section";
 import { 
   getStudentDashboardData, 
   getStudentSubjectPerformance, 
@@ -93,6 +94,7 @@ export default function StudentDashboard() {
         <div className="space-y-6">
           <AttendanceOverview attendancePercentage={attendancePercentage} />
           <TimeTablePreview schedule={todaySchedule} />
+          <StudentCalendarWidgetSection />
           <RecentAnnouncements announcements={recentAnnouncements} />
         </div>
       </div>

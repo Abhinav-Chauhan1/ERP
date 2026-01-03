@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { MeetingScheduleForm } from "@/components/parent/meetings/meeting-schedule-form";
@@ -18,14 +18,15 @@ import { CalendarCheck } from "lucide-react";
  */
 
 async function ScheduleMeetingContent() {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     redirect("/login");
   }
 
   const user = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: { parent: true },
   });
 

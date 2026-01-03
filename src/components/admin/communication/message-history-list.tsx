@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   getMessageHistory,
@@ -57,11 +57,7 @@ export function MessageHistoryList() {
   const [filters, setFilters] = useState<MessageHistoryFilters>({});
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadMessages();
-  }, [page, filters]);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getMessageHistory(filters, page, 50);
@@ -74,7 +70,11 @@ export function MessageHistoryList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, page]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
 
   const handleSearch = () => {
     setFilters({ ...filters, search: searchTerm });
@@ -112,6 +112,7 @@ export function MessageHistoryList() {
       SMS: "bg-blue-100 text-blue-800",
       EMAIL: "bg-green-100 text-green-800",
       BOTH: "bg-purple-100 text-purple-800",
+      WHATSAPP: "bg-green-100 text-green-800",
     };
 
     return (
@@ -245,7 +246,7 @@ export function MessageHistoryList() {
                         <TableCell className="text-red-600 font-medium">
                           {message.failedCount}
                         </TableCell>
-                        <TableCell>${message.totalCost.toFixed(2)}</TableCell>
+                        <TableCell>₹{message.totalCost.toFixed(2)}</TableCell>
                         <TableCell>{getStatusBadge(message.status)}</TableCell>
                         <TableCell>
                           {message.sender.firstName} {message.sender.lastName}

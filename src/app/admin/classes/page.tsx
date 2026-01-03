@@ -1,14 +1,14 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { 
-  PlusCircle, Search, Filter, Edit, Eye, 
-  Loader2, AlertCircle, BookOpen 
+import {
+  PlusCircle, Search, Filter, Edit, Eye,
+  Loader2, AlertCircle, BookOpen
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,18 +62,13 @@ export default function ClassesPage() {
     },
   });
 
-  useEffect(() => {
-    fetchClasses();
-    fetchAcademicYears();
-  }, []);
-
-  async function fetchClasses() {
+  const fetchClasses = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getClasses();
-      
+
       if (result.success) {
         setClasses(result.data || []);
         setClassesByGrade(result.summary || []);
@@ -88,15 +83,15 @@ export default function ClassesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function fetchAcademicYears() {
+  const fetchAcademicYears = useCallback(async () => {
     try {
       const result = await getAcademicYearsForDropdown();
-      
+
       if (result.success) {
         setAcademicYears(result.data || []);
-        
+
         // Set the current academic year as default in the form
         const currentYear = result.data?.find((year: any) => year.isCurrent);
         if (currentYear) {
@@ -109,11 +104,16 @@ export default function ClassesPage() {
       toast.error("An unexpected error occurred");
       console.error(err);
     }
-  }
+  }, [form]);
+
+  useEffect(() => {
+    fetchClasses();
+    fetchAcademicYears();
+  }, [fetchClasses, fetchAcademicYears]);
 
   function handleEditClass(id: string) {
     const classToEdit = classes.find(cls => cls.id === id);
-    
+
     if (classToEdit) {
       // Reset form with values from the selected class
       form.reset({
@@ -121,7 +121,7 @@ export default function ClassesPage() {
         academicYearId: classToEdit.academicYearId,
         description: classToEdit.description || "",
       });
-      
+
       setSelectedClassId(id);
       setDialogOpen(true);
     }
@@ -130,7 +130,7 @@ export default function ClassesPage() {
   async function onSubmit(values: ClassFormValues) {
     try {
       let result;
-      
+
       if (selectedClassId) {
         // Update existing class
         result = await updateClass({ ...values, id: selectedClassId });
@@ -138,7 +138,7 @@ export default function ClassesPage() {
         // Create new class
         result = await createClass(values);
       }
-      
+
       if (result.success) {
         toast.success(`Class ${selectedClassId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -157,9 +157,9 @@ export default function ClassesPage() {
   function handleCreateClass() {
     // Reset form with current academic year
     const currentYear = academicYears.find(year => year.isCurrent);
-    form.reset({ 
-      name: "", 
-      academicYearId: currentYear ? currentYear.id : "", 
+    form.reset({
+      name: "",
+      academicYearId: currentYear ? currentYear.id : "",
       description: "",
     });
     setSelectedClassId(null);
@@ -185,8 +185,8 @@ export default function ClassesPage() {
             <DialogHeader>
               <DialogTitle>{selectedClassId ? "Edit Class" : "Create New Class"}</DialogTitle>
               <DialogDescription>
-                {selectedClassId 
-                  ? "Update the details of the existing class." 
+                {selectedClassId
+                  ? "Update the details of the existing class."
                   : "Define a new class for student enrollment."}
               </DialogDescription>
             </DialogHeader>
@@ -223,8 +223,8 @@ export default function ClassesPage() {
                     <FormItem>
                       <FormLabel>Class Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="e.g. Grade 10 - Science" 
+                        <Input
+                          placeholder="e.g. Grade 10 - Science"
                           {...field}
                         />
                       </FormControl>
@@ -239,8 +239,8 @@ export default function ClassesPage() {
                     <FormItem>
                       <FormLabel>Class Description</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Optional description for the class" 
+                        <Input
+                          placeholder="Optional description for the class"
                           {...field}
                         />
                       </FormControl>
@@ -278,7 +278,7 @@ export default function ClassesPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">{grade.grade}</CardTitle>
                     <CardDescription>
-                      {grade.classes} {grade.classes === 1 ? 'class' : 'classes'}, 
+                      {grade.classes} {grade.classes === 1 ? 'class' : 'classes'},
                       {grade.students} {grade.students === 1 ? 'student' : 'students'}
                       {grade.isCurrent && <span className="ml-2 text-green-600">(Current Year)</span>}
                     </CardDescription>
@@ -288,7 +288,7 @@ export default function ClassesPage() {
                       <div className="text-sm text-muted-foreground mb-1">Sections:</div>
                       <div className="flex flex-wrap gap-1">
                         {grade.sections.map((section: string) => (
-                          <span 
+                          <span
                             key={section}
                             className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
                           >
@@ -340,8 +340,8 @@ export default function ClassesPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                       />
                     </div>
-                    <Select 
-                      value={academicYearFilter} 
+                    <Select
+                      value={academicYearFilter}
                       onValueChange={setAcademicYearFilter}
                     >
                       <SelectTrigger className="w-[180px]">
@@ -389,7 +389,7 @@ export default function ClassesPage() {
                               </td>
                               <td className="py-3 px-4 align-middle">
                                 {cls.sections.map((section: any) => (
-                                  <span 
+                                  <span
                                     key={section.id}
                                     className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary mr-1"
                                   >
@@ -413,8 +413,8 @@ export default function ClassesPage() {
                         ) : (
                           <tr>
                             <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                              {searchTerm || academicYearFilter !== "all" 
-                                ? "No classes match your search criteria" 
+                              {searchTerm || academicYearFilter !== "all"
+                                ? "No classes match your search criteria"
                                 : "No classes found"}
                             </td>
                           </tr>
@@ -443,7 +443,7 @@ export default function ClassesPage() {
                 </CardContent>
               </Card>
             </Link>
-            
+
             <Link href="/admin/classes/rooms">
               <Card className="h-full hover:bg-accent/50 transition-colors cursor-pointer">
                 <CardHeader>

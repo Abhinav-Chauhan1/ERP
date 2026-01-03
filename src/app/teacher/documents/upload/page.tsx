@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DocumentUploadForm } from "@/components/teacher/documents/document-upload-form";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 
@@ -16,14 +16,15 @@ export const metadata: Metadata = {
 };
 
 export default async function UploadDocumentPage() {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     redirect("/login");
   }
 
   const user = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       teacher: true,
     },

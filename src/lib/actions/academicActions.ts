@@ -38,21 +38,19 @@ export async function getAcademicOverview() {
 
 export async function getAcademicYears() {
   try {
-    const academicYears = await db.academicYear.findMany({
-      include: {
-        terms: true,
-        classes: true,
-      },
-      orderBy: {
-        startDate: "desc",
-      },
-    });
+    // Use the centralized academicyearsActions
+    const { getAcademicYears: getYears } = await import("./academicyearsActions");
+    const result = await getYears();
+
+    if (!result.success || !result.data) {
+      return result;
+    }
 
     const now = new Date();
-    
-    const yearsWithStatus = academicYears.map((year) => {
+
+    const yearsWithStatus = result.data.map((year) => {
       let status: "Current" | "Past" | "Planned";
-      
+
       if (year.isCurrent) {
         status = "Current";
       } else if (year.endDate < now) {
@@ -68,45 +66,32 @@ export async function getAcademicYears() {
         endDate: year.endDate,
         status,
         isCurrent: year.isCurrent,
-        termsCount: year.terms.length,
-        classesCount: year.classes.length,
+        termsCount: year._count?.terms || 0,
+        classesCount: year._count?.classes || 0,
       };
     });
 
     return { success: true, data: yearsWithStatus };
   } catch (error) {
     console.error("Error fetching academic years:", error);
-    return { success: false, error: "Failed to fetch academic years" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch academic years"
+    };
   }
 }
 
 export async function getAcademicYearById(id: string) {
   try {
-    const academicYear = await db.academicYear.findUnique({
-      where: { id },
-      include: {
-        terms: {
-          orderBy: { startDate: "asc" },
-        },
-        classes: {
-          include: {
-            sections: true,
-            enrollments: {
-              where: { status: "ACTIVE" },
-            },
-          },
-        },
-      },
-    });
-
-    if (!academicYear) {
-      return { success: false, error: "Academic year not found" };
-    }
-
-    return { success: true, data: academicYear };
+    // Use the centralized academicyearsActions
+    const { getAcademicYearById: getYearById } = await import("./academicyearsActions");
+    return await getYearById(id);
   } catch (error) {
     console.error("Error fetching academic year:", error);
-    return { success: false, error: "Failed to fetch academic year" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch academic year"
+    };
   }
 }
 
@@ -117,28 +102,15 @@ export async function createAcademicYear(data: {
   isCurrent?: boolean;
 }) {
   try {
-    // If this is set as current, unset all other current years
-    if (data.isCurrent) {
-      await db.academicYear.updateMany({
-        where: { isCurrent: true },
-        data: { isCurrent: false },
-      });
-    }
-
-    const academicYear = await db.academicYear.create({
-      data: {
-        name: data.name,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        isCurrent: data.isCurrent || false,
-      },
-    });
-
-    revalidatePath("/admin/academic");
-    return { success: true, data: academicYear };
+    // Use the centralized academicyearsActions
+    const { createAcademicYear: createYear } = await import("./academicyearsActions");
+    return await createYear({ ...data, isCurrent: data.isCurrent ?? false });
   } catch (error) {
     console.error("Error creating academic year:", error);
-    return { success: false, error: "Failed to create academic year" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create academic year"
+    };
   }
 }
 
@@ -152,41 +124,46 @@ export async function updateAcademicYear(
   }
 ) {
   try {
-    // If this is set as current, unset all other current years
-    if (data.isCurrent) {
-      await db.academicYear.updateMany({
-        where: { 
-          isCurrent: true,
-          NOT: { id }
-        },
-        data: { isCurrent: false },
-      });
+    // Use the centralized academicyearsActions
+    const { updateAcademicYear: updateYear, getAcademicYearById: getYearById } = await import("./academicyearsActions");
+
+    // Fetch existing year to support partial updates
+    const existingResult = await getYearById(id);
+    if (!existingResult.success || !existingResult.data) {
+      return { success: false, error: existingResult.error || "Academic year not found" };
     }
+    const existing = existingResult.data;
 
-    const academicYear = await db.academicYear.update({
-      where: { id },
-      data,
-    });
+    // Merge existing data with updates
+    const mergedData = {
+      id,
+      name: data.name ?? existing.name,
+      startDate: data.startDate ?? existing.startDate,
+      endDate: data.endDate ?? existing.endDate,
+      isCurrent: data.isCurrent ?? existing.isCurrent,
+    };
 
-    revalidatePath("/admin/academic");
-    return { success: true, data: academicYear };
+    return await updateYear(mergedData);
   } catch (error) {
     console.error("Error updating academic year:", error);
-    return { success: false, error: "Failed to update academic year" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update academic year"
+    };
   }
 }
 
 export async function deleteAcademicYear(id: string) {
   try {
-    await db.academicYear.delete({
-      where: { id },
-    });
-
-    revalidatePath("/admin/academic");
-    return { success: true, message: "Academic year deleted successfully" };
+    // Use the centralized academicyearsActions
+    const { deleteAcademicYear: deleteYear } = await import("./academicyearsActions");
+    return await deleteYear(id);
   } catch (error) {
     console.error("Error deleting academic year:", error);
-    return { success: false, error: "Failed to delete academic year" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete academic year"
+    };
   }
 }
 

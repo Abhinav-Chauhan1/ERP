@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Metadata } from "next";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,14 @@ export default async function LessonMaterialPage({
   params: Promise<{ id: string }> 
 }) {
   const params = await paramsPromise;
-  const clerkUser = await currentUser();
+  const session = await auth();
   
-  if (!clerkUser) {
+  if (!session?.user) {
     redirect("/login");
   }
 
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id }
+    where: { id: session.user.id }
   });
   
   if (!dbUser || dbUser.role !== "STUDENT") {

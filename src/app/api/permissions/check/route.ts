@@ -4,15 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { hasPermission } from '@/lib/utils/permissions';
 import { PermissionAction } from '@prisma/client';
 
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const { userId: clerkUserId } = await auth();
-    
+    const session = await auth();
+    const clerkUserId = session?.user?.id;
+
     if (!clerkUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -43,9 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract audit context from request
-    const ipAddress = request.headers.get('x-forwarded-for') || 
-                      request.headers.get('x-real-ip') || 
-                      'unknown';
+    const ipAddress = request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Check permission with audit context

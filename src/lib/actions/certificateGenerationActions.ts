@@ -9,7 +9,7 @@
  * Requirements: 12.2, 12.4 - Bulk Certificate Generation and Print-Ready PDFs
  */
 
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import {
@@ -36,7 +36,7 @@ export async function bulkGenerateCertificates(
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -155,7 +155,7 @@ export async function generateCertificateForStudent(
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -261,7 +261,7 @@ export async function getGeneratedCertificates(filters?: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -373,7 +373,7 @@ export async function revokeCertificateById(
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -411,7 +411,7 @@ export async function getCertificateGenerationStats() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
@@ -24,22 +24,20 @@ const primaryParentSchema = z.object({
  */
 async function getCurrentParent() {
   const clerkUser = await currentUser();
-  
+
   if (!clerkUser) {
     return null;
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     return null;
   }
-  
+
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
@@ -59,13 +57,13 @@ async function getCurrentParent() {
  */
 export async function getMyChildren() {
   const result = await getCurrentParent();
-  
+
   if (!result) {
     redirect("/login");
   }
-  
+
   const { parent, dbUser } = result;
-  
+
   // Cached function to fetch children data
   const getCachedChildrenData = unstable_cache(
     async (parentId: string) => {
@@ -102,7 +100,7 @@ export async function getMyChildren() {
           isPrimary: 'desc'
         }
       });
-      
+
       return parentChildren;
     },
     [`parent-children-${parent.id}`],
@@ -111,25 +109,25 @@ export async function getMyChildren() {
       revalidate: 300 // 5 minutes
     }
   );
-  
+
   const parentChildren = await getCachedChildrenData(parent.id);
-  
+
   // Get subjects for each child
   const enrichedChildren = await Promise.all(
     parentChildren.map(async (pc) => {
       const currentEnrollment = pc.student.enrollments[0];
-      
-    // Define interfaces for subjects
-    interface Subject {
-      id: string;
-      name: string;
-      code: string;
-      description: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    }
-    
-    let subjects: Subject[] = [];
+
+      // Define interfaces for subjects
+      interface Subject {
+        id: string;
+        name: string;
+        code: string;
+        description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      }
+
+      let subjects: Subject[] = [];
       if (currentEnrollment) {
         // Get subjects for this class
         const subjectClasses = await db.subjectClass.findMany({
@@ -140,14 +138,14 @@ export async function getMyChildren() {
             subject: true
           }
         });
-        
+
         subjects = subjectClasses.map(sc => sc.subject);
       }
-      
+
       // Get attendance stats for last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const attendanceRecords = await db.studentAttendance.findMany({
         where: {
           studentId: pc.student.id,
@@ -156,11 +154,11 @@ export async function getMyChildren() {
           }
         }
       });
-      
+
       const totalDays = attendanceRecords.length;
       const presentDays = attendanceRecords.filter(record => record.status === "PRESENT").length;
       const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-      
+
       return {
         ...pc.student,
         isPrimary: pc.isPrimary,
@@ -173,7 +171,7 @@ export async function getMyChildren() {
       };
     })
   );
-  
+
   return {
     parent,
     user: dbUser,
@@ -186,13 +184,13 @@ export async function getMyChildren() {
  */
 export async function getChildDetails(childId: string) {
   const result = await getCurrentParent();
-  
+
   if (!result) {
     redirect("/login");
   }
-  
+
   const { parent, dbUser } = result;
-  
+
   // Check if this child belongs to the parent
   const parentChild = await db.studentParent.findFirst({
     where: {
@@ -200,11 +198,11 @@ export async function getChildDetails(childId: string) {
       studentId: childId
     }
   });
-  
+
   if (!parentChild) {
     redirect("/parent/children/overview");
   }
-  
+
   // Get full student details
   const student = await db.student.findUnique({
     where: {
@@ -224,60 +222,60 @@ export async function getChildDetails(childId: string) {
       }
     }
   });
-  
+
   if (!student) {
     redirect("/parent/children/overview");
   }
-  
+
   // Get the current enrollment details
   const currentEnrollment = student.enrollments[0];
-  
+
   // Get subjects and performance
-interface Subject {
+  interface Subject {
     id: string;
     name: string;
     code: string;
     description: string | null;
     createdAt: Date;
     updatedAt: Date;
-}
+  }
 
-let subjects: Subject[] = [];
-// Define interface for exam results
-interface ExamResult {
+  let subjects: Subject[] = [];
+  // Define interface for exam results
+  interface ExamResult {
     id: string;
     studentId: string;
     examId: string;
     marks: number;
-    totalMarks?: number;
+    totalMarks?: number | null;
     grade?: string | null;
     remarks?: string | null;
     createdAt: Date;
     updatedAt: Date;
     exam: {
+      id: string;
+      name?: string;
+      subject: {
         id: string;
-        name?: string;
-        subject: {
-            id: string;
-            name: string;
-            code: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            departmentId?: string | null;
-        };
-        examType: {
-            id: string;
-            name: string;
-            description: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-        };
+        name: string;
+        code: string;
+        description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        departmentId?: string | null;
+      };
+      examType: {
+        id: string;
+        name: string;
+        description: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      };
     };
-}
+  }
 
-let examResults: ExamResult[] = [];
-  
+  let examResults: ExamResult[] = [];
+
   if (currentEnrollment) {
     // Get subjects for this class
     const subjectClasses = await db.subjectClass.findMany({
@@ -288,9 +286,9 @@ let examResults: ExamResult[] = [];
         subject: true
       }
     });
-    
+
     subjects = subjectClasses.map(sc => sc.subject);
-    
+
     // Get exam results
     examResults = await db.examResult.findMany({
       where: {
@@ -310,11 +308,11 @@ let examResults: ExamResult[] = [];
       take: 10
     });
   }
-  
+
   // Get attendance records for the past 3 months
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-  
+
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
       studentId: student.id,
@@ -326,7 +324,7 @@ let examResults: ExamResult[] = [];
       date: 'desc'
     }
   });
-  
+
   // Get upcoming assignments
   const assignments = await db.assignment.findMany({
     where: {
@@ -352,7 +350,7 @@ let examResults: ExamResult[] = [];
     },
     take: 5
   });
-  
+
   // Get fee details
   const feePayments = await db.feePayment.findMany({
     where: {
@@ -368,7 +366,7 @@ let examResults: ExamResult[] = [];
   const totalFees = feePayments.reduce((sum, payment) => sum + payment.amount, 0);
   const paidAmount = feePayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
   const pendingAmount = totalFees - paidAmount;
-  
+
   // Get behavior records
   // TODO: Uncomment when behaviorRecord model is added to schema
   // const behaviorRecords = await db.behaviorRecord.findMany({
@@ -393,14 +391,14 @@ let examResults: ExamResult[] = [];
   //   take: 10
   // });
   const behaviorRecords: any[] = [];
-  
+
   // Calculate attendance statistics
   const totalDays = attendanceRecords.length;
   const presentDays = attendanceRecords.filter(record => record.status === "PRESENT").length;
   const absentDays = attendanceRecords.filter(record => record.status === "ABSENT").length;
   const lateDays = attendanceRecords.filter(record => record.status === "LATE").length;
   const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-  
+
   return {
     parent,
     user: dbUser,
@@ -433,23 +431,23 @@ let examResults: ExamResult[] = [];
  */
 export async function setPrimaryParent(formData: FormData) {
   const result = await getCurrentParent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   try {
     const childId = formData.get('childId') as string;
     const isPrimary = formData.get('isPrimary') === 'true';
-    
+
     // Validate the data
     const validatedData = primaryParentSchema.parse({
       childId,
       isPrimary
     });
-    
+
     const { parent } = result;
-    
+
     // Check if this child belongs to the parent
     const parentChild = await db.studentParent.findFirst({
       where: {
@@ -457,11 +455,11 @@ export async function setPrimaryParent(formData: FormData) {
         studentId: validatedData.childId
       }
     });
-    
+
     if (!parentChild) {
       return { success: false, message: "Child not found" };
     }
-    
+
     // If setting as primary, first remove primary status from any other parent
     if (isPrimary) {
       await db.studentParent.updateMany({
@@ -474,7 +472,7 @@ export async function setPrimaryParent(formData: FormData) {
         }
       });
     }
-    
+
     // Update the parent-child relationship
     await db.studentParent.update({
       where: {
@@ -484,17 +482,17 @@ export async function setPrimaryParent(formData: FormData) {
         isPrimary: validatedData.isPrimary
       }
     });
-    
+
     revalidatePath(`/parent/children/${validatedData.childId}`);
     revalidatePath('/parent/children/overview');
-    
-    return { 
-      success: true, 
-      message: isPrimary 
-        ? "You are now set as the primary parent" 
+
+    return {
+      success: true,
+      message: isPrimary
+        ? "You are now set as the primary parent"
         : "You are no longer the primary parent"
     };
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -502,7 +500,7 @@ export async function setPrimaryParent(formData: FormData) {
         message: error.errors[0].message
       };
     }
-    
+
     console.error("Error setting primary parent:", error);
     return { success: false, message: "Failed to update primary parent status" };
   }

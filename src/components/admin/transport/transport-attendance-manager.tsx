@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,18 +41,6 @@ export function TransportAttendanceManager() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load routes on mount
-  useEffect(() => {
-    loadRoutes();
-  }, []);
-
-  // Load attendance data when route, date, or type changes
-  useEffect(() => {
-    if (selectedRoute && selectedDate) {
-      loadAttendanceData();
-    }
-  }, [selectedRoute, selectedDate, attendanceType, selectedStop]);
-
   const loadRoutes = async () => {
     try {
       const result = await getRoutes({ status: "ACTIVE" });
@@ -63,7 +51,12 @@ export function TransportAttendanceManager() {
     }
   };
 
-  const loadAttendanceData = async () => {
+  // Load routes on mount
+  useEffect(() => {
+    loadRoutes();
+  }, []);
+
+  const loadAttendanceData = useCallback(async () => {
     if (!selectedRoute) return;
 
     setLoading(true);
@@ -102,7 +95,14 @@ export function TransportAttendanceManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRoute, selectedDate, attendanceType, selectedStop]);
+
+  // Load attendance data when route, date, or type changes
+  useEffect(() => {
+    if (selectedRoute && selectedDate) {
+      loadAttendanceData();
+    }
+  }, [selectedRoute, selectedDate, attendanceType, selectedStop, loadAttendanceData]);
 
   const handleStatusChange = (studentRouteId: string, status: "PRESENT" | "ABSENT" | "LATE") => {
     setAttendanceRecords((prev) => ({

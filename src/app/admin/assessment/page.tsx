@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   PlusCircle, BarChart, ArrowUpRight, 
   CalendarClock, FileText, CheckSquare, ClipboardList,
-  FileQuestion, Badge as BadgeIcon
+  FileQuestion, Badge as BadgeIcon, Settings, FileSpreadsheet, History
 } from "lucide-react";
 import { getAssessmentOverview, getRecentAssessments, getAssessmentMetrics } from "@/lib/actions/assessmentActions";
 import { getUpcomingExams } from "@/lib/actions/examsActions";
@@ -53,6 +53,48 @@ export default async function AssessmentPage() {
       description: "Scheduled assessments",
       href: "/admin/assessment/exams",
       count: overview.exams
+    },
+    {
+      title: "Mark Config",
+      icon: <Settings className="h-5 w-5 text-blue-600" />,
+      description: "Subject mark components",
+      href: "/admin/assessment/subject-mark-config",
+      count: 0
+    },
+    {
+      title: "Marks Entry",
+      icon: <ClipboardList className="h-5 w-5 text-teal-600" />,
+      description: "Enter exam marks in bulk",
+      href: "/admin/assessment/marks-entry",
+      count: 0
+    },
+    {
+      title: "Marks Audit",
+      icon: <History className="h-5 w-5 text-slate-600" />,
+      description: "View marks entry history",
+      href: "/admin/assessment/marks-audit",
+      count: 0
+    },
+    {
+      title: "Mark Sheet",
+      icon: <FileSpreadsheet className="h-5 w-5 text-orange-600" />,
+      description: "Consolidated mark sheet",
+      href: "/admin/assessment/consolidated-mark-sheet",
+      count: 0
+    },
+    {
+      title: "Subject Performance",
+      icon: <BarChart className="h-5 w-5 text-cyan-600" />,
+      description: "Subject-wise analytics",
+      href: "/admin/assessment/subject-performance",
+      count: 0
+    },
+    {
+      title: "Co-Scholastic",
+      icon: <BadgeIcon className="h-5 w-5 text-pink-600" />,
+      description: "Non-academic activities",
+      href: "/admin/assessment/co-scholastic",
+      count: 0
     },
     {
       title: "Assignments",
@@ -107,7 +149,7 @@ export default async function AssessmentPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {assessmentCategories.map((category) => (
           <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">

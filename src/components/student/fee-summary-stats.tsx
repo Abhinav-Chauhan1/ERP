@@ -26,7 +26,7 @@ export function FeeSummaryStats({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${totalFees.toFixed(2)}</div>
+          <div className="text-2xl font-bold">₹{totalFees.toFixed(2)}</div>
           <p className="text-sm text-gray-500">Academic year fee structure</p>
         </CardContent>
       </Card>
@@ -39,7 +39,7 @@ export function FeeSummaryStats({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${paidAmount.toFixed(2)}</div>
+          <div className="text-2xl font-bold">₹{paidAmount.toFixed(2)}</div>
           <div className="mt-2">
             <Progress value={paymentPercentage} className="h-2" />
             <p className="text-xs text-gray-500 mt-1">
@@ -61,7 +61,7 @@ export function FeeSummaryStats({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${balance.toFixed(2)}</div>
+          <div className="text-2xl font-bold">₹{balance.toFixed(2)}</div>
           <div className="mt-2">
             {balance > 0 ? (
               <Badge variant="destructive" className="mt-1">Payment Required</Badge>

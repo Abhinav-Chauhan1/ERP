@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import {
   sendEmail,
@@ -41,7 +41,7 @@ export async function sendSingleEmail(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -109,7 +109,7 @@ export async function sendBulkEmailAction(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -182,7 +182,7 @@ export async function sendEmailToClass(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -265,7 +265,7 @@ export async function sendEmailToAllParents(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -327,7 +327,7 @@ export async function sendEmailToAllTeachers(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -389,7 +389,7 @@ export async function sendTemplatedEmailAction(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -443,7 +443,7 @@ export async function sendAdmissionConfirmationEmail(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -489,7 +489,7 @@ export async function checkEmailConfiguration() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {

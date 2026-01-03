@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { documentUploadSchema } from "@/lib/schemas/teacher-schemas";
@@ -7,9 +7,10 @@ import { documentUploadSchema } from "@/lib/schemas/teacher-schemas";
 // GET /api/teacher/documents - List teacher's documents
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -77,9 +78,10 @@ export async function GET(request: NextRequest) {
 // POST /api/teacher/documents - Create a new document
 export async function POST(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -103,26 +105,26 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    
+
     // Validate using centralized schema
     const validation = documentUploadSchema.safeParse(body);
-    
+
     if (!validation.success) {
       // Format validation errors for client
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join('.'),
         message: err.message,
       }));
-      
+
       return NextResponse.json(
-        { 
+        {
           message: "Validation failed",
           errors,
         },
         { status: 400 }
       );
     }
-    
+
     const validatedData = validation.data;
 
     // Ensure the userId matches the authenticated user
@@ -155,7 +157,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ document }, { status: 201 });
   } catch (error) {
     console.error('Error creating document:', error);
-    
+
     // Handle database constraint violations
     if (error instanceof Error) {
       if (error.message.includes('Unique constraint')) {

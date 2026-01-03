@@ -1,5 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { getDashboardUrl } from "@/lib/auth-utils"
 
 export default async function AuthLayout({
   children,
@@ -7,18 +8,12 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   // Check if user is already authenticated
-  const user = await currentUser();
+  const session = await auth()
   
-  // If user is already signed in, redirect to dashboard or home
-  if (user) {
-    // Determine redirect path based on user role (stored in metadata)
-    const role = (user.publicMetadata?.role as string) || 'student';
-    const redirectPath = role === 'admin' ? '/admin' : 
-                         role === 'teacher' ? '/teacher' : 
-                         role === 'parent' ? '/parent' : 
-                         '/student';
-                         
-    return redirect(redirectPath);
+  // If user is already signed in, redirect to dashboard
+  if (session?.user) {
+    const redirectPath = getDashboardUrl(session.user.role)
+    return redirect(redirectPath)
   }
 
   return (
@@ -31,5 +26,5 @@ export default async function AuthLayout({
         {children}
       </div>
     </div>
-  );
+  )
 }

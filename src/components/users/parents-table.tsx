@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
@@ -50,12 +51,12 @@ export function ParentsTable({ parents }: ParentsTableProps) {
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         parent.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         parent.user.phone?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = 
+
+      const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && parent.user.active) ||
         (statusFilter === "inactive" && !parent.user.active);
-      
+
       return matchesSearch && matchesStatus;
     });
 
@@ -86,11 +87,11 @@ export function ParentsTable({ parents }: ParentsTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <UserSearch 
-          placeholder="Search parents by name, email or phone..." 
+        <UserSearch
+          placeholder="Search parents by name, email or phone..."
           onSearch={setSearchQuery}
         />
-        <UserFilters 
+        <UserFilters
           onStatusChange={setStatusFilter}
           onSortChange={setSortBy}
         />
@@ -127,20 +128,10 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                   <tr key={parent.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        {parent.user.avatar ? (
-                          <img
-                            src={parent.user.avatar}
-                            alt={`${parent.user.firstName} ${parent.user.lastName}`}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
-                            {parent.user.firstName[0]}
-                            {parent.user.lastName[0]}
-                          </div>
-                        )}
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
+                          <AvatarFallback>{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
+                        </Avatar>
                         <div className="font-medium">
                           {parent.user.firstName} {parent.user.lastName}
                         </div>
@@ -170,7 +161,7 @@ export function ParentsTable({ parents }: ParentsTableProps) {
                     </td>
                     <td className="py-3 px-4 align-middle capitalize">{parent.relation?.toLowerCase() || "N/A"}</td>
                     <td className="py-3 px-4 align-middle">
-                      <Badge 
+                      <Badge
                         className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                       >
                         {parent.user.active ? "Active" : "Inactive"}

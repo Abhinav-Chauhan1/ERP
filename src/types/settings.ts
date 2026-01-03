@@ -1,5 +1,6 @@
 // Enum types matching Prisma schema
-export type ContactMethod = "EMAIL" | "SMS" | "BOTH";
+import { ContactMethod as PrismaContactMethod } from "@prisma/client";
+export type ContactMethod = PrismaContactMethod | "ALL";
 export type NotificationFrequency = "IMMEDIATE" | "DAILY_DIGEST" | "WEEKLY_DIGEST";
 export type ProfileVisibility = "PUBLIC" | "PRIVATE" | "CLASSMATES_ONLY";
 export type Theme = "LIGHT" | "DARK" | "SYSTEM";
@@ -7,7 +8,7 @@ export type Theme = "LIGHT" | "DARK" | "SYSTEM";
 export interface ParentSettingsData {
   id: string;
   parentId: string;
-  
+
   // Notification preferences
   emailNotifications: boolean;
   smsNotifications: boolean;
@@ -17,18 +18,24 @@ export interface ParentSettingsData {
   examResultNotifications: boolean;
   announcementNotifications: boolean;
   meetingReminders: boolean;
-  
+
   // Communication preferences
   preferredContactMethod: ContactMethod;
   notificationFrequency: NotificationFrequency;
-  
+
   // Privacy settings
   profileVisibility: ProfileVisibility;
-  
+
+  // WhatsApp settings
+  whatsappNotifications: boolean;
+  whatsappOptIn: boolean;
+  whatsappNumber: string | null;
+
   // Appearance settings
   theme: Theme;
   language: string;
-  
+  preferredLanguage: string;
+
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { X, Download, Loader2 } from "lucide-react";
 import {
@@ -31,13 +31,7 @@ export function DocumentPreviewModal({
   const [loading, setLoading] = useState(false);
   const [document, setDocument] = useState<any>(null);
 
-  useEffect(() => {
-    if (documentId && isOpen) {
-      loadDocument();
-    }
-  }, [documentId, isOpen]);
-
-  const loadDocument = async () => {
+  const loadDocument = useCallback(async () => {
     if (!documentId) return;
 
     setLoading(true);
@@ -55,7 +49,13 @@ export function DocumentPreviewModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [documentId, onClose]);
+
+  useEffect(() => {
+    if (documentId && isOpen) {
+      loadDocument();
+    }
+  }, [documentId, isOpen, loadDocument]);
 
   const handleDownload = () => {
     if (documentId) {

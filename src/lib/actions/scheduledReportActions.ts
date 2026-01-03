@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { ReportConfig } from "./reportBuilderActions";
 
@@ -76,7 +76,8 @@ function calculateNextRunTime(
  */
 export async function createScheduledReport(input: ScheduledReportInput) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -138,7 +139,8 @@ export async function createScheduledReport(input: ScheduledReportInput) {
  */
 export async function getScheduledReports() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -168,7 +170,8 @@ export async function getScheduledReports() {
  */
 export async function getScheduledReport(id: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -202,7 +205,8 @@ export async function getScheduledReport(id: string) {
  */
 export async function updateScheduledReport(id: string, input: ScheduledReportInput) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -257,7 +261,8 @@ export async function updateScheduledReport(id: string, input: ScheduledReportIn
  */
 export async function deleteScheduledReport(id: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -279,7 +284,8 @@ export async function deleteScheduledReport(id: string) {
  */
 export async function toggleScheduledReportStatus(id: string, active: boolean) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

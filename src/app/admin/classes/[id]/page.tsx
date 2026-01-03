@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
-  Users, BookOpen, Clock, Calendar, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
+  Users, BookOpen, Clock, Calendar,
   GraduationCap, Building, Search, Download,
   UploadCloud, Check, X, ExternalLink,
   Loader2, AlertCircle, UserPlus, FileSpreadsheet
@@ -47,17 +47,17 @@ import toast from "react-hot-toast";
 import * as z from "zod";
 
 // Import schema validation and server actions
-import { 
-  classSectionSchema, 
-  classTeacherSchema, 
+import {
+  classSectionSchema,
+  classTeacherSchema,
   studentEnrollmentSchema,
   ClassSectionFormValues,
   ClassTeacherFormValues,
   StudentEnrollmentFormValues
 } from "@/lib/schemaValidation/classesSchemaValidation";
-import { 
-  getClassById, 
-  deleteClass, 
+import {
+  getClassById,
+  deleteClass,
   createClassSection,
   getTeachersForDropdown,
   assignTeacherToClass,
@@ -76,12 +76,12 @@ export default function ClassDetailsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("students");
-  
+
   // Section dialog state
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
   const [teacherDialogOpen, setTeacherDialogOpen] = useState(false);
   const [teachers, setTeachers] = useState<any[]>([]);
-  
+
   // New state for student enrollment
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [availableStudents, setAvailableStudents] = useState<any[]>([]);
@@ -105,7 +105,7 @@ export default function ClassDetailsPage() {
       isClassHead: false,
     },
   });
-  
+
   // New enrollment form
   const enrollmentForm = useForm<StudentEnrollmentFormValues>({
     resolver: zodResolver(studentEnrollmentSchema),
@@ -118,22 +118,17 @@ export default function ClassDetailsPage() {
     },
   });
 
-  useEffect(() => {
-    fetchClassDetails();
-    fetchTeachers();
-  }, [params.id]);
-
-  async function fetchClassDetails() {
+  const fetchClassDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const id = params.id as string;
       const result = await getClassById(id);
-      
+
       if (result.success) {
         setClassDetails(result.data);
-        
+
         // Pre-populate forms with class ID
         sectionForm.setValue("classId", id);
         teacherForm.setValue("classId", id);
@@ -149,12 +144,12 @@ export default function ClassDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.id, sectionForm, teacherForm, enrollmentForm]);
 
-  async function fetchTeachers() {
+  const fetchTeachers = useCallback(async () => {
     try {
       const result = await getTeachersForDropdown();
-      
+
       if (result.success) {
         setTeachers(result.data || []);
       } else {
@@ -164,15 +159,20 @@ export default function ClassDetailsPage() {
       toast.error("An unexpected error occurred");
       console.error(err);
     }
-  }
-  
+  }, []);
+
+  useEffect(() => {
+    fetchClassDetails();
+    fetchTeachers();
+  }, [fetchClassDetails, fetchTeachers]);
+
   // New function to fetch available students
   async function fetchAvailableStudents() {
     setLoadingStudents(true);
     try {
       const classId = params.id as string;
       const result = await getAvailableStudentsForClass(classId);
-      
+
       if (result.success) {
         setAvailableStudents(result.data || []);
       } else {
@@ -190,7 +190,7 @@ export default function ClassDetailsPage() {
     try {
       const id = params.id as string;
       const result = await deleteClass(id);
-      
+
       if (result.success) {
         toast.success("Class deleted successfully");
         router.push('/admin/classes');
@@ -216,7 +216,7 @@ export default function ClassDetailsPage() {
   async function onSectionSubmit(values: ClassSectionFormValues) {
     try {
       const result = await createClassSection(values);
-      
+
       if (result.success) {
         toast.success("Section created successfully");
         setSectionDialogOpen(false);
@@ -236,14 +236,14 @@ export default function ClassDetailsPage() {
       classId: params.id as string,
       isClassHead: false,
     });
-    
+
     setTeacherDialogOpen(true);
   }
 
   async function onTeacherSubmit(values: ClassTeacherFormValues) {
     try {
       const result = await assignTeacherToClass(values);
-      
+
       if (result.success) {
         toast.success("Teacher assigned successfully");
         setTeacherDialogOpen(false);
@@ -256,7 +256,7 @@ export default function ClassDetailsPage() {
       toast.error("An unexpected error occurred");
     }
   }
-  
+
   // New function to open enrollment dialog
   function handleEnrollStudent() {
     enrollmentForm.reset({
@@ -266,16 +266,16 @@ export default function ClassDetailsPage() {
       rollNumber: "",
       status: "ACTIVE",
     });
-    
+
     fetchAvailableStudents();
     setEnrollDialogOpen(true);
   }
-  
+
   // New function to handle enrollment submission
   async function onEnrollmentSubmit(values: StudentEnrollmentFormValues) {
     try {
       const result = await enrollStudentInClass(values);
-      
+
       if (result.success) {
         toast.success("Student enrolled successfully");
         setEnrollDialogOpen(false);
@@ -296,7 +296,7 @@ export default function ClassDetailsPage() {
   }
 
   // Filter students based on search term
-  const filteredStudents = classDetails?.students?.filter((student: any) => 
+  const filteredStudents = classDetails?.students?.filter((student: any) =>
     student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
     student.rollNumber.includes(studentSearch)
   ) || [];
@@ -421,7 +421,7 @@ export default function ClassDetailsPage() {
             <TabsTrigger value="subjects">Subjects</TabsTrigger>
             <TabsTrigger value="timetable">Timetable</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="students">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -460,7 +460,7 @@ export default function ClassDetailsPage() {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="border rounded-md p-4 bg-gray-50">
                           <h4 className="font-medium text-sm mb-2">Format Help</h4>
                           <div className="mb-2">
@@ -532,9 +532,9 @@ export default function ClassDetailsPage() {
                               <td className="py-3 px-4 align-middle">
                                 <Badge className={
                                   student.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                                  student.status === 'INACTIVE' ? 'bg-red-100 text-red-800' : 
-                                  student.status === 'TRANSFERRED' ? 'bg-blue-100 text-blue-800' :
-                                  'bg-gray-100 text-gray-800'
+                                    student.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                                      student.status === 'TRANSFERRED' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-gray-100 text-gray-800'
                                 }>
                                   {student.status}
                                 </Badge>
@@ -562,7 +562,7 @@ export default function ClassDetailsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="teachers">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -626,7 +626,7 @@ export default function ClassDetailsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="subjects">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -688,7 +688,7 @@ export default function ClassDetailsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="timetable">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -785,11 +785,11 @@ export default function ClassDetailsPage() {
                   <FormItem>
                     <FormLabel>Capacity (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min={1} 
-                        placeholder="e.g. 30" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 30"
+                        {...field}
                         onChange={(e) => field.onChange(parseInt(e.target.value))}
                       />
                     </FormControl>
@@ -907,8 +907,8 @@ export default function ClassDetailsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Student</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -944,8 +944,8 @@ export default function ClassDetailsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Section</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -984,8 +984,8 @@ export default function ClassDetailsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>

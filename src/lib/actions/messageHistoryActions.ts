@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { MessageType, MessageStatus } from "@prisma/client";
 
 export interface MessageHistoryFilters {
@@ -51,7 +51,7 @@ export async function logMessageHistory(data: MessageHistoryInput) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -104,7 +104,7 @@ export async function getMessageHistory(
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -200,7 +200,7 @@ export async function getMessageHistoryById(id: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -254,7 +254,7 @@ export async function getMessageAnalytics(
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -435,7 +435,7 @@ export async function deleteMessageHistory(id: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {

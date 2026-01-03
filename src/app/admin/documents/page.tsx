@@ -1,33 +1,33 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle, 
-  CardFooter 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  PlusCircle, 
-  Search, 
-  Filter, 
-  FileText, 
-  FolderOpen, 
-  File, 
-  Upload, 
-  Download, 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Tag, 
-  Clock, 
+import {
+  PlusCircle,
+  Search,
+  Filter,
+  FileText,
+  FolderOpen,
+  File,
+  Upload,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  Tag,
+  Clock,
   User as UserIcon,
-  Image,
+  Image as ImageIcon,
   FileIcon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { 
+import {
   documentSchema,
   documentTypeSchema,
   documentFilterSchema,
@@ -85,7 +85,7 @@ import {
 
 import { Spinner } from "@/components/ui/spinner";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { useAuth } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 
 // Utility function to format dates
 const formatDate = (date: Date | string) => {
@@ -108,12 +108,12 @@ const formatFileSize = (bytes?: number) => {
 // Get file icon based on MIME type
 const getFileIcon = (fileType?: string, size = 16) => {
   if (!fileType) return <FileIcon size={size} />;
-  
-  if (fileType.startsWith('image/')) return <Image size={size} />;
+
+  if (fileType.startsWith('image/')) return <ImageIcon size={size} />;
   else if (fileType === 'application/pdf') return <FileText size={size} />;
   else if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileText size={size} />;
   else if (fileType.includes('document') || fileType.includes('word')) return <FileText size={size} />;
-  
+
   return <File size={size} />;
 };
 
@@ -121,7 +121,8 @@ const getFileIcon = (fileType?: string, size = 16) => {
 const TEMP_USER_ID = "clqgwvnp30000s53p9g8a3qpp"; // Replace with an actual user ID from your database
 
 export default function DocumentsPage() {
-  const { userId } = useAuth();
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
   const [documents, setDocuments] = useState<any[]>([]);
   const [documentTypes, setDocumentTypes] = useState<any[]>([]);
   const [recentDocs, setRecentDocs] = useState<any[]>([]);
@@ -153,66 +154,66 @@ export default function DocumentsPage() {
     },
   });
 
-  // Load documents and document types on initial render
-  useEffect(() => {
-    fetchDocuments();
-    fetchDocumentTypes();
-    fetchRecentDocuments();
-  }, []);
-
   // Fetch documents with the current filters
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
-    
+
     const filter: DocumentFilterData = {};
-    
+
     if (searchTerm) {
       filter.searchTerm = searchTerm;
     }
-    
+
     if (typeFilter && typeFilter !== "ALL") {
       filter.documentTypeId = typeFilter;
     }
-    
+
     // Special filters for tabs
     if (activeTab === "public") {
       filter.isPublic = true;
     } else if (activeTab === "private") {
       filter.isPublic = false;
     }
-    
+
     const result = await getDocuments(filter);
-    
+
     if (result.success && result.data) {
       setDocuments(result.data);
     } else {
       toast.error(result.error || "Failed to fetch documents");
     }
-    
+
     setIsLoading(false);
-  };
+  }, [searchTerm, typeFilter, activeTab]);
 
   // Fetch document types
-  const fetchDocumentTypes = async () => {
+  const fetchDocumentTypes = useCallback(async () => {
     const result = await getDocumentTypes();
-    
+
     if (result.success && result.data) {
       setDocumentTypes(result.data);
     } else {
       toast.error(result.error || "Failed to fetch document types");
     }
-  };
+  }, []);
 
   // Fetch recent documents
-  const fetchRecentDocuments = async () => {
+  const fetchRecentDocuments = useCallback(async () => {
     const result = await getRecentDocuments(5);
-    
+
     if (result.success && result.data) {
       setRecentDocs(result.data);
     } else {
       toast.error(result.error || "Failed to fetch recent documents");
     }
-  };
+  }, []);
+
+  // Load documents and document types on initial render
+  useEffect(() => {
+    fetchDocuments();
+    fetchDocumentTypes();
+    fetchRecentDocuments();
+  }, [fetchDocuments, fetchDocumentTypes, fetchRecentDocuments]);
 
   // Handle search
   const handleSearch = () => {
@@ -222,7 +223,7 @@ export default function DocumentsPage() {
   // Handle document creation
   const handleCreateDocument = async (data: DocumentData) => {
     const result = await createDocument(data);
-    
+
     if (result.success && result.data) {
       toast.success("Document uploaded successfully");
       setUploadDialogOpen(false);
@@ -237,7 +238,7 @@ export default function DocumentsPage() {
   // Handle document type creation
   const handleCreateDocumentType = async (data: DocumentTypeData) => {
     const result = await createDocumentType(data);
-    
+
     if (result.success && result.data) {
       toast.success("Document type created successfully");
       setTypeDialogOpen(false);
@@ -251,9 +252,9 @@ export default function DocumentsPage() {
   // Handle document deletion
   const handleDeleteDocument = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
-    
+
     const result = await deleteDocument(id);
-    
+
     if (result.success) {
       toast.success("Document deleted successfully");
       fetchDocuments();
@@ -267,10 +268,10 @@ export default function DocumentsPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setUploading(true);
     setUploadProgress(10); // Show initial progress
-    
+
     try {
       // Create simulated progress updates
       const progressInterval = setInterval(() => {
@@ -283,23 +284,23 @@ export default function DocumentsPage() {
           return newProgress;
         });
       }, 300);
-      
+
       // Upload to Cloudinary
       const uploadResult = await uploadToCloudinary(file, "documents");
-      
+
       clearInterval(progressInterval);
       setUploadProgress(100);
-      
+
       // Set form values with Cloudinary result
       documentForm.setValue("fileName", file.name);
       documentForm.setValue("fileUrl", uploadResult.secure_url);
       documentForm.setValue("fileType", file.type);
       documentForm.setValue("fileSize", uploadResult.bytes);
-      
+
       toast.success("File uploaded successfully");
     } catch (error) {
       console.error("Error uploading file:", error);
-      toast.error("Failed to upload file");
+      toast.error(error instanceof Error ? error.message : "Failed to upload file");
     } finally {
       setUploading(false);
       // Reset progress after a short delay
@@ -358,9 +359,9 @@ export default function DocumentsPage() {
                       <FormItem>
                         <FormLabel>Description (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Brief description of this document type" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Brief description of this document type"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -375,7 +376,7 @@ export default function DocumentsPage() {
               </Form>
             </DialogContent>
           </Dialog>
-          
+
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleOpenUploadDialog}>
@@ -391,18 +392,17 @@ export default function DocumentsPage() {
               </DialogHeader>
               <Form {...documentForm}>
                 <form onSubmit={documentForm.handleSubmit(handleCreateDocument)} className="space-y-4">
-                  <div className={`border-dashed border-2 border-gray-300 rounded-lg p-8 text-center mb-4 ${
-                    uploading ? 'bg-accent' : ''
-                  }`}>
-                    <Input 
-                      type="file" 
-                      className="hidden" 
-                      id="file-upload" 
+                  <div className={`border-dashed border-2 border-gray-300 rounded-lg p-8 text-center mb-4 ${uploading ? 'bg-accent' : ''
+                    }`}>
+                    <Input
+                      type="file"
+                      className="hidden"
+                      id="file-upload"
                       onChange={handleFileChange}
                       disabled={uploading}
                     />
-                    <label 
-                      htmlFor="file-upload" 
+                    <label
+                      htmlFor="file-upload"
                       className={`cursor-pointer flex flex-col items-center ${uploading ? 'opacity-50' : ''}`}
                     >
                       {uploading ? (
@@ -418,19 +418,19 @@ export default function DocumentsPage() {
                         </>
                       )}
                     </label>
-                    
+
                     {uploadProgress > 0 && (
                       <div className="w-full mt-4">
                         <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300" 
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
                             style={{ width: `${uploadProgress}%` }}
                           ></div>
                         </div>
                       </div>
                     )}
                   </div>
-                  
+
                   {documentForm.watch("fileName") && (
                     <div className="flex items-center p-2 bg-primary/10 rounded text-sm mb-4">
                       <FileText className="h-4 w-4 text-primary mr-2" />
@@ -440,7 +440,7 @@ export default function DocumentsPage() {
                       </span>
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={documentForm.control}
@@ -455,15 +455,15 @@ export default function DocumentsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={documentForm.control}
                       name="documentTypeId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Document Type</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
+                          <Select
+                            onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
                             <FormControl>
@@ -484,7 +484,7 @@ export default function DocumentsPage() {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={documentForm.control}
                     name="description"
@@ -492,10 +492,10 @@ export default function DocumentsPage() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Enter document description" 
-                            className="min-h-20" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Enter document description"
+                            className="min-h-20"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -503,7 +503,7 @@ export default function DocumentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={documentForm.control}
                     name="tags"
@@ -511,9 +511,9 @@ export default function DocumentsPage() {
                       <FormItem>
                         <FormLabel>Tags</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Comma-separated tags (e.g. contract, legal, 2023)" 
-                            {...field} 
+                          <Input
+                            placeholder="Comma-separated tags (e.g. contract, legal, 2023)"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -524,7 +524,7 @@ export default function DocumentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={documentForm.control}
                     name="isPublic"
@@ -547,18 +547,18 @@ export default function DocumentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <DialogFooter>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       type="button"
                       onClick={() => setUploadDialogOpen(false)}
                       disabled={uploading}
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={uploading || !documentForm.watch("fileUrl")}
                     >
                       {uploading ? "Uploading..." : "Upload Document"}
@@ -583,7 +583,7 @@ export default function DocumentsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Document Types</CardTitle>
@@ -595,7 +595,7 @@ export default function DocumentsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Public Documents</CardTitle>
@@ -607,7 +607,7 @@ export default function DocumentsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Private Documents</CardTitle>
@@ -689,17 +689,17 @@ export default function DocumentsPage() {
             <div className="space-y-2">
               {documentTypes.length > 0 ? (
                 documentTypes.map((type) => (
-                  <div 
-                    key={type.id} 
+                  <div
+                    key={type.id}
                     className="flex justify-between items-center p-2 rounded hover:bg-accent/50"
                   >
                     <div>
                       <p className="font-medium text-sm">{type.name}</p>
                       <p className="text-xs text-muted-foreground">{type._count.documents} documents</p>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setTypeFilter(type.id)}
                     >
                       <Filter className="h-4 w-4" />
@@ -715,9 +715,9 @@ export default function DocumentsPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="ml-auto"
               onClick={() => setTypeDialogOpen(true)}
             >
@@ -748,8 +748,8 @@ export default function DocumentsPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
               </div>
-              <Select 
-                value={typeFilter} 
+              <Select
+                value={typeFilter}
                 onValueChange={(value) => {
                   setTypeFilter(value);
                   fetchDocuments();
@@ -864,9 +864,9 @@ export default function DocumentsPage() {
                               <Download className="h-4 w-4 mr-1" /> Download
                             </Button>
                           </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDeleteDocument(doc.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-1" /> Delete

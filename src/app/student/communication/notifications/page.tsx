@@ -1,12 +1,12 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NotificationList } from "@/components/student/communication";
-import { 
-  getNotifications, 
-  markAsRead, 
-  markAllNotificationsAsRead 
+import {
+  getNotifications,
+  markAsRead,
+  markAllNotificationsAsRead
 } from "@/lib/actions/student-communication-actions";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +29,7 @@ export default function StudentNotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   // Fetch notifications
-  const fetchNotifications = async (page: number = 1, newFilters: any = {}) => {
+  const fetchNotifications = useCallback(async (page: number = 1, newFilters: any = {}) => {
     setLoading(true);
     try {
       const result = await getNotifications({
@@ -52,12 +52,12 @@ export default function StudentNotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Load notifications on mount
   useEffect(() => {
     fetchNotifications(1, filters);
-  }, []);
+  }, [fetchNotifications, filters]);
 
   const handlePageChange = (page: number) => {
     fetchNotifications(page, filters);

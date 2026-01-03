@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { db as prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
@@ -16,7 +16,8 @@ export async function createCourse(data: {
   level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -70,7 +71,8 @@ export async function updateCourse(
   }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -100,7 +102,8 @@ export async function updateCourse(
 
 export async function publishCourse(courseId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -125,7 +128,8 @@ export async function publishCourse(courseId: string) {
 
 export async function deleteCourse(courseId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -158,7 +162,7 @@ export async function getCourses(filters?: {
       if (filters.status) where.status = filters.status;
       if (filters.isPublished !== undefined) where.isPublished = filters.isPublished;
     }
-    
+
     const courses = await prisma.course.findMany({
       where,
       include: {
@@ -248,110 +252,21 @@ export async function createModule(data: {
   duration?: number;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    const module = await prisma.courseModule.create({
+    const newModule = await prisma.courseModule.create({
       data,
     });
 
     revalidatePath(`/teacher/courses/${data.courseId}`);
-    return { success: true, data: module };
+    return { success: true, data: newModule };
   } catch (error) {
     console.error('Error creating module:', error);
     return { success: false, error: 'Failed to create module' };
-  }
-}
-
-export async function updateModule(
-  moduleId: string,
-  data: {
-    title?: string;
-    description?: string;
-    sequence?: number;
-    duration?: number;
-  }
-) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    const module = await prisma.courseModule.update({
-      where: { id: moduleId },
-      data,
-    });
-
-    revalidatePath(`/teacher/courses/${module.courseId}`);
-    return { success: true, data: module };
-  } catch (error) {
-    console.error('Error updating module:', error);
-    return { success: false, error: 'Failed to update module' };
-  }
-}
-
-export async function deleteModule(moduleId: string) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    const module = await prisma.courseModule.findUnique({
-      where: { id: moduleId },
-    });
-
-    if (!module) {
-      return { success: false, error: 'Module not found' };
-    }
-
-    await prisma.courseModule.delete({
-      where: { id: moduleId },
-    });
-
-    revalidatePath(`/teacher/courses/${module.courseId}`);
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting module:', error);
-    return { success: false, error: 'Failed to delete module' };
-  }
-}
-
-// Lesson Management Actions
-
-export async function createLesson(data: {
-  moduleId: string;
-  title: string;
-  description?: string;
-  sequence: number;
-  duration?: number;
-  lessonType?: 'TEXT' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'PRESENTATION' | 'INTERACTIVE' | 'QUIZ';
-}) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    const lesson = await prisma.courseLesson.create({
-      data,
-    });
-
-    const module = await prisma.courseModule.findUnique({
-      where: { id: data.moduleId },
-    });
-
-    if (module) {
-      revalidatePath(`/teacher/courses/${module.courseId}`);
-    }
-
-    return { success: true, data: lesson };
-  } catch (error) {
-    console.error('Error creating lesson:', error);
-    return { success: false, error: 'Failed to create lesson' };
   }
 }
 
@@ -366,7 +281,8 @@ export async function updateLesson(
   }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -389,7 +305,8 @@ export async function updateLesson(
 
 export async function deleteLesson(lessonId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -431,7 +348,8 @@ export async function createContent(data: {
   isDownloadable?: boolean;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -460,7 +378,8 @@ export async function updateContent(
   }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -479,7 +398,8 @@ export async function updateContent(
 
 export async function deleteContent(contentId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -499,7 +419,8 @@ export async function deleteContent(contentId: string) {
 
 export async function enrollInCourse(courseId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -557,7 +478,8 @@ export async function enrollInCourse(courseId: string) {
 
 export async function getStudentEnrollments(studentId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -621,7 +543,8 @@ export async function updateLessonProgress(data: {
   status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -721,7 +644,8 @@ export async function createDiscussion(data: {
   content: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -762,7 +686,8 @@ export async function replyToDiscussion(data: {
   userType: 'STUDENT' | 'TEACHER';
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -836,7 +761,8 @@ export async function createQuiz(data: {
   showCorrectAnswers?: boolean;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -861,7 +787,8 @@ export async function submitQuizAttempt(data: {
   timeSpent?: number;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
@@ -930,7 +857,8 @@ export async function submitQuizAttempt(data: {
 
 export async function getQuizAttempts(quizId: string, studentId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }

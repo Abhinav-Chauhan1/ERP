@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AlertCircle, CheckCircle, Loader2, XCircle } from "lucide-react";
 import {
   Dialog,
@@ -67,14 +67,7 @@ export function PaymentGatewayModal({
     };
   }, []);
 
-  // Initialize Razorpay when modal opens
-  useEffect(() => {
-    if (isOpen && isScriptLoaded && orderId && status === "idle") {
-      initializePayment();
-    }
-  }, [isOpen, isScriptLoaded, orderId, status]);
-
-  const initializePayment = () => {
+  const initializePayment = useCallback(() => {
     if (!window.Razorpay) {
       setStatus("failed");
       setErrorMessage("Payment gateway not available. Please refresh and try again.");
@@ -113,11 +106,9 @@ export function PaymentGatewayModal({
       },
       modal: {
         ondismiss: function () {
-          if (status === "processing") {
-            setStatus("failed");
-            setErrorMessage("Payment cancelled by user");
-            onFailure("Payment cancelled");
-          }
+          setStatus("failed");
+          setErrorMessage("Payment cancelled by user");
+          onFailure("Payment cancelled");
         },
       },
     };
@@ -137,7 +128,14 @@ export function PaymentGatewayModal({
       setErrorMessage("Failed to initialize payment. Please try again.");
       onFailure("Payment initialization failed");
     }
-  };
+  }, [amount, currency, studentName, orderId, onSuccess, onFailure]);
+
+  // Initialize Razorpay when modal opens
+  useEffect(() => {
+    if (isOpen && isScriptLoaded && orderId && status === "idle") {
+      initializePayment();
+    }
+  }, [isOpen, isScriptLoaded, orderId, status, initializePayment]);
 
   const handleRetry = () => {
     setStatus("idle");

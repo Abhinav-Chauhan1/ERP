@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
@@ -114,17 +114,11 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
 
-  // Load data on mount
-  useEffect(() => {
-    loadExpenses();
-    loadStats();
-  }, [categoryFilter, dateRangeFilter]);
-
-  const loadExpenses = async () => {
+  const loadExpenses = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {};
-      
+
       if (categoryFilter !== "all") {
         filters.category = categoryFilter.toUpperCase();
       }
@@ -160,9 +154,9 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, dateRangeFilter]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const result = await getExpenseStats();
       if (result.success && result.data) {
@@ -171,7 +165,13 @@ export default function ExpensesPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadExpenses();
+    loadStats();
+  }, [loadExpenses, loadStats]);
 
   const handleCreateExpense = async (data: any) => {
     try {
@@ -239,9 +239,9 @@ export default function ExpensesPage() {
   // Filter expenses based on search
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (expense.vendor && expense.vendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (expense.receiptNumber && expense.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+      (expense.vendor && expense.vendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (expense.receiptNumber && expense.receiptNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+
     return matchesSearch;
   });
 
@@ -353,7 +353,7 @@ export default function ExpensesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -379,7 +379,7 @@ export default function ExpensesPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="amount"
@@ -387,11 +387,11 @@ export default function ExpensesPage() {
                       <FormItem>
                         <FormLabel>Amount</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min={0} 
+                          <Input
+                            type="number"
+                            min={0}
                             step="0.01"
-                            placeholder="0.00" 
+                            placeholder="0.00"
                             {...field}
                             onChange={e => field.onChange(parseFloat(e.target.value))}
                           />
@@ -401,7 +401,7 @@ export default function ExpensesPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -416,7 +416,7 @@ export default function ExpensesPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="paymentMethod"
@@ -442,7 +442,7 @@ export default function ExpensesPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="paidTo"
@@ -456,7 +456,7 @@ export default function ExpensesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="description"
@@ -464,9 +464,9 @@ export default function ExpensesPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Additional details about this expense" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Additional details about this expense"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -474,7 +474,7 @@ export default function ExpensesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -489,7 +489,7 @@ export default function ExpensesPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="attachmentFiles"
@@ -497,9 +497,9 @@ export default function ExpensesPage() {
                       <FormItem>
                         <FormLabel>Attachments (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="file" 
-                            multiple 
+                          <Input
+                            type="file"
+                            multiple
                             onChange={(e) => field.onChange(e.target.files)}
                           />
                         </FormControl>
@@ -511,7 +511,7 @@ export default function ExpensesPage() {
                     )}
                   />
                 </div>
-                
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateExpenseDialog(false)}>
                     Cancel
@@ -544,7 +544,7 @@ export default function ExpensesPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Pending Payments</CardTitle>
@@ -562,7 +562,7 @@ export default function ExpensesPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Completed Payments</CardTitle>
@@ -587,7 +587,7 @@ export default function ExpensesPage() {
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="expenses">
           <Card>
             <CardHeader className="pb-2">
@@ -642,7 +642,7 @@ export default function ExpensesPage() {
                   <thead>
                     <tr className="bg-accent border-b">
                       <th className="py-3 px-4 text-left font-medium text-muted-foreground w-[40px]">
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedItems.length === filteredExpenses.length && filteredExpenses.length > 0}
                           onCheckedChange={handleCheckAllItems}
                         />
@@ -659,7 +659,7 @@ export default function ExpensesPage() {
                     {filteredExpenses.map((expense) => (
                       <tr key={expense.id} className="border-b">
                         <td className="py-3 px-4 align-middle">
-                          <Checkbox 
+                          <Checkbox
                             checked={selectedItems.includes(expense.id)}
                             onCheckedChange={() => handleItemChecked(expense.id)}
                           />
@@ -682,24 +682,24 @@ export default function ExpensesPage() {
                         <td className="py-3 px-4 align-middle">
                           <Badge className={
                             expense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                            expense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                            "bg-red-100 text-red-800"
+                              expense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                                "bg-red-100 text-red-800"
                           }>
                             {expense.status}
                           </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleViewExpense(expense.id)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleEditExpense(expense.id)}
                           >
                             <Edit className="h-4 w-4 mr-1" />
@@ -708,7 +708,7 @@ export default function ExpensesPage() {
                         </td>
                       </tr>
                     ))}
-                    
+
                     {filteredExpenses.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-6 text-center text-muted-foreground">
@@ -719,7 +719,7 @@ export default function ExpensesPage() {
                   </tbody>
                 </table>
               </div>
-              
+
               {selectedItems.length > 0 && (
                 <div className="flex items-center justify-between mt-4 p-2 bg-accent rounded-md">
                   <div className="text-sm">
@@ -740,7 +740,7 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="analytics">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card>
@@ -768,7 +768,7 @@ export default function ExpensesPage() {
                 )}
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Expense by Category</CardTitle>
@@ -794,7 +794,7 @@ export default function ExpensesPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           <Card className="mt-4">
             <CardHeader>
               <CardTitle>Category-wise Expense Report</CardTitle>
@@ -830,8 +830,8 @@ export default function ExpensesPage() {
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center">
                                 <div className="w-full bg-muted rounded-full h-2 mr-2">
-                                  <div 
-                                    className="bg-primary h-2 rounded-full" 
+                                  <div
+                                    className="bg-primary h-2 rounded-full"
                                     style={{ width: `${stats.totalAmount > 0 ? ((category.amount / stats.totalAmount) * 100).toFixed(1) : 0}%` }}
                                   ></div>
                                 </div>
@@ -868,7 +868,7 @@ export default function ExpensesPage() {
               View complete information about this expense
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedExpense && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -877,7 +877,7 @@ export default function ExpensesPage() {
                   {getCategoryLabel(selectedExpense.category)}
                 </Badge>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Amount</p>
@@ -905,19 +905,19 @@ export default function ExpensesPage() {
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={
                     selectedExpense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                    selectedExpense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                    "bg-red-100 text-red-800"
+                      selectedExpense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                        "bg-red-100 text-red-800"
                   }>
                     {selectedExpense.status}
                   </Badge>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedExpense.description || "No description provided."}</p>
               </div>
-              
+
               {selectedExpense.attachments && selectedExpense.attachments.length > 0 && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Attachments</p>
@@ -933,7 +933,7 @@ export default function ExpensesPage() {
               )}
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewExpenseDialog(false)}>
               Close
@@ -966,7 +966,7 @@ export default function ExpensesPage() {
             <form onSubmit={form.handleSubmit(onSubmitExpense)} className="space-y-4">
               {/* Same form fields as Create Expense Dialog */}
               {/* ...existing code... */}
-              
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditExpenseDialog(false)}>
                   Cancel

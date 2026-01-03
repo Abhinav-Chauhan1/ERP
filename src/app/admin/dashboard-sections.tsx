@@ -1,12 +1,14 @@
-import { 
-  Users, BookOpen, Calendar, CreditCard, 
-  GraduationCap, School, PenTool, UserCheck 
+import {
+  Users, BookOpen, Calendar, CreditCard,
+  GraduationCap, School, PenTool, UserCheck
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Chart } from "@/components/dashboard/chart";
-import { CalendarWidget } from "@/components/dashboard/calendar-widget";
+
+import { CalendarWidget } from "@/components/calendar/calendar-widget";
+import { ReceiptVerificationWidget } from "@/components/admin/receipt-verification-widget";
 import {
   getDashboardStats,
   getStudentAttendanceData,
@@ -22,6 +24,8 @@ import {
   getUpcomingEventsCount,
   getRecentAnnouncementsCount,
 } from "@/lib/actions/dashboardActions";
+import { getAdminCalendarEvents } from "@/lib/actions/calendar-widget-actions";
+import { getReceiptWidgetData } from "@/lib/actions/receiptWidgetActions";
 
 /**
  * Primary stats section - fetches and displays key metrics
@@ -41,11 +45,11 @@ export async function PrimaryStatsSection() {
 
   const totalStudents = (totalStudentsResult.success && totalStudentsResult.data) ? totalStudentsResult.data : 0;
   const totalTeachers = (totalTeachersResult.success && totalTeachersResult.data) ? totalTeachersResult.data : 0;
-  const pendingFeePayments = (pendingFeePaymentsResult.success && pendingFeePaymentsResult.data) 
-    ? pendingFeePaymentsResult.data 
+  const pendingFeePayments = (pendingFeePaymentsResult.success && pendingFeePaymentsResult.data)
+    ? pendingFeePaymentsResult.data
     : { totalAmount: 0, count: 0 };
-  const todaysAttendance = (todaysAttendanceResult.success && todaysAttendanceResult.data) 
-    ? todaysAttendanceResult.data 
+  const todaysAttendance = (todaysAttendanceResult.success && todaysAttendanceResult.data)
+    ? todaysAttendanceResult.data
     : { studentAttendance: { percentage: 0, present: 0, total: 0 }, teacherAttendance: { percentage: 0, present: 0, total: 0 } };
 
   return (
@@ -98,11 +102,11 @@ export async function SecondaryStatsSection() {
     totalClasses: 0,
     totalSubjects: 0,
   };
-  const upcomingEventsCount = (upcomingEventsCountResult.success && upcomingEventsCountResult.data) 
-    ? upcomingEventsCountResult.data 
+  const upcomingEventsCount = (upcomingEventsCountResult.success && upcomingEventsCountResult.data)
+    ? upcomingEventsCountResult.data
     : 0;
-  const recentAnnouncementsCount = (recentAnnouncementsCountResult.success && recentAnnouncementsCountResult.data) 
-    ? recentAnnouncementsCountResult.data 
+  const recentAnnouncementsCount = (recentAnnouncementsCountResult.success && recentAnnouncementsCountResult.data)
+    ? recentAnnouncementsCountResult.data
     : 0;
 
   return (
@@ -156,7 +160,7 @@ export async function ChartsSection() {
         xKey="month"
         yKey="present"
         categories={["present"]}
-        colors={["hsl(var(--primary))"]}
+        colors={["#2563eb"]}
         type="area"
       />
       <Chart
@@ -166,7 +170,7 @@ export async function ChartsSection() {
         xKey="subject"
         yKey="average"
         categories={["average"]}
-        colors={["hsl(var(--primary))"]}
+        colors={["#16a34a"]}
         type="bar"
       />
     </div>
@@ -174,21 +178,33 @@ export async function ChartsSection() {
 }
 
 /**
- * Activity and events section - displays enrollment, activities, and calendar
+ * Activity and events section - displays enrollment, activities, calendar, and receipt verification
  */
 export async function ActivitySection() {
-  const [enrollmentResult, activitiesResult, eventsResult] = await Promise.all([
+  const [enrollmentResult, activitiesResult, calendarEventsResult, receiptWidgetResult] = await Promise.all([
     getEnrollmentDistribution(),
     getRecentActivities(),
-    getUpcomingEvents(),
+    getAdminCalendarEvents(5),
+    getReceiptWidgetData(),
   ]);
 
   const enrollmentDistributionData = (enrollmentResult.success && enrollmentResult.data) ? enrollmentResult.data : [];
   const recentActivities = (activitiesResult.success && activitiesResult.data) ? activitiesResult.data : [];
-  const upcomingEvents = (eventsResult.success && eventsResult.data) ? eventsResult.data : [];
+  const calendarEvents = (calendarEventsResult.success && calendarEventsResult.data) ? calendarEventsResult.data : [];
+  const receiptWidgetData = (receiptWidgetResult.success && receiptWidgetResult.data)
+    ? receiptWidgetResult.data
+    : {
+      pendingCount: 0,
+      verifiedToday: 0,
+      rejectedToday: 0,
+      oldestPendingDays: 0,
+      averageVerificationTime: 0,
+      rejectionRate: 0,
+      trend: "stable" as const,
+    };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card className="md:col-span-2 lg:col-span-1">
         <CardHeader>
           <CardTitle className="text-base font-medium">Enrollment Distribution</CardTitle>
@@ -198,17 +214,29 @@ export async function ActivitySection() {
           <Chart
             title=""
             data={enrollmentDistributionData}
-            xKey="grade"
-            yKey="students"
+            xKey="name"
+            yKey="value"
+            categories={["value"]}
             type="pie"
-            colors={["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--chart-1))"]}
+            colors={["#2563eb", "#16a34a", "#db2777", "#ea580c", "#8b5cf6", "#0ea5e9"]}
           />
         </CardContent>
       </Card>
 
       <ActivityFeed activities={recentActivities} className="lg:col-span-1" />
 
-      <CalendarWidget events={upcomingEvents} className="lg:col-span-1" />
+      <CalendarWidget events={calendarEvents} userRole="ADMIN" className="lg:col-span-1" />
+
+      <ReceiptVerificationWidget
+        pendingCount={receiptWidgetData.pendingCount}
+        verifiedToday={receiptWidgetData.verifiedToday}
+        rejectedToday={receiptWidgetData.rejectedToday}
+        oldestPendingDays={receiptWidgetData.oldestPendingDays}
+        averageVerificationTime={receiptWidgetData.averageVerificationTime}
+        rejectionRate={receiptWidgetData.rejectionRate}
+        trend={receiptWidgetData.trend}
+        className="lg:col-span-1"
+      />
     </div>
   );
 }
@@ -227,30 +255,30 @@ export async function QuickActionsSection() {
           <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          <a href="/admin/users/students/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Add Student</span>
-          </div>
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </a>
+          <a href="/admin/users/teachers/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <GraduationCap className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Add Teacher</span>
-          </div>
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </a>
+          <a href="/admin/attendance" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Take Attendance</span>
-          </div>
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </a>
+          <a href="/admin/finance/receipt-verification" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <CreditCard className="h-5 w-5" />
             </div>
-            <span className="text-xs text-center">Record Payment</span>
-          </div>
+            <span className="text-xs text-center">Verify Receipts</span>
+          </a>
         </CardContent>
       </Card>
 
@@ -264,11 +292,10 @@ export async function QuickActionsSection() {
           ) : (
             notifications.map((notification, index) => (
               <div key={index} className="flex items-start gap-3">
-                <div className={`p-1.5 rounded-full ${
-                  notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-500' :
+                <div className={`p-1.5 rounded-full ${notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-500' :
                   notification.type === 'error' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-500' :
-                  'bg-primary/10 text-primary'
-                }`}>
+                    'bg-primary/10 text-primary'
+                  }`}>
                   {notification.type === 'warning' ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>

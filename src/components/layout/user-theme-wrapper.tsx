@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 
 type ColorTheme = "blue" | "red" | "green" | "purple" | "orange" | "teal";
 
@@ -20,15 +20,15 @@ export function UserThemeWrapper({
   initialTheme = "blue",
   userRole 
 }: UserThemeWrapperProps) {
-  const { user } = useUser();
+  const { data: session } = useSession();
   const [colorTheme, setColorTheme] = useState<ColorTheme>(initialTheme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (user?.id) {
+    if (session?.user?.id) {
       // Load saved color theme from localStorage with user and role-specific key
-      const storageKey = `color-theme-${userRole}-${user.id}`;
+      const storageKey = `color-theme-${userRole}-${session.user.id}`;
       const saved = localStorage.getItem(storageKey) as ColorTheme;
       
       if (saved && ["blue", "red", "green", "purple", "orange", "teal"].includes(saved)) {
@@ -37,7 +37,7 @@ export function UserThemeWrapper({
         setColorTheme(initialTheme);
       }
     }
-  }, [user?.id, initialTheme, userRole]);
+  }, [session?.user?.id, initialTheme, userRole]);
 
   // Generate theme class (empty string for blue as it's the default)
   const themeClass = mounted && colorTheme !== "blue" ? `theme-${colorTheme}` : "";
@@ -73,15 +73,15 @@ export function UserThemeWrapper({
 
   // Expose the theme setter globally so ColorThemeToggle can use it
   useEffect(() => {
-    if (user?.id && mounted) {
+    if (session?.user?.id && mounted) {
       (window as any).__setUserColorTheme = (theme: ColorTheme) => {
-        const storageKey = `color-theme-${userRole}-${user.id}`;
+        const storageKey = `color-theme-${userRole}-${session.user.id}`;
         localStorage.setItem(storageKey, theme);
         setColorTheme(theme);
       };
       (window as any).__getUserColorTheme = () => colorTheme;
     }
-  }, [user?.id, colorTheme, mounted, userRole]);
+  }, [session?.user?.id, colorTheme, mounted, userRole]);
 
   // Debug logging
   useEffect(() => {
@@ -90,11 +90,11 @@ export function UserThemeWrapper({
         userRole, 
         colorTheme, 
         themeClass, 
-        userId: user?.id,
+        userId: session?.user?.id,
         fullClassName: `h-full relative ${themeClass}`
       });
     }
-  }, [mounted, userRole, colorTheme, themeClass, user?.id]);
+  }, [mounted, userRole, colorTheme, themeClass, session?.user?.id]);
 
   // Don't render with theme until mounted to avoid hydration mismatch
   if (!mounted) {

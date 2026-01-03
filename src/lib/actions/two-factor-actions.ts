@@ -1,6 +1,6 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import {
   generateTOTPSecret,
@@ -31,15 +31,16 @@ export interface TwoFactorVerifyResult {
  */
 export async function initiateTwoFactorSetup(): Promise<TwoFactorSetupResult> {
   try {
-    const authObject = await auth();
-    
-    if (!authObject.userId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -78,9 +79,10 @@ export async function enableTwoFactor(
   backupCodes: string[]
 ): Promise<TwoFactorVerifyResult> {
   try {
-    const authObject = await auth();
-    
-    if (!authObject.userId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
@@ -97,7 +99,7 @@ export async function enableTwoFactor(
 
     // Update user in database
     await prisma.user.update({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
       data: {
         twoFactorEnabled: true,
         twoFactorSecret: encryptedSecret,
@@ -117,15 +119,16 @@ export async function enableTwoFactor(
  */
 export async function disableTwoFactor(token: string): Promise<TwoFactorVerifyResult> {
   try {
-    const authObject = await auth();
-    
-    if (!authObject.userId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
     });
 
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
@@ -144,7 +147,7 @@ export async function disableTwoFactor(token: string): Promise<TwoFactorVerifyRe
 
     // Disable 2FA
     await prisma.user.update({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
       data: {
         twoFactorEnabled: false,
         twoFactorSecret: null,
@@ -169,7 +172,7 @@ export async function verifyTwoFactorLogin(
   try {
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
@@ -189,16 +192,16 @@ export async function verifyTwoFactorLogin(
     // If TOTP fails, try backup codes
     if (user.twoFactorBackupCodes) {
       const backupResult = verifyBackupCode(token, user.twoFactorBackupCodes);
-      
+
       if (backupResult.valid) {
         // Update remaining backup codes
         await prisma.user.update({
-          where: { clerkId: userId },
+          where: { id: userId },
           data: {
             twoFactorBackupCodes: backupResult.remainingCodes,
           },
         });
-        
+
         return { success: true };
       }
     }
@@ -219,14 +222,15 @@ export async function getTwoFactorStatus(): Promise<{
   error?: string;
 }> {
   try {
-    const authObject = await auth();
-    
-    if (!authObject.userId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return { success: false, enabled: false, error: 'Unauthorized' };
     }
 
     const user = await prisma.user.findUnique({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
       select: { twoFactorEnabled: true },
     });
 
@@ -250,15 +254,16 @@ export async function regenerateBackupCodes(token: string): Promise<{
   error?: string;
 }> {
   try {
-    const authObject = await auth();
-    
-    if (!authObject.userId) {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
     });
 
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
@@ -281,7 +286,7 @@ export async function regenerateBackupCodes(token: string): Promise<{
 
     // Update user in database
     await prisma.user.update({
-      where: { clerkId: authObject.userId },
+      where: { id: userId },
       data: {
         twoFactorBackupCodes: encryptedBackupCodes,
       },

@@ -1,11 +1,11 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { 
-  ChevronLeft, Download, Filter, BarChart2, 
+import {
+  ChevronLeft, Download, Filter, BarChart2,
   Users, User, PrinterIcon, FileDown, FileText,
   Calendar, Clock, CheckCircle, XCircle, AlertTriangle
 } from "lucide-react";
@@ -68,26 +68,14 @@ export default function AttendanceReportsPage() {
   const [reportGenerateDialogOpen, setReportGenerateDialogOpen] = useState(false);
   const [reportType, setReportType] = useState("student");
   const [loading, setLoading] = useState(false);
-  
+
   // Data states
   const [todayStats, setTodayStats] = useState<any>(null);
   const [classWiseData, setClassWiseData] = useState<any[]>([]);
   const [lowAttendanceStudents, setLowAttendanceStudents] = useState<any[]>([]);
   const [monthlyTrends, setMonthlyTrends] = useState<any[]>([]);
 
-  // Load initial data
-  useEffect(() => {
-    loadTodayStats();
-    loadLowAttendanceStudents();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "class") {
-      loadClassWiseData();
-    }
-  }, [activeTab, selectedMonth, selectedYear]);
-
-  const loadTodayStats = async () => {
+  const loadTodayStats = useCallback(async () => {
     try {
       const result = await getAttendanceStats();
       if (result.success && result.data) {
@@ -96,9 +84,9 @@ export default function AttendanceReportsPage() {
     } catch (error) {
       console.error("Error loading today's stats:", error);
     }
-  };
+  }, []);
 
-  const loadClassWiseData = async () => {
+  const loadClassWiseData = useCallback(async () => {
     setLoading(true);
     try {
       const month = parseInt(selectedMonth);
@@ -110,7 +98,7 @@ export default function AttendanceReportsPage() {
         startDate,
         endDate,
       });
-      
+
       if (result.success && result.data) {
         setClassWiseData(result.data);
       } else {
@@ -122,19 +110,19 @@ export default function AttendanceReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth, selectedYear]);
 
-  const loadLowAttendanceStudents = async () => {
+  const loadLowAttendanceStudents = useCallback(async () => {
     try {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
-      
+
       const result = await getAbsenteeismAnalysis({
         startDate,
         endDate,
       });
-      
+
       if (result.success && result.data) {
         // Filter students with more than 5 absences (low attendance)
         const lowAttendance = result.data
@@ -145,7 +133,19 @@ export default function AttendanceReportsPage() {
     } catch (error) {
       console.error("Error loading low attendance students:", error);
     }
-  };
+  }, []);
+
+  // Load initial data
+  useEffect(() => {
+    loadTodayStats();
+    loadLowAttendanceStudents();
+  }, [loadTodayStats, loadLowAttendanceStudents]);
+
+  useEffect(() => {
+    if (activeTab === "class") {
+      loadClassWiseData();
+    }
+  }, [activeTab, loadClassWiseData]);
 
   const handleExportReport = async () => {
     try {
@@ -175,7 +175,7 @@ export default function AttendanceReportsPage() {
   const consecutiveAbsenceCount = lowAttendanceStudents.filter(
     (s: any) => s.absenceCount >= 3
   ).length;
-  
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export default function AttendanceReportsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Period</label>
                 <div className="grid grid-cols-2 gap-4">
@@ -232,7 +232,7 @@ export default function AttendanceReportsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  
+
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select year" />
@@ -251,7 +251,7 @@ export default function AttendanceReportsPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Report Format</label>
                 <Select defaultValue="pdf">
@@ -355,9 +355,9 @@ export default function AttendanceReportsPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t pt-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="w-full"
               onClick={() => setActiveTab("alerts")}
             >
@@ -366,14 +366,14 @@ export default function AttendanceReportsPage() {
           </CardFooter>
         </Card>
       </div>
-      
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="class">Class Reports</TabsTrigger>
           <TabsTrigger value="alerts">Attendance Alerts</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="overview">
           <div className="grid gap-4">
             <Card>
@@ -403,9 +403,9 @@ export default function AttendanceReportsPage() {
                       </div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full"
                         onClick={() => {
                           setReportType("class");
@@ -417,7 +417,7 @@ export default function AttendanceReportsPage() {
                       </Button>
                     </CardFooter>
                   </Card>
-                  
+
                   <Card>
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-sm">Student Absence Report</CardTitle>
@@ -436,9 +436,9 @@ export default function AttendanceReportsPage() {
                       </div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full"
                         onClick={() => {
                           setReportType("absenteeism");
@@ -450,7 +450,7 @@ export default function AttendanceReportsPage() {
                       </Button>
                     </CardFooter>
                   </Card>
-                  
+
                   <Card>
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-sm">Teacher Attendance Summary</CardTitle>
@@ -469,9 +469,9 @@ export default function AttendanceReportsPage() {
                       </div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full"
                         onClick={() => {
                           setReportType("teacher");
@@ -545,7 +545,7 @@ export default function AttendanceReportsPage() {
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="class">
           <Card>
             <CardHeader className="pb-2">
@@ -582,8 +582,8 @@ export default function AttendanceReportsPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={loadClassWiseData}
                     disabled={loading}
@@ -647,7 +647,7 @@ export default function AttendanceReportsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="alerts">
           <Card>
             <CardHeader className="pb-2">
@@ -659,8 +659,8 @@ export default function AttendanceReportsPage() {
                   </CardDescription>
                 </div>
                 <div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={loadLowAttendanceStudents}
                   >
@@ -696,8 +696,8 @@ export default function AttendanceReportsPage() {
                           <td className="py-3 px-4 align-middle">{student.class} - {student.section}</td>
                           <td className="py-3 px-4 align-middle">
                             <Badge className={
-                              student.absenceCount >= 10 
-                                ? "bg-red-100 text-red-800" 
+                              student.absenceCount >= 10
+                                ? "bg-red-100 text-red-800"
                                 : "bg-amber-100 text-amber-800"
                             }>
                               {student.absenceCount} days

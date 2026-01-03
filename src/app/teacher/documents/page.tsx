@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DocumentList } from "@/components/teacher/documents/document-list";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 
@@ -58,14 +58,15 @@ export default async function TeacherDocumentsPage({
 }: {
   searchParams: Promise<{ search?: string; category?: string }>;
 }) {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     redirect("/login");
   }
 
   const user = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       teacher: true,
     },

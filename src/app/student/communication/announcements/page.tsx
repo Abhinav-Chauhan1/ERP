@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnnouncementList } from "@/components/student/communication";
 import { getAnnouncements } from "@/lib/actions/student-communication-actions";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ export default function StudentAnnouncementsPage() {
   const [loading, setLoading] = useState(true);
 
   // Fetch announcements
-  const fetchAnnouncements = async (page: number = 1, newFilters: any = {}) => {
+  const fetchAnnouncements = useCallback(async (page: number = 1, newFilters: any = {}) => {
     setLoading(true);
     try {
       const result = await getAnnouncements({
@@ -40,12 +40,12 @@ export default function StudentAnnouncementsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Load announcements on mount
   useEffect(() => {
     fetchAnnouncements(1, filters);
-  }, []);
+  }, [fetchAnnouncements, filters]);
 
   const handlePageChange = (page: number) => {
     fetchAnnouncements(page, filters);

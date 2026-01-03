@@ -43,17 +43,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import { AcademicErrorBoundary } from "@/components/academic/academic-error-boundary";
 
 import { academicYearSchema, AcademicYearFormValues } from "@/lib/schemaValidation/academicyearsSchemaValidation";
 import { getAcademicYears, createAcademicYear, updateAcademicYear, deleteAcademicYear } from "@/lib/actions/academicyearsActions";
 
-export default function AcademicYearsPage() {
+function AcademicYearsPageContent() {
   const router = useRouter();
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<AcademicYearFormValues>({
@@ -91,6 +94,7 @@ export default function AcademicYearsPage() {
   }
 
   async function onSubmit(values: AcademicYearFormValues) {
+    setSubmitting(true);
     try {
       const result = selectedYearId 
         ? await updateAcademicYear({ ...values, id: selectedYearId })
@@ -107,6 +111,8 @@ export default function AcademicYearsPage() {
     } catch (err) {
       console.error(err);
       toast.error("An unexpected error occurred");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -140,6 +146,7 @@ export default function AcademicYearsPage() {
 
   async function confirmDelete() {
     if (selectedYearId) {
+      setDeleting(true);
       try {
         const result = await deleteAcademicYear(selectedYearId);
         
@@ -150,10 +157,14 @@ export default function AcademicYearsPage() {
           fetchAcademicYears();
         } else {
           toast.error(result.error || "Failed to delete academic year");
+          setDeleteDialogOpen(false);
         }
       } catch (err) {
         console.error(err);
         toast.error("An unexpected error occurred");
+        setDeleteDialogOpen(false);
+      } finally {
+        setDeleting(false);
       }
     }
   }
@@ -194,7 +205,7 @@ export default function AcademicYearsPage() {
                     <FormItem>
                       <FormLabel>Academic Year Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. 2023-2024" {...field} />
+                        <Input placeholder="e.g. 2023-2024" {...field} disabled={submitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -212,6 +223,7 @@ export default function AcademicYearsPage() {
                             date={field.value}
                             onSelect={field.onChange}
                             placeholder="Select start date"
+                            disabled={submitting ? () => true : undefined}
                           />
                         </FormControl>
                         <FormMessage />
@@ -230,6 +242,7 @@ export default function AcademicYearsPage() {
                             onSelect={field.onChange}
                             placeholder="Select end date"
                             disabled={(date) => {
+                              if (submitting) return true;
                               const startDate = form.getValues("startDate");
                               return startDate ? date < startDate : false;
                             }}
@@ -249,6 +262,7 @@ export default function AcademicYearsPage() {
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={submitting}
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
@@ -263,8 +277,8 @@ export default function AcademicYearsPage() {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit">
-                    {selectedYearId ? "Update" : "Create"}
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? (selectedYearId ? "Updating..." : "Creating...") : (selectedYearId ? "Update" : "Create")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -333,7 +347,7 @@ export default function AcademicYearsPage() {
                         <td className="py-3 px-4 align-middle">{year._count?.classes || 0}</td>
                         <td className="py-3 px-4 align-middle text-right">
                           <Link href={`/admin/academic/academic-years/${year.id}`}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={submitting || deleting}>
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
@@ -342,6 +356,7 @@ export default function AcademicYearsPage() {
                             size="sm" 
                             className="h-8 w-8 p-0"
                             onClick={() => handleEdit(year.id)}
+                            disabled={submitting || deleting}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -350,6 +365,7 @@ export default function AcademicYearsPage() {
                             size="sm" 
                             className="h-8 w-8 p-0 text-red-500"
                             onClick={() => handleDelete(year.id)}
+                            disabled={submitting || deleting}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -374,11 +390,19 @@ export default function AcademicYearsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -387,3 +411,10 @@ export default function AcademicYearsPage() {
   );
 }
 
+export default function AcademicYearsPage() {
+  return (
+    <AcademicErrorBoundary context="list">
+      <AcademicYearsPageContent />
+    </AcademicErrorBoundary>
+  );
+}

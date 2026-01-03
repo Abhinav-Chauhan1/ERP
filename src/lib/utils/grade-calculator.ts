@@ -1,5 +1,14 @@
 // Utility functions for grade calculations and performance analysis
 
+export interface GradeScaleEntry {
+  id: string;
+  grade: string;
+  minMarks: number;
+  maxMarks: number;
+  gpa?: number | null;
+  description?: string | null;
+}
+
 /**
  * Calculate percentage from marks
  */
@@ -12,8 +21,27 @@ export function calculatePercentage(
 }
 
 /**
+ * Determine grade based on percentage using a grade scale
+ * @param percentage - The percentage obtained
+ * @param gradeScale - Array of grade scale entries sorted by maxMarks descending
+ * @returns The grade string or null if no matching grade found
+ */
+export function calculateGradeFromScale(
+  percentage: number,
+  gradeScale: GradeScaleEntry[]
+): string | null {
+  // Find the first grade where percentage falls within the range
+  const matchingGrade = gradeScale.find(
+    (scale) => percentage >= scale.minMarks && percentage <= scale.maxMarks
+  );
+  
+  return matchingGrade ? matchingGrade.grade : null;
+}
+
+/**
  * Determine grade based on percentage
  * Default grading scale (can be customized based on school settings)
+ * This is a fallback when no grade scale is provided
  */
 export function calculateGrade(percentage: number): string {
   if (percentage >= 90) return "A+";

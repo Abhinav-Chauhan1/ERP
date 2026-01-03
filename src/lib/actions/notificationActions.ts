@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 
 // Get all notifications with filters
 export async function getNotifications(filters?: {
@@ -81,7 +81,7 @@ export async function createNotification(data: any) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -169,7 +169,7 @@ export async function getUserNotifications() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -202,7 +202,7 @@ export async function markNotificationAsRead(notificationId: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -246,7 +246,7 @@ export async function markAllNotificationsAsRead() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -281,7 +281,7 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -386,7 +386,7 @@ export async function getNotificationPreferences() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       select: {
         id: true,
         role: true,
@@ -454,7 +454,7 @@ export async function updateNotificationPreferences(preferences: any) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       select: {
         id: true,
         role: true,

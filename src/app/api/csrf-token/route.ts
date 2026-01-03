@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { generateCsrfToken } from "@/lib/utils/csrf";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 
 /**
  * GET /api/csrf-token

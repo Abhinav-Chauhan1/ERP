@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -29,7 +29,8 @@ const profileUpdateSchema = z.object({
  */
 export async function getSettings(teacherId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -40,7 +41,7 @@ export async function getSettings(teacherId?: string) {
 
     // Get user
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -108,7 +109,8 @@ export async function updateSettings(settingsData: {
   language?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -122,7 +124,7 @@ export async function updateSettings(settingsData: {
 
     // Get user and teacher
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -183,7 +185,8 @@ export async function updateProfile(profileData: {
   qualification?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -197,7 +200,7 @@ export async function updateProfile(profileData: {
 
     // Get user and teacher
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -264,7 +267,8 @@ export async function changePassword(passwordData: {
   newPassword: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {

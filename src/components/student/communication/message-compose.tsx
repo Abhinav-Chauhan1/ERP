@@ -148,7 +148,7 @@ export function MessageCompose({
       setLoadingRecipients(true);
       try {
         const result = await getAvailableRecipients();
-        
+
         if (result.success && result.data) {
           console.log("Recipients loaded:", result.data.length);
           setRecipients(result.data);
@@ -319,16 +319,16 @@ export function MessageCompose({
                     >
                       {selectedRecipientId
                         ? (() => {
-                            const selected = recipients.find((r) => r.id === selectedRecipientId);
-                            return selected ? (
-                              <div className="flex items-center gap-2">
-                                <span>{selected.firstName} {selected.lastName}</span>
-                                <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
-                                  {selected.role}
-                                </Badge>
-                              </div>
-                            ) : "Select a recipient";
-                          })()
+                          const selected = recipients.find((r) => r.id === selectedRecipientId);
+                          return selected ? (
+                            <div className="flex items-center gap-2">
+                              <span>{selected.firstName} {selected.lastName}</span>
+                              <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
+                                {selected.role}
+                              </Badge>
+                            </div>
+                          ) : "Select a recipient";
+                        })()
                         : "Select a recipient"}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -350,11 +350,10 @@ export function MessageCompose({
                               className="flex items-center gap-2 py-3 cursor-pointer"
                             >
                               <Check
-                                className={`h-4 w-4 shrink-0 ${
-                                  selectedRecipientId === recipient.id
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                }`}
+                                className={`h-4 w-4 shrink-0 ${selectedRecipientId === recipient.id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                                  }`}
                               />
                               <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -504,9 +503,9 @@ export function MessageCompose({
                 <div className="space-y-2">
                   {attachments.map((attachment, index) => {
                     // Check if it's an image URL for preview
-                    const isImage = attachment.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
-                                   attachment.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                    
+                    const isImage = attachment.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+                      attachment.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
                     return (
                       <div
                         key={index}
@@ -514,11 +513,14 @@ export function MessageCompose({
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {isImage ? (
-                            <img 
-                              src={attachment.url} 
-                              alt={attachment.fileName}
-                              className="h-10 w-10 object-cover rounded flex-shrink-0"
-                            />
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={attachment.url}
+                                alt={attachment.fileName}
+                                className="h-10 w-10 object-cover rounded flex-shrink-0"
+                              />
+                            </>
                           ) : (
                             <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           )}

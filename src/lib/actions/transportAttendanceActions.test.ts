@@ -54,7 +54,6 @@ describe("Transport Attendance Actions", () => {
 
     testUser = await db.user.create({
       data: {
-        clerkId: `test-clerk-${Date.now()}`,
         email: `test-${Date.now()}@example.com`,
         firstName: "Test",
         lastName: "Student",
@@ -170,7 +169,7 @@ describe("Transport Attendance Actions", () => {
 
   it("should update existing attendance record", async () => {
     const date = new Date();
-    
+
     // First record
     const result1 = await recordTransportAttendance({
       studentRouteId: testStudentRoute.id,

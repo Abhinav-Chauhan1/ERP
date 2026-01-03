@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
@@ -26,23 +26,22 @@ type DocumentUploadValues = z.infer<typeof documentUploadSchema>;
  * Get the current student
  */
 async function getCurrentStudent() {
-  const clerkUser = await currentUser();
-  
+  const session = await auth();
+  const clerkUser = session?.user;
+
   if (!clerkUser) {
     return null;
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     return null;
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -57,13 +56,13 @@ async function getCurrentStudent() {
  */
 export async function getStudentDocuments() {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     redirect("/login");
   }
-  
+
   const { dbUser } = result;
-  
+
   // Get document types
   const documentTypes = await db.documentType.findMany({
     orderBy: {
@@ -103,7 +102,7 @@ export async function getStudentDocuments() {
     },
     take: 20
   });
-  
+
   return {
     user: dbUser,
     documentTypes,
@@ -117,17 +116,17 @@ export async function getStudentDocuments() {
  */
 export async function uploadDocument(values: DocumentUploadValues) {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   const { dbUser } = result;
-  
+
   try {
     // Validate data
     const validatedData = documentUploadSchema.parse(values);
-    
+
     // Create document record
     await db.document.create({
       data: {
@@ -143,10 +142,10 @@ export async function uploadDocument(values: DocumentUploadValues) {
         documentTypeId: validatedData.documentTypeId,
       }
     });
-    
+
     revalidatePath("/student/documents");
     return { success: true, message: "Document uploaded successfully" };
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -154,10 +153,10 @@ export async function uploadDocument(values: DocumentUploadValues) {
         message: error.errors[0].message || "Invalid document data"
       };
     }
-    
-    return { 
-      success: false, 
-      message: "Failed to upload document" 
+
+    return {
+      success: false,
+      message: "Failed to upload document"
     };
   }
 }
@@ -167,40 +166,40 @@ export async function uploadDocument(values: DocumentUploadValues) {
  */
 export async function deleteDocument(documentId: string) {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   const { dbUser } = result;
-  
+
   try {
     // Find the document
     const document = await db.document.findUnique({
       where: { id: documentId }
     });
-    
+
     if (!document) {
       return { success: false, message: "Document not found" };
     }
-    
+
     // Ensure it belongs to the student
     if (document.userId !== dbUser.id) {
       return { success: false, message: "You can only delete your own documents" };
     }
-    
+
     // Delete the document
     await db.document.delete({
       where: { id: documentId }
     });
-    
+
     revalidatePath("/student/documents");
     return { success: true, message: "Document deleted successfully" };
-    
+
   } catch (error) {
-    return { 
-      success: false, 
-      message: "Failed to delete document" 
+    return {
+      success: false,
+      message: "Failed to delete document"
     };
   }
 }
@@ -211,16 +210,16 @@ export async function deleteDocument(documentId: string) {
 export async function getDocumentCategories() {
   // Verify the user is a student
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     redirect("/login");
   }
-  
+
   const categories = await db.documentType.findMany({
     orderBy: {
       name: 'asc'
     }
   });
-  
+
   return categories;
 }

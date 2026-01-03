@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -81,6 +81,12 @@ async function main() {
       defaultColorTheme: 'blue',
       primaryColor: '#3b82f6',
       language: 'en',
+      // Payment Configuration (Requirements: 7.2, 7.3)
+      enableOfflineVerification: true,
+      enableOnlinePayment: false,
+      maxReceiptSizeMB: 5,
+      allowedReceiptFormats: 'jpg,jpeg,png,pdf',
+      autoNotifyOnVerification: true,
     },
   });
 
@@ -129,10 +135,10 @@ async function main() {
   // Admin Users
   const adminUser = await prisma.user.create({
     data: {
-      clerkId: 'clerk_admin_001',
       email: 'admin@springfieldhigh.edu',
       firstName: 'John',
       lastName: 'Administrator',
+      name: 'John Administrator',
       phone: '+1-555-0101',
       role: 'ADMIN',
       active: true,
@@ -151,50 +157,50 @@ async function main() {
   const teacherUsers = await Promise.all([
     prisma.user.create({
       data: {
-        clerkId: 'clerk_teacher_001',
         email: 'sarah.johnson@springfieldhigh.edu',
         firstName: 'Sarah',
-        lastName: 'Johnson',
+      lastName: 'Johnson',
+      name: 'Sarah Johnson',
         phone: '+1-555-0201',
         role: 'TEACHER',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_teacher_002',
         email: 'michael.chen@springfieldhigh.edu',
         firstName: 'Michael',
-        lastName: 'Chen',
+      lastName: 'Chen',
+      name: 'Michael Chen',
         phone: '+1-555-0202',
         role: 'TEACHER',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_teacher_003',
         email: 'emily.rodriguez@springfieldhigh.edu',
         firstName: 'Emily',
-        lastName: 'Rodriguez',
+      lastName: 'Rodriguez',
+      name: 'Emily Rodriguez',
         phone: '+1-555-0203',
         role: 'TEACHER',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_teacher_004',
         email: 'david.williams@springfieldhigh.edu',
         firstName: 'David',
-        lastName: 'Williams',
+      lastName: 'Williams',
+      name: 'David Williams',
         phone: '+1-555-0204',
         role: 'TEACHER',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_teacher_005',
         email: 'lisa.anderson@springfieldhigh.edu',
         firstName: 'Lisa',
-        lastName: 'Anderson',
+      lastName: 'Anderson',
+      name: 'Lisa Anderson',
         phone: '+1-555-0205',
         role: 'TEACHER',
       },
@@ -253,40 +259,40 @@ async function main() {
   const parentUsers = await Promise.all([
     prisma.user.create({
       data: {
-        clerkId: 'clerk_parent_001',
         email: 'robert.smith@email.com',
         firstName: 'Robert',
-        lastName: 'Smith',
+      lastName: 'Smith',
+      name: 'Robert Smith',
         phone: '+1-555-0301',
         role: 'PARENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_parent_002',
         email: 'jennifer.smith@email.com',
         firstName: 'Jennifer',
-        lastName: 'Smith',
+      lastName: 'Smith',
+      name: 'Jennifer Smith',
         phone: '+1-555-0302',
         role: 'PARENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_parent_003',
         email: 'james.brown@email.com',
         firstName: 'James',
-        lastName: 'Brown',
+      lastName: 'Brown',
+      name: 'James Brown',
         phone: '+1-555-0303',
         role: 'PARENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_parent_004',
         email: 'maria.garcia@email.com',
         firstName: 'Maria',
-        lastName: 'Garcia',
+      lastName: 'Garcia',
+      name: 'Maria Garcia',
         phone: '+1-555-0304',
         role: 'PARENT',
       },
@@ -328,60 +334,60 @@ async function main() {
   const studentUsers = await Promise.all([
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_001',
         email: 'alex.smith@student.springfieldhigh.edu',
         firstName: 'Alex',
-        lastName: 'Smith',
+      lastName: 'Smith',
+      name: 'Alex Smith',
         phone: '+1-555-0401',
         role: 'STUDENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_002',
         email: 'emma.smith@student.springfieldhigh.edu',
         firstName: 'Emma',
-        lastName: 'Smith',
+      lastName: 'Smith',
+      name: 'Emma Smith',
         phone: '+1-555-0402',
         role: 'STUDENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_003',
         email: 'noah.brown@student.springfieldhigh.edu',
         firstName: 'Noah',
-        lastName: 'Brown',
+      lastName: 'Brown',
+      name: 'Noah Brown',
         phone: '+1-555-0403',
         role: 'STUDENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_004',
         email: 'sophia.garcia@student.springfieldhigh.edu',
         firstName: 'Sophia',
-        lastName: 'Garcia',
+      lastName: 'Garcia',
+      name: 'Sophia Garcia',
         phone: '+1-555-0404',
         role: 'STUDENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_005',
         email: 'liam.johnson@student.springfieldhigh.edu',
         firstName: 'Liam',
-        lastName: 'Johnson',
+      lastName: 'Johnson',
+      name: 'Liam Johnson',
         phone: '+1-555-0405',
         role: 'STUDENT',
       },
     }),
     prisma.user.create({
       data: {
-        clerkId: 'clerk_student_006',
         email: 'olivia.martinez@student.springfieldhigh.edu',
         firstName: 'Olivia',
-        lastName: 'Martinez',
+      lastName: 'Martinez',
+      name: 'Olivia Martinez',
         phone: '+1-555-0406',
         role: 'STUDENT',
       },

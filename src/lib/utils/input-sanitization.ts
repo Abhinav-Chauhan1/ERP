@@ -1,131 +1,150 @@
 /**
- * Input Sanitization Utility
- * Sanitizes user inputs to prevent XSS and injection attacks
- * Requirements: 10.1, 10.5
+ * Input sanitization utilities to prevent XSS and other injection attacks
+ * Implements security requirements for user input handling
  */
 
 /**
- * Sanitize HTML content to prevent XSS attacks
- * Removes potentially dangerous HTML tags and attributes
+ * Sanitize text input to prevent XSS attacks
+ * Removes or escapes potentially dangerous characters and HTML tags
+ * 
+ * @param input The input string to sanitize
+ * @param options Sanitization options
+ * @returns The sanitized string
  */
-export function sanitizeHtml(input: string): string {
-  if (!input) return "";
+export function sanitizeText(
+  input: string | null | undefined,
+  options: {
+    allowNewlines?: boolean;
+    maxLength?: number;
+    trim?: boolean;
+  } = {}
+): string {
+  if (!input) return '';
   
-  // Remove script tags and their content
-  let sanitized = input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  const {
+    allowNewlines = true,
+    maxLength = 5000,
+    trim = true,
+  } = options;
   
-  // Remove event handlers (onclick, onerror, etc.)
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, "");
+  let sanitized = input;
   
-  // Remove javascript: protocol
-  sanitized = sanitized.replace(/javascript:/gi, "");
+  // Trim whitespace if requested
+  if (trim) {
+    sanitized = sanitized.trim();
+  }
   
-  // Remove data: protocol (can be used for XSS)
-  sanitized = sanitized.replace(/data:text\/html/gi, "");
+  // Remove HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
   
-  // Remove potentially dangerous tags
-  const dangerousTags = [
-    "iframe",
-    "object",
-    "embed",
-    "applet",
-    "meta",
-    "link",
-    "style",
-    "form",
-    "input",
-    "button",
-    "textarea",
-    "select",
-  ];
-  
-  dangerousTags.forEach((tag) => {
-    const regex = new RegExp(`<${tag}\\b[^<]*(?:(?!<\\/${tag}>)<[^<]*)*<\\/${tag}>`, "gi");
-    sanitized = sanitized.replace(regex, "");
-    // Also remove self-closing tags
-    const selfClosingRegex = new RegExp(`<${tag}\\b[^>]*\\/?>`, "gi");
-    sanitized = sanitized.replace(selfClosingRegex, "");
-  });
-  
-  return sanitized.trim();
-}
-
-/**
- * Sanitize plain text input
- * Removes HTML tags and encodes special characters
- */
-export function sanitizeText(input: string): string {
-  if (!input) return "";
-  
-  // Remove all HTML tags
-  let sanitized = input.replace(/<[^>]*>/g, "");
-  
-  // Encode special characters
+  // Escape special HTML characters
   sanitized = sanitized
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/\//g, "&#x2F;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
   
-  return sanitized.trim();
-}
-
-/**
- * Sanitize email address
- * Validates and normalizes email format
- */
-export function sanitizeEmail(email: string): string {
-  if (!email) return "";
+  // Remove or escape control characters (except newlines if allowed)
+  if (!allowNewlines) {
+    sanitized = sanitized.replace(/[\r\n\t]/g, ' ');
+  }
   
-  // Convert to lowercase and trim
-  let sanitized = email.toLowerCase().trim();
+  // Remove null bytes and other dangerous characters
+  sanitized = sanitized.replace(/\0/g, '');
   
-  // Remove any HTML tags
-  sanitized = sanitized.replace(/<[^>]*>/g, "");
-  
-  // Basic email validation pattern
-  const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
-  
-  if (!emailPattern.test(sanitized)) {
-    return "";
+  // Limit length
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
   }
   
   return sanitized;
 }
 
 /**
- * Sanitize URL
- * Validates and normalizes URL format, removes dangerous protocols
+ * Sanitize HTML content while allowing safe tags
+ * Removes dangerous tags and attributes but preserves basic formatting
+ * 
+ * @param input The HTML string to sanitize
+ * @param options Sanitization options
+ * @returns The sanitized HTML string
  */
-export function sanitizeUrl(url: string): string {
-  if (!url) return "";
+export function sanitizeHtml(
+  input: string | null | undefined,
+  options: {
+    maxLength?: number;
+  } = {}
+): string {
+  if (!input) return '';
   
-  let sanitized = url.trim();
+  const { maxLength = 10000 } = options;
   
-  // Remove HTML tags
-  sanitized = sanitized.replace(/<[^>]*>/g, "");
+  let sanitized = input.trim();
   
-  // Check for dangerous protocols
-  const dangerousProtocols = ["javascript:", "data:", "vbscript:", "file:"];
-  const lowerUrl = sanitized.toLowerCase();
+  // Remove dangerous tags
+  const dangerousTags = ['script', 'iframe', 'object', 'embed', 'link', 'style', 'form', 'input', 'button'];
+  dangerousTags.forEach(tag => {
+    const regex = new RegExp(`<${tag}[^>]*>.*?<\/${tag}>`, 'gis');
+    sanitized = sanitized.replace(regex, '');
+    sanitized = sanitized.replace(new RegExp(`<${tag}[^>]*>`, 'gi'), '');
+  });
   
-  for (const protocol of dangerousProtocols) {
-    if (lowerUrl.startsWith(protocol)) {
-      return "";
-    }
+  // Remove dangerous attributes
+  sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=\s*[^\s>]*/gi, '');
+  
+  // Remove javascript: protocol
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  
+  // Remove data: protocol (can be used for XSS)
+  sanitized = sanitized.replace(/data:text\/html/gi, '');
+  
+  // Limit length
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength);
   }
   
-  // Only allow http, https, and mailto protocols
-  if (
-    !lowerUrl.startsWith("http://") &&
-    !lowerUrl.startsWith("https://") &&
-    !lowerUrl.startsWith("mailto:") &&
-    !lowerUrl.startsWith("/")
-  ) {
-    return "";
+  return sanitized;
+}
+
+/**
+ * Sanitize alphanumeric input with optional special characters
+ * 
+ * @param input The input string to sanitize
+ * @param allowedSpecialChars Additional characters to allow (e.g., "-_")
+ * @returns The sanitized string
+ */
+export function sanitizeAlphanumeric(
+  input: string | null | undefined,
+  allowedSpecialChars: string = ''
+): string {
+  if (!input) return '';
+  
+  const sanitized = input.trim();
+  
+  // Create regex pattern
+  const escapedSpecialChars = allowedSpecialChars.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`[^a-zA-Z0-9${escapedSpecialChars}]`, 'g');
+  
+  return sanitized.replace(pattern, '');
+}
+
+/**
+ * Sanitize email address
+ * 
+ * @param email The email to sanitize
+ * @returns The sanitized email
+ */
+export function sanitizeEmail(email: string | null | undefined): string {
+  if (!email) return '';
+  
+  const sanitized = email.trim().toLowerCase();
+  
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(sanitized)) {
+    return '';
   }
   
   return sanitized;
@@ -133,164 +152,250 @@ export function sanitizeUrl(url: string): string {
 
 /**
  * Sanitize phone number
- * Removes non-numeric characters except + and -
+ * 
+ * @param phone The phone number to sanitize
+ * @returns The sanitized phone number
  */
-export function sanitizePhoneNumber(phone: string): string {
-  if (!phone) return "";
+export function sanitizePhoneNumber(phone: string | null | undefined): string {
+  if (!phone) return '';
   
-  // Remove all characters except digits, +, -, (, ), and spaces
-  let sanitized = phone.replace(/[^\d+\-() ]/g, "");
-  
-  return sanitized.trim();
-}
-
-/**
- * Sanitize alphanumeric input
- * Allows only letters, numbers, and specified special characters
- */
-export function sanitizeAlphanumeric(
-  input: string,
-  allowedSpecialChars: string = ""
-): string {
-  if (!input) return "";
-  
-  // Create regex pattern with allowed special characters
-  const specialCharsEscaped = allowedSpecialChars.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`[^a-zA-Z0-9${specialCharsEscaped}]`, "g");
-  
-  return input.replace(pattern, "").trim();
-}
-
-/**
- * Sanitize numeric input
- * Allows only numbers and optional decimal point
- */
-export function sanitizeNumeric(input: string, allowDecimal: boolean = false): string {
-  if (!input) return "";
-  
-  if (allowDecimal) {
-    // Allow digits and one decimal point
-    return input.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+  // Remove all non-digit characters except + at the start
+  let sanitized = phone.trim();
+  if (sanitized.startsWith('+')) {
+    sanitized = '+' + sanitized.substring(1).replace(/\D/g, '');
+  } else {
+    sanitized = sanitized.replace(/\D/g, '');
   }
   
-  // Allow only digits
-  return input.replace(/[^\d]/g, "");
+  return sanitized;
 }
 
 /**
- * Sanitize SQL input
- * Removes SQL injection patterns
- * Note: This is a basic implementation. Always use parameterized queries!
+ * Sanitize URL
+ * 
+ * @param url The URL to sanitize
+ * @returns The sanitized URL
  */
-export function sanitizeSqlInput(input: string): string {
-  if (!input) return "";
+export function sanitizeUrl(url: string | null | undefined): string {
+  if (!url) return '';
   
-  // Remove SQL keywords and dangerous characters
-  let sanitized = input
-    .replace(/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|DECLARE)\b)/gi, "")
-    .replace(/[;'"\\]/g, "");
+  const sanitized = url.trim();
   
-  return sanitized.trim();
+  // Basic URL validation - must start with http:// or https://
+  try {
+    const urlObj = new URL(sanitized);
+    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+      return '';
+    }
+    return sanitized;
+  } catch {
+    // If URL is invalid, return empty string
+    return '';
+  }
 }
 
 /**
- * Sanitize object by applying sanitization to all string properties
+ * Sanitize remarks field (allows newlines, limited length)
+ * 
+ * @param remarks The remarks text to sanitize
+ * @returns The sanitized remarks
  */
-export function sanitizeObject<T extends Record<string, any>>(
-  obj: T,
-  sanitizer: (value: string) => string = sanitizeText
-): T {
-  const sanitized = { ...obj };
+export function sanitizeRemarks(remarks: string | null | undefined): string {
+  return sanitizeText(remarks, {
+    allowNewlines: true,
+    maxLength: 1000,
+    trim: true,
+  });
+}
+
+/**
+ * Sanitize rejection reason (allows newlines, limited length)
+ * 
+ * @param reason The rejection reason to sanitize
+ * @returns The sanitized rejection reason
+ */
+export function sanitizeRejectionReason(reason: string | null | undefined): string {
+  if (!reason) return '';
   
-  for (const key in sanitized) {
-    if (typeof sanitized[key] === "string") {
-      sanitized[key] = sanitizer(sanitized[key]) as any;
-    } else if (typeof sanitized[key] === "object" && sanitized[key] !== null) {
-      sanitized[key] = sanitizeObject(sanitized[key], sanitizer);
+  const sanitized = sanitizeText(reason, {
+    allowNewlines: true,
+    maxLength: 500,
+    trim: true,
+  });
+  
+  // Ensure non-empty after sanitization
+  if (sanitized.length === 0) {
+    throw new Error('Rejection reason cannot be empty');
+  }
+  
+  return sanitized;
+}
+
+/**
+ * Sanitize transaction reference (no newlines, limited length)
+ * 
+ * @param transactionRef The transaction reference to sanitize
+ * @returns The sanitized transaction reference
+ */
+export function sanitizeTransactionRef(transactionRef: string | null | undefined): string | null {
+  if (!transactionRef) return null;
+  
+  const sanitized = sanitizeText(transactionRef, {
+    allowNewlines: false,
+    maxLength: 100,
+    trim: true,
+  });
+  
+  return sanitized.length > 0 ? sanitized : null;
+}
+
+/**
+ * Validate and sanitize file name
+ * Removes path traversal attempts and dangerous characters
+ * 
+ * @param fileName The file name to sanitize
+ * @returns The sanitized file name
+ */
+export function sanitizeFileName(fileName: string): string {
+  if (!fileName) return 'file';
+  
+  // Remove path separators and parent directory references
+  let sanitized = fileName.replace(/[\/\\]/g, '_');
+  sanitized = sanitized.replace(/\.\./g, '_');
+  
+  // Remove null bytes
+  sanitized = sanitized.replace(/\0/g, '');
+  
+  // Remove or replace special characters
+  sanitized = sanitized.replace(/[<>:"|?*]/g, '_');
+  
+  // Limit length
+  if (sanitized.length > 255) {
+    const ext = sanitized.substring(sanitized.lastIndexOf('.'));
+    const name = sanitized.substring(0, 255 - ext.length);
+    sanitized = name + ext;
+  }
+  
+  return sanitized || 'file';
+}
+
+/**
+ * Validate file content type matches extension
+ * Prevents file type spoofing attacks
+ * 
+ * @param file The file to validate
+ * @param allowedTypes Array of allowed MIME types
+ * @returns Validation result
+ */
+export function validateFileContent(
+  file: File,
+  allowedTypes: string[]
+): { valid: boolean; error?: string } {
+  // Check MIME type
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      valid: false,
+      error: `Invalid file type: ${file.type}. Allowed types: ${allowedTypes.join(', ')}`,
+    };
+  }
+  
+  // Check file extension matches MIME type
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.type.toLowerCase();
+  
+  const extensionMap: Record<string, string[]> = {
+    'image/jpeg': ['.jpg', '.jpeg'],
+    'image/png': ['.png'],
+    'application/pdf': ['.pdf'],
+  };
+  
+  const expectedExtensions = extensionMap[mimeType];
+  if (expectedExtensions) {
+    const hasValidExtension = expectedExtensions.some(ext => fileName.endsWith(ext));
+    if (!hasValidExtension) {
+      return {
+        valid: false,
+        error: `File extension does not match content type. Expected: ${expectedExtensions.join(' or ')}`,
+      };
     }
   }
   
-  return sanitized;
+  return { valid: true };
 }
 
 /**
- * Validate and sanitize JSON input
- * Parses JSON and sanitizes all string values
+ * Check if file appears to be a valid image by reading its header
+ * This provides additional validation beyond MIME type checking
+ * 
+ * @param file The file to check
+ * @returns Promise resolving to validation result
  */
-export function sanitizeJson(jsonString: string): any {
+export async function validateImageHeader(file: File): Promise<{ valid: boolean; error?: string }> {
   try {
-    const parsed = JSON.parse(jsonString);
-    return sanitizeObject(parsed);
+    // Read first few bytes to check file signature
+    const buffer = await file.slice(0, 12).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    // Check for common image file signatures
+    // JPEG: FF D8 FF
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+      return { valid: true };
+    }
+    
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4E &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0D &&
+      bytes[5] === 0x0A &&
+      bytes[6] === 0x1A &&
+      bytes[7] === 0x0A
+    ) {
+      return { valid: true };
+    }
+    
+    // PDF: 25 50 44 46 (%PDF)
+    if (
+      bytes[0] === 0x25 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x44 &&
+      bytes[3] === 0x46
+    ) {
+      return { valid: true };
+    }
+    
+    return {
+      valid: false,
+      error: 'File does not appear to be a valid image or PDF',
+    };
   } catch (error) {
-    throw new Error("Invalid JSON input");
+    return {
+      valid: false,
+      error: 'Failed to validate file content',
+    };
   }
 }
 
 /**
- * Remove null bytes from input
- * Null bytes can be used to bypass security checks
+ * Sanitize and validate all receipt upload data
+ * 
+ * @param data The receipt upload data
+ * @returns The sanitized data
  */
-export function removeNullBytes(input: string): string {
-  return input.replace(/\0/g, "");
-}
-
-/**
- * Truncate string to maximum length
- * Prevents buffer overflow attacks
- */
-export function truncateString(input: string, maxLength: number): string {
-  if (!input) return "";
-  
-  if (input.length <= maxLength) {
-    return input;
-  }
-  
-  return input.substring(0, maxLength);
-}
-
-/**
- * Comprehensive input sanitization
- * Applies multiple sanitization techniques
- */
-export function sanitizeInput(input: string, options?: {
-  maxLength?: number;
-  allowHtml?: boolean;
-  type?: "text" | "email" | "url" | "phone" | "alphanumeric" | "numeric";
-}): string {
-  if (!input) return "";
-  
-  let sanitized = input;
-  
-  // Remove null bytes
-  sanitized = removeNullBytes(sanitized);
-  
-  // Apply type-specific sanitization
-  switch (options?.type) {
-    case "email":
-      sanitized = sanitizeEmail(sanitized);
-      break;
-    case "url":
-      sanitized = sanitizeUrl(sanitized);
-      break;
-    case "phone":
-      sanitized = sanitizePhoneNumber(sanitized);
-      break;
-    case "alphanumeric":
-      sanitized = sanitizeAlphanumeric(sanitized);
-      break;
-    case "numeric":
-      sanitized = sanitizeNumeric(sanitized);
-      break;
-    case "text":
-    default:
-      sanitized = options?.allowHtml ? sanitizeHtml(sanitized) : sanitizeText(sanitized);
-      break;
-  }
-  
-  // Truncate if max length specified
-  if (options?.maxLength) {
-    sanitized = truncateString(sanitized, options.maxLength);
-  }
-  
-  return sanitized;
+export function sanitizeReceiptUploadData(data: {
+  transactionRef?: string | null;
+  remarks?: string | null;
+  receiptImage: File;
+}): {
+  transactionRef: string | null;
+  remarks: string | null;
+  receiptImage: File;
+} {
+  return {
+    transactionRef: sanitizeTransactionRef(data.transactionRef),
+    remarks: sanitizeRemarks(data.remarks),
+    receiptImage: data.receiptImage,
+  };
 }

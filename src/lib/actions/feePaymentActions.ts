@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { PaymentStatus, PaymentMethod } from "@prisma/client";
+import { sendFeeReminder } from "@/lib/services/communication-service";
 
 // Get all fee payments with filters
 export async function getFeePayments(filters?: {
@@ -150,11 +151,46 @@ export async function recordPayment(data: any) {
         student: {
           include: {
             user: true,
+            parents: {
+              include: {
+                parent: true,
+              },
+            },
           },
         },
         feeStructure: true,
       },
     });
+
+    // Send fee payment confirmation notification
+    // Requirements: 7.3, 7.4, 7.5
+    if (payment.status === PaymentStatus.COMPLETED || payment.status === PaymentStatus.PARTIAL) {
+      try {
+        // Calculate outstanding balance for this student
+        const allPayments = await db.feePayment.findMany({
+          where: { studentId: data.studentId },
+        });
+
+        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
+
+        // Send notification to all parents
+        for (const parentRelation of payment.student.parents) {
+          await sendFeeReminder({
+            studentId: payment.studentId,
+            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            amount: payment.paidAmount,
+            dueDate: payment.paymentDate,
+            isOverdue: false,
+            outstandingBalance: totalOutstanding,
+            parentId: parentRelation.parentId,
+          }).catch(error => {
+            console.error('Failed to send fee confirmation notification:', error);
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error sending fee confirmation notification:', notificationError);
+      }
+    }
 
     revalidatePath("/admin/finance/payments");
     return { success: true, data: payment };
@@ -529,5 +565,169 @@ export async function generateReceiptNumber() {
   } catch (error) {
     console.error("Error generating receipt number:", error);
     return { success: false, error: "Failed to generate receipt number" };
+  }
+}
+
+
+// Send fee reminders for due and overdue payments
+// Requirements: 7.1, 7.2, 7.4, 7.5
+export async function sendFeeReminders() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get all pending and partial payments
+    const pendingPayments = await db.feePayment.findMany({
+      where: {
+        status: {
+          in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL],
+        },
+        balance: {
+          gt: 0,
+        },
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            parents: {
+              include: {
+                parent: true,
+              },
+            },
+          },
+        },
+        feeStructure: true,
+      },
+    });
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const payment of pendingPayments) {
+      try {
+        // Determine if payment is overdue
+        const dueDate = payment.feeStructure.validTo || payment.paymentDate;
+        const isOverdue = dueDate < today;
+
+        // Calculate total outstanding balance for this student
+        const allPayments = await db.feePayment.findMany({
+          where: { studentId: payment.studentId },
+        });
+
+        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
+
+        // Send notification to all parents
+        for (const parentRelation of payment.student.parents) {
+          await sendFeeReminder({
+            studentId: payment.studentId,
+            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            amount: payment.balance,
+            dueDate: dueDate,
+            isOverdue,
+            outstandingBalance: totalOutstanding,
+            parentId: parentRelation.parentId,
+          });
+          sentCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to send fee reminder for payment ${payment.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        totalPayments: pendingPayments.length,
+        sentCount,
+        failedCount,
+      },
+    };
+  } catch (error) {
+    console.error("Error sending fee reminders:", error);
+    return { success: false, error: "Failed to send fee reminders" };
+  }
+}
+
+// Send overdue fee alerts
+// Requirements: 7.2, 7.4, 7.5
+export async function sendOverdueFeeAlerts() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get all overdue payments
+    const overduePayments = await db.feePayment.findMany({
+      where: {
+        status: {
+          in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL],
+        },
+        balance: {
+          gt: 0,
+        },
+        feeStructure: {
+          validTo: {
+            lt: today,
+          },
+        },
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            parents: {
+              include: {
+                parent: true,
+              },
+            },
+          },
+        },
+        feeStructure: true,
+      },
+    });
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const payment of overduePayments) {
+      try {
+        // Calculate total outstanding balance for this student
+        const allPayments = await db.feePayment.findMany({
+          where: { studentId: payment.studentId },
+        });
+
+        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
+
+        // Send notification to all parents
+        for (const parentRelation of payment.student.parents) {
+          await sendFeeReminder({
+            studentId: payment.studentId,
+            studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+            amount: payment.balance,
+            dueDate: payment.feeStructure.validTo || payment.paymentDate,
+            isOverdue: true,
+            outstandingBalance: totalOutstanding,
+            parentId: parentRelation.parentId,
+          });
+          sentCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to send overdue alert for payment ${payment.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        totalOverdue: overduePayments.length,
+        sentCount,
+        failedCount,
+      },
+    };
+  } catch (error) {
+    console.error("Error sending overdue fee alerts:", error);
+    return { success: false, error: "Failed to send overdue fee alerts" };
   }
 }

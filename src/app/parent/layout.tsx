@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { UserRole } from "@prisma/client";
 
 import { ParentLayoutClient } from "@/components/layout/parent-layout-client";
@@ -10,22 +10,16 @@ export default async function ParentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const session = await auth();
   
-  if (!userId) {
-    redirect("/login");
-  }
-  
-  // Get current user directly
-  const clerkUser = await currentUser();
-  if (!clerkUser) {
+  if (!session?.user) {
     redirect("/login");
   }
   
   // Query the database directly
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
   

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 // GET /api/teacher/events - List all events
 export async function GET(request: NextRequest) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },

@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { AttendanceStatus } from "@prisma/client";
+import { sendAttendanceAlert } from "@/lib/services/communication-service";
 
 export async function getAttendanceOverview() {
   try {
@@ -410,9 +411,10 @@ export async function markStudentAttendance(data: {
       },
     });
 
+    let attendanceRecord;
     if (existing) {
       // Update existing record
-      const updated = await db.studentAttendance.update({
+      attendanceRecord = await db.studentAttendance.update({
         where: { id: existing.id },
         data: {
           status: data.status,
@@ -420,10 +422,9 @@ export async function markStudentAttendance(data: {
           markedBy: data.markedBy,
         },
       });
-      return { success: true, data: updated };
     } else {
       // Create new record
-      const created = await db.studentAttendance.create({
+      attendanceRecord = await db.studentAttendance.create({
         data: {
           studentId: data.studentId,
           sectionId: data.sectionId,
@@ -433,8 +434,64 @@ export async function markStudentAttendance(data: {
           markedBy: data.markedBy,
         },
       });
-      return { success: true, data: created };
     }
+
+    // Send notification for ABSENT or LATE status
+    // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+    if (data.status === AttendanceStatus.ABSENT || data.status === AttendanceStatus.LATE) {
+      try {
+        // Get student details with parent information
+        const student = await db.student.findUnique({
+          where: { id: data.studentId },
+          include: {
+            user: true,
+            parents: {
+              include: {
+                parent: true,
+              },
+            },
+          },
+        });
+
+        if (student && student.parents.length > 0) {
+          // Calculate attendance percentage
+          const totalAttendance = await db.studentAttendance.count({
+            where: { studentId: data.studentId },
+          });
+
+          const presentCount = await db.studentAttendance.count({
+            where: {
+              studentId: data.studentId,
+              status: AttendanceStatus.PRESENT,
+            },
+          });
+
+          const attendancePercentage = totalAttendance > 0 
+            ? (presentCount / totalAttendance) * 100 
+            : 100;
+
+          // Send notification to all parents
+          for (const parentRelation of student.parents) {
+            await sendAttendanceAlert({
+              studentId: data.studentId,
+              studentName: `${student.user.firstName} ${student.user.lastName}`,
+              date: data.date,
+              status: data.status,
+              attendancePercentage,
+              parentId: parentRelation.parentId,
+            }).catch(error => {
+              // Log error but don't fail the attendance marking
+              console.error('Failed to send attendance notification:', error);
+            });
+          }
+        }
+      } catch (notificationError) {
+        // Log error but don't fail the attendance marking
+        console.error('Error sending attendance notification:', notificationError);
+      }
+    }
+
+    return { success: true, data: attendanceRecord };
   } catch (error) {
     console.error("Error marking student attendance:", error);
     return { success: false, error: "Failed to mark attendance" };

@@ -1,10 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import {
+  createCalendarEventFromMeeting
+} from "../services/meeting-calendar-integration";
 
 /**
  * Get the current parent
@@ -18,9 +21,7 @@ async function getCurrentParent() {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -308,10 +309,15 @@ export async function scheduleParentTeacherMeeting(teacherId: string, scheduledD
   
   try {
     const { parent } = result;
+    const user = await currentUser();
+    const userId = user?.id || 'system';
     
     // Validate if the teacher exists
     const teacher = await db.teacher.findUnique({
-      where: { id: teacherId }
+      where: { id: teacherId },
+      include: {
+        user: true
+      }
     });
     
     if (!teacher) {
@@ -319,7 +325,7 @@ export async function scheduleParentTeacherMeeting(teacherId: string, scheduledD
     }
     
     // Create the meeting
-    await db.parentMeeting.create({
+    const meeting = await db.parentMeeting.create({
       data: {
         parentId: parent.id,
         teacherId,
@@ -328,8 +334,23 @@ export async function scheduleParentTeacherMeeting(teacherId: string, scheduledD
         scheduledDate,
         status: "REQUESTED",
         duration: 30 // Default 30 minutes
+      },
+      include: {
+        parent: {
+          include: {
+            user: true
+          }
+        },
+        teacher: {
+          include: {
+            user: true
+          }
+        }
       }
     });
+
+    // Create calendar event for the meeting
+    await createCalendarEventFromMeeting(meeting as any, userId);
     
     revalidatePath("/parent/meetings");
     return { success: true, message: "Meeting scheduled successfully" };

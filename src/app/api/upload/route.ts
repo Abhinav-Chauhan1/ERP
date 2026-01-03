@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { rateLimitMiddleware, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
 import { 

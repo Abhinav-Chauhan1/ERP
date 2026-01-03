@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { revalidatePath } from "next/cache";
@@ -28,7 +28,8 @@ const profileUpdateSchema = z.object({
  */
 export async function getTeacherProfile() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -40,7 +41,7 @@ export async function getTeacherProfile() {
     // Get user first, then teacher record
     const user = await db.user.findUnique({
       where: {
-        clerkId: userId,
+        id: userId,
       },
     });
 
@@ -205,8 +206,8 @@ export async function getTeacherProfile() {
         assignment.submissions.length > 10
           ? "High Priority"
           : assignment.submissions.length > 5
-          ? "Medium Priority"
-          : "Low Priority",
+            ? "Medium Priority"
+            : "Low Priority",
       count: assignment.submissions.length,
     }));
 
@@ -245,13 +246,13 @@ export async function getTeacherProfile() {
   }
 }
 
-
 /**
  * Update teacher profile information
  */
 export async function updateTeacherProfile(formData: FormData) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -262,7 +263,7 @@ export async function updateTeacherProfile(formData: FormData) {
 
     // Get user and teacher
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -335,7 +336,8 @@ export async function updateTeacherProfile(formData: FormData) {
  */
 export async function uploadTeacherAvatar(formData: FormData) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -346,7 +348,7 @@ export async function uploadTeacherAvatar(formData: FormData) {
 
     // Get user
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
     });
 
     if (!user) {

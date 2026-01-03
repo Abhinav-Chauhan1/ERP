@@ -6,7 +6,7 @@
  * Requirements: 6.2
  */
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { AuditAction } from '@prisma/client';
 import { logAudit } from './audit-log';
 
@@ -24,7 +24,8 @@ export function withAudit<T extends (...args: any[]) => Promise<any>>(
   fn: T
 ): T {
   return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error('Unauthorized');

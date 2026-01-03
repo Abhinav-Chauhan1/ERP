@@ -1,8 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { UserRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import {
   getSettingsSchema,
   updateProfileSchema,
@@ -25,15 +26,15 @@ import { CACHE_TAGS } from "@/lib/utils/cache";
  * Helper function to get current parent and verify authentication
  */
 async function getCurrentParent() {
-  const clerkUser = await currentUser();
+  const session = await auth();
   
-  if (!clerkUser) {
+  if (!session?.user) {
     return null;
   }
   
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     },
     include: {
       parent: true
@@ -135,6 +136,7 @@ export async function getSettings(input?: GetSettingsInput) {
           emailNotifications: settings.emailNotifications,
           smsNotifications: settings.smsNotifications,
           pushNotifications: settings.pushNotifications,
+          whatsappNotifications: settings.whatsappNotifications,
           feeReminders: settings.feeReminders,
           attendanceAlerts: settings.attendanceAlerts,
           examResultNotifications: settings.examResultNotifications,
@@ -142,6 +144,9 @@ export async function getSettings(input?: GetSettingsInput) {
           meetingReminders: settings.meetingReminders,
           preferredContactMethod: settings.preferredContactMethod,
           notificationFrequency: settings.notificationFrequency,
+          whatsappOptIn: settings.whatsappOptIn,
+          whatsappNumber: settings.whatsappNumber,
+          preferredLanguage: settings.preferredLanguage,
           profileVisibility: settings.profileVisibility,
           theme: settings.theme,
           language: settings.language,
@@ -203,24 +208,6 @@ export async function updateProfile(input: UpdateProfileInput) {
       });
     }
     
-    // Update user in Clerk if relevant fields changed
-    if (validated.firstName || validated.lastName || validated.email || validated.phone) {
-      try {
-        const clerk = await clerkClient();
-        const clerkUpdateData: any = {};
-        
-        if (validated.firstName) clerkUpdateData.firstName = validated.firstName;
-        if (validated.lastName) clerkUpdateData.lastName = validated.lastName;
-        if (validated.email) clerkUpdateData.emailAddress = [validated.email];
-        if (validated.phone) clerkUpdateData.phoneNumber = [validated.phone];
-        
-        await clerk.users.updateUser(user.clerkId, clerkUpdateData);
-      } catch (clerkError) {
-        console.error("Error updating Clerk user:", clerkError);
-        // Continue even if Clerk update fails - database is source of truth
-      }
-    }
-    
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS);
     revalidateTag(CACHE_TAGS.PARENTS);
@@ -242,7 +229,7 @@ export async function updateProfile(input: UpdateProfileInput) {
 
 
 /**
- * Change parent password via Clerk API
+ * Change parent password via NextAuth
  * Requirements: 6.4
  */
 export async function changePassword(input: ChangePasswordInput) {
@@ -258,40 +245,25 @@ export async function changePassword(input: ChangePasswordInput) {
     
     const { user } = parentData;
     
-    // Note: Clerk doesn't provide a direct API to change password from server-side
-    // Password changes should be handled through Clerk's user profile UI or
-    // by sending a password reset email
-    
-    // For now, we'll send a password reset email as a workaround
-    try {
-      const clerk = await clerkClient();
-      
-      // Create a password reset for the user
-      // This will send an email to the user with a reset link
-      await clerk.users.updateUser(user.clerkId, {
-        // Clerk requires using their UI components or sending reset emails
-        // We cannot directly change passwords via API for security reasons
-      });
-      
-      // Alternative: Send password reset email
-      // Note: This requires the user to click the link in their email
-      // await clerk.emails.createEmail({
-      //   emailAddressId: user.email,
-      //   subject: "Password Reset Request",
-      //   body: "Please reset your password..."
-      // });
-      
-      return {
-        success: true,
-        message: "Password change initiated. Please check your email for further instructions."
-      };
-    } catch (clerkError) {
-      console.error("Error changing password via Clerk:", clerkError);
-      return { 
-        success: false, 
-        message: "Unable to change your password at this time. Please use the 'Forgot Password' option or contact support for assistance." 
-      };
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(validated.currentPassword, user.password || "");
+    if (!isValidPassword) {
+      return { success: false, message: "Current password is incorrect" };
     }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(validated.newPassword, 10);
+    
+    // Update password in database
+    await db.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+    
+    return {
+      success: true,
+      message: "Password changed successfully"
+    };
   } catch (error) {
     console.error("Error changing password:", error);
     if (error instanceof Error && error.message.includes("validation")) {
@@ -338,6 +310,7 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
     if (validated.emailNotifications !== undefined) updateData.emailNotifications = validated.emailNotifications;
     if (validated.smsNotifications !== undefined) updateData.smsNotifications = validated.smsNotifications;
     if (validated.pushNotifications !== undefined) updateData.pushNotifications = validated.pushNotifications;
+    if (validated.whatsappNotifications !== undefined) updateData.whatsappNotifications = validated.whatsappNotifications;
     if (validated.feeReminders !== undefined) updateData.feeReminders = validated.feeReminders;
     if (validated.attendanceAlerts !== undefined) updateData.attendanceAlerts = validated.attendanceAlerts;
     if (validated.examResultNotifications !== undefined) updateData.examResultNotifications = validated.examResultNotifications;
@@ -345,6 +318,9 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
     if (validated.meetingReminders !== undefined) updateData.meetingReminders = validated.meetingReminders;
     if (validated.preferredContactMethod !== undefined) updateData.preferredContactMethod = validated.preferredContactMethod;
     if (validated.notificationFrequency !== undefined) updateData.notificationFrequency = validated.notificationFrequency;
+    if (validated.whatsappOptIn !== undefined) updateData.whatsappOptIn = validated.whatsappOptIn;
+    if (validated.whatsappNumber !== undefined) updateData.whatsappNumber = validated.whatsappNumber;
+    if (validated.preferredLanguage !== undefined) updateData.preferredLanguage = validated.preferredLanguage;
     
     // Update settings
     if (Object.keys(updateData).length > 0) {
@@ -423,20 +399,6 @@ export async function uploadAvatar(formData: FormData) {
         data: { avatar: avatarUrl }
       });
       
-      // Update avatar in Clerk
-      try {
-        const clerk = await clerkClient();
-        await clerk.users.updateUser(user.clerkId, {
-          publicMetadata: {
-            ...user,
-            avatar: avatarUrl
-          }
-        });
-      } catch (clerkError) {
-        console.error("Error updating Clerk avatar:", clerkError);
-        // Continue even if Clerk update fails - database is source of truth
-      }
-      
       // Invalidate cache and revalidate settings page
       revalidateTag(CACHE_TAGS.SETTINGS);
       revalidateTag(CACHE_TAGS.PARENTS);
@@ -487,19 +449,6 @@ export async function updateAvatarUrl(input: AvatarUrlInput) {
       data: { avatar: validated.avatarUrl }
     });
     
-    // Update avatar in Clerk
-    try {
-      const clerk = await clerkClient();
-      await clerk.users.updateUser(user.clerkId, {
-        publicMetadata: {
-          avatar: validated.avatarUrl
-        }
-      });
-    } catch (clerkError) {
-      console.error("Error updating Clerk avatar:", clerkError);
-      // Continue even if Clerk update fails - database is source of truth
-    }
-    
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS);
     revalidateTag(CACHE_TAGS.PARENTS);
@@ -542,19 +491,6 @@ export async function removeAvatar() {
       where: { id: user.id },
       data: { avatar: null }
     });
-    
-    // Update avatar in Clerk
-    try {
-      const clerk = await clerkClient();
-      await clerk.users.updateUser(user.clerkId, {
-        publicMetadata: {
-          avatar: null
-        }
-      });
-    } catch (clerkError) {
-      console.error("Error updating Clerk avatar:", clerkError);
-      // Continue even if Clerk update fails - database is source of truth
-    }
     
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS);

@@ -2,31 +2,36 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { 
-  ReportCardCreateValues, 
-  ReportCardUpdateValues, 
+import {
+  ReportCardCreateValues,
+  ReportCardUpdateValues,
   ReportCardRemarksValues,
-  ReportCardPublishValues 
+  ReportCardPublishValues
 } from "../schemaValidation/reportCardsSchemaValidation";
+import {
+  calculateAttendanceForTerm,
+  formatAttendanceForDisplay,
+  type AttendanceData
+} from "../utils/attendance-calculator";
 
 // Get all report cards with optional filtering
-export async function getReportCards(filters?: { 
-  published?: boolean, 
+export async function getReportCards(filters?: {
+  published?: boolean,
   termId?: string,
-  classId?: string 
+  classId?: string
 }) {
   try {
     // Build where clause based on filters
     const where: any = {};
-    
+
     if (filters?.published !== undefined) {
       where.isPublished = filters.published;
     }
-    
+
     if (filters?.termId) {
       where.termId = filters.termId;
     }
-    
+
     if (filters?.classId) {
       where.student = {
         enrollments: {
@@ -37,7 +42,7 @@ export async function getReportCards(filters?: {
         }
       };
     }
-    
+
     const reportCards = await db.reportCard.findMany({
       where,
       include: {
@@ -68,11 +73,11 @@ export async function getReportCards(filters?: {
         isPublished: "asc",
       },
     });
-    
+
     // Transform data to include student name, class, section
     const formattedReportCards = reportCards.map(rc => {
       const currentEnrollment = rc.student.enrollments[0];
-      
+
       return {
         id: rc.id,
         studentId: rc.studentId,
@@ -96,13 +101,13 @@ export async function getReportCards(filters?: {
         createdAt: rc.createdAt,
       };
     });
-    
+
     return { success: true, data: formattedReportCards };
   } catch (error) {
     console.error("Error fetching report cards:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch report cards" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch report cards"
     };
   }
 }
@@ -117,11 +122,11 @@ export async function getReportCardById(id: string) {
         studentId: true
       }
     });
-    
+
     if (!basicReportCard) {
       return { success: false, error: "Report card not found" };
     }
-    
+
     // Now use the studentId for the full query
     const reportCard = await db.reportCard.findUnique({
       where: { id },
@@ -168,18 +173,18 @@ export async function getReportCardById(id: string) {
         }
       }
     });
-    
+
     if (!reportCard) {
       return { success: false, error: "Report card not found" };
     }
-    
+
     // Group exam results by subject
     const subjectResults: Record<string, any> = {};
     reportCard.term.exams.forEach(exam => {
       const result = exam.results[0]; // There should be only one result per student per exam
-      
+
       if (!result) return;
-      
+
       if (!subjectResults[exam.subject.id]) {
         subjectResults[exam.subject.id] = {
           subjectId: exam.subject.id,
@@ -191,7 +196,7 @@ export async function getReportCardById(id: string) {
           grade: "",
         };
       }
-      
+
       subjectResults[exam.subject.id].exams.push({
         examId: exam.id,
         examTitle: exam.title,
@@ -201,13 +206,13 @@ export async function getReportCardById(id: string) {
         grade: result.grade || "",
         isAbsent: result.isAbsent,
       });
-      
+
       if (!result.isAbsent) {
         subjectResults[exam.subject.id].totalMarks += exam.totalMarks;
         subjectResults[exam.subject.id].obtainedMarks += result.marks;
       }
     });
-    
+
     // Calculate percentages and grades for each subject
     Object.values(subjectResults).forEach((subject: any) => {
       if (subject.totalMarks > 0) {
@@ -223,9 +228,9 @@ export async function getReportCardById(id: string) {
         else subject.grade = "F";
       }
     });
-    
+
     const currentEnrollment = reportCard.student.enrollments[0];
-    
+
     const formattedReportCard = {
       id: reportCard.id,
       studentId: reportCard.studentId,
@@ -249,14 +254,15 @@ export async function getReportCardById(id: string) {
       publishDate: reportCard.publishDate,
       createdAt: reportCard.createdAt,
       subjectResults: Object.values(subjectResults),
+      coScholasticData: reportCard.coScholasticData || null,
     };
-    
+
     return { success: true, data: formattedReportCard };
   } catch (error) {
     console.error("Error fetching report card:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch report card" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch report card"
     };
   }
 }
@@ -275,9 +281,9 @@ export async function createReportCard(data: ReportCardCreateValues) {
     });
 
     if (existingReportCard) {
-      return { 
-        success: false, 
-        error: "A report card already exists for this student and term" 
+      return {
+        success: false,
+        error: "A report card already exists for this student and term"
       };
     }
 
@@ -294,14 +300,14 @@ export async function createReportCard(data: ReportCardCreateValues) {
         attendance: data.attendance,
       }
     });
-    
+
     revalidatePath("/admin/assessment/report-cards");
     return { success: true, data: reportCard };
   } catch (error) {
     console.error("Error creating report card:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create report card" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create report card"
     };
   }
 }
@@ -309,6 +315,9 @@ export async function createReportCard(data: ReportCardCreateValues) {
 // Generate report card for a student
 export async function generateReportCard(studentId: string, termId: string) {
   try {
+    // Import the aggregation service
+    const { aggregateReportCardData } = await import("@/lib/services/report-card-data-aggregation");
+
     // Check if a report card already exists for this student and term
     const existingReportCard = await db.reportCard.findUnique({
       where: {
@@ -319,47 +328,22 @@ export async function generateReportCard(studentId: string, termId: string) {
       }
     });
 
-    // Get all exam results for the student in the term
-    const examResults = await db.examResult.findMany({
-      where: {
-        studentId,
-        exam: {
-          termId
-        }
-      },
-      include: {
-        exam: true
-      }
-    });
+    // Aggregate all report card data using the service
+    const reportCardData = await aggregateReportCardData(studentId, termId);
 
-    if (examResults.length === 0) {
-      return { 
-        success: false, 
-        error: "No exam results found for this student in the selected term" 
+    // Check if there are any exam results
+    if (reportCardData.subjects.length === 0) {
+      return {
+        success: false,
+        error: "No exam results found for this student in the selected term"
       };
     }
 
-    // Calculate report card values
-    const presentResults = examResults.filter(result => !result.isAbsent);
-    const totalMarks = presentResults.reduce((sum, result) => sum + result.exam.totalMarks, 0);
-    const obtainedMarks = presentResults.reduce((sum, result) => sum + result.marks, 0);
-    const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-    
-    // Determine grade based on percentage
-    let grade = "";
-    if (percentage >= 90) grade = "A+";
-    else if (percentage >= 80) grade = "A";
-    else if (percentage >= 70) grade = "B+";
-    else if (percentage >= 60) grade = "B";
-    else if (percentage >= 50) grade = "C+";
-    else if (percentage >= 40) grade = "C";
-    else if (percentage >= 33) grade = "D";
-    else grade = "F";
+    // Extract values from aggregated data
+    const { overallPerformance, attendance, coScholastic } = reportCardData;
 
-    // Calculate attendance (could be improved with actual attendance records)
-    // This is a placeholder calculation
-    const attendancePercentage = 
-      (examResults.filter(result => !result.isAbsent).length / examResults.length) * 100;
+    // Format co-scholastic data for JSON storage
+    const coScholasticData = coScholastic.length > 0 ? coScholastic : null;
 
     let reportCard;
     if (existingReportCard) {
@@ -367,11 +351,12 @@ export async function generateReportCard(studentId: string, termId: string) {
       reportCard = await db.reportCard.update({
         where: { id: existingReportCard.id },
         data: {
-          totalMarks,
-          averageMarks: totalMarks > 0 ? obtainedMarks / presentResults.length : 0,
-          percentage,
-          grade,
-          attendance: attendancePercentage,
+          totalMarks: overallPerformance.totalMarks,
+          averageMarks: overallPerformance.obtainedMarks / reportCardData.subjects.filter(s => !s.isAbsent).length || 0,
+          percentage: overallPerformance.percentage,
+          grade: overallPerformance.grade,
+          attendance: attendance.percentage,
+          coScholasticData: coScholasticData as any,
         }
       });
     } else {
@@ -380,22 +365,23 @@ export async function generateReportCard(studentId: string, termId: string) {
         data: {
           studentId,
           termId,
-          totalMarks,
-          averageMarks: totalMarks > 0 ? obtainedMarks / presentResults.length : 0,
-          percentage,
-          grade,
-          attendance: attendancePercentage,
+          totalMarks: overallPerformance.totalMarks,
+          averageMarks: overallPerformance.obtainedMarks / reportCardData.subjects.filter(s => !s.isAbsent).length || 0,
+          percentage: overallPerformance.percentage,
+          grade: overallPerformance.grade,
+          attendance: attendance.percentage,
+          coScholasticData: coScholasticData as any,
         }
       });
     }
-    
+
     revalidatePath("/admin/assessment/report-cards");
     return { success: true, data: reportCard };
   } catch (error) {
     console.error("Error generating report card:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to generate report card" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate report card"
     };
   }
 }
@@ -410,15 +396,15 @@ export async function updateReportCardRemarks(data: ReportCardRemarksValues) {
         principalRemarks: data.principalRemarks,
       }
     });
-    
+
     revalidatePath("/admin/assessment/report-cards");
     revalidatePath(`/admin/assessment/report-cards/${data.id}`);
     return { success: true, data: reportCard };
   } catch (error) {
     console.error("Error updating report card remarks:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update report card remarks" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update report card remarks"
     };
   }
 }
@@ -426,28 +412,159 @@ export async function updateReportCardRemarks(data: ReportCardRemarksValues) {
 // Publish a report card
 export async function publishReportCard(data: ReportCardPublishValues) {
   try {
-    const reportCard = await db.reportCard.update({
+    // Get report card with student and parent information
+    const reportCard = await db.reportCard.findUnique({
+      where: { id: data.id },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              }
+            },
+            parents: {
+              include: {
+                parent: {
+                  include: {
+                    user: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        term: {
+          include: {
+            academicYear: true
+          }
+        }
+      }
+    });
+
+    if (!reportCard) {
+      return {
+        success: false,
+        error: "Report card not found"
+      };
+    }
+
+    // Check if already published
+    if (reportCard.isPublished) {
+      return {
+        success: false,
+        error: "Report card is already published"
+      };
+    }
+
+    // Update report card to published
+    const updatedReportCard = await db.reportCard.update({
       where: { id: data.id },
       data: {
         isPublished: true,
         publishDate: new Date(),
       }
     });
-    
+
+    // Send notifications if requested
     if (data.sendNotification) {
-      // In a real application, you would add logic here to send notifications
-      // For example, create notifications, send emails, or SMS
-      console.log("Notification would be sent for report card:", data.id);
+      try {
+        // Create in-app notifications for student
+        await db.notification.create({
+          data: {
+            userId: reportCard.student.userId,
+            title: "Report Card Published",
+            message: `Your report card for ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published and is now available for viewing.`,
+            type: "ACADEMIC",
+            isRead: false,
+          }
+        });
+
+        // Create in-app notifications for all parents
+        for (const studentParent of reportCard.student.parents) {
+          await db.notification.create({
+            data: {
+              userId: studentParent.parent.userId,
+              title: "Report Card Published",
+              message: `Report card for ${reportCard.student.user.firstName} ${reportCard.student.user.lastName} - ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published.`,
+              type: "ACADEMIC",
+              isRead: false,
+            }
+          });
+        }
+
+        // TODO: Send email notifications
+        // This would integrate with your email service (e.g., SendGrid, AWS SES)
+        // Example:
+        // await sendEmail({
+        //   to: reportCard.student.user.email,
+        //   subject: "Report Card Published",
+        //   template: "report-card-published",
+        //   data: { studentName, termName, academicYear }
+        // });
+
+        console.log(`Notifications sent for report card: ${data.id}`);
+      } catch (notificationError) {
+        console.error("Error sending notifications:", notificationError);
+        // Don't fail the publish operation if notifications fail
+      }
     }
-    
+
     revalidatePath("/admin/assessment/report-cards");
     revalidatePath(`/admin/assessment/report-cards/${data.id}`);
-    return { success: true, data: reportCard };
+    revalidatePath("/student/assessments/report-cards");
+    revalidatePath("/parent/performance/reports");
+
+    return { success: true, data: updatedReportCard };
   } catch (error) {
     console.error("Error publishing report card:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to publish report card" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to publish report card"
+    };
+  }
+}
+
+// Batch publish report cards
+export async function batchPublishReportCards(reportCardIds: string[], sendNotification = false) {
+  try {
+    const results = {
+      successful: [] as string[],
+      failed: [] as { id: string; error: string }[],
+    };
+
+    for (const id of reportCardIds) {
+      const result = await publishReportCard({ id, sendNotification });
+
+      if (result.success) {
+        results.successful.push(id);
+      } else {
+        results.failed.push({ id, error: result.error || "Unknown error" });
+      }
+    }
+
+    revalidatePath("/admin/assessment/report-cards");
+    revalidatePath("/student/assessments/report-cards");
+    revalidatePath("/parent/performance/reports");
+
+    return {
+      success: true,
+      data: results,
+      message: `Published ${results.successful.length} report cards. ${results.failed.length} failed.`
+    };
+  } catch (error) {
+    console.error("Error batch publishing report cards:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to batch publish report cards"
     };
   }
 }
@@ -472,7 +589,7 @@ export async function calculateClassRanks(termId: string, classId: string) {
         percentage: 'desc'
       }
     });
-    
+
     // Update rank for each report card
     for (let i = 0; i < reportCards.length; i++) {
       await db.reportCard.update({
@@ -480,14 +597,14 @@ export async function calculateClassRanks(termId: string, classId: string) {
         data: { rank: i + 1 }
       });
     }
-    
+
     revalidatePath("/admin/assessment/report-cards");
     return { success: true, message: "Class ranks calculated successfully" };
   } catch (error) {
     console.error("Error calculating class ranks:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to calculate class ranks" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to calculate class ranks"
     };
   }
 }
@@ -495,7 +612,7 @@ export async function calculateClassRanks(termId: string, classId: string) {
 // Get terms and classes for filters
 export async function getReportCardFilters() {
   try {
-    const [terms, classes] = await Promise.all([
+    const [terms, classes, sections] = await Promise.all([
       db.term.findMany({
         orderBy: { startDate: 'desc' },
         include: { academicYear: true }
@@ -503,21 +620,26 @@ export async function getReportCardFilters() {
       db.class.findMany({
         orderBy: { name: 'asc' },
         include: { academicYear: true }
+      }),
+      db.classSection.findMany({
+        orderBy: { name: 'asc' },
+        include: { class: true }
       })
     ]);
-    
-    return { 
-      success: true, 
-      data: { 
-        terms, 
-        classes 
-      } 
+
+    return {
+      success: true,
+      data: {
+        terms,
+        classes,
+        sections
+      }
     };
   } catch (error) {
     console.error("Error fetching report card filters:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch filters" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch filters"
     };
   }
 }
@@ -548,11 +670,11 @@ export async function getStudentsForReportCard() {
         { user: { firstName: 'asc' } }
       ]
     });
-    
+
     // Transform the data for easier consumption in the UI
     const formattedStudents = students.map(student => {
       const currentEnrollment = student.enrollments[0];
-      
+
       return {
         id: student.id,
         name: `${student.user.firstName} ${student.user.lastName}`,
@@ -562,13 +684,37 @@ export async function getStudentsForReportCard() {
         section: currentEnrollment?.section.name || ""
       };
     });
-    
+
     return { success: true, data: formattedStudents };
   } catch (error) {
     console.error("Error fetching students:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch students" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch students"
+    };
+  }
+}
+
+/**
+ * Get detailed attendance data for a student and term
+ * This is useful for displaying attendance breakdown in report cards
+ */
+export async function getAttendanceForReportCard(studentId: string, termId: string) {
+  try {
+    const attendanceData = await calculateAttendanceForTerm(studentId, termId);
+
+    return {
+      success: true,
+      data: {
+        ...attendanceData,
+        displayText: formatAttendanceForDisplay(attendanceData),
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching attendance for report card:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch attendance data"
     };
   }
 }

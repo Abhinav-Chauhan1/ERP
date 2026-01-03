@@ -8,7 +8,7 @@
 
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { 
   createBackup, 
   restoreBackup, 
@@ -27,7 +27,8 @@ import { AuditAction } from '@prisma/client';
  */
 export async function createBackupAction(notifyOnFailure: boolean = true) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -79,7 +80,8 @@ export async function createBackupAction(notifyOnFailure: boolean = true) {
  */
 export async function restoreBackupAction(backupId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -129,7 +131,8 @@ export async function restoreBackupAction(backupId: string) {
  */
 export async function listBackupsAction() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -163,7 +166,8 @@ export async function listBackupsAction() {
  */
 export async function deleteBackupAction(backupId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -210,7 +214,8 @@ export async function deleteBackupAction(backupId: string) {
  */
 export async function uploadBackupToCloudAction(backupId: string, localPath: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {

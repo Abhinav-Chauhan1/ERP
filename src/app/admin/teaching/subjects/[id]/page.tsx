@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  ChevronLeft, Edit, BookOpen, Users, 
+import {
+  ChevronLeft, Edit, BookOpen, Users,
   GraduationCap, Clock, FileText, Plus,
   BookMarked, Download, PenTool, AlertCircle,
   Loader2
@@ -27,31 +27,31 @@ export default function SubjectDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function fetchSubject() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const id = params.id as string;
+        const result = await getSubjectById(id);
+
+        if (result.success) {
+          setSubject(result.data);
+        } else {
+          setError(result.error || "Failed to fetch subject details");
+          toast.error(result.error || "Failed to fetch subject details");
+        }
+      } catch (err) {
+        setError("An unexpected error occurred");
+        toast.error("An unexpected error occurred");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchSubject();
   }, [params.id]);
-
-  async function fetchSubject() {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const id = params.id as string;
-      const result = await getSubjectById(id);
-      
-      if (result.success) {
-        setSubject(result.data);
-      } else {
-        setError(result.error || "Failed to fetch subject details");
-        toast.error(result.error || "Failed to fetch subject details");
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -129,13 +129,13 @@ export default function SubjectDetailsPage() {
               </div>
               <div>
                 <CardTitle className="text-2xl">{subject.name}</CardTitle>
-                <CardDescription className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="font-semibold">{subject.code}</span>
-                  <span className="text-sm text-muted-foreground">|</span>
+                  <span>|</span>
                   <Badge className="bg-muted text-foreground hover:bg-muted">
                     {subject.department}
                   </Badge>
-                </CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -144,7 +144,7 @@ export default function SubjectDetailsPage() {
             <p className="text-foreground mb-4">
               {subject.description || "No description available for this subject."}
             </p>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-primary/10 rounded-lg text-center">
                 <BookMarked className="h-6 w-6 text-primary mx-auto mb-1" />
@@ -169,7 +169,7 @@ export default function SubjectDetailsPage() {
                 </span>
               </div>
             </div>
-            
+
             <h3 className="font-medium mb-2">Applicable Classes</h3>
             <div className="flex flex-wrap gap-2 mb-4">
               {subject.grades?.map((grade: string) => (
@@ -232,7 +232,7 @@ export default function SubjectDetailsPage() {
           <TabsTrigger value="teachers">Teachers</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="syllabus" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -317,7 +317,7 @@ export default function SubjectDetailsPage() {
             )}
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="teachers" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -387,7 +387,7 @@ export default function SubjectDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="classes" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">

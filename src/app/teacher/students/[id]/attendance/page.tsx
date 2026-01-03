@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Chart } from "@/components/dashboard/chart";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Download, 
-  UserCheck, 
-  UserX, 
-  Clock, 
+import {
+  ArrowLeft,
+  Calendar,
+  Download,
+  UserCheck,
+  UserX,
+  Clock,
   Mail,
   CalendarDays,
   FileText,
@@ -31,12 +31,12 @@ import { format, parseISO, subDays } from "date-fns";
 import { getStudentAttendanceReport } from "@/lib/actions/teacherAttendanceActions";
 import { toast } from "react-hot-toast";
 import { AttendanceStatus } from "@prisma/client";
-import { CalendarWidget } from "@/components/dashboard/calendar-widget";
+import { AttendanceCalendarWidget } from "@/components/attendance/attendance-calendar-widget";
 
 export default function StudentAttendanceReportPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [studentId, setStudentId] = useState<string>("");
-  
+
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -48,20 +48,15 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
   useEffect(() => {
     paramsPromise.then(p => setStudentId(p.id));
   }, [paramsPromise]);
-  
-  useEffect(() => {
-    if (!studentId) return;
-    fetchStudentAttendanceReport();
-  }, [studentId, dateRange]);
-  
-  const fetchStudentAttendanceReport = async () => {
+
+  const fetchStudentAttendanceReport = useCallback(async () => {
     setLoading(true);
     try {
       const filters = {
         startDate: dateRange?.from?.toISOString(),
         endDate: dateRange?.to?.toISOString(),
       };
-      
+
       const data = await getStudentAttendanceReport(studentId, filters);
       setReportData(data);
     } catch (error) {
@@ -70,10 +65,15 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [studentId, dateRange]);
+
+  useEffect(() => {
+    if (!studentId) return;
+    fetchStudentAttendanceReport();
+  }, [studentId, fetchStudentAttendanceReport]);
+
   const getStatusBadge = (status: AttendanceStatus) => {
-    switch(status) {
+    switch (status) {
       case "PRESENT":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>;
       case "ABSENT":
@@ -88,15 +88,15 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
         return <Badge variant="outline">Unknown</Badge>;
     }
   };
-  
+
   // Create calendar events from attendance records
   const attendanceEvents = reportData?.records.map((record: any) => ({
     id: record.id,
     title: record.status,
     date: new Date(record.date),
-    type: record.status === "PRESENT" ? "success" : 
-          record.status === "ABSENT" ? "danger" : 
-          record.status === "LATE" ? "warning" : "info"
+    type: record.status === "PRESENT" ? "success" :
+      record.status === "ABSENT" ? "danger" :
+        record.status === "LATE" ? "warning" : "info"
   })) || [];
 
   if (loading && !reportData) {
@@ -129,7 +129,7 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
         <div className="flex-1">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold tracking-tight">{reportData.student.name} - Attendance Report</h1>
-            <DateRangePicker 
+            <DateRangePicker
               value={dateRange}
               onValueChange={setDateRange}
             />
@@ -143,7 +143,7 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
           </div>
         </div>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -153,23 +153,22 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
           <CardContent>
             <div className="text-3xl font-bold">{reportData.stats.attendancePercentage}%</div>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div 
-                className={`h-2 rounded-full ${
-                  reportData.stats.attendancePercentage >= 90 ? 'bg-green-500' :
-                  reportData.stats.attendancePercentage >= 75 ? 'bg-amber-500' :
-                  'bg-red-500'
-                }`}
+              <div
+                className={`h-2 rounded-full ${reportData.stats.attendancePercentage >= 90 ? 'bg-green-500' :
+                    reportData.stats.attendancePercentage >= 75 ? 'bg-amber-500' :
+                      'bg-red-500'
+                  }`}
                 style={{ width: `${reportData.stats.attendancePercentage}%` }}
               ></div>
             </div>
             <div className="text-sm text-gray-500 mt-2">
               {reportData.stats.attendancePercentage >= 90 ? 'Excellent' :
-               reportData.stats.attendancePercentage >= 75 ? 'Good' :
-               'Needs Improvement'}
+                reportData.stats.attendancePercentage >= 75 ? 'Good' :
+                  'Needs Improvement'}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Present</CardTitle>
@@ -187,7 +186,7 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Absent</CardTitle>
@@ -205,7 +204,7 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Late Arrivals</CardTitle>
@@ -224,7 +223,7 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -245,18 +244,18 @@ export default function StudentAttendanceReportPage({ params: paramsPromise }: {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Attendance Calendar</CardTitle>
             <CardDescription>Daily attendance status</CardDescription>
           </CardHeader>
           <CardContent>
-            <CalendarWidget events={attendanceEvents} />
+            <AttendanceCalendarWidget events={attendanceEvents} />
           </CardContent>
         </Card>
       </div>
-      
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">

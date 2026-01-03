@@ -273,10 +273,10 @@ export function PaymentHistoryTable({
                       {format(new Date(payment.paymentDate), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="font-medium">
-                      ${payment.paidAmount.toFixed(2)}
+                      ₹{payment.paidAmount.toFixed(2)}
                       {payment.balance > 0 && (
                         <span className="text-xs text-gray-500 block">
-                          Balance: ${payment.balance.toFixed(2)}
+                          Balance: ₹{payment.balance.toFixed(2)}
                         </span>
                       )}
                     </TableCell>

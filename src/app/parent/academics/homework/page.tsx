@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HomeworkList } from "@/components/parent/academics/homework-list";
 import { AssignmentDetailCard } from "@/components/parent/academics/assignment-detail-card";
@@ -40,6 +40,34 @@ export default function HomeworkPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [subjectFilter, setSubjectFilter] = useState<string>("ALL");
 
+  const fetchHomework = useCallback(async () => {
+    if (!childId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/parent/homework?childId=${childId}&status=${statusFilter}&subjectId=${subjectFilter !== "ALL" ? subjectFilter : ""}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setAssignments(data.homework || []);
+
+        // Extract unique subjects
+        const uniqueSubjects = Array.from(
+          new Map(
+            data.homework.map((hw: any) => [hw.subject.id, hw.subject])
+          ).values()
+        );
+        setSubjects(uniqueSubjects as any[]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch homework:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [childId, statusFilter, subjectFilter]);
+
   useEffect(() => {
     if (!childId) {
       // Fetch first child and redirect
@@ -58,35 +86,7 @@ export default function HomeworkPage() {
     }
 
     fetchHomework();
-  }, [childId, statusFilter, subjectFilter]);
-
-  const fetchHomework = async () => {
-    if (!childId) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/parent/homework?childId=${childId}&status=${statusFilter}&subjectId=${subjectFilter !== "ALL" ? subjectFilter : ""}`
-      );
-      const data = await response.json();
-
-      if (data.success) {
-        setAssignments(data.homework || []);
-        
-        // Extract unique subjects
-        const uniqueSubjects = Array.from(
-          new Map(
-            data.homework.map((hw: any) => [hw.subject.id, hw.subject])
-          ).values()
-        );
-        setSubjects(uniqueSubjects as any[]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch homework:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [childId, fetchHomework, router]);
 
   const handleViewDetails = (assignmentId: string) => {
     const assignment = assignments.find((a) => a.id === assignmentId);

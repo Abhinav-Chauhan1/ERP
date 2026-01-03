@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 import { SessionTimeoutWarning } from './SessionTimeoutWarning';
 import {
   initializeSession,
@@ -21,7 +21,8 @@ import {
  * Implements Requirement 6.5: 8-hour session timeout with automatic termination
  */
 export function SessionManager() {
-  const { isSignedIn } = useAuth();
+  const { data: session, status } = useSession();
+  const isSignedIn = status === 'authenticated';
 
   useEffect(() => {
     if (isSignedIn) {

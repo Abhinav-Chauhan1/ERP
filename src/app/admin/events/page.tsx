@@ -1,15 +1,15 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast"; // Replace useToast with react-hot-toast
-import { 
-  PlusCircle, Calendar, Search, Filter, 
-  Tag, Users, MapPin, Clock, 
-  ChevronRight, CheckCircle, XCircle, AlertCircle, 
+import {
+  PlusCircle, Calendar, Search, Filter,
+  Tag, Users, MapPin, Clock,
+  ChevronRight, CheckCircle, XCircle, AlertCircle,
   Calendar as CalendarIcon, ArrowUpRight, Eye, Edit, Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -45,8 +45,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { 
-  eventSchemaWithRefinement, 
+import {
+  eventSchemaWithRefinement,
   EventTypeEnum,
   EventStatusEnum,
   type EventFormDataWithRefinement,
@@ -91,7 +91,7 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  
+
   // Initialize create form
   const createForm = useForm<EventFormDataWithRefinement>({
     resolver: zodResolver(eventSchemaWithRefinement),
@@ -118,72 +118,72 @@ export default function EventsPage() {
     },
   });
 
-  // Load events on initial render and when filters change
-  useEffect(() => {
-    fetchEvents();
-    fetchUpcomingEvents();
-  }, [typeFilter, statusFilter, activeTab]);
-  
   // Function to fetch events with the current filters
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setIsLoading(true);
-    
+
     const filter: EventFilterData = {};
-    
+
     if (searchTerm) {
       filter.searchTerm = searchTerm;
     }
-    
+
     if (typeFilter) {
       filter.type = typeFilter;
     }
-    
+
     if (statusFilter) {
       filter.status = statusFilter;
     }
-    
+
     // If viewing upcoming tab, filter for upcoming events
     if (activeTab === "upcoming") {
       filter.status = "UPCOMING";
       filter.startDate = new Date();
     }
-    
+
     // If viewing past tab, filter for past events
     if (activeTab === "past") {
       filter.endDate = new Date();
     }
-    
+
     const result = await getEvents(filter);
-    
+
     if (result.success && result.data) { // Add check for result.data
       setEvents(result.data);
     } else {
       toast.error(result.error || "Failed to fetch events");
     }
-    
+
     setIsLoading(false);
-  };
-  
+  }, [searchTerm, typeFilter, statusFilter, activeTab]);
+
   // Function to fetch upcoming events for the dashboard
-  const fetchUpcomingEvents = async () => {
+  const fetchUpcomingEvents = useCallback(async () => {
     const result = await getUpcomingEvents(3);
-    
+
     if (result.success && result.data) { // Add check for result.data
       setUpcomingEvents(result.data);
     } else {
       toast.error(result.error || "Failed to fetch upcoming events");
     }
-  };
-  
+  }, []);
+
+  // Load events on initial render and when filters change
+  useEffect(() => {
+    fetchEvents();
+    fetchUpcomingEvents();
+  }, [fetchEvents, fetchUpcomingEvents]);
+
   // Handle search input
   const handleSearch = () => {
     fetchEvents();
   };
-  
+
   // Handle event creation
   const handleCreateEvent = async (data: EventFormDataWithRefinement) => {
     const result = await createEvent(data);
-    
+
     if (result.success && result.data) { // Add check for result.data
       toast.success("Event created successfully");
       setCreateDialogOpen(false);
@@ -194,13 +194,13 @@ export default function EventsPage() {
       toast.error(result.error || "Failed to create event");
     }
   };
-  
+
   // Handle event update
   const handleUpdateEvent = async (data: EventFormDataWithRefinement) => {
     if (!selectedEvent) return;
-    
+
     const result = await updateEvent(selectedEvent.id, data);
-    
+
     if (result.success && result.data) { // Add check for result.data
       toast.success("Event updated successfully");
       setEditDialogOpen(false);
@@ -211,13 +211,13 @@ export default function EventsPage() {
       toast.error(result.error || "Failed to update event");
     }
   };
-  
+
   // Handle event deletion
   const handleDeleteEvent = async () => {
     if (!selectedEvent) return;
-    
+
     const result = await deleteEvent(selectedEvent.id);
-    
+
     if (result.success) {
       toast.success("Event deleted successfully");
       setDeleteDialogOpen(false);
@@ -228,11 +228,11 @@ export default function EventsPage() {
       toast.error(result.error || "Failed to delete event");
     }
   };
-  
+
   // Handle status update
   const handleStatusUpdate = async (eventId: string, newStatus: any) => {
     const result = await updateEventStatus(eventId, newStatus);
-    
+
     if (result.success && result.data) { // Add check for result.data
       toast.success(`Event status updated to ${newStatus}`);
       fetchEvents();
@@ -241,11 +241,11 @@ export default function EventsPage() {
       toast.error(result.error || "Failed to update event status");
     }
   };
-  
+
   // Set up edit dialog with selected event data
   const setupEditDialog = (event: any) => {
     setSelectedEvent(event);
-    
+
     editForm.reset({
       title: event.title,
       description: event.description || "",
@@ -260,16 +260,16 @@ export default function EventsPage() {
       isPublic: event.isPublic,
       thumbnail: event.thumbnail || "",
     });
-    
+
     setEditDialogOpen(true);
   };
-  
+
   // Set up delete dialog
   const setupDeleteDialog = (event: any) => {
     setSelectedEvent(event);
     setDeleteDialogOpen(true);
   };
-  
+
   // Get status badge color
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -287,7 +287,7 @@ export default function EventsPage() {
         return "bg-muted text-gray-800";
     }
   };
-  
+
   // Get type badge color
   const getTypeBadgeColor = (type: string) => {
     switch (type) {
@@ -339,15 +339,15 @@ export default function EventsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={createForm.control}
                     name="type"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Event Type</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -369,7 +369,7 @@ export default function EventsPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={createForm.control}
                   name="description"
@@ -377,17 +377,17 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter event description" 
-                          className="min-h-20" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Enter event description"
+                          className="min-h-20"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
@@ -396,8 +396,8 @@ export default function EventsPage() {
                       <FormItem>
                         <FormLabel>Start Date and Time*</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="datetime-local" 
+                          <Input
+                            type="datetime-local"
                             {...field}
                             value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                           />
@@ -406,7 +406,7 @@ export default function EventsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={createForm.control}
                     name="endDate"
@@ -414,8 +414,8 @@ export default function EventsPage() {
                       <FormItem>
                         <FormLabel>End Date and Time*</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="datetime-local" 
+                          <Input
+                            type="datetime-local"
                             {...field}
                             value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                           />
@@ -425,7 +425,7 @@ export default function EventsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
@@ -440,7 +440,7 @@ export default function EventsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={createForm.control}
                     name="organizer"
@@ -455,7 +455,7 @@ export default function EventsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
@@ -464,9 +464,9 @@ export default function EventsPage() {
                       <FormItem>
                         <FormLabel>Maximum Participants</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Leave empty for unlimited" 
+                          <Input
+                            type="number"
+                            placeholder="Leave empty for unlimited"
                             {...field}
                             value={field.value || ""}
                             onChange={e => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value))}
@@ -476,7 +476,7 @@ export default function EventsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={createForm.control}
                     name="registrationDeadline"
@@ -484,8 +484,8 @@ export default function EventsPage() {
                       <FormItem>
                         <FormLabel>Registration Deadline</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="datetime-local" 
+                          <Input
+                            type="datetime-local"
                             {...field}
                             value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value || ""}
                           />
@@ -495,7 +495,7 @@ export default function EventsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={createForm.control}
@@ -504,9 +504,9 @@ export default function EventsPage() {
                       <FormItem>
                         <FormLabel>Thumbnail URL</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Image URL for event thumbnail" 
-                            {...field} 
+                          <Input
+                            placeholder="Image URL for event thumbnail"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -514,7 +514,7 @@ export default function EventsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={createForm.control}
                     name="isPublic"
@@ -538,7 +538,7 @@ export default function EventsPage() {
                     )}
                   />
                 </div>
-                
+
                 <DialogFooter>
                   <Button type="submit">Create Event</Button>
                 </DialogFooter>
@@ -556,15 +556,15 @@ export default function EventsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {events.filter(event => 
-                event.status === "UPCOMING" && 
-                new Date(event.startDate) > new Date() && 
+              {events.filter(event =>
+                event.status === "UPCOMING" &&
+                new Date(event.startDate) > new Date() &&
                 new Date(event.startDate) < new Date(new Date().setDate(new Date().getDate() + 30))
               ).length}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Active Events</CardTitle>
@@ -576,7 +576,7 @@ export default function EventsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Total Events</CardTitle>
@@ -611,7 +611,7 @@ export default function EventsPage() {
                   <div className="flex items-center text-sm">
                     <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>{formatDate(event.startDate)}</span>
-                    {formatDate(event.startDate) !== formatDate(event.endDate) && 
+                    {formatDate(event.startDate) !== formatDate(event.endDate) &&
                       <> - {formatDate(event.endDate)}</>
                     }
                   </div>
@@ -628,7 +628,7 @@ export default function EventsPage() {
                   <div className="flex items-center text-sm">
                     <Users className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>
-                      {event._count.participants} 
+                      {event._count.participants}
                       {event.maxParticipants ? ` / ${event.maxParticipants}` : ""} participants
                     </span>
                   </div>
@@ -641,16 +641,16 @@ export default function EventsPage() {
                   </Button>
                 </Link>
                 <div className="flex gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setupEditDialog(event)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setupDeleteDialog(event)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -668,9 +668,9 @@ export default function EventsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={() => setCreateDialogOpen(true)}
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Event
@@ -702,8 +702,8 @@ export default function EventsPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Select 
-                  value={typeFilter || "ALL"} 
+                <Select
+                  value={typeFilter || "ALL"}
                   onValueChange={(value) => setTypeFilter(value === "ALL" ? undefined : value)}
                 >
                   <SelectTrigger className="w-[130px]">
@@ -719,8 +719,8 @@ export default function EventsPage() {
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select 
-                  value={statusFilter || "ALL"} 
+                <Select
+                  value={statusFilter || "ALL"}
                   onValueChange={(value) => setStatusFilter(value === "ALL" ? undefined : value)}
                 >
                   <SelectTrigger className="w-[130px]">
@@ -816,7 +816,7 @@ export default function EventsPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 align-middle">
-                          <Select 
+                          <Select
                             value={event.status}
                             onValueChange={(val) => handleStatusUpdate(event.id, val)}
                           >
@@ -846,16 +846,16 @@ export default function EventsPage() {
                               <Eye className="h-4 w-4 mr-1" /> View
                             </Button>
                           </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setupEditDialog(event)}
                           >
                             <Edit className="h-4 w-4 mr-1" /> Edit
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setupDeleteDialog(event)}
                           >
                             <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -910,15 +910,15 @@ export default function EventsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Event Type</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -940,7 +940,7 @@ export default function EventsPage() {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={editForm.control}
                 name="description"
@@ -948,10 +948,10 @@ export default function EventsPage() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter event description" 
-                        className="min-h-20" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Enter event description"
+                        className="min-h-20"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -959,7 +959,7 @@ export default function EventsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -968,8 +968,8 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Start Date and Time*</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="datetime-local" 
+                        <Input
+                          type="datetime-local"
                           {...field}
                           value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                         />
@@ -978,7 +978,7 @@ export default function EventsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="endDate"
@@ -986,8 +986,8 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>End Date and Time*</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="datetime-local" 
+                        <Input
+                          type="datetime-local"
                           {...field}
                           value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
                         />
@@ -997,7 +997,7 @@ export default function EventsPage() {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -1012,7 +1012,7 @@ export default function EventsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="organizer"
@@ -1027,7 +1027,7 @@ export default function EventsPage() {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -1036,9 +1036,9 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Maximum Participants</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Leave empty for unlimited" 
+                        <Input
+                          type="number"
+                          placeholder="Leave empty for unlimited"
                           {...field}
                           value={field.value || ""}
                           onChange={e => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value))}
@@ -1048,7 +1048,7 @@ export default function EventsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="registrationDeadline"
@@ -1056,8 +1056,8 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Registration Deadline</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="datetime-local" 
+                        <Input
+                          type="datetime-local"
                           {...field}
                           value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value || ""}
                         />
@@ -1067,7 +1067,7 @@ export default function EventsPage() {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={editForm.control}
@@ -1075,8 +1075,8 @@ export default function EventsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -1096,7 +1096,7 @@ export default function EventsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={editForm.control}
                   name="thumbnail"
@@ -1104,9 +1104,9 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Thumbnail URL</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Image URL for event thumbnail" 
-                          {...field} 
+                        <Input
+                          placeholder="Image URL for event thumbnail"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -1115,7 +1115,7 @@ export default function EventsPage() {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={editForm.control}
                 name="isPublic"
@@ -1138,10 +1138,10 @@ export default function EventsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   type="button"
                   onClick={() => setEditDialogOpen(false)}
                 >
@@ -1180,14 +1180,14 @@ export default function EventsPage() {
             )}
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteEvent}
             >
               Delete

@@ -146,6 +146,9 @@ export function NotificationList({
         return <DollarSign className="h-5 w-5" />;
       case "EVENT":
         return <CalendarIcon className="h-5 w-5" />;
+      case "RECEIPT_VERIFIED":
+      case "RECEIPT_REJECTED":
+        return <FileText className="h-5 w-5" />;
       default:
         return <Info className="h-5 w-5" />;
     }
@@ -167,6 +170,10 @@ export function NotificationList({
         return "text-yellow-600 bg-yellow-100";
       case "EVENT":
         return "text-pink-600 bg-pink-100";
+      case "RECEIPT_VERIFIED":
+        return "text-green-600 bg-green-100";
+      case "RECEIPT_REJECTED":
+        return "text-red-600 bg-red-100";
       default:
         return "text-gray-600 bg-gray-100";
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getTeacherQuestions, deleteQuestion } from "@/lib/actions/questionBankActions";
 import { getTeacherSubjectsForExam } from "@/lib/actions/onlineExamActions";
 import { Button } from "@/components/ui/button";
@@ -54,14 +54,6 @@ export function QuestionBankList() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [questions, subjectFilter, typeFilter, difficultyFilter, searchQuery]);
-
   async function loadData() {
     setLoading(true);
     try {
@@ -85,7 +77,11 @@ export function QuestionBankList() {
     }
   }
 
-  function applyFilters() {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const applyFilters = useCallback(function () {
     let filtered = [...questions];
 
     if (subjectFilter !== "all") {
@@ -107,7 +103,11 @@ export function QuestionBankList() {
     }
 
     setFilteredQuestions(filtered);
-  }
+  }, [questions, subjectFilter, typeFilter, difficultyFilter, searchQuery]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   async function handleDelete(id: string) {
     try {
@@ -208,16 +208,16 @@ export function QuestionBankList() {
                         {question.questionType === "MCQ"
                           ? "Multiple Choice"
                           : question.questionType === "TRUE_FALSE"
-                          ? "True/False"
-                          : "Essay"}
+                            ? "True/False"
+                            : "Essay"}
                       </Badge>
                       <Badge
                         variant={
                           question.difficulty === "EASY"
                             ? "default"
                             : question.difficulty === "HARD"
-                            ? "destructive"
-                            : "secondary"
+                              ? "destructive"
+                              : "secondary"
                         }
                       >
                         {question.difficulty}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { StudentsTable } from "@/components/users/students-table";
 import { AdvancedFilters, FilterConfig, FilterValue } from "@/components/shared/advanced-filters";
 import { useFilterPresets } from "@/hooks/use-filter-presets";
@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 interface StudentsWithFiltersProps {
   initialStudents: any[];
   classes: { id: string; name: string }[];
-  sections: { id: string; name: string }[];
+  sections: { id: string; name: string; classId: string }[];
 }
 
 export function StudentsWithFilters({
@@ -26,6 +26,15 @@ export function StudentsWithFilters({
   const { presets, savePreset, deletePreset, loadPreset } = useFilterPresets(
     "student-filter-presets"
   );
+
+  // Filter sections based on selected class
+  const filteredSections = useMemo(() => {
+    const selectedClassId = filters.classId as string;
+    if (!selectedClassId || selectedClassId === "all") {
+      return sections;
+    }
+    return sections.filter((section) => section.classId === selectedClassId);
+  }, [filters.classId, sections]);
 
   const filterConfigs: FilterConfig[] = [
     {
@@ -42,10 +51,11 @@ export function StudentsWithFilters({
       id: "sectionId",
       label: "Section",
       type: "select",
-      placeholder: "All Sections",
+      placeholder: filters.classId && filters.classId !== "all" ? "All Sections" : "Select class first",
+      disabled: !filters.classId || filters.classId === "all",
       options: [
         { value: "all", label: "All Sections" },
-        ...sections.map((s) => ({ value: s.id, label: s.name })),
+        ...filteredSections.map((s) => ({ value: s.id, label: s.name })),
       ],
     },
     {
@@ -111,7 +121,13 @@ export function StudentsWithFilters({
   }, [filters]);
 
   const handleFilterChange = (newFilters: FilterValue) => {
-    setFilters(newFilters);
+    // If class changes, reset section filter
+    if (newFilters.classId !== filters.classId) {
+      const { sectionId, ...rest } = newFilters;
+      setFilters(rest);
+    } else {
+      setFilters(newFilters);
+    }
   };
 
   const handleClearFilters = () => {

@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import { CertificateType, CertificateStatus } from "@prisma/client";
 
@@ -49,7 +49,7 @@ export async function getCertificateTemplates(filters?: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -138,7 +138,7 @@ export async function createCertificateTemplate(data: CertificateTemplateInput) 
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -216,7 +216,7 @@ export async function updateCertificateTemplate(id: string, data: Partial<Certif
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -305,7 +305,7 @@ export async function deleteCertificateTemplate(id: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -456,7 +456,7 @@ export async function duplicateCertificateTemplate(id: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -538,7 +538,7 @@ export async function getCertificateTemplateStats(templateId: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {

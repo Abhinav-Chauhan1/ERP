@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, format } from "date-fns";
 
@@ -9,7 +9,8 @@ import { startOfWeek, endOfWeek, startOfDay, endOfDay, format } from "date-fns";
  */
 export async function getTeacherAttendanceOverview() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -21,7 +22,7 @@ export async function getTeacherAttendanceOverview() {
     // Get user first, then teacher record
     const user = await db.user.findUnique({
       where: {
-        clerkId: userId,
+        id: userId,
       },
     });
 
@@ -223,8 +224,8 @@ export async function getTeacherAttendanceOverview() {
             averageAttendance >= 90
               ? "Good"
               : averageAttendance >= 75
-              ? "Fair"
-              : "Needs Attention",
+                ? "Fair"
+                : "Needs Attention",
         };
       })
     );

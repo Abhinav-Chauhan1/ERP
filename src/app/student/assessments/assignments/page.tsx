@@ -6,8 +6,12 @@ import { db } from "@/lib/db";
 import { StudentAssignmentList } from "@/components/student/student-assignment-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { UserRole } from "@prisma/client";
+
+import { auth } from "@/auth";
+
+
 
 export const metadata: Metadata = {
   title: "My Assignments | Student Portal",
@@ -16,23 +20,23 @@ export const metadata: Metadata = {
 
 export default async function StudentAssignmentsPage() {
   // Use direct authentication instead of getCurrentUserDetails
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -67,13 +71,13 @@ export default async function StudentAssignmentsPage() {
     }
   });
 
-// Define interface for subject class structure
-interface SubjectClass {
+  // Define interface for subject class structure
+  interface SubjectClass {
     subjectId: string;
-}
+  }
 
-// Extract subject IDs from the subject classes
-const subjectIds: string[] = subjectClasses.map((sc: SubjectClass) => sc.subjectId);
+  // Extract subject IDs from the subject classes
+  const subjectIds: string[] = subjectClasses.map((sc: SubjectClass) => sc.subjectId);
 
   // Get all assignments for these subjects
   const assignments = await db.assignment.findMany({
@@ -110,51 +114,51 @@ const subjectIds: string[] = subjectClasses.map((sc: SubjectClass) => sc.subject
   }));
 
   // Group assignments by status
-// Define interface for submission structure
-interface AssignmentSubmission {
+  // Define interface for submission structure
+  interface AssignmentSubmission {
     status: string;
-}
+  }
 
-// Define interface for assignment with submissions
-interface AssignmentWithSubmissions {
+  // Define interface for assignment with submissions
+  interface AssignmentWithSubmissions {
     dueDate: string | Date;
     submissions: AssignmentSubmission[];
-}
+  }
 
-const pending = assignmentsWithSubjectName.filter((a: AssignmentWithSubmissions) => 
+  const pending = assignmentsWithSubjectName.filter((a: AssignmentWithSubmissions) =>
     a.submissions.length === 0 && new Date(a.dueDate) >= new Date()
-);
-  
-// Define interface for assignment with submission status
-interface AssignmentWithSubmission extends AssignmentWithSubmissions {
-    submissions: Array<{
-        status: string;
-    }>;
-}
+  );
 
-const submitted = assignmentsWithSubjectName.filter((a: AssignmentWithSubmission) => 
+  // Define interface for assignment with submission status
+  interface AssignmentWithSubmission extends AssignmentWithSubmissions {
+    submissions: Array<{
+      status: string;
+    }>;
+  }
+
+  const submitted = assignmentsWithSubjectName.filter((a: AssignmentWithSubmission) =>
     a.submissions.length > 0 && a.submissions[0].status !== "GRADED"
-);
-  
-interface AssignmentWithGradedSubmission {
-    submissions: Array<{
-        status: string;
-    }>;
-}
+  );
 
-const graded = assignmentsWithSubjectName.filter((a: AssignmentWithGradedSubmission) => 
+  interface AssignmentWithGradedSubmission {
+    submissions: Array<{
+      status: string;
+    }>;
+  }
+
+  const graded = assignmentsWithSubjectName.filter((a: AssignmentWithGradedSubmission) =>
     a.submissions.length > 0 && a.submissions[0].status === "GRADED"
-);
-  
-// Define interface for assignment with due date
-interface AssignmentWithDueDate {
+  );
+
+  // Define interface for assignment with due date
+  interface AssignmentWithDueDate {
     dueDate: string | Date;
     submissions: AssignmentSubmission[];
-}
+  }
 
-const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) => 
+  const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
     a.submissions.length === 0 && new Date(a.dueDate) < new Date()
-);
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -165,7 +169,7 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
           Manage your assignments and submissions
         </p>
       </div>
-      
+
       {/* Tabs */}
       <Tabs defaultValue="pending" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -194,35 +198,35 @@ const overdue = assignmentsWithSubjectName.filter((a: AssignmentWithDueDate) =>
             )}
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="pending" className="space-y-4 mt-6">
-          <StudentAssignmentList 
-            assignments={pending as any} 
-            studentId={student.id} 
-            type="pending" 
+          <StudentAssignmentList
+            assignments={pending as any}
+            studentId={student.id}
+            type="pending"
           />
         </TabsContent>
-        
+
         <TabsContent value="submitted" className="space-y-4 mt-6">
-          <StudentAssignmentList 
-            assignments={submitted as any} 
-            studentId={student.id} 
-            type="submitted" 
+          <StudentAssignmentList
+            assignments={submitted as any}
+            studentId={student.id}
+            type="submitted"
           />
         </TabsContent>
-        
+
         <TabsContent value="graded" className="space-y-4 mt-6">
-          <StudentAssignmentList 
-            assignments={graded as any} 
-            studentId={student.id} 
-            type="graded" 
+          <StudentAssignmentList
+            assignments={graded as any}
+            studentId={student.id}
+            type="graded"
           />
         </TabsContent>
-        
+
         <TabsContent value="overdue" className="space-y-4 mt-6">
-          <StudentAssignmentList 
-            assignments={overdue as any} 
-            studentId={student.id} 
+          <StudentAssignmentList
+            assignments={overdue as any}
+            studentId={student.id}
             type="overdue"
           />
         </TabsContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Select,
@@ -37,18 +37,21 @@ export function ChildSelector({ selectedChildId }: ChildSelectorProps) {
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchChildren();
-  }, []);
+  const handleChildChange = useCallback((childId: string) => {
+    // Update URL with new childId
+    const url = new URL(window.location.href);
+    url.searchParams.set("childId", childId);
+    router.push(`${pathname}?${url.searchParams.toString()}`);
+  }, [router, pathname]);
 
-  const fetchChildren = async () => {
+  const fetchChildren = useCallback(async () => {
     try {
       const response = await fetch("/api/parent/children");
       const data = await response.json();
 
       if (data.success) {
         setChildren(data.children || []);
-        
+
         // If no child is selected and we have children, select the first one
         if (!selectedChildId && data.children.length > 0) {
           handleChildChange(data.children[0].id);
@@ -59,14 +62,11 @@ export function ChildSelector({ selectedChildId }: ChildSelectorProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedChildId, handleChildChange]);
 
-  const handleChildChange = (childId: string) => {
-    // Update URL with new childId
-    const url = new URL(window.location.href);
-    url.searchParams.set("childId", childId);
-    router.push(`${pathname}?${url.searchParams.toString()}`);
-  };
+  useEffect(() => {
+    fetchChildren();
+  }, [fetchChildren]);
 
   if (loading) {
     return (

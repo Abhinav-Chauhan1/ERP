@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { clerkClient } from "@clerk/nextjs/server";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { logCreate } from "@/lib/utils/audit-log";
@@ -42,11 +41,6 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
 
 /**
  * Convert an accepted admission application to an enrolled student
- * This creates:
- * 1. User account in Clerk (with login credentials)
- * 2. User record in database
- * 3. Student record with all data from application
- * 4. Links the application to the student
  */
 export async function convertAdmissionToStudent(
   applicationId: string,
@@ -116,30 +110,19 @@ export async function convertAdmissionToStudent(
       });
     }
 
-    // 3. Create user in Clerk
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.createUser({
-      firstName,
-      lastName,
-      emailAddress: [application.parentEmail],
-      password: temporaryPassword,
-      publicMetadata: {
-        role: UserRole.STUDENT,
-      },
-    });
-
-    // 4. Create user and student in database (transaction)
+    // 3. Create user and student in database (transaction)
     const result = await db.$transaction(async (tx) => {
       // Create base user
       const user = await tx.user.create({
         data: {
-          clerkId: clerkUser.id,
           email: application.parentEmail,
           firstName,
           lastName,
           phone: application.parentPhone,
           role: UserRole.STUDENT,
           active: true,
+          // In a real app with Credentials provider, you'd save the hashed password here
+          // password: hash(temporaryPassword)
         },
       });
 
@@ -268,15 +251,6 @@ export async function convertAdmissionToStudent(
     };
   } catch (error: any) {
     console.error("Error converting admission to student:", error);
-
-    // Handle specific Clerk errors
-    if (error.errors && error.errors[0]?.code === 'form_identifier_exists') {
-      return {
-        success: false,
-        error: "A user with this email already exists in the system",
-      };
-    }
-
     return {
       success: false,
       error: error.message || "Failed to convert admission to student. Please try again.",

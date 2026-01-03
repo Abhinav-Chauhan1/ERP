@@ -102,7 +102,7 @@ export default async function PaymentHistoryPage() {
                           {payment.receiptNumber || "-"}
                         </td>
                         <td className="py-3 px-4 align-middle font-semibold">
-                          ${payment.paidAmount.toFixed(2)}
+                          ₹{payment.paidAmount.toFixed(2)}
                         </td>
                         <td className="py-3 px-4 align-middle">
                           {formatPaymentMethod(payment.paymentMethod)}

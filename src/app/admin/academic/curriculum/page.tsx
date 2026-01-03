@@ -3,10 +3,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
-  BookOpen, BookText, FolderPlus, Search, 
-  AlertCircle, Loader2
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
+  BookOpen, BookText, FolderPlus, Search,
+  AlertCircle, Loader2, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,13 +44,13 @@ import * as z from "zod";
 
 // Import schema validation and server actions
 import { subjectSchema, SubjectFormValues, subjectUpdateSchema, SubjectUpdateFormValues } from "@/lib/schemaValidation/curriculumSchemaValidation";
-import { 
-  getSubjects, 
-  getDepartments, 
-  getClasses, 
-  createSubject, 
-  updateSubject, 
-  deleteSubject 
+import {
+  getSubjects,
+  getDepartments,
+  getClasses,
+  createSubject,
+  updateSubject,
+  deleteSubject
 } from "@/lib/actions/curriculumActions";
 
 export default function CurriculumPage() {
@@ -85,10 +85,10 @@ export default function CurriculumPage() {
   async function fetchSubjects() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getSubjects();
-      
+
       if (result.success) {
         setSubjects(result.data || []);
       } else {
@@ -107,7 +107,7 @@ export default function CurriculumPage() {
   async function fetchDepartments() {
     try {
       const result = await getDepartments();
-      
+
       if (result.success) {
         setDepartments(result.data || []);
       } else {
@@ -122,7 +122,7 @@ export default function CurriculumPage() {
   async function fetchClasses() {
     try {
       const result = await getClasses();
-      
+
       if (result.success) {
         setClasses(result.data || []);
       } else {
@@ -137,7 +137,7 @@ export default function CurriculumPage() {
   async function onSubmit(values: SubjectFormValues) {
     try {
       let result;
-      
+
       if (selectedSubjectId) {
         // Update existing subject
         const updateData: SubjectUpdateFormValues = { ...values, id: selectedSubjectId };
@@ -146,7 +146,7 @@ export default function CurriculumPage() {
         // Create new subject
         result = await createSubject(values);
       }
-      
+
       if (result.success) {
         toast.success(`Subject ${selectedSubjectId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -186,7 +186,7 @@ export default function CurriculumPage() {
     if (selectedSubjectId) {
       try {
         const result = await deleteSubject(selectedSubjectId);
-        
+
         if (result.success) {
           toast.success("Subject deleted successfully");
           setDeleteDialogOpen(false);
@@ -203,12 +203,12 @@ export default function CurriculumPage() {
   }
 
   function handleAddNew() {
-    form.reset({ 
-      name: "", 
-      code: "", 
-      description: "", 
-      departmentId: "", 
-      classIds: [] 
+    form.reset({
+      name: "",
+      code: "",
+      description: "",
+      departmentId: "",
+      classIds: []
     });
     setSelectedSubjectId(null);
     setDialogOpen(true);
@@ -216,14 +216,22 @@ export default function CurriculumPage() {
 
   // Filter subjects based on search term and department filter
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         subject.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      subject.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = departmentFilter === "all" || subject.department === departmentFilter;
     return matchesSearch && matchesDepartment;
   });
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/admin/academic" className="hover:text-foreground transition-colors">
+          Academic
+        </Link>
+        <ChevronRight className="h-4 w-4" />
+        <span className="font-medium text-foreground">Curriculum Management</span>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
@@ -244,8 +252,8 @@ export default function CurriculumPage() {
             <DialogHeader>
               <DialogTitle>{selectedSubjectId ? "Edit Subject" : "Add New Subject"}</DialogTitle>
               <DialogDescription>
-                {selectedSubjectId 
-                  ? "Update the details of the subject" 
+                {selectedSubjectId
+                  ? "Update the details of the subject"
                   : "Create a new subject for your curriculum"}
               </DialogDescription>
             </DialogHeader>
@@ -286,9 +294,9 @@ export default function CurriculumPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe the subject content and objectives" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Describe the subject content and objectives"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -302,8 +310,8 @@ export default function CurriculumPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -351,7 +359,7 @@ export default function CurriculumPage() {
                             />
                             <label htmlFor={classItem.id} className="text-sm">
                               {classItem.name}
-                              {classItem.academicYear.isCurrent && 
+                              {classItem.academicYear.isCurrent &&
                                 <span className="ml-1 text-xs text-green-600">(Current)</span>
                               }
                             </label>
@@ -388,11 +396,11 @@ export default function CurriculumPage() {
               <label htmlFor="search" className="text-sm font-medium block mb-1">Search</label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  id="search" 
-                  placeholder="Search by subject name or code..." 
-                  className="pl-9" 
-                  value={searchTerm} 
+                <Input
+                  id="search"
+                  placeholder="Search by subject name or code..."
+                  className="pl-9"
+                  value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
@@ -467,8 +475,8 @@ export default function CurriculumPage() {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {subject.classes.map((className: string) => (
-                      <span 
-                        key={className} 
+                      <span
+                        key={className}
                         className="px-2 py-0.5 bg-muted text-gray-700 rounded text-xs"
                       >
                         {className}

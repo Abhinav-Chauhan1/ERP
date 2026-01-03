@@ -65,7 +65,6 @@ describe('Student-Route Assignment', () => {
     // Create test student user
     testStudentUser = await db.user.create({
       data: {
-        clerkId: 'test-clerk-' + Date.now(),
         firstName: 'Test',
         lastName: 'Student',
         email: 'test.student.' + Date.now() + '@example.com',
@@ -141,7 +140,6 @@ describe('Student-Route Assignment', () => {
     // Create another student for this test
     const anotherUser = await db.user.create({
       data: {
-        clerkId: 'test-clerk-2-' + Date.now(),
         firstName: 'Another',
         lastName: 'Student',
         email: 'another.student.' + Date.now() + '@example.com',
@@ -178,7 +176,7 @@ describe('Student-Route Assignment', () => {
 
   it('should get available students for route', async () => {
     const students = await getAvailableStudentsForRoute(testRoute.id);
-    
+
     // The test student should not be in the list since they're already assigned
     const assignedStudent = students.find((s) => s.id === testStudent.id);
     expect(assignedStudent).toBeUndefined();
@@ -186,7 +184,7 @@ describe('Student-Route Assignment', () => {
 
   it('should calculate transport fee based on route', async () => {
     const result = await calculateTransportFee(testRoute.id);
-    
+
     expect(result.success).toBe(true);
     expect(result.fee).toBe(1000);
   });
@@ -206,7 +204,7 @@ describe('Student-Route Assignment', () => {
 
     // Unassign
     const result = await unassignStudentFromRoute(assignment!.id);
-    
+
     expect(result.success).toBe(true);
 
     // Verify it's removed

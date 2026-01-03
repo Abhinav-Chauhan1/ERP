@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,9 @@ import { NotificationSettings } from "@/components/student/settings/notification
 import { PrivacySettings } from "@/components/student/settings/privacy-settings";
 import { AppearanceSettings } from "@/components/student/settings/appearance-settings";
 import { SecuritySettings } from "@/components/student/settings/security-settings";
+import { ReminderPreferences } from "@/components/calendar/reminder-preferences";
 import { getStudentSettings } from "@/lib/actions/student-settings-actions";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Settings | Student Portal",
@@ -19,22 +21,22 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentSettingsPage() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -62,32 +64,38 @@ export default async function StudentSettingsPage() {
 
       <Tabs defaultValue="account" className="w-full">
         <TabsList className="w-full justify-start h-auto p-0 bg-transparent border-b rounded-none overflow-x-auto flex-nowrap">
-          <TabsTrigger 
-            value="account" 
+          <TabsTrigger
+            value="account"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
           >
             Account
           </TabsTrigger>
-          <TabsTrigger 
-            value="notifications" 
+          <TabsTrigger
+            value="notifications"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
           >
             Notifications
           </TabsTrigger>
-          <TabsTrigger 
-            value="privacy" 
+          <TabsTrigger
+            value="reminders"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
+          >
+            Reminders
+          </TabsTrigger>
+          <TabsTrigger
+            value="privacy"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
           >
             Privacy
           </TabsTrigger>
-          <TabsTrigger 
-            value="security" 
+          <TabsTrigger
+            value="security"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
           >
             Security
           </TabsTrigger>
-          <TabsTrigger 
-            value="appearance" 
+          <TabsTrigger
+            value="appearance"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs md:text-sm whitespace-nowrap px-3 md:px-4"
           >
             Appearance
@@ -100,6 +108,10 @@ export default async function StudentSettingsPage() {
 
         <TabsContent value="notifications" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
           <NotificationSettings studentId={student.id} settings={settings} />
+        </TabsContent>
+
+        <TabsContent value="reminders" className="space-y-4 md:space-y-6 mt-4 md:mt-6">
+          <ReminderPreferences />
         </TabsContent>
 
         <TabsContent value="privacy" className="space-y-4 md:space-y-6 mt-4 md:mt-6">

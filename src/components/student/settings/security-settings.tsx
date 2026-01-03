@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Shield, Key, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton } from '@/components/auth/user-button';
 import { TwoFactorSettings } from '@/components/shared/settings/two-factor-settings';
 
 export function SecuritySettings() {
@@ -58,12 +58,8 @@ export function SecuritySettings() {
               </div>
             </div>
             <div className="flex items-center">
-              <UserButton 
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-8 h-8'
-                  }
-                }}
+              <UserButton
+              // appearance prop removed as it is not supported by the wrapper
               />
             </div>
           </div>

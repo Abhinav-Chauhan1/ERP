@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getMessageTemplates, deleteMessageTemplate, duplicateMessageTemplate } from "@/lib/actions/messageTemplateActions";
 import { MessageType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -52,11 +52,7 @@ export function MessageTemplateList() {
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "sms" | "email" | "both">("all");
 
-  useEffect(() => {
-    loadTemplates();
-  }, [activeTab]);
-
-  async function loadTemplates() {
+  const loadTemplates = useCallback(async function () {
     setLoading(true);
     try {
       const filters: any = {};
@@ -75,7 +71,11 @@ export function MessageTemplateList() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeTab]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   async function handleDelete(id: string) {
     try {

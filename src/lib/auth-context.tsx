@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useUser, useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { UserRole } from "@prisma/client";
 
 // Define user type
@@ -26,35 +26,23 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
-  const { getToken } = useClerkAuth();
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Function to sync user with database
+  // Function to sync user with database (now mostly handled by NextAuth)
   const syncUserWithDatabase = async () => {
-    if (!clerkUser) return;
+    if (!session?.user) return;
 
     try {
-      const token = await getToken();
-
-      const response = await fetch(`/api/users/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+      // With NextAuth, session already contains user data from database
+      // This function is kept for compatibility but may not be needed
+      setUser({
+        id: session.user.id,
+        name: session.user.name || '',
+        email: session.user.email,
+        role: session.user.role,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser({
-          id: data.id,
-          name: `${data.firstName} ${data.lastName}`,
-          email: data.email,
-          role: data.role,
-        });
-      }
     } catch (error) {
       console.error("Error syncing user with database:", error);
     } finally {
@@ -62,17 +50,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sync user when clerk user changes
+  // Sync user when session changes
   useEffect(() => {
-    if (clerkLoaded) {
-      if (clerkUser) {
-        syncUserWithDatabase();
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
+    if (status === "loading") {
+      setLoading(true);
+      return;
     }
-  }, [clerkUser, clerkLoaded]);
+
+    if (status === "authenticated" && session?.user) {
+      setUser({
+        id: session.user.id,
+        name: session.user.name || '',
+        email: session.user.email,
+        role: session.user.role,
+      });
+      setLoading(false);
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
+  }, [session, status]);
 
   return (
     <AuthContext.Provider value={{ user, loading, syncUserWithDatabase }}>

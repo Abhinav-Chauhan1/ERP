@@ -1,22 +1,22 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { BulkCertificateGenerator } from '@/components/admin/certificates/bulk-certificate-generator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 async function CertificateGeneratorContent() {
-  const user = await currentUser();
+  const session = await auth();
   
-  if (!user) {
+  if (!session?.user?.id) {
     redirect('/login');
   }
 
   const dbUser = await db.user.findUnique({
-    where: { clerkId: user.id },
+    where: { id: session.user.id },
   });
 
   if (!dbUser || dbUser.role !== 'ADMIN') {

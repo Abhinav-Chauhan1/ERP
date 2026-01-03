@@ -1,12 +1,13 @@
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { AchievementForm } from "@/components/teacher/achievements/achievement-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { auth } from "@/auth";
 
-async function getTeacher(clerkId: string) {
+async function getTeacher(userId: string) {
   const user = await db.user.findUnique({
-    where: { clerkId },
+    where: { id: userId },
     include: {
       teacher: true,
     },
@@ -16,13 +17,13 @@ async function getTeacher(clerkId: string) {
 }
 
 export default async function NewAchievementPage() {
-  const user = await currentUser();
+  const session = await auth();
 
-  if (!user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const teacher = await getTeacher(user.id);
+  const teacher = await getTeacher(session.user.id);
 
   if (!teacher) {
     redirect("/");

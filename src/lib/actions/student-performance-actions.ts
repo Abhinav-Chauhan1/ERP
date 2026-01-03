@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
@@ -9,23 +9,22 @@ import { UserRole } from "@prisma/client";
  * Get the current student details based on authenticated user
  */
 async function getCurrentStudent() {
-  const clerkUser = await currentUser();
-  
+  const session = await auth();
+  const clerkUser = session?.user;
+
   if (!clerkUser) {
     return null;
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     return null;
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -56,14 +55,14 @@ async function getCurrentStudent() {
  */
 export async function getPerformanceSummary() {
   const student = await getCurrentStudent();
-  
+
   if (!student) {
     redirect("/login");
   }
-  
+
   // Get current enrollment
   const currentEnrollment = student.enrollments[0];
-  
+
   if (!currentEnrollment) {
     return {
       student,
@@ -112,10 +111,10 @@ export async function getPerformanceSummary() {
   const totalExams = examResults.length;
   const totalMarks = examResults.reduce((sum, result) => sum + result.marks, 0);
   const totalPossibleMarks = examResults.reduce((sum, result) => sum + result.exam.totalMarks, 0);
-  const overallPercentage = totalPossibleMarks > 0 
-    ? Math.round((totalMarks / totalPossibleMarks) * 100 * 10) / 10 
+  const overallPercentage = totalPossibleMarks > 0
+    ? Math.round((totalMarks / totalPossibleMarks) * 100 * 10) / 10
     : 0;
-  
+
   // Find latest report card for rank
   const latestReportCard = await db.reportCard.findFirst({
     where: {
@@ -126,10 +125,10 @@ export async function getPerformanceSummary() {
       publishDate: 'desc'
     }
   });
-  
+
   // Get grade based on percentage
   let grade;
-  
+
   // Try to use grade scale from database if available
   const gradeScale = await db.gradeScale.findFirst({
     where: {
@@ -137,14 +136,14 @@ export async function getPerformanceSummary() {
       maxMarks: { gte: overallPercentage }
     }
   });
-  
+
   if (gradeScale) {
     grade = gradeScale.grade;
   } else {
     // Fallback to calculation
     grade = getGradeFromPercentage(overallPercentage);
   }
-  
+
   return {
     student,
     overallPercentage,
@@ -160,14 +159,14 @@ export async function getPerformanceSummary() {
  */
 export async function getSubjectPerformance() {
   const student = await getCurrentStudent();
-  
+
   if (!student) {
     redirect("/login");
   }
-  
+
   // Get current enrollment
   const currentEnrollment = student.enrollments[0];
-  
+
   if (!currentEnrollment) {
     return [];
   }
@@ -201,23 +200,23 @@ export async function getSubjectPerformance() {
     const subjectResults = examResults.filter(
       result => result.exam.subjectId === subjectClass.subjectId
     );
-    
+
     const totalSubjectMarks = subjectResults.reduce((sum, result) => sum + result.marks, 0);
     const totalPossibleSubjectMarks = subjectResults.reduce(
       (sum, result) => sum + result.exam.totalMarks, 0
     );
-    
-    const subjectPercentage = totalPossibleSubjectMarks > 0 
+
+    const subjectPercentage = totalPossibleSubjectMarks > 0
       ? Math.round((totalSubjectMarks / totalPossibleSubjectMarks) * 100 * 10) / 10
       : 0;
-    
+
     // Sort subject results by date to get the most recent
-    const sortedResults = [...subjectResults].sort((a, b) => 
+    const sortedResults = [...subjectResults].sort((a, b) =>
       new Date(b.exam.examDate).getTime() - new Date(a.exam.examDate).getTime()
     );
 
     const lastExam = sortedResults[0];
-    
+
     return {
       id: subjectClass.subjectId,
       name: subjectClass.subject.name,
@@ -240,14 +239,14 @@ export async function getSubjectPerformance() {
  */
 export async function getPerformanceTrends() {
   const student = await getCurrentStudent();
-  
+
   if (!student) {
     redirect("/login");
   }
-  
+
   // Get current enrollment
   const currentEnrollment = student.enrollments[0];
-  
+
   if (!currentEnrollment) {
     return {
       termPerformance: [],
@@ -301,19 +300,19 @@ export async function getPerformanceTrends() {
     const termResults = examResults.filter(
       result => result.exam.termId === term.id
     );
-    
+
     const totalTermMarks = termResults.reduce((sum, result) => sum + result.marks, 0);
     const totalPossibleTermMarks = termResults.reduce(
       (sum, result) => sum + result.exam.totalMarks, 0
     );
-    
-    const termPercentage = totalPossibleTermMarks > 0 
-      ? Math.round((totalTermMarks / totalPossibleTermMarks) * 100 * 10) / 10 
+
+    const termPercentage = totalPossibleTermMarks > 0
+      ? Math.round((totalTermMarks / totalPossibleTermMarks) * 100 * 10) / 10
       : 0;
-    
+
     // Get report card if available
     const reportCard = reportCards.find(rc => rc.termId === term.id);
-    
+
     return {
       id: term.id,
       name: term.name,
@@ -347,14 +346,14 @@ export async function getPerformanceTrends() {
       const termSubjectResults = subjectResults.filter(
         result => result.exam.termId === term.id
       );
-      
+
       const totalMarks = termSubjectResults.reduce((sum, result) => sum + result.marks, 0);
       const totalPossible = termSubjectResults.reduce((sum, result) => sum + result.exam.totalMarks, 0);
-      
-      const percentage = totalPossible > 0 
-        ? Math.round((totalMarks / totalPossible) * 100 * 10) / 10 
+
+      const percentage = totalPossible > 0
+        ? Math.round((totalMarks / totalPossible) * 100 * 10) / 10
         : null;
-      
+
       return {
         termId: term.id,
         termName: term.name,
@@ -398,16 +397,16 @@ export async function getPerformanceTrends() {
  */
 export async function getAttendanceVsPerformance() {
   const student = await getCurrentStudent();
-  
+
   if (!student) {
     redirect("/login");
   }
-  
+
   // Get months of attendance and corresponding exams
   const currentDate = new Date();
   const startDate = new Date(currentDate);
   startDate.setMonth(startDate.getMonth() - 6); // Last 6 months
-  
+
   // Get attendance records by month
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
@@ -417,7 +416,7 @@ export async function getAttendanceVsPerformance() {
       }
     }
   });
-  
+
   // Get exam results in the same period
   const examResults = await db.examResult.findMany({
     where: {
@@ -432,41 +431,41 @@ export async function getAttendanceVsPerformance() {
       exam: true
     }
   });
-  
+
   // Group attendance by month
   const attendanceByMonth = Array.from({ length: 6 }, (_, i) => {
     const month = new Date(currentDate);
     month.setMonth(currentDate.getMonth() - i);
     month.setDate(1); // First day of month
-    
+
     const monthName = month.toLocaleString('default', { month: 'short' });
     const year = month.getFullYear();
     const monthStart = new Date(year, month.getMonth(), 1);
     const monthEnd = new Date(year, month.getMonth() + 1, 0);
-    
+
     const monthRecords = attendanceRecords.filter(
       record => {
         const recordDate = new Date(record.date);
         return recordDate >= monthStart && recordDate <= monthEnd;
       }
     );
-    
+
     const totalDays = monthRecords.length;
     const presentDays = monthRecords.filter(r => r.status === "PRESENT").length;
     const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
-    
+
     // Get exam results for this month
     const monthExams = examResults.filter(result => {
       const examDate = new Date(result.exam.examDate);
       return examDate >= monthStart && examDate <= monthEnd;
     });
-    
+
     const totalMarks = monthExams.reduce((sum, result) => sum + result.marks, 0);
     const totalPossible = monthExams.reduce((sum, result) => sum + result.exam.totalMarks, 0);
-    const performancePercentage = totalPossible > 0 
-      ? Math.round((totalMarks / totalPossible) * 100) 
+    const performancePercentage = totalPossible > 0
+      ? Math.round((totalMarks / totalPossible) * 100)
       : null;
-    
+
     return {
       month: monthName,
       year,
@@ -474,7 +473,7 @@ export async function getAttendanceVsPerformance() {
       performance: performancePercentage
     };
   });
-  
+
   // Reverse to get chronological order (oldest first)
   return attendanceByMonth.reverse();
 }
@@ -484,11 +483,11 @@ export async function getAttendanceVsPerformance() {
  */
 export async function getClassRankAnalysis() {
   const student = await getCurrentStudent();
-  
+
   if (!student) {
     redirect("/login");
   }
-  
+
   // Get report cards with rank
   const reportCards = await db.reportCard.findMany({
     where: {
@@ -504,10 +503,10 @@ export async function getClassRankAnalysis() {
       }
     }
   });
-  
+
   // Get current enrollment class size for context
   const currentEnrollment = student.enrollments[0];
-  
+
   let classSize = 0;
   if (currentEnrollment) {
     classSize = await db.classEnrollment.count({
@@ -517,18 +516,18 @@ export async function getClassRankAnalysis() {
       }
     });
   }
-  
+
   // Format rank data
   const rankData = reportCards.map(rc => ({
     term: rc.term.name,
     rank: rc.rank,
     totalStudents: classSize,
-    percentile: rc.rank && classSize 
-      ? Math.round(((classSize - rc.rank) / classSize) * 100) 
+    percentile: rc.rank && classSize
+      ? Math.round(((classSize - rc.rank) / classSize) * 100)
       : null,
     percentage: rc.percentage
   }));
-  
+
   return {
     rankData,
     currentRank: reportCards.length > 0 ? reportCards[reportCards.length - 1].rank : null,

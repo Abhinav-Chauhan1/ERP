@@ -1,13 +1,24 @@
 /**
- * SMS Service using Twilio
+ * SMS Service with Provider Selection
  * 
  * This service provides SMS sending capabilities with delivery tracking.
- * It integrates with Twilio's API to send messages and track their delivery status.
+ * It supports both Twilio (legacy) and MSG91 (recommended for India) providers.
+ * The provider is selected based on the USE_MSG91 environment variable.
  * 
- * Requirements: 11.2 - SMS Gateway Integration
+ * Requirements: 11.2 - SMS Gateway Integration, 18.1, 18.2
  */
 
 import twilio from 'twilio';
+import {
+  sendSMS as sendMSG91SMS,
+  sendBulkSMS as sendBulkMSG91SMS,
+  getSMSDeliveryStatus as getMSG91DeliveryStatus,
+  sendSMSWithRetry as sendMSG91SMSWithRetry,
+  isMSG91Configured,
+  validatePhoneNumber as validateMSG91PhoneNumber,
+  formatPhoneNumber as formatMSG91PhoneNumber,
+} from './msg91-service';
+import type { MSG91SendResult } from '@/lib/types/communication';
 
 // Twilio client instance (singleton)
 let twilioClient: ReturnType<typeof twilio> | null = null;
@@ -32,9 +43,21 @@ function getTwilioClient() {
 }
 
 /**
- * Check if SMS service is configured
+ * Check if USE_MSG91 feature flag is enabled
+ * Requirement: 18.1
+ */
+function shouldUseMSG91(): boolean {
+  return process.env.USE_MSG91 === 'true';
+}
+
+/**
+ * Check if SMS service is configured (either Twilio or MSG91)
+ * Requirement: 18.2
  */
 export function isSMSConfigured(): boolean {
+  if (shouldUseMSG91()) {
+    return isMSG91Configured();
+  }
   return !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
 }
 
@@ -79,13 +102,31 @@ export interface SMSStatusResult {
 
 /**
  * Send a single SMS message
+ * Uses MSG91 if USE_MSG91=true, otherwise uses Twilio
+ * Requirement: 18.1, 18.2
  * 
  * @param to - Recipient phone number (E.164 format: +1234567890)
  * @param body - Message content
+ * @param dltTemplateId - Optional DLT template ID (for MSG91 only)
  * @returns Promise with send result including message ID and status
  */
-export async function sendSMS(to: string, body: string): Promise<SMSSendResult> {
+export async function sendSMS(to: string, body: string, dltTemplateId?: string): Promise<SMSSendResult> {
   try {
+    // Route to MSG91 if feature flag is enabled
+    if (shouldUseMSG91()) {
+      const result = await sendMSG91SMS(to, body, dltTemplateId);
+      return {
+        success: result.success,
+        messageId: result.messageId,
+        status: result.success ? SMSDeliveryStatus.SENT : SMSDeliveryStatus.FAILED,
+        error: result.error,
+        to,
+        body,
+        timestamp: new Date(),
+      };
+    }
+
+    // Otherwise use Twilio (legacy)
     // Validate inputs
     if (!to || !body) {
       return {
@@ -141,16 +182,35 @@ export async function sendSMS(to: string, body: string): Promise<SMSSendResult> 
 
 /**
  * Send bulk SMS messages to multiple recipients
+ * Uses MSG91 if USE_MSG91=true, otherwise uses Twilio
+ * Requirement: 18.1, 18.2
  * 
  * @param recipients - Array of phone numbers (E.164 format)
  * @param body - Message content (same for all recipients)
+ * @param dltTemplateId - Optional DLT template ID (for MSG91 only)
  * @returns Promise with array of send results
  */
 export async function sendBulkSMS(
   recipients: string[],
-  body: string
+  body: string,
+  dltTemplateId?: string
 ): Promise<SMSSendResult[]> {
   try {
+    // Route to MSG91 if feature flag is enabled
+    if (shouldUseMSG91()) {
+      const results = await sendBulkMSG91SMS(recipients, body, dltTemplateId);
+      return results.map((result, index) => ({
+        success: result.success,
+        messageId: result.messageId,
+        status: result.success ? SMSDeliveryStatus.SENT : SMSDeliveryStatus.FAILED,
+        error: result.error,
+        to: recipients[index],
+        body,
+        timestamp: new Date(),
+      }));
+    }
+
+    // Otherwise use Twilio (legacy)
     // Validate inputs
     if (!recipients || recipients.length === 0) {
       return [];
@@ -205,8 +265,10 @@ export async function sendBulkSMS(
 
 /**
  * Get delivery status of a sent message
+ * Uses MSG91 if USE_MSG91=true, otherwise uses Twilio
+ * Requirement: 18.1, 18.2
  * 
- * @param messageId - Twilio message SID
+ * @param messageId - Twilio message SID or MSG91 request ID
  * @returns Promise with delivery status information
  */
 export async function getSMSDeliveryStatus(messageId: string): Promise<SMSStatusResult> {
@@ -228,6 +290,19 @@ export async function getSMSDeliveryStatus(messageId: string): Promise<SMSStatus
       };
     }
 
+    // Route to MSG91 if feature flag is enabled
+    if (shouldUseMSG91()) {
+      const result = await getMSG91DeliveryStatus(messageId);
+      return {
+        success: true,
+        messageId,
+        status: mapMSG91StatusToSMSStatus(result.status),
+        errorMessage: result.description,
+        dateUpdated: result.deliveredAt,
+      };
+    }
+
+    // Otherwise use Twilio (legacy)
     const client = getTwilioClient();
 
     // Fetch message details from Twilio
@@ -253,19 +328,61 @@ export async function getSMSDeliveryStatus(messageId: string): Promise<SMSStatus
 }
 
 /**
+ * Map MSG91 MessageStatus to SMSDeliveryStatus
+ * Helper function for backward compatibility
+ */
+function mapMSG91StatusToSMSStatus(status: string): SMSDeliveryStatus {
+  switch (status.toLowerCase()) {
+    case 'queued':
+      return SMSDeliveryStatus.QUEUED;
+    case 'sending':
+      return SMSDeliveryStatus.SENDING;
+    case 'sent':
+      return SMSDeliveryStatus.SENT;
+    case 'delivered':
+      return SMSDeliveryStatus.DELIVERED;
+    case 'failed':
+      return SMSDeliveryStatus.FAILED;
+    case 'undelivered':
+      return SMSDeliveryStatus.UNDELIVERED;
+    default:
+      return SMSDeliveryStatus.QUEUED;
+  }
+}
+
+/**
  * Send SMS with retry logic
  * Retries up to 3 times on failure as per requirement 11.4
+ * Uses MSG91 if USE_MSG91=true, otherwise uses Twilio
+ * Requirement: 18.1, 18.2
  * 
  * @param to - Recipient phone number
  * @param body - Message content
+ * @param dltTemplateId - Optional DLT template ID (for MSG91 only)
  * @param maxRetries - Maximum number of retry attempts (default: 3)
  * @returns Promise with send result
  */
 export async function sendSMSWithRetry(
   to: string,
   body: string,
+  dltTemplateId?: string,
   maxRetries: number = 3
 ): Promise<SMSSendResult> {
+  // Route to MSG91 if feature flag is enabled
+  if (shouldUseMSG91()) {
+    const result = await sendMSG91SMSWithRetry(to, body, dltTemplateId, maxRetries);
+    return {
+      success: result.success,
+      messageId: result.messageId,
+      status: result.success ? SMSDeliveryStatus.SENT : SMSDeliveryStatus.FAILED,
+      error: result.error,
+      to,
+      body,
+      timestamp: new Date(),
+    };
+  }
+
+  // Otherwise use Twilio with retry logic
   let lastResult: SMSSendResult | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -289,13 +406,23 @@ export async function sendSMSWithRetry(
 
 /**
  * Format phone number to E.164 format
+ * Uses MSG91 formatter if USE_MSG91=true, otherwise uses basic formatter
  * This is a basic formatter - in production, use a library like libphonenumber-js
+ * Requirement: 18.2
  * 
  * @param phoneNumber - Phone number in various formats
  * @param countryCode - Default country code (e.g., '+1' for US, '+91' for India)
  * @returns Formatted phone number in E.164 format
  */
 export function formatPhoneNumber(phoneNumber: string, countryCode: string = '+1'): string {
+  // Use MSG91 formatter if feature flag is enabled
+  if (shouldUseMSG91()) {
+    // MSG91 uses country code without + (e.g., '91' instead of '+91')
+    const code = countryCode.startsWith('+') ? countryCode.substring(1) : countryCode;
+    return formatMSG91PhoneNumber(phoneNumber, code);
+  }
+
+  // Otherwise use basic formatter for Twilio
   // Remove all non-digit characters
   const digits = phoneNumber.replace(/\D/g, '');
   
@@ -310,14 +437,32 @@ export function formatPhoneNumber(phoneNumber: string, countryCode: string = '+1
 
 /**
  * Validate phone number format (basic validation)
+ * Uses MSG91 validator if USE_MSG91=true, otherwise uses basic validator
  * For production, use a library like libphonenumber-js for comprehensive validation
+ * Requirement: 18.2
  * 
  * @param phoneNumber - Phone number to validate
  * @returns true if valid E.164 format
  */
 export function isValidPhoneNumber(phoneNumber: string): boolean {
+  // Use MSG91 validator if feature flag is enabled
+  if (shouldUseMSG91()) {
+    return validateMSG91PhoneNumber(phoneNumber);
+  }
+
+  // Otherwise use basic validator for Twilio
   // E.164 format: +[country code][number]
   // Length: 8-15 digits (including country code)
   const e164Regex = /^\+[1-9]\d{7,14}$/;
   return e164Regex.test(phoneNumber);
+}
+
+/**
+ * Get current SMS provider name
+ * Useful for logging and debugging
+ * 
+ * @returns 'MSG91' or 'Twilio'
+ */
+export function getSMSProvider(): 'MSG91' | 'Twilio' {
+  return shouldUseMSG91() ? 'MSG91' : 'Twilio';
 }

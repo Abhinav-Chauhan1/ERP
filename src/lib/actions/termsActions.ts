@@ -280,7 +280,14 @@ export async function getAcademicYearsForDropdown() {
       }
     });
     
-    return { success: true, data: academicYears };
+    // Sort to show current year first
+    const sortedYears = academicYears.sort((a, b) => {
+      if (a.isCurrent) return -1;
+      if (b.isCurrent) return 1;
+      return 0;
+    });
+    
+    return { success: true, data: sortedYears };
   } catch (error) {
     console.error("Error fetching academic years for dropdown:", error);
     return { 

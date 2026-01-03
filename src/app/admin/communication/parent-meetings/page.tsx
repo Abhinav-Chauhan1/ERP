@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ export default function ParentMeetingsPage() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayMeetingsDialogOpen, setDayMeetingsDialogOpen] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -228,20 +228,12 @@ export default function ParentMeetingsPage() {
     purpose: "",
   });
 
-  // Load data on mount
-  useEffect(() => {
-    loadMeetings();
-    loadTeachers();
-    loadParents();
-    loadStats();
-  }, [statusFilter, timeFilter]);
-
-  const loadMeetings = async () => {
+  const loadMeetings = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {};
       if (statusFilter !== "all") filters.status = statusFilter.toUpperCase();
-      
+
       const result = await getParentMeetings(filters);
       if (result.success && result.data) {
         setParentMeetings(result.data);
@@ -254,9 +246,9 @@ export default function ParentMeetingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     try {
       const result = await getTeachersForMeetings();
       if (result.success && result.data) {
@@ -265,9 +257,9 @@ export default function ParentMeetingsPage() {
     } catch (error) {
       console.error("Error loading teachers:", error);
     }
-  };
+  }, []);
 
-  const loadParents = async () => {
+  const loadParents = useCallback(async () => {
     try {
       const result = await getParentsForMeetings();
       if (result.success && result.data) {
@@ -276,9 +268,9 @@ export default function ParentMeetingsPage() {
     } catch (error) {
       console.error("Error loading parents:", error);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const result = await getMeetingStats();
       if (result.success && result.data) {
@@ -287,7 +279,15 @@ export default function ParentMeetingsPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadMeetings();
+    loadTeachers();
+    loadParents();
+    loadStats();
+  }, [loadMeetings, loadTeachers, loadParents, loadStats, timeFilter]);
 
   const handleScheduleMeeting = async () => {
     try {
@@ -297,7 +297,7 @@ export default function ParentMeetingsPage() {
       }
 
       const scheduledAt = `${formData.scheduledDate}T${formData.scheduledTime}:00`;
-      
+
       const result = await scheduleMeeting({
         parentId: formData.parentId,
         teacherId: formData.teacherId,
@@ -383,25 +383,25 @@ export default function ParentMeetingsPage() {
   const filteredMeetings = parentMeetings.filter(meeting => {
     const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
     const teacherName = `${meeting.teacher?.user?.firstName || ""} ${meeting.teacher?.user?.lastName || ""}`;
-    const studentName = meeting.parent?.children?.[0]?.student?.user 
+    const studentName = meeting.parent?.children?.[0]?.student?.user
       ? `${meeting.parent.children[0].student.user.firstName} ${meeting.parent.children[0].student.user.lastName}`
       : "";
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       parentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (meeting.purpose && meeting.purpose.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesStatus = statusFilter === "all" || meeting.status === statusFilter.toUpperCase();
-    
+
     const now = new Date();
     const meetingDate = new Date(meeting.scheduledAt);
-    const matchesTime = 
+    const matchesTime =
       timeFilter === "all" ||
       (timeFilter === "upcoming" && meetingDate > now) ||
       (timeFilter === "past" && meetingDate < now);
-    
+
     return matchesSearch && matchesStatus && matchesTime;
   });
 
@@ -414,7 +414,7 @@ export default function ParentMeetingsPage() {
   };
 
   function getStatusBadge(status: string) {
-    switch(status) {
+    switch (status) {
       case "SCHEDULED":
         return <Badge className="bg-primary/10 text-primary">Scheduled</Badge>;
       case "COMPLETED":
@@ -456,8 +456,8 @@ export default function ParentMeetingsPage() {
             <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Parent</label>
-                <Select 
-                  value={formData.parentId} 
+                <Select
+                  value={formData.parentId}
                   onValueChange={(value) => setFormData({ ...formData, parentId: value })}
                 >
                   <SelectTrigger>
@@ -466,13 +466,13 @@ export default function ParentMeetingsPage() {
                   <SelectContent>
                     {parents.map(parent => {
                       const studentInfo = parent.children?.[0]?.student;
-                      const studentName = studentInfo?.user 
+                      const studentName = studentInfo?.user
                         ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
                         : "No student";
                       const grade = studentInfo?.enrollments?.[0]
                         ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
                         : "";
-                      
+
                       return (
                         <SelectItem key={parent.id} value={parent.id}>
                           {parent.user.firstName} {parent.user.lastName} (Parent of {studentName}{grade ? `, ${grade}` : ""})
@@ -482,11 +482,11 @@ export default function ParentMeetingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Teacher</label>
-                <Select 
-                  value={formData.teacherId} 
+                <Select
+                  value={formData.teacherId}
                   onValueChange={(value) => setFormData({ ...formData, teacherId: value })}
                 >
                   <SelectTrigger>
@@ -501,31 +501,31 @@ export default function ParentMeetingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={formData.scheduledDate}
                     onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Time</label>
-                  <Input 
-                    type="time" 
+                  <Input
+                    type="time"
                     value={formData.scheduledTime}
                     onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Duration (minutes)</label>
-                  <Select 
-                    value={formData.duration} 
+                  <Select
+                    value={formData.duration}
                     onValueChange={(value) => setFormData({ ...formData, duration: value })}
                   >
                     <SelectTrigger>
@@ -541,27 +541,27 @@ export default function ParentMeetingsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Location</label>
-                  <Input 
-                    placeholder="e.g., Room 101, Conference Room" 
+                  <Input
+                    placeholder="e.g., Room 101, Conference Room"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Purpose / Notes</label>
-                <Textarea 
+                <Textarea
                   placeholder="Provide details about the purpose of the meeting"
                   className="h-24"
                   value={formData.purpose}
                   onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
                 />
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Checkbox id="notify-participants" />
-                <label 
+                <label
                   htmlFor="notify-participants"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
@@ -632,7 +632,7 @@ export default function ParentMeetingsPage() {
               <TabsTrigger value="list">List View</TabsTrigger>
               <TabsTrigger value="calendar">Calendar View</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="list">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
@@ -641,139 +641,139 @@ export default function ParentMeetingsPage() {
               ) : (
                 <div className="rounded-md border">
                   <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-accent border-b">
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Participants</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Schedule</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Location</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredMeetings.length > 0 ? (
-                        filteredMeetings.map((meeting) => {
-                          const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
-                          const parentInitials = `${meeting.parent?.user?.firstName?.[0] || ""}${meeting.parent?.user?.lastName?.[0] || ""}`;
-                          const studentInfo = meeting.parent?.children?.[0]?.student;
-                          const studentName = studentInfo?.user 
-                            ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
-                            : "No student";
-                          const grade = studentInfo?.enrollments?.[0]
-                            ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
-                            : "";
-                          
-                          return (
-                            <tr key={meeting.id} className="border-b">
-                              <td className="py-3 px-4 align-middle">
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback>{parentInitials}</AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="font-medium">{parentName}</div>
-                                    <div className="text-xs text-muted-foreground">{studentName}{grade ? `, ${grade}` : ""}</div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-accent border-b">
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Participants</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Schedule</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Location</th>
+                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
+                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredMeetings.length > 0 ? (
+                          filteredMeetings.map((meeting) => {
+                            const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
+                            const parentInitials = `${meeting.parent?.user?.firstName?.[0] || ""}${meeting.parent?.user?.lastName?.[0] || ""}`;
+                            const studentInfo = meeting.parent?.children?.[0]?.student;
+                            const studentName = studentInfo?.user
+                              ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
+                              : "No student";
+                            const grade = studentInfo?.enrollments?.[0]
+                              ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
+                              : "";
+
+                            return (
+                              <tr key={meeting.id} className="border-b">
+                                <td className="py-3 px-4 align-middle">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarFallback>{parentInitials}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="font-medium">{parentName}</div>
+                                      <div className="text-xs text-muted-foreground">{studentName}{grade ? `, ${grade}` : ""}</div>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle font-medium">{meeting.purpose || "Meeting"}</td>
-                              <td className="py-3 px-4 align-middle">
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>{new Date(meeting.scheduledAt).toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                  <span>({meeting.duration} min)</span>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle">{meeting.location || "TBD"}</td>
-                              <td className="py-3 px-4 align-middle">
-                                {getStatusBadge(meeting.status)}
-                              </td>
-                            <td className="py-3 px-4 align-middle text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => handleViewMeeting(meeting.id)}
-                              >
-                                View
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Email Reminder
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <SendIcon className="h-4 w-4 mr-2" />
-                                    Send SMS
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  {meeting.status === "SCHEDULED" && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => handleCompleteMeeting(meeting.id)}>
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Mark as Completed
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleCancelMeeting(meeting.id)}>
-                                        <XCircle className="h-4 w-4 mr-2" />
-                                        Cancel Meeting
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  <DropdownMenuItem 
-                                    className="text-red-600"
-                                    onClick={() => handleDeleteMeeting(meeting.id)}
+                                </td>
+                                <td className="py-3 px-4 align-middle font-medium">{meeting.purpose || "Meeting"}</td>
+                                <td className="py-3 px-4 align-middle">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span>{new Date(meeting.scheduledAt).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span>({meeting.duration} min)</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 align-middle">{meeting.location || "TBD"}</td>
+                                <td className="py-3 px-4 align-middle">
+                                  {getStatusBadge(meeting.status)}
+                                </td>
+                                <td className="py-3 px-4 align-middle text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleViewMeeting(meeting.id)}
                                   >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                    View
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem>
+                                        <Mail className="h-4 w-4 mr-2" />
+                                        Email Reminder
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem>
+                                        <SendIcon className="h-4 w-4 mr-2" />
+                                        Send SMS
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      {meeting.status === "SCHEDULED" && (
+                                        <>
+                                          <DropdownMenuItem onClick={() => handleCompleteMeeting(meeting.id)}>
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Mark as Completed
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleCancelMeeting(meeting.id)}>
+                                            <XCircle className="h-4 w-4 mr-2" />
+                                            Cancel Meeting
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                      <DropdownMenuItem
+                                        className="text-red-600"
+                                        onClick={() => handleDeleteMeeting(meeting.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                              <CalendarX className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                              <p>No meetings found matching your criteria</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => {
+                                  setSearchTerm("");
+                                  setStatusFilter("all");
+                                  setTimeFilter("upcoming");
+                                }}
+                              >
+                                Clear Filters
+                              </Button>
                             </td>
                           </tr>
-                        );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="py-10 text-center text-muted-foreground">
-                            <CalendarX className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                            <p>No meetings found matching your criteria</p>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-2"
-                              onClick={() => {
-                                setSearchTerm("");
-                                setStatusFilter("all");
-                                setTimeFilter("upcoming");
-                              }}
-                            >
-                              Clear Filters
-                            </Button>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
               )}
             </TabsContent>
-            
+
             <TabsContent value="calendar">
               <Card>
                 <CardHeader>
@@ -826,7 +826,7 @@ export default function ParentMeetingsPage() {
                         {day}
                       </div>
                     ))}
-                    
+
                     {/* Calendar days */}
                     {(() => {
                       const year = currentCalendarDate.getFullYear();
@@ -834,32 +834,31 @@ export default function ParentMeetingsPage() {
                       const firstDay = new Date(year, month, 1).getDay();
                       const daysInMonth = new Date(year, month + 1, 0).getDate();
                       const days = [];
-                      
+
                       // Empty cells for days before month starts
                       for (let i = 0; i < firstDay; i++) {
                         days.push(
                           <div key={`empty-${i}`} className="aspect-square p-2 border rounded-lg bg-accent" />
                         );
                       }
-                      
+
                       // Days of the month
                       for (let day = 1; day <= daysInMonth; day++) {
                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const dayMeetings = filteredMeetings.filter(meeting => {
                           const meetingDate = new Date(meeting.scheduledDate);
                           return meetingDate.getFullYear() === year &&
-                                 meetingDate.getMonth() === month &&
-                                 meetingDate.getDate() === day;
+                            meetingDate.getMonth() === month &&
+                            meetingDate.getDate() === day;
                         });
-                        
+
                         const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-                        
+
                         days.push(
                           <div
                             key={day}
-                            className={`aspect-square p-2 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors ${
-                              isToday ? 'border-blue-500 bg-primary/10' : ''
-                            }`}
+                            className={`aspect-square p-2 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors ${isToday ? 'border-blue-500 bg-primary/10' : ''
+                              }`}
                             onClick={() => {
                               if (dayMeetings.length > 0) {
                                 setSelectedDate(new Date(year, month, day));
@@ -875,17 +874,16 @@ export default function ParentMeetingsPage() {
                                 {dayMeetings.slice(0, 2).map((meeting) => (
                                   <div
                                     key={meeting.id}
-                                    className={`text-xs p-1 rounded truncate ${
-                                      meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary' :
+                                    className={`text-xs p-1 rounded truncate ${meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary' :
                                       meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                      meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                                      'bg-muted text-gray-700'
-                                    }`}
+                                        meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                          'bg-muted text-gray-700'
+                                      }`}
                                   >
-                                    {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', { 
-                                      hour: 'numeric', 
+                                    {new Date(meeting.scheduledDate).toLocaleTimeString('en-US', {
+                                      hour: 'numeric',
                                       minute: '2-digit',
-                                      hour12: true 
+                                      hour12: true
                                     })}
                                   </div>
                                 ))}
@@ -899,7 +897,7 @@ export default function ParentMeetingsPage() {
                           </div>
                         );
                       }
-                      
+
                       return days;
                     })()}
                   </div>
@@ -919,20 +917,20 @@ export default function ParentMeetingsPage() {
               Complete information about the parent-teacher meeting
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedMeeting && (() => {
             const parentName = `${selectedMeeting.parent?.user?.firstName || ""} ${selectedMeeting.parent?.user?.lastName || ""}`;
             const parentInitials = `${selectedMeeting.parent?.user?.firstName?.[0] || ""}${selectedMeeting.parent?.user?.lastName?.[0] || ""}`;
             const teacherName = `${selectedMeeting.teacher?.user?.firstName || ""} ${selectedMeeting.teacher?.user?.lastName || ""}`;
             const teacherInitials = `${selectedMeeting.teacher?.user?.firstName?.[0] || ""}${selectedMeeting.teacher?.user?.lastName?.[0] || ""}`;
             const studentInfo = selectedMeeting.parent?.children?.[0]?.student;
-            const studentName = studentInfo?.user 
+            const studentName = studentInfo?.user
               ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
               : "No student";
             const grade = studentInfo?.enrollments?.[0]
               ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
               : "";
-            
+
             return (
               <div className="space-y-4 py-2">
                 <div className="flex flex-col space-y-2">
@@ -946,7 +944,7 @@ export default function ParentMeetingsPage() {
                     {getStatusBadge(selectedMeeting.status)}
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-medium mb-2">Parent Information</h3>
@@ -974,7 +972,7 @@ export default function ParentMeetingsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="text-sm font-medium mb-2">Teacher Information</h3>
                     <div className="flex items-center gap-3 mb-3">
@@ -998,12 +996,12 @@ export default function ParentMeetingsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-sm font-medium mb-2">Meeting Location</h3>
                   <p className="text-sm bg-accent p-2.5 rounded">{selectedMeeting.location || "TBD"}</p>
                 </div>
-                
+
                 {selectedMeeting.notes && (
                   <div>
                     <h3 className="text-sm font-medium mb-2">Meeting Notes</h3>
@@ -1013,12 +1011,12 @@ export default function ParentMeetingsPage() {
               </div>
             );
           })()}
-          
+
           <DialogFooter className="gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setViewMeetingDialog(false)}>
               Close
             </Button>
-            
+
             {selectedMeeting && selectedMeeting.status === "SCHEDULED" && (
               <>
                 <Button variant="outline">
@@ -1029,7 +1027,7 @@ export default function ParentMeetingsPage() {
                   <SendIcon className="h-4 w-4 mr-2" />
                   Send Reminder
                 </Button>
-                <Button 
+                <Button
                   variant="default"
                   onClick={() => {
                     handleCompleteMeeting(selectedMeeting.id);
@@ -1050,18 +1048,18 @@ export default function ParentMeetingsPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
-              Meetings on {selectedDate?.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              Meetings on {selectedDate?.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </DialogTitle>
             <DialogDescription>
               All scheduled meetings for this day
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {selectedDate && filteredMeetings
               .filter(meeting => {
@@ -1093,9 +1091,9 @@ export default function ParentMeetingsPage() {
                     <Badge
                       className={
                         meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary' :
-                        meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                        meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                        'bg-muted text-gray-700'
+                          meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                              'bg-muted text-gray-700'
                       }
                     >
                       {meeting.status}
@@ -1117,7 +1115,7 @@ export default function ParentMeetingsPage() {
                 </div>
               ))}
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDayMeetingsDialogOpen(false)}>
               Close

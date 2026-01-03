@@ -1,25 +1,27 @@
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileEditForm } from "@/components/teacher/settings/profile-edit-form";
 import { NotificationPreferences } from "@/components/teacher/settings/notification-preferences";
 import { SecuritySettings } from "@/components/teacher/settings/security-settings";
 import { AppearanceSettings } from "@/components/shared/settings/appearance-settings";
+import { ReminderPreferences } from "@/components/calendar/reminder-preferences";
 import { updateSettings } from "@/lib/actions/teacher-settings-actions";
 import { AlertCircle } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
 async function getTeacherData() {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
 
   if (!userId) {
     redirect("/sign-in");
   }
 
   const user = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
   });
 
   if (!user) {
@@ -99,9 +101,10 @@ export default async function TeacherSettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="reminders">Reminders</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
@@ -123,6 +126,10 @@ export default async function TeacherSettingsPage() {
                 announcementNotifications: settings.announcementNotifications,
               }}
             />
+          </TabsContent>
+
+          <TabsContent value="reminders" className="space-y-4">
+            <ReminderPreferences />
           </TabsContent>
 
           <TabsContent value="appearance" className="space-y-4">

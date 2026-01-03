@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { updateStudent } from "@/lib/actions/usersAction";
@@ -50,12 +50,9 @@ const editStudentSchema = z.object({
 
 type EditStudentFormData = z.infer<typeof editStudentSchema>;
 
-interface EditStudentPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function EditStudentPage({ params }: EditStudentPageProps) {
-  const { id } = use(params);
+export default function EditStudentPage() {
+  const params = useParams();
+  const id = params.id as string;
 
   const router = useRouter();
   const [loading, setLoading] = useState(true);

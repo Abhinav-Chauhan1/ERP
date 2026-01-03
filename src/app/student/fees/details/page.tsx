@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { FeeDetailsTable } from "@/components/student/fee-details-table";
 import { FeeSummaryStats } from "@/components/student/fee-summary-stats";
 import { getStudentFeeDetails } from "@/lib/actions/student-fee-actions";
+import { PaymentDialog } from "@/components/student/payment-dialog";
 
 export const metadata: Metadata = {
   title: "Fee Details | Student Portal",
@@ -48,15 +49,15 @@ export default async function StudentFeeDetailsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm text-blue-900 mb-1">Total Fees</p>
-              <div className="text-3xl font-bold text-blue-900">${totalFees.toFixed(2)}</div>
+              <div className="text-3xl font-bold text-blue-900">₹{totalFees.toFixed(2)}</div>
             </div>
             <div>
               <p className="text-sm text-green-900 mb-1">Paid Amount</p>
-              <div className="text-3xl font-bold text-green-900">${paidAmount.toFixed(2)}</div>
+              <div className="text-3xl font-bold text-green-900">₹{paidAmount.toFixed(2)}</div>
             </div>
             <div>
               <p className="text-sm text-amber-900 mb-1">Balance</p>
-              <div className="text-3xl font-bold text-amber-900">${balance.toFixed(2)}</div>
+              <div className="text-3xl font-bold text-amber-900">₹{balance.toFixed(2)}</div>
             </div>
           </div>
           <div className="mt-6">
@@ -66,6 +67,32 @@ export default async function StudentFeeDetailsPage() {
             </div>
             <Progress value={paymentPercentage} className="h-3" />
           </div>
+          {balance > 0 && feeStructure && (
+            <div className="mt-6 flex gap-3">
+              <PaymentDialog
+                feeItems={feeStructure.items.filter((item: any) => {
+                  // Filter unpaid items
+                  const paymentForItem = feePayments.find(
+                    (payment) => payment.amount === item.amount && payment.status === "COMPLETED"
+                  );
+                  return !paymentForItem;
+                })}
+                totalAmount={balance}
+                isPayAll={true}
+                trigger={
+                  <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Pay Balance (₹{balance.toFixed(2)})
+                  </Button>
+                }
+              />
+              <Button variant="outline" className="flex-1" asChild>
+                <Link href="/student/fees/due">
+                  View Due Payments
+                </Link>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -111,7 +138,7 @@ export default async function StudentFeeDetailsPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">${fee.amount.toFixed(2)}</p>
+                        <p className="font-semibold">₹{fee.amount.toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -121,11 +148,24 @@ export default async function StudentFeeDetailsPage() {
               )}
               
               {upcomingFees.length > 0 && (
-                <Button variant="outline" className="w-full mt-4 min-h-[44px]" asChild>
-                  <Link href="/student/fees/due">
-                    View All Upcoming
-                  </Link>
-                </Button>
+                <div className="mt-4 space-y-2">
+                  <PaymentDialog
+                    feeItems={upcomingFees}
+                    totalAmount={upcomingFees.reduce((sum, fee) => sum + fee.amount, 0)}
+                    isPayAll={true}
+                    trigger={
+                      <Button className="w-full min-h-[44px]">
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Pay All Upcoming (₹{upcomingFees.reduce((sum, fee) => sum + fee.amount, 0).toFixed(2)})
+                      </Button>
+                    }
+                  />
+                  <Button variant="outline" className="w-full min-h-[44px]" asChild>
+                    <Link href="/student/fees/due">
+                      View All Upcoming
+                    </Link>
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -149,17 +189,30 @@ export default async function StudentFeeDetailsPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-red-900">${fee.amount.toFixed(2)}</p>
+                        <p className="font-semibold text-red-900">₹{fee.amount.toFixed(2)}</p>
                         <Badge className="mt-1 bg-red-100 text-red-800 hover:bg-red-100">Overdue</Badge>
                       </div>
                     </div>
                   ))}
                   
-                  <Button className="w-full mt-2 min-h-[44px] bg-red-600 hover:bg-red-700" asChild>
-                    <Link href="/student/fees/due">
-                      Pay Now
-                    </Link>
-                  </Button>
+                  <div className="mt-4 space-y-2">
+                    <PaymentDialog
+                      feeItems={overdueFees}
+                      totalAmount={overdueFees.reduce((sum, fee) => sum + fee.amount, 0)}
+                      isPayAll={true}
+                      trigger={
+                        <Button className="w-full min-h-[44px] bg-red-600 hover:bg-red-700">
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Pay All Overdue (₹{overdueFees.reduce((sum, fee) => sum + fee.amount, 0).toFixed(2)})
+                        </Button>
+                      }
+                    />
+                    <Button variant="outline" className="w-full min-h-[44px]" asChild>
+                      <Link href="/student/fees/due">
+                        View Details
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-4">
@@ -206,7 +259,7 @@ export default async function StudentFeeDetailsPage() {
                             {payment.receiptNumber || "-"}
                           </td>
                           <td className="py-3 px-4 align-middle font-semibold">
-                            ${payment.paidAmount.toFixed(2)}
+                            ₹{payment.paidAmount.toFixed(2)}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {payment.paymentMethod.replace("_", " ")}

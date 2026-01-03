@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft, PlusCircle, Search, Edit, Eye,
-  Trash2, DollarSign, CheckCircle, AlertCircle, Loader2
+  Trash2, DollarSign, CheckCircle, AlertCircle, Loader2, Copy, TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +61,7 @@ import {
   createFeeStructure,
   updateFeeStructure,
   deleteFeeStructure,
+  duplicateFeeStructure,
   getFeeTypes,
   createFeeType,
   updateFeeType,
@@ -77,6 +78,10 @@ import {
   feeTypeSchema,
   FeeTypeFormValues,
 } from "@/lib/schemaValidation/feeStructureSchemaValidation";
+
+// Import custom components
+import { MultiClassSelector } from "@/components/fees/multi-class-selector";
+import { FeeTypeClassAmountConfig } from "@/components/fees/fee-type-class-amount-config";
 
 // Fee frequency options
 const frequencyOptions = [
@@ -97,6 +102,8 @@ export default function FeeStructurePage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [academicYearFilter, setAcademicYearFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
+  const [templateFilter, setTemplateFilter] = useState<"all" | "templates" | "regular">("all");
   const [activeTabIndex, setActiveTabIndex] = useState("structures");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -105,9 +112,11 @@ export default function FeeStructurePage() {
   const [createFeeTypeDialogOpen, setCreateFeeTypeDialogOpen] = useState(false);
   const [editFeeTypeDialogOpen, setEditFeeTypeDialogOpen] = useState(false);
   const [deleteFeeTypeDialogOpen, setDeleteFeeTypeDialogOpen] = useState(false);
+  const [viewFeeTypeDialogOpen, setViewFeeTypeDialogOpen] = useState(false);
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
   const [selectedFeeTypeId, setSelectedFeeTypeId] = useState<string | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<any>(null);
+  const [selectedFeeType, setSelectedFeeType] = useState<any>(null);
 
   // Initialize forms
   const form = useForm<FeeStructureFormValues>({
@@ -115,11 +124,13 @@ export default function FeeStructurePage() {
     defaultValues: {
       name: "",
       academicYearId: "",
+      classIds: [],
       applicableClasses: "",
       description: "",
       validFrom: new Date(),
       validTo: undefined,
       isActive: true,
+      isTemplate: false,
       items: [],
     },
   });
@@ -132,6 +143,7 @@ export default function FeeStructurePage() {
       amount: 0,
       frequency: "ANNUAL",
       isOptional: false,
+      classAmounts: [],
     },
   });
 
@@ -147,7 +159,7 @@ export default function FeeStructurePage() {
         getFeeStructures(),
         getAcademicYears(),
         getClasses(),
-        getFeeTypes(),
+        getFeeTypes(true), // Include class amounts
         getFeeStructureStats(),
       ]);
 
@@ -166,15 +178,30 @@ export default function FeeStructurePage() {
 
   // Filter fee structures
   const filteredStructures = feeStructures.filter((structure) => {
+    // Search filter - include class names in search
+    const classNames = structure.classes?.map((c: any) => c.class?.name).join(" ") || "";
     const matchesSearch =
       structure.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      structure.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      structure.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      classNames.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Academic year filter
     const matchesYear =
       academicYearFilter === "all" ||
       structure.academicYearId === academicYearFilter;
 
-    return matchesSearch && matchesYear;
+    // Class filter
+    const matchesClass =
+      classFilter === "all" ||
+      structure.classes?.some((c: any) => c.classId === classFilter);
+
+    // Template filter
+    const matchesTemplate =
+      templateFilter === "all" ||
+      (templateFilter === "templates" && structure.isTemplate) ||
+      (templateFilter === "regular" && !structure.isTemplate);
+
+    return matchesSearch && matchesYear && matchesClass && matchesTemplate;
   });
 
   // Handle create fee structure
@@ -182,11 +209,13 @@ export default function FeeStructurePage() {
     form.reset({
       name: "",
       academicYearId: "",
+      classIds: [],
       applicableClasses: "",
       description: "",
       validFrom: new Date(),
       validTo: undefined,
       isActive: true,
+      isTemplate: false,
       items: [],
     });
     setSelectedStructureId(null);
@@ -199,11 +228,13 @@ export default function FeeStructurePage() {
     form.reset({
       name: structure.name,
       academicYearId: structure.academicYearId,
+      classIds: structure.classes?.map((c: any) => c.classId) || [],
       applicableClasses: structure.applicableClasses || "",
       description: structure.description || "",
       validFrom: new Date(structure.validFrom),
       validTo: structure.validTo ? new Date(structure.validTo) : undefined,
       isActive: structure.isActive,
+      isTemplate: structure.isTemplate || false,
       items: structure.items.map((item: any) => ({
         feeTypeId: item.feeTypeId,
         amount: item.amount,
@@ -282,6 +313,7 @@ export default function FeeStructurePage() {
       amount: 0,
       frequency: "ANNUAL",
       isOptional: false,
+      classAmounts: [],
     });
     setSelectedFeeTypeId(null);
     setCreateFeeTypeDialogOpen(true);
@@ -296,6 +328,10 @@ export default function FeeStructurePage() {
       amount: feeType.amount,
       frequency: feeType.frequency,
       isOptional: feeType.isOptional,
+      classAmounts: feeType.classAmounts?.map((ca: any) => ({
+        classId: ca.classId,
+        amount: ca.amount,
+      })) || [],
     });
     setEditFeeTypeDialogOpen(true);
   }
@@ -304,6 +340,12 @@ export default function FeeStructurePage() {
   function handleDeleteFeeType(id: string) {
     setSelectedFeeTypeId(id);
     setDeleteFeeTypeDialogOpen(true);
+  }
+
+  // Handle view fee type
+  function handleViewFeeType(feeType: any) {
+    setSelectedFeeType(feeType);
+    setViewFeeTypeDialogOpen(true);
   }
 
   // Submit fee type form
@@ -351,6 +393,29 @@ export default function FeeStructurePage() {
       }
     } catch (error) {
       console.error("Error deleting fee type:", error);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  // Handle duplicate fee structure from view dialog
+  async function handleDuplicateFromView() {
+    if (!selectedStructure) return;
+
+    try {
+      const result = await duplicateFeeStructure(selectedStructure.id, {
+        name: `${selectedStructure.name} (Copy)`,
+      });
+
+      if (result.success) {
+        toast.success("Fee structure duplicated successfully");
+        setViewDialogOpen(false);
+        setSelectedStructure(null);
+        fetchAllData();
+      } else {
+        toast.error(result.error || "Failed to duplicate fee structure");
+      }
+    } catch (error) {
+      console.error("Error duplicating fee structure:", error);
       toast.error("An unexpected error occurred");
     }
   }
@@ -429,10 +494,23 @@ export default function FeeStructurePage() {
                     Manage fee structures for different academic years and classes
                   </CardDescription>
                 </div>
-                <Button onClick={handleCreateStructure}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Fee Structure
-                </Button>
+                <div className="flex gap-2">
+                  <Link href="/admin/finance/analytics">
+                    <Button variant="outline">
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      View Analytics
+                    </Button>
+                  </Link>
+                  <Link href="/admin/finance/bulk-operations">
+                    <Button variant="outline">
+                      Bulk Operations
+                    </Button>
+                  </Link>
+                  <Button onClick={handleCreateStructure}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Fee Structure
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -442,7 +520,7 @@ export default function FeeStructurePage() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Search fee structures..."
+                    placeholder="Search fee structures or classes..."
                     className="pl-9"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -461,6 +539,29 @@ export default function FeeStructurePage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Filter by Class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={templateFilter} onValueChange={(value: any) => setTemplateFilter(value)}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Filter by Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="regular">Regular Structures</SelectItem>
+                    <SelectItem value="templates">Templates Only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Fee Structures List */}
@@ -469,7 +570,7 @@ export default function FeeStructurePage() {
                   <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                   <h3 className="text-lg font-medium mb-1">No fee structures found</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    {searchTerm || academicYearFilter !== "all"
+                    {searchTerm || academicYearFilter !== "all" || classFilter !== "all" || templateFilter !== "all"
                       ? "Try adjusting your filters"
                       : "Create your first fee structure to get started"}
                   </p>
@@ -500,12 +601,30 @@ export default function FeeStructurePage() {
                       </CardHeader>
                       <CardContent className="pb-3">
                         <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Classes:</span>
-                            <span className="font-medium">
-                              {structure.applicableClasses || "All"}
-                            </span>
-                          </div>
+                          {/* Display class badges */}
+                          {structure.classes && structure.classes.length > 0 && (
+                            <div>
+                              <span className="text-muted-foreground text-xs">Classes:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {structure.classes.slice(0, 3).map((classAssoc: any) => (
+                                  <Badge key={classAssoc.id} variant="secondary" className="text-xs">
+                                    {classAssoc.class?.name || "Unknown"}
+                                  </Badge>
+                                ))}
+                                {structure.classes.length > 3 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{structure.classes.length - 3} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {(!structure.classes || structure.classes.length === 0) && structure.applicableClasses && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Classes:</span>
+                              <span className="font-medium text-xs">{structure.applicableClasses}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Fee Items:</span>
                             <span className="font-medium">{structure.items?.length || 0}</span>
@@ -519,6 +638,13 @@ export default function FeeStructurePage() {
                                 .toLocaleString()}
                             </span>
                           </div>
+                          {structure.isTemplate && (
+                            <div className="pt-2">
+                              <Badge variant="outline" className="text-xs">
+                                Template
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                       <div className="flex border-t">
@@ -594,9 +720,10 @@ export default function FeeStructurePage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Amount</TableHead>
+                      <TableHead>Default Amount</TableHead>
                       <TableHead>Frequency</TableHead>
                       <TableHead>Optional</TableHead>
+                      <TableHead>Class-Specific Amounts</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -607,7 +734,7 @@ export default function FeeStructurePage() {
                         <TableCell className="text-sm text-muted-foreground">
                           {feeType.description || "—"}
                         </TableCell>
-                        <TableCell>₹{feeType.amount.toLocaleString()}</TableCell>
+                        <TableCell className="font-semibold">₹{feeType.amount.toLocaleString()}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {frequencyOptions.find((f) => f.value === feeType.frequency)?.label}
@@ -620,22 +747,48 @@ export default function FeeStructurePage() {
                             <Badge>Required</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {feeType.classAmounts && feeType.classAmounts.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {feeType.classAmounts.length} {feeType.classAmounts.length === 1 ? 'class' : 'classes'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                (custom amounts)
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Default only</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditFeeType(feeType)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-600"
-                            onClick={() => handleDeleteFeeType(feeType.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewFeeType(feeType)}
+                              title="View details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditFeeType(feeType)}
+                              title="Edit fee type"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-600"
+                              onClick={() => handleDeleteFeeType(feeType.id)}
+                              title="Delete fee type"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -708,17 +861,23 @@ export default function FeeStructurePage() {
 
               <FormField
                 control={form.control}
-                name="applicableClasses"
+                name="classIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Applicable Classes (Optional)</FormLabel>
+                    <FormLabel>Applicable Classes</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="e.g., Grade 10, Grade 11 (leave empty for all)"
-                        {...field}
-                        value={field.value || ""}
+                      <MultiClassSelector
+                        selectedClassIds={field.value}
+                        onChange={field.onChange}
+                        classes={classes}
+                        academicYearId={form.watch("academicYearId")}
+                        disabled={!form.watch("academicYearId")}
+                        error={form.formState.errors.classIds?.message}
                       />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      Select one or more classes for this fee structure
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -800,6 +959,118 @@ export default function FeeStructurePage() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="isTemplate"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <FormLabel>Template</FormLabel>
+                      <FormDescription className="text-xs">
+                        Mark as template to reuse for future fee structures
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Fee Items Section */}
+              <FormField
+                control={form.control}
+                name="items"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fee Items</FormLabel>
+                    <FormDescription className="text-xs mb-2">
+                      Add fee types to this structure. At least one fee item is required.
+                    </FormDescription>
+                    <FormControl>
+                      <div className="space-y-3">
+                        {field.value.map((item, index) => (
+                          <div key={index} className="flex gap-2 items-start p-3 border rounded-lg">
+                            <div className="flex-1 grid grid-cols-3 gap-2">
+                              <Select
+                                value={item.feeTypeId}
+                                onValueChange={(value) => {
+                                  const newItems = [...field.value];
+                                  newItems[index].feeTypeId = value;
+                                  // Auto-fill amount from fee type
+                                  const feeType = feeTypes.find(ft => ft.id === value);
+                                  if (feeType) {
+                                    newItems[index].amount = feeType.amount;
+                                  }
+                                  field.onChange(newItems);
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select fee type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {feeTypes.map((feeType) => (
+                                    <SelectItem key={feeType.id} value={feeType.id}>
+                                      {feeType.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                placeholder="Amount"
+                                value={item.amount}
+                                onChange={(e) => {
+                                  const newItems = [...field.value];
+                                  newItems[index].amount = parseFloat(e.target.value) || 0;
+                                  field.onChange(newItems);
+                                }}
+                              />
+                              <Input
+                                type="date"
+                                placeholder="Due Date"
+                                value={item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => {
+                                  const newItems = [...field.value];
+                                  newItems[index].dueDate = e.target.value ? new Date(e.target.value) : undefined;
+                                  field.onChange(newItems);
+                                }}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const newItems = field.value.filter((_, i) => i !== index);
+                                field.onChange(newItems);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            field.onChange([
+                              ...field.value,
+                              { feeTypeId: "", amount: 0, dueDate: undefined }
+                            ]);
+                          }}
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Fee Item
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => {
                   setCreateDialogOpen(false);
@@ -823,15 +1094,15 @@ export default function FeeStructurePage() {
           setEditFeeTypeDialogOpen(false);
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedFeeTypeId ? "Edit Fee Type" : "Create Fee Type"}
             </DialogTitle>
             <DialogDescription>
               {selectedFeeTypeId
-                ? "Update the fee type details"
-                : "Create a new fee type to use in fee structures"}
+                ? "Update the fee type details and configure class-specific amounts"
+                : "Create a new fee type to use in fee structures. You can set different amounts for specific classes."}
             </DialogDescription>
           </DialogHeader>
           <Form {...feeTypeForm}>
@@ -926,6 +1197,27 @@ export default function FeeStructurePage() {
                 )}
               />
 
+              {/* Class-Specific Amounts Configuration */}
+              <FormField
+                control={feeTypeForm.control}
+                name="classAmounts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <FeeTypeClassAmountConfig
+                        feeTypeId={selectedFeeTypeId || undefined}
+                        defaultAmount={feeTypeForm.watch("amount") || 0}
+                        classAmounts={field.value || []}
+                        onChange={field.onChange}
+                        classes={classes.map((cls) => ({ id: cls.id, name: cls.name }))}
+                        error={feeTypeForm.formState.errors.classAmounts?.message}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => {
                   setCreateFeeTypeDialogOpen(false);
@@ -1005,11 +1297,26 @@ export default function FeeStructurePage() {
                     <Badge variant={selectedStructure.isActive ? "default" : "secondary"}>
                       {selectedStructure.isActive ? "Active" : "Inactive"}
                     </Badge>
+                    {selectedStructure.isTemplate && (
+                      <Badge variant="outline" className="ml-2">
+                        Template
+                      </Badge>
+                    )}
                   </p>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-muted-foreground">Applicable Classes:</span>
-                  <p className="font-medium">{selectedStructure.applicableClasses || "All"}</p>
+                  {selectedStructure.classes && selectedStructure.classes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedStructure.classes.map((classAssoc: any) => (
+                        <Badge key={classAssoc.id} variant="secondary">
+                          {classAssoc.class?.name || "Unknown"}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="font-medium">{selectedStructure.applicableClasses || "All"}</p>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Total Amount:</span>
@@ -1047,8 +1354,165 @@ export default function FeeStructurePage() {
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={handleDuplicateFromView}
+              className="mr-auto"
+            >
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
+            </Button>
             <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Fee Type Dialog */}
+      <Dialog open={viewFeeTypeDialogOpen} onOpenChange={setViewFeeTypeDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Fee Type Details</DialogTitle>
+            <DialogDescription>
+              View fee type information and class-specific amounts
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFeeType && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-lg mb-1">{selectedFeeType.name}</h3>
+                  {selectedFeeType.description && (
+                    <p className="text-sm text-muted-foreground">{selectedFeeType.description}</p>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Default Amount</span>
+                    <p className="text-lg font-bold text-primary">
+                      ₹{selectedFeeType.amount.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Frequency</span>
+                    <p className="font-medium">
+                      {frequencyOptions.find((f) => f.value === selectedFeeType.frequency)?.label}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Type</span>
+                    <p>
+                      {selectedFeeType.isOptional ? (
+                        <Badge variant="secondary">Optional</Badge>
+                      ) : (
+                        <Badge>Required</Badge>
+                      )}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Custom Amounts</span>
+                    <p className="font-medium">
+                      {selectedFeeType.classAmounts?.length || 0} {selectedFeeType.classAmounts?.length === 1 ? 'class' : 'classes'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Class-Specific Amounts */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Class-Specific Amounts</h4>
+                  {(!selectedFeeType.classAmounts || selectedFeeType.classAmounts.length === 0) && (
+                    <Badge variant="outline" className="text-xs">
+                      Using default amount for all classes
+                    </Badge>
+                  )}
+                </div>
+                
+                {selectedFeeType.classAmounts && selectedFeeType.classAmounts.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold">Class</TableHead>
+                          <TableHead className="font-semibold">Custom Amount</TableHead>
+                          <TableHead className="font-semibold">Difference from Default</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedFeeType.classAmounts.map((classAmount: any) => {
+                          const difference = classAmount.amount - selectedFeeType.amount;
+                          const percentDiff = ((difference / selectedFeeType.amount) * 100).toFixed(1);
+                          
+                          return (
+                            <TableRow key={classAmount.id}>
+                              <TableCell className="font-medium">
+                                {classAmount.class?.name || classes.find(c => c.id === classAmount.classId)?.name || "Unknown"}
+                              </TableCell>
+                              <TableCell className="font-semibold text-primary">
+                                ₹{classAmount.amount.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                {difference === 0 ? (
+                                  <span className="text-sm text-muted-foreground">Same as default</span>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-medium ${difference > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      {difference > 0 ? '+' : ''}₹{difference.toLocaleString()}
+                                    </span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs ${difference > 0 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}
+                                    >
+                                      {difference > 0 ? '+' : ''}{percentDiff}%
+                                    </Badge>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-lg bg-muted/20">
+                    <DollarSign className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No class-specific amounts configured
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      All classes will use the default amount of ₹{selectedFeeType.amount.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Usage Information */}
+              <div className="pt-4 border-t">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Note:</strong> When this fee type is used in a fee structure, the system will automatically 
+                  apply class-specific amounts if configured, otherwise it will use the default amount.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setViewFeeTypeDialogOpen(false);
+                if (selectedFeeType) {
+                  handleEditFeeType(selectedFeeType);
+                }
+              }}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+            <Button onClick={() => setViewFeeTypeDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

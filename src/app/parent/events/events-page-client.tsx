@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar as CalendarIcon, Grid, List, Search, Filter, Loader2 } from "lucide-react";
@@ -57,7 +57,7 @@ interface EventsPageClientProps {
 export function EventsPageClient({ children }: EventsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [selectedChild, setSelectedChild] = useState(children[0]);
   const [events, setEvents] = useState<EventWithParticipantCount[]>([]);
   const [registeredEvents, setRegisteredEvents] = useState<any[]>([]);
@@ -67,7 +67,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list" | "calendar">("grid");
-  
+
   // Modal states
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -75,11 +75,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
   const [eventToRegister, setEventToRegister] = useState<EventWithParticipantCount | null>(null);
 
   // Load events and registered events
-  useEffect(() => {
-    loadData();
-  }, [selectedChild]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       // Load all events
@@ -105,7 +101,11 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedChild.id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleViewDetails = async (eventId: string) => {
     try {
@@ -178,7 +178,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
     // Search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         event.title.toLowerCase().includes(search) ||
         event.description?.toLowerCase().includes(search) ||
         event.location?.toLowerCase().includes(search);
@@ -200,17 +200,17 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
 
   // Categorize events
   const now = new Date();
-  const upcomingEvents = filteredEvents.filter(e => 
-    new Date(e.startDate) > now && 
+  const upcomingEvents = filteredEvents.filter(e =>
+    new Date(e.startDate) > now &&
     (e.status === EventStatus.UPCOMING || e.status === EventStatus.ONGOING)
   );
-  const ongoingEvents = filteredEvents.filter(e => 
-    new Date(e.startDate) <= now && 
-    new Date(e.endDate) >= now && 
+  const ongoingEvents = filteredEvents.filter(e =>
+    new Date(e.startDate) <= now &&
+    new Date(e.endDate) >= now &&
     e.status === EventStatus.ONGOING
   );
-  const pastEvents = filteredEvents.filter(e => 
-    new Date(e.endDate) < now || 
+  const pastEvents = filteredEvents.filter(e =>
+    new Date(e.endDate) < now ||
     e.status === EventStatus.COMPLETED
   );
   const myRegisteredEvents = registeredEvents
@@ -219,7 +219,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
       // Apply same filters
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           event.title.toLowerCase().includes(search) ||
           event.description?.toLowerCase().includes(search) ||
           event.location?.toLowerCase().includes(search);

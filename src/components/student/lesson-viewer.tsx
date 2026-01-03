@@ -85,10 +85,13 @@ export function LessonViewer({
       startTimeRef.current = Date.now();
     }, 10000); // Update every 10 seconds
 
+    // Copy ref value to a variable for cleanup
+    const progressInterval = progressIntervalRef.current;
+
     return () => {
       clearInterval(interval);
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
+      if (progressInterval) {
+        clearInterval(progressInterval);
       }
     };
   }, [lesson.id]);
@@ -100,9 +103,9 @@ export function LessonViewer({
     const handleScroll = () => {
       const scrollPercentage =
         (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)) * 100;
-      
+
       const newProgress = Math.min(Math.max(scrollPercentage, localProgress), 100);
-      
+
       if (newProgress > localProgress && newProgress - localProgress > 5) {
         setLocalProgress(newProgress);
         onProgressUpdate(newProgress).catch(console.error);
@@ -231,7 +234,7 @@ export function LessonViewer({
             </div>
             <Progress value={localProgress} className="mb-4" />
             <div className="flex gap-3">
-              <Button 
+              <Button
                 onClick={handleMarkComplete}
                 disabled={isCompleting}
                 className="flex-1 min-h-[44px]"
@@ -419,6 +422,7 @@ function ImageContent({ content }: { content: LessonContent }) {
           <h3 className="text-lg font-semibold mb-4">{content.title}</h3>
         )}
         <div className="relative w-full rounded-lg overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={content.url}
             alt={content.title || "Lesson image"}

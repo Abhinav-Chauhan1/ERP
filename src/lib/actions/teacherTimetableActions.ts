@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { DayOfWeek } from "@prisma/client";
 
@@ -10,8 +10,9 @@ import { DayOfWeek } from "@prisma/client";
  */
 export async function getTeacherTimetable() {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -20,7 +21,7 @@ export async function getTeacherTimetable() {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -128,9 +129,9 @@ export async function getTeacherTimetable() {
 export async function getTeacherDayTimetable(day: DayOfWeek) {
   try {
     const { timetable, slots, weekdays, config } = await getTeacherTimetable();
-    
+
     const daySlots = slots.filter(slot => slot.day === day);
-    
+
     return {
       timetable,
       slots: daySlots,

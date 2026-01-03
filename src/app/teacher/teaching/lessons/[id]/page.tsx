@@ -5,13 +5,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CldUploadWidget } from 'next-cloudinary';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Clock, 
-  FileText, 
-  BookOpen, 
+import {
+  Clock,
+  FileText,
+  BookOpen,
   Layers,
   Edit,
   ArrowLeft,
@@ -44,18 +44,18 @@ import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/a
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default async function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const lessonId = React.use(params).id;
-  
+
   const [lesson, setLesson] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<{url: string, name: string}[]>([]);
-  
+  const [uploadedFiles, setUploadedFiles] = useState<{ url: string, name: string }[]>([]);
+
   // Edit form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -64,7 +64,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
   const [duration, setDuration] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
-  
+
   // Fetch lesson data
   useEffect(() => {
     const fetchLesson = async () => {
@@ -72,7 +72,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
       try {
         const lessonData = await getTeacherLesson(lessonId);
         setLesson(lessonData);
-        
+
         // Initialize form fields
         setTitle(lessonData.title);
         setDescription(lessonData.description || "");
@@ -81,7 +81,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
         setDuration(lessonData.duration.toString());
         setSelectedSubject(lessonData.subjectId);
         setSelectedUnit(lessonData.unitId || "");
-        
+
         // Identify existing Cloudinary resources
         if (Array.isArray(lessonData.resources)) {
           const cloudinaryFiles = lessonData.resources
@@ -96,7 +96,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
         // Fetch subjects
         const subjectsData = await getTeacherSubjects();
         setSubjects(subjectsData.subjects);
-        
+
         // Fetch units if we have a subject
         if (lessonData.subjectId) {
           const unitsData = await getSubjectSyllabusUnits(lessonData.subjectId);
@@ -109,14 +109,14 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
         setIsLoading(false);
       }
     };
-    
+
     fetchLesson();
   }, [lessonId]);
-  
+
   const handleSubjectChange = async (value: string) => {
     setSelectedSubject(value);
     setSelectedUnit("");
-    
+
     try {
       const unitsData = await getSubjectSyllabusUnits(value);
       setUnits(unitsData.units);
@@ -136,10 +136,10 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const handleUpdateLesson = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const formData = new FormData();
       formData.append("title", title);
@@ -147,25 +147,25 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
       formData.append("subjectId", selectedSubject);
       if (selectedUnit) formData.append("syllabusUnitId", selectedUnit);
       formData.append("content", content);
-      
+
       // Add uploaded document URLs to resources
       const textResources = resources.split(',').map(r => r.trim()).filter(Boolean);
       const cloudinaryUrls = uploadedFiles.map(file => file.url);
       const allResources = [...textResources, ...cloudinaryUrls].join(',');
-      
+
       formData.append("resources", allResources);
       formData.append("duration", duration);
-      
+
       const result = await updateLesson(lessonId, formData);
-      
+
       if (result.success) {
         toast.success("Lesson updated successfully!");
         setIsEditing(false);
-        
+
         // Refresh lesson data
         const updatedLesson = await getTeacherLesson(lessonId);
         setLesson(updatedLesson);
-        
+
         router.refresh();
       } else {
         toast.error(result.error || "Failed to update lesson");
@@ -177,7 +177,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
       setIsSubmitting(false);
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -185,7 +185,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
       </div>
     );
   }
-  
+
   if (!lesson) {
     return (
       <div className="text-center py-10">
@@ -206,14 +206,14 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        
+
         <div className="flex justify-between items-center flex-1">
           <div>
             {!isEditing ? (
               <>
                 <h1 className="text-2xl font-bold tracking-tight">{lesson.title}</h1>
                 <div className="flex items-center gap-2 text-gray-500">
-                  <span>{lesson.subject}</span> 
+                  <span>{lesson.subject}</span>
                   {lesson.unit !== "Not assigned" && (
                     <>
                       <span>•</span>
@@ -369,7 +369,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
             <div className="space-y-2">
               <Label>Upload Documents</Label>
               <div className="border border-dashed rounded-lg p-4">
-                <CldUploadWidget 
+                <CldUploadWidget
                   uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
                   onSuccess={handleUploadSuccess}
                 >
@@ -380,9 +380,9 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                       <p className="text-xs text-gray-500 text-center">
                         Upload PDF, Word, Excel, PowerPoint, or image files
                       </p>
-                      <Button 
-                        type="button" 
-                        variant="secondary" 
+                      <Button
+                        type="button"
+                        variant="secondary"
                         onClick={() => open()}
                         className="mt-2"
                       >
@@ -392,7 +392,7 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                   )}
                 </CldUploadWidget>
               </div>
-              
+
               {uploadedFiles.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium mb-2">Uploaded Documents</h4>
@@ -401,18 +401,18 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                       <li key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                         <div className="flex items-center gap-2">
                           <Paperclip className="h-4 w-4 text-gray-500" />
-                          <a 
-                            href={file.url} 
-                            target="_blank" 
+                          <a
+                            href={file.url}
+                            target="_blank"
                             rel="noreferrer"
                             className="text-sm text-primary hover:underline"
                           >
                             {file.name}
                           </a>
                         </div>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
+                        <Button
+                          type="button"
+                          variant="ghost"
                           size="sm"
                           onClick={() => removeFile(index)}
                         >
@@ -492,9 +492,9 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                       {lesson.resources.map((resource: string, index: number) => (
                         resource && (
                           <li key={index}>
-                            <a 
-                              href={resource.startsWith('http') ? resource : `https://${resource}`} 
-                              target="_blank" 
+                            <a
+                              href={resource.startsWith('http') ? resource : `https://${resource}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-2 text-sm text-primary hover:underline"
                             >
@@ -516,9 +516,9 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                         // This is a Cloudinary document
                         return (
                           <li key={index}>
-                            <a 
-                              href={resource} 
-                              target="_blank" 
+                            <a
+                              href={resource}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
                             >
@@ -531,9 +531,9 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
                         // This is an external URL
                         return (
                           <li key={index}>
-                            <a 
-                              href={resource.startsWith('http') ? resource : `https://${resource}`} 
-                              target="_blank" 
+                            <a
+                              href={resource.startsWith('http') ? resource : `https://${resource}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
                             >
@@ -560,8 +560,8 @@ export default async function LessonDetailPage({ params }: { params: Promise<{ i
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {lesson.relatedLessons.map((relatedLesson: any) => (
-                    <Link 
-                      key={relatedLesson.id} 
+                    <Link
+                      key={relatedLesson.id}
                       href={`/teacher/teaching/lessons/${relatedLesson.id}`}
                       className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                     >

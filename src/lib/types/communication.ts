@@ -1,234 +1,107 @@
 /**
- * Communication Types for Parent Dashboard
+ * Communication System Type Definitions
  * 
- * This file contains TypeScript types for messages, announcements, and notifications
- * used in the parent communication system.
+ * This file contains all TypeScript interfaces and types for the
+ * WhatsApp Notification System and MSG91 SMS integration.
  */
 
 // ============================================================================
-// MESSAGE TYPES
+// Enums
 // ============================================================================
 
 /**
- * Message type for inbox/sent messages
+ * Communication channels supported by the system
  */
-export interface Message {
-  id: string;
-  senderId: string;
-  recipientId: string;
-  subject: string | null;
-  content: string;
-  isRead: boolean;
-  readAt: Date | null;
-  attachments: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  sender?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatar: string | null;
-    role: string;
-  };
-  recipient?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    avatar: string | null;
-    role: string;
-  };
+export enum CommunicationChannel {
+  EMAIL = 'EMAIL',
+  SMS = 'SMS',
+  WHATSAPP = 'WHATSAPP',
+  IN_APP = 'IN_APP'
 }
 
 /**
- * Message list item with sender/recipient info
+ * Message delivery status
  */
-export interface MessageListItem {
-  id: string;
-  subject: string | null;
-  content: string;
-  isRead: boolean;
-  createdAt: Date;
-  sender: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatar: string | null;
-    role: string;
-  };
-  recipient: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
-  hasAttachments: boolean;
+export enum MessageStatus {
+  QUEUED = 'QUEUED',
+  SENDING = 'SENDING',
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  READ = 'READ',
+  FAILED = 'FAILED'
 }
 
 /**
- * Message detail with full information
- */
-export interface MessageDetail extends Message {
-  attachmentUrls?: string[];
-}
-
-/**
- * Message thread for conversation view
- */
-export interface MessageThread {
-  id: string;
-  subject: string | null;
-  participants: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatar: string | null;
-    role: string;
-  }[];
-  messages: Message[];
-  lastMessageAt: Date;
-  unreadCount: number;
-}
-
-/**
- * Message statistics
- */
-export interface MessageStats {
-  totalInbox: number;
-  unreadInbox: number;
-  totalSent: number;
-  totalDrafts: number;
-}
-
-// ============================================================================
-// ANNOUNCEMENT TYPES
-// ============================================================================
-
-/**
- * Announcement category enum
- */
-export enum AnnouncementCategory {
-  ACADEMIC = "ACADEMIC",
-  EVENT = "EVENT",
-  HOLIDAY = "HOLIDAY",
-  GENERAL = "GENERAL",
-  URGENT = "URGENT",
-}
-
-/**
- * Announcement type
- */
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  publisherId: string;
-  targetAudience: string[];
-  startDate: Date;
-  endDate: Date | null;
-  isActive: boolean;
-  attachments: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  publisher?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatar: string | null;
-  };
-  category?: AnnouncementCategory;
-}
-
-/**
- * Announcement list item
- */
-export interface AnnouncementListItem {
-  id: string;
-  title: string;
-  content: string;
-  category: AnnouncementCategory;
-  startDate: Date;
-  endDate: Date | null;
-  isActive: boolean;
-  hasAttachments: boolean;
-  isRead: boolean;
-  publisher: {
-    firstName: string;
-    lastName: string;
-  };
-}
-
-/**
- * Announcement detail with full information
- */
-export interface AnnouncementDetail extends Announcement {
-  attachmentUrls?: string[];
-  isRead: boolean;
-  readAt?: Date;
-}
-
-// ============================================================================
-// NOTIFICATION TYPES
-// ============================================================================
-
-/**
- * Notification type enum
+ * Notification types
  */
 export enum NotificationType {
-  ATTENDANCE = "ATTENDANCE",
-  FEE = "FEE",
-  GRADE = "GRADE",
-  MESSAGE = "MESSAGE",
-  ANNOUNCEMENT = "ANNOUNCEMENT",
-  MEETING = "MEETING",
-  EVENT = "EVENT",
-  GENERAL = "GENERAL",
+  ATTENDANCE = 'ATTENDANCE',
+  LEAVE = 'LEAVE',
+  FEE = 'FEE',
+  GRADE = 'GRADE',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+  EXAM = 'EXAM',
+  TIMETABLE = 'TIMETABLE',
+  GENERAL = 'GENERAL',
+  MEETING = 'MEETING',
+  EVENT = 'EVENT',
+  MESSAGE = 'MESSAGE',
+  RECEIPT_VERIFIED = 'RECEIPT_VERIFIED',
+  RECEIPT_REJECTED = 'RECEIPT_REJECTED'
 }
 
 /**
- * Notification priority enum
+ * Notification priority levels
  */
 export enum NotificationPriority {
-  LOW = "LOW",
-  MEDIUM = "MEDIUM",
-  HIGH = "HIGH",
-  URGENT = "URGENT",
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT'
 }
 
 /**
- * Notification type
+ * Basic Notification interface matching the Prisma model structure
  */
 export interface Notification {
   id: string;
   userId: string;
+  type: string; // Stored as string in DB but mapped to NotificationType
   title: string;
   message: string;
-  type: string;
-  isRead: boolean;
-  readAt: Date | null;
   link: string | null;
+  isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * Notification list item with grouping
+ * Formatted Notification for UI display
  */
 export interface NotificationListItem {
   id: string;
   title: string;
   message: string;
   type: NotificationType;
-  priority?: NotificationPriority;
+  priority: NotificationPriority;
   isRead: boolean;
   link: string | null;
   createdAt: Date;
-  icon?: string;
-  color?: string;
+  icon: string;
+  color: string;
 }
 
 /**
- * Grouped notifications by type
+ * Notification Statistics
+ */
+export interface NotificationStats {
+  total: number;
+  unread: number;
+  byType: Partial<Record<NotificationType, { total: number; unread: number }>>;
+}
+
+/**
+ * Grouped Notifications
  */
 export interface GroupedNotifications {
   type: NotificationType;
@@ -238,181 +111,498 @@ export interface GroupedNotifications {
 }
 
 /**
- * Notification statistics
+ * WhatsApp message types
  */
-export interface NotificationStats {
-  total: number;
-  unread: number;
-  byType: {
-    [key in NotificationType]?: {
-      total: number;
-      unread: number;
+export enum WhatsAppMessageType {
+  TEXT = 'text',
+  TEMPLATE = 'template',
+  IMAGE = 'image',
+  DOCUMENT = 'document',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  LOCATION = 'location',
+  INTERACTIVE = 'interactive'
+}
+
+/**
+ * WhatsApp template status
+ */
+export enum WhatsAppTemplateStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+/**
+ * MSG91 SMS route types
+ */
+export enum MSG91Route {
+  TRANSACTIONAL = 'transactional',
+  PROMOTIONAL = 'promotional'
+}
+
+// ============================================================================
+// MSG91 Types
+// ============================================================================
+
+/**
+ * MSG91 SMS send parameters
+ */
+export interface MSG91SMSParams {
+  sender: string;
+  route: MSG91Route;
+  country: string;
+  sms: Array<{
+    message: string;
+    to: string[];
+  }>;
+  DLT_TE_ID?: string;
+}
+
+/**
+ * MSG91 API response
+ */
+export interface MSG91Response {
+  type: 'success' | 'error';
+  message: string;
+  request_id?: string;
+}
+
+/**
+ * MSG91 send result
+ */
+export interface MSG91SendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  errorCode?: string;
+}
+
+/**
+ * MSG91 status result
+ */
+export interface MSG91StatusResult {
+  status: MessageStatus;
+  description?: string;
+  deliveredAt?: Date;
+}
+
+/**
+ * MSG91 webhook payload
+ */
+export interface MSG91WebhookPayload {
+  request_id: string;
+  status: string;
+  mobile: string;
+  description?: string;
+  timestamp?: string;
+}
+
+// ============================================================================
+// WhatsApp Types
+// ============================================================================
+
+/**
+ * WhatsApp text message
+ */
+export interface WhatsAppTextMessage {
+  type: 'text';
+  text: {
+    body: string;
+    preview_url?: boolean;
+  };
+}
+
+/**
+ * WhatsApp template parameter
+ */
+export interface WhatsAppTemplateParameter {
+  type: 'text' | 'image' | 'document' | 'video';
+  text?: string;
+  image?: { link: string };
+  document?: { link: string; filename: string };
+  video?: { link: string };
+}
+
+/**
+ * WhatsApp template component
+ */
+export interface WhatsAppTemplateComponent {
+  type: 'header' | 'body' | 'button';
+  parameters: WhatsAppTemplateParameter[];
+}
+
+/**
+ * WhatsApp template message
+ */
+export interface WhatsAppTemplateMessage {
+  type: 'template';
+  template: {
+    name: string;
+    language: {
+      code: string;
+    };
+    components: WhatsAppTemplateComponent[];
+  };
+}
+
+/**
+ * WhatsApp media message
+ */
+export interface WhatsAppMediaMessage {
+  type: 'image' | 'document' | 'video' | 'audio';
+  [key: string]: any;
+}
+
+/**
+ * WhatsApp location message
+ */
+export interface WhatsAppLocationMessage {
+  type: 'location';
+  location: {
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+  };
+}
+
+/**
+ * WhatsApp interactive button
+ */
+export interface WhatsAppButton {
+  type: 'reply';
+  reply: {
+    id: string;
+    title: string;
+  };
+}
+
+/**
+ * WhatsApp interactive list row
+ */
+export interface WhatsAppListRow {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+/**
+ * WhatsApp interactive list section
+ */
+export interface WhatsAppListSection {
+  title: string;
+  rows: WhatsAppListRow[];
+}
+
+/**
+ * WhatsApp interactive message
+ */
+export interface WhatsAppInteractiveMessage {
+  type: 'interactive';
+  interactive: {
+    type: 'button' | 'list';
+    header?: {
+      type: 'text';
+      text: string;
+    };
+    body: {
+      text: string;
+    };
+    footer?: {
+      text: string;
+    };
+    action: {
+      buttons?: WhatsAppButton[];
+      button?: string;
+      sections?: WhatsAppListSection[];
     };
   };
 }
 
+/**
+ * Union type for all WhatsApp message types
+ */
+export type WhatsAppMessage =
+  | WhatsAppTextMessage
+  | WhatsAppTemplateMessage
+  | WhatsAppMediaMessage
+  | WhatsAppLocationMessage
+  | WhatsAppInteractiveMessage;
+
+/**
+ * WhatsApp send result
+ */
+export interface WhatsAppSendResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  errorCode?: number;
+}
+
+/**
+ * WhatsApp status result
+ */
+export interface WhatsAppStatusResult {
+  status: MessageStatus;
+  timestamp?: Date;
+  error?: string;
+}
+
+/**
+ * WhatsApp webhook payload
+ */
+export interface WhatsAppWebhookPayload {
+  object: string;
+  entry: Array<{
+    id: string;
+    changes: Array<{
+      value: {
+        messaging_product: string;
+        metadata: {
+          display_phone_number: string;
+          phone_number_id: string;
+        };
+        contacts?: Array<{
+          profile: {
+            name: string;
+          };
+          wa_id: string;
+        }>;
+        messages?: Array<{
+          from: string;
+          id: string;
+          timestamp: string;
+          type: string;
+          text?: {
+            body: string;
+          };
+          button?: {
+            text: string;
+            payload: string;
+          };
+        }>;
+        statuses?: Array<{
+          id: string;
+          status: string;
+          timestamp: string;
+          recipient_id: string;
+          errors?: Array<{
+            code: number;
+            title: string;
+          }>;
+        }>;
+      };
+      field: string;
+    }>;
+  }>;
+}
+
 // ============================================================================
-// DRAFT TYPES
+// Communication Service Types
 // ============================================================================
 
 /**
- * Message draft type
+ * Notification parameters
  */
-export interface MessageDraft {
-  id: string;
-  senderId: string;
-  recipientId: string | null;
-  subject: string | null;
-  content: string | null;
-  attachments: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  recipient?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    avatar: string | null;
+export interface NotificationParams {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  channels?: CommunicationChannel[];
+}
+
+/**
+ * Channel result
+ */
+export interface ChannelResult {
+  success: boolean;
+  messageId?: string;
+  notificationId?: string;
+  error?: string;
+}
+
+/**
+ * Communication result
+ */
+export interface CommunicationResult {
+  success: boolean;
+  channels: {
+    email?: ChannelResult;
+    sms?: ChannelResult;
+    whatsapp?: ChannelResult;
+    inApp?: ChannelResult;
   };
 }
 
-// ============================================================================
-// ATTACHMENT TYPES
-// ============================================================================
-
 /**
- * Attachment type
+ * Attendance alert parameters
  */
-export interface Attachment {
-  id: string;
-  name: string;
-  url: string;
-  size: number;
-  type: string;
-  uploadedAt: Date;
+export interface AttendanceAlertParams {
+  studentId: string;
+  studentName: string;
+  date: Date;
+  status: 'ABSENT' | 'LATE' | 'PRESENT';
+  attendancePercentage: number;
+  parentId: string;
 }
 
 /**
- * Attachment upload result
+ * Leave notification parameters
  */
-export interface AttachmentUploadResult {
+export interface LeaveNotificationParams {
+  applicantId: string;
+  applicantName: string;
+  leaveType: string;
+  startDate: Date;
+  endDate: Date;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  approverName?: string;
+  rejectionReason?: string;
+  isTeacher?: boolean;
+}
+
+/**
+ * Fee reminder parameters
+ */
+export interface FeeReminderParams {
+  studentId: string;
+  studentName: string;
+  amount: number;
+  dueDate: Date;
+  isOverdue: boolean;
+  outstandingBalance: number;
+  paymentLink?: string;
+  parentId: string;
+}
+
+/**
+ * Bulk notification parameters
+ */
+export interface BulkNotificationParams {
+  recipients: string[];
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  channel: CommunicationChannel;
+  templateId?: string;
+}
+
+/**
+ * Bulk communication result
+ */
+export interface BulkCommunicationResult {
   success: boolean;
-  attachment?: Attachment;
-  error?: string;
-}
-
-// ============================================================================
-// FILTER AND PAGINATION TYPES
-// ============================================================================
-
-/**
- * Pagination metadata
- */
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-/**
- * Paginated response
- */
-export interface PaginatedResponse<T> {
-  data: T[];
-  meta: PaginationMeta;
-}
-
-/**
- * Message filter options
- */
-export interface MessageFilterOptions {
-  type?: "inbox" | "sent" | "drafts";
-  isRead?: boolean;
-  search?: string;
-  startDate?: Date;
-  endDate?: Date;
-  page?: number;
-  limit?: number;
-}
-
-/**
- * Announcement filter options
- */
-export interface AnnouncementFilterOptions {
-  category?: AnnouncementCategory;
-  isActive?: boolean;
-  search?: string;
-  startDate?: Date;
-  endDate?: Date;
-  page?: number;
-  limit?: number;
-}
-
-/**
- * Notification filter options
- */
-export interface NotificationFilterOptions {
-  type?: NotificationType;
-  isRead?: boolean;
-  startDate?: Date;
-  endDate?: Date;
-  page?: number;
-  limit?: number;
-}
-
-// ============================================================================
-// ACTION RESULT TYPES
-// ============================================================================
-
-/**
- * Generic action result
- */
-export interface ActionResult<T = void> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
-
-/**
- * Message send result
- */
-export interface MessageSendResult extends ActionResult<Message> {
-  messageId?: string;
-}
-
-/**
- * Bulk action result
- */
-export interface BulkActionResult {
-  success: boolean;
+  totalRecipients: number;
   successCount: number;
   failureCount: number;
-  errors?: string[];
+  results: Array<{
+    userId: string;
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }>;
 }
 
-// ============================================================================
-// RECIPIENT TYPES
-// ============================================================================
-
 /**
- * Message recipient option for selection
+ * Message log entry
  */
-export interface RecipientOption {
+export interface MessageLogEntry {
   id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatar: string | null;
-  type: "teacher" | "admin";
+  channel: CommunicationChannel;
+  recipient: string;
+  userId?: string;
+  templateId?: string;
+  subject?: string;
+  body?: string;
+  status: MessageStatus;
+  messageId?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  sentAt?: Date;
+  deliveredAt?: Date;
+  readAt?: Date;
+  failedAt?: Date;
+  estimatedCost?: number;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 /**
- * Recipient search result
+ * Message template variable
  */
-export interface RecipientSearchResult {
-  teachers: RecipientOption[];
-  admins: RecipientOption[];
+export interface MessageTemplateVariable {
+  name: string;
+  description?: string;
+  required: boolean;
+  example?: string;
+}
+
+/**
+ * Contact preference
+ */
+export interface ContactPreference {
+  userId: string;
+  preferredMethod: CommunicationChannel | 'ALL';
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  whatsappNotifications: boolean;
+  pushNotifications: boolean;
+  whatsappOptIn: boolean;
+  whatsappNumber?: string;
+  preferredLanguage?: string;
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+/**
+ * Communication error
+ */
+export class CommunicationError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public channel?: CommunicationChannel,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = 'CommunicationError';
+  }
+}
+
+/**
+ * MSG91 error
+ */
+export class MSG91Error extends CommunicationError {
+  constructor(
+    message: string,
+    public code?: string,
+    public phoneNumber?: string,
+    public templateId?: string
+  ) {
+    super(message, code, CommunicationChannel.SMS);
+    this.name = 'MSG91Error';
+  }
+}
+
+/**
+ * WhatsApp error
+ */
+export class WhatsAppError extends CommunicationError {
+  constructor(
+    message: string,
+    code?: number,
+    public phoneNumber?: string,
+    public messageType?: string,
+    public messageId?: string
+  ) {
+    super(message, code?.toString(), CommunicationChannel.WHATSAPP);
+    this.name = 'WhatsAppError';
+  }
 }

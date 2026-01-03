@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -24,6 +24,9 @@ const notificationSettingsSchema = z.object({
   feeReminders: z.boolean().optional(),
   eventNotifications: z.boolean().optional(),
   announcementNotifications: z.boolean().optional(),
+  whatsappNotifications: z.boolean().optional(),
+  whatsappOptIn: z.boolean().optional(),
+  preferredLanguage: z.string().min(2, "Language code must be at least 2 characters").max(5, "Language code must be less than 5 characters").optional(),
 });
 
 const privacySettingsSchema = z.object({
@@ -63,6 +66,8 @@ export async function getStudentSettings(studentId: string) {
             feeReminders: true,
             eventNotifications: true,
             announcementNotifications: true,
+            whatsappNotifications: false,
+            whatsappOptIn: false,
             profileVisibility: "PRIVATE",
             showEmail: false,
             showPhone: false,
@@ -85,11 +90,14 @@ export async function getStudentSettings(studentId: string) {
           feeReminders: true,
           eventNotifications: true,
           announcementNotifications: true,
+          whatsappNotifications: false,
+          whatsappOptIn: false,
           profileVisibility: "PRIVATE",
           showEmail: false,
           showPhone: false,
           theme: "LIGHT",
           language: "en",
+          preferredLanguage: "en",
           dateFormat: "MM/DD/YYYY",
           timeFormat: "TWELVE_HOUR",
           createdAt: new Date(),
@@ -112,11 +120,14 @@ export async function getStudentSettings(studentId: string) {
       feeReminders: true,
       eventNotifications: true,
       announcementNotifications: true,
+      whatsappNotifications: false,
+      whatsappOptIn: false,
       profileVisibility: "PRIVATE",
       showEmail: false,
       showPhone: false,
       theme: "LIGHT",
       language: "en",
+      preferredLanguage: "en",
       dateFormat: "MM/DD/YYYY",
       timeFormat: "TWELVE_HOUR",
       createdAt: new Date(),
@@ -136,15 +147,15 @@ export async function updateAccountSettings(data: {
     // Validate input
     const validated = accountSettingsSchema.parse(data);
     
-    const clerkUser = await currentUser();
+    const session = await auth();
     
-    if (!clerkUser) {
+    if (!session?.user) {
       redirect("/login");
     }
 
     const dbUser = await db.user.findUnique({
       where: {
-        clerkId: clerkUser.id
+        id: session.user.id
       }
     });
 
@@ -206,20 +217,23 @@ export async function updateNotificationSettings(data: {
   feeReminders?: boolean;
   eventNotifications?: boolean;
   announcementNotifications?: boolean;
+  whatsappNotifications?: boolean;
+  whatsappOptIn?: boolean;
+  preferredLanguage?: string;
 }) {
   try {
     // Validate input
     const validated = notificationSettingsSchema.parse(data);
     
-    const clerkUser = await currentUser();
+    const session = await auth();
     
-    if (!clerkUser) {
+    if (!session?.user) {
       redirect("/login");
     }
 
     const dbUser = await db.user.findUnique({
       where: {
-        clerkId: clerkUser.id
+        id: session.user.id
       }
     });
 
@@ -248,7 +262,10 @@ export async function updateNotificationSettings(data: {
         attendanceAlerts: validated.attendanceAlerts,
         feeReminders: validated.feeReminders,
         eventNotifications: validated.eventNotifications,
-        announcementNotifications: validated.announcementNotifications
+        announcementNotifications: validated.announcementNotifications,
+        whatsappNotifications: validated.whatsappNotifications,
+        whatsappOptIn: validated.whatsappOptIn,
+        preferredLanguage: validated.preferredLanguage
       },
       create: {
         studentId: validated.studentId,
@@ -258,7 +275,10 @@ export async function updateNotificationSettings(data: {
         attendanceAlerts: validated.attendanceAlerts ?? true,
         feeReminders: validated.feeReminders ?? true,
         eventNotifications: validated.eventNotifications ?? true,
-        announcementNotifications: validated.announcementNotifications ?? true
+        announcementNotifications: validated.announcementNotifications ?? true,
+        whatsappNotifications: validated.whatsappNotifications ?? false,
+        whatsappOptIn: validated.whatsappOptIn ?? false,
+        preferredLanguage: validated.preferredLanguage ?? "en"
       }
     });
 
@@ -283,15 +303,15 @@ export async function updatePrivacySettings(data: {
     // Validate input
     const validated = privacySettingsSchema.parse(data);
     
-    const clerkUser = await currentUser();
+    const session = await auth();
     
-    if (!clerkUser) {
+    if (!session?.user) {
       redirect("/login");
     }
 
     const dbUser = await db.user.findUnique({
       where: {
-        clerkId: clerkUser.id
+        id: session.user.id
       }
     });
 
@@ -348,15 +368,15 @@ export async function updateAppearanceSettings(data: {
     // Validate input
     const validated = appearanceSettingsSchema.parse(data);
     
-    const clerkUser = await currentUser();
+    const session = await auth();
     
-    if (!clerkUser) {
+    if (!session?.user) {
       redirect("/login");
     }
 
     const dbUser = await db.user.findUnique({
       where: {
-        clerkId: clerkUser.id
+        id: session.user.id
       }
     });
 

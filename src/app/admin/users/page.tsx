@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle } from "lucide-react";
 import { getUsersOverview, getRecentUsers } from "@/lib/actions/userActions";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
@@ -54,12 +53,7 @@ export default async function UsersPage() {
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-          <div className="flex gap-2">
-            <BulkImportDialog />
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add User
-            </Button>
-          </div>
+          <BulkImportDialog />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

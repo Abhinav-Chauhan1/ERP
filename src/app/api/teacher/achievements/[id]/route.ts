@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { achievementUpdateSchema } from "@/lib/schemas/teacher-schemas";
 
@@ -9,9 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -20,7 +21,7 @@ export async function GET(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -73,9 +74,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -84,7 +86,7 @@ export async function PUT(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -122,26 +124,26 @@ export async function PUT(
 
     // Parse and validate request body
     const body = await request.json();
-    
+
     // Validate using centralized schema
     const validation = achievementUpdateSchema.safeParse(body);
-    
+
     if (!validation.success) {
       // Format validation errors for client
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join('.'),
         message: err.message,
       }));
-      
+
       return NextResponse.json(
-        { 
+        {
           message: "Validation failed",
           errors,
         },
         { status: 400 }
       );
     }
-    
+
     const validatedData = validation.data;
 
     // Validate date is not in the future if provided
@@ -150,7 +152,7 @@ export async function PUT(
       const now = new Date();
       if (achievementDate > now) {
         return NextResponse.json(
-          { 
+          {
             message: "Validation failed",
             errors: [{ field: "date", message: "Date cannot be in the future" }],
           },
@@ -176,7 +178,7 @@ export async function PUT(
     return NextResponse.json({ achievement });
   } catch (error) {
     console.error('Error updating achievement:', error);
-    
+
     // Handle database constraint violations
     if (error instanceof Error) {
       if (error.message.includes('Unique constraint')) {
@@ -200,9 +202,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -211,7 +214,7 @@ export async function DELETE(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },

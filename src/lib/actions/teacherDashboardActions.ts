@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, format, addDays } from "date-fns";
 
@@ -319,7 +319,8 @@ export async function getUnreadMessagesCount(teacherId: string) {
  */
 export async function getTeacherDashboardData() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
       return {
@@ -331,7 +332,7 @@ export async function getTeacherDashboardData() {
     // Get user first, then teacher record
     const user = await db.user.findUnique({
       where: {
-        clerkId: userId,
+        id: userId,
       },
     });
 

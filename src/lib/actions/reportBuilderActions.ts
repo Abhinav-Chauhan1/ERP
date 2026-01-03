@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 export interface ReportConfig {
@@ -73,7 +73,8 @@ export interface ComparisonResult {
  */
 export async function generateReport(config: ReportConfig) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -455,7 +456,8 @@ function parseValue(value: string): any {
  */
 export async function saveReportConfig(config: ReportConfig) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -542,7 +544,8 @@ export async function exportReportData(
   format: 'pdf' | 'excel' | 'csv'
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -579,7 +582,8 @@ export async function generateYearOverYearComparison(
   config: ComparativeAnalysisConfig
 ): Promise<{ success: boolean; data?: ComparisonResult; error?: string }> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -685,7 +689,8 @@ export async function generateTermOverTermComparison(
   config: ComparativeAnalysisConfig
 ): Promise<{ success: boolean; data?: ComparisonResult; error?: string }> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -1028,7 +1033,8 @@ function groupDataByMonth(data: any[], metric: string): Record<string, number> {
  */
 export async function getAvailableAcademicYears() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -1056,7 +1062,8 @@ export async function getAvailableAcademicYears() {
  */
 export async function getAvailableTerms(academicYearId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

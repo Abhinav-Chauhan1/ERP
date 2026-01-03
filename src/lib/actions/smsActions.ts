@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import {
   sendSMS,
@@ -20,6 +20,7 @@ import {
   isSMSConfigured,
   formatPhoneNumber,
   isValidPhoneNumber,
+  getSMSProvider,
   type SMSSendResult,
   type SMSStatusResult,
 } from "@/lib/services/sms-service";
@@ -31,6 +32,7 @@ export async function sendSingleSMS(data: {
   to: string;
   message: string;
   countryCode?: string;
+  dltTemplateId?: string;
 }) {
   try {
     const user = await currentUser();
@@ -39,7 +41,7 @@ export async function sendSingleSMS(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -61,8 +63,8 @@ export async function sendSingleSMS(data: {
       return { success: false, error: "Invalid phone number format. Use E.164 format: +1234567890" };
     }
 
-    // Send SMS with retry logic
-    const result = await sendSMSWithRetry(phoneNumber, data.message);
+    // Send SMS with retry logic (includes DLT template ID if provided)
+    const result = await sendSMSWithRetry(phoneNumber, data.message, data.dltTemplateId);
 
     if (!result.success) {
       return { success: false, error: result.error || "Failed to send SMS" };
@@ -92,6 +94,7 @@ export async function sendBulkSMSAction(data: {
   recipients: string[];
   message: string;
   countryCode?: string;
+  dltTemplateId?: string;
 }) {
   try {
     const user = await currentUser();
@@ -100,7 +103,7 @@ export async function sendBulkSMSAction(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -133,8 +136,8 @@ export async function sendBulkSMSAction(data: {
       };
     }
 
-    // Send bulk SMS
-    const results = await sendBulkSMS(formattedRecipients, data.message);
+    // Send bulk SMS (includes DLT template ID if provided)
+    const results = await sendBulkSMS(formattedRecipients, data.message, data.dltTemplateId);
 
     // Count successes and failures
     const successCount = results.filter(r => r.success).length;
@@ -175,7 +178,7 @@ export async function getSMSStatus(messageId: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -224,7 +227,7 @@ export async function sendSMSToClass(data: {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -300,7 +303,7 @@ export async function sendSMSToAllParents(message: string) {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -356,7 +359,7 @@ export async function checkSMSConfiguration() {
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
     });
 
     if (!dbUser) {
@@ -369,14 +372,25 @@ export async function checkSMSConfiguration() {
     }
 
     const configured = isSMSConfigured();
+    const provider = getSMSProvider();
+
+    let message: string;
+    if (configured) {
+      message = `SMS service is configured and ready to use (Provider: ${provider})`;
+    } else {
+      if (provider === 'MSG91') {
+        message = "SMS service is not configured. Please set MSG91_AUTH_KEY and MSG91_SENDER_ID environment variables.";
+      } else {
+        message = "SMS service is not configured. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables.";
+      }
+    }
 
     return {
       success: true,
       data: {
         configured,
-        message: configured
-          ? "SMS service is configured and ready to use"
-          : "SMS service is not configured. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables.",
+        provider,
+        message,
       },
     };
   } catch (error: any) {

@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ChevronLeft, 
-  Edit, 
-  Download, 
-  Plus, 
-  Search, 
-  AlertCircle, 
-  Loader2, 
-  FileText, 
-  User, 
-  Calendar, 
-  Clock, 
-  Trash2 
+import {
+  ChevronLeft,
+  Edit,
+  Download,
+  Plus,
+  Search,
+  AlertCircle,
+  Loader2,
+  FileText,
+  User,
+  Calendar,
+  Clock,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ export default function ExamDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
-  
+
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +62,7 @@ export default function ExamDetailsPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
+
   const resultForm = useForm<ExamResultFormValues>({
     resolver: zodResolver(examResultSchema),
     defaultValues: {
@@ -72,17 +72,13 @@ export default function ExamDetailsPage() {
     },
   });
 
-  useEffect(() => {
-    fetchExamDetails();
-  }, [examId]);
-
-  const fetchExamDetails = async () => {
+  const fetchExamDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getExamById(examId);
-      
+
       if (result.success) {
         setExam(result.data);
       } else {
@@ -96,11 +92,15 @@ export default function ExamDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [examId]);
+
+  useEffect(() => {
+    fetchExamDetails();
+  }, [examId, fetchExamDetails]);
 
   const handleEditResult = (studentId: string) => {
     const existingResult = exam.results.find((r: any) => r.student.id === studentId);
-    
+
     if (existingResult) {
       resultForm.reset({
         examId: examId,
@@ -118,7 +118,7 @@ export default function ExamDetailsPage() {
         isAbsent: false,
       });
     }
-    
+
     setSelectedStudentId(studentId);
     setResultDialogOpen(true);
   };
@@ -131,7 +131,7 @@ export default function ExamDetailsPage() {
       remarks: "",
       isAbsent: false,
     });
-    
+
     setSelectedStudentId(studentId);
     setResultDialogOpen(true);
   };
@@ -139,7 +139,7 @@ export default function ExamDetailsPage() {
   const onResultSubmit = async (values: ExamResultFormValues) => {
     try {
       const result = await saveExamResult(values);
-      
+
       if (result.success) {
         toast.success("Exam result saved successfully");
         setResultDialogOpen(false);
@@ -160,10 +160,10 @@ export default function ExamDetailsPage() {
 
   const confirmDeleteResult = async () => {
     if (!selectedStudentId) return;
-    
+
     try {
       const result = await deleteExamResult(selectedStudentId);
-      
+
       if (result.success) {
         toast.success("Result deleted successfully");
         setDeleteDialogOpen(false);
@@ -179,11 +179,11 @@ export default function ExamDetailsPage() {
 
   const filteredStudents = exam?.results.filter((result: any) => {
     if (!searchTerm) return true;
-    
+
     const studentName = `${result.student.user.firstName} ${result.student.user.lastName}`.toLowerCase();
     const admissionId = result.student.admissionId?.toLowerCase() || "";
     const rollNumber = (result.student.rollNumber || "").toLowerCase();
-    
+
     return (
       studentName.includes(searchTerm.toLowerCase()) ||
       admissionId.includes(searchTerm.toLowerCase()) ||
@@ -274,7 +274,7 @@ export default function ExamDetailsPage() {
               </CardDescription>
             </div>
             <Badge className={
-              new Date(exam.examDate) > new Date() 
+              new Date(exam.examDate) > new Date()
                 ? "bg-blue-100 text-blue-800"
                 : "bg-green-100 text-green-800"
             }>
@@ -299,8 +299,8 @@ export default function ExamDetailsPage() {
                 <User className="h-4 w-4 text-gray-500" />
                 <span className="font-medium">Created By:</span>
                 <span>
-                  {exam.creator ? 
-                    `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : 
+                  {exam.creator ?
+                    `${exam.creator.user.firstName} ${exam.creator.user.lastName}` :
                     "System"
                   }
                 </span>
@@ -338,7 +338,7 @@ export default function ExamDetailsPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="overview" className="mt-4">
           <Card>
             <CardHeader>
@@ -377,7 +377,7 @@ export default function ExamDetailsPage() {
                   </div>
                 </div>
               </div>
-              
+
               {presentStudents > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   <div>
@@ -385,8 +385,8 @@ export default function ExamDetailsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-green-600 h-2.5 rounded-full" 
+                          <div
+                            className="bg-green-600 h-2.5 rounded-full"
                             style={{ width: `${Math.min(100, (presentStudents ? exam.results.filter((r: any) => !r.isAbsent && r.marks >= exam.totalMarks * 0.75).length / presentStudents * 100 : 0))}%` }}
                           ></div>
                         </div>
@@ -394,8 +394,8 @@ export default function ExamDetailsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-blue-600 h-2.5 rounded-full" 
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
                             style={{ width: `${Math.min(100, (presentStudents ? exam.results.filter((r: any) => !r.isAbsent && r.marks >= exam.totalMarks * 0.5 && r.marks < exam.totalMarks * 0.75).length / presentStudents * 100 : 0))}%` }}
                           ></div>
                         </div>
@@ -403,8 +403,8 @@ export default function ExamDetailsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-yellow-500 h-2.5 rounded-full" 
+                          <div
+                            className="bg-yellow-500 h-2.5 rounded-full"
                             style={{ width: `${Math.min(100, (presentStudents ? exam.results.filter((r: any) => !r.isAbsent && r.marks >= exam.totalMarks * 0.35 && r.marks < exam.totalMarks * 0.5).length / presentStudents * 100 : 0))}%` }}
                           ></div>
                         </div>
@@ -412,8 +412,8 @@ export default function ExamDetailsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-red-600 h-2.5 rounded-full" 
+                          <div
+                            className="bg-red-600 h-2.5 rounded-full"
                             style={{ width: `${Math.min(100, (presentStudents ? exam.results.filter((r: any) => !r.isAbsent && r.marks < exam.totalMarks * 0.35).length / presentStudents * 100 : 0))}%` }}
                           ></div>
                         </div>
@@ -421,7 +421,7 @@ export default function ExamDetailsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium mb-3">Top Performers</h3>
                     <div className="rounded-md border">
@@ -579,7 +579,7 @@ export default function ExamDetailsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={resultForm.control}
                 name="marks"
@@ -604,7 +604,7 @@ export default function ExamDetailsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={resultForm.control}
                 name="grade"
@@ -623,7 +623,7 @@ export default function ExamDetailsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={resultForm.control}
                 name="remarks"
@@ -642,7 +642,7 @@ export default function ExamDetailsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
                 <Button type="submit">Save Result</Button>
               </DialogFooter>

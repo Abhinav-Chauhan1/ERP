@@ -6,7 +6,7 @@
  * DO NOT use this file directly - it's for reference only
  */
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { hasPermission } from '@/lib/utils/permissions';
 import { ServerPermissionGuard } from '@/components/auth/PermissionGuard';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
  */
 export default async function UsersPageExample() {
   // Get authenticated user
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
   
   if (!userId) {
     return <div>Unauthorized</div>;
@@ -189,7 +190,8 @@ export const deleteUserExample = withPermission(
       // Permission has already been checked by the wrapper
       
       // Additional business logic checks
-      const { userId: currentUserId } = await auth();
+      const session = await auth();
+      const currentUserId = session?.user?.id;
       if (userId === currentUserId) {
         return {
           success: false,

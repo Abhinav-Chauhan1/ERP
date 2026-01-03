@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
@@ -11,41 +12,42 @@ import { FeePaymentSummary } from "@/components/parent/fee-payment-summary";
 import { RecentAnnouncements } from "@/components/parent/recent-announcements";
 import { QuickActionsPanel } from "@/components/parent/dashboard/quick-actions-panel";
 import { PerformanceSummaryCards } from "@/components/parent/dashboard/performance-summary-cards";
-import { CalendarWidget } from "@/components/parent/dashboard/calendar-widget";
+import { CalendarWidget } from "@/components/calendar/calendar-widget";
 import { RecentActivityFeed } from "@/components/parent/dashboard/recent-activity-feed";
 import { CACHE_TAGS } from "@/lib/utils/cache";
+import { getParentCalendarEvents } from "@/lib/actions/calendar-widget-actions";
 
 /**
  * Get parent data and children
  * Cached for 5 minutes (300 seconds) as per requirements 9.5
  */
 async function getParentData() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     redirect("/login");
   }
-  
+
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
     }
   });
-  
+
   if (!parent) {
     return null;
   }
-  
+
   // Cached function to fetch dashboard data
   const getCachedDashboardData = unstable_cache(
     async (parentId: string) => {
@@ -78,12 +80,12 @@ async function getParentData() {
           }
         }
       });
-      
+
       const children = parentChildren.map(pc => ({
         ...pc.student,
         isPrimary: pc.isPrimary
       }));
-      
+
       return children;
     },
     [`parent-dashboard-${parent.id}`],
@@ -92,9 +94,9 @@ async function getParentData() {
       revalidate: 300 // 5 minutes
     }
   );
-  
+
   const children = await getCachedDashboardData(parent.id);
-  
+
   return { dbUser, parent, children };
 }
 
@@ -103,7 +105,7 @@ async function getParentData() {
  */
 export async function HeaderSection() {
   const data = await getParentData();
-  
+
   if (!data) {
     return (
       <div className="h-full p-6">
@@ -115,9 +117,9 @@ export async function HeaderSection() {
       </div>
     );
   }
-  
+
   const { dbUser, children } = data;
-  
+
   return (
     <>
       <ParentHeader parent={{ user: dbUser }} children={children} />
@@ -131,14 +133,14 @@ export async function HeaderSection() {
  */
 export async function AttendanceFeesSection() {
   const data = await getParentData();
-  
+
   if (!data) {
     return null;
   }
-  
+
   const { children } = data;
   const studentIds = children.map(child => child.id);
-  
+
   // Get fee payments for all children
   const feePayments = await db.feePayment.findMany({
     where: {
@@ -162,11 +164,11 @@ export async function AttendanceFeesSection() {
       }
     }
   });
-  
+
   // Get attendance for all children in the last 30 days
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
       studentId: {
@@ -180,7 +182,7 @@ export async function AttendanceFeesSection() {
       date: 'desc'
     }
   });
-  
+
   // Calculate attendance stats for each child
   const attendanceStats = studentIds.map(studentId => {
     const studentAttendance = attendanceRecords.filter(record => record.studentId === studentId);
@@ -188,7 +190,7 @@ export async function AttendanceFeesSection() {
     const presentDays = studentAttendance.filter(record => record.status === "PRESENT").length;
     const absentDays = studentAttendance.filter(record => record.status === "ABSENT").length;
     const lateDays = studentAttendance.filter(record => record.status === "LATE").length;
-    
+
     return {
       studentId,
       totalDays,
@@ -198,7 +200,7 @@ export async function AttendanceFeesSection() {
       attendancePercentage: totalDays > 0 ? (presentDays / totalDays) * 100 : 0
     };
   });
-  
+
   return (
     <div className="lg:col-span-2 space-y-6">
       <AttendanceSummary attendanceStats={attendanceStats} children={children} />
@@ -212,13 +214,13 @@ export async function AttendanceFeesSection() {
  */
 export async function MeetingsAnnouncementsSection() {
   const data = await getParentData();
-  
+
   if (!data) {
     return null;
   }
-  
+
   const { parent } = data;
-  
+
   // Get upcoming meetings
   const upcomingMeetings = await db.parentMeeting.findMany({
     where: {
@@ -244,7 +246,7 @@ export async function MeetingsAnnouncementsSection() {
       }
     }
   });
-  
+
   // Get recent announcements
   const recentAnnouncements = await db.announcement.findMany({
     where: {
@@ -283,7 +285,7 @@ export async function MeetingsAnnouncementsSection() {
       }
     }
   });
-  
+
   return (
     <div className="space-y-6">
       <UpcomingMeetings meetings={upcomingMeetings} />
@@ -304,14 +306,14 @@ export async function QuickActionsSection() {
  */
 export async function PerformanceSummarySection() {
   const data = await getParentData();
-  
+
   if (!data) {
     return null;
   }
-  
+
   const { children } = data;
   const studentIds = children.map(child => child.id);
-  
+
   // Get latest exam results for each child
   const examResults = await db.examResult.findMany({
     where: {
@@ -327,11 +329,11 @@ export async function PerformanceSummarySection() {
       exam: true
     }
   });
-  
+
   // Get attendance for each child in the last 30 days
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
       studentId: {
@@ -342,7 +344,7 @@ export async function PerformanceSummarySection() {
       }
     }
   });
-  
+
   // Get pending assignments for each child
   const pendingAssignments = await db.assignmentSubmission.findMany({
     where: {
@@ -352,7 +354,7 @@ export async function PerformanceSummarySection() {
       status: 'PENDING'
     }
   });
-  
+
   // Get previous exam results for trend calculation
   const previousExamResults = await db.examResult.findMany({
     where: {
@@ -368,39 +370,39 @@ export async function PerformanceSummarySection() {
     },
     take: studentIds.length * 2 // Get 2 results per student
   });
-  
+
   // Build performance data for each child
   const childrenPerformance = children.map(child => {
     const latestExam = examResults.find(result => result.studentId === child.id);
     const childAttendance = attendanceRecords.filter(record => record.studentId === child.id);
     const presentDays = childAttendance.filter(record => record.status === "PRESENT").length;
-    const attendancePercentage = childAttendance.length > 0 
-      ? (presentDays / childAttendance.length) * 100 
+    const attendancePercentage = childAttendance.length > 0
+      ? (presentDays / childAttendance.length) * 100
       : 0;
-    
+
     const childPendingAssignments = pendingAssignments.filter(
       submission => submission.studentId === child.id
     ).length;
-    
+
     // Calculate grade trend
     const childExamResults = previousExamResults
       .filter(result => result.studentId === child.id)
       .slice(0, 2);
-    
+
     let gradeTrend: 'up' | 'down' | 'stable' = 'stable';
     if (childExamResults.length >= 2) {
       const latest = childExamResults[0];
       const previous = childExamResults[1];
       const latestPercentage = (latest.marks / latest.exam.totalMarks) * 100;
       const previousPercentage = (previous.marks / previous.exam.totalMarks) * 100;
-      
+
       if (latestPercentage > previousPercentage + 5) {
         gradeTrend = 'up';
       } else if (latestPercentage < previousPercentage - 5) {
         gradeTrend = 'down';
       }
     }
-    
+
     return {
       id: child.id,
       user: child.user,
@@ -413,7 +415,7 @@ export async function PerformanceSummarySection() {
       gradeTrend
     };
   });
-  
+
   return <PerformanceSummaryCards children={childrenPerformance} />;
 }
 
@@ -421,60 +423,10 @@ export async function PerformanceSummarySection() {
  * Calendar widget section
  */
 export async function CalendarWidgetSection() {
-  const data = await getParentData();
-  
-  if (!data) {
-    return null;
-  }
-  
-  const { parent, children } = data;
-  const studentIds = children.map(child => child.id);
-  
-  // Get upcoming events
-  const events = await db.event.findMany({
-    where: {
-      startDate: {
-        gte: new Date()
-      },
-      status: 'UPCOMING'
-    },
-    orderBy: {
-      startDate: 'asc'
-    },
-    take: 10
-  });
-  
-  // Get upcoming meetings
-  const meetings = await db.parentMeeting.findMany({
-    where: {
-      parentId: parent.id,
-      scheduledDate: {
-        gte: new Date()
-      }
-    },
-    orderBy: {
-      scheduledDate: 'asc'
-    },
-    take: 10
-  });
-  
-  // Combine and format events
-  const calendarEvents = [
-    ...events.map(event => ({
-      id: event.id,
-      title: event.title,
-      date: event.startDate,
-      type: 'event' as const
-    })),
-    ...meetings.map(meeting => ({
-      id: meeting.id,
-      title: 'Parent-Teacher Meeting',
-      date: meeting.scheduledDate,
-      type: 'meeting' as const
-    }))
-  ];
-  
-  return <CalendarWidget events={calendarEvents} />;
+  const result = await getParentCalendarEvents(5);
+  const events = (result.success && result.data) ? result.data : [];
+
+  return <CalendarWidget events={events} userRole="PARENT" />;
 }
 
 /**
@@ -482,21 +434,21 @@ export async function CalendarWidgetSection() {
  */
 export async function RecentActivityFeedSection() {
   const data = await getParentData();
-  
+
   if (!data) {
     return null;
   }
-  
+
   const { children } = data;
   const studentIds = children.map(child => child.id);
-  
+
   // Get recent assignments
   const recentAssignments = await db.assignment.findMany({
     where: {
       classes: {
         some: {
           classId: {
-            in: children.flatMap(child => 
+            in: children.flatMap(child =>
               child.enrollments.map(enrollment => enrollment.classId)
             )
           }
@@ -517,7 +469,7 @@ export async function RecentActivityFeedSection() {
       }
     }
   });
-  
+
   // Get recent exams through exam results
   const recentExamResults = await db.examResult.findMany({
     where: {
@@ -533,12 +485,12 @@ export async function RecentActivityFeedSection() {
     },
     take: 5
   });
-  
+
   // Extract unique exams from results
   const recentExams = Array.from(
     new Map(recentExamResults.map(result => [result.exam.id, result.exam])).values()
   );
-  
+
   // Get recent announcements
   const recentAnnouncements = await db.announcement.findMany({
     where: {
@@ -552,7 +504,7 @@ export async function RecentActivityFeedSection() {
     },
     take: 5
   });
-  
+
   // Get recent attendance alerts (absences)
   const recentAbsences = await db.studentAttendance.findMany({
     where: {
@@ -569,7 +521,7 @@ export async function RecentActivityFeedSection() {
     },
     take: 5
   });
-  
+
   // Build activity feed
   const activities = [
     ...recentAssignments.map(assignment => {
@@ -612,6 +564,6 @@ export async function RecentActivityFeedSection() {
       };
     })
   ];
-  
+
   return <RecentActivityFeed activities={activities} />;
 }

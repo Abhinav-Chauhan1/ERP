@@ -69,6 +69,8 @@ const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
   MEETING: Users,
   EVENT: Calendar,
   GENERAL: Bell,
+  RECEIPT_VERIFIED: CheckCheck,
+  RECEIPT_REJECTED: AlertCircle,
 };
 
 const NOTIFICATION_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
@@ -80,6 +82,8 @@ const NOTIFICATION_COLORS: Record<string, { bg: string; text: string; icon: stri
   MEETING: { bg: "bg-pink-50", text: "text-pink-700", icon: "text-pink-600" },
   EVENT: { bg: "bg-indigo-50", text: "text-indigo-700", icon: "text-indigo-600" },
   GENERAL: { bg: "bg-gray-50", text: "text-gray-700", icon: "text-gray-600" },
+  RECEIPT_VERIFIED: { bg: "bg-green-50", text: "text-green-700", icon: "text-green-600" },
+  RECEIPT_REJECTED: { bg: "bg-red-50", text: "text-red-700", icon: "text-red-600" },
 };
 
 export function NotificationList({

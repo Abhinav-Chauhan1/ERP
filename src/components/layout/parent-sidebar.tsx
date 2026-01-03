@@ -8,10 +8,10 @@ import {
   BarChart2, Clock, DollarSign, MessageSquare, 
   FolderOpen, Award, Settings, CalendarCheck,
   LucideIcon, BookOpen, School, BookOpenCheck,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
@@ -58,6 +58,7 @@ const routes: RouteItem[] = [
       { label: "Overview", href: "/parent/performance" },
       { label: "Exam Results", href: "/parent/performance/results" },
       { label: "Progress Reports", href: "/parent/performance/reports" },
+      { label: "Report Cards", href: "/parent/performance/report-cards" },
     ]
   },
   {
@@ -98,6 +99,11 @@ const routes: RouteItem[] = [
     label: "Documents",
     icon: FolderOpen,
     href: "/parent/documents",
+  },
+  {
+    label: "Calendar",
+    icon: CalendarDays,
+    href: "/parent/calendar",
   },
   {
     label: "Events",

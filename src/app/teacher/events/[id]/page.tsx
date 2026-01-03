@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { redirect, notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,8 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 
 async function EventDetailContent({ eventId }: { eventId: string }) {
-  const { userId } = await auth();
+  const session = await auth();
+const userId = session?.user?.id;
   
   if (!userId) {
     redirect('/login');

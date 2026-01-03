@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@clerk/nextjs';
+import { signOut } from 'next-auth/react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,14 +30,24 @@ import {
 export function SessionTimeoutWarning() {
   const [showWarning, setShowWarning] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const { signOut } = useAuth();
   const router = useRouter();
+
+  const handleSessionExpired = useCallback(async () => {
+    try {
+      await signOut({ redirect: false });
+      router.push('/login?session_expired=true');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Force redirect even if sign out fails
+      router.push('/login?session_expired=true');
+    }
+  }, [router]);
 
   useEffect(() => {
     // Check session status periodically
     const checkSession = () => {
       const sessionInfo = getSessionInfo();
-      
+
       if (sessionInfo.isExpired) {
         // Session expired - sign out
         handleSessionExpired();
@@ -60,18 +70,7 @@ export function SessionTimeoutWarning() {
     return () => {
       clearInterval(intervalId);
     };
-  }, []);
-
-  const handleSessionExpired = async () => {
-    try {
-      await signOut();
-      router.push('/login?session_expired=true');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Force redirect even if sign out fails
-      router.push('/login?session_expired=true');
-    }
-  };
+  }, [handleSessionExpired]);
 
   const handleContinueSession = () => {
     // Update activity to extend session

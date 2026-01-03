@@ -11,13 +11,17 @@ export const feeStructureItemSchema = z.object({
 export const feeStructureSchema = z.object({
   name: z.string().min(1, "Name is required"),
   academicYearId: z.string().min(1, "Academic year is required"),
-  applicableClasses: z.string().optional().nullable(),
+  classIds: z
+    .array(z.string().min(1, "Class ID is required"))
+    .min(1, "At least one class must be selected"),
+  applicableClasses: z.string().optional().nullable(), // Deprecated - kept for backward compatibility
   description: z.string().optional().nullable(),
   validFrom: z.date({
     required_error: "Valid from date is required",
   }),
   validTo: z.date().optional().nullable(),
   isActive: z.boolean().default(true),
+  isTemplate: z.boolean().default(false),
   items: z
     .array(feeStructureItemSchema)
     .min(1, "At least one fee item is required"),
@@ -39,6 +43,25 @@ export const feeTypeSchema = z.object({
     "ANNUAL",
   ]),
   isOptional: z.boolean().default(false),
+  classAmounts: z
+    .array(
+      z.object({
+        classId: z.string().min(1, "Class ID is required"),
+        amount: z.number().positive("Amount must be positive"),
+      })
+    )
+    .optional()
+    .refine(
+      (classAmounts) => {
+        if (!classAmounts || classAmounts.length === 0) return true;
+        const classIds = classAmounts.map((ca) => ca.classId);
+        const uniqueClassIds = new Set(classIds);
+        return classIds.length === uniqueClassIds.size;
+      },
+      {
+        message: "Each class can only have one custom amount",
+      }
+    ),
 });
 
 export type FeeTypeFormValues = z.infer<typeof feeTypeSchema>;

@@ -19,12 +19,13 @@ import {
   PartyPopper,
   Library,
   Building2,
+  CalendarDays,
   LucideIcon,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
@@ -128,10 +129,13 @@ const routes: RouteItem[] = [
     icon: MessageSquare,
     submenu: [
       { label: "Overview", href: "/admin/communication" },
-      { label: "Announcements", href: "/admin/communication/announcements" },
       { label: "Messages", href: "/admin/communication/messages" },
+      { label: "Announcements", href: "/admin/communication/announcements" },
+      { label: "Bulk Messaging", href: "/admin/communication/bulk-messaging" },
+      { label: "Templates", href: "/admin/communication/templates" },
       { label: "Notifications", href: "/admin/communication/notifications" },
       { label: "Parent Meetings", href: "/admin/communication/parent-meetings" },
+      { label: "WhatsApp Profile", href: "/admin/communication/whatsapp-profile" },
     ],
   },
   {
@@ -160,6 +164,11 @@ const routes: RouteItem[] = [
     label: "Admissions",
     icon: GraduationCap,
     href: "/admin/admissions",
+  },
+  {
+    label: "Calendar",
+    icon: CalendarDays,
+    href: "/admin/calendar",
   },
   {
     label: "Events",

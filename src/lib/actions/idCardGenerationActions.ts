@@ -8,7 +8,7 @@
 
 'use server';
 
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from "@/lib/auth-helpers";
 import {
   generateSingleIDCard,
   generateBulkIDCards,
@@ -35,7 +35,7 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
     
     // Check if user has permission (admin or teacher)
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       select: { role: true },
     });
     
@@ -92,7 +92,7 @@ export async function generateBulkStudentIDCards(
     
     // Check if user has permission (admin only for bulk operations)
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       select: { role: true },
     });
     
@@ -167,7 +167,7 @@ export async function generateClassIDCards(
     
     // Check if user has permission (admin only)
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       select: { role: true },
     });
     

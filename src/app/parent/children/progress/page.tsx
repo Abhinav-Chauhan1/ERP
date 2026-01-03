@@ -1,21 +1,16 @@
-export const dynamic = 'force-dynamic';
 
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
-import Link from "next/link";
-import { ArrowLeft, TrendingUp, Award, BookOpen, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, TrendingUp, BookOpen, Award, Target } from "lucide-react";
+import Link from "next/link";
 
-export const metadata = {
-  title: "Academic Progress | Parent Portal",
-  description: "Track your children's academic progress and performance",
-};
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{
@@ -23,33 +18,25 @@ interface PageProps {
   }>;
 }
 
-export default async function ChildrenProgressPage({ searchParams: searchParamsPromise }: PageProps) {
+export default async function ParentChildrenProgressPage({ searchParams: searchParamsPromise }: PageProps) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
   const searchParams = await searchParamsPromise;
   let childId = searchParams.childId;
 
-  // Get current user
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
-    redirect("/login");
-  }
-  
-  const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id }
-  });
-  
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    redirect("/login");
-  }
-  
+  // Get parent record
   const parent = await db.parent.findUnique({
-    where: { userId: dbUser.id }
+    where: { userId: session.user.id }
   });
-  
+
   if (!parent) {
     redirect("/login");
   }
-  
+
   // Get all children
   const parentChildren = await db.studentParent.findMany({
     where: { parentId: parent.id },
@@ -76,7 +63,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
       }
     }
   });
-  
+
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
     name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
@@ -87,7 +74,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
     section: pc.student.enrollments[0]?.section.name || "N/A",
     isPrimary: pc.isPrimary
   }));
-  
+
   if (children.length === 0) {
     return (
       <div className="container max-w-7xl mx-auto p-6">
@@ -96,14 +83,14 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
       </div>
     );
   }
-  
+
   // If no childId, redirect with first child
   if (!childId) {
     redirect(`/parent/children/progress?childId=${children[0].id}`);
   }
-  
+
   const selectedChild = children.find(c => c.id === childId) || children[0];
-  
+
   // Fetch academic data for selected child
   const examResults = await db.examResult.findMany({
     where: {
@@ -125,7 +112,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
     },
     take: 20
   });
-  
+
   // Calculate subject-wise performance
   const subjectPerformance = examResults.reduce((acc: any, result) => {
     const subjectId = result.exam.subject.id;
@@ -142,18 +129,18 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
     acc[subjectId].exams += 1;
     return acc;
   }, {});
-  
+
   const subjects = Object.values(subjectPerformance).map((perf: any) => ({
     ...perf.subject,
     percentage: (perf.obtainedMarks / perf.totalMarks) * 100,
     examsCount: perf.exams
   }));
-  
+
   // Calculate overall performance
   const totalObtained = examResults.reduce((sum, r) => sum + r.marks, 0);
   const totalMax = examResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
   const overallPercentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
-  
+
   return (
     <div className="container max-w-7xl mx-auto p-6">
       {/* Header */}
@@ -173,7 +160,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
           </div>
         </div>
       </div>
-      
+
       {/* Child Selector */}
       {children.length > 1 && (
         <div className="mb-6 flex gap-2">
@@ -190,7 +177,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
           ))}
         </div>
       )}
-      
+
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
@@ -215,7 +202,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -234,7 +221,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -248,13 +235,13 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
               </div>
               <div>
                 <div className="text-lg font-bold truncate">
-                  {subjects.length > 0 
+                  {subjects.length > 0
                     ? subjects.sort((a: any, b: any) => b.percentage - a.percentage)[0].name
                     : "N/A"
                   }
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {subjects.length > 0 
+                  {subjects.length > 0
                     ? `${subjects.sort((a: any, b: any) => b.percentage - a.percentage)[0].percentage.toFixed(1)}%`
                     : ""
                   }
@@ -263,7 +250,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -277,13 +264,13 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
               </div>
               <div>
                 <div className="text-lg font-bold truncate">
-                  {subjects.length > 0 
+                  {subjects.length > 0
                     ? subjects.sort((a: any, b: any) => a.percentage - b.percentage)[0].name
                     : "N/A"
                   }
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {subjects.length > 0 
+                  {subjects.length > 0
                     ? `${subjects.sort((a: any, b: any) => a.percentage - b.percentage)[0].percentage.toFixed(1)}%`
                     : ""
                   }
@@ -293,7 +280,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Subject Performance */}
       <Card className="mb-8">
         <CardHeader>
@@ -318,12 +305,12 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
                       </p>
                       <Badge variant={
                         subject.percentage >= 90 ? "default" :
-                        subject.percentage >= 75 ? "secondary" :
-                        subject.percentage >= 60 ? "outline" : "destructive"
+                          subject.percentage >= 75 ? "secondary" :
+                            subject.percentage >= 60 ? "outline" : "destructive"
                       }>
                         {subject.percentage >= 90 ? "Excellent" :
-                         subject.percentage >= 75 ? "Good" :
-                         subject.percentage >= 60 ? "Average" : "Needs Improvement"}
+                          subject.percentage >= 75 ? "Good" :
+                            subject.percentage >= 60 ? "Average" : "Needs Improvement"}
                       </Badge>
                     </div>
                   </div>
@@ -338,7 +325,7 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
           )}
         </CardContent>
       </Card>
-      
+
       {/* Recent Exams */}
       <Card>
         <CardHeader>
@@ -362,11 +349,10 @@ export default async function ChildrenProgressPage({ searchParams: searchParamsP
                       <p className="text-xl font-bold">
                         {result.marks}/{result.exam.totalMarks}
                       </p>
-                      <p className={`text-sm font-medium ${
-                        percentage >= 90 ? "text-green-600" :
+                      <p className={`text-sm font-medium ${percentage >= 90 ? "text-green-600" :
                         percentage >= 75 ? "text-blue-600" :
-                        percentage >= 60 ? "text-amber-600" : "text-red-600"
-                      }`}>
+                          percentage >= 60 ? "text-amber-600" : "text-red-600"
+                        }`}>
                         {percentage.toFixed(1)}%
                       </p>
                     </div>

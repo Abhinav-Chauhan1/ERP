@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { format } from "date-fns";
 import { Award, Medal, Scroll, Calendar, User, Trash2 } from "lucide-react";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { CertificateForm } from "@/components/student/certificate-form";
 import { AwardForm } from "@/components/student/award-form";
 import { ExtraCurricularForm } from "@/components/student/extra-curricular-form";
 import { AchievementDialogTrigger } from "@/components/student/achievement-dialog-trigger";
+import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "Achievements | Student Portal",
@@ -24,23 +25,23 @@ export const dynamic = 'force-dynamic';
 
 export default async function StudentAchievementsPage() {
   // Use direct authentication instead of getCurrentUserDetails
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     redirect("/login");
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -51,9 +52,9 @@ export default async function StudentAchievementsPage() {
     redirect("/student");
   }
 
-  const { 
-    certificates, 
-    awards, 
+  const {
+    certificates,
+    awards,
     extraCurricular,
     categories
   } = await getStudentAchievements();
@@ -67,14 +68,14 @@ export default async function StudentAchievementsPage() {
           Track your certificates, awards, and extra-curricular activities
         </p>
       </div>
-      
+
       <Tabs defaultValue="certificates" className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-md">
           <TabsTrigger value="certificates">Certificates</TabsTrigger>
           <TabsTrigger value="awards">Awards</TabsTrigger>
           <TabsTrigger value="extra-curricular">Extra-curricular</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="certificates" className="space-y-6 mt-6">
           <div className="flex justify-between items-center">
             <div>
@@ -87,7 +88,7 @@ export default async function StudentAchievementsPage() {
               <CertificateForm categories={categories.certificate} />
             </AchievementDialogTrigger>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {certificates.length > 0 ? (
               certificates.map(certificate => (
@@ -122,9 +123,9 @@ export default async function StudentAchievementsPage() {
                       "use server";
                       await deleteAchievement(certificate.id, "certificate");
                     }}>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
@@ -147,7 +148,7 @@ export default async function StudentAchievementsPage() {
             )}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="awards" className="space-y-6 mt-6">
           <div className="flex justify-between items-center">
             <div>
@@ -160,7 +161,7 @@ export default async function StudentAchievementsPage() {
               <AwardForm categories={categories.award} />
             </AchievementDialogTrigger>
           </div>
-          
+
           <div className="space-y-4">
             {awards.length > 0 ? (
               awards.map(award => (
@@ -203,9 +204,9 @@ export default async function StudentAchievementsPage() {
                       "use server";
                       await deleteAchievement(award.id, "award");
                     }}>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
@@ -228,7 +229,7 @@ export default async function StudentAchievementsPage() {
             )}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="extra-curricular" className="space-y-6 mt-6">
           <div className="flex justify-between items-center">
             <div>
@@ -241,7 +242,7 @@ export default async function StudentAchievementsPage() {
               <ExtraCurricularForm categories={categories.extraCurricular} />
             </AchievementDialogTrigger>
           </div>
-          
+
           <div className="space-y-4">
             {extraCurricular.length > 0 ? (
               extraCurricular.map(activity => (
@@ -273,9 +274,9 @@ export default async function StudentAchievementsPage() {
                       "use server";
                       await deleteAchievement(activity.id, "extraCurricular");
                     }}>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 min-h-[40px]"
                       >
                         <Trash2 className="h-4 w-4 mr-1" />

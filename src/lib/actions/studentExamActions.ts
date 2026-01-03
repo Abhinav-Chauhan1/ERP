@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { autoGradeExam, calculateFinalScore } from "@/lib/utils/auto-grading";
@@ -10,7 +10,8 @@ import { autoGradeExam, calculateFinalScore } from "@/lib/utils/auto-grading";
  */
 export async function getAvailableExamsForStudent() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -79,7 +80,8 @@ export async function getAvailableExamsForStudent() {
  */
 export async function startExamAttempt(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -149,7 +151,8 @@ export async function startExamAttempt(examId: string) {
  */
 export async function getExamAttempt(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -234,7 +237,8 @@ export async function saveAnswer(
   answer: any
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -294,7 +298,8 @@ export async function submitExamAttempt(
   answers: Record<string, any>
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -375,7 +380,8 @@ export async function submitExamAttempt(
  */
 export async function getStudentExamResults() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -418,7 +424,8 @@ export async function getStudentExamResults() {
  */
 export async function getDetailedExamResult(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

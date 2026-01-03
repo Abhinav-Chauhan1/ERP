@@ -46,7 +46,7 @@ interface EditTeacherPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function EditTeacherPage({ params }: EditTeacherPageProps) {
+export default function EditTeacherPage({ params }: EditTeacherPageProps) {
   const { id } = use(params);
 
   const router = useRouter();
@@ -314,9 +314,9 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
                       <FormItem>
                         <FormLabel>Salary</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Salary" 
+                          <Input
+                            type="number"
+                            placeholder="Salary"
                             {...field}
                             onChange={(e) => {
                               const value = e.target.value;
@@ -356,7 +356,7 @@ export default async function EditTeacherPage({ params }: EditTeacherPageProps) 
           </Form>
         </CardContent>
       </Card>
-      
+
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>Security</CardTitle>

@@ -37,6 +37,14 @@ export const CACHE_TAGS = {
   DOCUMENTS: "documents",
   LIBRARY: "library",
   TRANSPORT: "transport",
+  SYLLABUS: "syllabus",
+  MODULES: "modules",
+  SUB_MODULES: "sub-modules",
+  SYLLABUS_DOCUMENTS: "syllabus-documents",
+  SYLLABUS_PROGRESS: "syllabus-progress",
+  CALENDAR_EVENTS: "calendar-events",
+  CALENDAR_CATEGORIES: "calendar-categories",
+  CALENDAR_PREFERENCES: "calendar-preferences",
 } as const;
 
 export const CACHE_DURATION = {
@@ -64,6 +72,9 @@ export const CACHE_DURATION = {
   SUBJECTS: 1800, // 30 minutes
   LIBRARY: 300, // 5 minutes
   TRANSPORT: 600, // 10 minutes
+  CALENDAR_EVENTS: 300, // 5 minutes
+  CALENDAR_CATEGORIES: 3600, // 1 hour - rarely change
+  CALENDAR_PREFERENCES: 1800, // 30 minutes
 } as const;
 
 /**
@@ -381,6 +392,42 @@ export const CACHE_CONFIG = {
   dropdownData: {
     tags: [],
     revalidate: CACHE_DURATION.DROPDOWN_DATA,
+  },
+  
+  // Syllabus data
+  syllabus: {
+    tags: [CACHE_TAGS.SYLLABUS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  modules: {
+    tags: [CACHE_TAGS.MODULES, CACHE_TAGS.SYLLABUS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  subModules: {
+    tags: [CACHE_TAGS.SUB_MODULES, CACHE_TAGS.MODULES],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  syllabusDocuments: {
+    tags: [CACHE_TAGS.SYLLABUS_DOCUMENTS, CACHE_TAGS.DOCUMENTS],
+    revalidate: CACHE_DURATION.MEDIUM,
+  },
+  syllabusProgress: {
+    tags: [CACHE_TAGS.SYLLABUS_PROGRESS],
+    revalidate: CACHE_DURATION.SHORT,
+  },
+  
+  // Calendar data
+  calendarEvents: {
+    tags: [CACHE_TAGS.CALENDAR_EVENTS],
+    revalidate: CACHE_DURATION.CALENDAR_EVENTS,
+  },
+  calendarCategories: {
+    tags: [CACHE_TAGS.CALENDAR_CATEGORIES],
+    revalidate: CACHE_DURATION.CALENDAR_CATEGORIES,
+  },
+  calendarPreferences: {
+    tags: [CACHE_TAGS.CALENDAR_PREFERENCES],
+    revalidate: CACHE_DURATION.CALENDAR_PREFERENCES,
   },
 } as const;
 

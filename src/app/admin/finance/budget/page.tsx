@@ -1,13 +1,13 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  ChevronLeft, PlusCircle, Search, Filter, 
-  Building, Wallet, ArrowUp, ArrowDown, 
-  Edit, Trash2, Eye, DollarSign, 
+  ChevronLeft, PlusCircle, Search, Filter,
+  Building, Wallet, ArrowUp, ArrowDown,
+  Edit, Trash2, Eye, DollarSign,
   BarChart4, Download, Printer, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -108,15 +108,7 @@ export default function BudgetPage() {
   const [stats, setStats] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
 
-  // Load data on mount
-  useEffect(() => {
-    loadAcademicYears();
-    loadBudgets();
-    loadStats();
-    loadAlerts();
-  }, [categoryFilter, academicYearFilter]);
-
-  const loadAcademicYears = async () => {
+  const loadAcademicYears = useCallback(async () => {
     try {
       const { getAcademicYears } = await import("@/lib/actions/academicyearsActions");
       const result = await getAcademicYears();
@@ -126,13 +118,13 @@ export default function BudgetPage() {
     } catch (error) {
       console.error("Error loading academic years:", error);
     }
-  };
+  }, []);
 
-  const loadBudgets = async () => {
+  const loadBudgets = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {};
-      
+
       if (categoryFilter !== "all") {
         filters.category = categoryFilter;
       }
@@ -153,12 +145,12 @@ export default function BudgetPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, academicYearFilter]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const academicYearId = academicYearFilter !== "all" ? academicYearFilter : undefined;
-      
+
       const result = await getBudgetStats(academicYearId);
       if (result.success && result.data) {
         setStats(result.data);
@@ -166,12 +158,12 @@ export default function BudgetPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, [academicYearFilter]);
 
-  const loadAlerts = async () => {
+  const loadAlerts = useCallback(async () => {
     try {
       const academicYearId = academicYearFilter !== "all" ? academicYearFilter : undefined;
-      
+
       const result = await getBudgetAlerts(academicYearId);
       if (result.success && result.data) {
         setAlerts(result.data);
@@ -179,7 +171,15 @@ export default function BudgetPage() {
     } catch (error) {
       console.error("Error loading alerts:", error);
     }
-  };
+  }, [academicYearFilter]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadAcademicYears();
+    loadBudgets();
+    loadStats();
+    loadAlerts();
+  }, [loadAcademicYears, loadBudgets, loadStats, loadAlerts]);
 
   const handleCreateBudget = async (data: any) => {
     try {
@@ -250,8 +250,8 @@ export default function BudgetPage() {
   // Filter budgets based on search
   const filteredBudgets = budgets.filter(budget => {
     const matchesSearch = budget.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (budget.description && budget.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+      (budget.description && budget.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
     return matchesSearch;
   });
 
@@ -270,7 +270,7 @@ export default function BudgetPage() {
     const budget = budgets.find(b => b.id === budgetId);
     if (budget) {
       const academicYear = academicYears.find(y => y.name === budget.academicYear);
-      
+
       form.reset({
         title: budget.title,
         category: budget.category,
@@ -353,7 +353,7 @@ export default function BudgetPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -379,7 +379,7 @@ export default function BudgetPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="academicYearId"
@@ -405,7 +405,7 @@ export default function BudgetPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="allocatedAmount"
@@ -413,11 +413,11 @@ export default function BudgetPage() {
                     <FormItem>
                       <FormLabel>Allocated Amount</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min={0} 
+                        <Input
+                          type="number"
+                          min={0}
                           step="0.01"
-                          placeholder="0.00" 
+                          placeholder="0.00"
                           {...field}
                           onChange={e => field.onChange(parseFloat(e.target.value))}
                         />
@@ -426,7 +426,7 @@ export default function BudgetPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -441,7 +441,7 @@ export default function BudgetPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="endDate"
@@ -456,7 +456,7 @@ export default function BudgetPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="description"
@@ -464,9 +464,9 @@ export default function BudgetPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Additional details about this budget" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Additional details about this budget"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -474,7 +474,7 @@ export default function BudgetPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateBudgetDialog(false)}>
                     Cancel
@@ -507,7 +507,7 @@ export default function BudgetPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Used Budget</CardTitle>
@@ -525,7 +525,7 @@ export default function BudgetPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Remaining</CardTitle>
@@ -543,7 +543,7 @@ export default function BudgetPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Budget Categories</CardTitle>
@@ -569,7 +569,7 @@ export default function BudgetPage() {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="budgets">
           <Card>
             <CardHeader className="pb-2">
@@ -657,13 +657,13 @@ export default function BudgetPage() {
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <div className="flex items-center gap-2">
-                            <Progress 
-                              value={getPercentUsed(budget)} 
-                              className="h-2" 
+                            <Progress
+                              value={getPercentUsed(budget)}
+                              className="h-2"
                               style={{
                                 "--progress-foreground": getPercentUsed(budget) > 90 ? "rgb(239, 68, 68)" :
-                                getPercentUsed(budget) > 70 ? "rgb(245, 158, 11)" :
-                                "rgb(34, 197, 94)"
+                                  getPercentUsed(budget) > 70 ? "rgb(245, 158, 11)" :
+                                    "rgb(34, 197, 94)"
                               } as React.CSSProperties}
                             />
                             <span className="text-xs font-medium">
@@ -672,17 +672,17 @@ export default function BudgetPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleViewBudget(budget.id)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleEditBudget(budget.id)}
                           >
                             <Edit className="h-4 w-4 mr-1" />
@@ -691,7 +691,7 @@ export default function BudgetPage() {
                         </td>
                       </tr>
                     ))}
-                    
+
                     {filteredBudgets.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-6 text-center text-muted-foreground">
@@ -705,7 +705,7 @@ export default function BudgetPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="analytics">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card>
@@ -733,7 +733,7 @@ export default function BudgetPage() {
                 )}
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Budget Allocation</CardTitle>
@@ -760,7 +760,7 @@ export default function BudgetPage() {
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="reports">
           <Card className="mt-4">
             <CardHeader>
@@ -786,7 +786,7 @@ export default function BudgetPage() {
                     Generate Report
                   </Button>
                 </div>
-                
+
                 <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-green-50 rounded-md text-green-600">
@@ -802,7 +802,7 @@ export default function BudgetPage() {
                     Generate Report
                   </Button>
                 </div>
-                
+
                 <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-purple-50 rounded-md text-purple-600">
@@ -821,7 +821,7 @@ export default function BudgetPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="mt-4">
             <CardHeader>
               <CardTitle>Scheduled Reports</CardTitle>
@@ -852,7 +852,7 @@ export default function BudgetPage() {
               View complete information about this budget allocation
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedBudget && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -861,7 +861,7 @@ export default function BudgetPage() {
                   {getCategoryLabel(selectedBudget.category)}
                 </Badge>
               </div>
-              
+
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 bg-green-50 p-4 rounded-lg">
                   <div className="text-sm text-green-700 font-medium mb-1">Allocated Budget</div>
@@ -876,23 +876,23 @@ export default function BudgetPage() {
                   <div className="text-2xl font-bold text-amber-800">${selectedBudget.remainingAmount.toLocaleString()}</div>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Budget Utilization</label>
                 <div className="flex items-center gap-3">
-                  <Progress 
-                    value={getPercentUsed(selectedBudget)} 
-                    className="h-3 flex-1" 
+                  <Progress
+                    value={getPercentUsed(selectedBudget)}
+                    className="h-3 flex-1"
                     style={{
                       "--progress-foreground": getPercentUsed(selectedBudget) > 90 ? "rgb(239, 68, 68)" :
-                      getPercentUsed(selectedBudget) > 70 ? "rgb(245, 158, 11)" :
-                      "rgb(34, 197, 94)"
+                        getPercentUsed(selectedBudget) > 70 ? "rgb(245, 158, 11)" :
+                          "rgb(34, 197, 94)"
                     } as React.CSSProperties}
                   />
                   <span className="font-medium">{getPercentUsed(selectedBudget)}%</span>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Academic Year</p>
@@ -913,14 +913,14 @@ export default function BudgetPage() {
                   <p className="font-medium">{new Date(selectedBudget.endDate).toLocaleDateString()}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedBudget.description || "No description provided."}</p>
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewBudgetDialog(false)}>
               Close
@@ -953,7 +953,7 @@ export default function BudgetPage() {
             <form onSubmit={form.handleSubmit(onSubmitBudget)} className="space-y-4">
               {/* Same form fields as Create Budget Dialog */}
               {/* ...existing code... */}
-              
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditBudgetDialog(false)}>
                   Cancel

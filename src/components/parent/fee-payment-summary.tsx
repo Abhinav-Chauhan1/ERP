@@ -65,18 +65,18 @@ export function FeePaymentSummary({ payments, children }: FeePaymentSummaryProps
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-gray-50 p-2 rounded-md">
                 <p className="text-xs text-gray-500">Total Fees</p>
-                <p className="font-semibold">${totalFees.toFixed(2)}</p>
+                <p className="font-semibold">₹{totalFees.toFixed(2)}</p>
               </div>
               
               <div className="bg-gray-50 p-2 rounded-md">
                 <p className="text-xs text-gray-500">Paid</p>
-                <p className="font-semibold text-green-600">${totalPaid.toFixed(2)}</p>
+                <p className="font-semibold text-green-600">₹{totalPaid.toFixed(2)}</p>
               </div>
               
               <div className="bg-gray-50 p-2 rounded-md">
                 <p className="text-xs text-gray-500">Balance</p>
                 <p className={`font-semibold ${balance > 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                  ${balance.toFixed(2)}
+                  ₹{balance.toFixed(2)}
                 </p>
               </div>
             </div>

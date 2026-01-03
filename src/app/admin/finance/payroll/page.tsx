@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
@@ -133,14 +133,7 @@ export default function PayrollPage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
 
-  // Load data on mount
-  useEffect(() => {
-    loadPayrolls();
-    loadTeachers();
-    loadStats();
-  }, [currentMonth, currentYear, statusFilter]);
-
-  const loadPayrolls = async () => {
+  const loadPayrolls = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {
@@ -161,9 +154,9 @@ export default function PayrollPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentMonth, currentYear, statusFilter]);
 
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     try {
       const result = await getTeachersForPayroll();
       if (result.success && result.data) {
@@ -172,9 +165,9 @@ export default function PayrollPage() {
     } catch (error) {
       console.error("Error loading teachers:", error);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const result = await getPayrollStats(currentMonth, currentYear);
       if (result.success && result.data) {
@@ -183,7 +176,14 @@ export default function PayrollPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, [currentMonth, currentYear]);
+
+  // Load data on mount
+  useEffect(() => {
+    loadPayrolls();
+    loadTeachers();
+    loadStats();
+  }, [loadPayrolls, loadTeachers, loadStats]);
 
   const handleGeneratePayroll = async (data: any) => {
     try {
@@ -279,13 +279,13 @@ export default function PayrollPage() {
   // Filter payments based on search and status
   const filteredPayments = salaryPayments.filter(payment => {
     const teacherName = `${payment.teacher?.user?.firstName || ""} ${payment.teacher?.user?.lastName || ""}`;
-    const matchesSearch = 
+    const matchesSearch =
       teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (payment.teacher?.user?.email && payment.teacher.user.email.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = 
+
+    const matchesStatus =
       statusFilter === "all" || payment.status === statusFilter.toUpperCase();
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -391,7 +391,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 {selectedStaff && (
                   <div className="bg-primary/10 p-4 rounded-lg">
                     <h3 className="font-medium mb-2 text-primary">Staff Information</h3>
@@ -411,7 +411,7 @@ export default function PayrollPage() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={payrollForm.control}
@@ -419,8 +419,8 @@ export default function PayrollPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Month</FormLabel>
-                        <Select 
-                          onValueChange={(value) => field.onChange(parseInt(value))} 
+                        <Select
+                          onValueChange={(value) => field.onChange(parseInt(value))}
                           defaultValue={field.value.toString()}
                         >
                           <FormControl>
@@ -440,15 +440,15 @@ export default function PayrollPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={payrollForm.control}
                     name="year"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Year</FormLabel>
-                        <Select 
-                          onValueChange={(value) => field.onChange(parseInt(value))} 
+                        <Select
+                          onValueChange={(value) => field.onChange(parseInt(value))}
                           defaultValue={field.value.toString()}
                         >
                           <FormControl>
@@ -467,7 +467,7 @@ export default function PayrollPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="border-t pt-4 mt-4">
                   <h3 className="font-medium mb-4">Salary Details</h3>
                   <div className="space-y-4">
@@ -478,9 +478,9 @@ export default function PayrollPage() {
                         <FormItem>
                           <FormLabel>Basic Salary</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
+                            <Input
+                              type="number"
+                              step="0.01"
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value))}
                             />
@@ -489,7 +489,7 @@ export default function PayrollPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={payrollForm.control}
                       name="allowances"
@@ -497,9 +497,9 @@ export default function PayrollPage() {
                         <FormItem>
                           <FormLabel>Allowances</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
+                            <Input
+                              type="number"
+                              step="0.01"
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value))}
                             />
@@ -508,7 +508,7 @@ export default function PayrollPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={payrollForm.control}
                       name="deductions"
@@ -516,9 +516,9 @@ export default function PayrollPage() {
                         <FormItem>
                           <FormLabel>Deductions</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
+                            <Input
+                              type="number"
+                              step="0.01"
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value))}
                             />
@@ -527,7 +527,7 @@ export default function PayrollPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="bg-accent p-4 rounded-lg mt-4">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">Net Salary:</span>
@@ -542,7 +542,7 @@ export default function PayrollPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <FormField
                   control={payrollForm.control}
                   name="remarks"
@@ -550,9 +550,9 @@ export default function PayrollPage() {
                     <FormItem>
                       <FormLabel>Remarks (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Any notes about this payroll" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Any notes about this payroll"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -560,7 +560,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                     Cancel
@@ -733,8 +733,8 @@ export default function PayrollPage() {
                     <td className="py-3 px-4 align-middle">
                       <Badge className={
                         payment.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                        payment.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                        "bg-red-100 text-red-800"
+                          payment.status === "PENDING" ? "bg-amber-100 text-amber-800" :
+                            "bg-red-100 text-red-800"
                       }>
                         {payment.status === "COMPLETED" ? (
                           <>
@@ -756,18 +756,18 @@ export default function PayrollPage() {
                     </td>
                     <td className="py-3 px-4 align-middle text-right">
                       {payment.status === "COMPLETED" ? (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleViewPayslip(payment)}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           Payslip
                         </Button>
                       ) : (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleMakePayment(payment)}
                         >
                           <Wallet className="h-4 w-4 mr-1" />
@@ -818,7 +818,7 @@ export default function PayrollPage() {
                     <span>₹{selectedPayment.netSalary.toLocaleString()}</span>
                   </div>
                 </div>
-                
+
                 <FormField
                   control={paymentForm.control}
                   name="paymentDate"
@@ -832,7 +832,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={paymentForm.control}
                   name="paymentMethod"
@@ -857,7 +857,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={paymentForm.control}
                   name="transactionId"
@@ -865,9 +865,9 @@ export default function PayrollPage() {
                     <FormItem>
                       <FormLabel>Transaction Reference (Optional)</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="e.g., Transaction ID, check number" 
-                          {...field} 
+                        <Input
+                          placeholder="e.g., Transaction ID, check number"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -875,7 +875,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={paymentForm.control}
                   name="remarks"
@@ -883,9 +883,9 @@ export default function PayrollPage() {
                     <FormItem>
                       <FormLabel>Remarks (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Any additional notes" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Any additional notes"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -893,7 +893,7 @@ export default function PayrollPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
                     Cancel
@@ -915,7 +915,7 @@ export default function PayrollPage() {
               {selectedPayment && `${getMonthName(selectedPayment.month)} ${selectedPayment.year}`}
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPayment && (
             <div className="space-y-4">
               <div className="border-b pb-4">
@@ -928,7 +928,7 @@ export default function PayrollPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <div className="text-muted-foreground mb-1">Employee Information</div>
@@ -945,7 +945,7 @@ export default function PayrollPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="text-muted-foreground font-medium">Earnings & Deductions</div>
                 <div className="border rounded-md">
@@ -976,14 +976,14 @@ export default function PayrollPage() {
                     </tbody>
                   </table>
                 </div>
-                
+
                 <div className="text-center text-xs text-muted-foreground pt-4 border-t">
                   <p>This is a computer generated payslip and does not require a signature.</p>
                 </div>
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayslipDialogOpen(false)}>
               Close

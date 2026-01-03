@@ -6,14 +6,14 @@
 
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
-import { 
-  withPermission, 
-  withAllPermissions, 
+import { auth } from "@/auth";
+import {
+  withPermission,
+  withAllPermissions,
   withAnyPermission,
   requirePermission,
   requireAllPermissions,
-  ActionResult 
+  ActionResult
 } from '@/lib/utils/permission-wrapper';
 import { hasPermission } from '@/lib/utils/permissions';
 import { PermissionAction } from '@prisma/client';
@@ -29,7 +29,7 @@ export const createUserExample = withPermission(
     try {
       // Your implementation here
       // Permission has already been checked by the wrapper
-      
+
       return {
         success: true,
         data: { message: 'User created successfully' },
@@ -56,7 +56,7 @@ export const publishExamExample = withAllPermissions(
     try {
       // Your implementation here
       // Both UPDATE and PUBLISH permissions have been verified
-      
+
       return {
         success: true,
         data: { message: 'Exam published successfully' },
@@ -83,7 +83,7 @@ export const viewReportExample = withAnyPermission(
     try {
       // Your implementation here
       // User has either READ or EXPORT permission
-      
+
       return {
         success: true,
         data: { message: 'Report retrieved successfully' },
@@ -103,18 +103,19 @@ export const viewReportExample = withAnyPermission(
  */
 export async function deleteUserExample(userId: string): Promise<ActionResult> {
   try {
-    const { userId: currentUserId } = await auth();
-    
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
     if (!currentUserId) {
       return {
         success: false,
         error: 'Unauthorized',
       };
     }
-    
+
     // Check permission inline
     await requirePermission(currentUserId, 'USER', 'DELETE' as PermissionAction);
-    
+
     // Additional business logic checks
     if (userId === currentUserId) {
       return {
@@ -122,9 +123,9 @@ export async function deleteUserExample(userId: string): Promise<ActionResult> {
         error: 'Cannot delete your own account',
       };
     }
-    
+
     // Your implementation here
-    
+
     return {
       success: true,
       data: { message: 'User deleted successfully' },
@@ -142,23 +143,24 @@ export async function deleteUserExample(userId: string): Promise<ActionResult> {
  */
 export async function approvePaymentExample(paymentId: string): Promise<ActionResult> {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       return {
         success: false,
         error: 'Unauthorized',
       };
     }
-    
+
     // Check multiple permissions
     await requireAllPermissions(userId, [
       { resource: 'PAYMENT', action: 'READ' as PermissionAction },
       { resource: 'PAYMENT', action: 'APPROVE' as PermissionAction },
     ]);
-    
+
     // Your implementation here
-    
+
     return {
       success: true,
       data: { message: 'Payment approved successfully' },
@@ -177,36 +179,37 @@ export async function approvePaymentExample(paymentId: string): Promise<ActionRe
  */
 export async function getUserDetailsExample(targetUserId: string): Promise<ActionResult> {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       return {
         success: false,
         error: 'Unauthorized',
       };
     }
-    
+
     // Check if user can view sensitive data
     const canViewSensitiveData = await hasPermission(
       userId,
       'USER',
       'READ' as PermissionAction
     );
-    
+
     // Fetch user data
     const userData: any = {
       id: targetUserId,
       name: 'John Doe',
       email: 'john@example.com',
     };
-    
+
     // Conditionally include sensitive data
     if (canViewSensitiveData) {
       userData.phone = '+1234567890';
       userData.address = '123 Main St';
       userData.salary = 50000;
     }
-    
+
     return {
       success: true,
       data: userData,
@@ -224,8 +227,9 @@ export async function getUserDetailsExample(targetUserId: string): Promise<Actio
  * This pattern is used in page components
  */
 export async function checkUserPermissionsForPage() {
-  const { userId } = await auth();
-  
+  const session = await auth();
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       canCreate: false,
@@ -234,7 +238,7 @@ export async function checkUserPermissionsForPage() {
       canExport: false,
     };
   }
-  
+
   // Check multiple permissions in parallel
   const [canCreate, canUpdate, canDelete, canExport] = await Promise.all([
     hasPermission(userId, 'USER', 'CREATE' as PermissionAction),
@@ -242,7 +246,7 @@ export async function checkUserPermissionsForPage() {
     hasPermission(userId, 'USER', 'DELETE' as PermissionAction),
     hasPermission(userId, 'USER', 'EXPORT' as PermissionAction),
   ]);
-  
+
   return {
     canCreate,
     canUpdate,

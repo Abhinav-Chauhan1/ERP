@@ -1,21 +1,21 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
-import { 
-  Calendar, Clock, Check, X, AlertTriangle, FileText, 
-  Download, Plus, Edit, Trash2, Search, Filter, 
-  Loader2, User, File, CalendarRange, 
+import { useState, useEffect, useCallback } from "react";
+import {
+  Calendar, Clock, Check, X, AlertTriangle, FileText,
+  Download, Plus, Edit, Trash2, Search, Filter,
+  Loader2, User, File, CalendarRange,
   CalendarDays, Briefcase, Info, MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,7 +45,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format, differenceInDays, addDays } from "date-fns";
 
-import { 
+import {
   leaveApplicationSchema,
   LeaveApplicationFormValues,
   leaveApplicationUpdateSchema,
@@ -105,13 +105,7 @@ export default function LeaveApplicationsPage() {
     },
   });
 
-  useEffect(() => {
-    fetchLeaveApplications();
-    fetchTeachers();
-    fetchStudents();
-  }, []);
-
-  async function fetchLeaveApplications() {
+  const fetchLeaveApplications = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getLeaveApplications(
@@ -120,7 +114,7 @@ export default function LeaveApplicationsPage() {
         dateRange.from,
         dateRange.to
       );
-      
+
       if (result.success) {
         setLeaveApplications(result.data || []);
       } else {
@@ -132,12 +126,12 @@ export default function LeaveApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [statusFilter, typeFilter, dateRange]);
 
-  async function fetchTeachers() {
+  const fetchTeachers = useCallback(async () => {
     try {
       const result = await getTeachersForDropdown();
-      
+
       if (result.success) {
         setTeachers(result.data || []);
       } else {
@@ -147,12 +141,12 @@ export default function LeaveApplicationsPage() {
       console.error(err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
 
-  async function fetchStudents() {
+  const fetchStudents = useCallback(async () => {
     try {
       const result = await getStudentsForDropdown();
-      
+
       if (result.success) {
         setStudents(result.data || []);
       } else {
@@ -162,7 +156,13 @@ export default function LeaveApplicationsPage() {
       console.error(err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaveApplications();
+    fetchTeachers();
+    fetchStudents();
+  }, [fetchLeaveApplications, fetchTeachers, fetchStudents]);
 
   function handleCreate() {
     leaveForm.reset({
@@ -180,7 +180,7 @@ export default function LeaveApplicationsPage() {
   async function handleView(id: string) {
     try {
       const result = await getLeaveApplicationById(id);
-      
+
       if (result.success) {
         setSelectedLeave(result.data);
         setViewDialogOpen(true);
@@ -226,7 +226,7 @@ export default function LeaveApplicationsPage() {
   async function onLeaveFormSubmit(values: LeaveApplicationFormValues) {
     try {
       let result;
-      
+
       if (selectedLeave) {
         // Update
         result = await updateLeaveApplication({
@@ -237,7 +237,7 @@ export default function LeaveApplicationsPage() {
         // Create
         result = await createLeaveApplication(values);
       }
-      
+
       if (result.success) {
         toast.success(`Leave application ${selectedLeave ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -254,7 +254,7 @@ export default function LeaveApplicationsPage() {
   async function onProcessFormSubmit(values: LeaveApprovalFormValues) {
     try {
       const result = await processLeaveApplication(values);
-      
+
       if (result.success) {
         toast.success(`Leave application ${values.status === "APPROVED" ? "approved" : "rejected"} successfully`);
         setProcessDialogOpen(false);
@@ -272,7 +272,7 @@ export default function LeaveApplicationsPage() {
     if (selectedLeave) {
       try {
         const result = await deleteLeaveApplication(selectedLeave.id);
-        
+
         if (result.success) {
           toast.success("Leave application deleted successfully");
           setDeleteDialogOpen(false);
@@ -293,11 +293,11 @@ export default function LeaveApplicationsPage() {
 
   // Helper function to filter leave applications
   const filteredLeaveApplications = leaveApplications.filter(leave => {
-    const matchesSearch = 
-      (leave.applicant?.name && leave.applicant.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    const matchesSearch =
+      (leave.applicant?.name && leave.applicant.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (leave.applicant?.id && leave.applicant.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
       false;
-    
+
     return matchesSearch;
   });
 
@@ -433,8 +433,8 @@ export default function LeaveApplicationsPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4 align-middle">
-                            <Badge variant="outline" className={leave.applicantType === "STUDENT" 
-                              ? "bg-primary/10 text-primary border-primary/30" 
+                            <Badge variant="outline" className={leave.applicantType === "STUDENT"
+                              ? "bg-primary/10 text-primary border-primary/30"
                               : "bg-purple-50 text-purple-700 border-purple-200"}>
                               {leave.applicantType === "STUDENT" ? "Student" : "Teacher"}
                             </Badge>
@@ -508,8 +508,8 @@ export default function LeaveApplicationsPage() {
           <DialogHeader>
             <DialogTitle>{selectedLeave ? "Edit Leave Application" : "Create Leave Application"}</DialogTitle>
             <DialogDescription>
-              {selectedLeave 
-                ? "Update the details of the leave application" 
+              {selectedLeave
+                ? "Update the details of the leave application"
                 : "Fill in the details to create a new leave application"}
             </DialogDescription>
           </DialogHeader>
@@ -521,8 +521,8 @@ export default function LeaveApplicationsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Applicant Type</FormLabel>
-                    <Select 
-                      value={field.value} 
+                    <Select
+                      value={field.value}
                       onValueChange={field.onChange}
                       disabled={!!selectedLeave}
                     >
@@ -546,8 +546,8 @@ export default function LeaveApplicationsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Applicant</FormLabel>
-                    <Select 
-                      value={field.value} 
+                    <Select
+                      value={field.value}
                       onValueChange={field.onChange}
                       disabled={!!selectedLeave}
                     >
@@ -623,7 +623,7 @@ export default function LeaveApplicationsPage() {
                   <FormItem>
                     <FormLabel>Reason for Leave</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Explain reason for leave request"
                         className="min-h-[100px]"
                         {...field}
@@ -691,8 +691,8 @@ export default function LeaveApplicationsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Decision</FormLabel>
-                    <Select 
-                      value={field.value} 
+                    <Select
+                      value={field.value}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
@@ -716,7 +716,7 @@ export default function LeaveApplicationsPage() {
                   <FormItem>
                     <FormLabel>Remarks (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Add any comments or notes about this decision"
                         {...field}
                         value={field.value || ""}
@@ -730,8 +730,8 @@ export default function LeaveApplicationsPage() {
                 <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   variant={processForm.watch("status") === "APPROVED" ? "default" : "destructive"}
                 >
                   {processForm.watch("status") === "APPROVED" ? "Approve" : "Reject"} Application

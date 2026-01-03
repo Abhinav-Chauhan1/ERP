@@ -176,7 +176,7 @@ export function validatePaymentAmount(
   if (amount > balance) {
     return {
       valid: false,
-      message: `Payment amount cannot exceed balance of ${balance.toFixed(2)}`,
+      message: `Payment amount cannot exceed balance of ₹${balance.toFixed(2)}`,
     };
   }
   

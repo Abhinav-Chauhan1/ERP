@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 // Update this import to use the server-specific auth
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -10,8 +10,9 @@ import { revalidatePath } from "next/cache";
  */
 export async function getTeacherClasses() {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -20,7 +21,7 @@ export async function getTeacherClasses() {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId
+          id: userId
         }
       }
     });
@@ -106,7 +107,7 @@ export async function getTeacherClasses() {
         const scheduleDays = Array.from(new Set(timetableSlots.map(slot => slot.day))).join(", ");
 
         // Format schedule times
-        const scheduleTimes = timetableSlots.length > 0 
+        const scheduleTimes = timetableSlots.length > 0
           ? `${formatTime(timetableSlots[0].startTime)} - ${formatTime(timetableSlots[0].endTime)}`
           : "Not scheduled";
 
@@ -142,8 +143,9 @@ export async function getTeacherClasses() {
  */
 export async function getClassDetails(classId: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -152,7 +154,7 @@ export async function getClassDetails(classId: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId
+          id: userId
         }
       }
     });
@@ -256,13 +258,13 @@ export async function getClassDetails(classId: string) {
       if (!acc[dateStr]) {
         acc[dateStr] = { date: dateStr, present: 0, absent: 0, total: enrollments.length };
       }
-      
+
       if (record.status === 'PRESENT') {
         acc[dateStr].present += record._count.studentId;
       } else if (record.status === 'ABSENT') {
         acc[dateStr].absent += record._count.studentId;
       }
-      
+
       return acc;
     }, {} as Record<string, { date: string, present: number, absent: number, total: number }>);
 
@@ -291,7 +293,7 @@ export async function getClassDetails(classId: string) {
     const formattedAssignments = assignments.map(assignment => {
       const totalSubmissions = assignment.submissions.length;
       const gradedSubmissions = assignment.submissions.filter(s => s.status === 'GRADED').length;
-      const averageScore = assignment.submissions.length > 0 
+      const averageScore = assignment.submissions.length > 0
         ? assignment.submissions.reduce((sum, s) => sum + (s.marks || 0), 0) / totalSubmissions
         : 0;
 
@@ -463,7 +465,7 @@ export async function getClassDetails(classId: string) {
       id: classDetails.id,
       name: classDetails.name,
       subject: classDetails.subjects.length > 0 ? classDetails.subjects[0].subject.name : "Multiple subjects",
-      room: classDetails.timetableSlots.length > 0 && classDetails.timetableSlots[0].room 
+      room: classDetails.timetableSlots.length > 0 && classDetails.timetableSlots[0].room
         ? classDetails.timetableSlots[0].room.name : "Not assigned",
       schedule: formatSchedule(classDetails.timetableSlots),
       teacher: {
@@ -512,8 +514,9 @@ export async function markClassAttendance(classId: string, sectionId: string, at
   reason?: string;
 }[]) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -522,7 +525,7 @@ export async function markClassAttendance(classId: string, sectionId: string, at
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId
+          id: userId
         }
       }
     });
@@ -625,8 +628,9 @@ export async function markClassAttendance(classId: string, sectionId: string, at
  */
 export async function getClassStudents(classId: string, sectionId?: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -635,7 +639,7 @@ export async function getClassStudents(classId: string, sectionId?: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId
+          id: userId
         }
       }
     });
@@ -683,7 +687,7 @@ export async function getClassStudents(classId: string, sectionId?: string) {
     const students = enrollments.map(enrollment => ({
       id: enrollment.student.id,
       name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
-      rollNumber: enrollment.rollNumber || enrollment.student.rollNumber || '',
+      rollNumber: enrollment.student.rollNumber || enrollment.student.rollNumber || '',
       section: enrollment.section.name,
       sectionId: enrollment.section.id
     }));
@@ -700,8 +704,9 @@ export async function getClassStudents(classId: string, sectionId?: string) {
  */
 export async function getTodayAttendance(classId: string, sectionId: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -710,7 +715,7 @@ export async function getTodayAttendance(classId: string, sectionId: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId
+          id: userId
         }
       }
     });
@@ -766,23 +771,23 @@ export async function getTodayAttendance(classId: string, sectionId: string) {
 
 // Helper functions
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit', 
-    hour12: true 
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   });
 }
 
 function formatSchedule(timetableSlots: any[]): string {
   if (timetableSlots.length === 0) return "Not scheduled";
-  
+
   const days = Array.from(new Set(timetableSlots.map(slot => slot.day)));
   const formattedDays = days.join(", ");
-  
-  const times = timetableSlots.length > 0 
+
+  const times = timetableSlots.length > 0
     ? `(${formatTime(timetableSlots[0].startTime)} - ${formatTime(timetableSlots[0].endTime)})`
     : "";
-    
+
   return `${formattedDays} ${times}`;
 }
 
@@ -791,6 +796,6 @@ async function getTeacherName(teacherId: string): Promise<string> {
     where: { id: teacherId },
     include: { user: true }
   });
-  
+
   return teacher ? `${teacher.user.firstName} ${teacher.user.lastName}` : "Unknown Teacher";
 }

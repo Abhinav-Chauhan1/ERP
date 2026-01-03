@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import {
   PrimaryStatsSection,
   SecondaryStatsSection,
@@ -27,18 +27,18 @@ export const dynamic = "force-dynamic";
  * Each section loads independently to prevent layout shifts
  */
 export default async function AdminDashboard() {
-  const user = await currentUser();
-  const firstName = user?.firstName || "Admin";
-  
+  const session = await auth();
+  const firstName = session?.user?.name?.split(" ")[0] || "Admin";
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName}!</h1>
-      
+
       {/* Primary Stats - Wrapped in Suspense */}
       <Suspense fallback={<PrimaryStatsSkeleton />}>
         <PrimaryStatsSection />
       </Suspense>
-      
+
       {/* Secondary Stats - Wrapped in Suspense */}
       <Suspense fallback={<SecondaryStatsSkeleton />}>
         <SecondaryStatsSection />

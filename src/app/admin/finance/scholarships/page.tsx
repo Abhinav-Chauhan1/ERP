@@ -1,13 +1,13 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   ChevronLeft, PlusCircle, Search, Filter,
-  BadgeDollarSign, User, CheckCircle, XCircle, 
-  Edit, Eye, Download, Trash2, BarChart4, 
+  BadgeDollarSign, User, CheckCircle, XCircle,
+  Edit, Eye, Download, Trash2, BarChart4,
   UserCheck, ArrowUp, Calendar, Clock, DollarSign,
   Printer
 } from "lucide-react";
@@ -120,15 +120,7 @@ export default function ScholarshipsPage() {
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
 
-  // Load data on mount
-  useEffect(() => {
-    loadScholarships();
-    loadStudents();
-    loadAcademicYears();
-    loadStats();
-  }, [statusFilter]);
-
-  const loadAcademicYears = async () => {
+  const loadAcademicYears = useCallback(async () => {
     try {
       const result = await getAcademicYears();
       if (result.success && result.data) {
@@ -137,9 +129,9 @@ export default function ScholarshipsPage() {
     } catch (error) {
       console.error("Error loading academic years:", error);
     }
-  };
+  }, []);
 
-  const loadScholarships = async () => {
+  const loadScholarships = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {};
@@ -149,7 +141,7 @@ export default function ScholarshipsPage() {
       if (result.success && result.data) {
         setScholarshipPrograms(result.data);
         // Flatten recipients from all scholarships
-        const allRecipients = result.data.flatMap((s: any) => 
+        const allRecipients = result.data.flatMap((s: any) =>
           s.recipients.map((r: any) => ({
             ...r,
             scholarshipName: s.name,
@@ -166,9 +158,9 @@ export default function ScholarshipsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     try {
       const result = await getStudentsForScholarship();
       if (result.success && result.data) {
@@ -177,9 +169,9 @@ export default function ScholarshipsPage() {
     } catch (error) {
       console.error("Error loading students:", error);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const result = await getScholarshipStats();
       if (result.success && result.data) {
@@ -188,7 +180,15 @@ export default function ScholarshipsPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadScholarships();
+    loadStudents();
+    loadAcademicYears();
+    loadStats();
+  }, [loadScholarships, loadStudents, loadAcademicYears, loadStats]);
 
   const handleCreateScholarship = async (data: any) => {
     try {
@@ -278,7 +278,7 @@ export default function ScholarshipsPage() {
   });
 
   // Filter scholarship programs based on search
-  const filteredPrograms = scholarshipPrograms.filter(program => 
+  const filteredPrograms = scholarshipPrograms.filter(program =>
     program.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     program.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     program.fundedBy.toLowerCase().includes(searchTerm.toLowerCase())
@@ -286,12 +286,12 @@ export default function ScholarshipsPage() {
 
   // Filter scholarship recipients based on search and status
   const filteredRecipients = scholarshipRecipients.filter(recipient => {
-    const matchesSearch = 
+    const matchesSearch =
       recipient.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       recipient.scholarshipName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || recipient.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -415,7 +415,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={recipientForm.control}
                     name="studentId"
@@ -440,7 +440,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={recipientForm.control}
@@ -455,7 +455,7 @@ export default function ScholarshipsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={recipientForm.control}
                       name="endDate"
@@ -470,7 +470,7 @@ export default function ScholarshipsPage() {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={recipientForm.control}
                     name="amount"
@@ -478,11 +478,11 @@ export default function ScholarshipsPage() {
                       <FormItem>
                         <FormLabel>Scholarship Amount</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min={0} 
+                          <Input
+                            type="number"
+                            min={0}
                             step="0.01"
-                            placeholder="0.00" 
+                            placeholder="0.00"
                             {...field}
                             onChange={e => field.onChange(parseFloat(e.target.value))}
                           />
@@ -491,7 +491,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={recipientForm.control}
                     name="remarks"
@@ -499,9 +499,9 @@ export default function ScholarshipsPage() {
                       <FormItem>
                         <FormLabel>Remarks (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Additional notes about this scholarship award" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Additional notes about this scholarship award"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -509,7 +509,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setAddRecipientDialog(false)}>
                       Cancel
@@ -520,7 +520,7 @@ export default function ScholarshipsPage() {
               </Form>
             </DialogContent>
           </Dialog>
-          
+
           <Dialog open={createProgramDialog} onOpenChange={setCreateProgramDialog}>
             <DialogTrigger asChild>
               <Button onClick={handleCreateProgram}>
@@ -549,7 +549,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={programForm.control}
                     name="description"
@@ -557,9 +557,9 @@ export default function ScholarshipsPage() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Detailed description of the scholarship program" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Detailed description of the scholarship program"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -567,7 +567,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={programForm.control}
                     name="amountType"
@@ -589,7 +589,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   {programForm.watch("amountType") === "FIXED" ? (
                     <FormField
                       control={programForm.control}
@@ -598,11 +598,11 @@ export default function ScholarshipsPage() {
                         <FormItem>
                           <FormLabel>Scholarship Amount</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              min={0} 
+                            <Input
+                              type="number"
+                              min={0}
                               step="0.01"
-                              placeholder="0.00" 
+                              placeholder="0.00"
                               {...field}
                               onChange={e => field.onChange(parseFloat(e.target.value))}
                               value={field.value === undefined ? "" : field.value}
@@ -620,11 +620,11 @@ export default function ScholarshipsPage() {
                         <FormItem>
                           <FormLabel>Percentage of Fees</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              min={1} 
+                            <Input
+                              type="number"
+                              min={1}
                               max={100}
-                              placeholder="e.g., 50" 
+                              placeholder="e.g., 50"
                               {...field}
                               onChange={e => field.onChange(parseFloat(e.target.value))}
                               value={field.value === undefined ? "" : field.value}
@@ -638,7 +638,7 @@ export default function ScholarshipsPage() {
                       )}
                     />
                   )}
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={programForm.control}
@@ -653,7 +653,7 @@ export default function ScholarshipsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={programForm.control}
                       name="academicYearId"
@@ -679,7 +679,7 @@ export default function ScholarshipsPage() {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={programForm.control}
                     name="criteria"
@@ -687,9 +687,9 @@ export default function ScholarshipsPage() {
                       <FormItem>
                         <FormLabel>Eligibility Criteria</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Specify the criteria students must meet to qualify" 
-                            {...field} 
+                          <Textarea
+                            placeholder="Specify the criteria students must meet to qualify"
+                            {...field}
                             value={field.value || ""}
                           />
                         </FormControl>
@@ -697,7 +697,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={programForm.control}
                     name="fundedBy"
@@ -711,7 +711,7 @@ export default function ScholarshipsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setCreateProgramDialog(false)}>
                       Cancel
@@ -747,7 +747,7 @@ export default function ScholarshipsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Amount Awarded</CardTitle>
@@ -765,7 +765,7 @@ export default function ScholarshipsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Programs</CardTitle>
@@ -791,7 +791,7 @@ export default function ScholarshipsPage() {
           <TabsTrigger value="recipients">Recipients</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="programs">
           <Card>
             <CardHeader className="pb-2">
@@ -845,17 +845,17 @@ export default function ScholarshipsPage() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleViewProgram(program.id)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleAddRecipient(program.id)}
                           >
                             <UserCheck className="h-4 w-4 mr-1" />
@@ -876,7 +876,7 @@ export default function ScholarshipsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="recipients">
           <Card>
             <CardHeader className="pb-2">
@@ -948,16 +948,16 @@ export default function ScholarshipsPage() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleViewRecipient(recipient.id)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                           >
                             <Edit className="h-4 w-4 mr-1" />
@@ -978,7 +978,7 @@ export default function ScholarshipsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="analytics">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card>
@@ -1006,7 +1006,7 @@ export default function ScholarshipsPage() {
                 )}
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle>Scholarship Distribution</CardTitle>
@@ -1032,7 +1032,7 @@ export default function ScholarshipsPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           <Card className="mt-4">
             <CardHeader>
               <CardTitle>Scholarship Budget Allocation</CardTitle>
@@ -1051,7 +1051,7 @@ export default function ScholarshipsPage() {
                     }, 0);
                     const programAmount = (program.amount || 0) * (program.recipients?.length || 0);
                     const percentage = totalAmount > 0 ? (programAmount / totalAmount) * 100 : 0;
-                    
+
                     return (
                       <div key={program.id} className="space-y-2">
                         <div className="flex justify-between">
@@ -1064,7 +1064,7 @@ export default function ScholarshipsPage() {
                       </div>
                     );
                   })}
-                  
+
                   <div className="pt-4 border-t">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total Scholarship Budget</span>
@@ -1091,7 +1091,7 @@ export default function ScholarshipsPage() {
               Full information about this scholarship program
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedProgram && (
             <div className="space-y-4">
               <div className="flex flex-col space-y-1">
@@ -1100,7 +1100,7 @@ export default function ScholarshipsPage() {
                   {selectedProgram.recipients?.length || 0} Recipients
                 </Badge>
               </div>
-              
+
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 bg-green-50 p-4 rounded-lg">
                   <div className="text-sm text-green-700 font-medium mb-1">Amount</div>
@@ -1113,7 +1113,7 @@ export default function ScholarshipsPage() {
                   <div className="text-lg font-bold text-primary">{selectedProgram.duration}</div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Funded By</p>
@@ -1124,17 +1124,17 @@ export default function ScholarshipsPage() {
                   <p className="font-medium">{new Date(selectedProgram.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Description</p>
                 <p>{selectedProgram.description}</p>
               </div>
-              
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Eligibility Criteria</p>
                 <p>{selectedProgram.criteria}</p>
               </div>
-              
+
               <div>
                 <p className="text-sm font-medium mb-2">Current Recipients</p>
                 <div className="rounded-md border">
@@ -1177,7 +1177,7 @@ export default function ScholarshipsPage() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewProgramDialog(false)}>
               Close
@@ -1202,7 +1202,7 @@ export default function ScholarshipsPage() {
               Complete information about this scholarship award
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedRecipient && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1214,7 +1214,7 @@ export default function ScholarshipsPage() {
                   {selectedRecipient.status}
                 </Badge>
               </div>
-              
+
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 bg-purple-50 p-4 rounded-lg">
                   <div className="text-sm text-purple-700 font-medium mb-1">Scholarship</div>
@@ -1225,7 +1225,7 @@ export default function ScholarshipsPage() {
                   <div className="text-2xl font-bold text-green-800">₹{selectedRecipient.amount.toLocaleString()}</div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-b py-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Award Date</p>
@@ -1238,14 +1238,14 @@ export default function ScholarshipsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Academic Performance</p>
                   <div className="flex items-center gap-2">
-                    <Progress 
-                      value={selectedRecipient.academicPerformance} 
-                      className="h-2 flex-1" 
+                    <Progress
+                      value={selectedRecipient.academicPerformance}
+                      className="h-2 flex-1"
                       style={{
-                        "--progress-foreground": 
+                        "--progress-foreground":
                           selectedRecipient.academicPerformance > 90 ? "rgb(34, 197, 94)" :
-                          selectedRecipient.academicPerformance > 75 ? "rgb(59, 130, 246)" :
-                          "rgb(245, 158, 11)"
+                            selectedRecipient.academicPerformance > 75 ? "rgb(59, 130, 246)" :
+                              "rgb(245, 158, 11)"
                       } as React.CSSProperties}
                     />
                     <span className="font-medium">{selectedRecipient.academicPerformance}%</span>
@@ -1258,7 +1258,7 @@ export default function ScholarshipsPage() {
                   </p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Payment Schedule</p>
                 <div className="rounded-md border">
@@ -1291,7 +1291,7 @@ export default function ScholarshipsPage() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewRecipientDialog(false)}>
               Close

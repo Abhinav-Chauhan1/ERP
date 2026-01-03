@@ -1,14 +1,14 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, PlusCircle, Search, Bell, BellOff,
-  Info, AlertTriangle, AlertCircle, CheckCircle, 
+  Info, AlertTriangle, AlertCircle, CheckCircle,
   Users, Clock, Calendar, RefreshCw, Filter, MoreVertical,
   Trash2, Send, Eye
 } from "lucide-react";
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -171,14 +171,7 @@ export default function NotificationsPage() {
     link: "",
   });
 
-  // Load notifications
-  useEffect(() => {
-    loadNotifications();
-    loadUsers();
-    loadStats();
-  }, [typeFilter, audienceFilter]);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {};
@@ -197,9 +190,9 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter, audienceFilter]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const result = await getUsersForNotifications();
       if (result.success && result.data) {
@@ -208,9 +201,9 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error("Error loading users:", error);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const result = await getNotificationStats();
       if (result.success && result.data) {
@@ -219,7 +212,14 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error("Error loading stats:", error);
     }
-  };
+  }, []);
+
+  // Load notifications
+  useEffect(() => {
+    loadNotifications();
+    loadUsers();
+    loadStats();
+  }, [loadNotifications, loadUsers, loadStats]);
 
   const handleCreateNotification = async () => {
     try {
@@ -269,17 +269,17 @@ export default function NotificationsPage() {
   // Filter notifications based on search, type, audience, and tab
   const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          notification.message.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesType = typeFilter === "all" || notification.type === typeFilter;
-    
-    const matchesAudience = audienceFilter === "all" || 
-                            notification.sentTo === userSegments.find(seg => seg.id === audienceFilter)?.name;
-    
+
+    const matchesAudience = audienceFilter === "all" ||
+      notification.sentTo === userSegments.find(seg => seg.id === audienceFilter)?.name;
+
     // For demonstration purposes, we're not actually filtering by tab since we don't have those properties
     // In a real app, you would have read/unread status per user
     const matchesTab = true;
-    
+
     return matchesSearch && matchesType && matchesAudience && matchesTab;
   });
 
@@ -356,28 +356,28 @@ export default function NotificationsPage() {
             <div className="py-4 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Title</label>
-                <Input 
-                  placeholder="Notification title" 
+                <Input
+                  placeholder="Notification title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Message</label>
-                <Textarea 
-                  placeholder="Enter notification message" 
+                <Textarea
+                  placeholder="Enter notification message"
                   className="min-h-[100px]"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Recipients</label>
-                  <Select 
-                    value={formData.recipientRole} 
+                  <Select
+                    value={formData.recipientRole}
                     onValueChange={(value) => setFormData({ ...formData, recipientRole: value })}
                   >
                     <SelectTrigger>
@@ -395,8 +395,8 @@ export default function NotificationsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Type</label>
-                  <Select 
-                    value={formData.type} 
+                  <Select
+                    value={formData.type}
                     onValueChange={(value) => setFormData({ ...formData, type: value })}
                   >
                     <SelectTrigger>
@@ -411,11 +411,11 @@ export default function NotificationsPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Link (Optional)</label>
-                <Input 
-                  placeholder="e.g., /admin/assessment/results" 
+                <Input
+                  placeholder="e.g., /admin/assessment/results"
                   value={formData.link}
                   onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 />
@@ -423,10 +423,10 @@ export default function NotificationsPage() {
                   Users will be directed to this link when they click on the notification
                 </p>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Checkbox id="send-immediately" defaultChecked />
-                <label 
+                <label
                   htmlFor="send-immediately"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
@@ -521,7 +521,7 @@ export default function NotificationsPage() {
               <TabsTrigger value="unread">System</TabsTrigger>
               <TabsTrigger value="sent">Manual</TabsTrigger>
             </TabsList>
-            
+
             <div className="mt-4">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
@@ -530,114 +530,114 @@ export default function NotificationsPage() {
               ) : (
                 <div className="rounded-md border">
                   {filteredNotifications.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-accent border-b">
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Notification</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sent To</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Read Rate</th>
-                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredNotifications.map((notification) => (
-                          <tr key={notification.id} className="border-b">
-                            <td className="py-3 px-4 align-middle">
-                              <div className="font-medium">{notification.title}</div>
-                              <div className="text-xs text-muted-foreground truncate max-w-xs">
-                                {notification.message}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <Badge className={getTypeColor(notification.type)}>
-                                <div className="flex items-center gap-1">
-                                  {getTypeIcon(notification.type)}
-                                  <span>{notification.type}</span>
-                                </div>
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center gap-1">
-                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>{notification.recipientRole || "ALL"}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {notification.sender ? `By ${notification.sender.firstName} ${notification.sender.lastName}` : "System"}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>
-                                  {new Date(notification.createdAt).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(notification.createdAt).toLocaleTimeString()}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle">
-                              <div className="text-xs text-muted-foreground">
-                                Sent to {notification.recipientRole || "ALL"}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-middle text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleViewNotification(notification.id)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
-                                    <Send className="h-4 w-4 mr-2" />
-                                    Resend
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Duplicate
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-red-600"
-                                    onClick={() => handleDeleteNotification(notification.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-accent border-b">
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Notification</th>
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sent To</th>
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
+                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Read Rate</th>
+                            <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <BellOff className="h-12 w-12 text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No notifications found</h3>
-                    <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                      {searchTerm || typeFilter !== "all" || audienceFilter !== "all" 
-                        ? "No notifications match your search criteria. Try adjusting your filters."
-                        : "There are no notifications yet. Create your first notification to get started."}
-                    </p>
-                    <Button onClick={() => setCreateNotificationDialog(true)}>
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Create New Notification
-                    </Button>
-                  </div>
-                )}
+                        </thead>
+                        <tbody>
+                          {filteredNotifications.map((notification) => (
+                            <tr key={notification.id} className="border-b">
+                              <td className="py-3 px-4 align-middle">
+                                <div className="font-medium">{notification.title}</div>
+                                <div className="text-xs text-muted-foreground truncate max-w-xs">
+                                  {notification.message}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <Badge className={getTypeColor(notification.type)}>
+                                  <div className="flex items-center gap-1">
+                                    {getTypeIcon(notification.type)}
+                                    <span>{notification.type}</span>
+                                  </div>
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <div className="flex items-center gap-1">
+                                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>{notification.recipientRole || "ALL"}</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {notification.sender ? `By ${notification.sender.firstName} ${notification.sender.lastName}` : "System"}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>
+                                    {new Date(notification.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(notification.createdAt).toLocaleTimeString()}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle">
+                                <div className="text-xs text-muted-foreground">
+                                  Sent to {notification.recipientRole || "ALL"}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 align-middle text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleViewNotification(notification.id)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem>
+                                      <Send className="h-4 w-4 mr-2" />
+                                      Resend
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      <PlusCircle className="h-4 w-4 mr-2" />
+                                      Duplicate
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() => handleDeleteNotification(notification.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <BellOff className="h-12 w-12 text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium mb-2">No notifications found</h3>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+                        {searchTerm || typeFilter !== "all" || audienceFilter !== "all"
+                          ? "No notifications match your search criteria. Try adjusting your filters."
+                          : "There are no notifications yet. Create your first notification to get started."}
+                      </p>
+                      <Button onClick={() => setCreateNotificationDialog(true)}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Create New Notification
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -654,7 +654,7 @@ export default function NotificationsPage() {
               View complete notification information
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedNotification && (
             <div className="space-y-4 py-2">
               <div className="flex items-start">
@@ -671,16 +671,16 @@ export default function NotificationsPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-accent p-4 rounded-md">
                 <p className="text-sm whitespace-pre-line">{selectedNotification.message}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Sent By</p>
                   <p className="font-medium">
-                    {selectedNotification.sender 
+                    {selectedNotification.sender
                       ? `${selectedNotification.sender.firstName} ${selectedNotification.sender.lastName}`
                       : "System"}
                   </p>
@@ -704,7 +704,7 @@ export default function NotificationsPage() {
                   <p className="font-medium">Delivered</p>
                 </div>
               </div>
-              
+
               {selectedNotification.link && (
                 <div className="pt-2">
                   <p className="text-sm text-muted-foreground">Link</p>
@@ -715,7 +715,7 @@ export default function NotificationsPage() {
               )}
             </div>
           )}
-          
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setViewNotificationDialog(false)}>
               Close

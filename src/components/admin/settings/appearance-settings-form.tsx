@@ -1,6 +1,8 @@
 "use client";
 
+
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useColorTheme } from "@/lib/contexts/theme-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +93,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
         folder,
         resource_type: 'image',
       });
-      
+
       setter(result.secure_url);
       toast.success("Image uploaded successfully");
     } catch (error) {
@@ -113,7 +115,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
       };
       setNextTheme(themeMap[theme] || 'light');
       setCurrentColorTheme(colorTheme as any);
-      
+
       const result = await updateAppearanceSettings({
         defaultTheme: theme,
         defaultColorTheme: colorTheme,
@@ -131,7 +133,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
         letterheadText: letterheadText || undefined,
         documentFooter: documentFooter || undefined,
       });
-      
+
       if (result.success) {
         toast.success("Appearance settings saved successfully");
       } else {
@@ -208,11 +210,10 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
                     // Apply immediately for preview
                     setCurrentColorTheme(ct.value as any);
                   }}
-                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-colors ${
-                    colorTheme === ct.value
-                      ? "border-primary bg-primary/5"
-                      : "border-transparent hover:border-muted"
-                  }`}
+                  className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-colors ${colorTheme === ct.value
+                    ? "border-primary bg-primary/5"
+                    : "border-transparent hover:border-muted"
+                    }`}
                 >
                   <div className="relative">
                     <div className={`h-12 w-12 rounded-full ${ct.color}`} />
@@ -352,7 +353,9 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
             {logoUrl && (
               <div className="relative inline-block">
                 <div className="p-4 border rounded-md bg-muted/50">
-                  <img src={logoUrl} alt="Logo" className="h-20 object-contain" />
+                  <div className="relative h-20 w-48">
+                    <Image src={logoUrl} alt="Logo" fill className="object-contain" sizes="192px" />
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -401,7 +404,9 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
             {faviconUrl && (
               <div className="relative inline-block">
                 <div className="p-4 border rounded-md bg-muted/50">
-                  <img src={faviconUrl} alt="Favicon" className="h-8 object-contain" />
+                  <div className="relative h-8 w-8">
+                    <Image src={faviconUrl} alt="Favicon" fill className="object-contain" sizes="32px" />
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -459,7 +464,9 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
             {emailLogo && (
               <div className="relative inline-block">
                 <div className="p-4 border rounded-md bg-muted/50">
-                  <img src={emailLogo} alt="Email Logo" className="h-16 object-contain" />
+                  <div className="relative h-16 w-40">
+                    <Image src={emailLogo} alt="Email Logo" fill className="object-contain" sizes="160px" />
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -537,7 +544,9 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
             {letterheadLogo && (
               <div className="relative inline-block">
                 <div className="p-4 border rounded-md bg-muted/50">
-                  <img src={letterheadLogo} alt="Letterhead Logo" className="h-16 object-contain" />
+                  <div className="relative h-16 w-40">
+                    <Image src={letterheadLogo} alt="Letterhead Logo" fill className="object-contain" sizes="160px" />
+                  </div>
                 </div>
                 <Button
                   type="button"

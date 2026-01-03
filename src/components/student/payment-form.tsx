@@ -110,7 +110,7 @@ export function PaymentForm({ feeItemId, amount, feeName, onSuccess }: PaymentFo
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="p-4 bg-blue-50 rounded-md mb-4 text-center">
           <h3 className="text-lg font-medium text-blue-800">Payment for {feeName}</h3>
-          <p className="text-sm text-blue-600">Fee Amount: ${amount.toFixed(2)}</p>
+          <p className="text-sm text-blue-600">Fee Amount: ₹{amount.toFixed(2)}</p>
         </div>
         
         <FormField

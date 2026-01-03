@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { Download, Eye, FileText, Image, FileIcon } from "lucide-react";
+import { Download, Eye, FileText, Image as ImageIcon, FileIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +27,9 @@ interface DocumentCardProps {
 export function DocumentCard({ document, onPreview, onDownload }: DocumentCardProps) {
   const getFileIcon = () => {
     if (!document.fileType) return <FileIcon className="h-8 w-8 text-gray-400" />;
-    
+
     if (document.fileType.startsWith('image/')) {
-      return <Image className="h-8 w-8 text-blue-500" />;
+      return <ImageIcon className="h-8 w-8 text-blue-500" />;
     } else if (document.fileType === 'application/pdf') {
       return <FileText className="h-8 w-8 text-red-500" />;
     }
@@ -44,7 +44,7 @@ export function DocumentCard({ document, onPreview, onDownload }: DocumentCardPr
   };
 
   const isPreviewable = document.fileType && (
-    document.fileType.startsWith('image/') || 
+    document.fileType.startsWith('image/') ||
     document.fileType === 'application/pdf'
   );
 
@@ -62,7 +62,7 @@ export function DocumentCard({ document, onPreview, onDownload }: DocumentCardPr
             <h3 className="font-medium text-sm truncate mb-1">
               {document.title}
             </h3>
-            
+
             {document.description && (
               <p className="text-xs text-gray-500 line-clamp-2 mb-2">
                 {document.description}

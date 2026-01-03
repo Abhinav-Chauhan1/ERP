@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  ChevronLeft, Printer, Download, Mail, 
+import {
+  ChevronLeft, Printer, Download, Mail,
   Calendar, FileText, User, CheckCircle,
   Loader2, AlertCircle, Share2
 } from "lucide-react";
@@ -31,19 +31,15 @@ export default function ReportCardDetailPage() {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [sendNotification, setSendNotification] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  
-  useEffect(() => {
-    fetchReportCard();
-  }, []);
-  
-  async function fetchReportCard() {
+
+  const fetchReportCard = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const id = params.id as string;
       const result = await getReportCardById(id);
-      
+
       if (result.success) {
         setReportCard(result.data);
       } else {
@@ -57,8 +53,12 @@ export default function ReportCardDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
-  
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchReportCard();
+  }, [fetchReportCard]);
+
   async function handlePublish() {
     try {
       const id = params.id as string;
@@ -66,7 +66,7 @@ export default function ReportCardDetailPage() {
         id,
         sendNotification
       });
-      
+
       if (result.success) {
         toast.success("Report card published successfully");
         setPublishDialogOpen(false);
@@ -79,15 +79,15 @@ export default function ReportCardDetailPage() {
       toast.error("An unexpected error occurred");
     }
   }
-  
+
   function handlePrint() {
     window.print();
   }
-  
+
   function handleSendEmail() {
     toast.success("Report card has been sent to parent's email");
   }
-  
+
   function getInitials(name: string) {
     if (!name) return "ST";
     return name
@@ -96,7 +96,7 @@ export default function ReportCardDetailPage() {
       .join('')
       .toUpperCase();
   }
-  
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-24">
@@ -104,7 +104,7 @@ export default function ReportCardDetailPage() {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="p-6">
@@ -119,7 +119,7 @@ export default function ReportCardDetailPage() {
       </div>
     );
   }
-  
+
   if (!reportCard) {
     return (
       <div className="p-6">
@@ -134,7 +134,7 @@ export default function ReportCardDetailPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -170,7 +170,7 @@ export default function ReportCardDetailPage() {
           )}
         </div>
       </div>
-      
+
       <Card>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-center">
@@ -226,14 +226,14 @@ export default function ReportCardDetailPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="subjects">Subject Marks</TabsTrigger>
           <TabsTrigger value="remarks">Remarks</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
@@ -246,15 +246,15 @@ export default function ReportCardDetailPage() {
                   <div className="flex items-center">
                     <p className="text-2xl font-bold">{reportCard.percentage?.toFixed(1) || "0"}%</p>
                     <Badge className="ml-3" variant={
-                        reportCard.percentage >= 90 ? "secondary" :
+                      reportCard.percentage >= 90 ? "secondary" :
                         reportCard.percentage >= 75 ? "default" :
-                        reportCard.percentage >= 50 ? "outline" : "destructive"
-                      }>
+                          reportCard.percentage >= 50 ? "outline" : "destructive"
+                    }>
                       {reportCard.overallGrade || "-"}
                     </Badge>
                   </div>
-                  <Progress 
-                    value={reportCard.percentage} 
+                  <Progress
+                    value={reportCard.percentage}
                     className="h-2 mt-2"
                   />
                 </div>
@@ -283,7 +283,7 @@ export default function ReportCardDetailPage() {
                   </p>
                 </div>
               </div>
-              
+
               {reportCard.subjectResults?.length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium mb-4">Performance by Subjects</h3>
@@ -299,15 +299,15 @@ export default function ReportCardDetailPage() {
                           </div>
                           <Badge className={
                             subject.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                            subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                            subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                            "bg-red-100 text-red-800"
+                              subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
                           }>
                             {subject.grade}
                           </Badge>
                         </div>
-                        <Progress 
-                          value={subject.percentage} 
+                        <Progress
+                          value={subject.percentage}
                           className="h-2"
                         />
                         <p className="text-xs text-right mt-1">{subject.percentage.toFixed(1)}%</p>
@@ -319,7 +319,7 @@ export default function ReportCardDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="subjects" className="space-y-4">
           <Card>
             <CardHeader>
@@ -356,9 +356,9 @@ export default function ReportCardDetailPage() {
                           <td className="py-3 px-4">
                             <Badge className={
                               subject.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                              subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                              subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                              "bg-red-100 text-red-800"
+                                subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                  subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                    "bg-red-100 text-red-800"
                             }>
                               {subject.grade}
                             </Badge>
@@ -375,9 +375,9 @@ export default function ReportCardDetailPage() {
                         <td className="py-3 px-4">
                           <Badge className={
                             reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                            reportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                            reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                            "bg-red-100 text-red-800"
+                              reportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
                           }>
                             {reportCard.overallGrade || "-"}
                           </Badge>
@@ -397,7 +397,7 @@ export default function ReportCardDetailPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {reportCard.subjectResults?.length > 0 && reportCard.subjectResults[0].exams?.length > 0 && (
             <Card>
               <CardHeader>
@@ -432,9 +432,9 @@ export default function ReportCardDetailPage() {
                                   {exam.isAbsent ? '-' : (
                                     <Badge className={
                                       exam.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                                      exam.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                                      exam.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                      "bg-red-100 text-red-800"
+                                        exam.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                          exam.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                            "bg-red-100 text-red-800"
                                     }>
                                       {exam.grade}
                                     </Badge>
@@ -452,7 +452,7 @@ export default function ReportCardDetailPage() {
             </Card>
           )}
         </TabsContent>
-        
+
         <TabsContent value="remarks">
           <Card>
             <CardHeader>
@@ -470,7 +470,7 @@ export default function ReportCardDetailPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-medium mb-2">Principal's Remarks</h3>
                   <div className="border rounded-lg p-5 bg-gray-50">
@@ -481,7 +481,7 @@ export default function ReportCardDetailPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="border rounded-lg p-5 bg-blue-50">
                   <h3 className="text-lg font-medium mb-2 text-blue-700">Parent's Signature</h3>
                   <div className="h-20 border rounded-lg bg-white border-dashed flex items-center justify-center">
@@ -493,7 +493,7 @@ export default function ReportCardDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* Publish Dialog */}
       <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
         <DialogContent>
@@ -505,8 +505,8 @@ export default function ReportCardDetailPage() {
           </DialogHeader>
           <div className="py-4">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="send-notification" 
+              <Checkbox
+                id="send-notification"
                 checked={sendNotification}
                 onCheckedChange={() => setSendNotification(!sendNotification)}
               />
@@ -535,7 +535,7 @@ export default function ReportCardDetailPage() {
 // Helper functions
 function getOrdinalSuffix(i: number) {
   const j = i % 10,
-        k = i % 100;
+    k = i % 100;
   if (j === 1 && k !== 11) {
     return "st";
   }

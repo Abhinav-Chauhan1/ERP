@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { format, isAfter, isBefore } from "date-fns";
 import { Calendar, MapPin, Users, Clock, CheckCircle, Tag } from "lucide-react";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -53,42 +54,42 @@ interface EventCardProps {
   registrationInfo?: EventParticipant | null;
 }
 
-export function EventCard({ 
-  event, 
-  userId, 
-  studentId, 
-  isRegistered, 
-  isOngoing = false, 
-  isPast = false, 
-  registrationInfo = null 
+export function EventCard({
+  event,
+  userId,
+  studentId,
+  isRegistered,
+  isOngoing = false,
+  isPast = false,
+  registrationInfo = null
 }: EventCardProps) {
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Check if registration is still open
   const now = new Date();
-  const isRegistrationOpen = event.registrationDeadline 
+  const isRegistrationOpen = event.registrationDeadline
     ? isAfter(new Date(event.registrationDeadline), now)
     : isAfter(new Date(event.startDate), now);
-  
+
   // Format event dates
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
   const sameDay = startDate.toDateString() === endDate.toDateString();
-  
+
   const dateDisplay = sameDay
     ? `${format(startDate, "MMMM d, yyyy")}`
     : `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
-  
+
   const timeDisplay = sameDay
     ? `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`
     : `${format(startDate, "h:mm a, MMM d")} - ${format(endDate, "h:mm a, MMM d")}`;
-  
+
   // Handle cancellation
   const handleCancelRegistration = async () => {
     setIsLoading(true);
     try {
       const result = await cancelEventRegistration(event.id);
-      
+
       if (result.success) {
         toast.success(result.message);
       } else {
@@ -100,7 +101,7 @@ export function EventCard({
       setIsLoading(false);
     }
   };
-  
+
   // Get event status badge
   const getEventStatusBadge = () => {
     if (event.status === EventStatus.CANCELLED) {
@@ -120,13 +121,12 @@ export function EventCard({
     <Card className="h-full flex flex-col overflow-hidden hover:shadow-md transition-shadow">
       {event.thumbnail ? (
         <div className="relative h-40 w-full bg-muted">
-          <img
+          <Image
             src={event.thumbnail}
             alt={event.title}
-            width={400}
-            height={160}
-            loading="lazy"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            unoptimized
           />
         </div>
       ) : (
@@ -134,13 +134,13 @@ export function EventCard({
           <Calendar className="h-10 w-10 text-primary" />
         </div>
       )}
-      
+
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-lg line-clamp-2">{event.title}</CardTitle>
           {getEventStatusBadge()}
         </div>
-        
+
         {event.type && (
           <CardDescription className="flex items-center mt-1">
             <Tag className="h-3.5 w-3.5 mr-1" />
@@ -148,14 +148,14 @@ export function EventCard({
           </CardDescription>
         )}
       </CardHeader>
-      
+
       <CardContent className="flex-1">
         {event.description && (
           <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
             {event.description}
           </p>
         )}
-        
+
         <div className="space-y-2 text-sm">
           <div className="flex items-start">
             <Calendar className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground" />
@@ -164,14 +164,14 @@ export function EventCard({
               <p className="text-muted-foreground">{timeDisplay}</p>
             </div>
           </div>
-          
+
           {event.location && (
             <div className="flex items-center">
               <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
               <span className="text-muted-foreground">{event.location}</span>
             </div>
           )}
-          
+
           {event.maxParticipants && (
             <div className="flex items-center">
               <Users className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -180,7 +180,7 @@ export function EventCard({
               </span>
             </div>
           )}
-          
+
           {event.registrationDeadline && (
             <div className="flex items-center">
               <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -191,7 +191,7 @@ export function EventCard({
           )}
         </div>
       </CardContent>
-      
+
       <CardFooter className="pt-2">
         {isRegistered ? (
           <div className="w-full flex flex-col gap-2">
@@ -204,12 +204,12 @@ export function EventCard({
                 </Badge>
               )}
             </div>
-            
+
             <div className="flex gap-2 w-full">
               <Button variant="outline" className="flex-1 min-h-[44px]" asChild>
                 <a href={`/student/events/${event.id}`}>View Details</a>
               </Button>
-              
+
               {!isPast && event.status !== EventStatus.CANCELLED && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -226,8 +226,8 @@ export function EventCard({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Keep Registration</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={handleCancelRegistration} 
+                      <AlertDialogAction
+                        onClick={handleCancelRegistration}
                         className="bg-red-600 hover:bg-red-700"
                       >
                         Yes, Cancel Registration
@@ -251,16 +251,16 @@ export function EventCard({
             Event Cancelled
           </Button>
         ) : (
-          <RegistrationDialog 
+          <RegistrationDialog
             event={{
               id: event.id,
               title: event.title,
               startDate: typeof event.startDate === 'string' ? event.startDate : event.startDate.toISOString(),
               maxParticipants: event.maxParticipants
-            }} 
-            userId={userId} 
-            studentId={studentId} 
-            isOpen={isRegistrationOpen} 
+            }}
+            userId={userId}
+            studentId={studentId}
+            isOpen={isRegistrationOpen}
           />
         )}
       </CardFooter>

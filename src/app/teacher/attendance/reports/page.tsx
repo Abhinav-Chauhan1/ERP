@@ -1,22 +1,22 @@
 "use client";
 
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Calendar, 
-  Search, 
-  Download, 
-  Filter, 
+import {
+  Calendar,
+  Search,
+  Download,
+  Filter,
   ArrowLeft,
   ArrowUpDown,
-  CheckCircle, 
-  XCircle, 
+  CheckCircle,
+  XCircle,
   Clock,
   UserX,
   FileText,
@@ -26,7 +26,7 @@ import {
   FileBarChart2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -53,11 +53,11 @@ function AttendanceReportsContent() {
   const searchParams = useSearchParams();
   const classIdParam = searchParams.get('classId');
   const sectionIdParam = searchParams.get('sectionId');
-  
+
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // Filters
   const [classId, setClassId] = useState<string | null>(classIdParam);
   const [sectionId, setSectionId] = useState<string | null>(sectionIdParam);
@@ -66,16 +66,11 @@ function AttendanceReportsContent() {
     to: new Date(),
   });
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | null>(null);
-  
+
   // Active tab
   const [activeTab, setActiveTab] = useState("overview");
-  
-  // Load initial data
-  useEffect(() => {
-    fetchAttendanceReports();
-  }, [classId, sectionId, dateRange]);
-  
-  const fetchAttendanceReports = async () => {
+
+  const fetchAttendanceReports = useCallback(async () => {
     setLoading(true);
     try {
       const filters: any = {
@@ -85,7 +80,7 @@ function AttendanceReportsContent() {
         endDate: dateRange?.to?.toISOString(),
         status: statusFilter || undefined,
       };
-      
+
       const data = await getTeacherAttendanceReports(filters);
       setReportData(data);
     } catch (error) {
@@ -94,40 +89,45 @@ function AttendanceReportsContent() {
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [classId, sectionId, dateRange, statusFilter]);
+
+  // Load initial data
+  useEffect(() => {
+    fetchAttendanceReports();
+  }, [fetchAttendanceReports]);
+
   const handleClassChange = (value: string) => {
     setClassId(value === "all" ? null : value);
     setSectionId(null); // Reset section when class changes
-    
+
     // Update URL
     const params = new URLSearchParams();
     if (value !== "all") params.set("classId", value);
     router.push(`/teacher/attendance/reports?${params.toString()}`);
   };
-  
+
   const handleSectionChange = (value: string) => {
     setSectionId(value === "all" ? null : value);
-    
+
     // Update URL
     const params = new URLSearchParams();
     if (classId) params.set("classId", classId);
     if (value !== "all") params.set("sectionId", value);
     router.push(`/teacher/attendance/reports?${params.toString()}`);
   };
-  
+
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value === "all" ? null : value as AttendanceStatus);
     fetchAttendanceReports();
   };
-  
+
   const formatDateRange = () => {
     if (!dateRange?.from) return "Select a date range";
     return `${format(dateRange.from, "MMM d, yyyy")} - ${dateRange.to ? format(dateRange.to, "MMM d, yyyy") : ""}`;
   };
-  
+
   const getStatusBadge = (status: AttendanceStatus) => {
-    switch(status) {
+    switch (status) {
       case "PRESENT":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>;
       case "ABSENT":
@@ -142,9 +142,9 @@ function AttendanceReportsContent() {
         return <Badge variant="outline">Unknown</Badge>;
     }
   };
-  
+
   // Filter recent attendance records by search query
-  const filteredRecords = reportData?.recentAttendance.filter((record: any) => 
+  const filteredRecords = reportData?.recentAttendance.filter((record: any) =>
     record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     record.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
     record.rollNumber?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -172,13 +172,13 @@ function AttendanceReportsContent() {
 
       <div className="flex flex-col md:flex-row gap-4 justify-between">
         <div className="flex flex-col sm:flex-row gap-3">
-          <DateRangePicker 
+          <DateRangePicker
             value={dateRange}
             onValueChange={setDateRange}
           />
-          
-          <Select 
-            value={classId || "all"} 
+
+          <Select
+            value={classId || "all"}
             onValueChange={handleClassChange}
           >
             <SelectTrigger className="w-[200px]">
@@ -191,10 +191,10 @@ function AttendanceReportsContent() {
               ))}
             </SelectContent>
           </Select>
-          
+
           {classId && (
-            <Select 
-              value={sectionId || "all"} 
+            <Select
+              value={sectionId || "all"}
               onValueChange={handleSectionChange}
             >
               <SelectTrigger className="w-[150px]">
@@ -211,7 +211,7 @@ function AttendanceReportsContent() {
             </Select>
           )}
         </div>
-        
+
         <div className="flex gap-2">
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Export Report
@@ -229,7 +229,7 @@ function AttendanceReportsContent() {
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="records">Attendance Records</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-4">
             <Card>
@@ -244,7 +244,7 @@ function AttendanceReportsContent() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Present</CardTitle>
@@ -262,7 +262,7 @@ function AttendanceReportsContent() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Absent</CardTitle>
@@ -280,7 +280,7 @@ function AttendanceReportsContent() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Late</CardTitle>
@@ -299,7 +299,7 @@ function AttendanceReportsContent() {
               </CardContent>
             </Card>
           </div>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Daily Attendance Trends</CardTitle>
@@ -319,7 +319,7 @@ function AttendanceReportsContent() {
               </div>
             </CardContent>
           </Card>
-          
+
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -346,7 +346,7 @@ function AttendanceReportsContent() {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -402,7 +402,7 @@ function AttendanceReportsContent() {
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="class-wise" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {reportData?.classWiseStats.map((classStats: any) => (
@@ -424,10 +424,10 @@ function AttendanceReportsContent() {
                       <p className="text-xs text-gray-500">{classStats.absentPercentage}%</p>
                     </div>
                   </div>
-                  
+
                   <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full" 
+                    <div
+                      className="bg-green-500 h-2 rounded-full"
                       style={{ width: `${classStats.presentPercentage}%` }}
                     ></div>
                   </div>
@@ -447,7 +447,7 @@ function AttendanceReportsContent() {
             ))}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="students" className="space-y-6">
           <Card>
             <CardHeader>
@@ -467,8 +467,8 @@ function AttendanceReportsContent() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Select 
-                    value={statusFilter || "all"} 
+                  <Select
+                    value={statusFilter || "all"}
                     onValueChange={handleStatusFilterChange}
                   >
                     <SelectTrigger className="w-[170px]">
@@ -526,12 +526,11 @@ function AttendanceReportsContent() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center">
                             <div className="w-16 bg-gray-200 rounded-full h-1.5 mr-2">
-                              <div 
-                                className={`h-1.5 rounded-full ${
-                                  (student.presentCount / student.totalRecords) * 100 >= 75 ? 'bg-green-500' :
-                                  (student.presentCount / student.totalRecords) * 100 >= 50 ? 'bg-amber-500' :
-                                  'bg-red-500'
-                                }`}
+                              <div
+                                className={`h-1.5 rounded-full ${(student.presentCount / student.totalRecords) * 100 >= 75 ? 'bg-green-500' :
+                                    (student.presentCount / student.totalRecords) * 100 >= 50 ? 'bg-amber-500' :
+                                      'bg-red-500'
+                                  }`}
                                 style={{ width: `${(student.presentCount / student.totalRecords) * 100}%` }}
                               ></div>
                             </div>
@@ -553,7 +552,7 @@ function AttendanceReportsContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="records" className="space-y-6">
           <Card>
             <CardHeader>

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
@@ -44,12 +45,12 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         teacher.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         teacher.user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = 
+
+      const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && teacher.user.active) ||
         (statusFilter === "inactive" && !teacher.user.active);
-      
+
       return matchesSearch && matchesStatus;
     });
 
@@ -80,11 +81,11 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <UserSearch 
-          placeholder="Search teachers by name, email or employee ID..." 
+        <UserSearch
+          placeholder="Search teachers by name, email or employee ID..."
           onSearch={setSearchQuery}
         />
-        <UserFilters 
+        <UserFilters
           onStatusChange={setStatusFilter}
           onSortChange={setSortBy}
         />
@@ -121,20 +122,10 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                   <tr key={teacher.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        {teacher.user.avatar ? (
-                          <img
-                            src={teacher.user.avatar}
-                            alt={`${teacher.user.firstName} ${teacher.user.lastName}`}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
-                            {teacher.user.firstName[0]}
-                            {teacher.user.lastName[0]}
-                          </div>
-                        )}
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={teacher.user.avatar || undefined} alt={`${teacher.user.firstName} ${teacher.user.lastName}`} />
+                          <AvatarFallback>{teacher.user.firstName[0]}{teacher.user.lastName[0]}</AvatarFallback>
+                        </Avatar>
                         <div className="font-medium">
                           {teacher.user.firstName} {teacher.user.lastName}
                         </div>
@@ -166,7 +157,7 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
                     </td>
                     <td className="py-3 px-4 align-middle">{formatDate(teacher.joinDate)}</td>
                     <td className="py-3 px-4 align-middle">
-                      <Badge 
+                      <Badge
                         className={teacher.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                       >
                         {teacher.user.active ? "Active" : "Inactive"}

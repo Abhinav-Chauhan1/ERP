@@ -49,6 +49,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
+import { useEnhancedSyllabusClient } from "@/lib/utils/feature-flags";
 
 // Import schema validation and server actions
 import { 
@@ -78,6 +79,7 @@ import {
 function SyllabusContent() {
   const searchParams = useSearchParams();
   const initialSubjectId = searchParams.get("subject");
+  const useEnhancedSyllabus = useEnhancedSyllabusClient();
   
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(initialSubjectId || "");
@@ -444,6 +446,25 @@ function SyllabusContent() {
           <h1 className="text-2xl font-bold tracking-tight">Syllabus Management</h1>
         </div>
       </div>
+
+      {/* Enhanced Syllabus Banner */}
+      {useEnhancedSyllabus && (
+        <Alert className="bg-primary/5 border-primary/20">
+          <BookOpen className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary">Enhanced Syllabus System Available</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              The new module-based syllabus system is now available with better organization, 
+              multiple document support, and progress tracking.
+            </span>
+            <Link href="/admin/academic/syllabus/modules">
+              <Button size="sm" className="ml-4">
+                Try New System
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardContent className="pt-6">

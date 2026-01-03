@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,11 +52,7 @@ export default function AnnouncementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchAnnouncement();
-  }, [announcementId]);
-
-  async function fetchAnnouncement() {
+  const fetchAnnouncement = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getAnnouncementById(announcementId);
@@ -74,7 +70,11 @@ export default function AnnouncementDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [announcementId, router]);
+
+  useEffect(() => {
+    fetchAnnouncement();
+  }, [announcementId, fetchAnnouncement]);
 
   async function handleToggleStatus() {
     try {

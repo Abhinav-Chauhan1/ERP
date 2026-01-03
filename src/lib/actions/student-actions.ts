@@ -1,21 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 
 export async function getStudentProfile() {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     throw new Error("Not authenticated");
   }
 
-  const clerkUser = await currentUser();
-  if (!clerkUser) {
-    throw new Error("User not found");
-  }
-
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id },
+    where: { id: session.user.id },
     include: {
       student: {
         include: {

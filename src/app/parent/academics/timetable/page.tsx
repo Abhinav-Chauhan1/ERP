@@ -1,18 +1,18 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TimetableGrid } from "@/components/parent/academics/timetable-grid";
 import { ChildSelector } from "@/components/parent/child-selector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Printer, 
-  Download, 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon 
+import {
+  Printer,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { format, addWeeks, subWeeks, startOfWeek } from "date-fns";
 
@@ -25,6 +25,27 @@ export default function TimetablePage() {
   const [enrollment, setEnrollment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentWeek, setCurrentWeek] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  const fetchTimetable = useCallback(async () => {
+    if (!childId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/parent/timetable?childId=${childId}&week=${currentWeek.toISOString()}`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setTimetable(data.timetable || []);
+        setEnrollment(data.enrollment);
+      }
+    } catch (error) {
+      console.error("Failed to fetch timetable:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [childId, currentWeek]);
 
   useEffect(() => {
     if (!childId) {
@@ -44,28 +65,7 @@ export default function TimetablePage() {
     }
 
     fetchTimetable();
-  }, [childId, currentWeek]);
-
-  const fetchTimetable = async () => {
-    if (!childId) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/parent/timetable?childId=${childId}&week=${currentWeek.toISOString()}`
-      );
-      const data = await response.json();
-
-      if (data.success) {
-        setTimetable(data.timetable || []);
-        setEnrollment(data.enrollment);
-      }
-    } catch (error) {
-      console.error("Failed to fetch timetable:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [childId, currentWeek, fetchTimetable, router]);
 
   const handlePreviousWeek = () => {
     setCurrentWeek(subWeeks(currentWeek, 1));
@@ -187,7 +187,7 @@ export default function TimetablePage() {
       ) : timetable.length > 0 ? (
         <div className="print-area">
           <TimetableGrid schedule={timetable} studentName={studentName} />
-          
+
           {/* Additional Details for Print */}
           <Card className="mt-6 print-only">
             <CardHeader>

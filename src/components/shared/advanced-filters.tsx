@@ -37,6 +37,7 @@ export interface FilterConfig {
   type: "select" | "text" | "date-range" | "multi-select";
   options?: { value: string; label: string }[];
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export interface FilterValue {

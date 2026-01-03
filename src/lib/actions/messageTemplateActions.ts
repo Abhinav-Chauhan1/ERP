@@ -3,16 +3,16 @@
 /**
  * Message Template Actions
  * 
- * Server actions for managing message templates for SMS and email communications.
+ * Server actions for managing message templates for SMS, Email, and WhatsApp communications.
  * Supports template variables for dynamic content personalization.
  * 
- * Requirements: 11.1 - Message Template Management
+ * Requirements: 11.1 - Message Template Management, 9.1-9.5 - WhatsApp Template Management
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { MessageType } from "@prisma/client";
+import { MessageType, WhatsAppTemplateStatus } from "@prisma/client";
 
 export interface MessageTemplateInput {
   name: string;
@@ -24,6 +24,13 @@ export interface MessageTemplateInput {
   variables: string[];
   isActive?: boolean;
   isDefault?: boolean;
+  // WhatsApp fields
+  whatsappTemplateName?: string;
+  whatsappTemplateId?: string;
+  whatsappLanguage?: string;
+  whatsappStatus?: WhatsAppTemplateStatus;
+  // SMS fields
+  dltTemplateId?: string;
 }
 
 /**
@@ -35,13 +42,13 @@ export async function getMessageTemplates(filters?: {
   isActive?: boolean;
 }) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: session.user.id },
     });
 
     if (!dbUser) {
@@ -89,8 +96,8 @@ export async function getMessageTemplates(filters?: {
  */
 export async function getMessageTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -120,13 +127,13 @@ export async function getMessageTemplate(id: string) {
  */
 export async function createMessageTemplate(data: MessageTemplateInput) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: session.user.id },
     });
 
     if (!dbUser) {
@@ -146,6 +153,11 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
     // For email templates, subject is required
     if ((data.type === "EMAIL" || data.type === "BOTH") && !data.subject) {
       return { success: false, error: "Subject is required for email templates" };
+    }
+
+    // For WhatsApp templates, template name is required
+    if (data.type === "WHATSAPP" && !data.whatsappTemplateName) {
+      return { success: false, error: "WhatsApp template name is required for WhatsApp templates" };
     }
 
     // Check if template name already exists
@@ -170,6 +182,13 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
         isActive: data.isActive ?? true,
         isDefault: data.isDefault ?? false,
         createdBy: dbUser.id,
+        // WhatsApp fields
+        whatsappTemplateName: data.whatsappTemplateName,
+        whatsappTemplateId: data.whatsappTemplateId,
+        whatsappLanguage: data.whatsappLanguage,
+        whatsappStatus: data.whatsappStatus,
+        // SMS fields
+        dltTemplateId: data.dltTemplateId,
       },
     });
 
@@ -193,13 +212,13 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
  */
 export async function updateMessageTemplate(id: string, data: Partial<MessageTemplateInput>) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: session.user.id },
     });
 
     if (!dbUser) {
@@ -243,6 +262,12 @@ export async function updateMessageTemplate(id: string, data: Partial<MessageTem
       return { success: false, error: "Subject is required for email templates" };
     }
 
+    // Validate WhatsApp templates have template name
+    const newWhatsappTemplateName = data.whatsappTemplateName !== undefined ? data.whatsappTemplateName : existing.whatsappTemplateName;
+    if (newType === "WHATSAPP" && !newWhatsappTemplateName) {
+      return { success: false, error: "WhatsApp template name is required for WhatsApp templates" };
+    }
+
     // Update template
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -253,6 +278,13 @@ export async function updateMessageTemplate(id: string, data: Partial<MessageTem
     if (data.body !== undefined) updateData.body = data.body;
     if (data.variables !== undefined) updateData.variables = JSON.stringify(data.variables);
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    // WhatsApp fields
+    if (data.whatsappTemplateName !== undefined) updateData.whatsappTemplateName = data.whatsappTemplateName;
+    if (data.whatsappTemplateId !== undefined) updateData.whatsappTemplateId = data.whatsappTemplateId;
+    if (data.whatsappLanguage !== undefined) updateData.whatsappLanguage = data.whatsappLanguage;
+    if (data.whatsappStatus !== undefined) updateData.whatsappStatus = data.whatsappStatus;
+    // SMS fields
+    if (data.dltTemplateId !== undefined) updateData.dltTemplateId = data.dltTemplateId;
 
     const template = await db.messageTemplate.update({
       where: { id },
@@ -279,13 +311,13 @@ export async function updateMessageTemplate(id: string, data: Partial<MessageTem
  */
 export async function deleteMessageTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: session.user.id },
     });
 
     if (!dbUser) {
@@ -348,8 +380,8 @@ export async function renderTemplate(template: string, variables: Record<string,
  */
 export async function getAvailableTemplateVariables() {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -427,13 +459,13 @@ export async function getAvailableTemplateVariables() {
  */
 export async function duplicateMessageTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: session.user.id },
     });
 
     if (!dbUser) {

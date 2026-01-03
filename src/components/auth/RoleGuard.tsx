@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { UserRole } from "@prisma/client";
@@ -16,21 +16,21 @@ export default function RoleGuard({
   allowedRoles, 
   redirectTo = "/" 
 }: RoleGuardProps) {
-  const { user, isLoaded } = useUser();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (status === "loading") return;
 
-    if (!user) {
-      router.push("/sign-in");
+    if (status === "unauthenticated" || !session?.user) {
+      router.push("/login");
       return;
     }
 
-    // Get user's role from Clerk metadata
-    const userRole = (user.publicMetadata?.role as UserRole) || null;
+    // Get user's role from session
+    const userRole = session.user.role;
 
     if (!userRole || !allowedRoles.includes(userRole)) {
       router.push(redirectTo);
@@ -39,7 +39,7 @@ export default function RoleGuard({
 
     setIsAuthorized(true);
     setIsChecking(false);
-  }, [user, isLoaded, allowedRoles, redirectTo, router]);
+  }, [session, status, allowedRoles, redirectTo, router]);
 
   if (isChecking) {
     return <div className="flex items-center justify-center min-h-screen">

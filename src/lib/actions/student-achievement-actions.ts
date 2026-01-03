@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
@@ -51,23 +51,24 @@ type ExtraCurricularValues = z.infer<typeof extraCurricularSchema>;
  * Get the current student
  */
 async function getCurrentStudent() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
     return null;
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: userId
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {
     return null;
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -82,14 +83,14 @@ async function getCurrentStudent() {
  */
 export async function getStudentAchievements() {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     redirect("/login");
   }
 
   // Get achievement document types
   await ensureDocumentTypes();
-  
+
   // Get certificate type
   const certificateType = await db.documentType.findFirst({
     where: {
@@ -181,14 +182,14 @@ export async function getStudentAchievements() {
       category: metadata.category || "Academic"
     };
   });
-  
+
   // Get achievement categories
   const categories = {
     certificate: ["Academic", "Competition", "Professional", "Course Completion", "Special Achievement"],
     award: ["Academic", "Sports", "Arts", "Leadership", "Community Service"],
     extraCurricular: ["Academic", "Sports", "Arts", "Leadership", "Service", "Cultural"]
   };
-  
+
   return {
     user: result.dbUser,
     student: result.student,
@@ -204,15 +205,15 @@ export async function getStudentAchievements() {
  */
 export async function addCertificate(values: CertificateValues) {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   try {
     // Validate data
     const validatedData = certificateSchema.parse(values);
-    
+
     // Handle image upload if provided
     let imageUrl = validatedData.imageUrl;
     if (validatedData.imageFile && validatedData.imageFile instanceof File) {
@@ -221,17 +222,17 @@ export async function addCertificate(values: CertificateValues) {
       });
       imageUrl = uploadResult.secure_url;
     }
-    
+
     // Get or create certificate document type
     await ensureDocumentTypes();
     const certificateType = await db.documentType.findFirst({
       where: { name: "Certificate" }
     });
-    
+
     if (!certificateType) {
       return { success: false, message: "Certificate document type not found" };
     }
-    
+
     // Create metadata object
     const metadata = {
       description: validatedData.description,
@@ -239,7 +240,7 @@ export async function addCertificate(values: CertificateValues) {
       issuedBy: validatedData.issuedBy,
       category: validatedData.category
     };
-    
+
     // Store as document
     await db.document.create({
       data: {
@@ -253,10 +254,10 @@ export async function addCertificate(values: CertificateValues) {
         tags: validatedData.category
       }
     });
-    
+
     revalidatePath("/student/achievements");
     return { success: true, message: "Certificate added successfully" };
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -264,11 +265,11 @@ export async function addCertificate(values: CertificateValues) {
         message: error.errors[0].message || "Invalid certificate data"
       };
     }
-    
+
     console.error(error);
-    return { 
-      success: false, 
-      message: "Failed to add certificate" 
+    return {
+      success: false,
+      message: "Failed to add certificate"
     };
   }
 }
@@ -278,15 +279,15 @@ export async function addCertificate(values: CertificateValues) {
  */
 export async function addAward(values: AwardValues) {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   try {
     // Validate data
     const validatedData = awardSchema.parse(values);
-    
+
     // Handle image upload if provided
     let imageUrl = validatedData.imageUrl;
     if (validatedData.imageFile && validatedData.imageFile instanceof File) {
@@ -295,17 +296,17 @@ export async function addAward(values: AwardValues) {
       });
       imageUrl = uploadResult.secure_url;
     }
-    
+
     // Get or create award document type
     await ensureDocumentTypes();
     const awardType = await db.documentType.findFirst({
       where: { name: "Award" }
     });
-    
+
     if (!awardType) {
       return { success: false, message: "Award document type not found" };
     }
-    
+
     // Create metadata object
     const metadata = {
       description: validatedData.description,
@@ -313,7 +314,7 @@ export async function addAward(values: AwardValues) {
       presenter: validatedData.presenter,
       category: validatedData.category
     };
-    
+
     // Store as document
     await db.document.create({
       data: {
@@ -327,10 +328,10 @@ export async function addAward(values: AwardValues) {
         tags: validatedData.category
       }
     });
-    
+
     revalidatePath("/student/achievements");
     return { success: true, message: "Award added successfully" };
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -338,11 +339,11 @@ export async function addAward(values: AwardValues) {
         message: error.errors[0].message || "Invalid award data"
       };
     }
-    
+
     console.error(error);
-    return { 
-      success: false, 
-      message: "Failed to add award" 
+    return {
+      success: false,
+      message: "Failed to add award"
     };
   }
 }
@@ -352,25 +353,25 @@ export async function addAward(values: AwardValues) {
  */
 export async function addExtraCurricular(values: ExtraCurricularValues) {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   try {
     // Validate data
     const validatedData = extraCurricularSchema.parse(values);
-    
+
     // Get or create activity document type
     await ensureDocumentTypes();
     const activityType = await db.documentType.findFirst({
       where: { name: "Extra-Curricular" }
     });
-    
+
     if (!activityType) {
       return { success: false, message: "Activity document type not found" };
     }
-    
+
     // Create metadata object
     const metadata = {
       role: validatedData.role,
@@ -378,7 +379,7 @@ export async function addExtraCurricular(values: ExtraCurricularValues) {
       achievements: validatedData.achievements,
       category: validatedData.category
     };
-    
+
     // Store as document
     await db.document.create({
       data: {
@@ -392,10 +393,10 @@ export async function addExtraCurricular(values: ExtraCurricularValues) {
         tags: validatedData.category
       }
     });
-    
+
     revalidatePath("/student/achievements");
     return { success: true, message: "Activity added successfully" };
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
@@ -403,11 +404,11 @@ export async function addExtraCurricular(values: ExtraCurricularValues) {
         message: error.errors[0].message || "Invalid activity data"
       };
     }
-    
+
     console.error(error);
-    return { 
-      success: false, 
-      message: "Failed to add activity" 
+    return {
+      success: false,
+      message: "Failed to add activity"
     };
   }
 }
@@ -417,39 +418,39 @@ export async function addExtraCurricular(values: ExtraCurricularValues) {
  */
 export async function deleteAchievement(id: string, type: 'certificate' | 'award' | 'extraCurricular') {
   const result = await getCurrentStudent();
-  
+
   if (!result) {
     return { success: false, message: "Authentication required" };
   }
-  
+
   try {
     // Find the document
     const document = await db.document.findUnique({
       where: { id }
     });
-    
+
     if (!document) {
       return { success: false, message: "Achievement not found" };
     }
-    
+
     // Ensure it belongs to the student
     if (document.userId !== result.dbUser.id) {
       return { success: false, message: "You can only delete your own achievements" };
     }
-    
+
     // Delete the document
     await db.document.delete({
       where: { id }
     });
-    
+
     revalidatePath("/student/achievements");
     return { success: true, message: `${type} deleted successfully` };
-    
+
   } catch (error) {
     console.error(error);
-    return { 
-      success: false, 
-      message: `Failed to delete ${type}` 
+    return {
+      success: false,
+      message: `Failed to delete ${type}`
     };
   }
 }
@@ -459,12 +460,12 @@ export async function deleteAchievement(id: string, type: 'certificate' | 'award
  */
 async function ensureDocumentTypes() {
   const requiredTypes = ["Certificate", "Award", "Extra-Curricular"];
-  
+
   for (const typeName of requiredTypes) {
     const existingType = await db.documentType.findFirst({
       where: { name: typeName }
     });
-    
+
     if (!existingType) {
       await db.documentType.create({
         data: {

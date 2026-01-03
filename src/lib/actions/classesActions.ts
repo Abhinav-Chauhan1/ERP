@@ -1,5 +1,11 @@
 "use server";
 
+import { 
+  getClassDeletionCascadeInfo, 
+  logCascadeDeletion, 
+  validateClassDeletionSafety 
+} from "@/lib/services/cascade-deletion.service";
+
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { 
@@ -376,6 +382,16 @@ export async function deleteClass(id: string) {
       };
     }
     
+    // Get cascade deletion information and log it
+    const cascadeInfo = await getClassDeletionCascadeInfo(id);
+    logCascadeDeletion(cascadeInfo);
+    
+    // Validate deletion safety and get warnings
+    const safetyCheck = await validateClassDeletionSafety(id);
+    if (safetyCheck.warnings.length > 0) {
+      console.warn(`[CASCADE DELETE] Warnings for class ${id}:`, safetyCheck.warnings);
+    }
+    
     // Delete class sections
     await db.classSection.deleteMany({ where: { classId: id } });
     
@@ -385,8 +401,10 @@ export async function deleteClass(id: string) {
     // Delete subject-class relationships
     await db.subjectClass.deleteMany({ where: { classId: id } });
     
-    // Delete the class
+    // Delete the class (cascade will handle FeeStructureClass and FeeTypeClassAmount)
     await db.class.delete({ where: { id } });
+    
+    console.log(`[CASCADE DELETE] Successfully deleted class ${cascadeInfo.className} (${id}) and ${cascadeInfo.totalRecordsAffected} related fee records`);
     
     revalidatePath("/admin/classes");
     return { success: true };
@@ -662,7 +680,14 @@ export async function getAcademicYearsForDropdown() {
       }
     });
     
-    return { success: true, data: academicYears };
+    // Sort to show current year first
+    const sortedYears = academicYears.sort((a, b) => {
+      if (a.isCurrent) return -1;
+      if (b.isCurrent) return 1;
+      return 0;
+    });
+    
+    return { success: true, data: sortedYears };
   } catch (error) {
     console.error("Error fetching academic years:", error);
     return { 

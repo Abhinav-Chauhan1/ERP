@@ -86,6 +86,27 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   
   // Settings Routes
   { pattern: /^\/admin\/settings/, resource: 'SETTINGS', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  
+  // Syllabus Module Management Routes (Enhanced Syllabus System)
+  { pattern: /^\/admin\/academic\/syllabus\/modules\/create/, resource: 'MODULE', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/modules\/\w+\/edit/, resource: 'MODULE', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/modules\/\w+\/delete/, resource: 'MODULE', action: 'DELETE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/syllabus\/modules/, resource: 'MODULE', action: 'CREATE', roles: [UserRole.ADMIN] },
+  
+  // Syllabus Sub-Module Management Routes
+  { pattern: /^\/admin\/academic\/syllabus\/sub-modules\/create/, resource: 'SUBMODULE', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/sub-modules\/\w+\/edit/, resource: 'SUBMODULE', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/sub-modules\/\w+\/delete/, resource: 'SUBMODULE', action: 'DELETE', roles: [UserRole.ADMIN] },
+  
+  // Syllabus Document Management Routes
+  { pattern: /^\/admin\/academic\/syllabus\/documents\/upload/, resource: 'DOCUMENT', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/documents\/\w+\/edit/, resource: 'DOCUMENT', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/syllabus\/documents\/\w+\/delete/, resource: 'DOCUMENT', action: 'DELETE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/syllabus\/documents/, resource: 'DOCUMENT', action: 'CREATE', roles: [UserRole.ADMIN] },
+  
+  // Syllabus Progress Tracking Routes
+  { pattern: /^\/teacher\/teaching\/syllabus\/progress/, resource: 'PROGRESS', action: 'UPDATE', roles: [UserRole.TEACHER] },
+  { pattern: /^\/api\/teacher\/syllabus\/progress/, resource: 'PROGRESS', action: 'UPDATE', roles: [UserRole.TEACHER] },
 ];
 
 /**

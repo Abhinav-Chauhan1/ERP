@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { SettingsPageClient } from "@/components/parent/settings/settings-page-client";
 import { getSettings } from "@/lib/actions/parent-settings-actions";
+import { auth } from "@/auth";
 
 export const metadata = {
   title: "Settings | Parent Portal",
@@ -14,29 +15,29 @@ export const metadata = {
 
 export default async function ParentSettingsPage() {
   // Get current user
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   // Get database user
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     },
     include: {
       parent: true
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT || !dbUser.parent) {
     redirect("/login");
   }
-  
+
   // Fetch settings data
   const settingsResult = await getSettings();
-  
+
   if (!settingsResult.success || !settingsResult.data) {
     return (
       <div className="max-w-5xl mx-auto space-y-4">
@@ -48,9 +49,9 @@ export default async function ParentSettingsPage() {
       </div>
     );
   }
-  
+
   const { profile, settings } = settingsResult.data;
-  
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -59,8 +60,8 @@ export default async function ParentSettingsPage() {
           Manage your profile, notifications, and security preferences
         </p>
       </div>
-      
-      <SettingsPageClient 
+
+      <SettingsPageClient
         profile={profile}
         settings={settings}
       />

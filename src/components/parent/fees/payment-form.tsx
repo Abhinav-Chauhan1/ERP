@@ -218,10 +218,10 @@ export function PaymentForm({
                         {getStatusBadge(item.status)}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                        <span>Balance: ${item.balance.toFixed(2)}</span>
+                        <span>Balance: ₹{item.balance.toFixed(2)}</span>
                         {item.paidAmount > 0 && (
                           <span className="text-green-600">
-                            Paid: ${item.paidAmount.toFixed(2)}
+                            Paid: ₹{item.paidAmount.toFixed(2)}
                           </span>
                         )}
                         {item.dueDate && (
@@ -319,7 +319,7 @@ export function PaymentForm({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-blue-900">Total Payment Amount</span>
               <span className="text-2xl font-bold text-blue-900">
-                ${totalAmount.toFixed(2)}
+                ₹{totalAmount.toFixed(2)}
               </span>
             </div>
           </div>

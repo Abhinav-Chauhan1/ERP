@@ -116,16 +116,27 @@ if (
  * @returns Rate limit result
  */
 export async function rateLimit(identifier: string) {
-  if (rateLimiter instanceof InMemoryRateLimiter) {
-    return await rateLimiter.limit(identifier);
-  } else {
-    // Upstash Ratelimit returns a different structure
-    const result = await rateLimiter.limit(identifier);
+  try {
+    if (rateLimiter instanceof InMemoryRateLimiter) {
+      return await rateLimiter.limit(identifier);
+    } else {
+      // Upstash Ratelimit returns a different structure
+      const result = await rateLimiter.limit(identifier);
+      return {
+        success: result.success,
+        limit: result.limit,
+        remaining: result.remaining,
+        reset: result.reset,
+      };
+    }
+  } catch (error) {
+    // If rate limiting fails (e.g., Upstash is down), allow the request
+    console.error("Rate limiting error:", error);
     return {
-      success: result.success,
-      limit: result.limit,
-      remaining: result.remaining,
-      reset: result.reset,
+      success: true,
+      limit: 100,
+      remaining: 100,
+      reset: Date.now() + 10000,
     };
   }
 }

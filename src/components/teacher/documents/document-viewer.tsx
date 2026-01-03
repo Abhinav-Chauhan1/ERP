@@ -28,6 +28,7 @@ export function DocumentViewer({ fileUrl, fileType, fileName }: DocumentViewerPr
   if (fileType?.startsWith('image/')) {
     return (
       <div className="w-full border rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={fileUrl}
           alt={fileName}

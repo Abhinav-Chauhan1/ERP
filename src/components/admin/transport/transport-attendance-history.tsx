@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,18 +42,6 @@ export function TransportAttendanceHistory() {
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Load routes on mount
-  useEffect(() => {
-    loadRoutes();
-  }, []);
-
-  // Load stats when filters change
-  useEffect(() => {
-    if (selectedRoute && startDate && endDate) {
-      loadStats();
-    }
-  }, [selectedRoute, startDate, endDate]);
-
   const loadRoutes = async () => {
     try {
       const result = await getRoutes({ status: "ACTIVE" });
@@ -64,7 +52,12 @@ export function TransportAttendanceHistory() {
     }
   };
 
-  const loadStats = async () => {
+  // Load routes on mount
+  useEffect(() => {
+    loadRoutes();
+  }, []);
+
+  const loadStats = useCallback(async () => {
     if (!selectedRoute) return;
 
     setLoading(true);
@@ -77,7 +70,14 @@ export function TransportAttendanceHistory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRoute, startDate, endDate]);
+
+  // Load stats when filters change
+  useEffect(() => {
+    if (selectedRoute && startDate && endDate) {
+      loadStats();
+    }
+  }, [selectedRoute, startDate, endDate, loadStats]);
 
   return (
     <div className="space-y-6">

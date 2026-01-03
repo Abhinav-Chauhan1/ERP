@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { DayOfWeek } from "@prisma/client";
 import { z } from "zod";
@@ -10,18 +10,13 @@ import { z } from "zod";
  * Get the current student's academic details including enrollment information
  */
 export async function getStudentAcademicDetails() {
-  const { userId } = await auth();
-  if (!userId) {
+  const session = await auth();
+  if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
 
-  const clerkUser = await currentUser();
-  if (!clerkUser) {
-    throw new Error("User not found");
-  }
-
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id },
+    where: { id: session.user.id },
   });
 
   if (!dbUser || dbUser.role !== "STUDENT") {
@@ -144,6 +139,35 @@ export async function getSubjectDetails(subjectId: string) {
             },
             include: {
               lessons: true,
+            },
+          },
+          modules: {
+            orderBy: {
+              chapterNumber: "asc",
+            },
+            include: {
+              subModules: {
+                orderBy: {
+                  order: "asc",
+                },
+                include: {
+                  documents: {
+                    orderBy: {
+                      order: "asc",
+                    },
+                  },
+                  progress: {
+                    where: {
+                      teacherId: currentEnrollment.classId, // Using classId as a proxy for teacher tracking
+                    },
+                  },
+                },
+              },
+              documents: {
+                orderBy: {
+                  order: "asc",
+                },
+              },
             },
           },
         },

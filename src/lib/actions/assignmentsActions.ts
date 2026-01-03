@@ -8,6 +8,11 @@ import {
   AssignmentFilterValues,
   SubmissionGradeValues
 } from "../schemaValidation/assignmentsSchemaValidation";
+import {
+  createCalendarEventFromAssignment,
+  updateCalendarEventFromAssignment,
+  deleteCalendarEventFromAssignment
+} from "../services/assignment-calendar-integration";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {
@@ -310,6 +315,27 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
       }
     }
     
+    // Get the assignment with relations for calendar integration
+    const assignmentWithRelations = await db.assignment.findUnique({
+      where: { id: assignment.id },
+      include: {
+        subject: true,
+        classes: {
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+
+    // Create calendar event from assignment
+    if (assignmentWithRelations) {
+      await createCalendarEventFromAssignment(
+        assignmentWithRelations,
+        creatorId || 'system'
+      );
+    }
+    
     revalidatePath("/admin/assessment/assignments");
     return { success: true, data: assignment };
   } catch (error) {
@@ -382,6 +408,24 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
       }
     }
     
+    // Get the assignment with relations for calendar integration
+    const assignmentWithRelations = await db.assignment.findUnique({
+      where: { id: assignment.id },
+      include: {
+        subject: true,
+        classes: {
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+
+    // Update calendar event from assignment
+    if (assignmentWithRelations) {
+      await updateCalendarEventFromAssignment(assignmentWithRelations);
+    }
+    
     revalidatePath("/admin/assessment/assignments");
     revalidatePath(`/admin/assessment/assignments/${data.id}`);
     return { success: true, data: assignment };
@@ -413,6 +457,9 @@ export async function deleteAssignment(id: string) {
     await db.assignmentClass.deleteMany({
       where: { assignmentId: id }
     });
+    
+    // Delete calendar event from assignment
+    await deleteCalendarEventFromAssignment(id);
     
     // Delete the assignment
     await db.assignment.delete({

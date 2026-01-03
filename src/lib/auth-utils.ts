@@ -1,31 +1,23 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { db } from "./db";
 import { UserRole } from "@prisma/client";
 
 /**
  * Server-side middleware for role-based authorization
  */
 export async function requireRole(allowedRoles: UserRole[], redirectTo: string = "/") {
-  const { userId } = await auth();
+  const session = await auth();
   
-  if (!userId) {
-    return redirect("/sign-in");
+  if (!session?.user) {
+    return redirect("/login");
   }
   
-  // Find user in our database
-  const user = await db.user.findFirst({
-    where: {
-      clerkId: userId
-    }
-  });
-  
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(session.user.role)) {
     return redirect(redirectTo);
   }
   
   // Return user for convenience
-  return user;
+  return session.user;
 }
 
 /**

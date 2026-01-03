@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { CourseDetail } from '@/components/student/course-detail';
@@ -39,7 +39,8 @@ export async function generateMetadata({ params }: CourseDetailPageProps): Promi
 
 export default async function CourseDetailPage({ params }: CourseDetailPageProps) {
   const { courseId } = await params;
-  const { userId } = await auth();
+  const session = await auth();
+const userId = session?.user?.id;
 
   if (!userId) {
     redirect('/login');
@@ -47,7 +48,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
 
   // Get current student
   const dbUser = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: { student: true },
   });
 

@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { ArrowLeft, CheckCircle, XCircle, Clock, FileText, Download } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@clerk/nextjs";
+import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import {
   AlertDialog,
@@ -33,7 +33,7 @@ import {
 export default function ApplicationDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { userId } = useAuth();
+  const { data: session } = useSession();
   const [application, setApplication] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [remarks, setRemarks] = useState("");
@@ -73,7 +73,7 @@ export default function ApplicationDetailPage() {
         params.id as string,
         pendingStatus as any,
         remarks,
-        userId || undefined
+        session?.user?.id || undefined
       );
 
       if (result.success) {

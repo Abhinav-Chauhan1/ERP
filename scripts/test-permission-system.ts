@@ -15,10 +15,10 @@ async function testPermissionSystem() {
     console.log('1️⃣ Creating test user...');
     const testUser = await prisma.user.create({
       data: {
-        clerkId: `test_${Date.now()}`,
         email: `test${Date.now()}@example.com`,
         firstName: 'Test',
         lastName: 'User',
+        name: 'Test User',
         role: UserRole.TEACHER,
       },
     });

@@ -2,10 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 
 export default async function Home() {
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-50 to-white">
@@ -36,7 +37,7 @@ export default async function Home() {
           School Management Made <span className="text-blue-600">Simple</span>
         </h1>
         <p className="max-w-2xl text-lg text-gray-600 sm:text-xl">
-          A comprehensive ERP solution for educational institutions to manage students, 
+          A comprehensive ERP solution for educational institutions to manage students,
           teachers, classes, assessments, finances, and more.
         </p>
         <div className="flex gap-4">

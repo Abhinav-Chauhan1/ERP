@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
@@ -9,7 +9,8 @@ import { revalidatePath } from "next/cache";
  */
 export async function getTeacherSubjectsForExam() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -44,7 +45,8 @@ export async function getTeacherSubjectsForExam() {
  */
 export async function getClassesForExam() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -75,7 +77,8 @@ export async function getQuestionBanks(filters: {
   questionType?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -123,7 +126,8 @@ export async function getQuestionBanks(filters: {
  */
 export async function getSubjectTopics(subjectId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -169,7 +173,8 @@ export async function createOnlineExam(data: {
   allowReview?: boolean;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -261,7 +266,8 @@ export async function createOnlineExam(data: {
  */
 export async function getTeacherOnlineExams() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -305,7 +311,8 @@ export async function getTeacherOnlineExams() {
  */
 export async function getOnlineExamById(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -367,7 +374,8 @@ export async function selectRandomQuestions(criteria: {
   questionType?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -419,7 +427,8 @@ export async function gradeEssayQuestions(
   questionScores: Record<string, number>
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

@@ -7,6 +7,11 @@ import {
   ExamUpdateFormValues, 
   ExamResultFormValues 
 } from "../schemaValidation/examsSchemaValidation";
+import {
+  createCalendarEventFromExam,
+  updateCalendarEventFromExam,
+  deleteCalendarEventFromExam
+} from "../services/exam-calendar-integration";
 
 // Get upcoming exams
 export async function getUpcomingExams() {
@@ -242,7 +247,10 @@ export async function createExam(data: ExamFormValues, creatorId?: string) {
   try {
     // Validate exam date based on term dates
     const term = await db.term.findUnique({
-      where: { id: data.termId }
+      where: { id: data.termId },
+      include: {
+        academicYear: true
+      }
     });
     
     if (!term) {
@@ -276,8 +284,21 @@ export async function createExam(data: ExamFormValues, creatorId?: string) {
     }
     
     const exam = await db.exam.create({
-      data: examData
+      data: examData,
+      include: {
+        subject: true,
+        examType: true,
+        term: {
+          include: {
+            academicYear: true
+          }
+        }
+      }
     });
+    
+    // Create calendar event for the exam
+    // Requirement 10.1: Automatically generate a calendar event with exam details
+    await createCalendarEventFromExam(exam as any, creatorId || 'system');
     
     revalidatePath("/admin/assessment/exams");
     return { success: true, data: exam };
@@ -295,7 +316,10 @@ export async function updateExam(data: ExamUpdateFormValues) {
   try {
     // Validate exam date based on term dates
     const term = await db.term.findUnique({
-      where: { id: data.termId }
+      where: { id: data.termId },
+      include: {
+        academicYear: true
+      }
     });
     
     if (!term) {
@@ -323,8 +347,21 @@ export async function updateExam(data: ExamUpdateFormValues) {
         totalMarks: data.totalMarks,
         passingMarks: data.passingMarks,
         instructions: data.instructions
+      },
+      include: {
+        subject: true,
+        examType: true,
+        term: {
+          include: {
+            academicYear: true
+          }
+        }
       }
     });
+    
+    // Update calendar event for the exam
+    // Requirement 10.4: Synchronize changes to the corresponding calendar event
+    await updateCalendarEventFromExam(exam as any);
     
     revalidatePath("/admin/assessment/exams");
     revalidatePath(`/admin/assessment/exams/${data.id}`);
@@ -352,6 +389,10 @@ export async function deleteExam(id: string) {
         error: "Cannot delete this exam because it has associated results. Remove the results first."
       };
     }
+    
+    // Delete calendar event first
+    // Requirement 10.5: Remove the associated calendar event from all user calendars
+    await deleteCalendarEventFromExam(id);
     
     await db.exam.delete({
       where: { id }

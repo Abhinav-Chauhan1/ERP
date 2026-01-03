@@ -1,10 +1,10 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   Calendar, Clock, BookOpen, User,
   Building, ArrowLeft, ArrowRight, MoreVertical,
   Copy, Download, Printer, RefreshCw, Search,
@@ -56,12 +56,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import toast from "react-hot-toast";
 
 // Import schema validation and server actions
-import { 
-  timetableSchema, 
-  timetableSlotSchema, 
-  TimetableFormValues 
+import {
+  timetableSchema,
+  timetableSlotSchema,
+  TimetableFormValues
 } from "@/lib/schemaValidation/timetableSchemaValidation";
-import { 
+import {
   getClassesForTimetable,
   getRoomsForTimetable,
   getSubjectTeachersForTimetable,
@@ -102,7 +102,7 @@ export default function TimetablePage() {
   const [subjectTeachers, setSubjectTeachers] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [timetables, setTimetables] = useState<any[]>([]);
-  
+
   const [slots, setSlots] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedDay, setSelectedDay] = useState<string>("MONDAY");
@@ -114,14 +114,14 @@ export default function TimetablePage() {
   const [deleteTimetableDialogOpen, setDeleteTimetableDialogOpen] = useState(false);
   const [teacherFilter, setTeacherFilter] = useState<string>("");
   const [roomFilter, setRoomFilter] = useState<string>("");
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Replace the static periods with state from configuration
   const [periods, setPeriods] = useState<any[]>([]);
   const [weekDays, setWeekDays] = useState<string[]>([]);
-  
+
   // Form handling for timetable
   const timetableForm = useForm<TimetableFormValues>({
     resolver: zodResolver(timetableSchema),
@@ -132,7 +132,7 @@ export default function TimetablePage() {
       isActive: true,
     },
   });
-  
+
   // Form handling for timetable slot
   const slotForm = useForm<TimetableSlotFormValues>({
     resolver: zodResolver(timetableSlotSchema),
@@ -148,77 +148,27 @@ export default function TimetablePage() {
     },
   });
 
-  useEffect(() => {
-    fetchData();
-    loadTimetableConfig();
-  }, []);
-
-  useEffect(() => {
-    if (selectedTimetable && selectedClass) {
-      fetchSlotsForClass(selectedClass, selectedTimetable);
-    }
-  }, [selectedClass, selectedTimetable]);
-
-  // Load timetable configuration
-  async function loadTimetableConfig() {
-    try {
-      const result = await getTimetableConfig();
-      if (result.success && result.data) {
-        setPeriods(result.data.periods.map(p => ({
-          id: `p${p.order}`,
-          time: `${p.startTime} - ${p.endTime}`,
-          name: p.name,
-          startTime: p.startTime,
-          endTime: p.endTime
-        })));
-        setWeekDays(result.data.daysOfWeek);
-        
-        // Set default selected day from config if available
-        if (result.data.daysOfWeek.length > 0 && !selectedDay) {
-          setSelectedDay(result.data.daysOfWeek[0]);
-        }
-      }
-    } catch (err) {
-      console.error("Error loading timetable configuration:", err);
-    }
-  }
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Fetch timetables
       const timetablesResult = await getTimetables();
       if (timetablesResult.success && timetablesResult.data) {
         setTimetables(timetablesResult.data || []);
-        
-        // Set first active timetable as selected if none is selected
-        if (timetablesResult.data.length > 0 && !selectedTimetable) {
-          const activeTimetable = timetablesResult.data.find(t => t.isActive);
-          if (activeTimetable) {
-            setSelectedTimetable(activeTimetable.id);
-          } else {
-            setSelectedTimetable(timetablesResult.data[0].id);
-          }
-        }
       } else {
         toast.error(timetablesResult.error || "Failed to fetch timetables");
       }
-      
+
       // Fetch classes
       const classesResult = await getClassesForTimetable();
       if (classesResult.success) {
         setClasses(classesResult.data || []);
-        
-        // Set first class as selected if none is selected
-        if (classesResult.data && classesResult.data.length > 0 && !selectedClass) {
-          setSelectedClass(classesResult.data[0].id);
-        }
       } else {
         toast.error(classesResult.error || "Failed to fetch classes");
       }
-      
+
       // Fetch rooms
       const roomsResult = await getRoomsForTimetable();
       if (roomsResult.success) {
@@ -226,12 +176,12 @@ export default function TimetablePage() {
       } else {
         toast.error(roomsResult.error || "Failed to fetch rooms");
       }
-      
+
       // Fetch subject-teachers
       const subjectTeachersResult = await getSubjectTeachersForTimetable();
       if (subjectTeachersResult.success) {
         setSubjectTeachers(subjectTeachersResult.data || []);
-        
+
         // Extract unique teachers for the filter
         const uniqueTeachers = Array.from(
           new Map(
@@ -254,13 +204,66 @@ export default function TimetablePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  const loadTimetableConfig = useCallback(async () => {
+    try {
+      const result = await getTimetableConfig();
+      if (result.success && result.data) {
+        setPeriods(result.data.periods.map(p => ({
+          id: `p${p.order}`,
+          time: `${p.startTime} - ${p.endTime}`,
+          name: p.name,
+          startTime: p.startTime,
+          endTime: p.endTime
+        })));
+        setWeekDays(result.data.daysOfWeek);
+      }
+    } catch (err) {
+      console.error("Error loading timetable configuration:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    loadTimetableConfig();
+  }, [fetchData, loadTimetableConfig]);
+
+  useEffect(() => {
+    if (selectedTimetable && selectedClass) {
+      fetchSlotsForClass(selectedClass, selectedTimetable);
+    }
+  }, [selectedClass, selectedTimetable]);
+
+  // Effects to set defaults
+  useEffect(() => {
+    if (timetables.length > 0 && !selectedTimetable) {
+      const activeTimetable = timetables.find(t => t.isActive);
+      if (activeTimetable) {
+        setSelectedTimetable(activeTimetable.id);
+      } else {
+        setSelectedTimetable(timetables[0].id);
+      }
+    }
+  }, [timetables, selectedTimetable]);
+
+  useEffect(() => {
+    if (classes.length > 0 && !selectedClass) {
+      setSelectedClass(classes[0].id);
+    }
+  }, [classes, selectedClass]);
+
+  useEffect(() => {
+    if (weekDays.length > 0 && !selectedDay) {
+      setSelectedDay(weekDays[0]);
+    }
+  }, [weekDays, selectedDay]);
 
   async function fetchSlotsForClass(classId: string, timetableId: string) {
     try {
       setLoading(true);
       const result = await getTimetableSlotsByClass(classId, false);
-      
+
       if (result.success && result.data) {
         // Filter slots for the selected timetable
         const filteredSlots = result.data.filter(slot => slot.timetable.id === timetableId);
@@ -280,7 +283,7 @@ export default function TimetablePage() {
     try {
       setLoading(true);
       const result = await getTimetableSlotsByTeacher(teacherId);
-      
+
       if (result.success) {
         setSlots(result.data || []);
       } else {
@@ -298,7 +301,7 @@ export default function TimetablePage() {
     try {
       setLoading(true);
       const result = await getTimetableSlotsByRoom(roomId);
-      
+
       if (result.success) {
         setSlots(result.data || []);
       } else {
@@ -325,7 +328,7 @@ export default function TimetablePage() {
   async function onSubmitTimetable(values: TimetableFormValues) {
     try {
       let result;
-      
+
       if (editingEntry) {
         // Update existing timetable
         result = await updateTimetable({
@@ -336,7 +339,7 @@ export default function TimetablePage() {
         // Create new timetable
         result = await createTimetable(values);
       }
-      
+
       if (result.success) {
         toast.success(editingEntry ? "Timetable updated successfully" : "Timetable created successfully");
         setTimetableDialogOpen(false);
@@ -355,7 +358,7 @@ export default function TimetablePage() {
   async function onSubmitSlot(values: TimetableSlotFormValues) {
     try {
       let result;
-      
+
       if (editingEntry) {
         // Update existing slot
         result = await updateTimetableSlot({
@@ -366,7 +369,7 @@ export default function TimetablePage() {
         // Create new slot
         result = await createTimetableSlot(values);
       }
-      
+
       if (result.success) {
         toast.success(editingEntry ? "Schedule updated successfully" : "Schedule created successfully");
         setSlotDialogOpen(false);
@@ -376,7 +379,7 @@ export default function TimetablePage() {
           day: selectedDay as "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY",
         });
         setEditingEntry(null);
-        
+
         // Refresh data
         if (selectedClass && selectedTimetable) {
           fetchSlotsForClass(selectedClass, selectedTimetable);
@@ -402,7 +405,7 @@ export default function TimetablePage() {
       effectiveTo: timetable.effectiveTo ? new Date(timetable.effectiveTo) : undefined,
       isActive: timetable.isActive,
     });
-    
+
     setEditingEntry(timetable);
     setTimetableDialogOpen(true);
   }
@@ -414,7 +417,7 @@ export default function TimetablePage() {
       effectiveFrom: new Date(),
       isActive: true,
     });
-    
+
     setEditingEntry(null);
     setTimetableDialogOpen(true);
   }
@@ -423,7 +426,7 @@ export default function TimetablePage() {
     // Convert times to Date objects for form
     const startTime = new Date(entry.startTime);
     const endTime = new Date(entry.endTime);
-    
+
     slotForm.reset({
       timetableId: entry.timetable.id,
       classId: entry.class.id,
@@ -431,13 +434,13 @@ export default function TimetablePage() {
       day: entry.day,
       startTime,
       endTime,
-      subjectTeacherId: subjectTeachers.find(st => 
-        st.subjectId === entry.subject.id && 
+      subjectTeacherId: subjectTeachers.find(st =>
+        st.subjectId === entry.subject.id &&
         st.teacherId === entry.teacher.id
       )?.id || "",
       roomId: entry.room?.id,
     });
-    
+
     setEditingEntry(entry);
     setSlotDialogOpen(true);
   }
@@ -447,15 +450,15 @@ export default function TimetablePage() {
     const periodInfo = periods.find(p => p.id === periodId);
     let startTime = new Date();
     let endTime = new Date();
-    
+
     if (periodInfo) {
       const [startHour, startMinute] = periodInfo.startTime.split(':').map(Number);
       const [endHour, endMinute] = periodInfo.endTime.split(':').map(Number);
-      
+
       startTime = setMinutes(setHours(new Date(), startHour), startMinute);
       endTime = setMinutes(setHours(new Date(), endHour), endMinute);
     }
-    
+
     slotForm.reset({
       timetableId: selectedTimetable,
       classId: selectedClass,
@@ -463,7 +466,7 @@ export default function TimetablePage() {
       startTime,
       endTime,
     });
-    
+
     setEditingEntry(null);
     setSlotDialogOpen(true);
   }
@@ -482,12 +485,12 @@ export default function TimetablePage() {
     if (editingEntry) {
       try {
         const result = await deleteTimetableSlot(editingEntry.id);
-        
+
         if (result.success) {
           toast.success("Schedule entry deleted successfully");
           setDeleteDialogOpen(false);
           setEditingEntry(null);
-          
+
           // Refresh data
           if (selectedClass && selectedTimetable) {
             fetchSlotsForClass(selectedClass, selectedTimetable);
@@ -510,12 +513,12 @@ export default function TimetablePage() {
     if (editingEntry) {
       try {
         const result = await deleteTimetable(editingEntry.id);
-        
+
         if (result.success) {
           toast.success("Timetable deleted successfully");
           setDeleteTimetableDialogOpen(false);
           setEditingEntry(null);
-          
+
           // Refresh data and reset selection if current timetable was deleted
           if (selectedTimetable === editingEntry.id) {
             setSelectedTimetable("");
@@ -538,10 +541,10 @@ export default function TimetablePage() {
 
   // Get slots for the selected class and day
   const getSlotsForSelectedClassAndDay = () => {
-    return slots.filter(slot => 
-      slot.class.id === selectedClass && 
+    return slots.filter(slot =>
+      slot.class.id === selectedClass &&
       slot.day === selectedDay
-    ).sort((a, b) => 
+    ).sort((a, b) =>
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
   };
@@ -567,18 +570,18 @@ export default function TimetablePage() {
   const getSlotForPeriod = (periodId: string) => {
     const periodInfo = periods.find(p => p.id === periodId);
     if (!periodInfo) return null;
-    
+
     const [startHour, startMinute] = periodInfo.startTime.split(':').map(Number);
     const [endHour, endMinute] = periodInfo.endTime.split(':').map(Number);
-    
+
     const periodStartTime = setMinutes(setHours(new Date(), startHour), startMinute);
     const periodEndTime = setMinutes(setHours(new Date(), endHour), endMinute);
-    
+
     // Find a slot that overlaps with this period
     return getSlotsForSelectedClassAndDay().find(slot => {
       const slotStart = new Date(slot.startTime);
       const slotEnd = new Date(slot.endTime);
-      
+
       // Check if the slot overlaps with the period
       return (
         (slotStart <= periodStartTime && slotEnd > periodStartTime) ||
@@ -620,8 +623,8 @@ export default function TimetablePage() {
               <DialogHeader>
                 <DialogTitle>{editingEntry ? "Edit Timetable" : "Create New Timetable"}</DialogTitle>
                 <DialogDescription>
-                  {editingEntry 
-                    ? "Update the details of this timetable" 
+                  {editingEntry
+                    ? "Update the details of this timetable"
                     : "Create a new timetable for your institution"}
                 </DialogDescription>
               </DialogHeader>
@@ -634,9 +637,9 @@ export default function TimetablePage() {
                       <FormItem>
                         <FormLabel>Timetable Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g. Spring Semester 2023" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g. Spring Semester 2023"
+                            {...field}
                             value={field.value?.toString() || ''}
                           />
                         </FormControl>
@@ -665,9 +668,9 @@ export default function TimetablePage() {
                         <FormItem>
                           <FormLabel>Effective From</FormLabel>
                           <FormControl>
-                            <DatePicker 
-                              date={field.value instanceof Date ? field.value : undefined} 
-                              onSelect={field.onChange} 
+                            <DatePicker
+                              date={field.value instanceof Date ? field.value : undefined}
+                              onSelect={field.onChange}
                               placeholder="Select date"
                             />
                           </FormControl>
@@ -682,9 +685,9 @@ export default function TimetablePage() {
                         <FormItem>
                           <FormLabel>Effective To (Optional)</FormLabel>
                           <FormControl>
-                            <DatePicker 
-                              date={field.value instanceof Date ? field.value : undefined} 
-                              onSelect={field.onChange} 
+                            <DatePicker
+                              date={field.value instanceof Date ? field.value : undefined}
+                              onSelect={field.onChange}
                               placeholder="Select date"
                               disabled={(date) => {
                                 const effectiveFrom = timetableForm.getValues("effectiveFrom");
@@ -759,16 +762,16 @@ export default function TimetablePage() {
             </div>
             {selectedTimetable && timetables.find(t => t.id === selectedTimetable) && (
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => handleEditTimetable(timetables.find(t => t.id === selectedTimetable))}
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Timetable
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="text-red-500"
                   onClick={() => handleDeleteTimetable(timetables.find(t => t.id === selectedTimetable))}
@@ -802,9 +805,9 @@ export default function TimetablePage() {
             </div>
             <div className="md:w-1/2 flex items-center gap-2">
               <div className="mb-1 text-sm font-medium">Day</div>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => navigateDay('prev')}
                 disabled={weekDays.indexOf(selectedDay) === 0}
               >
@@ -822,9 +825,9 @@ export default function TimetablePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => navigateDay('next')}
                 disabled={weekDays.indexOf(selectedDay) === weekDays.length - 1}
               >
@@ -858,7 +861,7 @@ export default function TimetablePage() {
                 <div className="space-y-4">
                   {periods.map(period => {
                     const entry = getSlotForPeriod(period.id);
-                    
+
                     return (
                       <div key={period.id} className="border rounded-md">
                         <div className="flex items-center justify-between bg-accent p-3 border-b">
@@ -867,8 +870,8 @@ export default function TimetablePage() {
                             <span className="font-medium">{period.time}</span>
                           </div>
                           {!entry && (
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleAddSlot(period.id)}
                             >
@@ -902,17 +905,17 @@ export default function TimetablePage() {
                                 </div>
                               </div>
                               <div className="flex gap-2 md:self-center">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => handleEditSlot(entry)}
                                 >
                                   <Edit className="h-4 w-4 mr-1" />
                                   Edit
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   className="text-red-500"
                                   onClick={() => handleDeleteSlot(entry)}
                                 >
@@ -967,7 +970,7 @@ export default function TimetablePage() {
               <TabsTrigger value="teachers">Teachers Timetable</TabsTrigger>
               <TabsTrigger value="rooms">Rooms Occupancy</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="weekly" className="mt-4">
               <Card>
                 <CardHeader>
@@ -997,16 +1000,16 @@ export default function TimetablePage() {
                                 const weeklySlots = getWeeklyScheduleForClass();
                                 const slot = weeklySlots.find(s => {
                                   if (s.day !== day) return false;
-                                  
+
                                   const [startHour, startMinute] = period.startTime.split(':').map(Number);
                                   const [endHour, endMinute] = period.endTime.split(':').map(Number);
-                                  
+
                                   const periodStartTime = setMinutes(setHours(new Date(), startHour), startMinute);
                                   const periodEndTime = setMinutes(setHours(new Date(), endHour), endMinute);
-                                  
+
                                   const slotStart = new Date(s.startTime);
                                   const slotEnd = new Date(s.endTime);
-                                  
+
                                   // Check for overlap
                                   return (
                                     (slotStart <= periodStartTime && slotEnd > periodStartTime) ||
@@ -1014,7 +1017,7 @@ export default function TimetablePage() {
                                     (slotStart >= periodStartTime && slotEnd <= periodEndTime)
                                   );
                                 });
-                                
+
                                 return (
                                   <td key={day} className="border p-3">
                                     {slot ? (
@@ -1046,7 +1049,7 @@ export default function TimetablePage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="teachers" className="mt-4">
               <Card>
                 <CardHeader className="pb-3">
@@ -1077,7 +1080,7 @@ export default function TimetablePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {teacherFilter ? (
                       loading ? (
                         <div className="flex justify-center items-center py-12">
@@ -1134,7 +1137,7 @@ export default function TimetablePage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="rooms" className="mt-4">
               <Card>
                 <CardHeader className="pb-3">
@@ -1165,7 +1168,7 @@ export default function TimetablePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {roomFilter ? (
                       loading ? (
                         <div className="flex justify-center items-center py-12">
@@ -1229,8 +1232,8 @@ export default function TimetablePage() {
           <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-3" />
           <h3 className="text-lg font-medium mb-1">No Timetable Selected</h3>
           <p className="text-sm mb-4">
-            {timetables.length === 0 
-              ? "No timetables have been created yet. Create your first timetable to get started." 
+            {timetables.length === 0
+              ? "No timetables have been created yet. Create your first timetable to get started."
               : "Please select a timetable from the dropdown above."}
           </p>
           <Button onClick={handleAddTimetable}>
@@ -1245,8 +1248,8 @@ export default function TimetablePage() {
           <DialogHeader>
             <DialogTitle>{editingEntry ? "Edit Schedule" : "Add New Schedule"}</DialogTitle>
             <DialogDescription>
-              {editingEntry 
-                ? "Update the details of this schedule entry" 
+              {editingEntry
+                ? "Update the details of this schedule entry"
                 : "Create a new schedule entry for the selected class"}
             </DialogDescription>
           </DialogHeader>
@@ -1259,8 +1262,8 @@ export default function TimetablePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Day</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={typeof field.value === 'string' ? field.value : undefined}
                       >
                         <FormControl>
@@ -1286,8 +1289,8 @@ export default function TimetablePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Class</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value?.toString()}
                       >
                         <FormControl>
@@ -1314,12 +1317,12 @@ export default function TimetablePage() {
                 render={({ field }) => {
                   const selectedClassObj = classes.find(c => c.id === slotForm.watch("classId"));
                   const sections = selectedClassObj?.sections || [];
-                  
+
                   return (
                     <FormItem>
                       <FormLabel>Section (Optional)</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value?.toString() || "none"}
                         disabled={sections.length === 0}
                       >
@@ -1350,9 +1353,9 @@ export default function TimetablePage() {
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           value={field.value instanceof Date ? formatTimeForDisplay(field.value).replace(/\s/g, '') : ''}
                           onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
@@ -1373,9 +1376,9 @@ export default function TimetablePage() {
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="time" 
-                          {...field} 
+                        <Input
+                          type="time"
+                          {...field}
                           value={field.value instanceof Date ? formatTimeForDisplay(field.value).replace(/\s/g, '') : ''}
                           onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
@@ -1396,8 +1399,8 @@ export default function TimetablePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject & Teacher</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       defaultValue={typeof field.value === 'string' ? field.value : undefined}
                     >
                       <FormControl>
@@ -1423,8 +1426,8 @@ export default function TimetablePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Room (Optional)</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
+                    <Select
+                      onValueChange={field.onChange}
                       value={typeof field.value === 'string' ? field.value : "none"}
                     >
                       <FormControl>

@@ -264,16 +264,16 @@ export function ComposeMessage({
                 >
                   {recipientId
                     ? (() => {
-                        const selected = recipients.find((r) => r.id === recipientId);
-                        return selected ? (
-                          <div className="flex items-center gap-2">
-                            <span>{selected.firstName} {selected.lastName}</span>
-                            <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
-                              {selected.role}
-                            </Badge>
-                          </div>
-                        ) : "Select recipient";
-                      })()
+                      const selected = recipients.find((r) => r.id === recipientId);
+                      return selected ? (
+                        <div className="flex items-center gap-2">
+                          <span>{selected.firstName} {selected.lastName}</span>
+                          <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
+                            {selected.role}
+                          </Badge>
+                        </div>
+                      ) : "Select recipient";
+                    })()
                     : "Select recipient"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -295,9 +295,8 @@ export function ComposeMessage({
                           className="flex items-center gap-2 py-3 cursor-pointer"
                         >
                           <Check
-                            className={`h-4 w-4 shrink-0 ${
-                              recipientId === recipient.id ? "opacity-100" : "opacity-0"
-                            }`}
+                            className={`h-4 w-4 shrink-0 ${recipientId === recipient.id ? "opacity-100" : "opacity-0"
+                              }`}
                           />
                           <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
                             <span className="font-medium truncate">
@@ -378,7 +377,7 @@ export function ComposeMessage({
                   {attachments.map((file, index) => {
                     const isImage = file.type.startsWith('image/');
                     const previewUrl = isImage ? URL.createObjectURL(file) : null;
-                    
+
                     return (
                       <div
                         key={index}
@@ -386,11 +385,14 @@ export function ComposeMessage({
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {isImage && previewUrl ? (
-                            <img 
-                              src={previewUrl} 
-                              alt={file.name}
-                              className="h-10 w-10 object-cover rounded flex-shrink-0"
-                            />
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={previewUrl}
+                                alt={file.name}
+                                className="h-10 w-10 object-cover rounded flex-shrink-0"
+                              />
+                            </>
                           ) : (
                             <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           )}

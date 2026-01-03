@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { rsvpStatusEnum } from "@/lib/schemas/teacher-schemas";
@@ -16,9 +16,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId: clerkUserId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
-    if (!clerkUserId) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -27,7 +28,7 @@ export async function POST(
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: clerkUserId },
+      where: { id: userId },
       include: {
         teacher: true,
       },
@@ -56,25 +57,25 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    
+
     // Validate using schema
     const validation = rsvpSchema.safeParse(body);
-    
+
     if (!validation.success) {
       const errors = validation.error.errors.map((err) => ({
         field: err.path.join('.'),
         message: err.message,
       }));
-      
+
       return NextResponse.json(
-        { 
+        {
           message: "Validation failed",
           errors,
         },
         { status: 400 }
       );
     }
-    
+
     const validatedData = validation.data;
 
     // Create or update RSVP with retry logic for transient errors
@@ -106,7 +107,7 @@ export async function POST(
     return NextResponse.json({ rsvp }, { status: 200 });
   } catch (error) {
     console.error('Error submitting RSVP:', error);
-    
+
     // Handle database constraint violations
     if (error instanceof Error) {
       if (error.message.includes('Foreign key constraint')) {

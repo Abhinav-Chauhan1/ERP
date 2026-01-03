@@ -1,9 +1,14 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  createCalendarEventFromMeeting,
+  updateCalendarEventFromMeeting,
+  deleteCalendarEventFromMeeting
+} from "../services/meeting-calendar-integration";
 
 // Validation schemas
 const scheduleMeetingSchema = z.object({
@@ -42,14 +47,15 @@ const getMeetingHistorySchema = z.object({
 export async function scheduleMeeting(formData: FormData) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to schedule a meeting" };
     }
 
     // 2. Get parent from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -150,6 +156,9 @@ export async function scheduleMeeting(formData: FormData) {
       },
     });
 
+    // 6a. Create calendar event for the meeting
+    await createCalendarEventFromMeeting(meeting as any, userId);
+
     // 7. Create notifications for both parent and teacher
     await Promise.all([
       db.notification.create({
@@ -195,14 +204,15 @@ export async function scheduleMeeting(formData: FormData) {
 export async function getUpcomingMeetings(parentId: string) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to view your meetings" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -267,14 +277,15 @@ export async function getMeetingHistory(params: {
 }) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to view your meeting history" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -369,14 +380,15 @@ export async function getMeetingHistory(params: {
 export async function cancelMeeting(formData: FormData) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to cancel a meeting" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -436,6 +448,9 @@ export async function cancelMeeting(formData: FormData) {
       },
     });
 
+    // 6a. Delete calendar event for the cancelled meeting
+    await deleteCalendarEventFromMeeting(validated.meetingId);
+
     // 7. Create notification for teacher
     await db.notification.create({
       data: {
@@ -471,14 +486,15 @@ export async function cancelMeeting(formData: FormData) {
 export async function rescheduleMeeting(formData: FormData) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to reschedule a meeting" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -560,7 +576,34 @@ export async function rescheduleMeeting(formData: FormData) {
         status: "RESCHEDULED",
         notes: `Rescheduled from ${meeting.scheduledDate.toLocaleString()} to ${newDateTime.toLocaleString()}`,
       },
+      include: {
+        parent: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
     });
+
+    // 7a. Update calendar event for the rescheduled meeting
+    await updateCalendarEventFromMeeting(updatedMeeting as any);
 
     // 8. Create notification for teacher
     await db.notification.create({
@@ -597,7 +640,8 @@ export async function rescheduleMeeting(formData: FormData) {
 export async function getTeacherAvailability(teacherId: string, date: string) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to view teacher availability" };
     }
@@ -700,14 +744,15 @@ export async function getTeacherAvailability(teacherId: string, date: string) {
 export async function getTeachersForMeetings() {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to view teachers" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 
@@ -753,14 +798,15 @@ export async function getTeachersForMeetings() {
 export async function getMeetingById(meetingId: string) {
   try {
     // 1. Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Please sign in to view meeting details" };
     }
 
     // 2. Get user from database
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { parent: true },
     });
 

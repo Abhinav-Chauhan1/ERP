@@ -233,14 +233,14 @@ export default async function MessageHistoryDetailPage({
                 <span className="text-sm font-medium text-muted-foreground">
                   SMS Cost
                 </span>
-                <span className="font-medium">${message.smsCost.toFixed(2)}</span>
+                <span className="font-medium">₹{message.smsCost.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
                   Email Cost
                 </span>
-                <span className="font-medium">${message.emailCost.toFixed(2)}</span>
+                <span className="font-medium">₹{message.emailCost.toFixed(2)}</span>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t">
@@ -249,7 +249,7 @@ export default async function MessageHistoryDetailPage({
                   <span className="text-sm font-medium">Total Cost</span>
                 </div>
                 <span className="text-lg font-bold">
-                  ${message.totalCost.toFixed(2)}
+                  ₹{message.totalCost.toFixed(2)}
                 </span>
               </div>
             </CardContent>

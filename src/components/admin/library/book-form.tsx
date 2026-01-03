@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Upload } from "lucide-react";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import type { Book } from "@prisma/client";
 
@@ -61,27 +62,27 @@ export function BookForm({ book }: BookFormProps) {
     resolver: zodResolver(bookSchema),
     defaultValues: book
       ? {
-          isbn: book.isbn,
-          title: book.title,
-          author: book.author,
-          publisher: book.publisher || "",
-          category: book.category,
-          quantity: book.quantity,
-          available: book.available,
-          location: book.location || "",
-          coverImage: book.coverImage || "",
-        }
+        isbn: book.isbn,
+        title: book.title,
+        author: book.author,
+        publisher: book.publisher || "",
+        category: book.category,
+        quantity: book.quantity,
+        available: book.available,
+        location: book.location || "",
+        coverImage: book.coverImage || "",
+      }
       : {
-          isbn: "",
-          title: "",
-          author: "",
-          publisher: "",
-          category: "",
-          quantity: 1,
-          available: 1,
-          location: "",
-          coverImage: "",
-        },
+        isbn: "",
+        title: "",
+        author: "",
+        publisher: "",
+        category: "",
+        quantity: 1,
+        available: 1,
+        location: "",
+        coverImage: "",
+      },
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,12 +324,12 @@ export function BookForm({ book }: BookFormProps) {
                       </div>
                       {field.value && (
                         <div className="relative h-48 w-32 overflow-hidden rounded-lg border">
-                          <img
+                          <Image
                             src={field.value}
                             alt="Book cover"
-                            width={128}
-                            height={192}
-                            className="h-full w-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                         </div>
                       )}

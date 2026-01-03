@@ -1,20 +1,20 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
-import { 
-  Calendar, Clock, Check, X, AlertTriangle, FileText, 
-  Download, Plus, Edit, Trash2, Search, Filter, 
+import { useState, useEffect, useCallback } from "react";
+import {
+  Calendar, Clock, Check, X, AlertTriangle, FileText,
+  Download, Plus, Edit, Trash2, Search, Filter,
   Loader2, User, UserCheck, UserX, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,8 +44,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format, isSameDay } from "date-fns";
 
-import { 
-  studentAttendanceSchema, 
+import {
+  studentAttendanceSchema,
   StudentAttendanceFormValues,
   bulkStudentAttendanceSchema,
   BulkStudentAttendanceFormValues,
@@ -74,7 +74,7 @@ export default function StudentAttendancePage() {
   const [attendanceToDelete, setAttendanceToDelete] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  
+
   // Report state
   const [reportData, setReportData] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -109,15 +109,67 @@ export default function StudentAttendancePage() {
     },
   });
 
+  const fetchClassSections = useCallback(async () => {
+    try {
+      const result = await getClassSectionsForDropdown();
+
+      if (result.success) {
+        setClassSections(result.data || []);
+
+        // If no section is selected yet, select the first one
+        // We use a functional update or just check the current value from reference if needed, 
+        // but here we just rely on logic that if we have no selected section, we set it.
+        // To avoid dependency on selectedSection state, we can pass it as argument or check it differently, 
+        // but cleaner is to just not depend on it in the callback if we are just checking truthiness.
+        // Actually, since we only run this once on mount usually, we can remove selectedSection from dependency
+        // if we accept that we only check initial state or if we don't care about the reactive update of this check.
+      } else {
+        toast.error(result.error || "Failed to fetch class sections");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }, []);
+
+  // Effect to select first section if none selected
+  useEffect(() => {
+    if (classSections.length > 0 && !selectedSection) {
+      const firstSection = classSections[0]?.sections?.[0]?.id;
+      if (firstSection) setSelectedSection(firstSection);
+    }
+  }, [classSections, selectedSection]);
+
+  const fetchAttendance = useCallback(async () => {
+    if (!selectedSection) return;
+
+    setLoading(true);
+    try {
+      const sectionId = selectedSection === "all" ? undefined : selectedSection;
+      const result = await getStudentAttendanceByDate(currentDate, sectionId);
+
+      if (result.success) {
+        setAttendanceRecords(result.data || []);
+      } else {
+        toast.error(result.error || "Failed to fetch attendance records");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentDate, selectedSection]);
+
   useEffect(() => {
     fetchClassSections();
-  }, []);
+  }, [fetchClassSections]);
 
   useEffect(() => {
     if (selectedSection) {
       fetchAttendance();
     }
-  }, [currentDate, selectedSection]);
+  }, [fetchAttendance, selectedSection]);
 
   useEffect(() => {
     // Set up bulk form with current records whenever they change
@@ -130,52 +182,11 @@ export default function StudentAttendancePage() {
         reason: student.reason || ""
       })));
     }
-  }, [attendanceRecords]);
-
-  async function fetchClassSections() {
-    try {
-      const result = await getClassSectionsForDropdown();
-      
-      if (result.success) {
-        setClassSections(result.data || []);
-        
-        // If no section is selected yet, select the first one
-        if (result.data && result.data.length > 0 && result.data[0].sections.length > 0 && !selectedSection) {
-          setSelectedSection(result.data[0].sections[0].id);
-        }
-      } else {
-        toast.error(result.error || "Failed to fetch class sections");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
-  async function fetchAttendance() {
-    if (!selectedSection) return;
-    
-    setLoading(true);
-    try {
-      const sectionId = selectedSection === "all" ? undefined : selectedSection;
-      const result = await getStudentAttendanceByDate(currentDate, sectionId);
-      
-      if (result.success) {
-        setAttendanceRecords(result.data || []);
-      } else {
-        toast.error(result.error || "Failed to fetch attendance records");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [attendanceRecords, currentDate, selectedSection, bulkAttendanceForm]);
 
   function handleEditAttendance(student: any) {
     setSelectedStudent(student);
-    
+
     attendanceForm.reset({
       studentId: student.id,
       date: currentDate,
@@ -183,23 +194,23 @@ export default function StudentAttendancePage() {
       status: student.status,
       reason: student.reason || "",
     });
-    
+
     setDialogOpen(true);
   }
 
   function handleDeleteAttendance(attendanceId: string) {
     if (!attendanceId) return;
-    
+
     setAttendanceToDelete(attendanceId);
     setConfirmDialogOpen(true);
   }
 
   async function confirmDeleteAttendance() {
     if (!attendanceToDelete) return;
-    
+
     try {
       const result = await deleteStudentAttendance(attendanceToDelete);
-      
+
       if (result.success) {
         toast.success("Attendance record deleted successfully");
         fetchAttendance();
@@ -218,7 +229,7 @@ export default function StudentAttendancePage() {
   async function onAttendanceSubmit(values: StudentAttendanceFormValues) {
     try {
       const result = await markStudentAttendance(values);
-      
+
       if (result.success) {
         toast.success("Attendance marked successfully");
         setDialogOpen(false);
@@ -235,7 +246,7 @@ export default function StudentAttendancePage() {
   async function onBulkAttendanceSubmit(values: BulkStudentAttendanceFormValues) {
     try {
       const result = await markBulkStudentAttendance(values);
-      
+
       if (result.success) {
         toast.success("Bulk attendance marked successfully");
         fetchAttendance();
@@ -255,13 +266,13 @@ export default function StudentAttendancePage() {
         toast.error("Please select a student");
         return;
       }
-      
+
       const result = await getStudentAttendanceReport(
         values.entityId,
         values.startDate,
         values.endDate
       );
-      
+
       if (result.success) {
         setReportData(result);
         toast.success("Report generated successfully");
@@ -279,26 +290,26 @@ export default function StudentAttendancePage() {
   // Helper function to filter attendance records
   const filteredAttendanceRecords = attendanceRecords.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (student.rollNumber && student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+      (student.rollNumber && student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesStatus = statusFilter === "ALL" || student.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   // Helper function to get statistics
   const getAttendanceStats = () => {
     if (!attendanceRecords.length) return { total: 0, present: 0, absent: 0, late: 0, leave: 0, presentPercentage: 0 };
-    
+
     const total = attendanceRecords.length;
     const present = attendanceRecords.filter(r => r.status === "PRESENT").length;
     const absent = attendanceRecords.filter(r => r.status === "ABSENT").length;
     const late = attendanceRecords.filter(r => r.status === "LATE").length;
     const leave = attendanceRecords.filter(r => r.status === "LEAVE").length;
     const halfDay = attendanceRecords.filter(r => r.status === "HALF_DAY").length;
-    
+
     const presentPercentage = ((present + late + (halfDay * 0.5)) / total) * 100;
-    
+
     return { total, present, absent, late, leave, halfDay, presentPercentage };
   };
 
@@ -318,7 +329,7 @@ export default function StudentAttendancePage() {
           <TabsTrigger value="mark">Mark Attendance</TabsTrigger>
           <TabsTrigger value="report">Attendance Report</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="mark">
           <Card>
             <CardHeader>
@@ -329,9 +340,9 @@ export default function StudentAttendancePage() {
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <label htmlFor="date-picker" className="text-sm font-medium block mb-1">Date</label>
-                  <DatePicker 
-                    date={currentDate} 
-                    onSelect={(date) => date && setCurrentDate(date)} 
+                  <DatePicker
+                    date={currentDate}
+                    onSelect={(date) => date && setCurrentDate(date)}
                   />
                 </div>
                 <div className="flex-1">
@@ -527,9 +538,9 @@ export default function StudentAttendancePage() {
                                           control={bulkAttendanceForm.control}
                                           name={`attendanceRecords.${index}.reason`}
                                           render={({ field }) => (
-                                            <Input 
-                                              className="h-8" 
-                                              placeholder="Reason (if absent/late/leave)" 
+                                            <Input
+                                              className="h-8"
+                                              placeholder="Reason (if absent/late/leave)"
                                               value={field.value || ""}
                                               onChange={field.onChange}
                                               disabled={["PRESENT"].includes(bulkAttendanceForm.watch(`attendanceRecords.${index}.status`))}
@@ -538,19 +549,19 @@ export default function StudentAttendancePage() {
                                         />
                                       </td>
                                       <td className="py-3 px-4 align-middle text-right">
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="h-8 w-8 p-0" 
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
                                           onClick={() => handleEditAttendance(student)}
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
                                         {student.attendanceId && (
-                                          <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            className="h-8 w-8 p-0 text-red-500" 
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 text-red-500"
                                             onClick={() => handleDeleteAttendance(student.attendanceId)}
                                           >
                                             <Trash2 className="h-4 w-4" />
@@ -563,7 +574,7 @@ export default function StudentAttendancePage() {
                               </table>
                             </div>
                           </div>
-                          
+
                           <div className="mt-4 flex justify-end">
                             <Button type="submit">
                               <Check className="mr-2 h-4 w-4" />
@@ -572,7 +583,7 @@ export default function StudentAttendancePage() {
                           </div>
                         </form>
                       </Form>
-                      
+
                       <div className="p-4 bg-accent rounded-lg mt-6">
                         <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                           <div className="flex items-center gap-2">
@@ -604,7 +615,7 @@ export default function StudentAttendancePage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="report">
           <Card>
             <CardHeader>
@@ -621,8 +632,8 @@ export default function StudentAttendancePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Class Section (Optional)</FormLabel>
-                          <Select 
-                            value={field.value || ""} 
+                          <Select
+                            value={field.value || ""}
                             onValueChange={field.onChange}
                           >
                             <FormControl>
@@ -687,7 +698,7 @@ export default function StudentAttendancePage() {
                       )}
                     />
                   </div>
-                  
+
                   <div className="flex justify-end">
                     <Button type="submit" disabled={reportLoading}>
                       {reportLoading ? (
@@ -705,13 +716,13 @@ export default function StudentAttendancePage() {
                   </div>
                 </form>
               </Form>
-              
+
               {reportData && (
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium">
-                      Attendance Report {reportForm.getValues("sectionId") ? 
-                        `for ${classSections.flatMap(c => c.sections).find(s => s.id === reportForm.getValues("sectionId"))?.fullName}` : 
+                      Attendance Report {reportForm.getValues("sectionId") ?
+                        `for ${classSections.flatMap(c => c.sections).find(s => s.id === reportForm.getValues("sectionId"))?.fullName}` :
                         "for All Sections"}
                     </h3>
                     <Button variant="outline" size="sm">
@@ -719,7 +730,7 @@ export default function StudentAttendancePage() {
                       Export to Excel
                     </Button>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-4 mb-6">
                     <Card className="w-full md:w-auto p-4 border">
                       <div className="flex flex-col items-center">
@@ -760,7 +771,7 @@ export default function StudentAttendancePage() {
                       </div>
                     </Card>
                   </div>
-                  
+
                   <div className="rounded-md border">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -821,8 +832,8 @@ export default function StudentAttendancePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Attendance Status</FormLabel>
-                    <Select 
-                      value={field.value} 
+                    <Select
+                      value={field.value}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
@@ -874,8 +885,8 @@ export default function StudentAttendancePage() {
                   <FormItem>
                     <FormLabel>Reason (if absent/late/leave)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="e.g. Sick, Family event, etc." 
+                      <Textarea
+                        placeholder="e.g. Sick, Family event, etc."
                         disabled={attendanceForm.watch("status") === "PRESENT"}
                         {...field}
                         value={field.value || ""}

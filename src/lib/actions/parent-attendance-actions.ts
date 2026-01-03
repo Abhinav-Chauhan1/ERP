@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 
@@ -22,9 +22,7 @@ export async function getChildAttendance(
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -122,9 +120,7 @@ export async function getChildrenAttendanceSummary() {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.PARENT) {

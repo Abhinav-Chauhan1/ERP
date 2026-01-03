@@ -4,7 +4,7 @@
  * This ensures permissions are validated at multiple layers
  */
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { hasPermission } from './permissions';
 import { PermissionAction } from '@prisma/client';
 
@@ -44,7 +44,8 @@ export function withPermission<TArgs extends any[], TReturn>(
   return async (...args: TArgs): Promise<ActionResult<TReturn>> => {
     try {
       // Get authenticated user
-      const { userId } = await auth();
+      const session = await auth();
+    const userId = session?.user?.id;
       
       if (!userId) {
         return {
@@ -102,7 +103,8 @@ export function withAllPermissions<TArgs extends any[], TReturn>(
   return async (...args: TArgs): Promise<ActionResult<TReturn>> => {
     try {
       // Get authenticated user
-      const { userId } = await auth();
+      const session = await auth();
+    const userId = session?.user?.id;
       
       if (!userId) {
         return {
@@ -169,7 +171,8 @@ export function withAnyPermission<TArgs extends any[], TReturn>(
   return async (...args: TArgs): Promise<ActionResult<TReturn>> => {
     try {
       // Get authenticated user
-      const { userId } = await auth();
+      const session = await auth();
+    const userId = session?.user?.id;
       
       if (!userId) {
         return {

@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { getScholarshipStats } from "@/lib/actions/scholarshipActions";
 import { getPayrollStats } from "@/lib/actions/payrollActions";
 import { getExpenseStats } from "@/lib/actions/expenseActions";
 import { getBudgetStats } from "@/lib/actions/budgetActions";
+import { getVerificationStats } from "@/lib/actions/receiptVerificationActions";
 
 export default function FinancePage() {
   const [loading, setLoading] = useState(true);
@@ -23,30 +24,64 @@ export default function FinancePage() {
     payroll: null,
     expenses: null,
     budget: null,
+    receiptVerification: null,
   });
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
-  // Load all statistics on mount
-  useEffect(() => {
-    loadAllData();
+  const loadMonthlyData = useCallback(async () => {
+    try {
+      const monthlyStats = [];
+      const currentDate = new Date();
+
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        const monthName = date.toLocaleString('default', { month: 'short' });
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59);
+
+        const [paymentResult, expenseResult, payrollResult] = await Promise.all([
+          getPaymentStats({ dateFrom: startDate, dateTo: endDate }),
+          getExpenseStats(startDate, endDate),
+          getPayrollStats(month, year),
+        ]);
+
+        const income = paymentResult.success && paymentResult.data ? (paymentResult.data.totalPaid || 0) : 0;
+        const expenses = (expenseResult.success && expenseResult.data ? (expenseResult.data.totalAmount || 0) : 0) +
+          (payrollResult.success && payrollResult.data ? (payrollResult.data.totalPaid || 0) : 0);
+
+        monthlyStats.push({
+          month: monthName,
+          income,
+          expenses,
+        });
+      }
+
+      setMonthlyData(monthlyStats);
+    } catch (error) {
+      console.error("Error loading monthly data:", error);
+    }
   }, []);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
       // Load stats
-      const [paymentStats, scholarshipStats, payrollStats, expenseStats, budgetStats] = 
+      const [paymentStats, scholarshipStats, payrollStats, expenseStats, budgetStats, receiptStats] =
         await Promise.all([
           getPaymentStats(),
           getScholarshipStats(),
           getPayrollStats(currentMonth, currentYear),
           getExpenseStats(),
           getBudgetStats(),
+          getVerificationStats(),
         ]);
 
       setStats({
@@ -55,6 +90,7 @@ export default function FinancePage() {
         payroll: payrollStats.success ? payrollStats.data : null,
         expenses: expenseStats.success ? expenseStats.data : null,
         budget: budgetStats.success ? budgetStats.data : null,
+        receiptVerification: receiptStats.success ? receiptStats.data : null,
       });
 
       // Load recent payments
@@ -62,7 +98,7 @@ export default function FinancePage() {
         status: "COMPLETED",
         limit: 10,
       });
-      
+
       if (recentResult.success && recentResult.data) {
         setRecentPayments(recentResult.data);
       }
@@ -72,58 +108,26 @@ export default function FinancePage() {
         status: "PENDING",
         limit: 10,
       });
-      
+
       if (pendingResult.success && pendingResult.data) {
         setPendingPayments(pendingResult.data);
       }
 
       // Generate monthly data for last 6 months
       await loadMonthlyData();
-      
+
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Failed to load finance data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadMonthlyData]);
 
-  const loadMonthlyData = async () => {
-    try {
-      const monthlyStats = [];
-      const currentDate = new Date();
-      
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-        const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        const monthName = date.toLocaleString('default', { month: 'short' });
-        
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0, 23, 59, 59);
-        
-        const [paymentResult, expenseResult, payrollResult] = await Promise.all([
-          getPaymentStats({ dateFrom: startDate, dateTo: endDate }),
-          getExpenseStats(startDate, endDate),
-          getPayrollStats(month, year),
-        ]);
-        
-        const income = paymentResult.success && paymentResult.data ? (paymentResult.data.totalPaid || 0) : 0;
-        const expenses = (expenseResult.success && expenseResult.data ? (expenseResult.data.totalAmount || 0) : 0) +
-                        (payrollResult.success && payrollResult.data ? (payrollResult.data.totalPaid || 0) : 0);
-        
-        monthlyStats.push({
-          month: monthName,
-          income,
-          expenses,
-        });
-      }
-      
-      setMonthlyData(monthlyStats);
-    } catch (error) {
-      console.error("Error loading monthly data:", error);
-    }
-  };
+  // Load all statistics on mount
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   // Calculate totals
   const totalIncome = stats.payments?.totalPaid || 0;
@@ -140,11 +144,26 @@ export default function FinancePage() {
       count: "—"
     },
     {
+      title: "Analytics",
+      icon: <TrendingUp className="h-5 w-5" />,
+      description: "Fee structure analytics and insights",
+      href: "/admin/finance/analytics",
+      count: "—"
+    },
+    {
       title: "Payments",
       icon: <CreditCard className="h-5 w-5" />,
       description: "Student fee payments",
       href: "/admin/finance/payments",
       count: stats.payments?.totalPayments || 0
+    },
+    {
+      title: "Receipt Verification",
+      icon: <Receipt className="h-5 w-5" />,
+      description: "Verify offline payment receipts",
+      href: "/admin/finance/receipt-verification",
+      count: stats.receiptVerification?.pendingCount || 0,
+      badge: stats.receiptVerification?.pendingCount > 0 ? "pending" : null
     },
     {
       title: "Scholarships",
@@ -200,7 +219,7 @@ export default function FinancePage() {
           <CardHeader className="pb-2">
             <CardDescription>Total Income</CardDescription>
             <CardTitle className="text-3xl text-green-600">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `$${(totalIncome / 1000).toFixed(1)}k`}
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `₹${(totalIncome / 1000).toFixed(1)}k`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -215,7 +234,7 @@ export default function FinancePage() {
           <CardHeader className="pb-2">
             <CardDescription>Total Expenses</CardDescription>
             <CardTitle className="text-3xl text-red-600">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `$${(totalExpenses / 1000).toFixed(1)}k`}
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `₹${(totalExpenses / 1000).toFixed(1)}k`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -230,7 +249,7 @@ export default function FinancePage() {
           <CardHeader className="pb-2">
             <CardDescription>Net Balance</CardDescription>
             <CardTitle className={`text-3xl ${netBalance >= 0 ? 'text-primary' : 'text-red-600'}`}>
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `$${(netBalance / 1000).toFixed(1)}k`}
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `₹${(netBalance / 1000).toFixed(1)}k`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -244,7 +263,7 @@ export default function FinancePage() {
           <CardHeader className="pb-2">
             <CardDescription>Pending Fees</CardDescription>
             <CardTitle className="text-3xl text-amber-600">
-              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `$${(pendingAmount / 1000).toFixed(1)}k`}
+              {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `₹${(pendingAmount / 1000).toFixed(1)}k`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -270,7 +289,14 @@ export default function FinancePage() {
             </CardHeader>
             <CardContent>
               <div className="flex justify-between items-center">
-                <div className="text-3xl font-bold">{loading ? "..." : category.count}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-3xl font-bold">{loading ? "..." : category.count}</div>
+                  {category.badge === "pending" && category.count > 0 && (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                      Pending
+                    </Badge>
+                  )}
+                </div>
                 <Link href={category.href}>
                   <Button variant="outline" size="sm">
                     Manage
@@ -338,19 +364,19 @@ export default function FinancePage() {
                     <div className="bg-green-50 p-4 rounded-lg">
                       <div className="text-sm text-green-700 font-medium mb-1">Total Income</div>
                       <div className="text-2xl font-bold text-green-800">
-                        ${(totalIncome / 1000).toFixed(1)}k
+                        ₹{(totalIncome / 1000).toFixed(1)}k
                       </div>
                       <div className="text-xs text-green-700 mt-1">Fee collections</div>
                     </div>
                     <div className="bg-red-50 p-4 rounded-lg">
                       <div className="text-sm text-red-700 font-medium mb-1">Total Expenses</div>
                       <div className="text-2xl font-bold text-red-800">
-                        ${(totalExpenses / 1000).toFixed(1)}k
+                        ₹{(totalExpenses / 1000).toFixed(1)}k
                       </div>
                       <div className="text-xs text-red-700 mt-1">Payroll + Expenses</div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3 mt-4">
                     <div>
                       <div className="flex justify-between mb-1">
@@ -360,8 +386,8 @@ export default function FinancePage() {
                         </span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full" 
+                        <div
+                          className="bg-primary h-2 rounded-full"
                           style={{ width: `${stats.payments?.collectionRate?.toFixed(0) || 0}%` }}
                         ></div>
                       </div>
@@ -375,8 +401,8 @@ export default function FinancePage() {
                         </span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-amber-500 h-2 rounded-full" 
+                        <div
+                          className="bg-amber-500 h-2 rounded-full"
                           style={{ width: `${Math.min(stats.budget?.utilizationRate?.toFixed(0) || 0, 100)}%` }}
                         ></div>
                       </div>
@@ -390,7 +416,7 @@ export default function FinancePage() {
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Total awarded: ${((stats.scholarships?.totalAmountAwarded || 0) / 1000).toFixed(1)}k
+                        Total awarded: ₹{((stats.scholarships?.totalAmountAwarded || 0) / 1000).toFixed(1)}k
                       </div>
                     </div>
                   </div>
@@ -442,7 +468,7 @@ export default function FinancePage() {
                             {payment.student.enrollments[0]?.class.name || "N/A"}
                           </td>
                           <td className="py-3 px-4 align-middle">
-                            ${payment.paidAmount.toFixed(2)}
+                            ₹{payment.paidAmount.toFixed(2)}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {new Date(payment.paymentDate).toLocaleDateString()}
@@ -506,7 +532,7 @@ export default function FinancePage() {
                             {payment.student.enrollments[0]?.class.name || "N/A"}
                           </td>
                           <td className="py-3 px-4 align-middle">
-                            ${payment.balance.toFixed(2)}
+                            ₹{payment.balance.toFixed(2)}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : "N/A"}

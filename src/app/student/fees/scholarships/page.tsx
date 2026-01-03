@@ -82,7 +82,7 @@ export default async function ScholarshipsPage() {
                             
                             <div className="text-center md:text-right">
                               <p className="text-sm text-muted-foreground mb-1">Amount</p>
-                              <p className="text-3xl font-bold text-green-700">${item.amount.toFixed(2)}</p>
+                              <p className="text-3xl font-bold text-green-700">₹{item.amount.toFixed(2)}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -119,7 +119,7 @@ export default async function ScholarshipsPage() {
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg text-center border border-blue-200">
                     <div className="text-sm text-blue-900 mb-1">Total Scholarship Amount</div>
                     <div className="text-4xl font-bold text-blue-900">
-                      ${totalScholarshipAmount.toFixed(2)}
+                      ₹{totalScholarshipAmount.toFixed(2)}
                     </div>
                     <div className="text-xs text-blue-700 mt-2">
                       {scholarships.length} active scholarship(s)
@@ -183,7 +183,7 @@ export default async function ScholarshipsPage() {
                             <div className="space-y-2 text-sm">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium min-w-[80px]">Amount:</span>
-                                <span className="font-semibold text-primary">${scholarship.amount.toFixed(2)}</span>
+                                <span className="font-semibold text-primary">₹{scholarship.amount.toFixed(2)}</span>
                                 {scholarship.percentage && (
                                   <span className="text-muted-foreground">
                                     ({scholarship.percentage}% of fees)

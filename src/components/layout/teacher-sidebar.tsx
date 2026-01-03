@@ -18,10 +18,10 @@ import {
   Video,
   FolderOpen,
   Award,
-  Calendar,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
@@ -92,9 +92,9 @@ const routes: RouteItem[] = [
     href: "/teacher/documents",
   },
   {
-    label: "Events",
-    icon: Calendar,
-    href: "/teacher/events",
+    label: "Calendar",
+    icon: CalendarDays,
+    href: "/teacher/calendar",
   },
   {
     label: "Achievements",

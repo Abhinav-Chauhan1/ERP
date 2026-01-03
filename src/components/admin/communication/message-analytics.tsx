@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getMessageAnalytics } from "@/lib/actions/messageHistoryActions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,11 +83,7 @@ export function MessageAnalytics() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("7days");
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [dateRange]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       let startDate: Date | undefined;
@@ -121,7 +117,11 @@ export function MessageAnalytics() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   if (loading) {
     return <div className="text-center py-8">Loading analytics...</div>;
@@ -202,10 +202,10 @@ export function MessageAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${analytics.costs.totalCost.toFixed(2)}
+              ₹{analytics.costs.totalCost.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
-              SMS: ${analytics.costs.smsCost.toFixed(2)} | Email: $
+              SMS: ₹{analytics.costs.smsCost.toFixed(2)} | Email: ₹
               {analytics.costs.emailCost.toFixed(2)}
             </p>
           </CardContent>
@@ -222,7 +222,7 @@ export function MessageAnalytics() {
           <CardContent>
             <div className="text-2xl font-bold">{analytics.channels.sms}</div>
             <p className="text-xs text-muted-foreground">
-              Cost: ${analytics.costs.smsCost.toFixed(2)}
+              Cost: ₹{analytics.costs.smsCost.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -235,7 +235,7 @@ export function MessageAnalytics() {
           <CardContent>
             <div className="text-2xl font-bold">{analytics.channels.email}</div>
             <p className="text-xs text-muted-foreground">
-              Cost: ${analytics.costs.emailCost.toFixed(2)}
+              Cost: ₹{analytics.costs.emailCost.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -320,7 +320,7 @@ export function MessageAnalytics() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">${message.totalCost.toFixed(2)}</p>
+                  <p className="font-medium">₹{message.totalCost.toFixed(2)}</p>
                 </div>
               </div>
             ))}

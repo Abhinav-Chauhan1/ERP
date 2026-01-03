@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 
 // Get all announcements with filters
 export async function getAnnouncements(filters?: {
@@ -106,7 +106,7 @@ export async function createAnnouncement(data: any) {
 
     // Get user from database
     const dbUser = await db.user.findUnique({
-      where: { clerkId: user.id },
+      where: { id: user.id },
       include: {
         administrator: true,
       },

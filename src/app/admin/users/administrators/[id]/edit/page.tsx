@@ -38,7 +38,7 @@ interface EditAdministratorPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function EditAdministratorPage({ params }: EditAdministratorPageProps) {
+export default function EditAdministratorPage({ params }: EditAdministratorPageProps) {
   const { id } = use(params);
 
   const router = useRouter();

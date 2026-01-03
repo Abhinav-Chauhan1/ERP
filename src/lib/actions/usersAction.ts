@@ -1,9 +1,9 @@
 "use server";
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
-import { 
+import {
   CreateAdministratorFormData,
   CreateTeacherFormData,
   CreateStudentFormData,
@@ -14,25 +14,26 @@ import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/in
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 
 // Helper function to create base user
-const createBaseUser = async (clerkId: string, userData: {
+const createBaseUser = async (userData: {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
   avatar?: string;
   role: UserRole;
+  password?: string;
 }) => {
   // Sanitize inputs
   const sanitizedData = {
-    clerkId,
     firstName: sanitizeText(userData.firstName),
     lastName: sanitizeText(userData.lastName),
     email: sanitizeEmail(userData.email),
     phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,
+    password: userData.password, // In a real app, this should be hashed
   };
-  
+
   return await db.user.create({
     data: sanitizedData
   });
@@ -41,30 +42,17 @@ const createBaseUser = async (clerkId: string, userData: {
 // Create Administrator
 export async function createAdministrator(data: CreateAdministratorFormData) {
   try {
-    // Create the user in Clerk with email/password
-    const clerk = await clerkClient();
-    
-    // Create user in Clerk - removed phoneNumber parameter which was causing the error
-    const clerkUser = await clerk.users.createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      emailAddress: [data.email],
-      password: data.password,
-      publicMetadata: {
-        role: UserRole.ADMIN,
-      },
-    });
-
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
-      const user = await createBaseUser(clerkUser.id, {
+      const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        phone: data.phone, // Still store phone in our database
+        phone: data.phone,
         avatar: data.avatar,
         role: UserRole.ADMIN,
+        password: data.password
       });
 
       // Create the administrator profile
@@ -95,18 +83,6 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
     });
   } catch (error: any) {
     console.error('Error creating administrator:', error);
-    
-    // Better error handling for Clerk errors
-    if (error.clerkError) {
-      const clerkErrors = error.errors || [];
-      const errorMessage = clerkErrors.length > 0 
-        ? `${clerkErrors[0].message} - ${clerkErrors[0].longMessage || ''}`
-        : 'Clerk authentication error';
-        
-      console.error('Clerk API error details:', JSON.stringify(error, null, 2));
-      throw new Error(errorMessage);
-    }
-    
     throw new Error('Failed to create administrator: ' + (error.message || 'Unknown error'));
   }
 }
@@ -114,30 +90,17 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
 // Create Teacher
 export async function createTeacher(data: CreateTeacherFormData) {
   try {
-    // Create the user in Clerk with email/password
-    const clerk = await clerkClient();
-    
-    // Create user in Clerk - removed phoneNumber parameter which was causing the error
-    const clerkUser = await clerk.users.createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      emailAddress: [data.email],
-      password: data.password,
-      publicMetadata: {
-        role: UserRole.TEACHER,
-      },
-    });
-
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
-      const user = await createBaseUser(clerkUser.id, {
+      const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        phone: data.phone, // Still store phone in our database
+        phone: data.phone,
         avatar: data.avatar,
         role: UserRole.TEACHER,
+        password: data.password
       });
 
       // Create the teacher profile
@@ -170,18 +133,6 @@ export async function createTeacher(data: CreateTeacherFormData) {
     });
   } catch (error: any) {
     console.error('Error creating teacher:', error);
-    
-    // Better error handling for Clerk errors
-    if (error.clerkError) {
-      const clerkErrors = error.errors || [];
-      const errorMessage = clerkErrors.length > 0 
-        ? `${clerkErrors[0].message} - ${clerkErrors[0].longMessage || ''}`
-        : 'Clerk authentication error';
-        
-      console.error('Clerk API error details:', JSON.stringify(error, null, 2));
-      throw new Error(errorMessage);
-    }
-    
     throw new Error('Failed to create teacher: ' + (error.message || 'Unknown error'));
   }
 }
@@ -189,30 +140,17 @@ export async function createTeacher(data: CreateTeacherFormData) {
 // Create Student
 export async function createStudent(data: CreateStudentFormData) {
   try {
-    // Create the user in Clerk with email/password
-    const clerk = await clerkClient();
-    
-    // Create user in Clerk - removed phoneNumber parameter which was causing the error
-    const clerkUser = await clerk.users.createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      emailAddress: [data.email],
-      password: data.password,
-      publicMetadata: {
-        role: UserRole.STUDENT,
-      },
-    });
-
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
-      const user = await createBaseUser(clerkUser.id, {
+      const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        phone: data.phone, // Still store phone in our database
+        phone: data.phone,
         avatar: data.avatar,
         role: UserRole.STUDENT,
+        password: data.password
       });
 
       // Create the student profile
@@ -250,18 +188,6 @@ export async function createStudent(data: CreateStudentFormData) {
     });
   } catch (error: any) {
     console.error('Error creating student:', error);
-    
-    // Better error handling for Clerk errors
-    if (error.clerkError) {
-      const clerkErrors = error.errors || [];
-      const errorMessage = clerkErrors.length > 0 
-        ? `${clerkErrors[0].message} - ${clerkErrors[0].longMessage || ''}`
-        : 'Clerk authentication error';
-        
-      console.error('Clerk API error details:', JSON.stringify(error, null, 2));
-      throw new Error(errorMessage);
-    }
-    
     throw new Error('Failed to create student: ' + (error.message || 'Unknown error'));
   }
 }
@@ -269,30 +195,17 @@ export async function createStudent(data: CreateStudentFormData) {
 // Create Parent
 export async function createParent(data: CreateParentFormData) {
   try {
-    // Create the user in Clerk with email/password
-    const clerk = await clerkClient();
-    
-    // Create user in Clerk - removed phoneNumber parameter which was causing the error
-    const clerkUser = await clerk.users.createUser({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      emailAddress: [data.email],
-      password: data.password,
-      publicMetadata: {
-        role: UserRole.PARENT,
-      },
-    });
-
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
-      const user = await createBaseUser(clerkUser.id, {
+      const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        phone: data.phone, // Still store phone in our database
+        phone: data.phone,
         avatar: data.avatar,
         role: UserRole.PARENT,
+        password: data.password
       });
 
       // Create the parent profile
@@ -324,18 +237,6 @@ export async function createParent(data: CreateParentFormData) {
     });
   } catch (error: any) {
     console.error('Error creating parent:', error);
-    
-    // Better error handling for Clerk errors
-    if (error.clerkError) {
-      const clerkErrors = error.errors || [];
-      const errorMessage = clerkErrors.length > 0 
-        ? `${clerkErrors[0].message} - ${clerkErrors[0].longMessage || ''}`
-        : 'Clerk authentication error';
-        
-      console.error('Clerk API error details:', JSON.stringify(error, null, 2));
-      throw new Error(errorMessage);
-    }
-    
     throw new Error('Failed to create parent: ' + (error.message || 'Unknown error'));
   }
 }
@@ -375,17 +276,6 @@ export async function updateUserDetails(userId: string, userData: {
 
     if (!user) {
       throw new Error('User not found');
-    }
-
-    // Update in Clerk
-    if (userData.firstName || userData.lastName || userData.email || userData.phone) {
-      const clerk = await clerkClient();
-      await clerk.users.updateUser(user.clerkId, {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        primaryEmailAddressID : userData.email || undefined,
-        primaryPhoneNumberID: userData.phone || undefined,
-      });
     }
 
     // Update in our database
@@ -592,53 +482,56 @@ export async function syncClerkUser(clerkId: string, userData: {
   avatar?: string;
 }) {
   try {
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
-      where: { clerkId }
+    // This function is kept for backward compatibility but might need refactoring
+    // if we are fully moving away from Clerk. For now, we will query by id if it matches
+    // or just return if it's purely Clerk specific.
+
+    // Check if user already exists - using a raw query or assumption that clerkId might be stored as an external ID
+    // If clerkId column exists, we can use it. If not, we should probably ignore this sync
+    // or map it to email.
+
+    const existingUser = await db.user.findFirst({
+      where: { email: userData.email }
     });
 
     if (existingUser) {
       // Update existing user
       return await db.user.update({
-        where: { clerkId },
+        where: { id: existingUser.id },
         data: {
           firstName: userData.firstName,
           lastName: userData.lastName,
-          email: userData.email,
+          //   email: userData.email, // Don't typically update email on sync unless verified
           phone: userData.phone,
           avatar: userData.avatar,
         }
       });
     } else {
-      // Get role from Clerk metadata
-      const clerk = await clerkClient();
-      const clerkUser = await clerk.users.getUser(clerkId);
-      const role = clerkUser.publicMetadata.role as UserRole || UserRole.STUDENT;
-
-      // Create new user
+      // Create new user if not found by email
       return await db.user.create({
         data: {
-          clerkId,
+          //   clerkId, // Eliminating clerkId reliance
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,
           phone: userData.phone,
           avatar: userData.avatar,
-          role,
+          role: UserRole.STUDENT, // Default role
         }
       });
     }
   } catch (error) {
-    console.error('Error syncing Clerk user:', error);
-    throw new Error('Failed to sync user with Clerk');
+    console.error('Error syncing user:', error);
+    throw new Error('Failed to sync user');
   }
 }
 
 // Delete user
 export async function deleteUser(userId: string) {
   try {
-    const { userId: currentUserId } = await auth();
-    
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
     if (!currentUserId) {
       throw new Error('Unauthorized');
     }
@@ -664,10 +557,6 @@ export async function deleteUser(userId: string) {
       }
     );
 
-    // Delete from Clerk
-    const clerk = await clerkClient();
-    await clerk.users.deleteUser(user.clerkId);
-
     // Delete from our database
     await db.user.delete({
       where: { id: userId }
@@ -683,14 +572,15 @@ export async function deleteUser(userId: string) {
 
 // Get current authenticated user
 export async function getCurrentUser() {
-  const { userId } = await auth();
-  
+  const session = await auth();
+  const userId = session?.user?.id;
+
   if (!userId) {
     return null;
   }
 
   const user = await db.user.findFirst({
-    where: { clerkId: userId }
+    where: { id: userId }
   });
 
   return user;

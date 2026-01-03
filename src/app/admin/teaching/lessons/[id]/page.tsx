@@ -35,37 +35,37 @@ export default function LessonDetailsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchLesson();
-  }, []);
+    async function fetchLesson() {
+      setLoading(true);
+      setError(null);
 
-  async function fetchLesson() {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const id = params.id as string;
-      const result = await getLessonById(id);
-      
-      if (result.success) {
-        setLesson(result.data);
-      } else {
-        setError(result.error || "An error occurred");
-        toast.error(result.error || "An error occurred");
+      try {
+        const id = params.id as string;
+        const result = await getLessonById(id);
+
+        if (result.success) {
+          setLesson(result.data);
+        } else {
+          setError(result.error || "An error occurred");
+          toast.error(result.error || "An error occurred");
+        }
+      } catch (err) {
+        setError("An unexpected error occurred");
+        toast.error("An unexpected error occurred");
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  }
+
+    fetchLesson();
+  }, [params.id]);
 
   async function handleDelete() {
     try {
       const id = params.id as string;
       const result = await deleteLesson(id);
-      
+
       if (result.success) {
         toast.success("Lesson deleted successfully");
         router.push('/admin/teaching/lessons');
@@ -118,10 +118,10 @@ export default function LessonDetailsPage() {
       </div>
     );
   }
-  
+
   // Parse resources from comma-separated string
-  const resourcesList = lesson.resources ? 
-    lesson.resources.split(',').filter((r: string) => r.trim().length > 0).map((r: string) => r.trim()) : 
+  const resourcesList = lesson.resources ?
+    lesson.resources.split(',').filter((r: string) => r.trim().length > 0).map((r: string) => r.trim()) :
     [];
 
   return (
@@ -200,9 +200,9 @@ export default function LessonDetailsPage() {
                   {lesson.content.startsWith('http') ? (
                     <div className="flex items-center gap-2">
                       <ExternalLink className="h-4 w-4 text-primary" />
-                      <a 
-                        href={lesson.content} 
-                        target="_blank" 
+                      <a
+                        href={lesson.content}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -227,9 +227,9 @@ export default function LessonDetailsPage() {
                   <div key={index} className="flex items-center gap-2 p-2 bg-accent rounded-md">
                     <FileText className="h-4 w-4 text-primary" />
                     {resource.startsWith('http') ? (
-                      <a 
-                        href={resource} 
-                        target="_blank" 
+                      <a
+                        href={resource}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline text-sm flex-1 truncate"
                       >
@@ -239,9 +239,9 @@ export default function LessonDetailsPage() {
                       <span className="text-sm flex-1 truncate">{resource}</span>
                     )}
                     <Button variant="ghost" size="sm" className="ml-auto" asChild>
-                      <a 
-                        href={resource.startsWith('http') ? resource : '#'} 
-                        target="_blank" 
+                      <a
+                        href={resource.startsWith('http') ? resource : '#'}
+                        target="_blank"
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4" />

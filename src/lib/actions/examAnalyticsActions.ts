@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
 /**
@@ -8,7 +8,8 @@ import { prisma } from "@/lib/db";
  */
 export async function getExamAnalytics(examId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -273,7 +274,8 @@ export async function getExamAnalytics(examId: string) {
  */
 export async function getQuestionWiseAnalysis(examId: string, questionId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -414,7 +416,8 @@ export async function getQuestionWiseAnalysis(examId: string, questionId: string
  */
 export async function getComparativeExamAnalytics(examIds: string[]) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from "@/auth";
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { EventCalendar } from '@/components/teacher/events/event-calendar';
@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from 'lucide-react';
 
 async function EventsContent({ searchParams }: { searchParams: Promise<{ category?: string; month?: string; year?: string }> }) {
-  const { userId } = await auth();
+  const session = await auth();
+    const userId = session?.user?.id;
   
   if (!userId) {
     redirect('/login');

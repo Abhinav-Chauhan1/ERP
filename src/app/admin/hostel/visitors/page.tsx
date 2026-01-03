@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +43,7 @@ export default function VisitorsPage() {
   const [idProofNumber, setIdProofNumber] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  useEffect(() => {
-    loadVisitors();
-  }, [selectedDate]);
-
-  const loadVisitors = async () => {
+  const loadVisitors = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getVisitors(undefined, selectedDate);
@@ -62,7 +58,11 @@ export default function VisitorsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    loadVisitors();
+  }, [loadVisitors]);
 
   const resetForm = () => {
     setStudentId("");
@@ -439,7 +439,7 @@ export default function VisitorsPage() {
                         {Math.round(
                           (new Date(visitor.checkOutTime).getTime() -
                             new Date(visitor.checkInTime).getTime()) /
-                            (1000 * 60)
+                          (1000 * 60)
                         )}{" "}
                         minutes
                       </p>

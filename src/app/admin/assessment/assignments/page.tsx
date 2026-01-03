@@ -1,11 +1,11 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   Search, Calendar, Clock, BookOpen, User,
   MoreVertical, Download, CheckCircle, AlertCircle,
   FileUp, Eye, BookmarkCheck, Loader2, Upload
@@ -52,22 +52,22 @@ import { Progress } from "@/components/ui/progress";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { DatePicker } from "@/components/ui/date-picker"; 
+import { DatePicker } from "@/components/ui/date-picker";
 import toast from "react-hot-toast";
 
 // Import schema validation and actions
-import { 
-  assignmentSchema, 
+import {
+  assignmentSchema,
   submissionGradeSchema,
   AssignmentFormValues,
   SubmissionGradeValues
 } from "@/lib/schemaValidation/assignmentsSchemaValidation";
-import { 
-  getAssignments, 
-  getAssignmentById, 
-  createAssignment, 
-  updateAssignment, 
-  deleteAssignment, 
+import {
+  getAssignments,
+  getAssignmentById,
+  createAssignment,
+  updateAssignment,
+  deleteAssignment,
   gradeSubmission,
   getSubjectsForAssignments,
   getClassesForAssignments
@@ -88,7 +88,7 @@ export default function AssignmentsPage() {
   const [viewTab, setViewTab] = useState<string>("active");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // State for data
   const [assignments, setAssignments] = useState<any[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
@@ -129,16 +129,10 @@ export default function AssignmentsPage() {
     },
   });
 
-  useEffect(() => {
-    fetchAssignments();
-    fetchSubjects();
-    fetchClasses();
-  }, [viewTab]);
-
-  async function fetchAssignments() {
+  const fetchAssignments = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getAssignments({
         searchTerm: searchTerm.length > 0 ? searchTerm : undefined,
@@ -146,7 +140,7 @@ export default function AssignmentsPage() {
         classId: classFilter !== "all" ? classFilter : undefined,
         status: statusFilter !== "all" ? statusFilter as any : undefined,
       });
-      
+
       if (result.success) {
         setAssignments(result.data || []);
       } else {
@@ -160,12 +154,12 @@ export default function AssignmentsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [searchTerm, subjectFilter, classFilter, statusFilter]);
 
-  async function fetchSubjects() {
+  const fetchSubjects = useCallback(async () => {
     try {
       const result = await getSubjectsForAssignments();
-      
+
       if (result.success) {
         setSubjects(result.data || []);
       } else {
@@ -175,12 +169,12 @@ export default function AssignmentsPage() {
       console.error("Error fetching subjects:", err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
 
-  async function fetchClasses() {
+  const fetchClasses = useCallback(async () => {
     try {
       const result = await getClassesForAssignments();
-      
+
       if (result.success) {
         setClasses(result.data || []);
       } else {
@@ -190,15 +184,21 @@ export default function AssignmentsPage() {
       console.error("Error fetching classes:", err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchAssignments();
+    fetchSubjects();
+    fetchClasses();
+  }, [viewTab, fetchAssignments, fetchSubjects, fetchClasses]);
 
   async function handleViewSubmissions(assignmentId: string) {
     setDetailsLoading(true);
     setSelectedAssignmentId(assignmentId);
-    
+
     try {
       const result = await getAssignmentById(assignmentId);
-      
+
       if (result.success) {
         setSelectedAssignment(result.data);
         setViewSubmissionsDialogOpen(true);
@@ -232,10 +232,10 @@ export default function AssignmentsPage() {
 
   async function handleEditAssignment(assignmentId: string) {
     setDetailsLoading(true);
-    
+
     try {
       const result = await getAssignmentById(assignmentId);
-      
+
       if (result.success && result.data) {
         const assignment = result.data;
         form.reset({
@@ -249,7 +249,7 @@ export default function AssignmentsPage() {
           instructions: assignment.instructions,
           allowLateSubmissions: false, // This would be a field in the DB schema if implemented
         });
-        
+
         setSelectedAssignmentId(assignmentId);
         setSelectedFiles([]);
         setAssignmentDialogOpen(true);
@@ -266,7 +266,7 @@ export default function AssignmentsPage() {
 
   function handleGradeSubmission(submissionId: string) {
     if (!selectedAssignment) return;
-    
+
     const submissionToGrade = selectedAssignment.submissions.find((s: any) => s.id === submissionId);
     if (submissionToGrade) {
       gradeForm.reset({
@@ -275,7 +275,7 @@ export default function AssignmentsPage() {
         feedback: submissionToGrade.feedback || "",
         status: "GRADED",
       });
-      
+
       setSelectedSubmissionId(submissionId);
       setGradeSubmissionDialogOpen(true);
     }
@@ -304,10 +304,10 @@ export default function AssignmentsPage() {
 
   async function onSubmit(values: AssignmentFormValues) {
     setUploading(true);
-    
+
     try {
       let result;
-      
+
       if (selectedAssignmentId) {
         // Update existing assignment
         result = await updateAssignment({
@@ -319,7 +319,7 @@ export default function AssignmentsPage() {
         // Pass null for creatorId when creating from admin dashboard
         result = await createAssignment(values, null, selectedFiles);
       }
-      
+
       if (result.success) {
         toast.success(`Assignment ${selectedAssignmentId ? "updated" : "created"} successfully`);
         setAssignmentDialogOpen(false);
@@ -339,11 +339,11 @@ export default function AssignmentsPage() {
   async function onGradeSubmit(values: SubmissionGradeValues) {
     try {
       const result = await gradeSubmission(values);
-      
+
       if (result.success) {
         toast.success("Submission graded successfully");
         setGradeSubmissionDialogOpen(false);
-        
+
         // Refresh the assignment details
         if (selectedAssignmentId) {
           handleViewSubmissions(selectedAssignmentId);
@@ -359,10 +359,10 @@ export default function AssignmentsPage() {
 
   async function confirmDelete() {
     if (!selectedAssignmentId) return;
-    
+
     try {
       const result = await deleteAssignment(selectedAssignmentId);
-      
+
       if (result.success) {
         toast.success("Assignment deleted successfully");
         setDeleteDialogOpen(false);
@@ -396,7 +396,7 @@ export default function AssignmentsPage() {
 
   const getSubmissionStatusColor = (status: string, late: boolean) => {
     if (late) return 'bg-amber-100 text-amber-800';
-    
+
     switch (status) {
       case 'SUBMITTED':
         return 'bg-primary/10 text-primary';
@@ -448,7 +448,7 @@ export default function AssignmentsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -474,7 +474,7 @@ export default function AssignmentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="totalMarks"
@@ -482,10 +482,10 @@ export default function AssignmentsPage() {
                       <FormItem>
                         <FormLabel>Total Marks</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
                             onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
@@ -494,7 +494,7 @@ export default function AssignmentsPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="classIds"
@@ -542,7 +542,7 @@ export default function AssignmentsPage() {
                         <FormLabel>Assigned Date</FormLabel>
                         <FormControl>
                           <DatePicker
-                            date={field.value} 
+                            date={field.value}
                             onSelect={field.onChange}
                             placeholder="Select assigned date"
                           />
@@ -551,7 +551,7 @@ export default function AssignmentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="dueDate"
@@ -560,7 +560,7 @@ export default function AssignmentsPage() {
                         <FormLabel>Due Date</FormLabel>
                         <FormControl>
                           <DatePicker
-                            date={field.value} 
+                            date={field.value}
                             onSelect={field.onChange}
                             placeholder="Select due date"
                             disabled={(date) => {
@@ -574,7 +574,7 @@ export default function AssignmentsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
@@ -583,7 +583,7 @@ export default function AssignmentsPage() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Brief description of the assignment"
                             rows={2}
                             {...field}
@@ -594,7 +594,7 @@ export default function AssignmentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="instructions"
@@ -602,7 +602,7 @@ export default function AssignmentsPage() {
                       <FormItem>
                         <FormLabel>Instructions</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Detailed instructions for students"
                             rows={3}
                             {...field}
@@ -614,7 +614,7 @@ export default function AssignmentsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -638,7 +638,7 @@ export default function AssignmentsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="border p-4 rounded-md">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -651,7 +651,7 @@ export default function AssignmentsPage() {
                         </span>
                       )}
                     </div>
-                    
+
                     {selectedFiles.length > 0 ? (
                       <div className="space-y-2 mb-2">
                         <Progress value={uploadProgress} className="h-2" />
@@ -665,20 +665,20 @@ export default function AssignmentsPage() {
                         </div>
                       </div>
                     ) : (
-                      <Input 
-                        type="file" 
-                        multiple 
-                        className="mt-2" 
+                      <Input
+                        type="file"
+                        multiple
+                        className="mt-2"
                         onChange={handleFileChange}
                       />
                     )}
-                    
+
                     <p className="text-xs text-muted-foreground mt-1">
                       Upload resources for students
                     </p>
                   </div>
                 </div>
-                
+
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={() => setAssignmentDialogOpen(false)}>
                     Cancel
@@ -766,7 +766,7 @@ export default function AssignmentsPage() {
           <TabsTrigger value="active">Active Assignments</TabsTrigger>
           <TabsTrigger value="past">Past Assignments</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="active" className="mt-4">
           <Card>
             <CardHeader className="pb-3">
@@ -816,8 +816,8 @@ export default function AssignmentsPage() {
                           <td className="py-3 px-4 align-middle">
                             {assignment.submissions}/{assignment.totalStudents}
                             <div className="w-full h-1.5 bg-muted rounded-full mt-1">
-                              <div 
-                                className="h-1.5 bg-primary rounded-full" 
+                              <div
+                                className="h-1.5 bg-primary rounded-full"
                                 style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
@@ -828,15 +828,15 @@ export default function AssignmentsPage() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleViewSubmissions(assignment.id)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               Submissions
                             </Button>
-                            
+
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -853,7 +853,7 @@ export default function AssignmentsPage() {
                                   Download
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   className="text-red-600"
                                   onClick={() => handleDeleteAssignment(assignment.id)}
                                 >
@@ -885,7 +885,7 @@ export default function AssignmentsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="past" className="mt-4">
           <Card>
             <CardHeader className="pb-3">
@@ -935,8 +935,8 @@ export default function AssignmentsPage() {
                           <td className="py-3 px-4 align-middle">
                             {assignment.submissions}/{assignment.totalStudents}
                             <div className="w-full h-1.5 bg-muted rounded-full mt-1">
-                              <div 
-                                className="h-1.5 bg-primary rounded-full" 
+                              <div
+                                className="h-1.5 bg-primary rounded-full"
                                 style={{ width: `${assignment.totalStudents > 0 ? (assignment.submissions / assignment.totalStudents) * 100 : 0}%` }}
                               ></div>
                             </div>
@@ -947,8 +947,8 @@ export default function AssignmentsPage() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleViewSubmissions(assignment.id)}
                             >
@@ -1035,7 +1035,7 @@ export default function AssignmentsPage() {
                             <div className="text-xs text-muted-foreground">{submission.studentAdmissionId}</div>
                           </td>
                           <td className="py-3 px-4 align-middle">
-                            {submission.submissionDate 
+                            {submission.submissionDate
                               ? format(new Date(submission.submissionDate), 'MMM d, yyyy h:mm a')
                               : "Not submitted"}
                           </td>
@@ -1045,14 +1045,14 @@ export default function AssignmentsPage() {
                             </Badge>
                           </td>
                           <td className="py-3 px-4 align-middle">
-                            {submission.status === "GRADED" || submission.status === "RETURNED" ? 
-                              <span className="font-medium">{submission.marks} / {selectedAssignment.totalMarks}</span> : 
+                            {submission.status === "GRADED" || submission.status === "RETURNED" ?
+                              <span className="font-medium">{submission.marks} / {selectedAssignment.totalMarks}</span> :
                               <span className="text-muted-foreground">-</span>
                             }
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               disabled={submission.status === "PENDING"}
                               onClick={() => submission.status !== "PENDING" && submission.submissionDate && router.push(`/admin/assessment/assignments/${selectedAssignment.id}/submissions/${submission.id}`)}
@@ -1060,8 +1060,8 @@ export default function AssignmentsPage() {
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               disabled={submission.status === "PENDING"}
                               onClick={() => submission.status !== "PENDING" && submission.submissionDate && handleGradeSubmission(submission.id)}

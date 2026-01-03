@@ -1,16 +1,22 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import {
+  createCalendarEventFromAssignment,
+  updateCalendarEventFromAssignment,
+  deleteCalendarEventFromAssignment
+} from "../services/assignment-calendar-integration";
 
 /**
  * Get all assignments for a teacher
  */
 export async function getTeacherAssignments(subjectId?: string, classId?: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -19,7 +25,7 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -64,8 +70,8 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
     });
 
     // Filter by class if provided
-    const filteredAssignments = classId 
-      ? assignments.filter(a => a.classes.some(c => c.classId === classId)) 
+    const filteredAssignments = classId
+      ? assignments.filter(a => a.classes.some(c => c.classId === classId))
       : assignments;
 
     // Format the assignments data for the UI
@@ -74,12 +80,12 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
       const gradedCount = assignment.submissions.filter(s => s.status === 'GRADED').length;
       const pendingCount = submittedCount - gradedCount;
       const lateCount = assignment.submissions.filter(s => s.status === 'LATE').length;
-      
+
       // Calculate average score for graded submissions
       const totalScore = assignment.submissions
         .filter(s => s.status === 'GRADED' && s.marks !== null)
         .reduce((sum, submission) => sum + (submission.marks || 0), 0);
-      
+
       const avgScore = gradedCount > 0 ? (totalScore / gradedCount) : 0;
 
       // Calculate total students from associated classes
@@ -91,9 +97,9 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
         description: assignment.description,
         subject: assignment.subject.name,
         subjectId: assignment.subjectId,
-        classes: assignment.classes.map(c => ({ 
-          id: c.class.id, 
-          name: c.class.name 
+        classes: assignment.classes.map(c => ({
+          id: c.class.id,
+          name: c.class.name
         })),
         assignedDate: assignment.assignedDate,
         dueDate: assignment.dueDate,
@@ -108,7 +114,7 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
       };
     });
 
-    return { 
+    return {
       assignments: formattedAssignments,
       subjects: subjectTeachers.map(st => ({
         id: st.subject.id,
@@ -126,8 +132,9 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
  */
 export async function getAssignmentDetails(assignmentId: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -136,7 +143,7 @@ export async function getAssignmentDetails(assignmentId: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -190,7 +197,7 @@ export async function getAssignmentDetails(assignmentId: string) {
     // Get all students who should submit this assignment
     // This would normally involve queries to get class enrollments
     // For now, just use the submissions we have
-    
+
     // Format submission data
     const submissions = assignment.submissions.map(submission => ({
       id: submission.id,
@@ -233,8 +240,9 @@ export async function getAssignmentDetails(assignmentId: string) {
  */
 export async function createAssignment(formData: FormData) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -243,7 +251,7 @@ export async function createAssignment(formData: FormData) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -261,7 +269,7 @@ export async function createAssignment(formData: FormData) {
     const dueDate = new Date(formData.get('dueDate') as string);
     const totalMarks = parseInt(formData.get('totalMarks') as string);
     const instructions = formData.get('instructions') as string;
-    
+
     // Get attachments (if any)
     const attachmentsRaw = formData.get('attachments');
     const attachments = attachmentsRaw ? JSON.parse(attachmentsRaw as string) : [];
@@ -305,8 +313,29 @@ export async function createAssignment(formData: FormData) {
       }
     }
 
+    // Get the assignment with relations for calendar integration
+    const assignmentWithRelations = await db.assignment.findUnique({
+      where: { id: assignment.id },
+      include: {
+        subject: true,
+        classes: {
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+
+    // Create calendar event from assignment
+    if (assignmentWithRelations) {
+      await createCalendarEventFromAssignment(
+        assignmentWithRelations,
+        teacher.id
+      );
+    }
+
     revalidatePath('/teacher/assessments/assignments');
-    
+
     return { success: true, assignmentId: assignment.id };
   } catch (error) {
     console.error("Failed to create assignment:", error);
@@ -319,8 +348,9 @@ export async function createAssignment(formData: FormData) {
  */
 export async function updateAssignment(formData: FormData) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -329,7 +359,7 @@ export async function updateAssignment(formData: FormData) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -348,7 +378,7 @@ export async function updateAssignment(formData: FormData) {
     const dueDate = new Date(formData.get('dueDate') as string);
     const totalMarks = parseInt(formData.get('totalMarks') as string);
     const instructions = formData.get('instructions') as string;
-    
+
     // Get attachments (if any)
     const attachmentsRaw = formData.get('attachments');
     const attachments = attachmentsRaw ? JSON.parse(attachmentsRaw as string) : [];
@@ -427,9 +457,27 @@ export async function updateAssignment(formData: FormData) {
       }
     }
 
+    // Get the assignment with relations for calendar integration
+    const assignmentWithRelations = await db.assignment.findUnique({
+      where: { id },
+      include: {
+        subject: true,
+        classes: {
+          include: {
+            class: true
+          }
+        }
+      }
+    });
+
+    // Update calendar event from assignment
+    if (assignmentWithRelations) {
+      await updateCalendarEventFromAssignment(assignmentWithRelations);
+    }
+
     revalidatePath('/teacher/assessments/assignments');
     revalidatePath(`/teacher/assessments/assignments/${id}`);
-    
+
     return { success: true, assignmentId: id };
   } catch (error) {
     console.error("Failed to update assignment:", error);
@@ -442,8 +490,9 @@ export async function updateAssignment(formData: FormData) {
  */
 export async function updateAssignmentGrades(assignmentId: string, grades: any[]) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -452,7 +501,7 @@ export async function updateAssignmentGrades(assignmentId: string, grades: any[]
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -501,7 +550,7 @@ export async function updateAssignmentGrades(assignmentId: string, grades: any[]
     }
 
     revalidatePath(`/teacher/assessments/assignments/${assignmentId}`);
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update assignment grades:", error);
@@ -514,8 +563,9 @@ export async function updateAssignmentGrades(assignmentId: string, grades: any[]
  */
 export async function getTeacherClasses() {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -524,7 +574,7 @@ export async function getTeacherClasses() {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -555,10 +605,93 @@ export async function getTeacherClasses() {
   }
 }
 
+/**
+ * Delete an assignment
+ */
+export async function deleteAssignment(assignmentId: string) {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Get the teacher record
+    const teacher = await db.teacher.findFirst({
+      where: {
+        user: {
+          id: userId,
+        },
+      },
+    });
+
+    if (!teacher) {
+      throw new Error("Teacher not found");
+    }
+
+    // Get the assignment
+    const assignment = await db.assignment.findUnique({
+      where: {
+        id: assignmentId,
+      },
+    });
+
+    if (!assignment) {
+      throw new Error("Assignment not found");
+    }
+
+    // Check if teacher has access to delete this assignment
+    if (assignment.creatorId !== teacher.id) {
+      const hasAccess = await db.subjectTeacher.findFirst({
+        where: {
+          teacherId: teacher.id,
+          subjectId: assignment.subjectId,
+        },
+      });
+
+      if (!hasAccess) {
+        throw new Error("Unauthorized access to this assignment");
+      }
+    }
+
+    // Delete submissions first
+    await db.assignmentSubmission.deleteMany({
+      where: {
+        assignmentId,
+      },
+    });
+
+    // Delete class connections
+    await db.assignmentClass.deleteMany({
+      where: {
+        assignmentId,
+      },
+    });
+
+    // Delete calendar event from assignment
+    await deleteCalendarEventFromAssignment(assignmentId);
+
+    // Delete the assignment
+    await db.assignment.delete({
+      where: {
+        id: assignmentId,
+      },
+    });
+
+    revalidatePath('/teacher/assessments/assignments');
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete assignment:", error);
+    return { success: false, error: "Failed to delete assignment" };
+  }
+}
+
 // Helper function to determine assignment status
 function getAssignmentStatus(dueDate: Date) {
   const now = new Date();
-  
+
   if (dueDate < now) {
     return "completed";
   } else {
@@ -571,14 +704,14 @@ function calculateAssignmentStatistics(assignment: any, submissions: any[]) {
   const submittedCount = submissions.length;
   const gradedCount = submissions.filter(s => s.status === 'GRADED').length;
   const lateCount = submissions.filter(s => s.status === 'LATE').length;
-  
+
   // Calculate marks distribution
   const marksDistribution: Record<string, number> = {};
   submissions
     .filter(s => s.status === 'GRADED' && s.marks !== null)
     .forEach(submission => {
       const percentage = Math.floor((submission.marks / assignment.totalMarks) * 100);
-      
+
       let grade;
       if (percentage >= 90) grade = '90-100%';
       else if (percentage >= 80) grade = '80-89%';
@@ -586,17 +719,17 @@ function calculateAssignmentStatistics(assignment: any, submissions: any[]) {
       else if (percentage >= 60) grade = '60-69%';
       else if (percentage >= 50) grade = '50-59%';
       else grade = 'Below 50%';
-      
+
       marksDistribution[grade] = (marksDistribution[grade] || 0) + 1;
     });
-  
+
   // Calculate average, highest, lowest marks
   const gradedSubmissions = submissions.filter(s => s.status === 'GRADED' && s.marks !== null);
   const totalMarks = gradedSubmissions.reduce((sum, s) => sum + s.marks, 0);
   const avgMarks = gradedSubmissions.length > 0 ? totalMarks / gradedSubmissions.length : 0;
   const highestMark = gradedSubmissions.length > 0 ? Math.max(...gradedSubmissions.map(s => s.marks)) : 0;
   const lowestMark = gradedSubmissions.length > 0 ? Math.min(...gradedSubmissions.map(s => s.marks)) : 0;
-  
+
   return {
     submittedCount,
     gradedCount,

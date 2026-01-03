@@ -1,8 +1,9 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,12 +108,7 @@ export default function MessagesPage() {
     },
   });
 
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, [activeFolder]);
-
-  async function fetchAllData() {
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
       const [messagesResult, contactsResult, statsResult] = await Promise.all([
@@ -130,7 +126,12 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeFolder]);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchAllData();
+  }, [activeFolder, fetchAllData]);
 
   // Filter messages
   const filteredMessages = messages.filter((message) => {
@@ -493,10 +494,10 @@ export default function MessagesPage() {
                 {searchTerm
                   ? "Try adjusting your search"
                   : activeFolder === "inbox"
-                  ? "Your inbox is empty"
-                  : activeFolder === "sent"
-                  ? "You haven't sent any messages yet"
-                  : "No archived messages"}
+                    ? "Your inbox is empty"
+                    : activeFolder === "sent"
+                      ? "You haven't sent any messages yet"
+                      : "No archived messages"}
               </p>
               {activeFolder === "inbox" && (
                 <Button onClick={handleComposeMessage}>
@@ -510,9 +511,8 @@ export default function MessagesPage() {
               {filteredMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
-                    !message.isRead && activeFolder === "inbox" ? "bg-primary/10 border-primary/30" : ""
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${!message.isRead && activeFolder === "inbox" ? "bg-primary/10 border-primary/30" : ""
+                    }`}
                   onClick={() => handleViewMessage(message)}
                 >
                   <Avatar className="h-10 w-10">
@@ -560,8 +560,8 @@ export default function MessagesPage() {
             <DialogDescription>Send a message to another user</DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form 
-              onSubmit={form.handleSubmit(onSubmitMessage)} 
+            <form
+              onSubmit={form.handleSubmit(onSubmitMessage)}
               className="space-y-4"
               onClick={(e) => {
                 const target = e.target as HTMLElement;
@@ -698,10 +698,12 @@ export default function MessagesPage() {
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               {isImage && previewUrl ? (
-                                <img
+                                <Image
                                   src={previewUrl}
                                   alt={file.name}
-                                  className="h-10 w-10 object-cover rounded flex-shrink-0"
+                                  width={40}
+                                  height={40}
+                                  className="object-cover rounded flex-shrink-0"
                                 />
                               ) : (
                                 <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -731,9 +733,9 @@ export default function MessagesPage() {
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setComposeDialogOpen(false)}
                   disabled={uploadingAttachments}
                 >
@@ -798,17 +800,19 @@ export default function MessagesPage() {
                           {attachmentUrls.map((url: string, index: number) => {
                             const fileName = url.split("/").pop() || `attachment-${index + 1}`;
                             const isImage = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                            
+
                             return (
                               <div
                                 key={index}
                                 className="flex items-center gap-2 p-2 border rounded-lg hover:bg-gray-50"
                               >
                                 {isImage ? (
-                                  <img
+                                  <Image
                                     src={url}
                                     alt={fileName}
-                                    className="h-10 w-10 object-cover rounded flex-shrink-0"
+                                    width={40}
+                                    height={40}
+                                    className="object-cover rounded flex-shrink-0"
                                   />
                                 ) : (
                                   <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />

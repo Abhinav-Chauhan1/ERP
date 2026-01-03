@@ -12,7 +12,7 @@ import {
   ChevronDown, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { SchoolLogo } from "@/components/shared/school-logo";
 
 interface SubMenuItem {
@@ -110,6 +110,11 @@ const routes: RouteItem[] = [
     label: "Achievements",
     icon: Award,
     href: "/student/achievements",
+  },
+  {
+    label: "Calendar",
+    icon: CalendarDays,
+    href: "/student/calendar",
   },
   {
     label: "Events",

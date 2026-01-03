@@ -4,19 +4,22 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Calendar, Clock, Building2, GraduationCap, BookOpen, FileText } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PlusCircle, Calendar, Clock, Building2, GraduationCap, BookOpen, FileText, AlertCircle } from "lucide-react";
 import { getAcademicOverview, getAcademicYears } from "@/lib/actions/academicActions";
 import { formatDate } from "@/lib/utils";
+import { AcademicErrorBoundary } from "@/components/academic/academic-error-boundary";
 
-export default async function AcademicPage() {
+async function AcademicPageContent() {
   const [overviewResult, yearsResult] = await Promise.all([
     getAcademicOverview(),
     getAcademicYears(),
   ]);
 
   const overview = overviewResult.success && overviewResult.data ? overviewResult.data : undefined;
-
   const academicYears = yearsResult.success && yearsResult.data ? yearsResult.data : [];
+  const hasError = !overviewResult.success || !yearsResult.success;
+  const errorMessage = !overviewResult.success ? overviewResult.error : undefined;
 
   const academicSections = [
     {
@@ -72,12 +75,22 @@ export default async function AcademicPage() {
             Manage academic structure and curriculum
           </p>
         </div>
-        <Link href="/admin/academic/academic-years/create">
+        <Link href="/admin/academic/academic-years">
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" /> Create Academic Year
           </Button>
         </Link>
       </div>
+
+      {hasError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {errorMessage || "An error occurred while loading academic data"}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {academicSections.map((section) => (
@@ -122,7 +135,7 @@ export default async function AcademicPage() {
               <p className="text-muted-foreground mb-6 max-w-sm">
                 Get started by creating your first academic year to organize your school calendar.
               </p>
-              <Link href="/admin/academic/academic-years/create">
+              <Link href="/admin/academic/academic-years">
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create Academic Year
@@ -152,23 +165,21 @@ export default async function AcademicPage() {
                         <td className="py-3 px-4 align-middle">{formatDate(year.endDate)}</td>
                         <td className="py-3 px-4 align-middle">
                           <Badge 
+                            variant={year.isCurrent ? 'default' : 'secondary'}
                             className={
-                              year.status === 'Current' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                              year.status === 'Past' ? 'bg-muted text-gray-800 hover:bg-muted' :
-                              'bg-primary/10 text-primary hover:bg-primary/10'
+                              year.isCurrent ? 'bg-green-600 hover:bg-green-700' :
+                              new Date(year.endDate) < new Date() ? 'bg-gray-500 hover:bg-gray-600' :
+                              'bg-blue-600 hover:bg-blue-700'
                             }
                           >
-                            {year.status}
+                            {year.isCurrent ? 'Current' : new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}
                           </Badge>
                         </td>
-                        <td className="py-3 px-4 align-middle">{year.termsCount}</td>
-                        <td className="py-3 px-4 align-middle">{year.classesCount}</td>
+                        <td className="py-3 px-4 align-middle">{'_count' in year ? year._count.terms : year.termsCount}</td>
+                        <td className="py-3 px-4 align-middle">{'_count' in year ? year._count.classes : year.classesCount}</td>
                         <td className="py-3 px-4 align-middle text-right">
                           <Link href={`/admin/academic/academic-years/${year.id}`}>
                             <Button variant="ghost" size="sm">View</Button>
-                          </Link>
-                          <Link href={`/admin/academic/academic-years/${year.id}/edit`}>
-                            <Button variant="ghost" size="sm">Edit</Button>
                           </Link>
                         </td>
                       </tr>
@@ -181,5 +192,13 @@ export default async function AcademicPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AcademicPage() {
+  return (
+    <AcademicErrorBoundary context="overview">
+      <AcademicPageContent />
+    </AcademicErrorBoundary>
   );
 }

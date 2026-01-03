@@ -3,10 +3,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   Building2, BookOpen, GraduationCap,
-  Loader2, AlertCircle
+  Loader2, AlertCircle, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,10 +61,10 @@ export default function DepartmentsPage() {
   async function fetchDepartments() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getDepartments();
-      
+
       if (result.success) {
         setDepartments(result.data || []);
       } else {
@@ -83,7 +83,7 @@ export default function DepartmentsPage() {
   async function onSubmit(values: DepartmentFormValues) {
     try {
       let result;
-      
+
       if (selectedDepartmentId) {
         // Update existing department
         const updateData: DepartmentUpdateFormValues = { ...values, id: selectedDepartmentId };
@@ -92,7 +92,7 @@ export default function DepartmentsPage() {
         // Create new department
         result = await createDepartment(values);
       }
-      
+
       if (result.success) {
         toast.success(`Department ${selectedDepartmentId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -129,7 +129,7 @@ export default function DepartmentsPage() {
     if (selectedDepartmentId) {
       try {
         const result = await deleteDepartment(selectedDepartmentId);
-        
+
         if (result.success) {
           toast.success("Department deleted successfully");
           setDeleteDialogOpen(false);
@@ -173,8 +173,8 @@ export default function DepartmentsPage() {
             <DialogHeader>
               <DialogTitle>{selectedDepartmentId ? "Edit Department" : "Add New Department"}</DialogTitle>
               <DialogDescription>
-                {selectedDepartmentId 
-                  ? "Update the details of the academic department" 
+                {selectedDepartmentId
+                  ? "Update the details of the academic department"
                   : "Create a new academic department for your institution"}
               </DialogDescription>
             </DialogHeader>
@@ -200,9 +200,9 @@ export default function DepartmentsPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe the department's focus and responsibilities" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Describe the department's focus and responsibilities"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>

@@ -71,13 +71,33 @@ export default function TakeExamPage() {
   const hasShownWarning = useRef(false);
 
   // Load exam data
+  const loadExam = useCallback(async () => {
+    try {
+      const result = await getExamAttempt(examId);
+      if (result.success && result.attempt && result.questions) {
+        setAttempt(result.attempt as any);
+        setQuestions(result.questions);
+        setAnswers((result.attempt.answers as Record<string, any>) || {});
+        setTimeRemaining(result.timeRemaining || 0);
+      } else {
+        toast.error(result.error || "Failed to load exam");
+        router.push("/student/assessments/exams/online");
+      }
+    } catch (error) {
+      toast.error("Failed to load exam");
+      router.push("/student/assessments/exams/online");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [examId, router]);
+
   useEffect(() => {
     loadExam();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     };
-  }, [examId]);
+  }, [loadExam]);
 
   // Disable copy-paste functionality
   useEffect(() => {
@@ -103,6 +123,28 @@ export default function TakeExamPage() {
       document.removeEventListener("contextmenu", preventContextMenu);
     };
   }, []);
+
+  // Handle auto submit on time expiry
+  const handleAutoSubmit = useCallback(async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    toast.error("Time's up! Submitting your exam...");
+
+    try {
+      const result = await submitExamAttempt(examId, answers);
+      if (result.success) {
+        toast.success("Exam submitted successfully!");
+        router.push(`/student/assessments/exams/online/${examId}/result`);
+      } else {
+        toast.error(result.error || "Failed to submit exam");
+      }
+    } catch (error) {
+      toast.error("Failed to submit exam");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [examId, answers, router, isSubmitting]);
 
   // Timer countdown
   useEffect(() => {
@@ -132,27 +174,7 @@ export default function TakeExamPage() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeRemaining]);
-
-  const loadExam = async () => {
-    try {
-      const result = await getExamAttempt(examId);
-      if (result.success && result.attempt && result.questions) {
-        setAttempt(result.attempt as any);
-        setQuestions(result.questions);
-        setAnswers((result.attempt.answers as Record<string, any>) || {});
-        setTimeRemaining(result.timeRemaining || 0);
-      } else {
-        toast.error(result.error || "Failed to load exam");
-        router.push("/student/assessments/exams/online");
-      }
-    } catch (error) {
-      toast.error("Failed to load exam");
-      router.push("/student/assessments/exams/online");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [timeRemaining, handleAutoSubmit]);
 
   const handleAnswerChange = (questionId: string, answer: any) => {
     setAnswers((prev) => ({
@@ -175,27 +197,6 @@ export default function TakeExamPage() {
       console.error("Failed to save answer:", error);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleAutoSubmit = async () => {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-    toast.error("Time's up! Submitting your exam...");
-
-    try {
-      const result = await submitExamAttempt(examId, answers);
-      if (result.success) {
-        toast.success("Exam submitted successfully!");
-        router.push(`/student/assessments/exams/online/${examId}/result`);
-      } else {
-        toast.error(result.error || "Failed to submit exam");
-      }
-    } catch (error) {
-      toast.error("Failed to submit exam");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -371,9 +372,8 @@ export default function TakeExamPage() {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Time Remaining</p>
                 <div
-                  className={`text-2xl font-bold flex items-center gap-2 ${
-                    isTimeWarning ? "text-destructive" : "text-primary"
-                  }`}
+                  className={`text-2xl font-bold flex items-center gap-2 ${isTimeWarning ? "text-destructive" : "text-primary"
+                    }`}
                 >
                   <Clock className="h-5 w-5" />
                   {formatTime(timeRemaining)}

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
@@ -45,12 +46,12 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
       const fullName = `${student.user.firstName} ${student.user.lastName}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         student.admissionId.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = 
+
+      const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && student.user.active) ||
         (statusFilter === "inactive" && !student.user.active);
-      
+
       return matchesSearch && matchesStatus;
     });
 
@@ -111,11 +112,11 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
-          <UserSearch 
-            placeholder="Search students by name or admission ID..." 
+          <UserSearch
+            placeholder="Search students by name or admission ID..."
             onSearch={setSearchQuery}
           />
-          <UserFilters 
+          <UserFilters
             onStatusChange={setStatusFilter}
             onSortChange={setSortBy}
           />
@@ -160,20 +161,10 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
                   <tr key={student.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        {student.user.avatar ? (
-                          <img
-                            src={student.user.avatar}
-                            alt={`${student.user.firstName} ${student.user.lastName}`}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
-                            {student.user.firstName[0]}
-                            {student.user.lastName[0]}
-                          </div>
-                        )}
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+                          <AvatarFallback>{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
+                        </Avatar>
                         <div className="font-medium">
                           {student.user.firstName} {student.user.lastName}
                         </div>
@@ -192,7 +183,7 @@ export function StudentsTableWithExport({ students }: StudentsTableWithExportPro
                     <td className="py-3 px-4 align-middle capitalize">{student.gender.toLowerCase()}</td>
                     <td className="py-3 px-4 align-middle">{formatDate(student.admissionDate)}</td>
                     <td className="py-3 px-4 align-middle">
-                      <Badge 
+                      <Badge
                         className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                       >
                         {student.user.active ? "Active" : "Inactive"}

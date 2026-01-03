@@ -8,7 +8,7 @@
 
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import {
   startScheduledBackups,
   stopScheduledBackups,
@@ -23,7 +23,8 @@ import { AuditAction } from '@prisma/client';
  */
 export async function getScheduledBackupStatusAction() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -56,7 +57,8 @@ export async function getScheduledBackupStatusAction() {
  */
 export async function startScheduledBackupsAction() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -99,7 +101,8 @@ export async function startScheduledBackupsAction() {
  */
 export async function stopScheduledBackupsAction() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {
@@ -142,7 +145,8 @@ export async function stopScheduledBackupsAction() {
  */
 export async function triggerManualBackupAction() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       return {

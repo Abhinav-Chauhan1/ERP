@@ -266,6 +266,47 @@ export async function createEventNotification(params: {
   });
 }
 
+/**
+ * Create receipt verification notification
+ * Requirement 9.4: Ensure receipt notifications appear in notifications section
+ */
+export async function createReceiptVerificationNotification(params: {
+  userId: string;
+  receiptReference: string;
+  feeStructureName: string;
+  amount: number;
+  remainingBalance: number;
+  link?: string;
+}): Promise<Notification | null> {
+  return createNotification({
+    userId: params.userId,
+    title: "Payment Receipt Verified",
+    message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been verified. Amount: ₹${params.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Remaining balance: ₹${params.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+    type: "RECEIPT_VERIFIED" as NotificationType,
+    link: params.link || "/student/fees/receipts",
+  });
+}
+
+/**
+ * Create receipt rejection notification
+ * Requirement 9.4: Ensure receipt notifications appear in notifications section
+ */
+export async function createReceiptRejectionNotification(params: {
+  userId: string;
+  receiptReference: string;
+  feeStructureName: string;
+  rejectionReason: string;
+  link?: string;
+}): Promise<Notification | null> {
+  return createNotification({
+    userId: params.userId,
+    title: "Payment Receipt Rejected",
+    message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been rejected. Reason: ${params.rejectionReason}. Please upload a new receipt with the correct information.`,
+    type: "RECEIPT_REJECTED" as NotificationType,
+    link: params.link || "/student/fees/upload-receipt",
+  });
+}
+
 // ============================================================================
 // NOTIFICATION FORMATTING UTILITIES
 // ============================================================================
@@ -282,10 +323,28 @@ export function getNotificationIcon(type: NotificationType): string {
     [NotificationType.ANNOUNCEMENT]: "megaphone",
     [NotificationType.MEETING]: "users",
     [NotificationType.EVENT]: "calendar",
+    [NotificationType.RECEIPT_VERIFIED]: "check-circle",
+    [NotificationType.RECEIPT_REJECTED]: "x-circle",
+    [NotificationType.LEAVE]: "calendar-off",
+    [NotificationType.EXAM]: "file-text",
+    [NotificationType.TIMETABLE]: "clock",
     [NotificationType.GENERAL]: "bell",
   };
 
   return icons[type] || "bell";
+}
+
+/**
+ * Get notification icon for receipt notifications
+ * Requirement 9.4: Add receipt icon for receipt-related notifications
+ */
+export function getReceiptNotificationIcon(type: string): string {
+  if (type === "RECEIPT_VERIFIED") {
+    return "check-circle";
+  } else if (type === "RECEIPT_REJECTED") {
+    return "x-circle";
+  }
+  return "file-text";
 }
 
 /**
@@ -300,10 +359,28 @@ export function getNotificationColor(type: NotificationType): string {
     [NotificationType.ANNOUNCEMENT]: "orange",
     [NotificationType.MEETING]: "pink",
     [NotificationType.EVENT]: "cyan",
+    [NotificationType.RECEIPT_VERIFIED]: "green",
+    [NotificationType.RECEIPT_REJECTED]: "red",
+    [NotificationType.LEAVE]: "orange",
+    [NotificationType.EXAM]: "blue",
+    [NotificationType.TIMETABLE]: "purple",
     [NotificationType.GENERAL]: "gray",
   };
 
   return colors[type] || "gray";
+}
+
+/**
+ * Get notification color for receipt notifications
+ * Requirement 9.4: Add receipt icon for receipt-related notifications
+ */
+export function getReceiptNotificationColor(type: string): string {
+  if (type === "RECEIPT_VERIFIED") {
+    return "green";
+  } else if (type === "RECEIPT_REJECTED") {
+    return "red";
+  }
+  return "gray";
 }
 
 /**

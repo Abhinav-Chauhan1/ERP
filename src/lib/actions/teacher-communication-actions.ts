@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -21,25 +21,26 @@ import {
  * Helper function to get current teacher and verify authentication
  */
 async function getCurrentTeacher() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: userId
     },
     include: {
       teacher: true
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.TEACHER || !dbUser.teacher) {
     return null;
   }
-  
+
   return { user: dbUser, teacher: dbUser.teacher };
 }
 
@@ -90,18 +91,18 @@ export async function getMessages(filters?: z.infer<typeof getMessagesSchema>) {
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Validate and set defaults
     const validated = getMessagesSchema.parse(filters || {});
-    
+
     // Normalize pagination parameters
     const pagination = normalizePagination(validated.page, validated.limit);
-    
+
     // Build where clause based on message type
     const where: any = {};
-    
+
     if (validated.type === "inbox") {
       where.recipientId = user.id;
     } else if (validated.type === "sent") {
@@ -117,19 +118,19 @@ export async function getMessages(filters?: z.infer<typeof getMessagesSchema>) {
         }
       };
     }
-    
+
     // Add optional filters
     if (validated.isRead !== undefined) {
       where.isRead = validated.isRead;
     }
-    
+
     if (validated.search) {
       where.OR = [
         { subject: { contains: validated.search, mode: "insensitive" } },
         { content: { contains: validated.search, mode: "insensitive" } }
       ];
     }
-    
+
     if (validated.startDate || validated.endDate) {
       where.createdAt = {};
       if (validated.startDate) {
@@ -139,7 +140,7 @@ export async function getMessages(filters?: z.infer<typeof getMessagesSchema>) {
         where.createdAt.lte = validated.endDate;
       }
     }
-    
+
     // Execute count and query in parallel with monitoring
     const [totalCount, messages] = await Promise.all([
       monitoredQuery(
@@ -159,7 +160,7 @@ export async function getMessages(filters?: z.infer<typeof getMessagesSchema>) {
         "teacher-messages-list"
       )
     ]);
-    
+
     return {
       success: true,
       data: {
@@ -184,9 +185,9 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Verify CSRF token
     if (input.csrfToken) {
       const isCsrfValid = await verifyCsrfToken(input.csrfToken);
@@ -194,21 +195,21 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
         return { success: false, message: "Invalid CSRF token" };
       }
     }
-    
+
     // Rate limiting for message sending
     const rateLimitKey = `message:${user.id}`;
     const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.MESSAGE);
     if (!rateLimitResult) {
       return { success: false, message: "Too many messages sent. Please try again later." };
     }
-    
+
     // Validate input
     const validated = sendMessageSchema.parse(input);
-    
+
     // Sanitize message content
     const sanitizedSubject = sanitizeText(validated.subject);
     const sanitizedContent = sanitizeHtml(validated.content);
-    
+
     // Verify recipient exists and is active
     const recipient = await db.user.findUnique({
       where: { id: validated.recipientId },
@@ -221,15 +222,15 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
         email: true
       }
     });
-    
+
     if (!recipient) {
       return { success: false, message: "Recipient not found" };
     }
-    
+
     if (!recipient.active) {
       return { success: false, message: "Recipient is not active" };
     }
-    
+
     // Create message
     const message = await db.message.create({
       data: {
@@ -250,7 +251,7 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
         }
       }
     });
-    
+
     // Create notification for recipient
     await db.notification.create({
       data: {
@@ -262,10 +263,10 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
         link: `/communication/messages/${message.id}`
       }
     });
-    
+
     // Revalidate communication pages
     revalidatePath("/teacher/communication");
-    
+
     return {
       success: true,
       data: {
@@ -297,32 +298,32 @@ export async function getAnnouncements(filters?: z.infer<typeof getAnnouncements
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Validate and set defaults
     const validated = getAnnouncementsSchema.parse(filters || {});
-    
+
     // Normalize pagination parameters
     const pagination = normalizePagination(validated.page, validated.limit);
-    
+
     // Build where clause
     const where: any = {
       targetAudience: {
         has: "TEACHER"
       }
     };
-    
+
     // Add optional filters
     if (validated.isActive !== undefined) {
       where.isActive = validated.isActive;
     }
-    
+
     if (validated.search) {
       where.OR = [
         { title: { contains: validated.search, mode: "insensitive" } },
         { content: { contains: validated.search, mode: "insensitive" } }
       ];
     }
-    
+
     if (validated.startDate || validated.endDate) {
       where.startDate = {};
       if (validated.startDate) {
@@ -332,7 +333,7 @@ export async function getAnnouncements(filters?: z.infer<typeof getAnnouncements
         where.startDate.lte = validated.endDate;
       }
     }
-    
+
     // Execute count and query in parallel with monitoring
     const [totalCount, announcements] = await Promise.all([
       monitoredQuery(
@@ -352,7 +353,7 @@ export async function getAnnouncements(filters?: z.infer<typeof getAnnouncements
         "teacher-announcements-list"
       )
     ]);
-    
+
     return {
       success: true,
       data: {
@@ -377,12 +378,12 @@ export async function markAsRead(input: z.infer<typeof markAsReadSchema>) {
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Validate input
     const validated = markAsReadSchema.parse(input);
-    
+
     if (validated.type === "message") {
       // Verify message exists and belongs to user
       const message = await db.message.findUnique({
@@ -393,15 +394,15 @@ export async function markAsRead(input: z.infer<typeof markAsReadSchema>) {
           isRead: true
         }
       });
-      
+
       if (!message) {
         return { success: false, message: "Message not found" };
       }
-      
+
       if (message.recipientId !== user.id) {
         return { success: false, message: "Access denied" };
       }
-      
+
       // Update message if not already read
       if (!message.isRead) {
         await db.message.update({
@@ -422,15 +423,15 @@ export async function markAsRead(input: z.infer<typeof markAsReadSchema>) {
           isRead: true
         }
       });
-      
+
       if (!notification) {
         return { success: false, message: "Notification not found" };
       }
-      
+
       if (notification.userId !== user.id) {
         return { success: false, message: "Access denied" };
       }
-      
+
       // Update notification if not already read
       if (!notification.isRead) {
         await db.notification.update({
@@ -442,10 +443,10 @@ export async function markAsRead(input: z.infer<typeof markAsReadSchema>) {
         });
       }
     }
-    
+
     // Revalidate communication pages
     revalidatePath("/teacher/communication");
-    
+
     return {
       success: true,
       message: `${validated.type === "message" ? "Message" : "Notification"} marked as read`
@@ -470,12 +471,12 @@ export async function deleteMessage(input: z.infer<typeof deleteMessageSchema>) 
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Validate input
     const validated = deleteMessageSchema.parse(input);
-    
+
     // Verify message exists and user has access
     const message = await db.message.findUnique({
       where: { id: validated.id },
@@ -485,24 +486,24 @@ export async function deleteMessage(input: z.infer<typeof deleteMessageSchema>) 
         recipientId: true
       }
     });
-    
+
     if (!message) {
       return { success: false, message: "Message not found" };
     }
-    
+
     // User can delete if they are sender or recipient
     if (message.senderId !== user.id && message.recipientId !== user.id) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Delete the message
     await db.message.delete({
       where: { id: validated.id }
     });
-    
+
     // Revalidate communication pages
     revalidatePath("/teacher/communication");
-    
+
     return {
       success: true,
       message: "Message deleted successfully"
@@ -527,9 +528,9 @@ export async function getUnreadMessageCount() {
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Count unread messages
     const unreadMessages = await db.message.count({
       where: {
@@ -537,7 +538,7 @@ export async function getUnreadMessageCount() {
         isRead: false
       }
     });
-    
+
     return {
       success: true,
       data: {
@@ -561,9 +562,9 @@ export async function getContacts() {
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     // Get all active users except current user (optimized with select)
     const users = await monitoredQuery(
       () => db.user.findMany({
@@ -582,7 +583,7 @@ export async function getContacts() {
       }),
       "teacher-contacts-list"
     );
-    
+
     return { success: true, data: users };
   } catch (error) {
     console.error("Error fetching contacts:", error);
@@ -601,9 +602,9 @@ export async function getMessageById(id: string) {
     if (!teacherData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = teacherData;
-    
+
     const message = await db.message.findUnique({
       where: { id },
       include: {
@@ -629,16 +630,16 @@ export async function getMessageById(id: string) {
         }
       }
     });
-    
+
     if (!message) {
       return { success: false, message: "Message not found" };
     }
-    
+
     // Check if user is sender or recipient
     if (message.senderId !== user.id && message.recipientId !== user.id) {
       return { success: false, message: "Unauthorized to view this message" };
     }
-    
+
     return { success: true, data: message };
   } catch (error) {
     console.error("Error fetching message:", error);

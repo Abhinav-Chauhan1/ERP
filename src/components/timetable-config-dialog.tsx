@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import { useState, useEffect, useCallback } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -22,10 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  timetableConfigSchema, 
+import {
+  timetableConfigSchema,
   TimetableConfigFormValues,
-  PeriodFormValues 
+  PeriodFormValues
 } from "@/lib/schemaValidation/timetableConfigSchemaValidation";
 import { getTimetableConfig, saveTimetableConfig } from "@/lib/actions/timetableConfigActions";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,8 +33,7 @@ import { Plus, Trash2, Save, Settings } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import toast from "react-hot-toast";
 
-// Map day values to display names
-const DAY_OPTIONS = [
+const DAY_OPTIONS: { value: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY"; label: string }[] = [
   { value: "MONDAY", label: "Monday" },
   { value: "TUESDAY", label: "Tuesday" },
   { value: "WEDNESDAY", label: "Wednesday" },
@@ -47,7 +46,7 @@ const DAY_OPTIONS = [
 export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: () => void }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+
   // Create form with default values
   const form = useForm<TimetableConfigFormValues>({
     resolver: zodResolver(timetableConfigSchema),
@@ -59,9 +58,9 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
       ],
     },
   });
-  
+
   // Load current configuration
-  const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getTimetableConfig();
@@ -69,7 +68,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
         form.reset({
           id: result.data.id || undefined,
           name: result.data.name,
-          daysOfWeek: result.data.daysOfWeek.filter((day): day is "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" => 
+          daysOfWeek: result.data.daysOfWeek.filter((day): day is "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" =>
             ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].includes(day)
           ),
           periods: result.data.periods.map(p => ({
@@ -86,82 +85,82 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
     } finally {
       setLoading(false);
     }
-  };
+  }, [form]);
 
   useEffect(() => {
     if (open) {
       loadConfig();
     }
-  }, [open]);
-  
+  }, [open, loadConfig]);
+
   // Add a new period
   const addPeriod = () => {
     // Get current periods
     const currentPeriods = form.getValues("periods") || [];
-    
+
     // Generate default values for the new period
     let defaultStartTime = "09:00";
     let defaultEndTime = "09:45";
-    
+
     // If there are existing periods, set the new period to start after the last one
     if (currentPeriods.length > 0) {
       const lastPeriod = currentPeriods[currentPeriods.length - 1];
       defaultStartTime = lastPeriod.endTime;
-      
+
       // Calculate end time (45 min after start)
       const [hours, minutes] = lastPeriod.endTime.split(":").map(Number);
       let endHour = hours;
       let endMinute = minutes + 45;
-      
+
       if (endMinute >= 60) {
         endHour += Math.floor(endMinute / 60);
         endMinute = endMinute % 60;
       }
-      
+
       defaultEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
     }
-    
+
     // Add the new period
     const newPeriods = [
       ...currentPeriods,
-      { 
-        id: uuidv4(), 
-        name: `Period ${currentPeriods.length + 1}`, 
-        startTime: defaultStartTime, 
-        endTime: defaultEndTime 
+      {
+        id: uuidv4(),
+        name: `Period ${currentPeriods.length + 1}`,
+        startTime: defaultStartTime,
+        endTime: defaultEndTime
       },
     ];
     form.setValue("periods", newPeriods);
   };
-  
+
   // Remove a period
   const removePeriod = (index: number) => {
     const currentPeriods = form.getValues("periods") || [];
     const newPeriods = currentPeriods.filter((_, i) => i !== index);
-    
+
     // Rename periods to maintain sequential order
     const renamedPeriods = newPeriods.map((period, i) => ({
       ...period,
       name: `Period ${i + 1}`
     }));
-    
+
     form.setValue("periods", renamedPeriods);
   };
-  
+
   // Direct save function that doesn't rely on form submission
   const saveConfig = async () => {
     try {
       setLoading(true);
-      
+
       // Get current form values
       const values = form.getValues();
-      
+
       // Clean up and validate data
       const cleanData: TimetableConfigFormValues = {
         ...values,
         name: values.name.trim() || "Default Configuration",
-        daysOfWeek: (values.daysOfWeek.length > 0 ? 
-          values.daysOfWeek.filter((day): day is "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" => 
+        daysOfWeek: (values.daysOfWeek.length > 0 ?
+          values.daysOfWeek.filter((day): day is "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY" =>
             ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"].includes(day)
           ) : ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]) as ("MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY")[],
         periods: values.periods.map((period, index) => ({
@@ -172,10 +171,10 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
           order: period.order || (index + 1)
         }))
       };
-      
+
       // Call the server action directly
       const result = await saveTimetableConfig(cleanData);
-      
+
       // Handle the result
       if (result.success) {
         toast.success("Timetable configuration saved successfully!");
@@ -206,7 +205,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
             Configure the days and periods for your timetable
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <div className="space-y-6">
             <FormField
@@ -222,7 +221,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="daysOfWeek"
@@ -258,7 +257,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                 </FormItem>
               )}
             />
-            
+
             <div className="pt-2">
               <div className="flex justify-between items-center mb-3">
                 <FormLabel>Class Periods</FormLabel>
@@ -267,7 +266,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                   Add Period
                 </Button>
               </div>
-              
+
               <div className="space-y-3 max-h-[40vh] overflow-y-auto p-1">
                 {form.watch("periods")?.map((period, index) => (
                   <div key={period.id || index} className="flex flex-col sm:flex-row items-start sm:items-end gap-3 p-3 border rounded-md bg-accent">
@@ -284,7 +283,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name={`periods.${index}.startTime`}
@@ -302,7 +301,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name={`periods.${index}.endTime`}
@@ -320,7 +319,7 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                         </FormItem>
                       )}
                     />
-                    
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -336,9 +335,9 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
               </div>
               <FormMessage>{form.formState.errors.periods?.message}</FormMessage>
             </div>
-            
+
             <DialogFooter className="pt-2">
-              <Button 
+              <Button
                 type="button"
                 disabled={loading}
                 onClick={saveConfig}

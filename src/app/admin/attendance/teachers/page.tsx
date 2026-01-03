@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
@@ -41,19 +41,7 @@ export default function TeacherAttendancePage() {
     },
   });
 
-  // Load teachers on mount
-  useEffect(() => {
-    loadTeachers();
-  }, []);
-
-  // Load attendance when date changes
-  useEffect(() => {
-    if (currentDate) {
-      loadAttendanceForDate();
-    }
-  }, [currentDate]);
-
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     try {
       const result = await getTeachersForDropdown();
       if (result.success && result.data) {
@@ -63,9 +51,9 @@ export default function TeacherAttendancePage() {
       console.error("Error loading teachers:", error);
       toast.error("Failed to load teachers");
     }
-  };
+  }, []);
 
-  const loadAttendanceForDate = async () => {
+  const loadAttendanceForDate = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getTeacherAttendanceByDate(currentDate);
@@ -80,7 +68,19 @@ export default function TeacherAttendancePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate]);
+
+  // Load teachers on mount
+  useEffect(() => {
+    loadTeachers();
+  }, [loadTeachers]);
+
+  // Load attendance when date changes
+  useEffect(() => {
+    if (currentDate) {
+      loadAttendanceForDate();
+    }
+  }, [currentDate, loadAttendanceForDate]);
 
   const handleEditAttendance = (teacher: any) => {
     const existingRecord = attendanceRecords.find(r => r.teacherId === teacher.id);
@@ -268,7 +268,7 @@ export default function TeacherAttendancePage() {
                       {teachers.map((teacher) => {
                         const status = getTeacherStatus(teacher.id);
                         const record = attendanceRecords.find(r => r.teacherId === teacher.id);
-                        
+
                         return (
                           <tr key={teacher.id} className="border-b hover:bg-accent/50">
                             <td className="py-3 px-4 align-middle font-medium">{teacher.name}</td>
@@ -280,10 +280,10 @@ export default function TeacherAttendancePage() {
                                     status === AttendanceStatus.PRESENT
                                       ? "bg-green-100 text-green-800 hover:bg-green-100"
                                       : status === AttendanceStatus.ABSENT
-                                      ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                      : status === AttendanceStatus.LATE
-                                      ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                      : "bg-primary/10 text-primary hover:bg-primary/10"
+                                        ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                        : status === AttendanceStatus.LATE
+                                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                          : "bg-primary/10 text-primary hover:bg-primary/10"
                                   }
                                 >
                                   {status}
@@ -366,10 +366,10 @@ export default function TeacherAttendancePage() {
                                 record.status === AttendanceStatus.PRESENT
                                   ? "bg-green-100 text-green-800 hover:bg-green-100"
                                   : record.status === AttendanceStatus.ABSENT
-                                  ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                  : record.status === AttendanceStatus.LATE
-                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : "bg-primary/10 text-primary hover:bg-primary/10"
+                                    ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                    : record.status === AttendanceStatus.LATE
+                                      ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                      : "bg-primary/10 text-primary hover:bg-primary/10"
                               }
                             >
                               {record.status}
@@ -407,8 +407,8 @@ export default function TeacherAttendancePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Attendance Status</FormLabel>
-                    <Select 
-                      value={field.value} 
+                    <Select
+                      value={field.value}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
@@ -448,8 +448,8 @@ export default function TeacherAttendancePage() {
                   <FormItem>
                     <FormLabel>Reason (if absent/late)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="e.g. Sick, Family event, etc." 
+                      <Textarea
+                        placeholder="e.g. Sick, Family event, etc."
                         disabled={attendanceForm.watch("status") === "PRESENT"}
                         {...field}
                         value={field.value || ""}

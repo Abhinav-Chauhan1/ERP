@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { hasPermission } from '@/lib/utils/permissions';
 import { PermissionAction } from '@prisma/client';
 import {
@@ -25,8 +25,9 @@ import {
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const { userId: clerkUserId } = await auth();
-    
+    const session = await auth();
+    const clerkUserId = session?.user?.id;
+
     if (!clerkUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -40,9 +41,9 @@ export async function GET(request: NextRequest) {
       'AUDIT_LOG',
       PermissionAction.READ,
       {
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown',
+        ipAddress: request.headers.get('x-forwarded-for') ||
+          request.headers.get('x-real-ip') ||
+          'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
         metadata: {
           source: 'api',
@@ -67,15 +68,15 @@ export async function GET(request: NextRequest) {
 
     // Return statistics if requested
     if (stats) {
-      const startDate = searchParams.get('startDate') 
-        ? new Date(searchParams.get('startDate')!) 
+      const startDate = searchParams.get('startDate')
+        ? new Date(searchParams.get('startDate')!)
         : undefined;
-      const endDate = searchParams.get('endDate') 
-        ? new Date(searchParams.get('endDate')!) 
+      const endDate = searchParams.get('endDate')
+        ? new Date(searchParams.get('endDate')!)
         : undefined;
 
       const statistics = await getPermissionDenialStats(startDate, endDate);
-      
+
       return NextResponse.json({
         success: true,
         stats: statistics,

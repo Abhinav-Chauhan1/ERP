@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
@@ -24,7 +24,8 @@ export async function exportStudentsData(
   }
 ): Promise<ExportJobResult> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
@@ -98,7 +99,8 @@ export async function exportTeachersData(
   }
 ): Promise<ExportJobResult> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
@@ -164,7 +166,8 @@ export async function exportAttendanceData(
   }
 ): Promise<ExportJobResult> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
@@ -235,7 +238,8 @@ export async function exportFeePaymentsData(
   }
 ): Promise<ExportJobResult> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
@@ -302,7 +306,8 @@ export async function exportExamResultsData(
   examId: string
 ): Promise<ExportJobResult> {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }

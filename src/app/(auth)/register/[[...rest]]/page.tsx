@@ -1,19 +1,9 @@
-import { SignUp } from "@clerk/nextjs";
+import { RegisterForm } from "@/components/auth/register-form";
 
 export default function RegisterPage() {
   return (
     <div className="flex justify-center p-6">
-      <SignUp
-        appearance={{
-          elements: {
-            formButtonPrimary:
-              "bg-slate-900 hover:bg-slate-700 text-sm normal-case",
-          },
-        }}
-        routing="path"
-        path="/register"
-        signInUrl="/login"
-      />
+      <RegisterForm />
     </div>
   );
 }

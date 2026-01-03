@@ -373,6 +373,7 @@ export async function invalidateSubjectTeacherCache(teacherId: string, subjectId
 }
 
 /**
+ * Invalidate grade cache
  * Helper to invalidate related caches after grade/result entry
  */
 export async function invalidateGradeCache(studentId: string, examId: string) {
@@ -389,3 +390,141 @@ export async function invalidateGradeCache(studentId: string, examId: string) {
     ],
   });
 }
+
+/**
+ * Invalidate syllabus-related caches
+ */
+export async function invalidateSyllabusCache(syllabusId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.SYLLABUS,
+    CACHE_TAGS.MODULES,
+    CACHE_TAGS.SUB_MODULES,
+    CACHE_TAGS.SYLLABUS_DOCUMENTS,
+  ]);
+  
+  if (syllabusId) {
+    await invalidateCachePath(`/admin/academic/syllabus/${syllabusId}`);
+    await invalidateCachePath(`/teacher/syllabus/${syllabusId}`);
+    await invalidateCachePath(`/student/syllabus/${syllabusId}`);
+  }
+  
+  // Invalidate common syllabus pages
+  await invalidateCachePath("/admin/academic/syllabus");
+  await invalidateCachePath("/teacher");
+  await invalidateCachePath("/student");
+}
+
+/**
+ * Invalidate module-related caches
+ */
+export async function invalidateModuleCache(moduleId?: string, syllabusId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.MODULES,
+    CACHE_TAGS.SUB_MODULES,
+    CACHE_TAGS.SYLLABUS_DOCUMENTS,
+    CACHE_TAGS.SYLLABUS,
+  ]);
+  
+  if (syllabusId) {
+    await invalidateSyllabusCache(syllabusId);
+  }
+}
+
+/**
+ * Invalidate sub-module-related caches
+ */
+export async function invalidateSubModuleCache(subModuleId?: string, moduleId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.SUB_MODULES,
+    CACHE_TAGS.MODULES,
+    CACHE_TAGS.SYLLABUS_DOCUMENTS,
+    CACHE_TAGS.SYLLABUS_PROGRESS,
+  ]);
+  
+  // Invalidate common paths
+  await invalidateCachePath("/admin/academic/syllabus");
+  await invalidateCachePath("/teacher");
+  await invalidateCachePath("/student");
+}
+
+/**
+ * Invalidate syllabus document caches
+ */
+export async function invalidateSyllabusDocumentCache(documentId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.SYLLABUS_DOCUMENTS,
+    CACHE_TAGS.DOCUMENTS,
+  ]);
+  
+  // Invalidate common paths
+  await invalidateCachePath("/admin/academic/syllabus");
+  await invalidateCachePath("/teacher");
+  await invalidateCachePath("/student");
+}
+
+/**
+ * Invalidate syllabus progress caches
+ */
+export async function invalidateSyllabusProgressCache(teacherId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.SYLLABUS_PROGRESS,
+    CACHE_TAGS.DASHBOARD,
+  ]);
+  
+  if (teacherId) {
+    await invalidateCachePath(`/teacher/${teacherId}`);
+  }
+  
+  await invalidateCachePath("/teacher");
+}
+
+/**
+ * Invalidate calendar event caches
+ */
+export async function invalidateCalendarEventCache(eventId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.CALENDAR_EVENTS,
+    CACHE_TAGS.EVENTS,
+    CACHE_TAGS.DASHBOARD,
+  ]);
+  
+  // Invalidate all calendar pages
+  await invalidateCachePath("/admin/calendar");
+  await invalidateCachePath("/teacher/calendar");
+  await invalidateCachePath("/student/calendar");
+  await invalidateCachePath("/parent/calendar");
+  
+  if (eventId) {
+    await invalidateCachePath(`/api/calendar/events/${eventId}`);
+  }
+}
+
+/**
+ * Invalidate calendar category caches
+ */
+export async function invalidateCalendarCategoryCache(categoryId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.CALENDAR_CATEGORIES,
+    CACHE_TAGS.CALENDAR_EVENTS,
+  ]);
+  
+  await invalidateCachePath("/admin/calendar");
+  
+  if (categoryId) {
+    await invalidateCachePath(`/api/calendar/categories/${categoryId}`);
+  }
+}
+
+/**
+ * Invalidate calendar preference caches
+ */
+export async function invalidateCalendarPreferenceCache(userId?: string) {
+  await invalidateCacheTags([
+    CACHE_TAGS.CALENDAR_PREFERENCES,
+  ]);
+  
+  if (userId) {
+    await invalidateCachePath(`/api/calendar/preferences/${userId}`);
+  }
+}
+

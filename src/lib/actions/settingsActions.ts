@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber, sanitizeUrl } from "@/lib/utils/input-sanitization";
@@ -9,14 +9,15 @@ import { sanitizeText, sanitizeEmail, sanitizePhoneNumber, sanitizeUrl } from "@
 export async function getSystemSettings() {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -37,6 +38,45 @@ export async function getSystemSettings() {
           emailEnabled: true,
           defaultTheme: "LIGHT",
           language: "en",
+          // Payment Configuration defaults
+          enableOfflineVerification: true,
+          enableOnlinePayment: false,
+          maxReceiptSizeMB: 5,
+          allowedReceiptFormats: "jpg,jpeg,png,pdf",
+          autoNotifyOnVerification: true,
+        },
+      });
+    }
+    
+    return { success: true, data: settings };
+  } catch (error) {
+    console.error("Error fetching system settings:", error);
+    return { success: false, error: "Failed to fetch system settings" };
+  }
+}
+
+// Get system settings without authentication (for public use in layouts)
+export async function getPublicSystemSettings() {
+  try {
+    let settings = await db.systemSettings.findFirst();
+    
+    // Create default settings if none exist
+    if (!settings) {
+      settings = await db.systemSettings.create({
+        data: {
+          schoolName: "School Name",
+          timezone: "UTC",
+          defaultGradingScale: "PERCENTAGE",
+          passingGrade: 50,
+          emailEnabled: true,
+          defaultTheme: "LIGHT",
+          language: "en",
+          // Payment Configuration defaults
+          enableOfflineVerification: true,
+          enableOnlinePayment: false,
+          maxReceiptSizeMB: 5,
+          allowedReceiptFormats: "jpg,jpeg,png,pdf",
+          autoNotifyOnVerification: true,
         },
       });
     }
@@ -66,14 +106,15 @@ export async function updateSchoolInfo(data: {
 }) {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -143,14 +184,15 @@ export async function updateAcademicSettings(data: {
 }) {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -198,14 +240,15 @@ export async function updateNotificationSettings(data: {
 }) {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -246,14 +289,15 @@ export async function updateSecuritySettings(data: {
 }) {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -300,14 +344,15 @@ export async function updateAppearanceSettings(data: {
 }) {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 
@@ -339,14 +384,15 @@ export async function updateAppearanceSettings(data: {
 export async function triggerBackup() {
   try {
     // Authentication check
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
     // Get user and verify admin role
     const user = await db.user.findUnique({
-      where: { clerkId: userId },
+      where: { id: userId },
       include: { administrator: true },
     });
 

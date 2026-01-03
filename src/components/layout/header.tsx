@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bell, Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 
 interface HeaderProps {
   toggleSidebar: () => void;

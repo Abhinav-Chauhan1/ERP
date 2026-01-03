@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,7 +76,7 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         folder: 'school-logos',
         resource_type: 'image',
       });
-      
+
       setSchoolLogo(result.secure_url);
       toast.success("Logo uploaded successfully");
     } catch (error) {
@@ -120,7 +121,7 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         linkedinUrl: linkedinUrl || undefined,
         instagramUrl: instagramUrl || undefined,
       });
-      
+
       if (result.success) {
         toast.success("School information saved successfully");
       } else {
@@ -255,19 +256,24 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>School Logo</Label>
-            
+
             {/* Logo Preview */}
             {schoolLogo && (
               <div className="relative inline-block">
                 <div className="p-4 border rounded-md bg-muted/50">
-                  <img
-                    src={schoolLogo}
-                    alt="School logo"
-                    className="h-32 w-32 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
+                  <div className="relative h-32 w-32">
+                    <Image
+                      src={schoolLogo}
+                      alt="School logo"
+                      fill
+                      className="object-contain"
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 </div>
                 <Button
                   type="button"

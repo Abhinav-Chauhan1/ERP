@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { Chart } from "@/components/dashboard/chart";
-import { CalendarWidget } from "@/components/dashboard/calendar-widget";
+import { CalendarWidget } from "@/components/calendar/calendar-widget";
 import { 
   Users, BookOpen, ClipboardCheck, Calendar, FileText, 
   Edit, CheckCircle, Clock, FileSpreadsheet, Bell, Mail
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTeacherDashboardData } from "@/lib/actions/teacherDashboardActions";
+import { getTeacherCalendarEvents } from "@/lib/actions/calendar-widget-actions";
 import { format } from "date-fns";
 
 /**
@@ -159,6 +160,7 @@ export async function UpcomingClassesSection() {
  */
 export async function RecentActivitySection() {
   const result = await getTeacherDashboardData();
+  const calendarEventsResult = await getTeacherCalendarEvents(5);
 
   if (!result.success || !result.data) {
     return null;
@@ -173,6 +175,7 @@ export async function RecentActivitySection() {
   const pendingTasks = data.pendingTasks ?? [];
   const recentAssignments = data.recentAssignments ?? [];
   const classPerformanceData = data.classPerformanceData ?? [];
+  const calendarEvents = (calendarEventsResult.success && calendarEventsResult.data) ? calendarEventsResult.data : [];
 
   return (
     <>
@@ -361,11 +364,11 @@ export async function RecentActivitySection() {
             <CardDescription>Upcoming events and schedule</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <CalendarWidget events={[]} />
+            <CalendarWidget events={calendarEvents} userRole="TEACHER" />
           </CardContent>
           <CardFooter>
-            <Link href="/teacher/teaching/timetable" className="w-full">
-              <Button variant="outline" className="w-full">View Full Schedule</Button>
+            <Link href="/teacher/calendar" className="w-full">
+              <Button variant="outline" className="w-full">View Full Calendar</Button>
             </Link>
           </CardFooter>
         </Card>

@@ -1,35 +1,20 @@
-import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "./db";
 import { UserRole } from "@prisma/client";
 
 /**
- * Updates a user's role in both database and Clerk
+ * Updates a user's role in the database
+ * Note: With NextAuth, role is stored only in database, not in external auth provider
  */
 export async function updateUserRole(userId: string, role: UserRole) {
   try {
-    // 1. Get the user's Clerk ID
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { clerkId: true }
-    });
-    
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // 2. Update the role in our database
+    // Update the role in our database
     await db.user.update({
       where: { id: userId },
       data: { role }
     });
 
-    // 3. Update the role in Clerk's metadata
-    const clerk = await clerkClient();
-    await clerk.users.updateUser(user.clerkId, {
-      publicMetadata: {
-        role
-      }
-    });
+    // Note: Session will be updated on next request
+    // For immediate update, use unstable_update from NextAuth
 
     return { success: true };
   } catch (error) {

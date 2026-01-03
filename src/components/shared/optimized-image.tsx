@@ -7,6 +7,8 @@
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */
 
+'use client';
+
 import Image, { ImageProps } from 'next/image';
 import { cn } from '@/lib/utils';
 import {
@@ -22,19 +24,19 @@ interface OptimizedImageProps extends Omit<ImageProps, 'placeholder' | 'blurData
    * Above-fold images use priority loading
    */
   aboveFold?: boolean;
-  
+
   /**
    * Quality preset: low, medium, high, or maximum
    * Defaults to 'medium' (75)
    */
   qualityPreset?: 'low' | 'medium' | 'high' | 'maximum';
-  
+
   /**
    * Whether to show a blur placeholder while loading
    * Defaults to true
    */
   showBlurPlaceholder?: boolean;
-  
+
   /**
    * Fallback image URL if the main image fails to load
    */
@@ -92,6 +94,7 @@ export function OptimizedImage({
   fallbackSrc = '/images/placeholder.png',
   className,
   onError,
+  alt,
   ...props
 }: OptimizedImageProps) {
   // Validate dimensions if provided
@@ -100,24 +103,24 @@ export function OptimizedImage({
       props.width as number,
       props.height as number
     );
-    
+
     if (!isValid) {
       console.warn('Invalid image dimensions:', props.width, props.height);
     }
   }
-  
+
   // Determine loading strategy
   const loading = getLoadingStrategy(aboveFold);
   const priority = aboveFold;
-  
+
   // Get quality from preset
   const quality = QUALITY_PRESETS[qualityPreset];
-  
+
   // Generate blur placeholder
   const blurDataURL = showBlurPlaceholder
     ? generateBlurDataUrl()
     : undefined;
-  
+
   // Handle image load errors
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
@@ -125,9 +128,10 @@ export function OptimizedImage({
     }
     onError?.(e);
   };
-  
+
   return (
     <Image
+      alt={alt}
       {...props}
       className={cn(className)}
       loading={loading}
@@ -161,7 +165,7 @@ export function StudentPhoto({
     medium: { width: 128, height: 128 },
     large: { width: 256, height: 256 },
   }[size];
-  
+
   return (
     <OptimizedImage
       src={src}
@@ -220,7 +224,7 @@ export function CertificateImage({
   const dimensions = thumbnail
     ? { width: 400, height: 300 }
     : { width: 1200, height: 900 };
-  
+
   return (
     <OptimizedImage
       src={src}

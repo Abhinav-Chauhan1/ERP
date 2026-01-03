@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
@@ -42,12 +43,12 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
         admin.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         admin.position?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         admin.department?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = 
+
+      const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && admin.user.active) ||
         (statusFilter === "inactive" && !admin.user.active);
-      
+
       return matchesSearch && matchesStatus;
     });
 
@@ -78,11 +79,11 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <UserSearch 
-          placeholder="Search administrators by name, email, position..." 
+        <UserSearch
+          placeholder="Search administrators by name, email, position..."
           onSearch={setSearchQuery}
         />
-        <UserFilters 
+        <UserFilters
           onStatusChange={setStatusFilter}
           onSortChange={setSortBy}
         />
@@ -119,20 +120,10 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
                   <tr key={admin.id} className="border-b hover:bg-accent/50">
                     <td className="py-3 px-4 align-middle whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        {admin.user.avatar ? (
-                          <img
-                            src={admin.user.avatar}
-                            alt={`${admin.user.firstName} ${admin.user.lastName}`}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
-                            {admin.user.firstName[0]}
-                            {admin.user.lastName[0]}
-                          </div>
-                        )}
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
+                          <AvatarFallback>{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
+                        </Avatar>
                         <div className="font-medium">
                           {admin.user.firstName} {admin.user.lastName}
                         </div>
@@ -143,7 +134,7 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
                     <td className="py-3 px-4 align-middle">{admin.department || "N/A"}</td>
                     <td className="py-3 px-4 align-middle">{formatDate(admin.createdAt)}</td>
                     <td className="py-3 px-4 align-middle">
-                      <Badge 
+                      <Badge
                         className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                       >
                         {admin.user.active ? "Active" : "Inactive"}

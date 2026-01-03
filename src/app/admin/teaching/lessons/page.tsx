@@ -1,11 +1,11 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
-  Search, ClipboardList, BookOpen, Clock, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
+  Search, ClipboardList, BookOpen, Clock,
   CalendarDays, FileText, FolderOpen, Filter,
   ChevronDown, MoreVertical, AlertCircle, Loader2
 } from "lucide-react";
@@ -57,13 +57,13 @@ import toast from "react-hot-toast";
 
 // Import schema validation and server actions
 import { lessonSchema, LessonFormValues } from "@/lib/schemaValidation/lessonsSchemaValidation";
-import { 
-  getLessons, 
-  getSubjectsForLessons, 
-  getSyllabusUnitsBySubject, 
-  createLesson, 
-  updateLesson, 
-  deleteLesson 
+import {
+  getLessons,
+  getSubjectsForLessons,
+  getSyllabusUnitsBySubject,
+  createLesson,
+  updateLesson,
+  deleteLesson
 } from "@/lib/actions/lessonsActions";
 
 export default function LessonsPage() {
@@ -93,27 +93,13 @@ export default function LessonsPage() {
     },
   });
 
-  useEffect(() => {
-    fetchLessons();
-    fetchSubjects();
-  }, []);
-
-  // Watch the subject selection to update available units
-  const watchSubjectId = form.watch("subjectId");
-
-  useEffect(() => {
-    if (watchSubjectId) {
-      updateAvailableUnits(watchSubjectId);
-    }
-  }, [watchSubjectId]);
-
-  async function fetchLessons() {
+  const fetchLessons = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getLessons();
-      
+
       if (result.success) {
         setLessons(result.data || []);
       } else {
@@ -127,12 +113,12 @@ export default function LessonsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function fetchSubjects() {
+  const fetchSubjects = useCallback(async () => {
     try {
       const result = await getSubjectsForLessons();
-      
+
       if (result.success) {
         setSubjects(result.data || []);
       } else {
@@ -142,9 +128,14 @@ export default function LessonsPage() {
       toast.error("An unexpected error occurred");
       console.error(err);
     }
-  }
+  }, []);
 
-  async function updateAvailableUnits(subjectId: string) {
+  useEffect(() => {
+    fetchLessons();
+    fetchSubjects();
+  }, [fetchLessons, fetchSubjects]);
+
+  const updateAvailableUnits = useCallback((subjectId: string) => {
     try {
       const selectedSubject = subjects.find(s => s.id === subjectId);
       if (selectedSubject) {
@@ -155,13 +146,22 @@ export default function LessonsPage() {
     } catch (err) {
       console.error("Error updating available units:", err);
     }
-  }
+  }, [subjects]);
+
+  // Watch the subject selection to update available units
+  const watchSubjectId = form.watch("subjectId");
+
+  useEffect(() => {
+    if (watchSubjectId) {
+      updateAvailableUnits(watchSubjectId);
+    }
+  }, [watchSubjectId, updateAvailableUnits]);
 
   // Update available units when subject changes
   const handleSubjectChange = (value: string) => {
     form.setValue("subjectId", value);
     form.setValue("syllabusUnitId", ""); // Reset unit when subject changes
-    
+
     if (value) {
       updateAvailableUnits(value);
     } else {
@@ -172,7 +172,7 @@ export default function LessonsPage() {
   async function onSubmit(values: LessonFormValues) {
     try {
       let result;
-      
+
       if (selectedLessonId) {
         // Update existing lesson
         result = await updateLesson({ ...values, id: selectedLessonId });
@@ -180,7 +180,7 @@ export default function LessonsPage() {
         // Create new lesson
         result = await createLesson(values);
       }
-      
+
       if (result.success) {
         toast.success(`Lesson ${selectedLessonId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -200,7 +200,7 @@ export default function LessonsPage() {
     const lessonToEdit = lessons.find(lesson => lesson.id === id);
     if (lessonToEdit) {
       handleSubjectChange(lessonToEdit.subject.id);
-      
+
       form.reset({
         title: lessonToEdit.title,
         description: lessonToEdit.description,
@@ -210,7 +210,7 @@ export default function LessonsPage() {
         content: lessonToEdit.content,
         resources: lessonToEdit.resources,
       });
-      
+
       setSelectedLessonId(id);
       setDialogOpen(true);
     }
@@ -240,7 +240,7 @@ export default function LessonsPage() {
     if (selectedLessonId) {
       try {
         const result = await deleteLesson(selectedLessonId);
-        
+
         if (result.success) {
           toast.success("Lesson deleted successfully");
           setDeleteDialogOpen(false);
@@ -258,13 +258,13 @@ export default function LessonsPage() {
 
   // Filter lessons based on search term and subject filter
   const filteredLessons = lessons.filter(lesson => {
-    const matchesSearch = 
+    const matchesSearch =
       lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lesson.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lesson.unit.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesSubject = filterSubject === "all" || lesson.subject.id === filterSubject;
-    
+
     return matchesSearch && matchesSubject;
   });
 
@@ -299,8 +299,8 @@ export default function LessonsPage() {
             <DialogHeader>
               <DialogTitle>{selectedLessonId ? "Edit Lesson" : "Create New Lesson"}</DialogTitle>
               <DialogDescription>
-                {selectedLessonId 
-                  ? "Update the details of the existing lesson" 
+                {selectedLessonId
+                  ? "Update the details of the existing lesson"
                   : "Create a new lesson for your curriculum"}
               </DialogDescription>
             </DialogHeader>
@@ -326,8 +326,8 @@ export default function LessonsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Subject</FormLabel>
-                        <Select 
-                          onValueChange={handleSubjectChange} 
+                        <Select
+                          onValueChange={handleSubjectChange}
                           value={field.value}
                         >
                           <FormControl>
@@ -353,8 +353,8 @@ export default function LessonsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           value={field.value}
                           disabled={!watchSubjectId || availableUnits.length === 0}
                         >
@@ -384,10 +384,10 @@ export default function LessonsPage() {
                     <FormItem>
                       <FormLabel>Duration (minutes)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min={15} 
-                          step={15} 
+                        <Input
+                          type="number"
+                          min={15}
+                          step={15}
                           {...field}
                         />
                       </FormControl>
@@ -402,9 +402,9 @@ export default function LessonsPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Briefly describe the lesson content and objectives" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Briefly describe the lesson content and objectives"
+                          {...field}
                           rows={4}
                           value={field.value || ""}
                         />
@@ -420,9 +420,9 @@ export default function LessonsPage() {
                     <FormItem>
                       <FormLabel>Lesson Content (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter the lesson content or a URL to content" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Enter the lesson content or a URL to content"
+                          {...field}
                           rows={3}
                           value={field.value || ""}
                         />
@@ -438,9 +438,9 @@ export default function LessonsPage() {
                     <FormItem>
                       <FormLabel>Resources (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter URLs to resources, separated by commas" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Enter URLs to resources, separated by commas"
+                          {...field}
                           rows={2}
                           value={field.value || ""}
                         />
@@ -506,16 +506,16 @@ export default function LessonsPage() {
             <TabsTrigger value="by-subject">By Subject</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
-            <Button 
-              variant={viewMode === "grid" ? "default" : "outline"} 
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
               size="sm"
               className="h-8 w-8 p-0"
               onClick={() => setViewMode("grid")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-layout-grid"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></svg>
             </Button>
-            <Button 
-              variant={viewMode === "list" ? "default" : "outline"} 
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
               size="sm"
               className="h-8 w-8 p-0"
               onClick={() => setViewMode("list")}
@@ -553,7 +553,7 @@ export default function LessonsPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-red-600"
                             onClick={() => handleDelete(lesson.id)}
                           >
@@ -692,7 +692,7 @@ export default function LessonsPage() {
               {Object.keys(lessonsBySubject).map(subjectId => {
                 const subject = subjects.find(s => s.id === subjectId);
                 const subjectLessons = lessonsBySubject[subjectId];
-                
+
                 return (
                   <Card key={subjectId}>
                     <CardHeader className="pb-2">
@@ -706,9 +706,9 @@ export default function LessonsPage() {
                             <CardDescription>{subject?.code || ""}</CardDescription>
                           </div>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             handleSubjectChange(subjectId);
                             handleAddNew();

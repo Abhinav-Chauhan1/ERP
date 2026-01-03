@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { LessonViewer, LessonViewerSkeleton } from '@/components/student/lesson-viewer';
@@ -55,7 +55,8 @@ export async function generateMetadata({ params }: LessonViewerPageProps): Promi
 
 export default async function LessonViewerPage({ params }: LessonViewerPageProps) {
   const { courseId, lessonId } = await params;
-  const { userId } = await auth();
+  const session = await auth();
+const userId = session?.user?.id;
 
   if (!userId) {
     redirect('/login');
@@ -63,7 +64,7 @@ export default async function LessonViewerPage({ params }: LessonViewerPageProps
 
   // Get current student
   const dbUser = await db.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: { student: true },
   });
 

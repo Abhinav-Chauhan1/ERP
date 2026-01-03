@@ -13,8 +13,14 @@ datasource db {
 // Users and authentication
 model User {
   id        String   @id @default(cuid())
-  clerkId   String   @unique // Clerk user ID
   email     String   @unique
+  
+  // NextAuth v5 fields
+  emailVerified DateTime? // Email verification timestamp
+  password      String? // Hashed password (nullable for OAuth users)
+  name          String? // Full name for NextAuth compatibility
+  image         String? // Profile image for OAuth
+  
   firstName String
   lastName  String
   phone     String?
@@ -29,6 +35,10 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // NextAuth v5 relationships
+  accounts Account[]
+  sessions Session[]
 
   // Role-based relationships
   teacher       Teacher?
@@ -45,6 +55,46 @@ model User {
   messageHistory   MessageHistory[] @relation("MessageHistorySentBy")
   userPermissions  UserPermission[]
   eventRSVPs       EventRSVP[]
+}
+
+// NextAuth v5 Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 enum UserRole {
@@ -174,6 +224,7 @@ model Student {
   examResults           ExamResult[]
   assignments           AssignmentSubmission[]
   feePayments           FeePayment[]
+  paymentReceipts       PaymentReceipt[] // Payment receipt uploads
   reportCards           ReportCard[] // Added missing relation
   scholarships          ScholarshipRecipient[] // Added missing relation
   bookIssues            BookIssue[]
@@ -190,6 +241,7 @@ model Student {
   courseDiscussions     CourseDiscussion[] // LMS discussion posts
   quizAttempts          QuizAttempt[] // LMS quiz attempts
   admissionApplication  AdmissionApplication? // Link to original admission application
+  coScholasticGrades    CoScholasticGrade[] // Co-scholastic activity grades
 
   @@index([aadhaarNumber])
   @@index([abcId])
@@ -208,6 +260,10 @@ model StudentSettings {
   feeReminders              Boolean @default(true)
   eventNotifications        Boolean @default(true)
   announcementNotifications Boolean @default(true)
+  whatsappNotifications     Boolean @default(false)
+  
+  // WhatsApp preferences
+  whatsappOptIn  Boolean @default(false)
 
   // Privacy settings
   profileVisibility ProfileVisibility @default(PRIVATE)
@@ -220,9 +276,14 @@ model StudentSettings {
   language   String     @default("en")
   dateFormat String     @default("MM/DD/YYYY")
   timeFormat TimeFormat @default(TWELVE_HOUR)
+  
+  // Multi-language support
+  preferredLanguage String @default("en") // Language preference for notifications (en, hi, etc.)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  @@index([preferredLanguage])
 }
 
 enum ProfileVisibility {
@@ -272,10 +333,15 @@ model ParentSettings {
   examResultNotifications   Boolean @default(true)
   announcementNotifications Boolean @default(true)
   meetingReminders          Boolean @default(true)
+  whatsappNotifications     Boolean @default(false)
 
   // Communication preferences
   preferredContactMethod ContactMethod         @default(EMAIL)
   notificationFrequency  NotificationFrequency @default(IMMEDIATE)
+  
+  // WhatsApp preferences
+  whatsappOptIn  Boolean @default(false)
+  whatsappNumber String? // Can be different from phone
 
   // Privacy settings
   profileVisibility ProfileVisibility @default(PRIVATE)
@@ -284,17 +350,26 @@ model ParentSettings {
   theme      Theme  @default(LIGHT)
   colorTheme String @default("blue") // blue, red, green, purple, orange, teal
   language   String @default("en")
+  
+  // Multi-language support
+  preferredLanguage String @default("en") // Language preference for notifications (en, hi, etc.)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([parentId])
+  @@index([preferredLanguage])
 }
 
 enum ContactMethod {
   EMAIL
   SMS
-  BOTH
+  WHATSAPP
+  EMAIL_AND_SMS
+  EMAIL_AND_WHATSAPP
+  SMS_AND_WHATSAPP
+  ALL
+  BOTH // Deprecated: kept for backward compatibility, use EMAIL_AND_SMS
 }
 
 enum NotificationFrequency {
@@ -346,8 +421,9 @@ model Term {
   updatedAt      DateTime     @updatedAt
 
   // Relationships
-  exams       Exam[]
-  reportCards ReportCard[] // Added missing relation
+  exams              Exam[]
+  reportCards        ReportCard[] // Added missing relation
+  coScholasticGrades CoScholasticGrade[] // Co-scholastic activity grades
 }
 
 // Class and Teaching Management
@@ -383,6 +459,8 @@ model Class {
   generatedMeritLists   MeritList[]            @relation("GeneratedMeritLists")
   onlineExams           OnlineExam[] // Online exams for this class
   courses               Course[] // LMS courses for this class
+  feeStructures         FeeStructureClass[] // Fee structures for this class
+  feeTypeAmounts        FeeTypeClassAmount[] // Class-specific fee amounts
 }
 
 model ClassSection {
@@ -463,15 +541,16 @@ model Subject {
   updatedAt    DateTime    @updatedAt
 
   // Relationships
-  teachers      SubjectTeacher[]
-  classes       SubjectClass[]
-  syllabus      Syllabus[]
-  lessons       Lesson[]
-  exams         Exam[]
-  assignments   Assignment[]
-  questionBanks QuestionBank[] // Online exam questions for this subject
-  onlineExams   OnlineExam[] // Online exams for this subject
-  courses       Course[] // LMS courses for this subject
+  teachers          SubjectTeacher[]
+  classes           SubjectClass[]
+  syllabus          Syllabus[]
+  lessons           Lesson[]
+  exams             Exam[]
+  assignments       Assignment[]
+  questionBanks     QuestionBank[] // Online exam questions for this subject
+  onlineExams       OnlineExam[] // Online exams for this subject
+  courses           Course[] // LMS courses for this subject
+  subjectMarkConfig SubjectMarkConfig[]
 }
 
 model SubjectTeacher {
@@ -512,7 +591,8 @@ model Syllabus {
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  units SyllabusUnit[]
+  units   SyllabusUnit[]
+  modules Module[]       @relation("SyllabusModules")
 }
 
 model SyllabusUnit {
@@ -542,6 +622,79 @@ model Lesson {
   duration       Int? // Duration in minutes
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+}
+
+// Enhanced Syllabus System Models
+model Module {
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  chapterNumber Int
+  order         Int
+  syllabusId    String
+  syllabus      Syllabus           @relation("SyllabusModules", fields: [syllabusId], references: [id], onDelete: Cascade)
+  subModules    SubModule[]
+  documents     SyllabusDocument[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([syllabusId, chapterNumber])
+  @@index([syllabusId, order])
+  @@index([syllabusId, chapterNumber])
+}
+
+model SubModule {
+  id          String              @id @default(cuid())
+  title       String
+  description String?
+  order       Int
+  moduleId    String
+  module      Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  documents   SyllabusDocument[]
+  progress    SubModuleProgress[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([moduleId, order])
+  @@index([moduleId])
+}
+
+model SyllabusDocument {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  filename    String
+  fileUrl     String
+  fileType    String
+  fileSize    Int
+  order       Int
+  moduleId    String?
+  module      Module?    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  subModuleId String?
+  subModule   SubModule? @relation(fields: [subModuleId], references: [id], onDelete: Cascade)
+  uploadedBy  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([moduleId])
+  @@index([subModuleId])
+  @@index([moduleId, order])
+  @@index([subModuleId, order])
+}
+
+model SubModuleProgress {
+  id          String    @id @default(cuid())
+  subModuleId String
+  subModule   SubModule @relation(fields: [subModuleId], references: [id], onDelete: Cascade)
+  teacherId   String
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([subModuleId, teacherId])
+  @@index([teacherId])
+  @@index([subModuleId, teacherId])
 }
 
 // Timetable
@@ -648,16 +801,25 @@ model Exam {
   updatedAt    DateTime @updatedAt
 
   // Relationships
-  results ExamResult[]
+  results           ExamResult[]
+  subjectMarkConfig SubjectMarkConfig[]
 }
 
 model ExamResult {
-  id        String   @id @default(cuid())
-  exam      Exam     @relation(fields: [examId], references: [id])
+  id        String  @id @default(cuid())
+  exam      Exam    @relation(fields: [examId], references: [id])
   examId    String
-  student   Student  @relation(fields: [studentId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
   studentId String
   marks     Float
+
+  // New fields for mark components
+  theoryMarks    Float?
+  practicalMarks Float?
+  internalMarks  Float?
+  totalMarks     Float? // Sum of all components
+  percentage     Float?
+
   grade     String?
   remarks   String?
   isAbsent  Boolean  @default(false)
@@ -746,25 +908,40 @@ enum SubmissionStatus {
 }
 
 model ReportCard {
-  id               String    @id @default(cuid())
-  student          Student   @relation(fields: [studentId], references: [id])
-  studentId        String
-  term             Term      @relation(fields: [termId], references: [id])
-  termId           String
-  totalMarks       Float?
-  averageMarks     Float?
-  percentage       Float?
-  grade            String?
-  rank             Int?
-  attendance       Float? // Attendance percentage
+  id        String  @id @default(cuid())
+  student   Student @relation(fields: [studentId], references: [id])
+  studentId String
+  term      Term    @relation(fields: [termId], references: [id])
+  termId    String
+
+  // Template relationship
+  template   ReportCardTemplate? @relation(fields: [templateId], references: [id])
+  templateId String?
+
+  totalMarks   Float?
+  averageMarks Float?
+  percentage   Float?
+  grade        String?
+  rank         Int?
+  attendance   Float? // Attendance percentage
+
+  // Co-scholastic section
+  coScholasticData Json? // Stores co-scholastic grades
+
   teacherRemarks   String?
   principalRemarks String?
-  isPublished      Boolean   @default(false)
-  publishDate      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @default(now())
+
+  // Generated PDF
+  pdfUrl String?
+
+  isPublished Boolean   @default(false)
+  publishDate DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
 
   @@unique([studentId, termId])
+  @@index([templateId])
+  @@index([isPublished])
 }
 
 // Attendance models
@@ -837,7 +1014,7 @@ model FeeType {
   id          String       @id @default(cuid())
   name        String // e.g., "Tuition", "Library", "Sports"
   description String?
-  amount      Float
+  amount      Float // Default amount
   frequency   FeeFrequency @default(ANNUAL)
   isOptional  Boolean      @default(false)
   createdAt   DateTime     @default(now())
@@ -845,6 +1022,7 @@ model FeeType {
 
   // Relationships
   feeStructures FeeStructureItem[]
+  classAmounts  FeeTypeClassAmount[] // Class-specific amounts
 }
 
 enum FeeFrequency {
@@ -860,7 +1038,13 @@ model FeeStructure {
   name              String
   academicYear      AcademicYear @relation(fields: [academicYearId], references: [id])
   academicYearId    String
-  applicableClasses String? // Classes where this fee structure applies, comma separated
+  
+  // Deprecated field - kept for backward compatibility during migration
+  applicableClasses String?      @db.Text
+  
+  // New template functionality
+  isTemplate        Boolean      @default(false)
+  
   description       String?
   validFrom         DateTime
   validTo           DateTime?
@@ -869,8 +1053,10 @@ model FeeStructure {
   updatedAt         DateTime     @default(now())
 
   // Relationships
-  items    FeeStructureItem[]
-  payments FeePayment[]
+  items           FeeStructureItem[]
+  payments        FeePayment[]
+  paymentReceipts PaymentReceipt[] // Payment receipt uploads
+  classes         FeeStructureClass[] // New many-to-many relationship
 }
 
 model FeeStructureItem {
@@ -885,6 +1071,38 @@ model FeeStructureItem {
   updatedAt      DateTime     @default(now())
 
   @@unique([feeStructureId, feeTypeId])
+}
+
+// Junction table for many-to-many relationship between FeeStructure and Class
+model FeeStructureClass {
+  id             String       @id @default(cuid())
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id], onDelete: Cascade)
+  feeStructureId String
+  class          Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([feeStructureId, classId])
+  @@index([feeStructureId])
+  @@index([classId])
+  @@index([feeStructureId, classId])
+}
+
+// Class-specific amounts for fee types
+model FeeTypeClassAmount {
+  id        String   @id @default(cuid())
+  feeType   FeeType  @relation(fields: [feeTypeId], references: [id], onDelete: Cascade)
+  feeTypeId String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId   String
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([feeTypeId, classId])
+  @@index([feeTypeId])
+  @@index([classId])
 }
 
 model FeePayment {
@@ -902,8 +1120,15 @@ model FeePayment {
   receiptNumber  String?
   status         PaymentStatus @default(PENDING)
   remarks        String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @default(now())
+
+  // Payment source tracking
+  paymentSource PaymentSource @default(MANUAL)
+
+  // Receipt verification relationship
+  paymentReceipt PaymentReceipt?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@index([studentId, status, paymentDate])
   @@index([paymentDate])
@@ -926,6 +1151,89 @@ enum PaymentStatus {
   PARTIAL
   FAILED
   REFUNDED
+}
+
+enum PaymentSource {
+  MANUAL
+  ONLINE
+  RECEIPT_UPLOAD
+}
+
+enum ReceiptStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+}
+
+model PaymentReceipt {
+  id String @id @default(cuid())
+
+  // Student Information
+  student   Student @relation(fields: [studentId], references: [id])
+  studentId String
+
+  // Fee Information
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
+  feeStructureId String
+
+  // Payment Details
+  amount         Float
+  paymentDate    DateTime
+  paymentMethod  PaymentMethod
+  transactionRef String? // Optional reference number
+  remarks        String?
+
+  // Receipt Image
+  receiptImageUrl String // Cloudinary URL
+  receiptPublicId String // Cloudinary public ID for deletion
+
+  // Verification Status
+  status ReceiptStatus @default(PENDING_VERIFICATION)
+
+  // Verification Details
+  verifiedBy      String? // Admin user ID
+  verifiedAt      DateTime?
+  rejectionReason String?
+
+  // Linked Payment (after verification)
+  feePayment   FeePayment? @relation(fields: [feePaymentId], references: [id])
+  feePaymentId String?     @unique
+
+  // Metadata
+  referenceNumber String   @unique // Auto-generated reference
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  notes ReceiptNote[] // Admin notes/comments
+
+  @@index([studentId, status])
+  @@index([status, createdAt])
+  @@index([feeStructureId])
+  @@index([referenceNumber])
+  @@map("payment_receipts")
+}
+
+// Receipt Notes Model for admin comments
+model ReceiptNote {
+  id        String   @id @default(cuid())
+  receipt   PaymentReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  receiptId String
+  
+  // Note content
+  note      String   @db.Text
+  
+  // Author information
+  authorId  String   // Admin user ID
+  authorName String  // Admin name (denormalized for display)
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([receiptId, createdAt])
+  @@index([receiptId])
+  @@map("receipt_notes")
 }
 
 model Scholarship {
@@ -1175,7 +1483,6 @@ model Event {
   @@index([startDate])
   @@index([status])
   @@index([type])
-  @@index([category])
 }
 
 enum EventStatus {
@@ -1299,6 +1606,14 @@ enum AuditAction {
   REJECT
   PUBLISH
   ARCHIVE
+  VERIFY
+  VIEW
+  UPLOAD
+  REUPLOAD
+  ADD_NOTE
+  DELETE_NOTE
+  BULK_VERIFY
+  BULK_REJECT
 }
 
 // Library Management Models
@@ -1609,6 +1924,16 @@ model SystemSettings {
   linkedinUrl  String?
   instagramUrl String?
 
+  // Payment Configuration
+  enableOnlinePayment       Boolean @default(false)
+  enableOfflineVerification Boolean @default(true)
+  onlinePaymentGateway      String? // e.g., "RAZORPAY", "STRIPE"
+
+  // Receipt Upload Settings
+  maxReceiptSizeMB         Int     @default(5)
+  allowedReceiptFormats    String  @default("jpg,jpeg,png,pdf")
+  autoNotifyOnVerification Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1661,12 +1986,21 @@ model MessageTemplate {
   description String?
 
   // Template Type
-  type     MessageType // SMS, EMAIL, BOTH
+  type     MessageType // SMS, EMAIL, WHATSAPP, BOTH
   category String? // e.g., "Admission", "Fee Reminder", "Attendance Alert", "General"
 
   // Template Content
   subject String? // For email templates
   body    String // Template body with variables
+  
+  // WhatsApp fields
+  whatsappTemplateName String? // Template name in WhatsApp
+  whatsappTemplateId   String? // Template ID from WhatsApp
+  whatsappLanguage     String? // Template language code (e.g., 'en', 'hi')
+  whatsappStatus       WhatsAppTemplateStatus? // PENDING, APPROVED, REJECTED
+  
+  // SMS fields
+  dltTemplateId String? // DLT template ID for MSG91
 
   // Variables
   variables String // JSON array of available variables (e.g., ["studentName", "className", "date"])
@@ -1683,13 +2017,21 @@ model MessageTemplate {
   @@index([type, isActive])
   @@index([category])
   @@index([createdBy])
+  @@index([whatsappStatus])
   @@map("message_templates")
 }
 
 enum MessageType {
   SMS
   EMAIL
+  WHATSAPP
   BOTH
+}
+
+enum WhatsAppTemplateStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum MessageStatus {
@@ -1728,6 +2070,117 @@ model MessageHistory {
   @@index([messageType])
   @@index([templateId])
   @@map("message_history")
+}
+
+// Message Logging for WhatsApp and SMS
+model MessageLog {
+  id       String               @id @default(cuid())
+  
+  // Message details
+  channel  CommunicationChannel
+  recipient String              // Phone number or email
+  userId   String?              // Recipient user ID if available
+  
+  // Content
+  templateId String?
+  subject    String?
+  body       String?             // Encrypted or hashed for privacy
+  
+  // Status tracking
+  status       MessageLogStatus
+  messageId    String?           // External message ID from provider
+  errorCode    String?
+  errorMessage String?
+  
+  // Delivery tracking
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  failedAt    DateTime?
+  
+  // Cost tracking
+  estimatedCost Decimal?         @db.Decimal(10, 4)
+  
+  // Metadata
+  metadata  Json?                // Additional data
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  
+  @@index([channel, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("message_logs")
+}
+
+enum CommunicationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+}
+
+enum MessageLogStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// Communication Error Logging
+model CommunicationErrorLog {
+  id       String   @id @default(cuid())
+  
+  // Error details
+  message      String
+  category     ErrorCategory
+  severity     ErrorSeverity
+  
+  // Context
+  channel      CommunicationChannel?
+  errorCode    String?
+  errorDetails String?              @db.Text
+  recipient    String?
+  userId       String?
+  messageId    String?
+  
+  // Metadata
+  metadata    Json?
+  stackTrace  String?               @db.Text
+  
+  // Resolution tracking
+  resolved    Boolean               @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  
+  // Timestamps
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  
+  @@index([category, createdAt])
+  @@index([severity, createdAt])
+  @@index([channel, createdAt])
+  @@index([resolved, createdAt])
+  @@map("communication_error_logs")
+}
+
+enum ErrorCategory {
+  CONFIGURATION
+  AUTHENTICATION
+  VALIDATION
+  RATE_LIMIT
+  NETWORK
+  API_ERROR
+  DATABASE
+  UNKNOWN
+}
+
+enum ErrorSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 // Certificate Template System
@@ -2569,6 +3022,250 @@ model QuizAttempt {
   @@index([quizId, studentId])
   @@index([studentId, createdAt])
   @@map("quiz_attempts")
+}
+
+// Offline Exam Marks Entry and Report Card System Models
+
+// Subject Mark Configuration - defines mark components for each subject in an exam
+model SubjectMarkConfig {
+  id        String  @id @default(cuid())
+  exam      Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  examId    String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId String
+
+  // Mark distribution
+  theoryMaxMarks    Float?
+  practicalMaxMarks Float?
+  internalMaxMarks  Float?
+  totalMarks        Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, subjectId])
+  @@index([examId])
+  @@index([subjectId])
+  @@map("subject_mark_configs")
+}
+
+// Co-Scholastic Activities - non-academic assessments
+model CoScholasticActivity {
+  id             String   @id @default(cuid())
+  name           String // e.g., "Sports", "Art", "Music", "Discipline"
+  assessmentType String // "GRADE" or "MARKS"
+  maxMarks       Float? // Only if assessmentType is "MARKS"
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relationships
+  grades CoScholasticGrade[]
+
+  @@index([isActive])
+  @@map("co_scholastic_activities")
+}
+
+model CoScholasticGrade {
+  id         String               @id @default(cuid())
+  activity   CoScholasticActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  activityId String
+  student    Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+  term       Term                 @relation(fields: [termId], references: [id], onDelete: Cascade)
+  termId     String
+  grade      String? // "A", "B", "C" etc.
+  marks      Float? // If assessmentType is "MARKS"
+  remarks    String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@unique([activityId, studentId, termId])
+  @@index([studentId, termId])
+  @@index([activityId])
+  @@map("co_scholastic_grades")
+}
+
+// Report Card Template - customizable templates for report card generation
+model ReportCardTemplate {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  type        String // "CBSE", "STATE_BOARD", "CUSTOM"
+
+  // Page settings
+  pageSize    String @default("A4") // "A4", "LETTER", "LEGAL"
+  orientation String @default("PORTRAIT") // "PORTRAIT", "LANDSCAPE"
+
+  // Template configuration (JSON)
+  sections Json // Array of section configs
+  styling  Json // CSS/styling configuration
+
+  // Branding assets
+  headerImage String?
+  footerImage String?
+  schoolLogo  String?
+
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  reportCards ReportCard[]
+
+  @@index([type, isActive])
+  @@index([isDefault])
+  @@map("report_card_templates")
+}
+
+// Academic Calendar System Models
+
+model CalendarEventCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String // Hex color code (e.g., "#3b82f6")
+  icon        String? // Icon name from lucide-react
+  isActive    Boolean  @default(true)
+  order       Int      @default(0) // Display order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  events CalendarEvent[]
+
+  @@index([isActive, order])
+  @@map("calendar_event_categories")
+}
+
+model CalendarEvent {
+  id          String                @id @default(cuid())
+  title       String
+  description String?               @db.Text
+  category    CalendarEventCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+
+  // Date and time
+  startDate DateTime
+  endDate   DateTime
+  isAllDay  Boolean  @default(false)
+
+  // Location
+  location String?
+
+  // Visibility and access control
+  visibleToRoles    String[] // Array of UserRole values: ["ADMIN", "TEACHER", "STUDENT", "PARENT"]
+  visibleToClasses  String[] // Array of class IDs
+  visibleToSections String[] // Array of section IDs
+
+  // Integration with other modules
+  sourceType EventSourceType? // EXAM, ASSIGNMENT, MEETING, MANUAL
+  sourceId   String? // ID of the source entity
+
+  // Recurrence
+  isRecurring    Boolean    @default(false)
+  recurrenceRule String? // iCal RRULE format (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR")
+  recurrenceId   String? // Groups recurring event instances together
+  exceptionDates DateTime[] // Dates to skip in recurrence
+
+  // Attachments
+  attachments String[] // Array of URLs to attached files
+
+  // Metadata
+  createdBy String // User ID
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  notes     EventNote[]
+  reminders EventReminder[]
+
+  @@index([startDate, endDate])
+  @@index([categoryId])
+  @@index([sourceType, sourceId])
+  @@index([recurrenceId])
+  @@index([createdBy])
+  @@index([startDate, categoryId]) // Composite index for common queries
+  @@index([isRecurring, recurrenceId]) // For recurring event queries
+  @@map("calendar_events")
+}
+
+enum EventSourceType {
+  EXAM
+  ASSIGNMENT
+  MEETING
+  HOLIDAY
+  SCHOOL_EVENT
+  MANUAL
+}
+
+model EventNote {
+  id      String        @id @default(cuid())
+  event   CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  userId  String // Teacher who created the note
+  content String        @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, userId])
+  @@index([userId])
+  @@map("event_notes")
+}
+
+model EventReminder {
+  id      String        @id @default(cuid())
+  event   CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  userId  String // User who will receive the reminder
+
+  // Reminder timing
+  reminderTime DateTime
+  reminderType ReminderType // EMAIL, SMS, PUSH, IN_APP
+
+  // Status
+  isSent Boolean   @default(false)
+  sentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, userId])
+  @@index([userId, isSent])
+  @@index([reminderTime, isSent])
+  @@map("event_reminders")
+}
+
+enum ReminderType {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+model UserCalendarPreferences {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Calendar view preferences
+  defaultView String @default("month") // month, week, day, agenda
+
+  // Filter preferences (stored as JSON)
+  filterSettings Json? // { selectedCategories: string[], dateRange: { start: string, end: string } }
+
+  // Reminder preferences
+  defaultReminderTime Int      @default(1440) // Minutes before event (default: 1 day = 1440 minutes)
+  reminderTypes       String[] // Array of ReminderType values
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("user_calendar_preferences")
 }
 
 // DEPRECATED: SchoolBranding model has been merged into SystemSettings

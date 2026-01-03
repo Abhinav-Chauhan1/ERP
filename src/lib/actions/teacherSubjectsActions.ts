@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -9,7 +9,8 @@ import { revalidatePath } from "next/cache";
  */
 export async function getTeacherSubjects() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -18,9 +19,7 @@ export async function getTeacherSubjects() {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
       select: {
         id: true,
@@ -113,7 +112,8 @@ export async function getTeacherSubjects() {
  */
 export async function getTeacherSubjectDetails(subjectId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -122,9 +122,7 @@ export async function getTeacherSubjectDetails(subjectId: string) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
       select: {
         id: true,
@@ -274,7 +272,8 @@ export async function getTeacherSubjectDetails(subjectId: string) {
  */
 export async function updateSyllabusUnitProgress(unitId: string, completedTopics: number) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -298,7 +297,8 @@ export async function updateSyllabusUnitProgress(unitId: string, completedTopics
  */
 export async function getSubjectSyllabusUnits(subjectId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -307,9 +307,7 @@ export async function getSubjectSyllabusUnits(subjectId: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 

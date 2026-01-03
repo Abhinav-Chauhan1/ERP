@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,12 +46,7 @@ export default function ComplaintsPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
 
-  useEffect(() => {
-    loadHostels();
-    loadComplaints();
-  }, [statusFilter]);
-
-  const loadHostels = async () => {
+  const loadHostels = useCallback(async () => {
     try {
       const result = await getHostels();
       if (result.success && result.data) {
@@ -60,9 +55,9 @@ export default function ComplaintsPage() {
     } catch (error) {
       console.error("Error loading hostels:", error);
     }
-  };
+  }, []);
 
-  const loadComplaints = async () => {
+  const loadComplaints = useCallback(async () => {
     setLoading(true);
     try {
       const status = statusFilter === "all" ? undefined : statusFilter;
@@ -78,7 +73,12 @@ export default function ComplaintsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    loadHostels();
+    loadComplaints();
+  }, [loadHostels, loadComplaints]);
 
   const resetForm = () => {
     setHostelId("");
@@ -487,15 +487,15 @@ export default function ComplaintsPage() {
                       )}
                       {(selectedComplaint.status === "PENDING" ||
                         selectedComplaint.status === "IN_PROGRESS") && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-green-50"
-                          onClick={() => handleUpdateStatus(selectedComplaint.id, "RESOLVED")}
-                        >
-                          Mark Resolved
-                        </Button>
-                      )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-green-50"
+                            onClick={() => handleUpdateStatus(selectedComplaint.id, "RESOLVED")}
+                          >
+                            Mark Resolved
+                          </Button>
+                        )}
                     </div>
                   </div>
                 )}

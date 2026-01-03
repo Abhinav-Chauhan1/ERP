@@ -50,13 +50,13 @@ export function BulkMessageComposer() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  
+
   const [classes, setClasses] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [recipients, setRecipients] = useState<BulkMessageRecipient[]>([]);
   const [showPreview, setShowPreview] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
@@ -92,10 +92,10 @@ export function BulkMessageComposer() {
   const handlePreviewRecipients = async () => {
     setLoading(true);
     try {
-      const selection: BulkMessageInput["recipientSelection"] = {
-        type: recipientType,
-        classIds: recipientType === "CLASS" ? selectedClasses : undefined,
-        roles: recipientType === "ROLE" ? selectedRoles : undefined,
+      const selection: Partial<BulkMessageInput> = {
+        recipientType,
+        selectedClasses: recipientType === "CLASS" ? selectedClasses : undefined,
+        selectedRoles: recipientType === "ROLE" ? selectedRoles : undefined,
       };
 
       const result = await previewRecipients(selection);
@@ -142,20 +142,18 @@ export function BulkMessageComposer() {
         messageType,
         subject: subject.trim() || undefined,
         body: body.trim(),
-        templateId: selectedTemplate || undefined,
-        recipientSelection: {
-          type: recipientType,
-          classIds: recipientType === "CLASS" ? selectedClasses : undefined,
-          roles: recipientType === "ROLE" ? selectedRoles : undefined,
-        },
+
+        recipientType,
+        selectedClasses: recipientType === "CLASS" ? selectedClasses : undefined,
+        selectedRoles: recipientType === "ROLE" ? selectedRoles : undefined,
       };
 
       const result = await sendBulkMessage(input);
-      
+
       if (result.success && result.data) {
         setSendResult(result.data);
         toast.success("Messages sent successfully!");
-        
+
         // Reset form
         setBody("");
         setSubject("");
@@ -358,7 +356,7 @@ export function BulkMessageComposer() {
           {/* Recipient Selection */}
           <div className="space-y-4">
             <Label>Select Recipients</Label>
-            
+
             <Tabs value={recipientType} onValueChange={(value: any) => setRecipientType(value)}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="ALL_PARENTS">All Parents</TabsTrigger>

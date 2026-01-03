@@ -1,13 +1,13 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { OptimizedImage } from "@/components/shared/optimized-image";
-import { 
-  ChevronLeft, Search, Download, FileText, 
-  Filter, Calendar, BookOpen, GraduationCap, 
-  BarChart, ArrowUpDown, Eye, Printer, CheckCircle, 
+import {
+  ChevronLeft, Search, Download, FileText,
+  Filter, Calendar, BookOpen, GraduationCap,
+  BarChart, ArrowUpDown, Eye, Printer, CheckCircle,
   AlertCircle, HelpCircle, Loader2, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,12 +39,13 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { RankCalculationDialog } from "@/components/admin/rank-calculation-dialog";
 
 // Import schema validation and server actions
-import { 
-  getExamResults, 
-  getStudentResults, 
-  getExamResultById, 
+import {
+  getExamResults,
+  getStudentResults,
+  getExamResultById,
   getResultFilters,
   publishExamResults,
   generateReportCard
@@ -56,7 +57,7 @@ export default function ResultsPage() {
   const [gradeFilter, setGradeFilter] = useState("all");
   const [examTypeFilter, setExamTypeFilter] = useState("all");
   const [termFilter, setTermFilter] = useState("all");
-  
+
   const [viewResultsDialogOpen, setViewResultsDialogOpen] = useState(false);
   const [viewStudentResultsDialogOpen, setViewStudentResultsDialogOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
@@ -64,12 +65,12 @@ export default function ResultsPage() {
   const [sortColumn, setSortColumn] = useState<string>("examDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [viewTab, setViewTab] = useState<string>("exams");
-  
+
   const [loading, setLoading] = useState(true);
   const [examResultsLoading, setExamResultsLoading] = useState(false);
   const [studentResultsLoading, setStudentResultsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [examResults, setExamResults] = useState<any[]>([]);
   const [studentResultsList, setStudentResultsList] = useState<any[]>([]);
   const [selectedExamDetails, setSelectedExamDetails] = useState<any>(null);
@@ -81,12 +82,7 @@ export default function ResultsPage() {
     classes: []
   });
 
-  useEffect(() => {
-    fetchExamResults();
-    fetchFilterOptions();
-  }, []);
-
-  async function fetchFilterOptions() {
+  const fetchFilterOptions = useCallback(async () => {
     try {
       const result = await getResultFilters();
       if (result.success) {
@@ -98,12 +94,12 @@ export default function ResultsPage() {
       console.error("Error fetching filter options:", err);
       toast.error("An unexpected error occurred");
     }
-  }
+  }, []);
 
-  async function fetchExamResults() {
+  const fetchExamResults = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getExamResults({
         searchTerm: searchTerm || undefined,
@@ -111,7 +107,7 @@ export default function ResultsPage() {
         examTypeId: examTypeFilter !== "all" ? examTypeFilter : undefined,
         termId: termFilter !== "all" ? termFilter : undefined,
       });
-      
+
       if (result.success) {
         setExamResults(result.data || []);
       } else {
@@ -125,27 +121,32 @@ export default function ResultsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [searchTerm, subjectFilter, examTypeFilter, termFilter]);
+
+  useEffect(() => {
+    fetchExamResults();
+    fetchFilterOptions();
+  }, [fetchExamResults, fetchFilterOptions]);
 
   // Apply filters and sorting
   const filteredExams = examResults.filter(exam => {
     if (viewTab !== "exams") return true;
-    
-    const matchesSearch = !searchTerm || 
-                          exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
+    const matchesSearch = !searchTerm ||
+      exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
     const matchesExamType = examTypeFilter === "all" || exam.examTypeId === examTypeFilter;
     const matchesTerm = termFilter === "all" || exam.termId === termFilter;
-    
+
     return matchesSearch && matchesSubject && matchesExamType && matchesTerm;
   });
 
   // Sort filtered exams
   const sortedFilteredExams = [...filteredExams].sort((a, b) => {
     let comparison = 0;
-    
+
     switch (sortColumn) {
       case "examName":
         comparison = a.examName.localeCompare(b.examName);
@@ -165,7 +166,7 @@ export default function ResultsPage() {
       default:
         comparison = 0;
     }
-    
+
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
@@ -181,10 +182,10 @@ export default function ResultsPage() {
   async function handleViewResults(examId: string) {
     setExamResultsLoading(true);
     setSelectedExamId(examId);
-    
+
     try {
       const result = await getExamResultById(examId);
-      
+
       if (result.success) {
         setSelectedExamDetails(result.data);
         setViewResultsDialogOpen(true);
@@ -202,10 +203,10 @@ export default function ResultsPage() {
   async function handleViewStudentResults(studentId: string) {
     setStudentResultsLoading(true);
     setSelectedStudentId(studentId);
-    
+
     try {
       const result = await getStudentResults(studentId, termFilter !== "all" ? termFilter : undefined);
-      
+
       if (result.success) {
         setSelectedStudentDetails(result.data);
         setViewStudentResultsDialogOpen(true);
@@ -228,7 +229,7 @@ export default function ResultsPage() {
         publishDate: new Date(),
         sendNotifications: false
       });
-      
+
       if (result.success) {
         toast.success(result.message || "Results published successfully");
         fetchExamResults();
@@ -249,7 +250,7 @@ export default function ResultsPage() {
         termId,
         includeRemarks: false
       });
-      
+
       if (result.success) {
         toast.success(result.message || "Report card generated successfully");
         setViewStudentResultsDialogOpen(false);
@@ -277,6 +278,7 @@ export default function ResultsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Examination Results</h1>
         </div>
         <div className="flex gap-2">
+          <RankCalculationDialog />
           <Button variant="outline">
             <BarChart className="h-4 w-4 mr-2" />
             Analytics
@@ -302,7 +304,7 @@ export default function ResultsPage() {
           <TabsTrigger value="students">Student Results</TabsTrigger>
           <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="exams">
           {/* Search and filters */}
           <div className="flex flex-col md:flex-row gap-4 mt-4 mb-6">
@@ -336,7 +338,7 @@ export default function ResultsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              
+
               <Select value={examTypeFilter} onValueChange={(value) => {
                 setExamTypeFilter(value);
                 fetchExamResults();
@@ -353,7 +355,7 @@ export default function ResultsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              
+
               <Select value={termFilter} onValueChange={(value) => {
                 setTermFilter(value);
                 fetchExamResults();
@@ -394,7 +396,7 @@ export default function ResultsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-accent border-b">
-                        <th 
+                        <th
                           className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("examName")}
                         >
@@ -405,7 +407,7 @@ export default function ResultsPage() {
                             )}
                           </div>
                         </th>
-                        <th 
+                        <th
                           className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("subject")}
                         >
@@ -416,7 +418,7 @@ export default function ResultsPage() {
                             )}
                           </div>
                         </th>
-                        <th 
+                        <th
                           className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("examDate")}
                         >
@@ -427,7 +429,7 @@ export default function ResultsPage() {
                             )}
                           </div>
                         </th>
-                        <th 
+                        <th
                           className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("averageScore")}
                         >
@@ -438,7 +440,7 @@ export default function ResultsPage() {
                             )}
                           </div>
                         </th>
-                        <th 
+                        <th
                           className="py-3 px-4 text-left font-medium text-muted-foreground cursor-pointer"
                           onClick={() => handleSort("passPercentage")}
                         >
@@ -477,9 +479,9 @@ export default function ResultsPage() {
                           <td className="py-3 px-4 align-middle">
                             <Badge className={
                               exam.passPercentage >= 90 ? "bg-green-100 text-green-800" :
-                              exam.passPercentage >= 75 ? "bg-primary/10 text-primary" :
-                              exam.passPercentage >= 60 ? "bg-yellow-100 text-yellow-800" :
-                              "bg-red-100 text-red-800"
+                                exam.passPercentage >= 75 ? "bg-primary/10 text-primary" :
+                                  exam.passPercentage >= 60 ? "bg-yellow-100 text-yellow-800" :
+                                    "bg-red-100 text-red-800"
                             }>
                               {exam.passPercentage.toFixed(1)}%
                             </Badge>
@@ -498,17 +500,17 @@ export default function ResultsPage() {
                             )}
                           </td>
                           <td className="py-3 px-4 align-middle text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleViewResults(exam.id)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
                             {!exam.isPublished && (
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => handlePublishResults(exam.id)}
                               >
@@ -536,7 +538,7 @@ export default function ResultsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="students">
           <div className="mt-4 mb-6">
             <div className="relative">
@@ -548,7 +550,7 @@ export default function ResultsPage() {
               />
             </div>
           </div>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Student Results</CardTitle>
@@ -568,7 +570,7 @@ export default function ResultsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="analytics">
           <div className="grid gap-4 mt-4">
             <Card>
@@ -602,7 +604,7 @@ export default function ResultsPage() {
               {selectedExamDetails?.subject} - {selectedExamDetails?.term} ({selectedExamDetails?.academicYear})
             </DialogDescription>
           </DialogHeader>
-          
+
           {examResultsLoading ? (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -629,7 +631,7 @@ export default function ResultsPage() {
                   </div>
                 </div>
               </div>
-              
+
               {Object.keys(selectedExamDetails.gradeDistribution).length > 0 && (
                 <div className="border rounded-lg p-4 mb-6">
                   <h3 className="font-medium mb-3">Grade Distribution</h3>
@@ -640,8 +642,8 @@ export default function ResultsPage() {
                           w-10 h-10 rounded-full flex items-center justify-center font-medium
                           ${grade === 'A+' || grade === 'A' ? 'bg-green-100 text-green-800' :
                             grade === 'B+' || grade === 'B' ? 'bg-primary/10 text-primary' :
-                            grade === 'C+' || grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'}
+                              grade === 'C+' || grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'}
                         `}>
                           {grade}
                         </div>
@@ -656,7 +658,7 @@ export default function ResultsPage() {
                   </div>
                 </div>
               )}
-              
+
               <div className="border rounded-lg mb-4">
                 <div className="bg-accent py-3 px-4 border-b">
                   <h3 className="font-medium">Student Results</h3>
@@ -704,7 +706,7 @@ export default function ResultsPage() {
               No details available
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewResultsDialogOpen(false)}>
               Close
@@ -731,7 +733,7 @@ export default function ResultsPage() {
               Performance details for this student
             </DialogDescription>
           </DialogHeader>
-          
+
           {studentResultsLoading ? (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -742,9 +744,9 @@ export default function ResultsPage() {
                 <div className="md:w-1/4">
                   <div className="w-24 h-24 rounded-full bg-muted mx-auto overflow-hidden">
                     {selectedStudentDetails.student.photo ? (
-                      <OptimizedImage 
-                        src={selectedStudentDetails.student.photo} 
-                        alt={selectedStudentDetails.student.name} 
+                      <OptimizedImage
+                        src={selectedStudentDetails.student.photo}
+                        alt={selectedStudentDetails.student.name}
                         width={96}
                         height={96}
                         className="w-full h-full object-cover"
@@ -775,7 +777,7 @@ export default function ResultsPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-primary/10 rounded-lg p-4">
                   <div className="text-primary font-medium text-sm mb-1">Overall Percentage</div>
@@ -794,7 +796,7 @@ export default function ResultsPage() {
                   <div className="text-2xl font-bold">{selectedStudentDetails.summary.attendance}%</div>
                 </div>
               </div>
-              
+
               <div className="border rounded-lg mb-4">
                 <div className="bg-accent py-3 px-4 border-b">
                   <h3 className="font-medium">Subject-wise Performance</h3>
@@ -836,9 +838,9 @@ export default function ResultsPage() {
                               {exam.isAbsent ? '-' : (
                                 <Badge className={
                                   exam.grade === 'A+' || exam.grade === 'A' ? "bg-green-100 text-green-800" :
-                                  exam.grade === 'B+' || exam.grade === 'B' ? "bg-primary/10 text-primary" :
-                                  exam.grade === 'C+' || exam.grade === 'C' ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
+                                    exam.grade === 'B+' || exam.grade === 'B' ? "bg-primary/10 text-primary" :
+                                      exam.grade === 'C+' || exam.grade === 'C' ? "bg-yellow-100 text-yellow-800" :
+                                        "bg-red-100 text-red-800"
                                 }>
                                   {exam.grade || '-'}
                                 </Badge>
@@ -861,7 +863,7 @@ export default function ResultsPage() {
               No student details available
             </div>
           )}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewStudentResultsDialogOpen(false)}>
               Close
@@ -872,9 +874,9 @@ export default function ResultsPage() {
                   <Printer className="h-4 w-4 mr-2" />
                   Print Results
                 </Button>
-                <Button 
+                <Button
                   onClick={() => handleGenerateReportCard(
-                    selectedStudentDetails.student.id, 
+                    selectedStudentDetails.student.id,
                     termFilter !== "all" ? termFilter : filterOptions.terms[0]?.id
                   )}
                 >

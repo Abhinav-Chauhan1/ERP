@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
@@ -44,12 +45,12 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
       const fullName = `${student.user.firstName} ${student.user.lastName}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
         student.admissionId.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesStatus = 
+
+      const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" && student.user.active) ||
         (statusFilter === "inactive" && !student.user.active);
-      
+
       return matchesSearch && matchesStatus;
     });
 
@@ -84,20 +85,10 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
       label: "Name",
       render: (student: Student) => (
         <div className="flex items-center gap-3">
-          {student.user.avatar ? (
-            <img
-              src={student.user.avatar}
-              alt={`${student.user.firstName} ${student.user.lastName}`}
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-medium">
-              {student.user.firstName[0]}
-              {student.user.lastName[0]}
-            </div>
-          )}
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+            <AvatarFallback>{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
+          </Avatar>
           <div className="font-medium">
             {student.user.firstName} {student.user.lastName}
           </div>
@@ -137,7 +128,7 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
       key: "status",
       label: "Status",
       render: (student: Student) => (
-        <Badge 
+        <Badge
           className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
           {student.user.active ? "Active" : "Inactive"}
@@ -164,11 +155,11 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <UserSearch 
-          placeholder="Search students by name or admission ID..." 
+        <UserSearch
+          placeholder="Search students by name or admission ID..."
           onSearch={setSearchQuery}
         />
-        <UserFilters 
+        <UserFilters
           onStatusChange={setStatusFilter}
           onSortChange={setSortBy}
         />

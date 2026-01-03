@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export default function StudentMessagesPageWithCompose() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("id");
-  
+
   const [activeTab, setActiveTab] = useState<"inbox" | "sent">("inbox");
   const [messages, setMessages] = useState<any[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
@@ -34,12 +34,12 @@ export default function StudentMessagesPageWithCompose() {
   const [filters, setFilters] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [messageLoading, setMessageLoading] = useState(false);
-  
+
   // ADD THIS STATE FOR COMPOSE DIALOG
   const [isComposeOpen, setIsComposeOpen] = useState(false);
 
   // Fetch messages
-  const fetchMessages = async (page: number = 1, newFilters: any = {}) => {
+  const fetchMessages = useCallback(async (page: number = 1, newFilters: any = {}) => {
     setLoading(true);
     try {
       const result = await getMessages({
@@ -61,17 +61,17 @@ export default function StudentMessagesPageWithCompose() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
   // Fetch message by ID
-  const fetchMessageById = async (id: string) => {
+  const fetchMessageById = useCallback(async (id: string) => {
     setMessageLoading(true);
     try {
       const result = await getMessageById(id);
 
       if (result.success && result.data) {
         setSelectedMessage(result.data);
-        
+
         // Mark as read if it's an inbox message and unread
         if (activeTab === "inbox" && !result.data.isRead) {
           await markAsRead({ id, type: "message" });
@@ -88,12 +88,12 @@ export default function StudentMessagesPageWithCompose() {
     } finally {
       setMessageLoading(false);
     }
-  };
+  }, [activeTab, fetchMessages, pagination.page, filters]);
 
   // Load messages when tab or filters change
   useEffect(() => {
     fetchMessages(1, filters);
-  }, [activeTab]);
+  }, [activeTab, filters, fetchMessages]);
 
   // Load message if ID is in URL
   useEffect(() => {
@@ -102,7 +102,7 @@ export default function StudentMessagesPageWithCompose() {
     } else {
       setSelectedMessage(null);
     }
-  }, [messageId]);
+  }, [messageId, fetchMessageById]);
 
   const handleMessageClick = (id: string) => {
     router.push(`/student/communication/messages?id=${id}`);

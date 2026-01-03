@@ -21,6 +21,8 @@ import {
   FileQuestion
 } from "lucide-react";
 import { format } from "date-fns";
+import { StudentSyllabusView } from "./student-syllabus-view";
+import { useEnhancedSyllabusClient } from "@/lib/utils/feature-flags";
 
 interface SubjectDetailProps {
   subject: {
@@ -63,6 +65,8 @@ export function SubjectDetail({
   assignments,
   exams
 }: SubjectDetailProps) {
+  const enhancedSyllabusEnabled = useEnhancedSyllabusClient();
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -90,7 +94,15 @@ export function SubjectDetail({
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Performance
               </Button>
-              {syllabus && (
+              {enhancedSyllabusEnabled && syllabus && syllabus.modules && syllabus.modules.length > 0 && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/student/academics/subjects/${subject.id}/syllabus`}>
+                    <BookMarked className="h-4 w-4 mr-2" />
+                    View Full Syllabus
+                  </Link>
+                </Button>
+              )}
+              {!enhancedSyllabusEnabled && syllabus && (
                 <Button variant="outline" size="sm">
                   <BookMarked className="h-4 w-4 mr-2" />
                   Syllabus
@@ -330,74 +342,86 @@ export function SubjectDetail({
             <CardContent>
               {syllabus ? (
                 <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                    <div>
-                      <h3 className="font-medium">{syllabus.title}</h3>
-                      {syllabus.description && (
-                        <p className="text-muted-foreground text-sm mt-1">{syllabus.description}</p>
-                      )}
-                    </div>
-                    
-                    {syllabus.document && (
-                      <Button size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Syllabus
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {syllabus.units.map((unit: any) => (
-                      <div key={unit.id} className="border rounded-md overflow-hidden">
-                        <div className="p-4 bg-muted/30 border-b">
-                          <h3 className="font-medium">Unit {unit.order}: {unit.title}</h3>
-                          {unit.description && (
-                            <p className="text-muted-foreground text-sm mt-1">{unit.description}</p>
+                  {/* Check if enhanced syllabus is enabled and new module structure exists */}
+                  {enhancedSyllabusEnabled && syllabus.modules && syllabus.modules.length > 0 ? (
+                    <StudentSyllabusView
+                      modules={syllabus.modules}
+                      syllabusTitle={syllabus.title}
+                      syllabusDescription={syllabus.description}
+                    />
+                  ) : (
+                    /* Legacy unit/lesson structure */
+                    <>
+                      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                        <div>
+                          <h3 className="font-medium">{syllabus.title}</h3>
+                          {syllabus.description && (
+                            <p className="text-muted-foreground text-sm mt-1">{syllabus.description}</p>
                           )}
                         </div>
-                        {unit.lessons.length > 0 ? (
-                          <div className="divide-y">
-                            {unit.lessons.map((lesson: any) => (
-                              <div key={lesson.id} className="flex items-center p-3">
-                                <BookOpen className="h-4 w-4 text-primary" />
-                                <div className="ml-3">
-                                  <h4 className="text-sm font-medium">{lesson.title}</h4>
-                                  {lesson.duration && (
-                                    <div className="flex items-center text-muted-foreground text-xs mt-1">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      {lesson.duration} minutes
+                        
+                        {syllabus.document && (
+                          <Button size="sm">
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Syllabus
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {syllabus.units.map((unit: any) => (
+                          <div key={unit.id} className="border rounded-md overflow-hidden">
+                            <div className="p-4 bg-muted/30 border-b">
+                              <h3 className="font-medium">Unit {unit.order}: {unit.title}</h3>
+                              {unit.description && (
+                                <p className="text-muted-foreground text-sm mt-1">{unit.description}</p>
+                              )}
+                            </div>
+                            {unit.lessons.length > 0 ? (
+                              <div className="divide-y">
+                                {unit.lessons.map((lesson: any) => (
+                                  <div key={lesson.id} className="flex items-center p-3">
+                                    <BookOpen className="h-4 w-4 text-primary" />
+                                    <div className="ml-3">
+                                      <h4 className="text-sm font-medium">{lesson.title}</h4>
+                                      {lesson.duration && (
+                                        <div className="flex items-center text-muted-foreground text-xs mt-1">
+                                          <Clock className="h-3 w-3 mr-1" />
+                                          {lesson.duration} minutes
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="ml-auto text-primary"
-                                  asChild
-                                >
-                                  <Link href={`/student/academics/materials/${lesson.id}`}>
-                                    View
-                                  </Link>
-                                </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="ml-auto text-primary"
+                                      asChild
+                                    >
+                                      <Link href={`/student/academics/materials/${lesson.id}`}>
+                                        View
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            ) : (
+                              <div className="p-4 text-center text-muted-foreground text-sm">
+                                No lessons available for this unit
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="p-4 text-center text-muted-foreground text-sm">
-                            No lessons available for this unit
+                        ))}
+                        
+                        {syllabus.units.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <BookMarked className="h-12 w-12 text-muted-foreground/30 mx-auto" />
+                            <h3 className="mt-4 font-medium">No units defined</h3>
+                            <p className="text-sm mt-1">The syllabus structure has not been defined yet</p>
                           </div>
                         )}
                       </div>
-                    ))}
-                    
-                    {syllabus.units.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <BookMarked className="h-12 w-12 text-muted-foreground/30 mx-auto" />
-                        <h3 className="mt-4 font-medium">No units defined</h3>
-                        <p className="text-sm mt-1">The syllabus structure has not been defined yet</p>
-                      </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">

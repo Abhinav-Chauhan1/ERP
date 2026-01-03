@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { QuestionType, Difficulty } from "@prisma/client";
@@ -19,7 +19,8 @@ export async function createQuestion(data: {
   difficulty: Difficulty;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -101,7 +102,8 @@ export async function getTeacherQuestions(filters?: {
   search?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -168,7 +170,8 @@ export async function getTeacherQuestions(filters?: {
  */
 export async function getQuestionById(questionId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -213,7 +216,8 @@ export async function updateQuestion(
   }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -310,7 +314,8 @@ export async function updateQuestion(
  */
 export async function deleteQuestion(questionId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -359,7 +364,8 @@ export async function deleteQuestion(questionId: string) {
  */
 export async function getTeacherSubjectTopics(subjectId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -402,7 +408,8 @@ export async function getTeacherSubjectTopics(subjectId: string) {
  */
 export async function getQuestionBankStats() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -497,7 +504,8 @@ export async function bulkImportQuestions(data: {
   }>;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }

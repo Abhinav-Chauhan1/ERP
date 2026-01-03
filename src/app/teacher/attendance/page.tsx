@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Chart } from "@/components/dashboard/chart";
-import { CalendarWidget } from "@/components/dashboard/calendar-widget";
+import { AttendanceCalendarWidget } from "@/components/attendance/attendance-calendar-widget";
 import { getTeacherAttendanceOverview } from "@/lib/actions/teacherAttendanceOverviewActions";
 import { format } from "date-fns";
 
@@ -151,7 +151,7 @@ export default async function TeacherAttendancePage() {
             <CardDescription>Important dates and events</CardDescription>
           </CardHeader>
           <CardContent>
-            <CalendarWidget events={attendanceEvents} />
+            <AttendanceCalendarWidget events={attendanceEvents} />
           </CardContent>
         </Card>
       </div>

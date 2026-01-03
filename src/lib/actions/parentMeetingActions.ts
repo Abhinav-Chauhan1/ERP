@@ -2,7 +2,12 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
+import {
+  createCalendarEventFromMeeting,
+  updateCalendarEventFromMeeting,
+  deleteCalendarEventFromMeeting
+} from "../services/meeting-calendar-integration";
 
 // Get all parent meetings with filters
 export async function getParentMeetings(filters?: {
@@ -153,6 +158,9 @@ export async function getParentMeetingById(id: string) {
 // Schedule new parent meeting
 export async function scheduleMeeting(data: any) {
   try {
+    const user = await currentUser();
+    const userId = user?.id || 'system';
+
     const meeting = await db.parentMeeting.create({
       data: {
         title: data.title || "Parent-Teacher Meeting",
@@ -177,6 +185,9 @@ export async function scheduleMeeting(data: any) {
         },
       },
     });
+
+    // Create calendar event for the meeting
+    await createCalendarEventFromMeeting(meeting as any, userId);
 
     revalidatePath("/admin/communication/parent-meetings");
     return { success: true, data: meeting };
@@ -212,6 +223,9 @@ export async function updateMeeting(id: string, data: any) {
       },
     });
 
+    // Update calendar event for the meeting
+    await updateCalendarEventFromMeeting(meeting as any);
+
     revalidatePath("/admin/communication/parent-meetings");
     return { success: true, data: meeting };
   } catch (error) {
@@ -230,6 +244,9 @@ export async function cancelMeeting(id: string, reason?: string) {
         notes: reason ? `Cancelled: ${reason}` : "Meeting cancelled",
       },
     });
+
+    // Delete calendar event for the cancelled meeting
+    await deleteCalendarEventFromMeeting(id);
 
     revalidatePath("/admin/communication/parent-meetings");
     return { success: true, data: meeting };
@@ -267,7 +284,22 @@ export async function rescheduleMeeting(id: string, newDate: Date) {
         scheduledDate: newDate,
         status: "RESCHEDULED",
       },
+      include: {
+        parent: {
+          include: {
+            user: true,
+          },
+        },
+        teacher: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
+
+    // Update calendar event for the rescheduled meeting
+    await updateCalendarEventFromMeeting(meeting as any);
 
     revalidatePath("/admin/communication/parent-meetings");
     return { success: true, data: meeting };
@@ -280,6 +312,9 @@ export async function rescheduleMeeting(id: string, newDate: Date) {
 // Delete meeting
 export async function deleteMeeting(id: string) {
   try {
+    // Delete calendar event first
+    await deleteCalendarEventFromMeeting(id);
+
     await db.parentMeeting.delete({
       where: { id },
     });

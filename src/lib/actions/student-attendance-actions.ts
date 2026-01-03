@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@/lib/auth-helpers";
 import { redirect } from "next/navigation";
 import { UserRole, AttendanceStatus, LeaveStatus } from "@prisma/client";
 import { z } from "zod";
@@ -34,9 +34,7 @@ async function getCurrentStudent() {
   
   // Get user from database
   const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
+    where: { id: clerkUser.id }
   });
   
   if (!dbUser || dbUser.role !== UserRole.STUDENT) {

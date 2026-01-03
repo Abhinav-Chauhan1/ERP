@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { AttendanceStatus } from "@prisma/client";
@@ -17,7 +17,8 @@ type StudentAttendanceData = {
  */
 export async function getClassStudentsForAttendance(classId: string, sectionId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -26,9 +27,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -226,7 +225,8 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
  */
 export async function getTeacherClassesForAttendance() {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -235,9 +235,7 @@ export async function getTeacherClassesForAttendance() {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -358,7 +356,8 @@ export async function getTeacherClassesForAttendance() {
  */
 export async function saveAttendanceRecords(classId: string, sectionId: string, attendanceRecords: StudentAttendanceData[]) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -367,9 +366,7 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -451,7 +448,8 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
  */
 export async function getClassAttendanceForDate(classId: string, sectionId: string, date: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -460,9 +458,7 @@ export async function getClassAttendanceForDate(classId: string, sectionId: stri
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -594,7 +590,8 @@ export async function getTeacherAttendanceReports(filters?: {
   status?: AttendanceStatus;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -603,9 +600,7 @@ export async function getTeacherAttendanceReports(filters?: {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -916,7 +911,8 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
   endDate?: string;
 }) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");

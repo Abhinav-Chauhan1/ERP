@@ -1,17 +1,23 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { DayOfWeek } from "@prisma/client";
+import {
+  createCalendarEventFromExam,
+  updateCalendarEventFromExam,
+  deleteCalendarEventFromExam
+} from "../services/exam-calendar-integration";
 
 /**
  * Get all exams for a teacher
  */
 export async function getTeacherExams(subjectId?: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -20,7 +26,7 @@ export async function getTeacherExams(subjectId?: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -86,14 +92,14 @@ export async function getTeacherExams(subjectId?: string) {
 
     // Format the exams data for the UI
     const formattedExams = exams.map(exam => {
-      const status = 
+      const status =
         exam.examDate > new Date() ? "upcoming" :
-        exam.examDate < new Date() ? "completed" : "ongoing";
-      
+          exam.examDate < new Date() ? "completed" : "ongoing";
+
       // Calculate stats for completed exams
       const submittedCount = exam.results.length;
       const totalStudents = submittedCount; // This is a simplification. In a real scenario, you'd need to get the actual class enrollment.
-      
+
       // Calculate average score for completed exams
       const totalScore = exam.results.reduce((sum, result) => sum + result.marks, 0);
       const avgScore = submittedCount > 0 ? totalScore / submittedCount : 0;
@@ -119,7 +125,7 @@ export async function getTeacherExams(subjectId?: string) {
       };
     });
 
-    return { 
+    return {
       exams: formattedExams,
       subjects: subjectTeachers.map(st => ({
         id: st.subject.id,
@@ -137,8 +143,9 @@ export async function getTeacherExams(subjectId?: string) {
  */
 export async function getTeacherExam(examId: string) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -147,7 +154,7 @@ export async function getTeacherExam(examId: string) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -222,22 +229,22 @@ export async function getTeacherExam(examId: string) {
     const presentCount = totalSubmissions - absentCount;
     const totalMarks = results.reduce((sum, r) => sum + (r.isAbsent ? 0 : r.marks), 0);
     const averageMark = presentCount > 0 ? totalMarks / presentCount : 0;
-    
+
     // Create grade distribution
     const gradeDistribution = results.reduce((acc, r) => {
       if (r.isAbsent) return acc;
-      
+
       // Simple grading logic - can be customized
       const percentage = (r.marks / exam.totalMarks) * 100;
       let grade = '';
-      
+
       if (percentage >= 90) grade = 'A';
       else if (percentage >= 80) grade = 'B';
       else if (percentage >= 70) grade = 'C';
       else if (percentage >= 60) grade = 'D';
       else if (percentage >= 50) grade = 'E';
       else grade = 'F';
-      
+
       if (!acc[grade]) acc[grade] = 0;
       acc[grade]++;
       return acc;
@@ -265,8 +272,8 @@ export async function getTeacherExam(examId: string) {
         averageMark,
         highestMark: Math.max(...results.map(r => r.isAbsent ? 0 : r.marks)),
         lowestMark: Math.min(...results.filter(r => !r.isAbsent).map(r => r.marks)),
-        passRate: presentCount > 0 
-          ? (results.filter(r => !r.isAbsent && r.marks >= exam.passingMarks).length / presentCount) * 100 
+        passRate: presentCount > 0
+          ? (results.filter(r => !r.isAbsent && r.marks >= exam.passingMarks).length / presentCount) * 100
           : 0,
         gradeDistribution,
       }
@@ -282,8 +289,9 @@ export async function getTeacherExam(examId: string) {
  */
 export async function createExam(formData: FormData) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -292,7 +300,7 @@ export async function createExam(formData: FormData) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -340,10 +348,23 @@ export async function createExam(formData: FormData) {
         creatorId: teacher.id,
         instructions,
       },
+      include: {
+        subject: true,
+        examType: true,
+        term: {
+          include: {
+            academicYear: true
+          }
+        }
+      }
     });
 
+    // Create calendar event for the exam
+    // Requirement 10.1: Automatically generate a calendar event with exam details
+    await createCalendarEventFromExam(exam as any, userId);
+
     revalidatePath('/teacher/assessments/exams');
-    
+
     return { success: true, examId: exam.id };
   } catch (error) {
     console.error("Failed to create exam:", error);
@@ -356,8 +377,9 @@ export async function createExam(formData: FormData) {
  */
 export async function updateExamResults(examId: string, results: any[]) {
   try {
-    const { userId } = await auth();
-    
+    const session = await auth();
+    const userId = session?.user?.id;
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -366,7 +388,7 @@ export async function updateExamResults(examId: string, results: any[]) {
     const teacher = await db.teacher.findFirst({
       where: {
         user: {
-          clerkId: userId,
+          id: userId,
         },
       },
     });
@@ -425,7 +447,7 @@ export async function updateExamResults(examId: string, results: any[]) {
     }
 
     revalidatePath(`/teacher/assessments/exams/${examId}`);
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update exam results:", error);

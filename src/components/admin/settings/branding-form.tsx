@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SystemSettings } from "@prisma/client";
+import Image from "next/image";
 import { updateSchoolInfo, updateAppearanceSettings } from "@/lib/actions/settingsActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -165,11 +166,15 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
               </Button>
             </div>
             {formData.logo && (
-              <img
-                src={formData.logo}
-                alt="Logo preview"
-                className="mt-2 h-16 object-contain"
-              />
+              <div className="relative mt-2 h-16 w-48">
+                <Image
+                  src={formData.logo}
+                  alt="Logo preview"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
             )}
           </div>
 

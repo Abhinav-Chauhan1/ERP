@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,17 +57,7 @@ export default function HostelRoomsPage() {
   const [monthlyFee, setMonthlyFee] = useState("");
   const [status, setStatus] = useState("AVAILABLE");
 
-  useEffect(() => {
-    loadHostels();
-  }, []);
-
-  useEffect(() => {
-    if (selectedHostel) {
-      loadRooms();
-    }
-  }, [selectedHostel]);
-
-  const loadHostels = async () => {
+  const loadHostels = useCallback(async () => {
     try {
       const result = await getHostels();
       if (result.success && result.data) {
@@ -79,9 +69,9 @@ export default function HostelRoomsPage() {
     } catch (error) {
       console.error("Error loading hostels:", error);
     }
-  };
+  }, [selectedHostel]);
 
-  const loadRooms = async () => {
+  const loadRooms = useCallback(async () => {
     if (!selectedHostel) return;
     setLoading(true);
     try {
@@ -97,7 +87,17 @@ export default function HostelRoomsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedHostel]);
+
+  useEffect(() => {
+    loadHostels();
+  }, [loadHostels]);
+
+  useEffect(() => {
+    if (selectedHostel) {
+      loadRooms();
+    }
+  }, [selectedHostel, loadRooms]);
 
   const resetForm = () => {
     setRoomNumber("");

@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   MessageSquare, Bell, Megaphone, Users, FileText,
   PlusCircle, ArrowRight, Send, Eye, Loader2,
-  CalendarClock, ArrowUp, ArrowDown
+  CalendarClock, ArrowUp, ArrowDown, MessageCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chart } from "@/components/dashboard/chart";
@@ -22,24 +22,32 @@ import { getParentMeetings, getMeetingStats } from "@/lib/actions/parentMeetingA
 export default function CommunicationsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  
+
   // Stats
   const [messageStats, setMessageStats] = useState<any>(null);
   const [announcementStats, setAnnouncementStats] = useState<any>(null);
   const [notificationStats, setNotificationStats] = useState<any>(null);
   const [meetingStats, setMeetingStats] = useState<any>(null);
-  
+
   // Data
   const [recentMessages, setRecentMessages] = useState<any[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([]);
   const [upcomingMeetings, setUpcomingMeetings] = useState<any[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadAllData();
+  const generateWeeklyData = useCallback(() => {
+    // Generate mock weekly data for the chart
+    // In a real app, this would come from the database
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const data = days.map(day => ({
+      date: day,
+      sent: Math.floor(Math.random() * 30) + 20,
+      received: Math.floor(Math.random() * 35) + 25,
+    }));
+    setWeeklyData(data);
   }, []);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
       // Load stats
@@ -76,26 +84,18 @@ export default function CommunicationsPage() {
 
       // Generate weekly data
       generateWeeklyData();
-      
+
     } catch (error) {
       console.error("Error loading communication data:", error);
       toast.error("Failed to load communication data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [generateWeeklyData]);
 
-  const generateWeeklyData = () => {
-    // Generate mock weekly data for the chart
-    // In a real app, this would come from the database
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const data = days.map(day => ({
-      date: day,
-      sent: Math.floor(Math.random() * 30) + 20,
-      received: Math.floor(Math.random() * 35) + 25,
-    }));
-    setWeeklyData(data);
-  };
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   const communicationCategories = [
     {
@@ -173,49 +173,49 @@ export default function CommunicationsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Communications Hub</h1>
-        <div className="flex gap-2">
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">Communications Hub</h1>
+        <div className="flex flex-wrap gap-2">
           <Link href="/admin/communication/messages">
-            <Button variant="outline">
+            <Button variant="outline" size="default">
               <MessageSquare className="mr-2 h-4 w-4" /> Compose Message
             </Button>
           </Link>
           <Link href="/admin/communication/announcements">
-            <Button>
+            <Button size="default">
               <Megaphone className="mr-2 h-4 w-4" /> Create Announcement
             </Button>
           </Link>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="overview">
+
+        <TabsContent value="overview" className="mt-6 space-y-6">
           {/* Category Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mt-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {communicationCategories.map((category) => (
               <Card key={category.title} className="overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className={`p-2 rounded-md ${category.color}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2.5 rounded-lg ${category.color}`}>
                       {category.icon}
                     </div>
-                    <Badge variant="outline">
+                    <Badge variant="secondary" className="text-sm font-semibold">
                       {loading ? "..." : category.count}
                     </Badge>
                   </div>
-                  <CardTitle className="text-base mt-2">{category.title}</CardTitle>
-                  <CardDescription>{category.description}</CardDescription>
+                  <CardTitle className="text-base">{category.title}</CardTitle>
+                  <CardDescription className="text-sm">{category.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 pb-4">
                   <Link href={category.href}>
-                    <Button variant="outline" size="sm" className="w-full mt-2">
+                    <Button variant="outline" size="sm" className="w-full">
                       Manage
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -226,7 +226,7 @@ export default function CommunicationsPage() {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid gap-4 md:grid-cols-2 mt-4">
+          <div className="grid gap-6 lg:grid-cols-2">
             {/* Recent Communications */}
             <Card>
               <CardHeader>
@@ -312,36 +312,87 @@ export default function CommunicationsPage() {
               </CardFooter>
             </Card>
 
-            {/* Communication Analytics Chart */}
+            {/* Quick Actions */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Communication Analytics</CardTitle>
+                <CardTitle className="text-xl">Quick Actions</CardTitle>
                 <CardDescription>
-                  Message and notification volume
+                  Common communication tasks
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-[350px]">
-                {loading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <Chart
-                    title=""
-                    data={weeklyData}
-                    type="bar"
-                    xKey="date"
-                    yKey="sent"
-                    categories={["sent", "received"]}
-                    colors={["#3b82f6", "#10b981"]}
-                  />
-                )}
+              <CardContent>
+                <div className="space-y-2">
+                  <Link href="/admin/communication/parent-meetings" className="block group">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-primary/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-primary/10 text-primary shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">Schedule Meeting</p>
+                        <p className="text-xs text-muted-foreground">With parents or staff</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    </div>
+                  </Link>
+
+                  <Link href="/admin/communication/templates" className="block group">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-purple-500/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-purple-100 text-purple-700 shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">Use Template</p>
+                        <p className="text-xs text-muted-foreground">For emails and messages</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors shrink-0" />
+                    </div>
+                  </Link>
+
+                  <Link href="/admin/communication/notifications" className="block group">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-amber-500/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-amber-100 text-amber-700 shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                        <Bell className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">Create Alert</p>
+                        <p className="text-xs text-muted-foreground">Send system notifications</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-amber-600 transition-colors shrink-0" />
+                    </div>
+                  </Link>
+
+                  <Link href="/admin/communication/bulk-messaging" className="block group">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-green-500/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-green-100 text-green-700 shrink-0 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                        <Send className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">SMS Alert</p>
+                        <p className="text-xs text-muted-foreground">Send text messages</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-green-600 transition-colors shrink-0" />
+                    </div>
+                  </Link>
+
+                  <Link href="/admin/communication/whatsapp-profile" className="block group">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-emerald-500/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-emerald-100 text-emerald-700 shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                        <MessageCircle className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">WhatsApp Profile</p>
+                        <p className="text-xs text-muted-foreground">Configure business profile</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-600 transition-colors shrink-0" />
+                    </div>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Bottom Grid */}
-          <div className="grid gap-4 md:grid-cols-3 mt-4">
+          <div className="grid gap-6 lg:grid-cols-2">
             {/* Upcoming Parent Meetings */}
             <Card>
               <CardHeader>
@@ -395,67 +446,6 @@ export default function CommunicationsPage() {
               </CardFooter>
             </Card>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Quick Actions</CardTitle>
-                <CardDescription>
-                  Common communication tasks
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <Link href="/admin/communication/parent-meetings">
-                    <Button variant="outline" className="w-full h-auto flex-col p-4 justify-start items-start gap-2">
-                      <div className="p-2 rounded-full bg-primary/10 text-primary mb-1">
-                        <Users className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm">Schedule Meeting</p>
-                        <p className="text-xs text-muted-foreground">With parents or staff</p>
-                      </div>
-                    </Button>
-                  </Link>
-                  
-                  <Link href="/admin/communication/templates">
-                    <Button variant="outline" className="w-full h-auto flex-col p-4 justify-start items-start gap-2">
-                      <div className="p-2 rounded-full bg-purple-100 text-purple-700 mb-1">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm">Use Template</p>
-                        <p className="text-xs text-muted-foreground">For emails and messages</p>
-                      </div>
-                    </Button>
-                  </Link>
-                  
-                  <Link href="/admin/communication/notifications">
-                    <Button variant="outline" className="w-full h-auto flex-col p-4 justify-start items-start gap-2">
-                      <div className="p-2 rounded-full bg-amber-100 text-amber-700 mb-1">
-                        <Bell className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm">Create Alert</p>
-                        <p className="text-xs text-muted-foreground">Send system notifications</p>
-                      </div>
-                    </Button>
-                  </Link>
-                  
-                  <Link href="/admin/communication/sms">
-                    <Button variant="outline" className="w-full h-auto flex-col p-4 justify-start items-start gap-2">
-                      <div className="p-2 rounded-full bg-green-100 text-green-700 mb-1">
-                        <Send className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm">SMS Alert</p>
-                        <p className="text-xs text-muted-foreground">Send text messages</p>
-                      </div>
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Communication Stats */}
             <Card>
               <CardHeader>
@@ -485,7 +475,7 @@ export default function CommunicationsPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-full bg-purple-100 text-purple-700">
                         <Megaphone className="h-6 w-6" />
@@ -500,7 +490,7 @@ export default function CommunicationsPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-full bg-green-100 text-green-700">
                         <Users className="h-6 w-6" />
@@ -515,7 +505,7 @@ export default function CommunicationsPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-full bg-amber-100 text-amber-700">
                         <Bell className="h-6 w-6" />
@@ -536,13 +526,24 @@ export default function CommunicationsPage() {
             </Card>
           </div>
         </TabsContent>
-        
-        <TabsContent value="analytics">
-          <div className="py-6 text-center">
-            <h2 className="text-xl font-bold mb-2">Coming Soon</h2>
-            <p className="text-muted-foreground mb-4">Detailed communication analytics will be available in a future update.</p>
-            <Button variant="outline" onClick={() => setActiveTab("overview")}>Return to Overview</Button>
-          </div>
+
+        <TabsContent value="analytics" className="mt-6">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="p-4 rounded-full bg-muted inline-block">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h2 className="text-2xl font-bold">Coming Soon</h2>
+                <p className="text-muted-foreground">
+                  Detailed communication analytics will be available in a future update.
+                </p>
+                <Button variant="outline" onClick={() => setActiveTab("overview")}>
+                  Return to Overview
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

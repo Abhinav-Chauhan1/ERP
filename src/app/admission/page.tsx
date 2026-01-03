@@ -42,7 +42,7 @@ export default function AdmissionPortalPage() {
   const [applicationNumber, setApplicationNumber] = useState<string | null>(null);
   const [classes, setClasses] = useState<Class[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(true);
-  
+
   // Document upload states
   const [birthCertificate, setBirthCertificate] = useState<UploadedDocument | null>(null);
   const [reportCard, setReportCard] = useState<UploadedDocument | null>(null);
@@ -185,9 +185,9 @@ export default function AdmissionPortalPage() {
           filename: photograph.filename,
         });
       }
-      
+
       const result = await createAdmissionApplication(data, documents);
-      
+
       if (result.success && result.data) {
         setSuccess(true);
         setApplicationNumber(result.data.applicationNumber);
@@ -243,7 +243,7 @@ export default function AdmissionPortalPage() {
               </Alert>
 
               <div className="flex gap-4">
-                <Button 
+                <Button
                   onClick={() => {
                     setSuccess(false);
                     setApplicationNumber(null);
@@ -256,7 +256,7 @@ export default function AdmissionPortalPage() {
                 >
                   Submit Another Application
                 </Button>
-                <Button 
+                <Button
                   onClick={() => window.print()}
                   className="flex-1"
                 >
@@ -329,9 +329,8 @@ export default function AdmissionPortalPage() {
                               <FormControl>
                                 <Button
                                   variant="outline"
-                                  className={`w-full pl-3 text-left font-normal ${
-                                    !field.value && "text-muted-foreground"
-                                  }`}
+                                  className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"
+                                    }`}
                                 >
                                   {field.value ? (
                                     format(field.value, "PPP")
@@ -389,8 +388,8 @@ export default function AdmissionPortalPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Applied Class *</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                           disabled={isLoadingClasses}
                         >
@@ -457,10 +456,10 @@ export default function AdmissionPortalPage() {
                         <FormItem>
                           <FormLabel>Email Address *</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="email" 
-                              placeholder="parent@example.com" 
-                              {...field} 
+                            <Input
+                              type="email"
+                              placeholder="parent@example.com"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -475,10 +474,10 @@ export default function AdmissionPortalPage() {
                         <FormItem>
                           <FormLabel>Phone Number *</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="tel" 
-                              placeholder="+1234567890" 
-                              {...field} 
+                            <Input
+                              type="tel"
+                              placeholder="+1234567890"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -494,11 +493,11 @@ export default function AdmissionPortalPage() {
                       <FormItem>
                         <FormLabel>Address *</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Enter complete address" 
+                          <Textarea
+                            placeholder="Enter complete address"
                             className="resize-none"
                             rows={3}
-                            {...field} 
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -618,8 +617,9 @@ export default function AdmissionPortalPage() {
                           {photograph.filename}
                         </span>
                         {photograph.file && (
-                          <img 
-                            src={URL.createObjectURL(photograph.file)} 
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={URL.createObjectURL(photograph.file)}
                             alt="Preview"
                             width={40}
                             height={40}
@@ -656,12 +656,12 @@ export default function AdmissionPortalPage() {
                   >
                     Reset Form
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={
-                      isSubmitting || 
-                      isLoadingClasses || 
-                      !birthCertificate || 
+                      isSubmitting ||
+                      isLoadingClasses ||
+                      !birthCertificate ||
                       !photograph ||
                       uploadingDoc !== null
                     }

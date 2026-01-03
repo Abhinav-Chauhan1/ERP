@@ -1,12 +1,14 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/db";
 import { StudentProfileInfo } from "@/components/student/student-profile-info";
 import { StudentProfileEdit } from "@/components/student/student-profile-edit";
 import { StudentAcademicDetails } from "@/components/student/student-academic-details";
 import { PasswordChangeForm } from "@/components/forms/password-change-form";
+import { auth } from "@/auth";
+import Image from "next/image";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,20 +18,20 @@ export const metadata: Metadata = {
 };
 
 export default async function StudentProfilePage() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
   const dbUser = await db.user.findUnique({
-    where: { clerkId: clerkUser.id }
+    where: { id: session.user.id }
   });
-  
+
   if (!dbUser || dbUser.role !== "STUDENT") {
     redirect("/login");
   }
-  
+
   const student = await db.student.findUnique({
     where: {
       userId: dbUser.id
@@ -73,19 +75,21 @@ export default async function StudentProfilePage() {
           </p>
         </div>
       </div>
-      
+
       {/* Profile Header Card */}
       <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
         <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600"></div>
         <div className="relative px-6 pb-6">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-end -mt-16 md:-mt-12">
             <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-card border-4 border-card shadow-lg overflow-hidden">
+              <div className="relative w-32 h-32 rounded-full bg-card border-4 border-card shadow-lg overflow-hidden">
                 {student.user.avatar ? (
-                  <img
+                  <Image
                     src={student.user.avatar}
                     alt={`${student.user.firstName} ${student.user.lastName}`}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
@@ -124,7 +128,7 @@ export default async function StudentProfilePage() {
           </div>
         </div>
       </div>
-      
+
       {/* Tabs */}
       <Tabs defaultValue="info" className="w-full">
         <div className="border-b">
@@ -147,7 +151,7 @@ export default async function StudentProfilePage() {
             </button>
           </div>
         </div>
-        
+
         <TabsContent value="info" className="space-y-6 mt-6">
           <div className="grid md:grid-cols-6 gap-6">
             <div className="md:col-span-4">
@@ -158,11 +162,11 @@ export default async function StudentProfilePage() {
             </div>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="academic" className="space-y-6 mt-6">
           <StudentAcademicDetails student={student} />
         </TabsContent>
-        
+
         <TabsContent value="password" className="space-y-6 mt-6">
           <div className="max-w-2xl">
             <div className="rounded-lg border bg-card shadow-sm p-6">

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -21,7 +21,8 @@ const lessonSchema = z.object({
  */
 export async function getTeacherLessons(subjectId?: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -30,9 +31,7 @@ export async function getTeacherLessons(subjectId?: string) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -101,7 +100,8 @@ export async function getTeacherLessons(subjectId?: string) {
  */
 export async function getTeacherLesson(lessonId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -110,9 +110,7 @@ export async function getTeacherLesson(lessonId: string) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -196,7 +194,8 @@ export async function getTeacherLesson(lessonId: string) {
  */
 export async function createLesson(formData: FormData) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -218,9 +217,7 @@ export async function createLesson(formData: FormData) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -271,7 +268,8 @@ export async function createLesson(formData: FormData) {
  */
 export async function updateLesson(lessonId: string, formData: FormData) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -293,9 +291,7 @@ export async function updateLesson(lessonId: string, formData: FormData) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -361,7 +357,8 @@ export async function updateLesson(lessonId: string, formData: FormData) {
  */
 export async function deleteLesson(lessonId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");
@@ -370,9 +367,7 @@ export async function deleteLesson(lessonId: string) {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
-        user: {
-          clerkId: userId,
-        },
+        user: { id: userId },
       },
     });
 
@@ -425,7 +420,8 @@ export async function deleteLesson(lessonId: string) {
  */
 export async function getSubjectSyllabusUnits(subjectId: string) {
   try {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
     
     if (!userId) {
       throw new Error("Unauthorized");

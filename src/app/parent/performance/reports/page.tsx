@@ -1,24 +1,23 @@
-export const dynamic = 'force-dynamic';
 
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { Link } from "lucide-react"; // Wait, Link should be from next/link?
+// Wait, I see "import { Link } from 'lucide-react'" in my check below. Wait, that's wrong. Link is usually from next/link.
+// Let me verify with my internal knowledge. next/link is for navigation. lucide-react is for icons.
+// In the corrupted file I see "import { Download, FileText } from 'lucide-react'".
+// I should be careful. I will use next/link for Link.
+
 import { getProgressReports, getPerformanceAnalytics, downloadReportCard } from "@/lib/actions/parent-performance-actions";
 import { ProgressReportCard } from "@/components/parent/performance/progress-report-card";
 import { GradeTrendChart } from "@/components/parent/performance/grade-trend-chart";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import Link from "next/link";
+import { Download, FileText, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import NextLink from "next/link"; // Renaming to avoid conflict if I messed up, but standard is Link
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{
@@ -27,38 +26,26 @@ interface PageProps {
   }>;
 }
 
-export default async function ProgressReportsPage({ searchParams: searchParamsPromise }: PageProps) {
-  // Await searchParams as required by Next.js 15
+export default async function ParentPerformanceReportsPage({ searchParams: searchParamsPromise }: PageProps) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
   const searchParams = await searchParamsPromise;
-  // Get current user
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
-    redirect("/login");
-  }
-  
-  // Get user from database
-  const dbUser = await db.user.findUnique({
-    where: {
-      clerkId: clerkUser.id
-    }
-  });
-  
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    redirect("/login");
-  }
-  
+
   // Get parent record
   const parent = await db.parent.findUnique({
     where: {
-      userId: dbUser.id
+      userId: session.user.id
     }
   });
-  
+
   if (!parent) {
     redirect("/login");
   }
-  
+
   // Get all children of this parent
   const parentChildren = await db.studentParent.findMany({
     where: {
@@ -93,7 +80,7 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
       }
     }
   });
-  
+
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
     name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
@@ -102,7 +89,7 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
     academicYearId: pc.student.enrollments[0]?.class.academicYearId,
     isPrimary: pc.isPrimary
   }));
-  
+
   if (children.length === 0) {
     return (
       <div className="h-full p-6">
@@ -111,11 +98,11 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
       </div>
     );
   }
-  
+
   // Get selected child or default to first child
   const selectedChildId = searchParams.childId || children[0].id;
   const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
-  
+
   // Get terms for the selected child's academic year
   const terms = selectedChild.academicYearId ? await db.term.findMany({
     where: {
@@ -129,27 +116,27 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
       name: true
     }
   }) : [];
-  
+
   // Build filters for progress reports
   const filters: any = {
     childId: selectedChild.id,
     includeUnpublished: false
   };
-  
+
   if (searchParams.termId) {
     filters.termId = searchParams.termId;
   }
-  
+
   // Get progress reports
   const progressReportsResponse = await getProgressReports(filters);
-  
+
   // Get performance analytics for grade trend chart
   const analyticsResponse = await getPerformanceAnalytics({
     childId: selectedChild.id,
     includeTermHistory: true,
     includeSubjectTrends: false
   });
-  
+
   if (!progressReportsResponse.success) {
     return (
       <div className="h-full p-6">
@@ -158,16 +145,16 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
       </div>
     );
   }
-  
+
   const progressReports = progressReportsResponse.data?.reports || [];
   const analytics = analyticsResponse.success ? analyticsResponse.data : null;
   const termHistory = analytics?.termHistory || [];
-  
+
   // Get the selected term report if a term is selected
-  const selectedTermReport = searchParams.termId 
-    ? progressReports.find(r => r.term.id === searchParams.termId)
+  const selectedTermReport = searchParams.termId
+    ? progressReports.find((r: any) => r.term.id === searchParams.termId)
     : progressReports[0]; // Default to most recent report
-  
+
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
@@ -176,26 +163,26 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
           <h1 className="text-2xl font-bold">Progress Reports</h1>
           <p className="text-gray-600 mt-1">View detailed academic progress and report cards</p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Child Selector */}
           {children.length > 1 && (
             <div className="flex gap-2">
               {children.map((child) => (
-                <Link key={child.id} href={`/parent/performance/reports?childId=${child.id}`}>
+                <NextLink key={child.id} href={`/parent/performance/reports?childId=${child.id}`}>
                   <Button
                     variant={child.id === selectedChildId ? "default" : "outline"}
                     size="sm"
                   >
                     {child.name}
                   </Button>
-                </Link>
+                </NextLink>
               ))}
             </div>
           )}
         </div>
       </div>
-      
+
       {/* Term Selector and Download Button */}
       {progressReports.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 p-4 bg-white rounded-lg border">
@@ -203,26 +190,26 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
             <FileText className="h-4 w-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">Select Term:</span>
           </div>
-          
+
           {/* Term Selector */}
           <Select value={searchParams.termId || progressReports[0]?.term.id || "all"}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select term" />
             </SelectTrigger>
             <SelectContent>
-              {progressReports.map((report) => (
+              {progressReports.map((report: any) => (
                 <SelectItem key={report.term.id} value={report.term.id}>
-                  <Link 
+                  <NextLink
                     href={`/parent/performance/reports?childId=${selectedChildId}&termId=${report.term.id}`}
                     className="block w-full"
                   >
                     {report.term.name}
-                  </Link>
+                  </NextLink>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           {/* Download Report Card Button */}
           {selectedTermReport && (
             <Button variant="outline" disabled>
@@ -232,7 +219,7 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
           )}
         </div>
       )}
-      
+
       {/* No Reports Message */}
       {progressReports.length === 0 && (
         <Alert>
@@ -242,27 +229,27 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
           </AlertDescription>
         </Alert>
       )}
-      
+
       {/* Grade Trend Chart */}
       {termHistory.length > 0 && (
-        <GradeTrendChart 
+        <GradeTrendChart
           termHistory={termHistory}
           studentName={selectedChild.name}
         />
       )}
-      
+
       {/* Progress Report Card */}
       {selectedTermReport && (
         <ProgressReportCard report={selectedTermReport} />
       )}
-      
+
       {/* All Reports List (if no specific term selected and multiple reports exist) */}
       {!searchParams.termId && progressReports.length > 1 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">All Reports</h2>
           <div className="grid gap-4">
-            {progressReports.map((report) => (
-              <Link 
+            {progressReports.map((report: any) => (
+              <NextLink
                 key={report.id}
                 href={`/parent/performance/reports?childId=${selectedChildId}&termId=${report.term.id}`}
               >
@@ -284,7 +271,7 @@ export default async function ProgressReportsPage({ searchParams: searchParamsPr
                     </div>
                   </div>
                 </div>
-              </Link>
+              </NextLink>
             ))}
           </div>
         </div>

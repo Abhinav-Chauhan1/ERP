@@ -1,13 +1,16 @@
 export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@/auth";
+// Note: Replace currentUser() calls with auth() and access session.user
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { getFeeOverview } from "@/lib/actions/parent-fee-actions";
+import { getPaymentConfig } from "@/lib/actions/paymentConfigActions";
 import { FeeBreakdownCard } from "@/components/parent/fees/fee-breakdown-card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Receipt, CreditCard, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -27,37 +30,38 @@ interface PageProps {
 }
 
 export default async function FeeOverviewPage({ searchParams: searchParamsPromise }: PageProps) {
+
   // Await searchParams as required by Next.js 15
   const searchParams = await searchParamsPromise;
   // Get current user
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
     redirect("/login");
   }
-  
+
   // Get user from database
   const dbUser = await db.user.findUnique({
     where: {
-      clerkId: clerkUser.id
+      id: session.user.id
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     redirect("/login");
   }
-  
+
   // Get parent record
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
     }
   });
-  
+
   if (!parent) {
     redirect("/login");
   }
-  
+
   // Get all children of this parent
   const parentChildren = await db.studentParent.findMany({
     where: {
@@ -88,7 +92,7 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
       }
     }
   });
-  
+
   const children = parentChildren.map(pc => ({
     id: pc.student.id,
     name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
@@ -96,7 +100,7 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
     section: pc.student.enrollments[0]?.section.name || "N/A",
     isPrimary: pc.isPrimary
   }));
-  
+
   if (children.length === 0) {
     return (
       <div className="h-full p-6">
@@ -105,14 +109,18 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
       </div>
     );
   }
-  
+
   // Get selected child or default to first child
   const selectedChildId = searchParams.childId || children[0].id;
   const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
-  
+
   // Get fee overview for selected child
   const feeOverviewResult = await getFeeOverview({ childId: selectedChild.id });
-  
+
+  // Get payment configuration
+  const paymentConfigResult = await getPaymentConfig();
+  const paymentConfig = paymentConfigResult.success ? paymentConfigResult.data : null;
+
   if (!feeOverviewResult.success || !feeOverviewResult.data) {
     return (
       <div className="h-full p-6">
@@ -121,9 +129,9 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
       </div>
     );
   }
-  
+
   const feeData = feeOverviewResult.data;
-  
+
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
@@ -132,7 +140,7 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
           <h1 className="text-2xl font-bold">Fee Overview</h1>
           <p className="text-gray-600 mt-1">View and manage fee payments</p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Child Selector */}
           {children.length > 1 && (
@@ -149,23 +157,42 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
               ))}
             </div>
           )}
-          
+
           {/* Export to PDF Button */}
           <Button variant="outline" disabled>
             <Download className="h-4 w-4 mr-2" />
             Export to PDF
           </Button>
-          
-          {/* Make Payment Button */}
-          <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
-            <Button>
+
+          {/* Payment Options based on configuration */}
+          {paymentConfig?.enableOfflineVerification && (
+            <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`}>
+              <Button variant="outline">
+                <Receipt className="h-4 w-4 mr-2" />
+                Upload Receipt
+              </Button>
+            </Link>
+          )}
+
+          {paymentConfig?.enableOnlinePayment && (
+            <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
+              <Button>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Pay Online
+              </Button>
+            </Link>
+          )}
+
+          {/* Show warning if no payment methods are enabled */}
+          {!paymentConfig?.enableOfflineVerification && !paymentConfig?.enableOnlinePayment && (
+            <Button disabled>
               <FileText className="h-4 w-4 mr-2" />
-              Make Payment
+              No Payment Methods Available
             </Button>
-          </Link>
+          )}
         </div>
       </div>
-      
+
       {/* Fee Breakdown Card */}
       <FeeBreakdownCard
         student={{
@@ -182,22 +209,50 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
         hasOverdue={feeData.hasOverdue}
         academicYear={feeData.academicYear}
       />
-      
+
+      {/* Warning if no payment methods are enabled */}
+      {!paymentConfig?.enableOfflineVerification && !paymentConfig?.enableOnlinePayment && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No payment methods are currently available. Please contact the school administration for assistance with fee payments.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link href={`/parent/fees/history?childId=${selectedChild.id}`}>
           <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
             <h3 className="font-medium mb-1">Payment History</h3>
             <p className="text-sm text-gray-600">View all past payments and receipts</p>
           </div>
         </Link>
-        
-        <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
+
+        <Link href={`/parent/fees/receipts?childId=${selectedChild.id}`}>
           <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-            <h3 className="font-medium mb-1">Make Payment</h3>
-            <p className="text-sm text-gray-600">Pay pending fees online</p>
+            <h3 className="font-medium mb-1">Receipt History</h3>
+            <p className="text-sm text-gray-600">Track status of uploaded payment receipts</p>
           </div>
         </Link>
+
+        {paymentConfig?.enableOnlinePayment && (
+          <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
+            <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+              <h3 className="font-medium mb-1">Pay Online</h3>
+              <p className="text-sm text-gray-600">Make online payment through payment gateway</p>
+            </div>
+          </Link>
+        )}
+
+        {paymentConfig?.enableOfflineVerification && (
+          <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`}>
+            <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+              <h3 className="font-medium mb-1">Upload Receipt</h3>
+              <p className="text-sm text-gray-600">Upload payment receipt for verification</p>
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );

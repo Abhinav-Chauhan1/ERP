@@ -131,6 +131,7 @@ export async function getFilterOptions() {
         select: {
           id: true,
           name: true,
+          classId: true,
         },
         orderBy: {
           name: "asc",

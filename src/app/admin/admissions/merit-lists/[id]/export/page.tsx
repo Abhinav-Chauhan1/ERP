@@ -233,7 +233,7 @@ export default function ExportMeritListPage() {
                     <small>${entry.application.parentPhone}</small>
                   </td>
                   <td>${format(new Date(entry.application.submittedAt), "MMM dd, yyyy")}</td>
-                  <td>${entry.score.toFixed(2)}</td>
+                  <td>₹{entry.score.toFixed(2)}</td>
                 </tr>
               `
                 )

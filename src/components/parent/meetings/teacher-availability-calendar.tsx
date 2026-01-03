@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { format, addDays, startOfWeek, isSameDay, isToday, isBefore, startOfDay } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export function TeacherAvailabilityCalendar({
 }: TeacherAvailabilityCalendarProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  
+
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [availability, setAvailability] = useState<AvailabilityData | null>(null);
@@ -46,14 +46,7 @@ export function TeacherAvailabilityCalendar({
   // Generate week days
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
 
-  // Load availability when date is selected
-  useEffect(() => {
-    if (selectedDate && teacherId) {
-      loadAvailability(selectedDate);
-    }
-  }, [selectedDate, teacherId]);
-
-  const loadAvailability = async (date: Date) => {
+  const loadAvailability = useCallback(async (date: Date) => {
     setIsLoadingSlots(true);
     startTransition(async () => {
       try {
@@ -83,7 +76,14 @@ export function TeacherAvailabilityCalendar({
         setIsLoadingSlots(false);
       }
     });
-  };
+  }, [teacherId, toast, startTransition]);
+
+  // Load availability when date is selected
+  useEffect(() => {
+    if (selectedDate && teacherId) {
+      loadAvailability(selectedDate);
+    }
+  }, [selectedDate, teacherId, loadAvailability]);
 
   const handlePreviousWeek = () => {
     setCurrentWeekStart(addDays(currentWeekStart, -7));
@@ -138,11 +138,11 @@ export function TeacherAvailabilityCalendar({
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          
+
           <div className="text-sm font-medium">
             {format(currentWeekStart, "MMM d")} - {format(addDays(currentWeekStart, 6), "MMM d, yyyy")}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -219,7 +219,7 @@ export function TeacherAvailabilityCalendar({
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {availability.availableSlots.map((slot, index) => {
                   const isSelected = selectedSlot === slot.time;
-                  
+
                   return (
                     <Button
                       key={index}

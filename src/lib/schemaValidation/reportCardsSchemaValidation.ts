@@ -28,8 +28,16 @@ export const reportCardRemarksSchema = z.object({
   id: z.string({
     required_error: "Report card ID is required",
   }),
-  teacherRemarks: z.string().min(5, "Teacher remarks must be at least 5 characters"),
-  principalRemarks: z.string().min(5, "Principal remarks must be at least 5 characters"),
+  teacherRemarks: z.string()
+    .min(1, "Teacher remarks are required")
+    .max(500, "Teacher remarks must not exceed 500 characters")
+    .optional()
+    .or(z.literal("")),
+  principalRemarks: z.string()
+    .min(1, "Principal remarks are required")
+    .max(500, "Principal remarks must not exceed 500 characters")
+    .optional()
+    .or(z.literal("")),
 });
 
 // Schema for publishing a report card
