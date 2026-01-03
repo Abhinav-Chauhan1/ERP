@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -514,7 +515,7 @@ export default function EditStudentPage() {
               </div>
               <div className="flex items-end gap-4 max-w-md">
                 <div className="grid w-full gap-1.5">
-                  <FormLabel htmlFor="new-password">New Password</FormLabel>
+                  <Label htmlFor="new-password">New Password</Label>
                   <Input
                     id="new-password"
                     type="text"
