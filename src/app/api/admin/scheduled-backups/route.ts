@@ -23,18 +23,25 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // TODO: Add role check to ensure user is admin
-    
+
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const status = getScheduledBackupStatus();
-    
+
     return NextResponse.json({
       success: true,
       data: status
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error getting scheduled backup status:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get status'
       },
@@ -59,19 +66,26 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // TODO: Add role check to ensure user is admin
-    
+
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { action } = body;
-    
+
     if (action === 'start') {
       startScheduledBackups();
       return NextResponse.json({
@@ -94,7 +108,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error managing scheduled backups:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to manage scheduled backups'
       },
@@ -111,18 +125,25 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // TODO: Add role check to ensure user is admin
-    
+
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
     stopScheduledBackups();
-    
+
     return NextResponse.json({
       success: true,
       message: 'Scheduled backups stopped'
@@ -130,7 +151,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error stopping scheduled backups:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to stop scheduled backups'
       },

@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { 
-  AssignmentFormValues, 
-  AssignmentUpdateValues, 
+import {
+  AssignmentFormValues,
+  AssignmentUpdateValues,
   AssignmentFilterValues,
   SubmissionGradeValues
 } from "../schemaValidation/assignmentsSchemaValidation";
@@ -13,12 +13,13 @@ import {
   updateCalendarEventFromAssignment,
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
+import { uploadBufferToCloudinary } from "@/lib/cloudinary";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {
   try {
     const where: any = {};
-    
+
     // Add filters
     if (filters) {
       if (filters.searchTerm) {
@@ -28,11 +29,11 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
           { instructions: { contains: filters.searchTerm, mode: 'insensitive' } },
         ];
       }
-      
+
       if (filters.subjectId) {
         where.subjectId = filters.subjectId;
       }
-      
+
       if (filters.classId) {
         where.classes = {
           some: {
@@ -40,21 +41,21 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
           }
         };
       }
-      
+
       // Date filtering
       if (filters.dateFrom || filters.dateTo) {
         where.dueDate = {};
-        
+
         if (filters.dateFrom) {
           where.dueDate.gte = filters.dateFrom;
         }
-        
+
         if (filters.dateTo) {
           where.dueDate.lte = filters.dateTo;
         }
       }
     }
-    
+
     const assignments = await db.assignment.findMany({
       where,
       include: {
@@ -80,13 +81,13 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
         dueDate: 'desc',
       },
     });
-    
+
     // Transform data for the UI
     const formattedAssignments = assignments.map(assignment => {
       // Calculate status based on due date and submissions
       const now = new Date();
       const dueDate = new Date(assignment.dueDate);
-      
+
       // Add type assertion to handle TypeScript errors
       type AssignmentWithRelations = typeof assignment & {
         subject: { name: string },
@@ -99,23 +100,23 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
           marks?: number | null;
         }[]
       };
-      
+
       const typedAssignment = assignment as AssignmentWithRelations;
-      
+
       let status = "Open";
       if (dueDate < now) {
         status = "Closed";
-        const allGraded = typedAssignment.submissions && typedAssignment.submissions.length > 0 && 
-                          typedAssignment.submissions.every(sub => 
-                            sub.status === "GRADED" || sub.status === "RETURNED");
+        const allGraded = typedAssignment.submissions && typedAssignment.submissions.length > 0 &&
+          typedAssignment.submissions.every(sub =>
+            sub.status === "GRADED" || sub.status === "RETURNED");
         if (allGraded) {
           status = "Graded";
         }
       }
-      
+
       const totalSubmissions = typedAssignment.submissions ? typedAssignment.submissions.length : 0;
       const totalStudents = 0; // This would require additional queries to get all students in these classes
-      
+
       return {
         id: assignment.id,
         title: assignment.title,
@@ -130,20 +131,20 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
         status: status,
         submissions: totalSubmissions,
         totalStudents: totalStudents || totalSubmissions,
-        createdBy: typedAssignment.creator?.user 
+        createdBy: typedAssignment.creator?.user
           ? `${typedAssignment.creator.user.firstName} ${typedAssignment.creator.user.lastName}`
           : "Admin", // Handle null creator
         attachments: assignment.attachments ? JSON.parse(assignment.attachments).length : 0,
         instructions: assignment.instructions || "",
       };
     });
-    
+
     return { success: true, data: formattedAssignments };
   } catch (error) {
     console.error("Error fetching assignments:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch assignments" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch assignments"
     };
   }
 }
@@ -186,19 +187,19 @@ export async function getAssignmentById(id: string) {
         }
       }
     });
-    
+
     if (!assignment) {
       return { success: false, error: "Assignment not found" };
     }
-    
-    const attachmentsArray = assignment.attachments 
-      ? JSON.parse(assignment.attachments) 
+
+    const attachmentsArray = assignment.attachments
+      ? JSON.parse(assignment.attachments)
       : [];
-    
+
     // Calculate status
     const now = new Date();
     const dueDate = new Date(assignment.dueDate);
-    
+
     // Add type assertion to handle TypeScript errors
     type AssignmentWithRelations = typeof assignment & {
       subject: { name: string },
@@ -219,20 +220,20 @@ export async function getAssignmentById(id: string) {
         feedback?: string | null;
       }[]
     };
-    
+
     const typedAssignment = assignment as AssignmentWithRelations;
-    
+
     let status = "Open";
     if (dueDate < now) {
       status = "Closed";
-      const allGraded = typedAssignment.submissions && typedAssignment.submissions.length > 0 && 
-                        typedAssignment.submissions.every(sub => 
-                          sub.status === "GRADED" || sub.status === "RETURNED");
+      const allGraded = typedAssignment.submissions && typedAssignment.submissions.length > 0 &&
+        typedAssignment.submissions.every(sub =>
+          sub.status === "GRADED" || sub.status === "RETURNED");
       if (allGraded) {
         status = "Graded";
       }
     }
-    
+
     const formattedAssignment = {
       id: assignment.id,
       title: assignment.title,
@@ -245,7 +246,7 @@ export async function getAssignmentById(id: string) {
       assignedDate: assignment.assignedDate,
       totalMarks: assignment.totalMarks,
       status: status,
-      createdBy: typedAssignment.creator?.user 
+      createdBy: typedAssignment.creator?.user
         ? `${typedAssignment.creator.user.firstName} ${typedAssignment.creator.user.lastName}`
         : "Admin", // Handle null creator
       attachments: attachmentsArray,
@@ -264,13 +265,13 @@ export async function getAssignmentById(id: string) {
         isLate: sub.submissionDate && dueDate < new Date(sub.submissionDate),
       })),
     };
-    
+
     return { success: true, data: formattedAssignment };
   } catch (error) {
     console.error("Error fetching assignment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch assignment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch assignment"
     };
   }
 }
@@ -281,13 +282,27 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
     // Handle file uploads if provided
     const attachments: string[] = [];
     if (files && files.length > 0) {
-      // In a real implementation, you'd upload files to a storage service
-      // For now, we'll just use dummy URLs
       for (const file of files) {
-        attachments.push(`https://example.com/files/${file.name}`);
+        try {
+          // Convert File to Buffer
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          // Upload to Cloudinary
+          const uploadResult = await uploadBufferToCloudinary(buffer, {
+            folder: 'assignments',
+            resource_type: 'auto'
+          });
+
+          attachments.push(uploadResult.secure_url);
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${file.name}:`, uploadError);
+          // Continue with other files or throw error? 
+          // For now, we'll log and continue, effectively skipping this file
+        }
       }
     }
-    
+
     // First create the assignment without classes
     const assignment = await db.assignment.create({
       data: {
@@ -302,7 +317,7 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
         attachments: attachments.length > 0 ? JSON.stringify(attachments) : null,
       }
     });
-    
+
     // Then create the class associations separately
     if (data.classIds && data.classIds.length > 0) {
       for (const classId of data.classIds) {
@@ -314,7 +329,7 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
         });
       }
     }
-    
+
     // Get the assignment with relations for calendar integration
     const assignmentWithRelations = await db.assignment.findUnique({
       where: { id: assignment.id },
@@ -335,14 +350,14 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
         creatorId || 'system'
       );
     }
-    
+
     revalidatePath("/admin/assessment/assignments");
     return { success: true, data: assignment };
   } catch (error) {
     console.error("Error creating assignment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create assignment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create assignment"
     };
   }
 }
@@ -353,29 +368,42 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
     // Check if assignment exists
     const existingAssignment = await db.assignment.findUnique({
       where: { id: data.id },
-      include: { 
+      include: {
         submissions: true
       }
     });
-    
+
     if (!existingAssignment) {
       return { success: false, error: "Assignment not found" };
     }
-    
+
     // Handle file attachments
     let attachmentsString = existingAssignment.attachments;
     if (files && files.length > 0) {
-      // In a real implementation, you'd upload files to a storage service
       const currentAttachments = attachmentsString ? JSON.parse(attachmentsString) : [];
-      
+
       // Add new files
       for (const file of files) {
-        currentAttachments.push(`https://example.com/files/${file.name}`);
+        try {
+          // Convert File to Buffer
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          // Upload to Cloudinary
+          const uploadResult = await uploadBufferToCloudinary(buffer, {
+            folder: 'assignments',
+            resource_type: 'auto'
+          });
+
+          currentAttachments.push(uploadResult.secure_url);
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${file.name}:`, uploadError);
+        }
       }
-      
+
       attachmentsString = JSON.stringify(currentAttachments);
     }
-    
+
     // Update the assignment without classes
     const assignment = await db.assignment.update({
       where: { id: data.id },
@@ -390,12 +418,12 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
         attachments: attachmentsString,
       }
     });
-    
+
     // Delete existing class connections and recreate them
     await db.assignmentClass.deleteMany({
       where: { assignmentId: data.id }
     });
-    
+
     // Create new class associations
     if (data.classIds && data.classIds.length > 0) {
       for (const classId of data.classIds) {
@@ -407,7 +435,7 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
         });
       }
     }
-    
+
     // Get the assignment with relations for calendar integration
     const assignmentWithRelations = await db.assignment.findUnique({
       where: { id: assignment.id },
@@ -425,15 +453,15 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
     if (assignmentWithRelations) {
       await updateCalendarEventFromAssignment(assignmentWithRelations);
     }
-    
+
     revalidatePath("/admin/assessment/assignments");
     revalidatePath(`/admin/assessment/assignments/${data.id}`);
     return { success: true, data: assignment };
   } catch (error) {
     console.error("Error updating assignment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update assignment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update assignment"
     };
   }
 }
@@ -445,34 +473,34 @@ export async function deleteAssignment(id: string) {
     const submissions = await db.assignmentSubmission.findMany({
       where: { assignmentId: id }
     });
-    
+
     if (submissions.length > 0) {
       // Delete all submissions first
       await db.assignmentSubmission.deleteMany({
         where: { assignmentId: id }
       });
     }
-    
+
     // Delete class connections
     await db.assignmentClass.deleteMany({
       where: { assignmentId: id }
     });
-    
+
     // Delete calendar event from assignment
     await deleteCalendarEventFromAssignment(id);
-    
+
     // Delete the assignment
     await db.assignment.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/assessment/assignments");
     return { success: true };
   } catch (error) {
     console.error("Error deleting assignment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete assignment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete assignment"
     };
   }
 }
@@ -484,11 +512,11 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
       where: { id: assignmentId },
       select: { dueDate: true }
     });
-    
+
     if (!assignment) {
       return { success: false, error: "Assignment not found" };
     }
-    
+
     const submissions = await db.assignmentSubmission.findMany({
       where: { assignmentId },
       include: {
@@ -511,9 +539,9 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
         }
       }
     });
-    
+
     const dueDate = new Date(assignment.dueDate);
-    
+
     const formattedSubmissions = submissions.map(sub => ({
       id: sub.id,
       studentId: sub.studentId,
@@ -527,13 +555,13 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
       status: sub.status,
       isLate: sub.submissionDate && dueDate < new Date(sub.submissionDate),
     }));
-    
+
     return { success: true, data: formattedSubmissions };
   } catch (error) {
     console.error("Error fetching submissions:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch submissions" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch submissions"
     };
   }
 }
@@ -547,19 +575,19 @@ export async function gradeSubmission(data: SubmissionGradeValues) {
         assignment: true
       }
     });
-    
+
     if (!submission) {
       return { success: false, error: "Submission not found" };
     }
-    
+
     // Validate marks against assignment total marks
     if (data.marks > submission.assignment.totalMarks) {
-      return { 
-        success: false, 
-        error: `Marks cannot exceed the assignment's total marks (${submission.assignment.totalMarks})` 
+      return {
+        success: false,
+        error: `Marks cannot exceed the assignment's total marks (${submission.assignment.totalMarks})`
       };
     }
-    
+
     const updatedSubmission = await db.assignmentSubmission.update({
       where: { id: data.submissionId },
       data: {
@@ -568,15 +596,15 @@ export async function gradeSubmission(data: SubmissionGradeValues) {
         status: data.status
       }
     });
-    
+
     revalidatePath("/admin/assessment/assignments");
     revalidatePath(`/admin/assessment/assignments/${submission.assignmentId}`);
     return { success: true, data: updatedSubmission };
   } catch (error) {
     console.error("Error grading submission:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to grade submission" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to grade submission"
     };
   }
 }
@@ -594,13 +622,13 @@ export async function getSubjectsForAssignments() {
         code: true,
       }
     });
-    
+
     return { success: true, data: subjects };
   } catch (error) {
     console.error("Error fetching subjects:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subjects" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
 }
@@ -628,13 +656,13 @@ export async function getClassesForAssignments() {
         }
       }
     });
-    
+
     return { success: true, data: classes };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
 }

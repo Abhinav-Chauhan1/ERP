@@ -22,8 +22,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { RestoreConfirmDialog } from './restore-confirm-dialog';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
-import { listBackupsAction, restoreBackupAction, deleteBackupAction } from '@/lib/actions/backupActions';
-import { Download, Trash2, HardDrive, Cloud, Database } from 'lucide-react';
+import { listBackupsAction, restoreBackupAction, deleteBackupAction, downloadBackupAction } from '@/lib/actions/backupActions';
+import { Download, Trash2, HardDrive, Cloud, Database, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -42,6 +42,7 @@ export function BackupList() {
   const [loading, setLoading] = useState(true);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -84,7 +85,7 @@ export function BackupList() {
 
     try {
       const result = await restoreBackupAction(selectedBackup.id);
-      
+
       if (result.success) {
         toast.success(`Backup restored successfully. ${result.recordsRestored || 0} records restored.`);
       } else {
@@ -106,7 +107,7 @@ export function BackupList() {
 
     try {
       const result = await deleteBackupAction(selectedBackup.id);
-      
+
       if (result.success) {
         toast.success('Backup deleted successfully');
         // Reload backups list
@@ -119,6 +120,42 @@ export function BackupList() {
     } finally {
       setDeleting(null);
       setSelectedBackup(null);
+    }
+  }
+
+  async function handleDownload(backup: Backup) {
+    setDownloading(backup.id);
+
+    try {
+      const result = await downloadBackupAction(backup.id);
+
+      if (result.success && result.data) {
+        // Convert base64 to blob
+        const binaryString = atob(result.data.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: result.data.mimeType });
+
+        // Create download link and trigger download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.data.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.success('Backup downloaded successfully');
+      } else {
+        toast.error(result.error || 'Failed to download backup');
+      }
+    } catch (error) {
+      toast.error('Failed to download backup');
+    } finally {
+      setDownloading(null);
     }
   }
 
@@ -208,11 +245,11 @@ export function BackupList() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge 
+                  <Badge
                     variant={
-                      backup.status === 'COMPLETED' ? 'default' : 
-                      backup.status === 'FAILED' ? 'destructive' : 
-                      'secondary'
+                      backup.status === 'COMPLETED' ? 'default' :
+                        backup.status === 'FAILED' ? 'destructive' :
+                          'secondary'
                     }
                   >
                     {backup.status}
@@ -223,8 +260,26 @@ export function BackupList() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => handleDownload(backup)}
+                      disabled={restoring === backup.id || deleting === backup.id || downloading === backup.id}
+                    >
+                      {downloading === backup.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Download
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => handleRestoreClick(backup)}
-                      disabled={restoring === backup.id || deleting === backup.id}
+                      disabled={restoring === backup.id || deleting === backup.id || downloading === backup.id}
                     >
                       {restoring === backup.id ? (
                         <>
@@ -242,7 +297,7 @@ export function BackupList() {
                       size="sm"
                       variant="destructive"
                       onClick={() => handleDeleteClick(backup)}
-                      disabled={restoring === backup.id || deleting === backup.id}
+                      disabled={restoring === backup.id || deleting === backup.id || downloading === backup.id}
                     >
                       {deleting === backup.id ? (
                         <>

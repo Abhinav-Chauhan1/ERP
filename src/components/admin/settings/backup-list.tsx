@@ -11,13 +11,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   createBackupAction,
   deleteBackupAction,
-  restoreBackupAction
+  restoreBackupAction,
+  downloadBackupAction
 } from '@/lib/actions/backupActions';
 import toast from 'react-hot-toast';
-import { Download, Trash2, RotateCcw, Plus, Database, HardDrive, Cloud } from 'lucide-react';
+import { Download, Trash2, RotateCcw, Plus, Database, HardDrive, Cloud, Save } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ interface BackupListProps {
 export function BackupList({ backups: initialBackups }: BackupListProps) {
   const [backups, setBackups] = useState(initialBackups);
   const [isLoading, setIsLoading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
 
   const handleDeleteBackup = async () => {
     if (!selectedBackupId) return;
-    
+
     setIsLoading(true);
     try {
       const result = await deleteBackupAction(selectedBackupId);
@@ -91,7 +93,7 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
 
   const handleRestoreBackup = async () => {
     if (!selectedBackupId) return;
-    
+
     setIsLoading(true);
     try {
       const result = await restoreBackupAction(selectedBackupId);
@@ -106,6 +108,42 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
     } finally {
       setIsLoading(false);
       setSelectedBackupId(null);
+    }
+  };
+
+  const handleDownloadBackup = async (backupId: string) => {
+    setDownloading(backupId);
+
+    try {
+      const result = await downloadBackupAction(backupId);
+
+      if (result.success && result.data) {
+        // Convert base64 to blob
+        const binaryString = atob(result.data.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: result.data.mimeType });
+
+        // Create download link and trigger download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.data.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.success('Backup downloaded successfully');
+      } else {
+        toast.error(result.error || 'Failed to download backup');
+      }
+    } catch (error) {
+      toast.error('Failed to download backup');
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -171,11 +209,11 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
                       Encrypted
                     </Badge>
                   )}
-                  <Badge 
+                  <Badge
                     variant={
-                      backup.status === 'COMPLETED' ? 'default' : 
-                      backup.status === 'FAILED' ? 'destructive' : 
-                      'secondary'
+                      backup.status === 'COMPLETED' ? 'default' :
+                        backup.status === 'FAILED' ? 'destructive' :
+                          'secondary'
                     }
                     className="text-xs"
                   >
@@ -198,11 +236,30 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
                 <Button
                   size="sm"
                   variant="outline"
+                  onClick={() => handleDownloadBackup(backup.id)}
+                  disabled={isLoading || downloading === backup.id}
+                  className="flex items-center gap-1"
+                >
+                  {downloading === backup.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Download
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => {
                     setSelectedBackupId(backup.id);
                     setRestoreDialogOpen(true);
                   }}
-                  disabled={isLoading}
+                  disabled={isLoading || downloading === backup.id}
                   className="flex items-center gap-1"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -215,7 +272,7 @@ export function BackupList({ backups: initialBackups }: BackupListProps) {
                     setSelectedBackupId(backup.id);
                     setDeleteDialogOpen(true);
                   }}
-                  disabled={isLoading}
+                  disabled={isLoading || downloading === backup.id}
                   className="flex items-center gap-1 text-destructive hover:text-destructive"
                 >
                   <Trash2 className="w-4 h-4" />

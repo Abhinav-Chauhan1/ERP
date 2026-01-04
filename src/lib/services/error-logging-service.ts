@@ -689,9 +689,74 @@ Please review and resolve this issue as soon as possible.
 
     // For critical errors, also send email alerts
     if (severity === ErrorSeverity.CRITICAL) {
-      // TODO: Implement email alert sending
-      // This would use the email service to send alerts to admin emails
-      console.log('Critical error alert sent to admins:', alertTitle);
+      try {
+        const { sendEmail, isEmailConfigured } = await import('./email-service');
+
+        if (isEmailConfigured()) {
+          // Send email to each admin
+          for (const admin of admins) {
+            if (admin.email) {
+              await sendEmail({
+                to: admin.email,
+                subject: `🚨 CRITICAL ERROR: ${type}`,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                    <div style="background-color: #DC2626; color: white; padding: 20px; text-align: center;">
+                      <h1 style="margin: 0;">🚨 Critical System Error</h1>
+                    </div>
+                    
+                    <div style="padding: 20px; background-color: #FEE2E2;">
+                      <h2 style="color: #DC2626;">Error Details</h2>
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;"><strong>Type:</strong></td>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;">${type}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;"><strong>Severity:</strong></td>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;">${severity}</td>
+                        </tr>
+                        ${channel ? `
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;"><strong>Channel:</strong></td>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;">${channel}</td>
+                        </tr>
+                        ` : ''}
+                        ${errorCode ? `
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;"><strong>Error Code:</strong></td>
+                          <td style="padding: 10px; border-bottom: 1px solid #FCA5A5;">${errorCode}</td>
+                        </tr>
+                        ` : ''}
+                      </table>
+                      
+                      <h3 style="color: #DC2626;">Message</h3>
+                      <p style="background-color: white; padding: 15px; border-radius: 5px;">${message}</p>
+                      
+                      ${errorDetails ? `
+                      <h3 style="color: #DC2626;">Additional Details</h3>
+                      <p style="background-color: white; padding: 15px; border-radius: 5px; word-break: break-all;">${errorDetails}</p>
+                      ` : ''}
+                    </div>
+                    
+                    <div style="padding: 20px; background-color: #F3F4F6;">
+                      <p><strong>⚠️ This error requires immediate attention.</strong></p>
+                      <p>Please log in to the admin dashboard to investigate and resolve this issue.</p>
+                      <p style="color: #6B7280; font-size: 12px;">
+                        This is an automated alert from the ERP communication system.
+                        Sent at: ${new Date().toISOString()}
+                      </p>
+                    </div>
+                  </div>
+                `
+              });
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send critical error email alert:', emailError);
+        // Don't throw - just log the failure
+      }
     }
   } catch (error: any) {
     console.error('Failed to trigger admin alert:', error);

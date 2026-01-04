@@ -501,17 +501,48 @@ export async function publishReportCard(data: ReportCardPublishValues) {
           });
         }
 
-        // TODO: Send email notifications
-        // This would integrate with your email service (e.g., SendGrid, AWS SES)
-        // Example:
-        // await sendEmail({
-        //   to: reportCard.student.user.email,
-        //   subject: "Report Card Published",
-        //   template: "report-card-published",
-        //   data: { studentName, termName, academicYear }
-        // });
+        // Send email notifications using the email service
+        const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
 
-        console.log(`Notifications sent for report card: ${data.id}`);
+        if (isEmailConfigured()) {
+          const studentName = `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`;
+          const termName = reportCard.term.name;
+          const academicYear = reportCard.term.academicYear.name;
+
+          // Send email to student if they have an email
+          if (reportCard.student.user.email) {
+            await sendEmail({
+              to: reportCard.student.user.email,
+              subject: `Report Card Published - ${termName} (${academicYear})`,
+              html: `
+                <h1>Report Card Published</h1>
+                <p>Dear ${studentName},</p>
+                <p>Your report card for <strong>${termName}</strong> (${academicYear}) has been published and is now available for viewing.</p>
+                <p>Please log in to the student portal to view your detailed results.</p>
+                <br>
+                <p>Best regards,<br>School Administration</p>
+              `
+            });
+          }
+
+          // Send email to parents
+          for (const studentParent of reportCard.student.parents) {
+            if (studentParent.parent.user.email) {
+              await sendEmail({
+                to: studentParent.parent.user.email,
+                subject: `Report Card Published for ${studentName}`,
+                html: `
+                  <h1>Report Card Published</h1>
+                  <p>Dear ${studentParent.parent.user.firstName} ${studentParent.parent.user.lastName},</p>
+                  <p>The report card for <strong>${studentName}</strong> for ${termName} (${academicYear}) has been published.</p>
+                  <p>Please log in to the parent portal to view the detailed results.</p>
+                  <br>
+                  <p>Best regards,<br>School Administration</p>
+                `
+              });
+            }
+          }
+        }
       } catch (notificationError) {
         console.error("Error sending notifications:", notificationError);
         // Don't fail the publish operation if notifications fail

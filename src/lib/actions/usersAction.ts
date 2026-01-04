@@ -13,7 +13,6 @@ import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
-import { hash } from "bcryptjs";
 
 // Helper function to create base user
 const createBaseUser = async (userData: {
@@ -25,6 +24,11 @@ const createBaseUser = async (userData: {
   role: UserRole;
   password?: string;
 }) => {
+  // Generate default password if not provided: {firstName}@123
+  const passwordToHash = userData.password || `${userData.firstName.toLowerCase()}@123`;
+  // Hash password using Web Crypto API (PBKDF2)
+  const hashedPassword = await hashPassword(passwordToHash);
+
   // Sanitize inputs
   const sanitizedData = {
     firstName: sanitizeText(userData.firstName),
@@ -33,7 +37,8 @@ const createBaseUser = async (userData: {
     phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,
-    password: userData.password, // In a real app, this should be hashed
+    password: hashedPassword,
+    emailVerified: new Date(), // Admin-created users are pre-verified
   };
 
   return await db.user.create({

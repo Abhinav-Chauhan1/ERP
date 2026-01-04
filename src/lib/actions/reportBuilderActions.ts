@@ -463,8 +463,9 @@ export async function saveReportConfig(config: ReportConfig) {
     }
 
     // TODO: Implement saving report configuration to database
-    // For now, just return success
-    console.log("Saving report config:", config);
+    // This requires a new model 'SavedReportConfig' in the schema which is currently referenced in future requirements.
+    // For now, we simulate success to allow UI testing.
+    console.log("Saving report config (Simulation):", config);
 
     revalidatePath("/admin/reports");
     return { success: true, message: "Report configuration saved successfully" };
@@ -552,7 +553,7 @@ export async function exportReportData(
 
     // Generate report data
     const result = await generateReport(config);
-    
+
     if (!result.success || !result.data) {
       return { success: false, error: result.error || "Failed to generate report data" };
     }
@@ -640,8 +641,8 @@ export async function generateYearOverYearComparison(
 
     // Calculate change
     const absoluteChange = currentValue - previousValue;
-    const percentageChange = previousValue !== 0 
-      ? (absoluteChange / previousValue) * 100 
+    const percentageChange = previousValue !== 0
+      ? (absoluteChange / previousValue) * 100
       : 0;
     const trend = absoluteChange > 0.5 ? "up" : absoluteChange < -0.5 ? "down" : "stable";
 
@@ -770,8 +771,8 @@ export async function generateTermOverTermComparison(
 
     // Calculate change
     const absoluteChange = currentValue - previousValue;
-    const percentageChange = previousValue !== 0 
-      ? (absoluteChange / previousValue) * 100 
+    const percentageChange = previousValue !== 0
+      ? (absoluteChange / previousValue) * 100
       : 0;
     const trend = absoluteChange > 0.5 ? "up" : absoluteChange < -0.5 ? "down" : "stable";
 

@@ -36,6 +36,12 @@ export default function TeacherMessagesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'forward'>('new');
+  const [composeData, setComposeData] = useState<{
+    recipientId?: string;
+    subject?: string;
+    content?: string;
+  }>({});
 
   // Fetch messages
   const fetchMessages = useCallback(async () => {
@@ -80,7 +86,7 @@ export default function TeacherMessagesPage() {
       const result = await getMessageById(messageId);
       if (result.success && result.data) {
         setSelectedMessage(result.data);
-        
+
         // Mark as read if it's an inbox message
         if (activeTab === "inbox" && !result.data.isRead) {
           await markAsRead({ id: messageId, type: "message" });
@@ -147,13 +153,13 @@ export default function TeacherMessagesPage() {
     try {
       const promises = messageIds.map((id) => deleteMessage({ id }));
       const results = await Promise.all(promises);
-      
+
       const successCount = results.filter((r) => r.success).length;
       if (successCount > 0) {
         toast.success(`${successCount} message(s) deleted successfully`);
         fetchMessages();
       }
-      
+
       const failCount = results.filter((r) => !r.success).length;
       if (failCount > 0) {
         toast.error(`Failed to delete ${failCount} message(s)`);
@@ -168,13 +174,13 @@ export default function TeacherMessagesPage() {
     try {
       const promises = messageIds.map((id) => markAsRead({ id, type: "message" }));
       const results = await Promise.all(promises);
-      
+
       const successCount = results.filter((r) => r.success).length;
       if (successCount > 0) {
         toast.success(`${successCount} message(s) marked as read`);
         fetchMessages();
       }
-      
+
       const failCount = results.filter((r) => !r.success).length;
       if (failCount > 0) {
         toast.error(`Failed to mark ${failCount} message(s) as read`);
@@ -242,17 +248,49 @@ export default function TeacherMessagesPage() {
           message={selectedMessage}
           onBack={handleBackToList}
           onReply={(messageId) => {
-            // TODO: Implement reply functionality
-            toast.info("Reply functionality coming soon");
+            // Prepare reply data
+            if (selectedMessage) {
+              setComposeMode('reply');
+              setComposeData({
+                recipientId: selectedMessage.senderId || selectedMessage.sender?.id,
+                subject: `Re: ${selectedMessage.subject}`,
+                content: `\n\n---\nOn ${new Date(selectedMessage.createdAt).toLocaleString()}, ${selectedMessage.senderName || selectedMessage.sender?.firstName || 'User'} wrote:\n> ${selectedMessage.content?.replace(/\n/g, '\n> ') || ''}`,
+              });
+              setIsComposeOpen(true);
+            }
           }}
           onForward={(messageId) => {
-            // TODO: Implement forward functionality
-            toast.info("Forward functionality coming soon");
+            // Prepare forward data
+            if (selectedMessage) {
+              setComposeMode('forward');
+              setComposeData({
+                subject: `Fwd: ${selectedMessage.subject}`,
+                content: `\n\n---\nForwarded message:\nFrom: ${selectedMessage.senderName || selectedMessage.sender?.firstName || 'User'}\nDate: ${new Date(selectedMessage.createdAt).toLocaleString()}\nSubject: ${selectedMessage.subject}\n\n${selectedMessage.content || ''}`,
+              });
+              setIsComposeOpen(true);
+            }
           }}
           onDelete={handleDeleteMessage}
-          onDownloadAttachment={(url, fileName) => {
-            // TODO: Implement download functionality
-            window.open(url, "_blank");
+          onDownloadAttachment={async (url, fileName) => {
+            // Implement actual download
+            try {
+              const response = await fetch(url);
+              const blob = await response.blob();
+              const downloadUrl = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = downloadUrl;
+              link.download = fileName || 'attachment';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(downloadUrl);
+              toast.success('Attachment downloaded');
+            } catch (error) {
+              console.error('Error downloading attachment:', error);
+              toast.error('Failed to download attachment');
+              // Fallback to opening in new tab
+              window.open(url, '_blank');
+            }
           }}
         />
       ) : (
@@ -286,9 +324,16 @@ export default function TeacherMessagesPage() {
 
       <ComposeMessage
         open={isComposeOpen}
-        onClose={() => setIsComposeOpen(false)}
+        onClose={() => {
+          setIsComposeOpen(false);
+          setComposeMode('new');
+          setComposeData({});
+        }}
         recipients={contacts}
         onSend={handleSendMessage}
+        defaultRecipientId={composeData.recipientId}
+        defaultSubject={composeData.subject}
+        defaultContent={composeData.content}
       />
     </div>
   );

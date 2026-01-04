@@ -9,12 +9,13 @@
 'use server';
 
 import { auth } from "@/auth";
-import { 
-  createBackup, 
-  restoreBackup, 
-  listBackups, 
+import {
+  createBackup,
+  restoreBackup,
+  listBackups,
   deleteBackup,
-  uploadToCloud 
+  uploadToCloud,
+  getBackupForDownload
 } from '@/lib/utils/backup-service';
 import { logAudit } from '@/lib/utils/audit-log';
 import { AuditAction } from '@prisma/client';
@@ -29,7 +30,7 @@ export async function createBackupAction(notifyOnFailure: boolean = true) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -37,12 +38,18 @@ export async function createBackupAction(notifyOnFailure: boolean = true) {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    // For now, we'll allow any authenticated user
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     console.log('Creating backup...');
     const result = await createBackup(notifyOnFailure, 'manual');
-    
+
     if (result.success) {
       // Log the backup creation
       await logAudit({
@@ -56,14 +63,14 @@ export async function createBackupAction(notifyOnFailure: boolean = true) {
           location: result.metadata?.location
         }
       });
-      
+
       return {
         success: true,
         data: result.metadata,
         message: 'Backup created successfully'
       };
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in createBackupAction:', error);
@@ -82,7 +89,7 @@ export async function restoreBackupAction(backupId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -90,11 +97,18 @@ export async function restoreBackupAction(backupId: string) {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     console.log(`Restoring backup ${backupId}...`);
     const result = await restoreBackup(backupId);
-    
+
     if (result.success) {
       // Log the restore operation
       await logAudit({
@@ -107,14 +121,14 @@ export async function restoreBackupAction(backupId: string) {
           recordsRestored: result.recordsRestored
         }
       });
-      
+
       return {
         success: true,
         message: 'Backup restored successfully',
         recordsRestored: result.recordsRestored
       };
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in restoreBackupAction:', error);
@@ -133,7 +147,7 @@ export async function listBackupsAction() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -142,10 +156,18 @@ export async function listBackupsAction() {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required',
+        data: []
+      };
+    }
+
     const backups = await listBackups();
-    
+
     return {
       success: true,
       data: backups
@@ -168,7 +190,7 @@ export async function deleteBackupAction(backupId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -176,10 +198,17 @@ export async function deleteBackupAction(backupId: string) {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     const result = await deleteBackup(backupId);
-    
+
     if (result.success) {
       // Log the deletion
       await logAudit({
@@ -191,13 +220,13 @@ export async function deleteBackupAction(backupId: string) {
           action: 'delete'
         }
       });
-      
+
       return {
         success: true,
         message: 'Backup deleted successfully'
       };
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in deleteBackupAction:', error);
@@ -216,7 +245,7 @@ export async function uploadBackupToCloudAction(backupId: string, localPath: str
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -224,10 +253,17 @@ export async function uploadBackupToCloudAction(backupId: string, localPath: str
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     const result = await uploadToCloud(localPath);
-    
+
     if (result.success) {
       // Log the upload
       await logAudit({
@@ -240,20 +276,96 @@ export async function uploadBackupToCloudAction(backupId: string, localPath: str
           cloudPath: result.cloudPath
         }
       });
-      
+
       return {
         success: true,
         message: 'Backup uploaded to cloud successfully',
         cloudPath: result.cloudPath
       };
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in uploadBackupToCloudAction:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to upload backup to cloud'
+    };
+  }
+}
+
+/**
+ * Download a backup file for local storage
+ * Only accessible by administrators
+ * 
+ * Requirements: 9.2 - Backup download to local storage
+ */
+export async function downloadBackupAction(backupId: string): Promise<{
+  success: boolean;
+  data?: {
+    base64: string;
+    filename: string;
+    size: number;
+    mimeType: string;
+  };
+  error?: string;
+}> {
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      return {
+        success: false,
+        error: 'Unauthorized'
+      };
+    }
+
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
+    const result = await getBackupForDownload(backupId);
+
+    if (result.success && result.data) {
+      // Log the download
+      await logAudit({
+        userId,
+        action: AuditAction.READ,
+        resource: 'backup',
+        resourceId: backupId,
+        changes: {
+          action: 'download_backup',
+          filename: result.data.filename
+        }
+      });
+
+      // Convert buffer to base64 for transfer
+      return {
+        success: true,
+        data: {
+          base64: result.data.buffer.toString('base64'),
+          filename: result.data.filename,
+          size: result.data.size,
+          mimeType: 'application/octet-stream'
+        }
+      };
+    }
+
+    return {
+      success: false,
+      error: result.error || 'Failed to prepare backup for download'
+    };
+  } catch (error) {
+    console.error('Error in downloadBackupAction:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to download backup'
     };
   }
 }

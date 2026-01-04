@@ -851,14 +851,50 @@ export async function getBulkMessagingStats(): Promise<
       };
     }
 
-    // Return placeholder stats
+    // Query audit logs for bulk message stats
+    const auditLogs = await db.auditLog.findMany({
+      where: {
+        action: AuditAction.CREATE,
+        resource: {
+          in: ["BULK_MESSAGE_CLASS", "BULK_MESSAGE_ALL_PARENTS"],
+        },
+      },
+      select: {
+        changes: true,
+        createdAt: true,
+      },
+    });
+
+    let totalSent = 0;
+    let totalDelivered = 0; // "successful" in logs
+    let totalFailed = 0;
+    let recentMessages = 0;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    auditLogs.forEach((log) => {
+      const details = log.changes as any;
+      const sent = details.totalRecipients || 0;
+      const success = details.successful || 0;
+      const failed = details.failed || 0;
+
+      totalSent += sent;
+      totalDelivered += success;
+      totalFailed += failed;
+
+      if (new Date(log.createdAt) >= thirtyDaysAgo) {
+        recentMessages += sent;
+      }
+    });
+
     return {
       success: true,
       data: {
-        totalSent: 0,
-        totalDelivered: 0,
-        totalFailed: 0,
-        recentMessages: 0,
+        totalSent,
+        totalDelivered,
+        totalFailed,
+        recentMessages,
       },
     };
   } catch (error: any) {

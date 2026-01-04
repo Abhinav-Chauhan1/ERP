@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Chart } from "@/components/dashboard/chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getMessages, getMessageStats } from "@/lib/actions/messageActions";
+import { getMessages, getMessageStats, getWeeklyCommunicationStats } from "@/lib/actions/messageActions";
 import { getAnnouncements, getAnnouncementStats } from "@/lib/actions/announcementActions";
 import { getNotificationStats } from "@/lib/actions/notificationActions";
 import { getParentMeetings, getMeetingStats } from "@/lib/actions/parentMeetingActions";
@@ -35,16 +35,11 @@ export default function CommunicationsPage() {
   const [upcomingMeetings, setUpcomingMeetings] = useState<any[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
 
-  const generateWeeklyData = useCallback(() => {
-    // Generate mock weekly data for the chart
-    // In a real app, this would come from the database
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const data = days.map(day => ({
-      date: day,
-      sent: Math.floor(Math.random() * 30) + 20,
-      received: Math.floor(Math.random() * 35) + 25,
-    }));
-    setWeeklyData(data);
+  const generateWeeklyData = useCallback(async () => {
+    const result = await getWeeklyCommunicationStats();
+    if (result.success && result.data) {
+      setWeeklyData(result.data);
+    }
   }, []);
 
   const loadAllData = useCallback(async () => {

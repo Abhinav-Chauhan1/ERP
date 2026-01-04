@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { parse, isValid } from "date-fns";
+import { hashPassword } from "@/lib/password";
 
 /**
  * Helper to parse dates from various formats
@@ -289,6 +290,10 @@ export async function importStudents(
         continue;
       }
 
+      // Generate default password: {firstName}@123
+      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedPassword = await hashPassword(defaultPassword);
+
       // Create new student with user and enrollment
       const newStudent = await db.student.create({
         data: {
@@ -298,8 +303,9 @@ export async function importStudents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "STUDENT",
+              password: hashedPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           admissionId: validated.admissionId,
@@ -449,6 +455,10 @@ export async function importTeachers(
         }
       }
 
+      // Generate default password: {firstName}@123
+      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedTeacherPassword = await hashPassword(defaultPassword);
+
       // Create new teacher with user
       await db.teacher.create({
         data: {
@@ -458,8 +468,9 @@ export async function importTeachers(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "TEACHER",
+              password: hashedTeacherPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           employeeId: validated.employeeId,
@@ -602,6 +613,10 @@ export async function importParents(
         }
       }
 
+      // Generate default password: {firstName}@123
+      const defaultParentPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedParentPassword = await hashPassword(defaultParentPassword);
+
       // Create new parent with user
       const newParent = await db.parent.create({
         data: {
@@ -611,8 +626,9 @@ export async function importParents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "PARENT",
+              password: hashedParentPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           occupation: validated.occupation,

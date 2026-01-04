@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { db } from "@/lib/db"
 import { UserRole } from "@prisma/client"
-import bcrypt from "bcryptjs"
+import { verifyPassword } from "@/lib/password"
 import { TOTP } from "otpauth"
 
 // Extend NextAuth types to include role
@@ -69,8 +69,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null
         }
 
-        // Verify password
-        const isValidPassword = await bcrypt.compare(
+        // Verify password (supports both bcrypt and Web Crypto PBKDF2 hashes)
+        const isValidPassword = await verifyPassword(
           credentials.password as string,
           user.password
         )

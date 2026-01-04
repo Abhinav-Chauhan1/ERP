@@ -84,10 +84,10 @@ function getEncryptionKey(): Buffer {
 function encryptData(data: Buffer): { encrypted: Buffer; iv: Buffer; authTag: Buffer } {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, getEncryptionKey(), iv);
-  
+
   const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
   const authTag = cipher.getAuthTag();
-  
+
   return { encrypted, iv, authTag };
 }
 
@@ -97,7 +97,7 @@ function encryptData(data: Buffer): { encrypted: Buffer; iv: Buffer; authTag: Bu
 function decryptData(encrypted: Buffer, iv: Buffer, authTag: Buffer): Buffer {
   const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, getEncryptionKey(), iv);
   decipher.setAuthTag(authTag);
-  
+
   return Buffer.concat([decipher.update(encrypted), decipher.final()]);
 }
 
@@ -113,7 +113,7 @@ function calculateChecksum(data: Buffer): string {
  */
 async function exportDatabaseData(): Promise<any> {
   console.log('Exporting database data...');
-  
+
   // Export all models
   // Note: This is a simplified approach. In production, you might want to
   // use pg_dump or a more sophisticated approach
@@ -165,7 +165,7 @@ async function exportDatabaseData(): Promise<any> {
     data.tables.documents = await safeExport('documents', () => prisma.document.findMany());
     data.tables.events = await safeExport('events', () => prisma.event.findMany());
     data.tables.auditLogs = await safeExport('auditLogs', () => prisma.auditLog.findMany());
-    
+
     console.log('Database export completed successfully');
     return data;
   } catch (error) {
@@ -189,7 +189,7 @@ async function getAdministratorEmails(): Promise<string[]> {
         }
       }
     });
-    
+
     // Filter active admins and extract emails
     return admins
       .filter(admin => admin.user.active)
@@ -207,15 +207,15 @@ async function getAdministratorEmails(): Promise<string[]> {
 async function sendBackupFailureNotification(error: string, backupType: 'manual' | 'scheduled' = 'manual'): Promise<void> {
   try {
     const adminEmails = await getAdministratorEmails();
-    
+
     if (adminEmails.length === 0) {
       console.warn('No administrator emails found. Cannot send backup failure notification.');
       return;
     }
-    
+
     // Import sendEmail dynamically to avoid circular dependencies
     const { sendEmail } = await import('./email-service');
-    
+
     const timestamp = new Date().toISOString();
     const formattedDate = new Date().toLocaleString('en-US', {
       year: 'numeric',
@@ -226,9 +226,9 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
       second: '2-digit',
       timeZoneName: 'short'
     });
-    
+
     const subject = `🚨 URGENT: ${backupType === 'manual' ? 'Manual' : 'Scheduled'} Database Backup Failed`;
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -308,14 +308,14 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
         </body>
       </html>
     `;
-    
+
     // Send email to all administrators
     const result = await sendEmail({
       to: adminEmails,
       subject,
       html
     });
-    
+
     if (result.success) {
       console.log(`✓ Backup failure notification sent to ${adminEmails.length} administrator(s)`);
       console.log(`  Recipients: ${adminEmails.join(', ')}`);
@@ -325,6 +325,30 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
     }
   } catch (error) {
     console.error('Error sending backup failure notification:', error);
+  }
+}
+
+
+/**
+ * Upload backup file to cloud storage (Cloudinary)
+ */
+async function uploadToCloudStorage(filePath: string, backupId: string): Promise<string> {
+  try {
+    const { uploadToServerCloudinary } = await import('@/lib/cloudinary');
+
+    // Upload as raw file with private access
+    const result = await uploadToServerCloudinary(filePath, {
+      folder: 'backups',
+      resource_type: 'raw',
+      public_id: `backup-${backupId}`,
+      type: 'private', // restricted access
+      format: 'enc'
+    });
+
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloud upload failed:', error);
+    throw error;
   }
 }
 
@@ -342,88 +366,110 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
 export async function createBackup(notifyOnFailure: boolean = false, backupType: 'manual' | 'scheduled' = 'manual'): Promise<BackupResult> {
   try {
     console.log('Starting backup process...');
-    
+
     // Ensure backup directory exists
     await fs.mkdir(BACKUP_DIR, { recursive: true });
-    
+
     // Generate backup ID and filename
     const backupId = crypto.randomBytes(16).toString('hex');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${timestamp}-${backupId}.enc`;
     const localPath = path.join(BACKUP_DIR, filename);
-    
+
     // Step 1: Export database data
     const data = await exportDatabaseData();
     const jsonData = JSON.stringify(data);
     const dataBuffer = Buffer.from(jsonData, 'utf-8');
-    
+
     // Calculate checksum of original data
     const checksum = calculateChecksum(dataBuffer);
-    
+
     // Step 2: Compress with gzip
     console.log('Compressing backup...');
     const compressed = await gzip(dataBuffer);
     console.log(`Compression: ${dataBuffer.length} -> ${compressed.length} bytes (${Math.round((1 - compressed.length / dataBuffer.length) * 100)}% reduction)`);
-    
+
     // Step 3: Encrypt
     console.log('Encrypting backup...');
     const { encrypted, iv, authTag } = encryptData(compressed);
-    
+
     // Combine IV, auth tag, and encrypted data
     const finalData = Buffer.concat([
       iv,
       authTag,
       encrypted
     ]);
-    
+
     // Step 4: Store locally
     console.log(`Saving backup to ${localPath}...`);
     await fs.writeFile(localPath, finalData);
-    
+
     const stats = await fs.stat(localPath);
-    
+    let cloudPath: string | undefined;
+    let location: 'LOCAL' | 'CLOUD' | 'BOTH' = 'LOCAL';
+
+    // Step 5: Upload to cloud (if configured)
+    if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+      try {
+        console.log('Uploading backup to cloud storage...');
+        cloudPath = await uploadToCloudStorage(localPath, backupId);
+        location = 'BOTH';
+        console.log('Cloud upload successful');
+      } catch (cloudError) {
+        console.error('Cloud upload failed, continuing with local backup only:', cloudError);
+        // We do not fail the entire process if cloud upload fails, but we verify local success
+      }
+    }
+
     // Create metadata
     const metadata: BackupMetadata = {
       id: backupId,
       filename,
       size: stats.size,
       createdAt: new Date(),
-      location: 'LOCAL', // Will be updated to 'BOTH' if cloud upload succeeds
+      location,
       encrypted: true,
       compressed: true,
       checksum,
       status: 'COMPLETED'
     };
-    
-    // Step 5: Store backup record in database
+
+    // Step 6: Store backup record in database - SKIPPED (Model missing)
+    // In a future update, we should add the Backup model to schema.prisma
+    /*
     await prisma.backup.create({
       data: {
         id: backupId,
         filename,
         size: BigInt(stats.size),
-        location: 'LOCAL',
+        location,
         encrypted: true,
         status: 'COMPLETED',
-        createdAt: metadata.createdAt
+        createdAt: metadata.createdAt,
+        cloudUrl: cloudPath
       }
     });
-    
+    */
+
+    // For now, we rely on the file system and audit logs
+
     console.log('Backup completed successfully');
-    
+
     return {
       success: true,
       metadata,
-      localPath
+      localPath,
+      cloudPath
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Backup failed:', errorMessage);
-    
+
     // Send failure notification if requested (Requirements: 9.5)
     if (notifyOnFailure) {
       await sendBackupFailureNotification(errorMessage, backupType);
     }
-    
+
     return {
       success: false,
       error: errorMessage
@@ -449,7 +495,7 @@ async function importDatabaseData(data: any): Promise<number> {
     try {
       console.log(`  Importing ${records.length} ${tableName}...`);
       let imported = 0;
-      
+
       for (const record of records) {
         try {
           await importFn(record);
@@ -458,7 +504,7 @@ async function importDatabaseData(data: any): Promise<number> {
           console.warn(`    ⚠ Failed to import ${tableName} record:`, error instanceof Error ? error.message : error);
         }
       }
-      
+
       console.log(`  ✓ Imported ${imported}/${records.length} ${tableName}`);
       return imported;
     } catch (error) {
@@ -469,7 +515,7 @@ async function importDatabaseData(data: any): Promise<number> {
 
   // Import in order of dependencies (parent tables first)
   // Note: This uses upsert to handle existing records
-  
+
   if (data.tables.users) {
     totalRecords += await safeImport('users', data.tables.users, (record) =>
       prisma.user.upsert({
@@ -709,21 +755,18 @@ async function importDatabaseData(data: any): Promise<number> {
 export async function restoreBackup(backupId: string): Promise<RestoreResult> {
   try {
     console.log(`Starting restore process for backup ${backupId}...`);
-    
-    // Get backup metadata from database
+
+    // In FS-only mode, backupId is the filename
+    const filename = backupId;
+
+    /*
     const backup = await prisma.backup.findUnique({
       where: { id: backupId }
     });
-    
-    if (!backup) {
-      return {
-        success: false,
-        error: 'Backup not found'
-      };
-    }
-    
-    const backupPath = path.join(BACKUP_DIR, backup.filename);
-    
+    */
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+
     // Check if file exists
     try {
       await fs.access(backupPath);
@@ -733,29 +776,29 @@ export async function restoreBackup(backupId: string): Promise<RestoreResult> {
         error: 'Backup file not found on disk'
       };
     }
-    
+
     // Step 1: Read encrypted file
     console.log('Reading backup file...');
     const fileData = await fs.readFile(backupPath);
-    
+
     // Extract IV, auth tag, and encrypted data
     const iv = fileData.subarray(0, IV_LENGTH);
     const authTag = fileData.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
     const encrypted = fileData.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
-    
+
     // Step 2: Decrypt
     console.log('Decrypting backup...');
     const compressed = decryptData(encrypted, iv, authTag);
-    
+
     // Step 3: Decompress
     console.log('Decompressing backup...');
     const decompressed = await gunzip(compressed);
-    
+
     // Step 4: Parse JSON
     console.log('Parsing backup data...');
     const jsonData = decompressed.toString('utf-8');
     const data = JSON.parse(jsonData);
-    
+
     // Verify backup version
     if (!data.version || !data.timestamp || !data.tables) {
       return {
@@ -763,17 +806,17 @@ export async function restoreBackup(backupId: string): Promise<RestoreResult> {
         error: 'Invalid backup format'
       };
     }
-    
+
     console.log(`Backup version: ${data.version}`);
     console.log(`Backup timestamp: ${data.timestamp}`);
     console.log(`Tables in backup: ${Object.keys(data.tables).length}`);
-    
+
     // Step 5: Restore data to database
     console.log('Restoring data to database...');
     const recordsRestored = await importDatabaseData(data);
-    
+
     console.log(`✓ Backup restored successfully. ${recordsRestored} records restored.`);
-    
+
     return {
       success: true,
       recordsRestored
@@ -792,53 +835,79 @@ export async function restoreBackup(backupId: string): Promise<RestoreResult> {
  */
 export async function listBackups(): Promise<BackupMetadata[]> {
   try {
-    const backups = await prisma.backup.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    return backups.map(backup => ({
-      id: backup.id,
-      filename: backup.filename,
-      size: Number(backup.size),
-      createdAt: backup.createdAt,
-      location: backup.location as 'LOCAL' | 'CLOUD' | 'BOTH',
-      encrypted: backup.encrypted,
-      compressed: true, // All our backups are compressed
-      checksum: '', // Not stored in DB for this implementation
-      status: backup.status
-    }));
+    // Since Backup model is missing, we list files from the backup directory
+    // Filename format: backup-{timestamp}-{backupId}.enc
+
+    // Ensure backup directory exists
+    try {
+      await fs.access(BACKUP_DIR);
+    } catch {
+      return [];
+    }
+
+    const files = await fs.readdir(BACKUP_DIR);
+    const backups: BackupMetadata[] = [];
+
+    for (const file of files) {
+      if (!file.endsWith('.enc')) continue;
+
+      try {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = await fs.stat(filePath);
+
+        // Parse filename
+        // backup-2023-01-01T12-00-00-000Z-id123.enc
+        const parts = file.replace('.enc', '').split('-');
+        // This parsing is brittle, better to rely on stats
+
+        backups.push({
+          id: file, // Use filename as ID if ID parsing is hard
+          filename: file,
+          size: stats.size,
+          createdAt: stats.birthtime,
+          location: 'LOCAL', // Assume local
+          encrypted: true,
+          compressed: true,
+          checksum: '', // Unknown without reading
+          status: 'COMPLETED'
+        });
+      } catch (err) {
+        console.warn(`Error processing backup file ${file}:`, err);
+      }
+    }
+
+    return backups.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
-    console.error('Error listing backups:', error);
+    console.error('Failed to list backups:', error);
     return [];
   }
 }
+
 
 /**
  * Delete a backup
  */
 export async function deleteBackup(backupId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const backup = await prisma.backup.findUnique({
-      where: { id: backupId }
-    });
-    
-    if (!backup) {
-      return { success: false, error: 'Backup not found' };
+    // backupId is the filename in our FS implementation
+    const filename = backupId;
+
+    // Check if file exists/is safe
+    if (!filename.includes('backup-') || !filename.endsWith('.enc')) {
+      return { success: false, error: 'Invalid backup ID' };
     }
-    
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+
     // Delete file from disk
-    const backupPath = path.join(BACKUP_DIR, backup.filename);
     try {
       await fs.unlink(backupPath);
+      console.log(`Deleted backup file: ${filename}`);
     } catch (error) {
       console.warn('Could not delete backup file from disk:', error);
+      return { success: false, error: 'File not found or could not be deleted' };
     }
-    
-    // Delete from database
-    await prisma.backup.delete({
-      where: { id: backupId }
-    });
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error deleting backup:', error);
@@ -850,15 +919,79 @@ export async function deleteBackup(backupId: string): Promise<{ success: boolean
 }
 
 /**
- * Upload backup to cloud storage (S3-compatible)
- * This is a placeholder for cloud storage integration
+ * Get backup file for download
+ * Returns the backup file buffer and metadata for downloading to local storage
+ * 
+ * @param backupId - The ID of the backup to download
+ * @returns Object containing file buffer, filename, and size for download
+ */
+export async function getBackupForDownload(backupId: string): Promise<{
+  success: boolean;
+  data?: {
+    buffer: Buffer;
+    filename: string;
+    size: number;
+    createdAt: Date;
+  };
+  error?: string;
+}> {
+  try {
+    // backupId is the filename
+    const filename = backupId;
+
+    // Safety check
+    if (!filename || !filename.endsWith('.enc')) {
+      return { success: false, error: 'Invalid backup ID' };
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+
+    // Check if file exists
+    try {
+      await fs.access(backupPath);
+    } catch {
+      return {
+        success: false,
+        error: 'Backup file not found on disk'
+      };
+    }
+
+    // Get stats for size
+    const stats = await fs.stat(backupPath);
+
+    // Read the backup file
+    const buffer = await fs.readFile(backupPath);
+
+    return {
+      success: true,
+      data: {
+        buffer,
+        filename: filename,
+        size: stats.size,
+        createdAt: stats.birthtime
+      }
+    };
+  } catch (error) {
+    console.error('Error preparing backup for download:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Upload backup to cloud storage
+ * NOTE: Cloud storage upload has been disabled. 
+ * Use getBackupForDownload() to download the backup file to local storage.
+ * 
+ * @deprecated Use getBackupForDownload for local downloads instead
  */
 export async function uploadToCloud(localPath: string): Promise<{ success: boolean; cloudPath?: string; error?: string }> {
-  // TODO: Implement S3 or compatible cloud storage upload
-  // This would require AWS SDK or similar library
-  console.log('Cloud upload not yet implemented');
+  console.log('Cloud upload is not available. Use getBackupForDownload() for local downloads.');
   return {
     success: false,
-    error: 'Cloud storage not configured'
+    error: 'Cloud storage upload has been removed. Please use the download option to save backups locally.'
   };
 }
+

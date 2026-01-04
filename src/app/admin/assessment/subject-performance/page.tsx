@@ -129,9 +129,9 @@ export default function SubjectPerformancePage() {
       });
 
       if (result.success && result.data) {
-        // Create a download link
+        // Create a download link using base64 data
         const link = document.createElement('a');
-        link.href = result.data.url;
+        link.href = result.data.base64;
         link.download = result.data.filename;
         document.body.appendChild(link);
         link.click();
@@ -163,9 +163,9 @@ export default function SubjectPerformancePage() {
       });
 
       if (result.success && result.data) {
-        // Create a download link
+        // Create a download link using base64 data
         const link = document.createElement('a');
-        link.href = result.data.url;
+        link.href = result.data.base64;
         link.download = result.data.filename;
         document.body.appendChild(link);
         link.click();

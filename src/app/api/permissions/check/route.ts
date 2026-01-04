@@ -36,11 +36,14 @@ export async function POST(request: NextRequest) {
     // Security check: users can only check their own permissions
     // Admins can check any user's permissions
     if (userId !== clerkUserId) {
-      // TODO: Add admin check here if needed
-      return NextResponse.json(
-        { success: false, error: 'Cannot check permissions for other users' },
-        { status: 403 }
-      );
+      // Check if the requesting user is an admin
+      const userRole = session?.user?.role;
+      if (userRole !== 'ADMIN') {
+        return NextResponse.json(
+          { success: false, error: 'Cannot check permissions for other users' },
+          { status: 403 }
+        );
+      }
     }
 
     // Extract audit context from request

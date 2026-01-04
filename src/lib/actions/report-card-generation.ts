@@ -575,9 +575,22 @@ async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<
  * Get school information for branding
  */
 async function getSchoolInfo(): Promise<{ name: string; address: string }> {
-  // This should fetch from a SystemSettings or SchoolBranding table
-  // For now, return default values
-  // TODO: Implement proper school settings retrieval
+  // Fetch from SystemSettings
+  try {
+    const { getSystemSettings } = await import('@/lib/actions/settingsActions');
+    const result = await getSystemSettings();
+
+    if (result.success && result.data) {
+      return {
+        name: result.data.schoolName,
+        address: result.data.schoolAddress || 'School Address', // Fallback if address is missing
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching school info for report card:', error);
+  }
+
+  // Fallback default values
   return {
     name: 'School Name',
     address: 'School Address',

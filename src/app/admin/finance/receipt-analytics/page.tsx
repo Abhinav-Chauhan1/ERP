@@ -26,53 +26,52 @@ export default function ReceiptAnalyticsPage() {
   const [timeRange, setTimeRange] = useState("7d");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - replace with actual API calls
-  const stats = {
-    avgTurnaroundTime: 2.3, // days
-    rejectionRate: 12.5, // percentage
-    totalProcessed: 156,
-    pendingOldest: 5, // days
-  };
+  const [stats, setStats] = useState({
+    avgTurnaroundTime: "0",
+    rejectionRate: "0",
+    totalProcessed: 0,
+    pendingOldest: 0,
+  });
 
-  const turnaroundData = [
-    { range: "< 1 day", count: 45 },
-    { range: "1-2 days", count: 67 },
-    { range: "2-3 days", count: 28 },
-    { range: "3-5 days", count: 12 },
-    { range: "> 5 days", count: 4 },
-  ];
-
-  const rejectionReasons = [
-    { reason: "Unclear image", count: 8, percentage: 32 },
-    { reason: "Amount mismatch", count: 6, percentage: 24 },
-    { reason: "Invalid receipt", count: 5, percentage: 20 },
-    { reason: "Missing details", count: 4, percentage: 16 },
-    { reason: "Other", count: 2, percentage: 8 },
-  ];
-
-  const monthlyTrends = [
-    { month: "Jul", verified: 45, rejected: 5, pending: 8 },
-    { month: "Aug", verified: 52, rejected: 7, pending: 6 },
-    { month: "Sep", verified: 61, rejected: 4, pending: 9 },
-    { month: "Oct", verified: 58, rejected: 6, pending: 7 },
-    { month: "Nov", verified: 67, rejected: 8, pending: 5 },
-    { month: "Dec", verified: 72, rejected: 5, pending: 12 },
-  ];
-
-  const agingData = [
-    { days: "0-1", count: 8 },
-    { days: "1-2", count: 5 },
-    { days: "2-3", count: 3 },
-    { days: "3-5", count: 2 },
-    { days: "> 5", count: 1 },
-  ];
+  const [turnaroundData, setTurnaroundData] = useState<any[]>([]);
+  const [rejectionReasons, setRejectionReasons] = useState<any[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<any[]>([]);
+  const [agingData, setAgingData] = useState<any[]>([]);
 
   const COLORS = ["#10b981", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6"];
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => setIsLoading(false), 1000);
+    async function loadAnalytics() {
+      setIsLoading(true);
+      try {
+        // Dynamic import to avoid server-side issues if any, though standard import is fine for server actions
+        const { getReceiptAnalytics } = await import("@/lib/actions/receiptWidgetActions");
+        const result = await getReceiptAnalytics();
+
+        if (result.success && result.data) {
+          setStats(result.data.stats);
+          setTurnaroundData(result.data.turnaroundData);
+          setRejectionReasons(result.data.rejectionReasons);
+          setMonthlyTrends(result.data.monthlyTrends);
+          setAgingData(result.data.agingData);
+        }
+      } catch (error) {
+        console.error("Failed to load analytics", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadAnalytics();
   }, [timeRange]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -112,9 +111,8 @@ export default function ReceiptAnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center text-xs text-green-600">
-              <TrendingDown className="h-3 w-3 mr-1" />
-              <span>12% faster than last month</span>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span className="text-xs">Time from upload to verification</span>
             </div>
           </CardContent>
         </Card>
@@ -130,9 +128,8 @@ export default function ReceiptAnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center text-xs text-red-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              <span>3% higher than last month</span>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <span>Of total processed receipts</span>
             </div>
           </CardContent>
         </Card>
@@ -149,7 +146,7 @@ export default function ReceiptAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              Last 30 days
+              Verified or Rejected (Last 30 days)
             </div>
           </CardContent>
         </Card>
@@ -203,13 +200,20 @@ export default function ReceiptAnalyticsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SimplePieChart
-              data={rejectionReasons}
-              dataKey="count"
-              nameKey="reason"
-              colors={COLORS}
-              height={300}
-            />
+            {rejectionReasons.length > 0 ? (
+              <SimplePieChart
+                data={rejectionReasons}
+                dataKey="count"
+                nameKey="reason"
+                colors={COLORS}
+                height={300}
+              />
+            ) : (
+              <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                No rejection data available
+              </div>
+            )}
+
           </CardContent>
         </Card>
 
@@ -265,7 +269,7 @@ export default function ReceiptAnalyticsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {rejectionReasons.map((item, index) => (
+              {rejectionReasons.length > 0 ? (rejectionReasons.map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
@@ -279,7 +283,9 @@ export default function ReceiptAnalyticsPage() {
                     <span className="text-sm font-semibold">{item.percentage}%</span>
                   </div>
                 </div>
-              ))}
+              ))) : (
+                <div className="text-center text-muted-foreground py-4">No data available</div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -294,9 +300,18 @@ export default function ReceiptAnalyticsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-blue-900">
-          <p>• <strong>Reduce turnaround time:</strong> {stats.pendingOldest} receipts have been pending for more than 5 days. Consider prioritizing older receipts.</p>
-          <p>• <strong>Improve receipt quality:</strong> 32% of rejections are due to unclear images. Consider adding image quality guidelines on the upload page.</p>
-          <p>• <strong>Training opportunity:</strong> Amount mismatches account for 24% of rejections. Students may need clearer instructions on entering payment amounts.</p>
+          {stats.pendingOldest > 5 && (
+            <p>• <strong>Reduce turnaround time:</strong> {stats.pendingOldest} days pending is high. Consider prioritizing older receipts.</p>
+          )}
+          {Number(stats.rejectionRate) > 10 && (
+            <p>• <strong>Improve receipt quality:</strong> High rejection rate ({stats.rejectionRate}%). Check if image quality instructions are clear.</p>
+          )}
+          {turnaroundData.some((d: any) => d.range === "> 5 days" && d.count > 0) && (
+            <p>• <strong>Backlog Alert:</strong> There are receipts pending for more than 5 days.</p>
+          )}
+          {stats.pendingOldest <= 5 && Number(stats.rejectionRate) <= 10 && (
+            <p>• <strong>System Healthy:</strong> Verification metrics are within good ranges.</p>
+          )}
         </CardContent>
       </Card>
     </div>
