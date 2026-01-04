@@ -334,7 +334,7 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
  */
 async function uploadToCloudStorage(filePath: string, backupId: string): Promise<string> {
   try {
-    const { uploadToServerCloudinary } = await import('@/lib/cloudinary');
+    const { uploadToServerCloudinary } = await import("@/lib/cloudinary-server");
 
     // Upload as raw file with private access
     const result = await uploadToServerCloudinary(filePath, {

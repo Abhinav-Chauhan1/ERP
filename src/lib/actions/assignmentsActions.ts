@@ -13,7 +13,7 @@ import {
   updateCalendarEventFromAssignment,
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
-import { uploadBufferToCloudinary } from "@/lib/cloudinary";
+import { uploadBufferToCloudinary } from "@/lib/cloudinary-server";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {

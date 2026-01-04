@@ -316,7 +316,7 @@ async function uploadPDFToStorage(
   studentId: string
 ): Promise<string> {
   try {
-    const { uploadBufferToCloudinary } = await import('@/lib/cloudinary');
+    const { uploadBufferToCloudinary } = await import("@/lib/cloudinary-server");
 
     // Upload to Cloudinary using buffer upload
     const result = await uploadBufferToCloudinary(pdfBuffer, {
