@@ -12,8 +12,11 @@ export default async function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-50 to-white">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="SikshaMitra" width={150} height={32} className="h-8 w-auto" />
+        <div className="flex items-center gap-3">
+          <Image src="/logo.png" alt="SikshaMitra" width={200} height={48} className="h-12 w-auto" />
+          <span className="text-2xl font-bold">
+            <span className="text-red-500">SIKSHA</span><span className="text-gray-900">MITRA</span>
+          </span>
         </div>
         <div className="flex items-center gap-4">
           {userId ? (
