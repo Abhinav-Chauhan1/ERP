@@ -64,7 +64,7 @@ export function exportToExcel(
     wb.Props = {
       Title: options.title,
       Subject: options.subtitle || '',
-      Author: 'School ERP System',
+      Author: 'SikshaMitra',
       CreatedDate: new Date(),
     };
   }

@@ -60,7 +60,7 @@ async function getAdministratorEmails(): Promise<string[]> {
         }
       }
     });
-    
+
     // Filter active admins and extract emails
     return admins
       .filter(admin => admin.user.active)
@@ -82,18 +82,18 @@ async function notifyBackupFailure(error: string): Promise<void> {
       error,
       message: 'Scheduled backup failed. Please check the system immediately.'
     });
-    
+
     // Get administrator emails
     const adminEmails = await getAdministratorEmails();
-    
+
     if (adminEmails.length === 0) {
       console.warn('No administrator emails found. Cannot send backup failure notification.');
       return;
     }
-    
+
     // Import sendEmail dynamically to avoid circular dependencies
     const { sendEmail } = await import('./email-service');
-    
+
     const timestamp = new Date().toISOString();
     const formattedDate = new Date().toLocaleString('en-US', {
       year: 'numeric',
@@ -104,9 +104,9 @@ async function notifyBackupFailure(error: string): Promise<void> {
       second: '2-digit',
       timeZoneName: 'short'
     });
-    
+
     const subject = '🚨 URGENT: Scheduled Database Backup Failed';
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -170,7 +170,7 @@ async function notifyBackupFailure(error: string): Promise<void> {
             <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <strong>System Information:</strong><br>
               Environment: ${process.env.NODE_ENV || 'production'}<br>
-              Application: ${process.env.NEXT_PUBLIC_APP_NAME || 'School ERP'}<br>
+              Application: ${process.env.NEXT_PUBLIC_APP_NAME || 'SikshaMitra'}<br>
               Timestamp (ISO): ${timestamp}
             </p>
             
@@ -181,19 +181,19 @@ async function notifyBackupFailure(error: string): Promise<void> {
           
           <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; text-align: center; font-size: 12px; color: #666;">
             <p style="margin: 0;">This is an automated system alert from the backup service.</p>
-            <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_APP_NAME || 'School ERP'}. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_APP_NAME || 'SikshaMitra'}. All rights reserved.</p>
           </div>
         </body>
       </html>
     `;
-    
+
     // Send email to all administrators
     const result = await sendEmail({
       to: adminEmails,
       subject,
       html
     });
-    
+
     if (result.success) {
       console.log(`✓ Backup failure notification sent to ${adminEmails.length} administrator(s)`);
       console.log(`  Recipients: ${adminEmails.join(', ')}`);
@@ -214,11 +214,11 @@ async function executeScheduledBackup(): Promise<void> {
   console.log('='.repeat(60));
   console.log(`Starting scheduled backup at ${new Date().toISOString()}`);
   console.log('='.repeat(60));
-  
+
   try {
     // Pass notifyOnFailure=true and backupType='scheduled' for scheduled backups
     const result = await createBackup(true, 'scheduled');
-    
+
     if (result.success && result.metadata) {
       const duration = Date.now() - startTime;
       console.log('✓ Scheduled backup completed successfully');
@@ -227,29 +227,29 @@ async function executeScheduledBackup(): Promise<void> {
       console.log(`  Size: ${(result.metadata.size / 1024 / 1024).toFixed(2)} MB`);
       console.log(`  Duration: ${(duration / 1000).toFixed(2)} seconds`);
       console.log(`  Location: ${result.metadata.location}`);
-      
+
       // Log successful backup
       await logBackupExecution(true, result.metadata.id);
     } else {
       const error = result.error || 'Unknown error';
       console.error('✗ Scheduled backup failed:', error);
-      
+
       // Log failed backup
       await logBackupExecution(false, undefined, error);
-      
+
       // Note: Email notification is already sent by createBackup when notifyOnFailure=true
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('✗ Scheduled backup failed with exception:', errorMessage);
-    
+
     // Log failed backup
     await logBackupExecution(false, undefined, errorMessage);
-    
+
     // Send failure notification for unexpected exceptions
     await notifyBackupFailure(errorMessage);
   }
-  
+
   console.log('='.repeat(60));
 }
 
@@ -272,7 +272,7 @@ export function startScheduledBackups(): void {
     console.log('Stopping existing scheduled backup task...');
     scheduledTask.stop();
   }
-  
+
   // Schedule daily backup at 2 AM
   // Cron expression: '0 2 * * *' = At 02:00 every day
   scheduledTask = cron.schedule('0 2 * * *', async () => {
@@ -280,7 +280,7 @@ export function startScheduledBackups(): void {
   }, {
     timezone: process.env.TZ || 'UTC'
   });
-  
+
   console.log('✓ Scheduled backups started');
   console.log(`  Schedule: Daily at 2:00 AM (${process.env.TZ || 'UTC'})`);
 }

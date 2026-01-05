@@ -2,7 +2,7 @@
  * Optimized Image Component
  * 
  * A wrapper around Next.js Image component with built-in optimization
- * and best practices for the School ERP system.
+ * and best practices for the SikshaMitra system.
  * 
  * Requirements: 16.1, 16.2, 16.3, 16.4, 16.5
  */

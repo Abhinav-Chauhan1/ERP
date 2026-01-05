@@ -9,7 +9,7 @@ import { TeachersWithFilters } from "./teachers-with-filters";
 import { getTeacherFilterOptions } from "@/lib/actions/teachers-filters";
 
 export const metadata = {
-  title: "Teachers - School ERP",
+  title: "Teachers - SikshaMitra",
 };
 
 export default async function TeachersPage() {

@@ -488,7 +488,7 @@ async function processTextMessageAndReply(
     let replyMessage = '';
 
     if (lowerMessage.includes('help') || lowerMessage === 'hi' || lowerMessage === 'hello') {
-      replyMessage = `👋 Welcome to School ERP WhatsApp Support!
+      replyMessage = `👋 Welcome to SikshaMitra WhatsApp Support!
 
 Here's how I can help you:
 

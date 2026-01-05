@@ -292,7 +292,7 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
             <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <strong>System Information:</strong><br>
               Environment: ${process.env.NODE_ENV || 'production'}<br>
-              Application: ${process.env.NEXT_PUBLIC_APP_NAME || 'School ERP'}<br>
+              Application: ${process.env.NEXT_PUBLIC_APP_NAME || 'SikshaMitra'}<br>
               Timestamp (ISO): ${timestamp}
             </p>
             
@@ -303,7 +303,7 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
           
           <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; text-align: center; font-size: 12px; color: #666;">
             <p style="margin: 0;">This is an automated system alert from the backup service.</p>
-            <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_APP_NAME || 'School ERP'}. All rights reserved.</p>
+            <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_APP_NAME || 'SikshaMitra'}. All rights reserved.</p>
           </div>
         </body>
       </html>

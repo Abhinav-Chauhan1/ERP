@@ -28,7 +28,7 @@ export function generatePasswordSetupEmail(data: PasswordSetupEmailData): string
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Set Up Your Password - School ERP</title>
+  <title>Set Up Your Password - SikshaMitra</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -225,7 +225,7 @@ export function generatePasswordSetupEmail(data: PasswordSetupEmailData): string
       
       <div class="message">
         We've upgraded our authentication system to provide you with better security and control over your account. 
-        As part of this upgrade, you need to set up a new password for your School ERP account.
+        As part of this upgrade, you need to set up a new password for your SikshaMitra account.
       </div>
 
       <div class="info-box">
@@ -283,11 +283,11 @@ export function generatePasswordSetupEmail(data: PasswordSetupEmailData): string
     </div>
     
     <div class="footer">
-      <p><strong>School ERP System</strong></p>
+      <p><strong>SikshaMitra</strong></p>
       <p>This is an automated email. Please do not reply to this message.</p>
       <p>If you need assistance, please contact support.</p>
       <p style="margin-top: 15px; font-size: 12px;">
-        © ${new Date().getFullYear()} School ERP. All rights reserved.
+        © ${new Date().getFullYear()} SikshaMitra. All rights reserved.
       </p>
     </div>
   </div>
@@ -303,11 +303,11 @@ export function generatePasswordSetupEmailText(data: PasswordSetupEmailData): st
   const { firstName, lastName, email, setupLink, expiresInHours, role } = data;
 
   return `
-Set Up Your Password - School ERP
+Set Up Your Password - SikshaMitra
 
 Hello ${firstName} ${lastName},
 
-We've upgraded our authentication system to provide you with better security and control over your account. As part of this upgrade, you need to set up a new password for your School ERP account.
+We've upgraded our authentication system to provide you with better security and control over your account. As part of this upgrade, you need to set up a new password for your SikshaMitra account.
 
 YOUR ACCOUNT DETAILS
 Email: ${email}
@@ -343,11 +343,11 @@ DIDN'T REQUEST THIS?
 If you didn't expect this email, please contact our support team immediately. This is part of a system-wide upgrade, and all users are required to set up new passwords.
 
 ---
-School ERP System
+SikshaMitra
 This is an automated email. Please do not reply to this message.
 If you need assistance, please contact support.
 
-© ${new Date().getFullYear()} School ERP. All rights reserved.
+© ${new Date().getFullYear()} SikshaMitra. All rights reserved.
   `.trim();
 }
 

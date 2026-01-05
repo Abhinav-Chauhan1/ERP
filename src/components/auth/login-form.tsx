@@ -151,7 +151,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Sign In</CardTitle>
         <CardDescription>
-          Enter your credentials to access School ERP
+          Enter your credentials to access SikshaMitra
         </CardDescription>
       </CardHeader>
       <CardContent>

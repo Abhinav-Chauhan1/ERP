@@ -10,7 +10,7 @@ import { getFilterOptions } from "@/lib/actions/students-filters";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 
 export const metadata = {
-  title: "Students - School ERP",
+  title: "Students - SikshaMitra",
 };
 
 export default async function StudentsPage() {

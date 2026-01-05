@@ -93,7 +93,7 @@ describe('Accessibility Utilities', () => {
     });
 
     it('should generate logo alt text', () => {
-      expect(generateAltText('logo', 'School ERP')).toBe('School ERP logo');
+      expect(generateAltText('logo', 'SikshaMitra')).toBe('SikshaMitra logo');
       expect(generateAltText('logo')).toBe('Logo');
     });
 

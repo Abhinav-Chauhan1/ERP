@@ -132,7 +132,7 @@ export async function decrypt(text: string): Promise<string> {
 /**
  * Generates a new TOTP secret for a user
  */
-export function generateTOTPSecret(userEmail: string, issuer: string = 'School ERP'): {
+export function generateTOTPSecret(userEmail: string, issuer: string = 'SikshaMitra'): {
   secret: string;
   uri: string;
 } {

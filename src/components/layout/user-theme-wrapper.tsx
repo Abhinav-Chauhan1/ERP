@@ -15,10 +15,10 @@ interface UserThemeWrapperProps {
  * Wrapper component that applies user-specific color themes at the layout level
  * This ensures each user's theme preference is isolated and doesn't affect other users
  */
-export function UserThemeWrapper({ 
-  children, 
+export function UserThemeWrapper({
+  children,
   initialTheme = "blue",
-  userRole 
+  userRole
 }: UserThemeWrapperProps) {
   const { data: session } = useSession();
   const [colorTheme, setColorTheme] = useState<ColorTheme>(initialTheme);
@@ -30,7 +30,7 @@ export function UserThemeWrapper({
       // Load saved color theme from localStorage with user and role-specific key
       const storageKey = `color-theme-${userRole}-${session.user.id}`;
       const saved = localStorage.getItem(storageKey) as ColorTheme;
-      
+
       if (saved && ["blue", "red", "green", "purple", "orange", "teal"].includes(saved)) {
         setColorTheme(saved);
       } else if (initialTheme) {
@@ -54,15 +54,15 @@ export function UserThemeWrapper({
         "theme-orange",
         "theme-teal"
       );
-      
+
       // Add new theme class (skip blue as it's default)
       if (colorTheme !== "blue") {
         document.body.classList.add(`theme-${colorTheme}`);
       }
-      
+
       console.log('[UserThemeWrapper] Applied theme to body:', colorTheme);
     }
-    
+
     // Cleanup: remove theme class when component unmounts
     return () => {
       if (mounted && colorTheme !== "blue") {
@@ -72,24 +72,37 @@ export function UserThemeWrapper({
   }, [mounted, colorTheme]);
 
   // Expose the theme setter globally so ColorThemeToggle can use it
+  // Important: We expose this immediately on mount to avoid race conditions
+  // where ColorThemeToggle tries to use it before session loads
   useEffect(() => {
-    if (session?.user?.id && mounted) {
+    if (mounted) {
       (window as any).__setUserColorTheme = (theme: ColorTheme) => {
-        const storageKey = `color-theme-${userRole}-${session.user.id}`;
+        // Use session-specific key if available, otherwise use role-only key
+        const storageKey = session?.user?.id
+          ? `color-theme-${userRole}-${session.user.id}`
+          : `color-theme-${userRole}-temp`;
         localStorage.setItem(storageKey, theme);
         setColorTheme(theme);
       };
       (window as any).__getUserColorTheme = () => colorTheme;
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (mounted) {
+        delete (window as any).__setUserColorTheme;
+        delete (window as any).__getUserColorTheme;
+      }
+    };
   }, [session?.user?.id, colorTheme, mounted, userRole]);
 
   // Debug logging
   useEffect(() => {
     if (mounted) {
-      console.log('[UserThemeWrapper]', { 
-        userRole, 
-        colorTheme, 
-        themeClass, 
+      console.log('[UserThemeWrapper]', {
+        userRole,
+        colorTheme,
+        themeClass,
         userId: session?.user?.id,
         fullClassName: `h-full relative ${themeClass}`
       });
@@ -106,9 +119,9 @@ export function UserThemeWrapper({
   }
 
   return (
-    <div 
-      className={`h-full relative ${themeClass}`.trim()} 
-      data-theme={colorTheme} 
+    <div
+      className={`h-full relative ${themeClass}`.trim()}
+      data-theme={colorTheme}
       data-role={userRole}
     >
       {children}

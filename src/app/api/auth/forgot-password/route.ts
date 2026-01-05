@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     // Validate email field
     if (!email) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Email is required" 
+        {
+          success: false,
+          error: "Email is required"
         },
         { status: 400 }
       )
@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid email format" 
+        {
+          success: false,
+          error: "Invalid email format"
         },
         { status: 400 }
       )
@@ -47,11 +47,11 @@ export async function POST(request: NextRequest) {
     if (!user) {
       // Log the attempt but return success
       console.log(`Password reset requested for non-existent email: ${email}`)
-      
+
       return NextResponse.json(
-        { 
-          success: true, 
-          message: "If an account with that email exists, a password reset link has been sent." 
+        {
+          success: true,
+          message: "If an account with that email exists, a password reset link has been sent."
         },
         { status: 200 }
       )
@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
     if (!user.active) {
       // Return generic message to prevent enumeration
       return NextResponse.json(
-        { 
-          success: true, 
-          message: "If an account with that email exists, a password reset link has been sent." 
+        {
+          success: true,
+          message: "If an account with that email exists, a password reset link has been sent."
         },
         { status: 200 }
       )
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Generate secure reset token (Requirement 11.2)
     const resetToken = crypto.randomBytes(32).toString("hex")
-    
+
     // Set token expiration to 1 hour (Requirement 11.7)
     const resetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Send reset email with token link (Requirement 11.7)
     const resetUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`
-    
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
           </div>
           <div class="content">
             <p>Hello ${user.firstName},</p>
-            <p>We received a request to reset your password for your School ERP account. Click the button below to reset your password:</p>
+            <p>We received a request to reset your password for your SikshaMitra account. Click the button below to reset your password:</p>
             
             <div style="text-align: center;">
               <a href="${resetUrl}" class="button">Reset Password</a>
@@ -175,10 +175,10 @@ export async function POST(request: NextRequest) {
               <li>Enable two-factor authentication</li>
             </ul>
             
-            <p>Best regards,<br>School ERP Team</p>
+            <p>Best regards,<br>SikshaMitra Team</p>
           </div>
           <div class="footer">
-            <p>This is an automated email from School ERP System.</p>
+            <p>This is an automated email from SikshaMitra.</p>
             <p>If you have any questions, please contact your system administrator.</p>
           </div>
         </body>
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     const emailResult = await sendEmail({
       to: email.toLowerCase(),
-      subject: "Password Reset Request - School ERP",
+      subject: "Password Reset Request - SikshaMitra",
       html: emailHtml
     })
 
@@ -211,9 +211,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { 
-        success: true, 
-        message: "If an account with that email exists, a password reset link has been sent." 
+      {
+        success: true,
+        message: "If an account with that email exists, a password reset link has been sent."
       },
       { status: 200 }
     )
@@ -221,9 +221,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Password reset request error:", error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "An error occurred while processing your request. Please try again." 
+      {
+        success: false,
+        error: "An error occurred while processing your request. Please try again."
       },
       { status: 500 }
     )

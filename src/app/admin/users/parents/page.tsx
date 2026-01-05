@@ -9,7 +9,7 @@ import { ParentsWithFilters } from "./parents-with-filters";
 import { getParentFilterOptions } from "@/lib/actions/parents-filters";
 
 export const metadata = {
-  title: "Parents - School ERP",
+  title: "Parents - SikshaMitra",
 };
 
 export default async function ParentsPage() {

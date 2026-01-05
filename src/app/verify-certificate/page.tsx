@@ -6,7 +6,7 @@ import { CertificateVerificationForm } from '@/components/certificate-verificati
 import { Shield, CheckCircle2, FileCheck } from 'lucide-react';
 
 export const metadata = {
-  title: 'Verify Certificate | School ERP',
+  title: 'Verify Certificate | SikshaMitra',
   description: 'Verify the authenticity of certificates issued by our institution',
 };
 
@@ -25,7 +25,7 @@ export default function VerifyCertificatePage() {
             Certificate Verification Portal
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Verify the authenticity of certificates issued by our institution. 
+            Verify the authenticity of certificates issued by our institution.
             Enter the verification code found on your certificate to check its validity.
           </p>
         </div>

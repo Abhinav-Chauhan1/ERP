@@ -17,7 +17,7 @@ export function SchoolLogo({ className = "", showName = true }: SchoolLogoProps)
         <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
           S
         </div>
-        {showName && <span className="font-semibold text-lg">School ERP</span>}
+        {showName && <span className="font-semibold text-lg">SikshaMitra</span>}
       </div>
     );
   }

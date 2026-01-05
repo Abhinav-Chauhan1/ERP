@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "All fields are required" 
+        {
+          success: false,
+          error: "All fields are required"
         },
         { status: 400 }
       )
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid email format" 
+        {
+          success: false,
+          error: "Invalid email format"
         },
         { status: 400 }
       )
@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     const passwordValidation = validatePasswordStrength(password)
     if (!passwordValidation.valid) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: "Password does not meet requirements",
           details: passwordValidation.errors
         },
@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "An account with this email already exists" 
+        {
+          success: false,
+          error: "An account with this email already exists"
         },
         { status: 409 }
       )
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Send verification email (Requirement 3.5)
     const verificationUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`
-    
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -149,11 +149,11 @@ export async function POST(request: NextRequest) {
         </head>
         <body>
           <div class="header">
-            <h1>Welcome to School ERP!</h1>
+            <h1>Welcome to SikshaMitra!</h1>
           </div>
           <div class="content">
             <p>Hello ${firstName},</p>
-            <p>Thank you for registering with School ERP. To complete your registration, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering with SikshaMitra. To complete your registration, please verify your email address by clicking the button below:</p>
             
             <div style="text-align: center;">
               <a href="${verificationUrl}" class="button">Verify Email Address</a>
@@ -164,12 +164,12 @@ export async function POST(request: NextRequest) {
             
             <p><strong>This link will expire in 24 hours.</strong></p>
             
-            <p>If you didn't create an account with School ERP, please ignore this email.</p>
+            <p>If you didn't create an account with SikshaMitra, please ignore this email.</p>
             
-            <p>Best regards,<br>School ERP Team</p>
+            <p>Best regards,<br>SikshaMitra Team</p>
           </div>
           <div class="footer">
-            <p>This is an automated email from School ERP System.</p>
+            <p>This is an automated email from SikshaMitra.</p>
           </div>
         </body>
       </html>
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     const emailResult = await sendEmail({
       to: [email.toLowerCase()],
-      subject: "Verify Your Email - School ERP",
+      subject: "Verify Your Email - SikshaMitra",
       html: emailHtml
     })
 
@@ -201,8 +201,8 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         message: "Registration successful. Please check your email to verify your account.",
         userId: user.id
       },
@@ -212,9 +212,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Registration error:", error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "An error occurred during registration. Please try again." 
+      {
+        success: false,
+        error: "An error occurred during registration. Please try again."
       },
       { status: 500 }
     )
