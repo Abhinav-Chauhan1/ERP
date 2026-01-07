@@ -137,8 +137,53 @@ export async function loginAction({
       success: true,
       redirectUrl
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login action error:", error);
+
+    // Handle Auth.js errors that are thrown
+    if (error?.type === "CallbackRouteError" || error?.name === "CallbackRouteError") {
+      const errorCode = error.cause?.err?.message || error.cause?.message;
+
+      switch (errorCode) {
+        case "2FA_REQUIRED":
+          return {
+            success: false,
+            requiresTwoFactor: true,
+            error: "Please enter your two-factor authentication code"
+          };
+        case "INVALID_2FA_CODE":
+          return {
+            success: false,
+            error: "Invalid two-factor authentication code. Please try again."
+          };
+        case "EMAIL_NOT_VERIFIED":
+          return {
+            success: false,
+            error: "Please verify your email before logging in. Check your inbox for the verification link."
+          };
+        case "ACCOUNT_INACTIVE":
+          return {
+            success: false,
+            error: "Your account has been deactivated. Please contact support for assistance."
+          };
+        case "CredentialsSignin":
+          return {
+            success: false,
+            error: "Invalid email or password. Please try again."
+          };
+      }
+    }
+
+    // Handle string errors (sometimes thrown directly)
+    if (typeof error?.message === "string") {
+      if (error.message.includes("CredentialsSignin")) {
+        return {
+          success: false,
+          error: "Invalid email or password. Please try again."
+        };
+      }
+    }
+
     return {
       success: false,
       error: "An unexpected error occurred. Please try again."
