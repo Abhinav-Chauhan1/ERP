@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   GraduationCap, Award, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import toast from "react-hot-toast";
 
 // Import schema validation and server actions
 import { gradeSchema, GradeFormValues, gradeUpdateSchema, GradeUpdateFormValues } from "@/lib/schemaValidation/gradesSchemaValidation";
-import { getGrades, createGrade, updateGrade, deleteGrade } from "@/lib/actions/gradesActions";
+import { getGrades, createGrade, updateGrade, deleteGrade, autoGenerateGrades } from "@/lib/actions/gradesActions";
 
 export default function GradesPage() {
   const [grades, setGrades] = useState<any[]>([]);
@@ -43,6 +43,7 @@ export default function GradesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [autoGenerating, setAutoGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<GradeFormValues>({
@@ -63,10 +64,10 @@ export default function GradesPage() {
   async function fetchGrades() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getGrades();
-      
+
       if (result.success) {
         setGrades(result.data || []);
       } else {
@@ -85,7 +86,7 @@ export default function GradesPage() {
   async function onSubmit(values: GradeFormValues) {
     try {
       let result;
-      
+
       if (selectedGradeId) {
         // Update existing grade
         const updateData: GradeUpdateFormValues = { ...values, id: selectedGradeId };
@@ -94,7 +95,7 @@ export default function GradesPage() {
         // Create new grade
         result = await createGrade(values);
       }
-      
+
       if (result.success) {
         toast.success(`Grade ${selectedGradeId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -134,7 +135,7 @@ export default function GradesPage() {
     if (selectedGradeId) {
       try {
         const result = await deleteGrade(selectedGradeId);
-        
+
         if (result.success) {
           toast.success("Grade deleted successfully");
           setDeleteDialogOpen(false);
@@ -151,15 +152,40 @@ export default function GradesPage() {
   }
 
   function handleAddNew() {
-    form.reset({ 
-      grade: "", 
-      minMarks: 0, 
-      maxMarks: 0, 
-      gpa: 0, 
-      description: "" 
+    form.reset({
+      grade: "",
+      minMarks: 0,
+      maxMarks: 0,
+      gpa: 0,
+      description: ""
     });
     setSelectedGradeId(null);
     setDialogOpen(true);
+  }
+
+  async function handleAutoGenerate() {
+    if (grades.length > 0) {
+      const confirm = window.confirm(
+        "This will add a standard grading scale. Existing grades will not be affected. Continue?"
+      );
+      if (!confirm) return;
+    }
+
+    setAutoGenerating(true);
+    try {
+      const result = await autoGenerateGrades();
+      if (result.success) {
+        toast.success(`Auto-generated ${result.count} grades successfully`);
+        fetchGrades();
+      } else {
+        toast.error(result.error || "Failed to auto-generate grades");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setAutoGenerating(false);
+    }
   }
 
   return (
@@ -174,45 +200,85 @@ export default function GradesPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Grading System</h1>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Grade
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{selectedGradeId ? "Edit Grade" : "Add New Grade"}</DialogTitle>
-              <DialogDescription>
-                {selectedGradeId 
-                  ? "Update the details of the grade scale" 
-                  : "Create a new grade scale for your institution"}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="grade"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Grade</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. A+" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleAutoGenerate}
+            disabled={autoGenerating}
+          >
+            {autoGenerating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Award className="mr-2 h-4 w-4" />
+            )}
+            Auto Generate
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Grade
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{selectedGradeId ? "Edit Grade" : "Add New Grade"}</DialogTitle>
+                <DialogDescription>
+                  {selectedGradeId
+                    ? "Update the details of the grade scale"
+                    : "Create a new grade scale for your institution"}
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="minMarks"
+                    name="grade"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Minimum Marks (%)</FormLabel>
+                        <FormLabel>Grade</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input placeholder="e.g. A+" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="minMarks"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Minimum Marks (%)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="maxMarks"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maximum Marks (%)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="gpa"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GPA Value</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.1" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -220,57 +286,31 @@ export default function GradesPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="maxMarks"
+                    name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Maximum Marks (%)</FormLabel>
+                        <FormLabel>Description (Optional)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Textarea
+                            placeholder="Describe what this grade represents"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="gpa"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GPA Value</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe what this grade represents" 
-                          {...field} 
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit">
-                    {selectedGradeId ? "Update" : "Create"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  <DialogFooter>
+                    <Button type="submit">
+                      {selectedGradeId ? "Update" : "Create"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {error && (
@@ -279,7 +319,8 @@ export default function GradesPage() {
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
+      )
+      }
 
       <Card>
         <CardHeader>
@@ -320,11 +361,11 @@ export default function GradesPage() {
                         <td className="py-3 px-4 align-middle font-medium">
                           <div className="flex items-center gap-2">
                             <div className={`p-1.5 rounded-full 
-                              ${grade.grade.startsWith('A') ? 'bg-green-100 text-green-700' : 
-                              grade.grade.startsWith('B') ? 'bg-primary/10 text-primary' : 
-                              grade.grade.startsWith('C') ? 'bg-yellow-100 text-yellow-700' : 
-                              grade.grade.startsWith('D') ? 'bg-orange-100 text-orange-700' : 
-                              'bg-red-100 text-red-700'}`}>
+                              ${grade.grade.startsWith('A') ? 'bg-green-100 text-green-700' :
+                                grade.grade.startsWith('B') ? 'bg-primary/10 text-primary' :
+                                  grade.grade.startsWith('C') ? 'bg-yellow-100 text-yellow-700' :
+                                    grade.grade.startsWith('D') ? 'bg-orange-100 text-orange-700' :
+                                      'bg-red-100 text-red-700'}`}>
                               <Award className="h-4 w-4" />
                             </div>
                             {grade.grade}

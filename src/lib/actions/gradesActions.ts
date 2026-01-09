@@ -12,13 +12,13 @@ export async function getGrades() {
         { maxMarks: 'desc' }
       ],
     });
-    
+
     return { success: true, data: grades };
   } catch (error) {
     console.error("Error fetching grades:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch grades" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch grades"
     };
   }
 }
@@ -29,17 +29,17 @@ export async function getGradeById(id: string) {
     const grade = await db.gradeScale.findUnique({
       where: { id },
     });
-    
+
     if (!grade) {
       return { success: false, error: "Grade not found" };
     }
-    
+
     return { success: true, data: grade };
   } catch (error) {
     console.error("Error fetching grade:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch grade" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch grade"
     };
   }
 }
@@ -55,7 +55,7 @@ export async function createGrade(data: GradeFormValues) {
 
     // Check if grade letter already exists
     const existingGrade = await db.gradeScale.findFirst({
-      where: { 
+      where: {
         grade: data.grade
       }
     });
@@ -73,14 +73,14 @@ export async function createGrade(data: GradeFormValues) {
         description: data.description,
       }
     });
-    
+
     revalidatePath("/admin/academic/grades");
     return { success: true, data: grade };
   } catch (error) {
     console.error("Error creating grade:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create grade" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create grade"
     };
   }
 }
@@ -96,7 +96,7 @@ export async function updateGrade(data: GradeUpdateFormValues) {
 
     // Check if grade letter already exists for another grade
     const existingGrade = await db.gradeScale.findFirst({
-      where: { 
+      where: {
         grade: data.grade,
         id: { not: data.id }
       }
@@ -116,14 +116,14 @@ export async function updateGrade(data: GradeUpdateFormValues) {
         description: data.description,
       }
     });
-    
+
     revalidatePath("/admin/academic/grades");
     return { success: true, data: grade };
   } catch (error) {
     console.error("Error updating grade:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update grade" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update grade"
     };
   }
 }
@@ -133,18 +133,18 @@ export async function deleteGrade(id: string) {
   try {
     // In a full application, we'd check if this grade is being used in exam results
     // before allowing deletion. For simplicity, we're skipping that check for now.
-    
+
     await db.gradeScale.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/academic/grades");
     return { success: true };
   } catch (error) {
     console.error("Error deleting grade:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete grade" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete grade"
     };
   }
 }
@@ -179,4 +179,57 @@ async function checkGradeOverlap(data: { minMarks: number, maxMarks: number }, e
   }
 
   return null;
+}
+
+// Standard grading scale based on CBSE 9-point grading system
+const STANDARD_GRADES = [
+  { grade: "A1", minMarks: 91, maxMarks: 100, gpa: 10.0, description: "Outstanding" },
+  { grade: "A2", minMarks: 81, maxMarks: 90, gpa: 9.0, description: "Excellent" },
+  { grade: "B1", minMarks: 71, maxMarks: 80, gpa: 8.0, description: "Very Good" },
+  { grade: "B2", minMarks: 61, maxMarks: 70, gpa: 7.0, description: "Good" },
+  { grade: "C1", minMarks: 51, maxMarks: 60, gpa: 6.0, description: "Above Average" },
+  { grade: "C2", minMarks: 41, maxMarks: 50, gpa: 5.0, description: "Average" },
+  { grade: "D", minMarks: 33, maxMarks: 40, gpa: 4.0, description: "Below Average" },
+  { grade: "E1", minMarks: 21, maxMarks: 32, gpa: 3.0, description: "Needs Improvement" },
+  { grade: "E2", minMarks: 0, maxMarks: 20, gpa: 2.0, description: "Fail" },
+];
+
+// Auto-generate standard grades
+export async function autoGenerateGrades() {
+  try {
+    // Get existing grades
+    const existingGrades = await db.gradeScale.findMany({
+      select: { grade: true }
+    });
+    const existingGradeNames = new Set(existingGrades.map(g => g.grade));
+
+    // Filter out grades that already exist
+    const gradesToCreate = STANDARD_GRADES.filter(g => !existingGradeNames.has(g.grade));
+
+    if (gradesToCreate.length === 0) {
+      return {
+        success: false,
+        error: "All standard grades already exist"
+      };
+    }
+
+    // Create the new grades
+    const result = await db.gradeScale.createMany({
+      data: gradesToCreate,
+      skipDuplicates: true,
+    });
+
+    revalidatePath("/admin/academic/grades");
+    return {
+      success: true,
+      count: result.count,
+      message: `Created ${result.count} grades`
+    };
+  } catch (error) {
+    console.error("Error auto-generating grades:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to auto-generate grades"
+    };
+  }
 }

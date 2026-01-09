@@ -1,1072 +1,840 @@
-# Enhanced Syllabus System - API Reference
-
-## Table of Contents
-1. [Overview](#overview)
-2. [Authentication](#authentication)
-3. [Module Management](#module-management)
-4. [Sub-Module Management](#sub-module-management)
-5. [Document Management](#document-management)
-6. [Progress Tracking](#progress-tracking)
-7. [Error Handling](#error-handling)
-8. [Rate Limiting](#rate-limiting)
+# Enhanced Syllabus Scope System - API Reference
 
 ## Overview
 
-The Enhanced Syllabus System provides a RESTful API for managing curriculum content. All endpoints are implemented as Next.js Server Actions for type safety and automatic validation.
+This document provides comprehensive API documentation for the Enhanced Syllabus Scope System server actions. All actions are implemented as Next.js Server Actions and return `ActionResult<T>` types.
 
-### Base URL
+## Table of Contents
 
-```
-/api/admin/syllabus
-```
+- [Core Actions](#core-actions)
+- [Helper Actions](#helper-actions)
+- [Type Definitions](#type-definitions)
+- [Error Handling](#error-handling)
+- [Usage Examples](#usage-examples)
 
-### Content Type
+---
 
-All requests and responses use JSON:
-```
-Content-Type: application/json
-```
+## Core Actions
 
-### Response Format
+### createSyllabus
 
-All responses follow this structure:
+Creates a new syllabus with enhanced scope support.
 
-**Success Response**:
+**Signature:**
 ```typescript
-{
-  success: true,
-  data: T // Type varies by endpoint
+async function createSyllabus(
+  data: SyllabusFormData,
+  file?: File | null,
+  userId: string
+): Promise<ActionResult<Syllabus>>
+```
+
+**Parameters:**
+- `data`: Syllabus form data including scope, curriculum, and metadata
+- `file`: Optional document file to upload
+- `userId`: ID of the user creating the syllabus
+
+**Returns:**
+- `ActionResult<Syllabus>`: Created syllabus or error
+
+**Behavior:**
+- Validates scope configuration (class-wide requires classId, section-specific requires both)
+- Checks unique constraint on (subjectId, academicYearId, classId, sectionId, curriculumType)
+- Sets default values: status=DRAFT, curriculumType=GENERAL, version="1.0"
+- Sets createdBy to userId
+- Uploads document to Cloudinary if provided
+
+**Example:**
+```typescript
+const result = await createSyllabus(
+  {
+    title: "Advanced Mathematics",
+    description: "Advanced curriculum for Grade 10",
+    subjectId: "math-101",
+    scopeType: "CLASS_WIDE",
+    classId: "grade-10",
+    academicYearId: "2024-25",
+    curriculumType: "ADVANCED",
+    boardType: "CBSE",
+    tags: ["algebra", "geometry"],
+    difficultyLevel: "ADVANCED",
+    estimatedHours: 120
+  },
+  documentFile,
+  currentUserId
+);
+```
+
+**Validates Requirements:** 1.1-1.6, 2.1-2.5, 4.1-4.5, 7.1, 13.1-13.3
+
+---
+
+### getSyllabusWithFallback
+
+Retrieves the most specific applicable syllabus using fallback logic.
+
+**Signature:**
+```typescript
+async function getSyllabusWithFallback(
+  scope: SyllabusScope
+): Promise<ActionResult<SyllabusWithRelations | null>>
+```
+
+**Parameters:**
+- `scope`: Scope criteria including subjectId, academicYearId, classId, sectionId, curriculumType
+
+**Returns:**
+- `ActionResult<SyllabusWithRelations | null>`: Most specific matching syllabus or null
+
+**Behavior:**
+- Searches in priority order: section-specific → class-wide → subject-wide
+- Filters by status=PUBLISHED and isActive=true
+- Filters by effective date range (current date within effectiveFrom/effectiveTo)
+- Includes all relations (subject, academicYear, class, section, units, modules)
+
+**Fallback Priority:**
+1. Exact match: subjectId + academicYearId + classId + sectionId
+2. Class-wide: subjectId + academicYearId + classId + (sectionId=null)
+3. Subject-wide: subjectId + (academicYearId=null) + (classId=null) + (sectionId=null)
+
+**Example:**
+```typescript
+const result = await getSyllabusWithFallback({
+  subjectId: "math-101",
+  academicYearId: "2024-25",
+  classId: "grade-10",
+  sectionId: "section-a",
+  curriculumType: "GENERAL"
+});
+```
+
+**Validates Requirements:** 10.1-10.5, 13.5, 13.6
+
+---
+
+### getSyllabusByScope
+
+Retrieves all syllabi matching the specified scope filters.
+
+**Signature:**
+```typescript
+async function getSyllabusByScope(
+  scope: Partial<SyllabusScope>,
+  filters?: {
+    status?: SyllabusStatus[];
+    isActive?: boolean;
+    tags?: string[];
+  }
+): Promise<ActionResult<SyllabusWithRelations[]>>
+```
+
+**Parameters:**
+- `scope`: Partial scope filters (any combination of subjectId, classId, sectionId, academicYearId, curriculumType, boardType)
+- `filters`: Optional additional filters for status, isActive, and tags
+
+**Returns:**
+- `ActionResult<SyllabusWithRelations[]>`: Array of matching syllabi
+
+**Behavior:**
+- Supports partial scope matching (e.g., only subjectId, or subjectId + classId)
+- Combines multiple filters with AND logic
+- Returns all matching syllabi (no fallback logic)
+- Includes all relations
+
+**Example:**
+```typescript
+const result = await getSyllabusByScope(
+  {
+    subjectId: "math-101",
+    classId: "grade-10"
+  },
+  {
+    status: ["PUBLISHED", "APPROVED"],
+    isActive: true,
+    tags: ["algebra"]
+  }
+);
+```
+
+**Validates Requirements:** 13.7, 18.1-18.10
+
+---
+
+### updateSyllabus
+
+Updates an existing syllabus.
+
+**Signature:**
+```typescript
+async function updateSyllabus(
+  id: string,
+  data: Partial<SyllabusFormData>,
+  file?: File | null,
+  userId: string
+): Promise<ActionResult<Syllabus>>
+```
+
+**Parameters:**
+- `id`: Syllabus ID to update
+- `data`: Partial syllabus data to update
+- `file`: Optional new document file
+- `userId`: ID of the user updating the syllabus
+
+**Returns:**
+- `ActionResult<Syllabus>`: Updated syllabus or error
+
+**Behavior:**
+- Accepts partial updates (only specified fields are updated)
+- Sets updatedBy to userId
+- Uploads new document if provided
+- Validates scope configuration if scope fields are updated
+
+**Example:**
+```typescript
+const result = await updateSyllabus(
+  "syllabus-123",
+  {
+    title: "Updated Title",
+    estimatedHours: 150,
+    tags: ["algebra", "geometry", "trigonometry"]
+  },
+  null,
+  currentUserId
+);
+```
+
+**Validates Requirements:** 7.2, 13.1
+
+---
+
+### updateSyllabusStatus
+
+Updates the status of a syllabus.
+
+**Signature:**
+```typescript
+async function updateSyllabusStatus(
+  id: string,
+  status: SyllabusStatus,
+  userId: string
+): Promise<ActionResult<Syllabus>>
+```
+
+**Parameters:**
+- `id`: Syllabus ID
+- `status`: New status (DRAFT, PENDING_REVIEW, APPROVED, PUBLISHED, ARCHIVED, DEPRECATED)
+- `userId`: ID of the user changing the status
+
+**Returns:**
+- `ActionResult<Syllabus>`: Updated syllabus or error
+
+**Behavior:**
+- Sets approvedBy and approvedAt when status changes to APPROVED
+- Sets updatedBy to userId
+- Validates status transitions (implementation-specific)
+
+**Example:**
+```typescript
+const result = await updateSyllabusStatus(
+  "syllabus-123",
+  "PUBLISHED",
+  currentUserId
+);
+```
+
+**Validates Requirements:** 7.3, 13.9
+
+---
+
+### cloneSyllabus
+
+Creates a copy of an existing syllabus with optional scope modifications.
+
+**Signature:**
+```typescript
+async function cloneSyllabus(
+  sourceId: string,
+  newScope: Partial<SyllabusScope>,
+  userId: string
+): Promise<ActionResult<Syllabus>>
+```
+
+**Parameters:**
+- `sourceId`: ID of the syllabus to clone
+- `newScope`: New scope parameters (classId, sectionId, academicYearId, etc.)
+- `userId`: ID of the user cloning the syllabus
+
+**Returns:**
+- `ActionResult<Syllabus>`: Cloned syllabus or error
+
+**Behavior:**
+- Copies all fields except id, createdAt, updatedAt
+- Applies new scope parameters
+- Sets status to DRAFT
+- Sets createdBy to userId
+- Clones related units, modules, and documents
+- Validates unique constraint with new scope
+
+**Example:**
+```typescript
+const result = await cloneSyllabus(
+  "syllabus-123",
+  {
+    classId: "grade-11",
+    sectionId: "section-b",
+    academicYearId: "2025-26"
+  },
+  currentUserId
+);
+```
+
+**Validates Requirements:** 19.1-19.5, 13.8
+
+---
+
+### getSyllabusVersionHistory
+
+Retrieves the version history of a syllabus.
+
+**Signature:**
+```typescript
+async function getSyllabusVersionHistory(
+  syllabusId: string
+): Promise<ActionResult<Syllabus[]>>
+```
+
+**Parameters:**
+- `syllabusId`: ID of the syllabus
+
+**Returns:**
+- `ActionResult<Syllabus[]>`: Array of syllabi in version chain
+
+**Behavior:**
+- Queries syllabus and all parent/child versions recursively
+- Returns version chain ordered by creation date
+- Includes all version relationships
+
+**Example:**
+```typescript
+const result = await getSyllabusVersionHistory("syllabus-123");
+// Returns: [v1.0, v1.1, v2.0, ...]
+```
+
+**Validates Requirements:** 8.4, 13.10
+
+---
+
+### deleteSyllabus
+
+Deletes a syllabus (soft delete by setting isActive=false).
+
+**Signature:**
+```typescript
+async function deleteSyllabus(
+  id: string
+): Promise<ActionResult<void>>
+```
+
+**Parameters:**
+- `id`: Syllabus ID to delete
+
+**Returns:**
+- `ActionResult<void>`: Success or error
+
+**Behavior:**
+- Sets isActive to false (soft delete)
+- Preserves data for historical reference
+- Does not delete related units/modules
+
+**Example:**
+```typescript
+const result = await deleteSyllabus("syllabus-123");
+```
+
+---
+
+## Helper Actions
+
+### getAcademicYearsForDropdown
+
+Retrieves academic years for dropdown selection.
+
+**Signature:**
+```typescript
+async function getAcademicYearsForDropdown(): Promise<ActionResult<AcademicYear[]>>
+```
+
+**Returns:**
+- `ActionResult<AcademicYear[]>`: Array of academic years ordered by startDate desc
+
+**Example:**
+```typescript
+const result = await getAcademicYearsForDropdown();
+```
+
+**Validates Requirements:** 14.6
+
+---
+
+### getClassesForDropdown
+
+Retrieves classes for dropdown selection.
+
+**Signature:**
+```typescript
+async function getClassesForDropdown(
+  academicYearId?: string
+): Promise<ActionResult<Class[]>>
+```
+
+**Parameters:**
+- `academicYearId`: Optional filter by academic year
+
+**Returns:**
+- `ActionResult<Class[]>`: Array of classes ordered by name
+
+**Example:**
+```typescript
+const result = await getClassesForDropdown("2024-25");
+```
+
+**Validates Requirements:** 14.2
+
+---
+
+### getSectionsForDropdown
+
+Retrieves sections for a specific class.
+
+**Signature:**
+```typescript
+async function getSectionsForDropdown(
+  classId: string
+): Promise<ActionResult<ClassSection[]>>
+```
+
+**Parameters:**
+- `classId`: Class ID to get sections for
+
+**Returns:**
+- `ActionResult<ClassSection[]>`: Array of sections ordered by name
+
+**Example:**
+```typescript
+const result = await getSectionsForDropdown("grade-10");
+```
+
+**Validates Requirements:** 14.3
+
+---
+
+### validateSyllabusScope
+
+Validates a syllabus scope configuration.
+
+**Signature:**
+```typescript
+async function validateSyllabusScope(
+  scope: SyllabusScope
+): Promise<{ isValid: boolean; error?: string }>
+```
+
+**Parameters:**
+- `scope`: Scope configuration to validate
+
+**Returns:**
+- Validation result with error message if invalid
+
+**Behavior:**
+- Validates foreign key references exist
+- Validates scope configuration (class-wide requires classId, etc.)
+- Checks for duplicate scope combinations
+
+**Example:**
+```typescript
+const validation = await validateSyllabusScope({
+  subjectId: "math-101",
+  classId: "grade-10",
+  sectionId: null,
+  academicYearId: "2024-25",
+  curriculumType: "GENERAL"
+});
+```
+
+**Validates Requirements:** 15.5
+
+---
+
+## Type Definitions
+
+### SyllabusFormData
+
+```typescript
+interface SyllabusFormData {
+  // Basic info
+  title: string;
+  description?: string;
+  subjectId: string;
+  
+  // Scope selection
+  scopeType: 'SUBJECT_WIDE' | 'CLASS_WIDE' | 'SECTION_SPECIFIC';
+  academicYearId?: string;
+  classId?: string;
+  sectionId?: string;
+  
+  // Curriculum details
+  curriculumType: CurriculumType;
+  boardType?: string;
+  
+  // Metadata
+  version: string;
+  difficultyLevel: DifficultyLevel;
+  estimatedHours?: number;
+  tags: string[];
+  prerequisites?: string;
+  
+  // Scheduling
+  effectiveFrom?: Date;
+  effectiveTo?: Date;
+  
+  // Document
+  document?: string;
 }
 ```
 
-**Error Response**:
+### SyllabusScope
+
 ```typescript
-{
-  success: false,
-  error: string,
-  code?: string,
-  details?: Record<string, any>
+interface SyllabusScope {
+  subjectId: string;
+  academicYearId?: string;
+  classId?: string;
+  sectionId?: string;
+  curriculumType?: CurriculumType;
+  boardType?: string;
 }
 ```
 
-## Authentication
-
-All API endpoints require authentication. Include the session token in your requests.
-
-### Authorization Levels
-
-| Role | Permissions |
-|------|-------------|
-| Admin | Full CRUD on all entities |
-| Teacher | Read all, Write progress tracking only |
-| Student | Read-only access |
-
-### Example Authentication
+### SyllabusWithRelations
 
 ```typescript
-import { auth } from '@clerk/nextjs';
-
-const { userId } = auth();
-if (!userId) {
-  return { success: false, error: 'Unauthorized' };
-}
-```
-
-## Module Management
-
-### Create Module
-
-Create a new module (chapter) within a syllabus.
-
-**Endpoint**: `createModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  title: string;           // Required, max 255 chars
-  description?: string;    // Optional
-  chapterNumber: number;   // Required, unique within syllabus
-  order: number;           // Required, display order
-  syllabusId: string;      // Required, valid syllabus ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
+interface SyllabusWithRelations {
+  id: string;
+  title: string;
+  description?: string;
+  subject: {
     id: string;
-    title: string;
-    description: string | null;
-    chapterNumber: number;
-    order: number;
-    syllabusId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await createModule({
-  title: "Introduction to Algebra",
-  description: "Basic algebraic concepts and operations",
-  chapterNumber: 1,
-  order: 1,
-  syllabusId: "clx123abc"
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `409`: Chapter number already exists
-- `404`: Syllabus not found
-- `403`: Insufficient permissions
-
----
-
-### Update Module
-
-Update an existing module.
-
-**Endpoint**: `updateModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string;              // Required, module ID
-  title: string;           // Required
-  description?: string;    // Optional
-  chapterNumber: number;   // Required
-  order: number;           // Required
-  syllabusId: string;      // Required
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: Module // Updated module object
-}
-```
-
-**Example**:
-```typescript
-const result = await updateModule({
-  id: "clx456def",
-  title: "Advanced Algebra",
-  description: "Complex algebraic concepts",
-  chapterNumber: 1,
-  order: 1,
-  syllabusId: "clx123abc"
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Module not found
-- `409`: Chapter number conflict
-- `403`: Insufficient permissions
-
----
-
-### Delete Module
-
-Delete a module and all associated sub-modules and documents.
-
-**Endpoint**: `deleteModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string; // Required, module ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    message: "Module deleted successfully"
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await deleteModule({ id: "clx456def" });
-```
-
-**Errors**:
-- `404`: Module not found
-- `403`: Insufficient permissions
-- `500`: Cascade deletion failed
-
----
-
-### Get Modules by Syllabus
-
-Retrieve all modules for a syllabus, ordered by chapter number.
-
-**Endpoint**: `getModulesBySyllabus`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  syllabusId: string; // Required
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: Module[] // Array of modules
-}
-```
-
-**Example**:
-```typescript
-const result = await getModulesBySyllabus({ 
-  syllabusId: "clx123abc" 
-});
-```
-
-**Errors**:
-- `404`: Syllabus not found
-- `403`: Insufficient permissions
-
----
-
-### Reorder Modules
-
-Update the order of multiple modules.
-
-**Endpoint**: `reorderModules`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  syllabusId: string;
-  moduleOrders: Array<{
+    name: string;
+    code: string;
+  };
+  academicYear?: {
     id: string;
-    order: number;
-    chapterNumber: number;
-  }>;
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    message: "Modules reordered successfully",
-    updated: number // Count of updated modules
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await reorderModules({
-  syllabusId: "clx123abc",
-  moduleOrders: [
-    { id: "mod1", order: 2, chapterNumber: 2 },
-    { id: "mod2", order: 1, chapterNumber: 1 }
-  ]
-});
-```
-
-**Errors**:
-- `400`: Invalid order data
-- `404`: Module not found
-- `403`: Insufficient permissions
-
-## Sub-Module Management
-
-### Create Sub-Module
-
-Create a new sub-module (topic) within a module.
-
-**Endpoint**: `createSubModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  title: string;        // Required, max 255 chars
-  description?: string; // Optional
-  order: number;        // Required, display order
-  moduleId: string;     // Required, parent module ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
+    name: string;
+  };
+  class?: {
     id: string;
-    title: string;
-    description: string | null;
-    order: number;
-    moduleId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await createSubModule({
-  title: "Linear Equations",
-  description: "Solving equations with one variable",
-  order: 1,
-  moduleId: "clx456def"
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Module not found
-- `403`: Insufficient permissions
-
----
-
-### Update Sub-Module
-
-Update an existing sub-module.
-
-**Endpoint**: `updateSubModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string;           // Required, sub-module ID
-  title: string;        // Required
-  description?: string; // Optional
-  order: number;        // Required
-  moduleId: string;     // Required
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: SubModule // Updated sub-module object
-}
-```
-
-**Example**:
-```typescript
-const result = await updateSubModule({
-  id: "clx789ghi",
-  title: "Quadratic Equations",
-  description: "Solving second-degree equations",
-  order: 2,
-  moduleId: "clx456def"
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Sub-module not found
-- `403`: Insufficient permissions
-
----
-
-### Delete Sub-Module
-
-Delete a sub-module and all associated documents.
-
-**Endpoint**: `deleteSubModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string; // Required, sub-module ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    message: "Sub-module deleted successfully"
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await deleteSubModule({ id: "clx789ghi" });
-```
-
-**Errors**:
-- `404`: Sub-module not found
-- `403`: Insufficient permissions
-- `500`: Cascade deletion failed
-
----
-
-### Move Sub-Module
-
-Move a sub-module to a different parent module.
-
-**Endpoint**: `moveSubModule`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  subModuleId: string;    // Required
-  targetModuleId: string; // Required, new parent
-  order: number;          // Required, position in new parent
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: SubModule // Updated sub-module
-}
-```
-
-**Example**:
-```typescript
-const result = await moveSubModule({
-  subModuleId: "clx789ghi",
-  targetModuleId: "clx999jkl",
-  order: 3
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Sub-module or target module not found
-- `403`: Insufficient permissions
-
----
-
-### Reorder Sub-Modules
-
-Update the order of sub-modules within a module.
-
-**Endpoint**: `reorderSubModules`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  moduleId: string;
-  subModuleOrders: Array<{
+    name: string;
+  };
+  section?: {
     id: string;
-    order: number;
-  }>;
+    name: string;
+  };
+  curriculumType: CurriculumType;
+  boardType?: string;
+  status: SyllabusStatus;
+  isActive: boolean;
+  version: string;
+  tags: string[];
+  difficultyLevel: DifficultyLevel;
+  estimatedHours?: number;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  units: SyllabusUnit[];
+  modules: Module[];
 }
 ```
 
-**Response**:
+### Enums
+
 ```typescript
-{
-  success: true,
-  data: {
-    message: "Sub-modules reordered successfully",
-    updated: number
-  }
+enum SyllabusStatus {
+  DRAFT = "DRAFT",
+  PENDING_REVIEW = "PENDING_REVIEW",
+  APPROVED = "APPROVED",
+  PUBLISHED = "PUBLISHED",
+  ARCHIVED = "ARCHIVED",
+  DEPRECATED = "DEPRECATED"
+}
+
+enum CurriculumType {
+  GENERAL = "GENERAL",
+  ADVANCED = "ADVANCED",
+  REMEDIAL = "REMEDIAL",
+  INTEGRATED = "INTEGRATED",
+  VOCATIONAL = "VOCATIONAL",
+  SPECIAL_NEEDS = "SPECIAL_NEEDS"
+}
+
+enum DifficultyLevel {
+  BEGINNER = "BEGINNER",
+  INTERMEDIATE = "INTERMEDIATE",
+  ADVANCED = "ADVANCED",
+  EXPERT = "EXPERT"
 }
 ```
 
-**Example**:
+### ActionResult
+
 ```typescript
-const result = await reorderSubModules({
-  moduleId: "clx456def",
-  subModuleOrders: [
-    { id: "sub1", order: 2 },
-    { id: "sub2", order: 1 }
-  ]
-});
+type ActionResult<T> = 
+  | { success: true; data: T }
+  | { success: false; error: { code: string; message: string; field?: string; details?: any } }
 ```
-
-**Errors**:
-- `400`: Invalid order data
-- `404`: Sub-module not found
-- `403`: Insufficient permissions
-
-## Document Management
-
-### Upload Document
-
-Upload a single document to a module or sub-module.
-
-**Endpoint**: `uploadDocument`
-
-**Method**: Server Action
-
-**Request Body** (FormData):
-```typescript
-{
-  file: File;              // Required, max 50MB
-  title?: string;          // Optional, defaults to filename
-  description?: string;    // Optional
-  moduleId?: string;       // Required if subModuleId not provided
-  subModuleId?: string;    // Required if moduleId not provided
-  uploadedBy: string;      // Required, user ID
-}
-```
-
-**Supported File Types**:
-- Documents: `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`
-- Images: `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
-- Videos: `.mp4`, `.webm`, `.mov`
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    id: string;
-    title: string;
-    description: string | null;
-    filename: string;
-    fileUrl: string;
-    fileType: string;
-    fileSize: number;
-    order: number;
-    moduleId: string | null;
-    subModuleId: string | null;
-    uploadedBy: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-}
-```
-
-**Example**:
-```typescript
-const formData = new FormData();
-formData.append('file', file);
-formData.append('title', 'Chapter 1 Notes');
-formData.append('description', 'Introduction notes');
-formData.append('moduleId', 'clx456def');
-formData.append('uploadedBy', userId);
-
-const result = await uploadDocument(formData);
-```
-
-**Errors**:
-- `400`: Invalid file type or size
-- `404`: Module or sub-module not found
-- `403`: Insufficient permissions
-- `500`: Upload failed
 
 ---
-
-### Bulk Upload Documents
-
-Upload multiple documents at once.
-
-**Endpoint**: `bulkUploadDocuments`
-
-**Method**: Server Action
-
-**Request Body** (FormData):
-```typescript
-{
-  files: File[];           // Required, array of files
-  moduleId?: string;       // Required if subModuleId not provided
-  subModuleId?: string;    // Required if moduleId not provided
-  uploadedBy: string;      // Required, user ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    successful: Document[];  // Successfully uploaded documents
-    failed: Array<{
-      filename: string;
-      error: string;
-    }>;
-    summary: {
-      total: number;
-      successful: number;
-      failed: number;
-    }
-  }
-}
-```
-
-**Example**:
-```typescript
-const formData = new FormData();
-files.forEach(file => formData.append('files', file));
-formData.append('moduleId', 'clx456def');
-formData.append('uploadedBy', userId);
-
-const result = await bulkUploadDocuments(formData);
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Module or sub-module not found
-- `403`: Insufficient permissions
-
----
-
-### Update Document Metadata
-
-Update a document's title and description without changing the file.
-
-**Endpoint**: `updateDocumentMetadata`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string;           // Required, document ID
-  title: string;        // Required
-  description?: string; // Optional
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: Document // Updated document object
-}
-```
-
-**Example**:
-```typescript
-const result = await updateDocumentMetadata({
-  id: "clxabc123",
-  title: "Updated Chapter Notes",
-  description: "Revised introduction notes"
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Document not found
-- `403`: Insufficient permissions
-
----
-
-### Delete Document
-
-Delete a document from both database and cloud storage.
-
-**Endpoint**: `deleteDocument`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  id: string; // Required, document ID
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    message: "Document deleted successfully"
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await deleteDocument({ id: "clxabc123" });
-```
-
-**Errors**:
-- `404`: Document not found
-- `403`: Insufficient permissions
-- `500`: Storage deletion failed
-
----
-
-### Reorder Documents
-
-Update the display order of documents.
-
-**Endpoint**: `reorderDocuments`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  parentId: string;              // Module or sub-module ID
-  parentType: 'module' | 'subModule';
-  documentOrders: Array<{
-    id: string;
-    order: number;
-  }>;
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    message: "Documents reordered successfully",
-    updated: number
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await reorderDocuments({
-  parentId: "clx456def",
-  parentType: "module",
-  documentOrders: [
-    { id: "doc1", order: 2 },
-    { id: "doc2", order: 1 }
-  ]
-});
-```
-
-**Errors**:
-- `400`: Invalid order data
-- `404`: Document not found
-- `403`: Insufficient permissions
-
-## Progress Tracking
-
-### Mark Sub-Module Complete
-
-Mark a sub-module as completed or incomplete.
-
-**Endpoint**: `markSubModuleComplete`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  subModuleId: string; // Required
-  teacherId: string;   // Required
-  completed: boolean;  // Required, true or false
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    id: string;
-    subModuleId: string;
-    teacherId: string;
-    completed: boolean;
-    completedAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await markSubModuleComplete({
-  subModuleId: "clx789ghi",
-  teacherId: userId,
-  completed: true
-});
-```
-
-**Errors**:
-- `400`: Invalid input data
-- `404`: Sub-module not found
-- `403`: Insufficient permissions
-
----
-
-### Get Module Progress
-
-Get completion progress for a specific module.
-
-**Endpoint**: `getModuleProgress`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  moduleId: string;  // Required
-  teacherId: string; // Required
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    moduleId: string;
-    totalSubModules: number;
-    completedSubModules: number;
-    completionPercentage: number; // 0-100
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await getModuleProgress({
-  moduleId: "clx456def",
-  teacherId: userId
-});
-```
-
-**Errors**:
-- `404`: Module not found
-- `403`: Insufficient permissions
-
----
-
-### Get Syllabus Progress
-
-Get overall completion progress for a syllabus.
-
-**Endpoint**: `getSyllabusProgress`
-
-**Method**: Server Action
-
-**Request Body**:
-```typescript
-{
-  syllabusId: string; // Required
-  teacherId: string;  // Required
-}
-```
-
-**Response**:
-```typescript
-{
-  success: true,
-  data: {
-    syllabusId: string;
-    totalModules: number;
-    completedModules: number;
-    completionPercentage: number; // 0-100
-    modules: Array<{
-      moduleId: string;
-      totalSubModules: number;
-      completedSubModules: number;
-      completionPercentage: number;
-    }>;
-  }
-}
-```
-
-**Example**:
-```typescript
-const result = await getSyllabusProgress({
-  syllabusId: "clx123abc",
-  teacherId: userId
-});
-```
-
-**Errors**:
-- `404`: Syllabus not found
-- `403`: Insufficient permissions
 
 ## Error Handling
 
 ### Error Codes
 
-| Code | Description | HTTP Status |
-|------|-------------|-------------|
-| `VALIDATION_ERROR` | Invalid input data | 400 |
-| `NOT_FOUND` | Resource not found | 404 |
-| `UNAUTHORIZED` | Not authenticated | 401 |
-| `FORBIDDEN` | Insufficient permissions | 403 |
-| `CONFLICT` | Duplicate or constraint violation | 409 |
-| `FILE_TOO_LARGE` | File exceeds size limit | 413 |
-| `UNSUPPORTED_FILE_TYPE` | Invalid file type | 415 |
-| `STORAGE_ERROR` | Cloud storage operation failed | 500 |
-| `DATABASE_ERROR` | Database operation failed | 500 |
-| `INTERNAL_ERROR` | Unexpected server error | 500 |
-
-### Error Response Examples
-
-**Validation Error**:
-```json
-{
-  "success": false,
-  "error": "Invalid input data",
-  "code": "VALIDATION_ERROR",
-  "details": {
-    "title": "Title is required",
-    "chapterNumber": "Must be a positive integer"
-  }
+```typescript
+enum SyllabusErrorCode {
+  DUPLICATE_SCOPE = 'DUPLICATE_SCOPE',
+  INVALID_SCOPE = 'INVALID_SCOPE',
+  INVALID_DATE_RANGE = 'INVALID_DATE_RANGE',
+  INVALID_REFERENCE = 'INVALID_REFERENCE',
+  MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  NOT_FOUND = 'NOT_FOUND'
 }
 ```
 
-**Not Found Error**:
-```json
-{
-  "success": false,
-  "error": "Module with ID clx456def not found",
-  "code": "NOT_FOUND"
-}
-```
+### Error Scenarios
 
-**Conflict Error**:
-```json
-{
-  "success": false,
-  "error": "Chapter number 3 already exists in this syllabus",
-  "code": "CONFLICT"
-}
-```
+#### DUPLICATE_SCOPE
+**Cause:** Attempting to create a syllabus with a scope combination that already exists
 
-**File Error**:
-```json
-{
-  "success": false,
-  "error": "File type .exe is not supported",
-  "code": "UNSUPPORTED_FILE_TYPE",
-  "details": {
-    "supportedTypes": [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".jpg", ".png", ".mp4"]
-  }
-}
-```
+**Message:** "A syllabus already exists for this combination of subject, academic year, class, section, and curriculum type"
 
-## Rate Limiting
+**Resolution:** Modify the scope parameters or update the existing syllabus
 
-API endpoints are rate-limited to prevent abuse:
+#### INVALID_SCOPE
+**Cause:** Invalid scope configuration (e.g., section-specific without class)
 
-| Endpoint Type | Limit | Window |
-|---------------|-------|--------|
-| Read operations | 100 requests | 1 minute |
-| Write operations | 30 requests | 1 minute |
-| File uploads | 10 requests | 1 minute |
-| Bulk operations | 5 requests | 1 minute |
+**Message:** "Section-specific syllabus requires both class and section selection"
 
-**Rate Limit Headers**:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1640000000
-```
+**Resolution:** Provide all required scope fields for the selected scope type
 
-**Rate Limit Exceeded Response**:
-```json
-{
-  "success": false,
-  "error": "Rate limit exceeded. Please try again later.",
-  "code": "RATE_LIMIT_EXCEEDED",
-  "details": {
-    "retryAfter": 60
-  }
-}
-```
+#### INVALID_DATE_RANGE
+**Cause:** effectiveTo is before or equal to effectiveFrom
 
-## Best Practices
+**Message:** "Effective end date must be after start date"
 
-1. **Use transactions**: For operations affecting multiple entities
-2. **Validate input**: Always validate on both client and server
-3. **Handle errors gracefully**: Provide meaningful error messages
-4. **Implement retry logic**: For transient failures
-5. **Cache responses**: Use React Query or similar for client-side caching
-6. **Optimize queries**: Use eager loading for related data
-7. **Monitor performance**: Track API response times
-8. **Respect rate limits**: Implement exponential backoff
+**Resolution:** Correct the date range
 
-## Examples
+#### INVALID_REFERENCE
+**Cause:** Foreign key reference does not exist (invalid subjectId, classId, etc.)
 
-### Complete Workflow Example
+**Message:** "The selected {entity} does not exist"
+
+**Resolution:** Verify the referenced entity exists and use a valid ID
+
+#### MISSING_REQUIRED_FIELD
+**Cause:** Required field is missing from the request
+
+**Message:** "{Field name} is required"
+
+**Resolution:** Provide the required field
+
+---
+
+## Usage Examples
+
+### Example 1: Create Subject-Wide Syllabus
 
 ```typescript
-// 1. Create a module
-const module = await createModule({
-  title: "Introduction to Calculus",
-  description: "Basic calculus concepts",
-  chapterNumber: 1,
-  order: 1,
-  syllabusId: "syllabus-id"
+// Create a general syllabus applicable to all classes
+const result = await createSyllabus(
+  {
+    title: "General Mathematics Syllabus",
+    description: "Standard mathematics curriculum",
+    subjectId: "math-101",
+    scopeType: "SUBJECT_WIDE",
+    // No classId or sectionId - applies to all
+    curriculumType: "GENERAL",
+    version: "1.0",
+    difficultyLevel: "INTERMEDIATE",
+    tags: ["mathematics", "general"],
+    estimatedHours: 100
+  },
+  null,
+  currentUserId
+);
+```
+
+### Example 2: Create Class-Wide Syllabus
+
+```typescript
+// Create a syllabus for all sections of Grade 10
+const result = await createSyllabus(
+  {
+    title: "Grade 10 Mathematics",
+    description: "Mathematics curriculum for Grade 10",
+    subjectId: "math-101",
+    scopeType: "CLASS_WIDE",
+    classId: "grade-10",
+    academicYearId: "2024-25",
+    curriculumType: "GENERAL",
+    boardType: "CBSE",
+    version: "1.0",
+    difficultyLevel: "INTERMEDIATE",
+    tags: ["grade-10", "cbse"],
+    estimatedHours: 120
+  },
+  null,
+  currentUserId
+);
+```
+
+### Example 3: Create Section-Specific Syllabus
+
+```typescript
+// Create an advanced syllabus for a specific section
+const result = await createSyllabus(
+  {
+    title: "Advanced Mathematics - Section A",
+    description: "Advanced curriculum for high-performing students",
+    subjectId: "math-101",
+    scopeType: "SECTION_SPECIFIC",
+    classId: "grade-10",
+    sectionId: "section-a",
+    academicYearId: "2024-25",
+    curriculumType: "ADVANCED",
+    boardType: "CBSE",
+    version: "1.0",
+    difficultyLevel: "ADVANCED",
+    tags: ["grade-10", "advanced", "section-a"],
+    estimatedHours: 150,
+    prerequisites: "Strong foundation in Grade 9 mathematics"
+  },
+  null,
+  currentUserId
+);
+```
+
+### Example 4: Query with Fallback
+
+```typescript
+// Student in Grade 10, Section A requests mathematics syllabus
+const result = await getSyllabusWithFallback({
+  subjectId: "math-101",
+  academicYearId: "2024-25",
+  classId: "grade-10",
+  sectionId: "section-a",
+  curriculumType: "GENERAL"
 });
 
-// 2. Create sub-modules
-const subModule1 = await createSubModule({
-  title: "Limits",
-  description: "Understanding limits",
-  order: 1,
-  moduleId: module.data.id
-});
+// System will search in order:
+// 1. Section-specific: Math + 2024-25 + Grade 10 + Section A
+// 2. Class-wide: Math + 2024-25 + Grade 10 + (no section)
+// 3. Subject-wide: Math + (no year) + (no class) + (no section)
+```
 
-const subModule2 = await createSubModule({
-  title: "Derivatives",
-  description: "Introduction to derivatives",
-  order: 2,
-  moduleId: module.data.id
-});
+### Example 5: Filter Syllabi
 
-// 3. Upload documents
-const formData = new FormData();
-formData.append('file', pdfFile);
-formData.append('title', 'Limits Notes');
-formData.append('subModuleId', subModule1.data.id);
-formData.append('uploadedBy', userId);
+```typescript
+// Get all published mathematics syllabi for Grade 10
+const result = await getSyllabusByScope(
+  {
+    subjectId: "math-101",
+    classId: "grade-10"
+  },
+  {
+    status: ["PUBLISHED"],
+    isActive: true
+  }
+);
+```
 
-const document = await uploadDocument(formData);
+### Example 6: Clone Syllabus for New Academic Year
 
-// 4. Track progress
-await markSubModuleComplete({
-  subModuleId: subModule1.data.id,
-  teacherId: userId,
-  completed: true
-});
+```typescript
+// Clone current year's syllabus for next year
+const result = await cloneSyllabus(
+  "syllabus-123",
+  {
+    academicYearId: "2025-26"
+  },
+  currentUserId
+);
+```
 
-// 5. Get progress
-const progress = await getSyllabusProgress({
-  syllabusId: "syllabus-id",
-  teacherId: userId
-});
+### Example 7: Status Workflow
 
-console.log(`Syllabus completion: ${progress.data.completionPercentage}%`);
+```typescript
+// Draft → Pending Review
+await updateSyllabusStatus("syllabus-123", "PENDING_REVIEW", adminUserId);
+
+// Pending Review → Approved
+await updateSyllabusStatus("syllabus-123", "APPROVED", adminUserId);
+
+// Approved → Published
+await updateSyllabusStatus("syllabus-123", "PUBLISHED", adminUserId);
 ```
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 1.0
+## Best Practices
+
+### 1. Scope Selection
+
+- Use **subject-wide** for general curricula applicable to all classes
+- Use **class-wide** when curriculum differs by grade level
+- Use **section-specific** for specialized sections (advanced, remedial, etc.)
+
+### 2. Curriculum Types
+
+- **GENERAL**: Standard curriculum for most students
+- **ADVANCED**: For high-performing students
+- **REMEDIAL**: For students needing additional support
+- **INTEGRATED**: Cross-subject integrated curriculum
+- **VOCATIONAL**: Career-focused curriculum
+- **SPECIAL_NEEDS**: Adapted curriculum for special needs students
+
+### 3. Versioning
+
+- Use semantic versioning (1.0, 1.1, 2.0)
+- Link new versions to parent using parentSyllabusId
+- Mark old versions as DEPRECATED when publishing new version
+
+### 4. Status Management
+
+- Keep syllabi in DRAFT while editing
+- Use PENDING_REVIEW for approval workflows
+- Only PUBLISHED syllabi are visible to students/teachers
+- Use ARCHIVED for historical reference
+
+### 5. Effective Dates
+
+- Set effectiveFrom for scheduled activation
+- Set effectiveTo for automatic expiration
+- Leave both null for permanent syllabi
+
+---
+
+## Migration Notes
+
+For existing syllabi:
+- Null scope fields are treated as subject-wide
+- Default status is PUBLISHED (for backward compatibility)
+- Default curriculumType is GENERAL
+- All existing relationships are preserved
+
+---
+
+## Related Documentation
+
+- [User Guide](./ENHANCED_SYLLABUS_USER_GUIDE.md)
+- [Migration Guide](./ENHANCED_SYLLABUS_MIGRATION_GUIDE.md)
+- [Best Practices](./ENHANCED_SYLLABUS_BEST_PRACTICES.md)

@@ -59,6 +59,43 @@ export const studentSchema = z.object({
   address: z.string().optional(),
   bloodGroup: z.string().optional(),
   emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  height: z.coerce.number().optional(),
+  weight: z.coerce.number().optional(),
+
+  // Indian-specific fields
+  aadhaarNumber: z.string().max(12, "Aadhaar number must be 12 digits").optional(),
+  apaarId: z.string().max(50, "APAAR ID must be 50 characters or less").optional(),
+  pen: z.string().max(50, "PEN must be 50 characters or less").optional(),
+  abcId: z.string().max(50, "ABC ID must be 50 characters or less").optional(),
+  nationality: z.string().optional(),
+  religion: z.string().optional(),
+  caste: z.string().optional(),
+  category: z.string().optional(),
+  motherTongue: z.string().optional(),
+  birthPlace: z.string().optional(),
+  previousSchool: z.string().optional(),
+  previousClass: z.string().optional(),
+  tcNumber: z.string().optional(),
+  medicalConditions: z.string().optional(),
+  specialNeeds: z.string().optional(),
+
+  // Parent/Guardian details
+  fatherName: z.string().optional(),
+  fatherOccupation: z.string().optional(),
+  fatherPhone: z.string().optional(),
+  fatherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  fatherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
+  motherName: z.string().optional(),
+  motherOccupation: z.string().optional(),
+  motherPhone: z.string().optional(),
+  motherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  motherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
+  guardianName: z.string().optional(),
+  guardianRelation: z.string().optional(),
+  guardianPhone: z.string().optional(),
+  guardianEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  guardianAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
 });
 
 // Parent-specific schema

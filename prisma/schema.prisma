@@ -12,15 +12,15 @@ datasource db {
 
 // Users and authentication
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  
+  id    String @id @default(cuid())
+  email String @unique
+
   // NextAuth v5 fields
   emailVerified DateTime? // Email verification timestamp
   password      String? // Hashed password (nullable for OAuth users)
   name          String? // Full name for NextAuth compatibility
   image         String? // Profile image for OAuth
-  
+
   firstName String
   lastName  String
   phone     String?
@@ -83,7 +83,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -180,10 +180,14 @@ model Student {
   gender           String
   address          String?
   bloodGroup       String?
+  height           Float? // in cm
+  weight           Float? // in kg
   emergencyContact String?
 
   // Indian-specific fields
   aadhaarNumber     String? @db.VarChar(12)
+  apaarId           String? @db.VarChar(50) // One Nation One Student ID
+  pen               String? @db.VarChar(50) // Permanent Education Number (UDISE+)
   abcId             String? @db.VarChar(50) // Academic Bank of Credits ID
   nationality       String? @default("Indian")
   religion          String?
@@ -261,9 +265,9 @@ model StudentSettings {
   eventNotifications        Boolean @default(true)
   announcementNotifications Boolean @default(true)
   whatsappNotifications     Boolean @default(false)
-  
+
   // WhatsApp preferences
-  whatsappOptIn  Boolean @default(false)
+  whatsappOptIn Boolean @default(false)
 
   // Privacy settings
   profileVisibility ProfileVisibility @default(PRIVATE)
@@ -276,13 +280,13 @@ model StudentSettings {
   language   String     @default("en")
   dateFormat String     @default("MM/DD/YYYY")
   timeFormat TimeFormat @default(TWELVE_HOUR)
-  
+
   // Multi-language support
   preferredLanguage String @default("en") // Language preference for notifications (en, hi, etc.)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([preferredLanguage])
 }
 
@@ -338,7 +342,7 @@ model ParentSettings {
   // Communication preferences
   preferredContactMethod ContactMethod         @default(EMAIL)
   notificationFrequency  NotificationFrequency @default(IMMEDIATE)
-  
+
   // WhatsApp preferences
   whatsappOptIn  Boolean @default(false)
   whatsappNumber String? // Can be different from phone
@@ -350,7 +354,7 @@ model ParentSettings {
   theme      Theme  @default(LIGHT)
   colorTheme String @default("blue") // blue, red, green, purple, orange, teal
   language   String @default("en")
-  
+
   // Multi-language support
   preferredLanguage String @default("en") // Language preference for notifications (en, hi, etc.)
 
@@ -408,6 +412,7 @@ model AcademicYear {
   classes       Class[]
   feeStructures FeeStructure[] // Added missing relation
   budgets       Budget[] // Added missing relation
+  syllabi       Syllabus[]
 }
 
 model Term {
@@ -461,6 +466,7 @@ model Class {
   courses               Course[] // LMS courses for this class
   feeStructures         FeeStructureClass[] // Fee structures for this class
   feeTypeAmounts        FeeTypeClassAmount[] // Class-specific fee amounts
+  syllabi               Syllabus[]
 }
 
 model ClassSection {
@@ -476,6 +482,10 @@ model ClassSection {
   enrollments       ClassEnrollment[]
   timetableSlots    TimetableSlot[]
   attendanceRecords StudentAttendance[]
+  teachers          ClassTeacher[]
+  homeRoom          ClassRoom?          @relation("HomeRoom", fields: [homeRoomId], references: [id])
+  homeRoomId        String?             @unique
+  syllabi           Syllabus[]
 }
 
 model ClassRoom {
@@ -489,20 +499,24 @@ model ClassRoom {
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  timetableSlots TimetableSlot[]
+  timetableSlots  TimetableSlot[]
+  assignedSection ClassSection?   @relation("HomeRoom")
 }
 
 model ClassTeacher {
-  id          String   @id @default(cuid())
-  class       Class    @relation(fields: [classId], references: [id])
+  id          String        @id @default(cuid())
+  class       Class         @relation(fields: [classId], references: [id])
   classId     String
-  teacher     Teacher  @relation(fields: [teacherId], references: [id])
+  section     ClassSection? @relation(fields: [sectionId], references: [id])
+  sectionId   String? // Optional: if null, teacher is assigned to all sections
+  teacher     Teacher       @relation(fields: [teacherId], references: [id])
   teacherId   String
-  isClassHead Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isClassHead Boolean       @default(false) // Head teacher for the entire class (all sections)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  @@unique([classId, teacherId])
+  @@unique([classId, sectionId, teacherId])
+  @@index([sectionId])
 }
 
 model ClassEnrollment {
@@ -581,18 +595,67 @@ model SubjectClass {
 }
 
 model Syllabus {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
-  subject     Subject  @relation(fields: [subjectId], references: [id])
-  subjectId   String
-  document    String? // URL to syllabus document
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  // Relationships
+  // Core relationship
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  subjectId String
+
+  // Scope fields (all optional for flexibility)
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
+  academicYearId String?
+
+  class   Class?  @relation(fields: [classId], references: [id])
+  classId String?
+
+  section   ClassSection? @relation(fields: [sectionId], references: [id])
+  sectionId String?
+
+  // Curriculum classification
+  curriculumType CurriculumType @default(GENERAL)
+  boardType      String?
+
+  // Lifecycle management
+  status        SyllabusStatus @default(DRAFT)
+  isActive      Boolean        @default(true)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  // Versioning
+  version          String     @default("1.0")
+  parentSyllabus   Syllabus?  @relation("SyllabusVersions", fields: [parentSyllabusId], references: [id])
+  parentSyllabusId String?
+  childVersions    Syllabus[] @relation("SyllabusVersions")
+
+  // Ownership and audit
+  createdBy  String
+  updatedBy  String?
+  approvedBy String?
+  approvedAt DateTime?
+
+  // Metadata
+  tags            String[]
+  difficultyLevel DifficultyLevel @default(INTERMEDIATE)
+  estimatedHours  Int?
+  prerequisites   String?
+
+  // Existing fields
+  document  String? // URL to syllabus document
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Existing relationships
   units   SyllabusUnit[]
   modules Module[]       @relation("SyllabusModules")
+
+  // Unique constraint: one syllabus per scope combination
+  @@unique([subjectId, academicYearId, classId, sectionId, curriculumType])
+  @@index([subjectId, classId])
+  @@index([academicYearId, isActive])
+  @@index([status, isActive])
+  @@index([curriculumType, boardType])
 }
 
 model SyllabusUnit {
@@ -644,16 +707,17 @@ model Module {
 }
 
 model SubModule {
-  id          String              @id @default(cuid())
-  title       String
-  description String?
-  order       Int
-  moduleId    String
-  module      Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  documents   SyllabusDocument[]
-  progress    SubModuleProgress[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id             String              @id @default(cuid())
+  title          String
+  description    String?
+  order          Int
+  moduleId       String
+  module         Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  documents      SyllabusDocument[]
+  progress       SubModuleProgress[]
+  timetableSlots TimetableSlot[] // Timetable slots assigned to this topic
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@index([moduleId, order])
   @@index([moduleId])
@@ -747,11 +811,15 @@ model TimetableSlot {
   subjectTeacherId String
   room             ClassRoom?     @relation(fields: [roomId], references: [id])
   roomId           String?
+  topic            SubModule?     @relation(fields: [topicId], references: [id]) // Scheduled topic for this slot
+  topicId          String?
   day              DayOfWeek
   startTime        DateTime
   endTime          DateTime
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  @@index([topicId])
 }
 
 enum DayOfWeek {
@@ -762,6 +830,31 @@ enum DayOfWeek {
   FRIDAY
   SATURDAY
   SUNDAY
+}
+
+enum SyllabusStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+}
+
+enum CurriculumType {
+  GENERAL
+  ADVANCED
+  REMEDIAL
+  INTEGRATED
+  VOCATIONAL
+  SPECIAL_NEEDS
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
 }
 
 // Assessment models
@@ -1034,23 +1127,23 @@ enum FeeFrequency {
 }
 
 model FeeStructure {
-  id                String       @id @default(cuid())
-  name              String
-  academicYear      AcademicYear @relation(fields: [academicYearId], references: [id])
-  academicYearId    String
-  
+  id             String       @id @default(cuid())
+  name           String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  academicYearId String
+
   // Deprecated field - kept for backward compatibility during migration
-  applicableClasses String?      @db.Text
-  
+  applicableClasses String? @db.Text
+
   // New template functionality
-  isTemplate        Boolean      @default(false)
-  
-  description       String?
-  validFrom         DateTime
-  validTo           DateTime?
-  isActive          Boolean      @default(true)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @default(now())
+  isTemplate Boolean @default(false)
+
+  description String?
+  validFrom   DateTime
+  validTo     DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
 
   // Relationships
   items           FeeStructureItem[]
@@ -1216,17 +1309,17 @@ model PaymentReceipt {
 
 // Receipt Notes Model for admin comments
 model ReceiptNote {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   receipt   PaymentReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   receiptId String
-  
+
   // Note content
-  note      String   @db.Text
-  
+  note String @db.Text
+
   // Author information
-  authorId  String   // Admin user ID
-  authorName String  // Admin name (denormalized for display)
-  
+  authorId   String // Admin user ID
+  authorName String // Admin name (denormalized for display)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1856,6 +1949,10 @@ model Backup {
 model SystemSettings {
   id String @id @default(cuid())
 
+  // Onboarding Status
+  onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(0)
+
   // School Information
   schoolName    String  @default("School Name")
   schoolAddress String?
@@ -1866,6 +1963,7 @@ model SystemSettings {
   schoolFax     String?
   timezone      String  @default("UTC")
   tagline       String? // School tagline/motto
+
 
   // Academic Settings
   currentAcademicYear String?
@@ -1992,13 +2090,13 @@ model MessageTemplate {
   // Template Content
   subject String? // For email templates
   body    String // Template body with variables
-  
+
   // WhatsApp fields
   whatsappTemplateName String? // Template name in WhatsApp
   whatsappTemplateId   String? // Template ID from WhatsApp
   whatsappLanguage     String? // Template language code (e.g., 'en', 'hi')
   whatsappStatus       WhatsAppTemplateStatus? // PENDING, APPROVED, REJECTED
-  
+
   // SMS fields
   dltTemplateId String? // DLT template ID for MSG91
 
@@ -2074,38 +2172,38 @@ model MessageHistory {
 
 // Message Logging for WhatsApp and SMS
 model MessageLog {
-  id       String               @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Message details
-  channel  CommunicationChannel
-  recipient String              // Phone number or email
-  userId   String?              // Recipient user ID if available
-  
+  channel   CommunicationChannel
+  recipient String // Phone number or email
+  userId    String? // Recipient user ID if available
+
   // Content
   templateId String?
   subject    String?
-  body       String?             // Encrypted or hashed for privacy
-  
+  body       String? // Encrypted or hashed for privacy
+
   // Status tracking
   status       MessageLogStatus
-  messageId    String?           // External message ID from provider
+  messageId    String? // External message ID from provider
   errorCode    String?
   errorMessage String?
-  
+
   // Delivery tracking
   sentAt      DateTime?
   deliveredAt DateTime?
   readAt      DateTime?
   failedAt    DateTime?
-  
+
   // Cost tracking
-  estimatedCost Decimal?         @db.Decimal(10, 4)
-  
+  estimatedCost Decimal? @db.Decimal(10, 4)
+
   // Metadata
-  metadata  Json?                // Additional data
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  
+  metadata  Json? // Additional data
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([channel, createdAt])
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -2130,34 +2228,34 @@ enum MessageLogStatus {
 
 // Communication Error Logging
 model CommunicationErrorLog {
-  id       String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Error details
-  message      String
-  category     ErrorCategory
-  severity     ErrorSeverity
-  
+  message  String
+  category ErrorCategory
+  severity ErrorSeverity
+
   // Context
   channel      CommunicationChannel?
   errorCode    String?
-  errorDetails String?              @db.Text
+  errorDetails String?               @db.Text
   recipient    String?
   userId       String?
   messageId    String?
-  
+
   // Metadata
-  metadata    Json?
-  stackTrace  String?               @db.Text
-  
+  metadata   Json?
+  stackTrace String? @db.Text
+
   // Resolution tracking
-  resolved    Boolean               @default(false)
-  resolvedAt  DateTime?
-  resolvedBy  String?
-  
+  resolved   Boolean   @default(false)
+  resolvedAt DateTime?
+  resolvedBy String?
+
   // Timestamps
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([category, createdAt])
   @@index([severity, createdAt])
   @@index([channel, createdAt])

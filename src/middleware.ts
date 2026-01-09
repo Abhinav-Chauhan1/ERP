@@ -43,7 +43,8 @@ const publicRoutePatterns = [
   "/api/webhooks",
   "/api/users/sync",
   "/api/test-rate-limit",
-  "/verify-certificate"
+  "/verify-certificate",
+  "/setup" // Onboarding setup wizard
 ];
 const authRedirectRoutePatterns = ["/auth-redirect"];
 const apiRoutePatterns = ["/api"];

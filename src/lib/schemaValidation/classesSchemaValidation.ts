@@ -28,6 +28,7 @@ export const classTeacherSchema = z.object({
   classId: z.string({
     required_error: "Class ID is required",
   }),
+  sectionId: z.string().optional().nullable(), // Optional: if null, teacher is assigned to all sections
   teacherId: z.string({
     required_error: "Teacher ID is required",
   }),

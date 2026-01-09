@@ -49,6 +49,7 @@ interface SubModuleFormDialogProps {
   onSuccess: () => void;
   moduleId: string;
   subModule?: SubModule | null;
+  suggestedOrder?: number;
 }
 
 export function SubModuleFormDialog({
@@ -57,6 +58,7 @@ export function SubModuleFormDialog({
   onSuccess,
   moduleId,
   subModule,
+  suggestedOrder = 1,
 }: SubModuleFormDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,16 +86,16 @@ export function SubModuleFormDialog({
           moduleId: subModule.moduleId,
         });
       } else {
-        // For new sub-modules, suggest the next order
+        // For new sub-modules, use the suggested next order
         form.reset({
           title: "",
           description: "",
-          order: 1, // This will be updated by the parent component if needed
+          order: suggestedOrder,
           moduleId,
         });
       }
     }
-  }, [open, subModule, moduleId, form]);
+  }, [open, subModule, moduleId, form, suggestedOrder]);
 
   const onSubmit = async (values: SubModuleFormValues | SubModuleUpdateFormValues) => {
     setIsSubmitting(true);

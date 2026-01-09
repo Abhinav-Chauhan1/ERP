@@ -155,7 +155,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="cursor-pointer transition-colors hover:bg-accent">
           <Link href="/admin/library/books">
             <CardContent className="flex items-center justify-between p-6">
@@ -171,29 +171,15 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
         </Card>
 
         <Card className="cursor-pointer transition-colors hover:bg-accent">
-          <Link href="/admin/library/issues">
+          <Link href="/admin/library/reports">
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <h3 className="font-semibold">Book Issues</h3>
+                <h3 className="font-semibold">Library Reports</h3>
                 <p className="text-sm text-muted-foreground">
-                  Issue and return books
+                  View analytics and reports
                 </p>
               </div>
-              <BookMarked className="h-8 w-8 text-muted-foreground" />
-            </CardContent>
-          </Link>
-        </Card>
-
-        <Card className="cursor-pointer transition-colors hover:bg-accent">
-          <Link href="/admin/library/reservations">
-            <CardContent className="flex items-center justify-between p-6">
-              <div>
-                <h3 className="font-semibold">Reservations</h3>
-                <p className="text-sm text-muted-foreground">
-                  Manage book reservations
-                </p>
-              </div>
-              <BookmarkPlus className="h-8 w-8 text-muted-foreground" />
+              <BookCheck className="h-8 w-8 text-muted-foreground" />
             </CardContent>
           </Link>
         </Card>
@@ -208,12 +194,6 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add New Book
-            </Button>
-          </Link>
-          <Link href="/admin/library/issues/new">
-            <Button variant="outline">
-              <BookMarked className="mr-2 h-4 w-4" />
-              Issue Book
             </Button>
           </Link>
           <Link href="/admin/library/reports">
@@ -231,7 +211,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Recent Issues</CardTitle>
-              <Link href="/admin/library/issues">
+              <Link href="/admin/library/books">
                 <Button variant="ghost" size="sm">
                   View All
                 </Button>
@@ -261,11 +241,10 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
                             </p>
                           </div>
                           <span
-                            className={`rounded-full px-2 py-1 text-xs font-medium ${
-                              issue.status === "OVERDUE"
+                            className={`rounded-full px-2 py-1 text-xs font-medium ${issue.status === "OVERDUE"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-purple-100 text-purple-700"
-                            }`}
+                              }`}
                           >
                             {issue.status}
                           </span>
@@ -291,7 +270,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Recent Returns</CardTitle>
-              <Link href="/admin/library/issues?status=RETURNED">
+              <Link href="/admin/library/books">
                 <Button variant="ghost" size="sm">
                   View All
                 </Button>

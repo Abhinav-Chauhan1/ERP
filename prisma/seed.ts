@@ -1797,6 +1797,7 @@ async function main() {
       title: 'Mathematics Grade 10 Syllabus',
       description: 'Complete syllabus for Grade 10 Mathematics',
       subjectId: subjects[0].id,
+      createdBy: adminUser.id,
     },
   });
 

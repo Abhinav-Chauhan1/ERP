@@ -277,12 +277,7 @@ function DraggableModule({
                   <SubModuleList
                     subModules={module.subModules || []}
                     moduleId={module.id}
-                    onRefresh={async () => {
-                      // Refresh the parent module list
-                      if (typeof window !== 'undefined') {
-                        window.location.reload();
-                      }
-                    }}
+                    onRefresh={onRefresh}
                     allowCrossModuleDrag={true}
                   />
                 </div>

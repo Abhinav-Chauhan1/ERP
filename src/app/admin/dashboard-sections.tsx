@@ -256,13 +256,13 @@ export async function QuickActionsSection() {
           <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <Link href="/admin/users/students/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          <Link href="/admin/users/students/create" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Add Student</span>
           </Link>
-          <Link href="/admin/users/teachers/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          <Link href="/admin/users/teachers/create" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <GraduationCap className="h-5 w-5" />
             </div>

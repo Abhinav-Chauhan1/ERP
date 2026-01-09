@@ -16,17 +16,15 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
 
-// Create a standalone edit schema instead of using omit
+// Create a standalone edit schema
 const editStudentSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
@@ -48,6 +46,43 @@ const editStudentSchema = z.object({
   address: z.string().optional(),
   bloodGroup: z.string().optional(),
   emergencyContact: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  height: z.coerce.number().optional(),
+  weight: z.coerce.number().optional(),
+
+  // Indian-specific fields
+  aadhaarNumber: z.string().max(12, "Aadhaar number must be 12 digits").optional(),
+  apaarId: z.string().max(50, "APAAR ID must be 50 characters or less").optional(),
+  pen: z.string().max(50, "PEN must be 50 characters or less").optional(),
+  abcId: z.string().max(50, "ABC ID must be 50 characters or less").optional(),
+  nationality: z.string().optional(),
+  religion: z.string().optional(),
+  caste: z.string().optional(),
+  category: z.string().optional(),
+  motherTongue: z.string().optional(),
+  birthPlace: z.string().optional(),
+  previousSchool: z.string().optional(),
+  previousClass: z.string().optional(),
+  tcNumber: z.string().optional(),
+  medicalConditions: z.string().optional(),
+  specialNeeds: z.string().optional(),
+
+  // Parent/Guardian details
+  fatherName: z.string().optional(),
+  fatherOccupation: z.string().optional(),
+  fatherPhone: z.string().optional(),
+  fatherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  fatherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
+  motherName: z.string().optional(),
+  motherOccupation: z.string().optional(),
+  motherPhone: z.string().optional(),
+  motherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  motherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
+  guardianName: z.string().optional(),
+  guardianRelation: z.string().optional(),
+  guardianPhone: z.string().optional(),
+  guardianEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  guardianAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
 });
 
 type EditStudentFormData = z.infer<typeof editStudentSchema>;
@@ -99,7 +134,42 @@ export default function EditStudentPage() {
       gender: "",
       address: "",
       bloodGroup: "",
+      height: undefined,
+      weight: undefined,
       emergencyContact: "",
+      emergencyPhone: "",
+      // Indian-specific fields
+      aadhaarNumber: "",
+      apaarId: "",
+      pen: "",
+      abcId: "",
+      nationality: "",
+      religion: "",
+      caste: "",
+      category: "",
+      motherTongue: "",
+      birthPlace: "",
+      previousSchool: "",
+      previousClass: "",
+      tcNumber: "",
+      medicalConditions: "",
+      specialNeeds: "",
+      // Parent/Guardian details
+      fatherName: "",
+      fatherOccupation: "",
+      fatherPhone: "",
+      fatherEmail: "",
+      fatherAadhaar: "",
+      motherName: "",
+      motherOccupation: "",
+      motherPhone: "",
+      motherEmail: "",
+      motherAadhaar: "",
+      guardianName: "",
+      guardianRelation: "",
+      guardianPhone: "",
+      guardianEmail: "",
+      guardianAadhaar: "",
     },
   });
 
@@ -131,10 +201,45 @@ export default function EditStudentPage() {
           admissionDate: new Date(student.admissionDate),
           rollNumber: student.rollNumber || "",
           dateOfBirth: new Date(student.dateOfBirth),
-          gender: student.gender,
+          gender: student.gender || "",
           address: student.address || "",
           bloodGroup: student.bloodGroup || "",
+          height: student.height || undefined,
+          weight: student.weight || undefined,
           emergencyContact: student.emergencyContact || "",
+          emergencyPhone: student.emergencyPhone || "",
+          // Indian-specific fields
+          aadhaarNumber: student.aadhaarNumber || "",
+          apaarId: student.apaarId || "",
+          pen: student.pen || "",
+          abcId: student.abcId || "",
+          nationality: student.nationality || "",
+          religion: student.religion || "",
+          caste: student.caste || "",
+          category: student.category || "",
+          motherTongue: student.motherTongue || "",
+          birthPlace: student.birthPlace || "",
+          previousSchool: student.previousSchool || "",
+          previousClass: student.previousClass || "",
+          tcNumber: student.tcNumber || "",
+          medicalConditions: student.medicalConditions || "",
+          specialNeeds: student.specialNeeds || "",
+          // Parent/Guardian details
+          fatherName: student.fatherName || "",
+          fatherOccupation: student.fatherOccupation || "",
+          fatherPhone: student.fatherPhone || "",
+          fatherEmail: student.fatherEmail || "",
+          fatherAadhaar: student.fatherAadhaar || "",
+          motherName: student.motherName || "",
+          motherOccupation: student.motherOccupation || "",
+          motherPhone: student.motherPhone || "",
+          motherEmail: student.motherEmail || "",
+          motherAadhaar: student.motherAadhaar || "",
+          guardianName: student.guardianName || "",
+          guardianRelation: student.guardianRelation || "",
+          guardianPhone: student.guardianPhone || "",
+          guardianEmail: student.guardianEmail || "",
+          guardianAadhaar: student.guardianAadhaar || "",
         });
       } catch (err) {
         console.error("Error fetching student:", err);
@@ -307,7 +412,7 @@ export default function EditStudentPage() {
                       <FormItem>
                         <FormLabel>Roll Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Roll Number" {...field} />
+                          <Input placeholder="Roll Number" value={field.value || ""} onChange={field.onChange} onBlur={field.onBlur} name={field.name} ref={field.ref} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -356,7 +461,7 @@ export default function EditStudentPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select gender" />
@@ -378,7 +483,7 @@ export default function EditStudentPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Blood Group</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select blood group" />
@@ -399,6 +504,32 @@ export default function EditStudentPage() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Height (cm)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="Height in cm" {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight (kg)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="Weight in kg" {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 mt-4">
@@ -409,7 +540,54 @@ export default function EditStudentPage() {
                       <FormItem>
                         <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Input placeholder="Address" {...field} />
+                          <Textarea placeholder="Full address" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="emergencyContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Emergency Contact Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Emergency contact name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="emergencyPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Emergency Phone</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Emergency phone number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Indian-Specific Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="aadhaarNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="12-digit Aadhaar" maxLength={12} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -417,12 +595,418 @@ export default function EditStudentPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="emergencyContact"
+                    name="apaarId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Emergency Contact</FormLabel>
+                        <FormLabel>APAAR ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="Emergency contact" {...field} />
+                          <Input placeholder="One Nation One Student ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="pen"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PEN (UDISE+)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Permanent Education Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="abcId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ABC ID</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Academic Bank of Credits ID" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="nationality"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nationality</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nationality" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="religion"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Religion</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Religion" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="caste"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Caste</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Caste" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="General">General</SelectItem>
+                            <SelectItem value="OBC">OBC</SelectItem>
+                            <SelectItem value="SC">SC</SelectItem>
+                            <SelectItem value="ST">ST</SelectItem>
+                            <SelectItem value="EWS">EWS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="motherTongue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mother Tongue</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mother tongue" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="birthPlace"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Birth Place</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Place of birth" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Previous Education</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="previousSchool"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Previous School</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Previous school name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="previousClass"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Previous Class</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Previous class/grade" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tcNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>TC Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Transfer Certificate number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Health Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="medicalConditions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Medical Conditions</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Any medical conditions (allergies, chronic illnesses, etc.)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="specialNeeds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Special Needs</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Any special needs or requirements" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Father&apos;s Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="fatherName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Father&apos;s Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Father's full name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fatherOccupation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Occupation</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Father's occupation" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fatherPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Father's phone" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fatherEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="Father's email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="fatherAadhaar"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Father's Aadhaar" maxLength={12} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Mother&apos;s Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="motherName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mother&apos;s Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mother's full name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="motherOccupation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Occupation</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mother's occupation" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="motherPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mother's phone" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="motherEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="Mother's email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="motherAadhaar"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mother's Aadhaar" maxLength={12} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator className="my-4" />
+
+                <h3 className="text-lg font-medium">Guardian&apos;s Details (Optional)</h3>
+                <p className="text-sm text-muted-foreground mb-4">Fill this section if guardian is different from parents</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="guardianName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Guardian&apos;s Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Guardian's full name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="guardianRelation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Relation</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Relation with student" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="guardianPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Guardian's phone" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="guardianEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="Guardian's email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="guardianAadhaar"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aadhaar Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Guardian's Aadhaar" maxLength={12} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

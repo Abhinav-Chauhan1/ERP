@@ -1,0 +1,101 @@
+/* Custom styles for react-datepicker to match shadcn/ui theme */
+
+.react-datepicker-custom {
+  @apply rounded-md border border-border bg-background shadow-md;
+  font-family: inherit;
+}
+
+.react-datepicker {
+  @apply rounded-md border-0 bg-background;
+}
+
+.react-datepicker__header {
+  @apply rounded-t-md border-b border-border bg-background pt-2 pb-0;
+}
+
+/* Hide default header when using custom header */
+.react-datepicker__header:has(+ .react-datepicker__month) {
+  @apply hidden;
+}
+
+.react-datepicker__current-month {
+  @apply text-sm font-medium text-foreground mb-2;
+}
+
+.react-datepicker__day-names {
+  @apply flex justify-between px-3 mb-1;
+}
+
+.react-datepicker__day-name {
+  @apply text-muted-foreground text-xs font-normal w-9 h-9 flex items-center justify-center;
+}
+
+.react-datepicker__month {
+  @apply px-3 pb-3;
+}
+
+.react-datepicker__week {
+  @apply flex justify-between;
+}
+
+.react-datepicker__day {
+  @apply w-9 h-9 flex items-center justify-center text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer;
+  margin: 0;
+  line-height: 2.25rem;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground;
+}
+
+.react-datepicker__day--keyboard-selected {
+  @apply bg-accent text-accent-foreground;
+}
+
+.react-datepicker__day--today {
+  @apply bg-accent text-accent-foreground font-semibold;
+}
+
+.react-datepicker__day--outside-month {
+  @apply text-muted-foreground opacity-50;
+}
+
+.react-datepicker__day--disabled {
+  @apply text-muted-foreground opacity-50 cursor-not-allowed hover:bg-transparent;
+}
+
+.react-datepicker__navigation {
+  @apply top-3 hidden;
+}
+
+.react-datepicker__navigation--previous {
+  @apply left-3;
+}
+
+.react-datepicker__navigation--next {
+  @apply right-3;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-foreground;
+}
+
+.react-datepicker__year-dropdown,
+.react-datepicker__month-dropdown {
+  @apply bg-background border border-border rounded-md shadow-md;
+}
+
+.react-datepicker__year-option,
+.react-datepicker__month-option {
+  @apply hover:bg-accent text-foreground py-1;
+}
+
+.react-datepicker__year-option--selected,
+.react-datepicker__month-option--selected {
+  @apply bg-primary text-primary-foreground;
+}
+
+.react-datepicker__year-read-view--down-arrow,
+.react-datepicker__month-read-view--down-arrow {
+  @apply border-t-foreground;
+}

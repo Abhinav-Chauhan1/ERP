@@ -248,6 +248,12 @@ export async function getTeachersForPayroll() {
             email: true,
           },
         },
+        departments: {
+          select: {
+            name: true,
+          },
+          take: 1,
+        },
       },
       orderBy: {
         user: {
@@ -256,7 +262,18 @@ export async function getTeachersForPayroll() {
       },
     });
 
-    return { success: true, data: teachers };
+    // Format the data for the dropdown
+    const formattedTeachers = teachers.map((teacher) => ({
+      id: teacher.id,
+      name: `${teacher.user.firstName} ${teacher.user.lastName}`,
+      employeeId: teacher.employeeId,
+      email: teacher.user.email,
+      position: teacher.qualification || "Teacher",
+      department: teacher.departments[0]?.name || "General",
+      salary: teacher.salary || 0,
+    }));
+
+    return { success: true, data: formattedTeachers };
   } catch (error) {
     console.error("Error fetching teachers:", error);
     return { success: false, error: "Failed to fetch teachers" };
@@ -267,7 +284,7 @@ export async function getTeachersForPayroll() {
 export async function getPayrollStats(month?: number, year?: number) {
   try {
     const where: any = {};
-    
+
     if (month) where.month = month;
     if (year) where.year = year;
 
@@ -382,7 +399,7 @@ export async function bulkGeneratePayrolls(month: number, year: number, defaultS
               deductions: 0,
               netSalary: defaultSalary,
               status: "PENDING",
-              },
+            },
           });
           results.push(payroll);
         }

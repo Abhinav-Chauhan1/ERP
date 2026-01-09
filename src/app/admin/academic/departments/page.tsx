@@ -1,15 +1,14 @@
 "use client";
 
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft, Edit, Trash2, PlusCircle,
   Building2, BookOpen, GraduationCap,
-  Loader2, AlertCircle, ChevronRight
+  Loader2, AlertCircle, X, UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
@@ -28,23 +27,65 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 
 // Import schema validation and server actions
 import { departmentSchema, DepartmentFormValues, departmentUpdateSchema, DepartmentUpdateFormValues } from "@/lib/schemaValidation/departmentsSchemaValidation";
-import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from "@/lib/actions/departmentsAction";
+import {
+  getDepartments,
+  getDepartmentById,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  getAvailableTeachersForDepartment,
+  getAvailableSubjectsForDepartment,
+  assignTeacherToDepartment,
+  assignSubjectToDepartment,
+  removeTeacherFromDepartment,
+  removeSubjectFromDepartment,
+} from "@/lib/actions/departmentsAction";
+
+interface DepartmentDetail {
+  id: string;
+  name: string;
+  description?: string | null;
+  subjects: Array<{ id: string; name: string; code: string }>;
+  teachers: Array<{
+    id: string;
+    employeeId: string;
+    user: { firstName: string; lastName: string; email: string; avatar: string | null };
+  }>;
+}
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // For adding teachers/subjects
+  const [availableTeachers, setAvailableTeachers] = useState<any[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
   const form = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
@@ -149,6 +190,87 @@ export default function DepartmentsPage() {
     form.reset({ name: "", description: "" });
     setSelectedDepartmentId(null);
     setDialogOpen(true);
+  }
+
+  async function handleManage(id: string) {
+    setSelectedDepartmentId(id);
+    setLoadingAvailable(true);
+    setManageDialogOpen(true);
+
+    try {
+      const [deptResult, teachersResult, subjectsResult] = await Promise.all([
+        getDepartmentById(id),
+        getAvailableTeachersForDepartment(id),
+        getAvailableSubjectsForDepartment(id),
+      ]);
+
+      if (deptResult.success && deptResult.data) {
+        setSelectedDepartment(deptResult.data as DepartmentDetail);
+      }
+      if (teachersResult.success && teachersResult.data) {
+        setAvailableTeachers(teachersResult.data);
+      }
+      if (subjectsResult.success && subjectsResult.data) {
+        setAvailableSubjects(subjectsResult.data);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load department details");
+    } finally {
+      setLoadingAvailable(false);
+    }
+  }
+
+  async function handleAddTeacher() {
+    if (!selectedTeacherId || !selectedDepartmentId) return;
+
+    const result = await assignTeacherToDepartment(selectedTeacherId, selectedDepartmentId);
+    if (result.success) {
+      toast.success("Teacher added to department");
+      setSelectedTeacherId("");
+      handleManage(selectedDepartmentId); // Refresh
+      fetchDepartments();
+    } else {
+      toast.error(result.error || "Failed to add teacher");
+    }
+  }
+
+  async function handleRemoveTeacher(teacherId: string) {
+    if (!selectedDepartmentId) return;
+
+    const result = await removeTeacherFromDepartment(teacherId, selectedDepartmentId);
+    if (result.success) {
+      toast.success("Teacher removed from department");
+      handleManage(selectedDepartmentId); // Refresh
+      fetchDepartments();
+    } else {
+      toast.error(result.error || "Failed to remove teacher");
+    }
+  }
+
+  async function handleAddSubject() {
+    if (!selectedSubjectId || !selectedDepartmentId) return;
+
+    const result = await assignSubjectToDepartment(selectedSubjectId, selectedDepartmentId);
+    if (result.success) {
+      toast.success("Subject added to department");
+      setSelectedSubjectId("");
+      handleManage(selectedDepartmentId); // Refresh
+      fetchDepartments();
+    } else {
+      toast.error(result.error || "Failed to add subject");
+    }
+  }
+
+  async function handleRemoveSubject(subjectId: string) {
+    const result = await removeSubjectFromDepartment(subjectId);
+    if (result.success) {
+      toast.success("Subject removed from department");
+      if (selectedDepartmentId) handleManage(selectedDepartmentId); // Refresh
+      fetchDepartments();
+    } else {
+      toast.error(result.error || "Failed to remove subject");
+    }
   }
 
   return (
@@ -278,6 +400,12 @@ export default function DepartmentsPage() {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="pt-0">
+                <Button variant="outline" size="sm" className="w-full" onClick={() => handleManage(department.id)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Manage Teachers & Subjects
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
@@ -313,7 +441,159 @@ export default function DepartmentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manage Teachers & Subjects Dialog */}
+      <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Manage Department: {selectedDepartment?.name}</DialogTitle>
+            <DialogDescription>
+              Add or remove teachers and subjects from this department.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingAvailable ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {/* Teachers Section */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" /> Teachers
+                </h3>
+
+                {/* Add Teacher */}
+                <div className="flex gap-2">
+                  <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTeachers.length === 0 ? (
+                        <div className="py-2 px-3 text-sm text-muted-foreground">
+                          No teachers available
+                        </div>
+                      ) : (
+                        availableTeachers.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleAddTeacher} disabled={!selectedTeacherId}>
+                    Add
+                  </Button>
+                </div>
+
+                {/* Current Teachers */}
+                <ScrollArea className="h-[200px] border rounded-md p-2">
+                  {selectedDepartment?.teachers.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No teachers assigned
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDepartment?.teachers.map((teacher) => (
+                        <div key={teacher.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                              {teacher.user.firstName[0]}{teacher.user.lastName[0]}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">
+                                {teacher.user.firstName} {teacher.user.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{teacher.employeeId}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveTeacher(teacher.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+
+              {/* Subjects Section */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" /> Subjects
+                </h3>
+
+                {/* Add Subject */}
+                <div className="flex gap-2">
+                  <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSubjects.length === 0 ? (
+                        <div className="py-2 px-3 text-sm text-muted-foreground">
+                          No subjects available
+                        </div>
+                      ) : (
+                        availableSubjects.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} ({s.code})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleAddSubject} disabled={!selectedSubjectId}>
+                    Add
+                  </Button>
+                </div>
+
+                {/* Current Subjects */}
+                <ScrollArea className="h-[200px] border rounded-md p-2">
+                  {selectedDepartment?.subjects.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground text-sm">
+                      No subjects assigned
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDepartment?.subjects.map((subject) => (
+                        <div key={subject.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                          <div>
+                            <p className="text-sm font-medium">{subject.name}</p>
+                            <p className="text-xs text-muted-foreground">{subject.code}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveSubject(subject.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManageDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

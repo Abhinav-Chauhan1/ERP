@@ -547,19 +547,23 @@ export async function deleteClassSection(id: string) {
   }
 }
 
-// Assign teacher to class
+// Assign teacher to class (optionally to a specific section)
 export async function assignTeacherToClass(data: ClassTeacherFormValues) {
   try {
-    // Check if this teacher is already assigned to this class
+    // Check if this teacher is already assigned to this class/section combination
     const existingAssignment = await db.classTeacher.findFirst({
       where: {
         classId: data.classId,
+        sectionId: data.sectionId || null,
         teacherId: data.teacherId
       }
     });
 
     if (existingAssignment) {
-      return { success: false, error: "This teacher is already assigned to this class" };
+      const message = data.sectionId
+        ? "This teacher is already assigned to this section"
+        : "This teacher is already assigned to this class";
+      return { success: false, error: message };
     }
 
     // If this teacher will be the class head, remove class head status from any other teacher
@@ -578,6 +582,7 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
     const assignment = await db.classTeacher.create({
       data: {
         classId: data.classId,
+        sectionId: data.sectionId || null,
         teacherId: data.teacherId,
         isClassHead: data.isClassHead
       }
@@ -585,6 +590,7 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
 
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.classId}`);
+    revalidatePath(`/admin/users/teachers/${data.teacherId}`);
     return { success: true, data: assignment };
   } catch (error) {
     console.error("Error assigning teacher to class:", error);

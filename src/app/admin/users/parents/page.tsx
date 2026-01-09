@@ -34,6 +34,9 @@ export default async function ParentsPage() {
     getParentFilterOptions(),
   ]);
 
+  // Serialize data to plain JSON to avoid passing non-serializable Prisma objects to client
+  const serializedParents = JSON.parse(JSON.stringify(parents));
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
@@ -56,7 +59,7 @@ export default async function ParentsPage() {
         </CardHeader>
         <CardContent>
           <ParentsWithFilters
-            initialParents={parents}
+            initialParents={serializedParents}
             occupations={filterOptions.occupations}
           />
         </CardContent>
