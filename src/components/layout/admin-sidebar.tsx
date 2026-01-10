@@ -194,7 +194,11 @@ const routes: RouteItem[] = [
   {
     label: "Documents",
     icon: FileText,
-    href: "/admin/documents",
+    submenu: [
+      { label: "Overview", href: "/admin/documents" },
+      { label: "ID Cards", href: "/admin/id-cards" },
+      { label: "Certificates", href: "/admin/certificates" },
+    ],
   },
   {
     label: "Reports",

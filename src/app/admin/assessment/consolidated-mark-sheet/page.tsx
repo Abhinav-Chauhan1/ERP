@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Download, FileSpreadsheet, 
+import {
+  ChevronLeft, Download, FileSpreadsheet,
   Printer, AlertCircle, Loader2, Filter, FileText
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -21,8 +21,8 @@ import toast from "react-hot-toast";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { 
-  getConsolidatedMarkSheet, 
+import {
+  getConsolidatedMarkSheet,
   getConsolidatedMarkSheetFilters,
   exportConsolidatedMarkSheetCSV,
   getConsolidatedMarkSheetForExcel,
@@ -33,13 +33,13 @@ export default function ConsolidatedMarkSheetPage() {
   const [loading, setLoading] = useState(false);
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [termFilter, setTermFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
   const [sectionFilter, setSectionFilter] = useState("");
   const [examFilter, setExamFilter] = useState("");
-  
+
   // Filter options
   const [filterOptions, setFilterOptions] = useState<any>({
     terms: [],
@@ -47,7 +47,7 @@ export default function ConsolidatedMarkSheetPage() {
     sections: [],
     exams: []
   });
-  
+
   // Data
   const [markSheetData, setMarkSheetData] = useState<{
     students: StudentMarkData[];
@@ -63,7 +63,7 @@ export default function ConsolidatedMarkSheetPage() {
     setFiltersLoading(true);
     try {
       const result = await getConsolidatedMarkSheetFilters();
-      
+
       if (result.success) {
         setFilterOptions(result.data);
       } else {
@@ -85,7 +85,7 @@ export default function ConsolidatedMarkSheetPage() {
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getConsolidatedMarkSheet({
         classId: classFilter,
@@ -93,10 +93,10 @@ export default function ConsolidatedMarkSheetPage() {
         termId: termFilter || undefined,
         examId: examFilter || undefined
       });
-      
+
       if (result.success && result.data) {
         setMarkSheetData(result.data);
-        
+
         if (result.data.students.length === 0) {
           toast.error("No students found for the selected filters");
         }
@@ -126,7 +126,7 @@ export default function ConsolidatedMarkSheetPage() {
         termId: termFilter || undefined,
         examId: examFilter || undefined
       });
-      
+
       if (result.success && result.data) {
         // Create a blob and download
         const blob = new Blob([result.data], { type: 'text/csv' });
@@ -138,7 +138,7 @@ export default function ConsolidatedMarkSheetPage() {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        
+
         toast.success("Mark sheet exported successfully");
       } else {
         toast.error(result.error || "Failed to export mark sheet");
@@ -162,21 +162,21 @@ export default function ConsolidatedMarkSheetPage() {
         termId: termFilter || undefined,
         examId: examFilter || undefined
       });
-      
+
       if (result.success && result.data) {
         const { headerRow1, headerRow2, dataRows } = result.data;
-        
+
         // Create workbook and worksheet
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
-        
+
         // Set column widths
         const colWidths = [
           { wch: 10 }, // Roll No
           { wch: 15 }, // Admission ID
           { wch: 25 }, // Student Name
         ];
-        
+
         // Add widths for subject columns
         result.data.subjects.forEach(() => {
           colWidths.push(
@@ -187,15 +187,15 @@ export default function ConsolidatedMarkSheetPage() {
             { wch: 8 }   // Grade
           );
         });
-        
+
         colWidths.push(
           { wch: 12 }, // Overall Total
           { wch: 10 }, // Overall %
           { wch: 8 }   // Grade
         );
-        
+
         ws['!cols'] = colWidths;
-        
+
         // Merge cells for subject headers
         const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
         let colIndex = 3; // Start after Roll No, Admission ID, Student Name
@@ -207,10 +207,10 @@ export default function ConsolidatedMarkSheetPage() {
           colIndex += 5;
         });
         ws['!merges'] = merges;
-        
+
         XLSX.utils.book_append_sheet(wb, ws, "Consolidated Mark Sheet");
         XLSX.writeFile(wb, `consolidated-mark-sheet-${Date.now()}.xlsx`);
-        
+
         toast.success("Mark sheet exported successfully");
       } else {
         toast.error(result.error || "Failed to export mark sheet");
@@ -229,11 +229,11 @@ export default function ConsolidatedMarkSheetPage() {
 
     try {
       const doc = new jsPDF('landscape', 'mm', 'a4');
-      
+
       // Add title
       doc.setFontSize(16);
       doc.text('Consolidated Mark Sheet', 14, 15);
-      
+
       // Prepare table headers
       const headers = [
         [
@@ -250,12 +250,12 @@ export default function ConsolidatedMarkSheetPage() {
           ...markSheetData.subjects.flatMap(() => ['Th', 'Pr', 'Int', 'Tot', 'Gr'])
         ]
       ];
-      
+
       // Prepare table body
       const body = markSheetData.students.map(student => {
         const subjectData = markSheetData.subjects.flatMap(subject => {
           const subjectResult = student.subjects.find(s => s.subjectId === subject.id);
-          
+
           if (!subjectResult) {
             return ['-', '-', '-', '-', '-'];
           }
@@ -282,7 +282,7 @@ export default function ConsolidatedMarkSheetPage() {
           student.overallGrade || '-'
         ];
       });
-      
+
       // Generate table
       autoTable(doc, {
         head: headers,
@@ -305,7 +305,7 @@ export default function ConsolidatedMarkSheetPage() {
           );
         }
       });
-      
+
       doc.save(`consolidated-mark-sheet-${Date.now()}.pdf`);
       toast.success("PDF exported successfully");
     } catch (err) {
@@ -319,7 +319,7 @@ export default function ConsolidatedMarkSheetPage() {
   }
 
   // Get filtered sections based on selected class
-  const filteredSections = classFilter 
+  const filteredSections = classFilter
     ? filterOptions.sections.filter((s: any) => s.classId === classFilter)
     : filterOptions.sections;
 
@@ -347,32 +347,32 @@ export default function ConsolidatedMarkSheetPage() {
           <h1 className="text-2xl font-bold tracking-tight">Consolidated Mark Sheet</h1>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleExportExcel}
             disabled={!markSheetData || loading}
           >
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Export Excel
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleExportCSV}
             disabled={!markSheetData || loading}
           >
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleExportPDF}
             disabled={!markSheetData || loading}
           >
             <FileText className="mr-2 h-4 w-4" />
             Export PDF
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handlePrint}
             disabled={!markSheetData || loading}
           >
@@ -404,16 +404,16 @@ export default function ConsolidatedMarkSheetPage() {
               <label htmlFor="term-filter" className="text-sm font-medium block mb-1">
                 Term (Optional)
               </label>
-              <Select 
-                value={termFilter} 
-                onValueChange={setTermFilter}
+              <Select
+                value={termFilter || "all"}
+                onValueChange={(value) => setTermFilter(value === "all" ? "" : value)}
                 disabled={filtersLoading}
               >
                 <SelectTrigger id="term-filter">
                   <SelectValue placeholder="All Terms" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Terms</SelectItem>
+                  <SelectItem value="all">All Terms</SelectItem>
                   {filterOptions.terms.map((term: any) => (
                     <SelectItem key={term.id} value={term.id}>
                       {term.name} ({term.academicYear.name})
@@ -427,8 +427,8 @@ export default function ConsolidatedMarkSheetPage() {
               <label htmlFor="class-filter" className="text-sm font-medium block mb-1">
                 Class <span className="text-red-500">*</span>
               </label>
-              <Select 
-                value={classFilter} 
+              <Select
+                value={classFilter}
                 onValueChange={(value) => {
                   setClassFilter(value);
                   setSectionFilter(""); // Reset section when class changes
@@ -452,8 +452,8 @@ export default function ConsolidatedMarkSheetPage() {
               <label htmlFor="section-filter" className="text-sm font-medium block mb-1">
                 Section <span className="text-red-500">*</span>
               </label>
-              <Select 
-                value={sectionFilter} 
+              <Select
+                value={sectionFilter}
                 onValueChange={setSectionFilter}
                 disabled={filtersLoading || !classFilter}
               >
@@ -474,16 +474,16 @@ export default function ConsolidatedMarkSheetPage() {
               <label htmlFor="exam-filter" className="text-sm font-medium block mb-1">
                 Exam (Optional)
               </label>
-              <Select 
-                value={examFilter} 
-                onValueChange={setExamFilter}
+              <Select
+                value={examFilter || "all"}
+                onValueChange={(value) => setExamFilter(value === "all" ? "" : value)}
                 disabled={filtersLoading}
               >
                 <SelectTrigger id="exam-filter">
                   <SelectValue placeholder="All Exams" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Exams</SelectItem>
+                  <SelectItem value="all">All Exams</SelectItem>
                   {filteredExams.map((exam: any) => (
                     <SelectItem key={exam.id} value={exam.id}>
                       {exam.title} - {exam.subject.name}
@@ -494,8 +494,8 @@ export default function ConsolidatedMarkSheetPage() {
             </div>
 
             <div className="flex items-end">
-              <Button 
-                onClick={handleFetchMarkSheet} 
+              <Button
+                onClick={handleFetchMarkSheet}
                 disabled={loading || !classFilter || !sectionFilter}
                 className="w-full"
               >
@@ -581,9 +581,9 @@ export default function ConsolidatedMarkSheetPage() {
                       Student Name
                     </th>
                     {markSheetData.subjects.map((subject) => (
-                      <th 
-                        key={subject.id} 
-                        className="py-2 px-2 text-center font-medium border border-gray-300" 
+                      <th
+                        key={subject.id}
+                        className="py-2 px-2 text-center font-medium border border-gray-300"
                         colSpan={5}
                       >
                         {subject.name}
@@ -624,10 +624,10 @@ export default function ConsolidatedMarkSheetPage() {
                 <tbody>
                   {markSheetData.students.map((student) => {
                     const hasIncomplete = student.subjects.some(s => s.isIncomplete);
-                    
+
                     return (
-                      <tr 
-                        key={student.studentId} 
+                      <tr
+                        key={student.studentId}
                         className={`border-b ${hasIncomplete ? 'bg-red-50' : ''}`}
                       >
                         <td className="py-2 px-2 border border-gray-300">
@@ -641,7 +641,7 @@ export default function ConsolidatedMarkSheetPage() {
                         </td>
                         {markSheetData.subjects.map((subject) => {
                           const subjectData = student.subjects.find(s => s.subjectId === subject.id);
-                          
+
                           if (!subjectData) {
                             return (
                               <>
@@ -666,8 +666,8 @@ export default function ConsolidatedMarkSheetPage() {
                             );
                           }
 
-                          const cellClass = subjectData.isIncomplete 
-                            ? "py-2 px-1 text-center border border-gray-300 bg-yellow-100" 
+                          const cellClass = subjectData.isIncomplete
+                            ? "py-2 px-1 text-center border border-gray-300 bg-yellow-100"
                             : "py-2 px-1 text-center border border-gray-300";
 
                           return (
@@ -699,9 +699,9 @@ export default function ConsolidatedMarkSheetPage() {
                         <td className="py-2 px-2 text-center border border-gray-300">
                           <Badge className={
                             student.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                            student.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                            student.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                            "bg-red-100 text-red-800"
+                              student.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
+                                student.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
                           }>
                             {student.overallGrade}
                           </Badge>

@@ -104,14 +104,14 @@ export function FeeStructureAnalyticsComponent({
             <div className="space-y-2">
               <label className="text-sm font-medium">Academic Year</label>
               <Select
-                value={filters.academicYearId || ""}
-                onValueChange={(value) => handleFilterChange("academicYearId", value)}
+                value={filters.academicYearId || "all"}
+                onValueChange={(value) => handleFilterChange("academicYearId", value === "all" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All academic years" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All academic years</SelectItem>
+                  <SelectItem value="all">All academic years</SelectItem>
                   {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
@@ -124,14 +124,14 @@ export function FeeStructureAnalyticsComponent({
             <div className="space-y-2">
               <label className="text-sm font-medium">Class</label>
               <Select
-                value={filters.classId || ""}
-                onValueChange={(value) => handleFilterChange("classId", value)}
+                value={filters.classId || "all"}
+                onValueChange={(value) => handleFilterChange("classId", value === "all" ? "" : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All classes</SelectItem>
+                  <SelectItem value="all">All classes</SelectItem>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
@@ -144,16 +144,16 @@ export function FeeStructureAnalyticsComponent({
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
               <Select
-                value={filters.isActive === undefined ? "" : filters.isActive.toString()}
+                value={filters.isActive === undefined ? "all" : filters.isActive.toString()}
                 onValueChange={(value) =>
-                  handleFilterChange("isActive", value === "" ? undefined : value === "true")
+                  handleFilterChange("isActive", value === "all" ? undefined : value === "true")
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="true">Active</SelectItem>
                   <SelectItem value="false">Inactive</SelectItem>
                 </SelectContent>

@@ -100,7 +100,7 @@ export function CalendarView({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, -1));
     }
-    
+
     // Announce navigation to screen readers
     announceToScreenReader(`Navigated to ${getNavigationLabel()}`);
   };
@@ -113,7 +113,7 @@ export function CalendarView({
     } else if (view === "day") {
       setCurrentDate(addDays(currentDate, 1));
     }
-    
+
     // Announce navigation to screen readers
     announceToScreenReader(`Navigated to ${getNavigationLabel()}`);
   };
@@ -250,9 +250,8 @@ export function CalendarView({
                       minHeight: "44px", // Minimum touch target size
                     }}
                     role="gridcell"
-                    aria-label={`${format(day, "MMMM d, yyyy")}, ${dayEvents.length} ${
-                      dayEvents.length === 1 ? "event" : "events"
-                    }${isTodayDate ? ", today" : ""}`}
+                    aria-label={`${format(day, "MMMM d, yyyy")}, ${dayEvents.length} ${dayEvents.length === 1 ? "event" : "events"
+                      }${isTodayDate ? ", today" : ""}`}
                     aria-current={isTodayDate ? "date" : undefined}
                     tabIndex={isSameDay(day, currentDate) ? 0 : -1}
                   >
@@ -278,8 +277,8 @@ export function CalendarView({
                               : event.category.color,
                             borderLeft: isHighContrast
                               ? `${getHighContrastBorderWidth(3)}px solid ${getHighContrastStyles(
-                                  event.category.color
-                                )}`
+                                event.category.color
+                              )}`
                               : undefined,
                           }}
                           onClick={(e) => {
@@ -365,11 +364,10 @@ export function CalendarView({
                         backgroundColor: isHighContrast
                           ? getHighContrastStyles(event.category.color)
                           : `${event.category.color}20`,
-                        borderLeft: `${getHighContrastBorderWidth(3)}px solid ${
-                          isHighContrast
+                        borderLeft: `${getHighContrastBorderWidth(3)}px solid ${isHighContrast
                             ? getHighContrastStyles(event.category.color)
                             : event.category.color
-                        }`,
+                          }`,
                         minHeight: "44px", // Minimum touch target size
                         display: "flex",
                         flexDirection: "column",
@@ -384,9 +382,8 @@ export function CalendarView({
                           onEventClick(event);
                         }
                       }}
-                      aria-label={`Event: ${event.title}${
-                        !event.isAllDay ? ` at ${format(event.startDate, "p")}` : ""
-                      }`}
+                      aria-label={`Event: ${event.title}${!event.isAllDay ? ` at ${format(event.startDate, "p")}` : ""
+                        }`}
                     >
                       <div className="font-medium truncate">{event.title}</div>
                       {!event.isAllDay && (
@@ -501,7 +498,8 @@ export function CalendarView({
         </div>
 
         {/* Navigation and view controls */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mt-4">
+          {/* Left: Navigation controls */}
           <div className="flex items-center gap-2" role="group" aria-label="Calendar navigation">
             <Button
               variant="outline"
@@ -531,8 +529,9 @@ export function CalendarView({
             </Button>
           </div>
 
+          {/* Center: Current date/period title */}
           <div
-            className="text-lg font-semibold"
+            className="text-lg font-semibold text-center min-w-[200px]"
             role="status"
             aria-live="polite"
             aria-atomic="true"
@@ -547,15 +546,15 @@ export function CalendarView({
             {view === "agenda" && "All Events"}
           </div>
 
+          {/* Right: View tabs */}
           <Tabs
             value={view}
             onValueChange={(v) => {
               setView(v as any);
               announceToScreenReader(`Switched to ${v} view`);
             }}
-            className="w-full sm:w-auto"
           >
-            <TabsList className="grid w-full grid-cols-4" role="tablist" aria-label="Calendar view options">
+            <TabsList role="tablist" aria-label="Calendar view options">
               <TabsTrigger
                 value="month"
                 aria-label="Month view"
@@ -580,11 +579,10 @@ export function CalendarView({
               <TabsTrigger
                 value="agenda"
                 aria-label="Agenda view"
-                className={cn("min-h-[44px]", getHighContrastFocusRing())}
+                className={cn("min-h-[44px] gap-1", getHighContrastFocusRing())}
               >
-                <List className="h-4 w-4 sm:mr-2" aria-hidden="true" />
-                <span className="hidden sm:inline">Agenda</span>
-                <span className="sm:hidden">List</span>
+                <List className="h-4 w-4" aria-hidden="true" />
+                Agenda
               </TabsTrigger>
             </TabsList>
           </Tabs>
