@@ -9,7 +9,8 @@ export default async function SetupPage() {
     const settings = await db.systemSettings.findFirst();
 
     if (settings?.onboardingCompleted) {
-        redirect("/admin");
+        // Redirect to login since user needs to authenticate
+        redirect("/login");
     }
 
     // Check if any admin exists

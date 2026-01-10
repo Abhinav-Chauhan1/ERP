@@ -4,8 +4,8 @@
 import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   BookOpen, FileText, Layers, GripVertical,
   ChevronDown, BookText, Upload, Plus,
   AlertCircle, Loader2, Copy
@@ -52,10 +52,10 @@ import toast from "react-hot-toast";
 import { useEnhancedSyllabusClient } from "@/lib/utils/feature-flags";
 
 // Import schema validation and server actions
-import { 
-  syllabusSchema, 
-  syllabusUnitSchema, 
-  lessonSchema, 
+import {
+  syllabusSchema,
+  syllabusUnitSchema,
+  lessonSchema,
   SyllabusFormValues,
   SyllabusUnitFormValues,
   LessonFormValues
@@ -95,21 +95,21 @@ function SyllabusContent() {
   const useEnhancedSyllabus = useEnhancedSyllabusClient();
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  
+
   const [subjects, setSubjects] = useState<any[]>([]);
   const [syllabiList, setSyllabiList] = useState<any[]>([]);
-  
+
   const [syllabusDialogOpen, setSyllabusDialogOpen] = useState(false);
   const [unitDialogOpen, setUnitDialogOpen] = useState(false);
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
-  
+
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [deleteItemInfo, setDeleteItemInfo] = useState<{id: string, type: string} | null>(null);
+  const [deleteItemInfo, setDeleteItemInfo] = useState<{ id: string, type: string } | null>(null);
   const [currentSyllabus, setCurrentSyllabus] = useState<any>(null);
   const [syllabusToClone, setSyllabusToClone] = useState<any>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,14 +122,14 @@ function SyllabusContent() {
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  
+
   // Filter state
   const [filters, setFilters] = useState({
-    subjectId: initialSubjectId || "",
-    academicYearId: "",
-    classId: "",
-    sectionId: "",
-    curriculumType: "",
+    subjectId: initialSubjectId || "all",
+    academicYearId: "all",
+    classId: "all",
+    sectionId: "all",
+    curriculumType: "all",
     status: [] as string[],
     tags: [] as string[],
   });
@@ -139,7 +139,7 @@ function SyllabusContent() {
     defaultValues: {
       title: "",
       description: "",
-      subjectId: initialSubjectId || "",
+      subjectId: initialSubjectId || "all",
       document: "",
       scopeType: "SUBJECT_WIDE",
       academicYearId: undefined,
@@ -180,19 +180,19 @@ function SyllabusContent() {
   const fetchSyllabi = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getSyllabusByScope({
-        subjectId: filters.subjectId || undefined,
-        academicYearId: filters.academicYearId || undefined,
-        classId: filters.classId || undefined,
-        sectionId: filters.sectionId || undefined,
-        curriculumType: filters.curriculumType ? filters.curriculumType as "GENERAL" | "ADVANCED" | "REMEDIAL" | "INTEGRATED" | "VOCATIONAL" | "SPECIAL_NEEDS" : undefined,
-        status: filters.status.length > 0 ? filters.status as ("DRAFT" | "PENDING_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED" | "DEPRECATED")[] : undefined,
+        subjectId: filters.subjectId && filters.subjectId !== "all" ? filters.subjectId : undefined,
+        academicYearId: filters.academicYearId && filters.academicYearId !== "all" ? filters.academicYearId : undefined,
+        classId: filters.classId && filters.classId !== "all" ? filters.classId : undefined,
+        sectionId: filters.sectionId && filters.sectionId !== "all" ? filters.sectionId : undefined,
+        curriculumType: filters.curriculumType && filters.curriculumType !== "all" ? filters.curriculumType as "GENERAL" | "ADVANCED" | "REMEDIAL" | "INTEGRATED" | "VOCATIONAL" | "SPECIAL_NEEDS" : undefined,
+        status: filters.status.length > 0 && filters.status[0] !== "all" ? filters.status as ("DRAFT" | "PENDING_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED" | "DEPRECATED")[] : undefined,
         tags: filters.tags.length > 0 ? filters.tags : undefined,
         isActive: true,
       });
-      
+
       if (result.success) {
         setSyllabiList(result.data || []);
       } else {
@@ -241,7 +241,7 @@ function SyllabusContent() {
   async function fetchSubjects() {
     try {
       const result = await getSubjectsForDropdown();
-      
+
       if (result.success) {
         setSubjects(result.data || []);
       } else {
@@ -256,7 +256,7 @@ function SyllabusContent() {
   async function fetchAcademicYears() {
     try {
       const result = await getAcademicYearsForDropdown();
-      
+
       if (result.success) {
         setAcademicYears(result.data || []);
       } else {
@@ -271,7 +271,7 @@ function SyllabusContent() {
   async function fetchClasses() {
     try {
       const result = await getClassesForDropdown();
-      
+
       if (result.success) {
         setClasses(result.data || []);
       } else {
@@ -286,7 +286,7 @@ function SyllabusContent() {
   async function fetchSections(classId: string) {
     try {
       const result = await getSectionsForDropdown(classId);
-      
+
       if (result.success) {
         setSections(result.data || []);
       } else {
@@ -302,7 +302,7 @@ function SyllabusContent() {
     try {
       setIsUploading(true);
       let result;
-      
+
       if (editingItemId) {
         // Update existing syllabus
         result = await updateSyllabus({ ...values, id: editingItemId } as Parameters<typeof updateSyllabus>[0], uploadedFile);
@@ -310,7 +310,7 @@ function SyllabusContent() {
         // Create new syllabus
         result = await createSyllabus(values, uploadedFile);
       }
-      
+
       if (result.success) {
         toast.success(`Syllabus ${editingItemId ? "updated" : "created"} successfully`);
         setSyllabusDialogOpen(false);
@@ -340,7 +340,7 @@ function SyllabusContent() {
         e.target.value = '';
         return;
       }
-      
+
       let progress = 0;
       setFileProgress(progress);
       const interval = setInterval(() => {
@@ -364,7 +364,7 @@ function SyllabusContent() {
   async function onUnitSubmit(values: SyllabusUnitFormValues) {
     try {
       let result;
-      
+
       if (editingItemId) {
         // Update existing unit
         result = await updateSyllabusUnit({ ...values, id: editingItemId });
@@ -372,7 +372,7 @@ function SyllabusContent() {
         // Create new unit
         result = await createSyllabusUnit(values);
       }
-      
+
       if (result.success) {
         toast.success(`Unit ${editingItemId ? "updated" : "created"} successfully`);
         setUnitDialogOpen(false);
@@ -391,7 +391,7 @@ function SyllabusContent() {
   async function onLessonSubmit(values: LessonFormValues) {
     try {
       let result;
-      
+
       if (editingItemId) {
         // Update existing lesson
         result = await updateLesson({ ...values, id: editingItemId });
@@ -399,7 +399,7 @@ function SyllabusContent() {
         // Create new lesson
         result = await createLesson(values);
       }
-      
+
       if (result.success) {
         toast.success(`Lesson ${editingItemId ? "updated" : "created"} successfully`);
         setLessonDialogOpen(false);
@@ -417,11 +417,11 @@ function SyllabusContent() {
 
   async function confirmDelete() {
     if (!deleteItemInfo) return;
-    
+
     try {
       const { id, type } = deleteItemInfo;
       let result;
-      
+
       if (type === 'syllabus') {
         result = await deleteSyllabus(id);
       } else if (type === 'unit') {
@@ -429,12 +429,12 @@ function SyllabusContent() {
       } else if (type === 'lesson') {
         result = await deleteLesson(id);
       }
-      
+
       if (result && result.success) {
         toast.success(`${type} deleted successfully`);
         setDeleteDialogOpen(false);
         setDeleteItemInfo(null);
-        
+
         if (type === 'syllabus') {
           setCurrentSyllabus(null);
         }
@@ -454,7 +454,7 @@ function SyllabusContent() {
       description: syllabus.description || "",
       subjectId: syllabus.subjectId,
       document: syllabus.document || "",
-      scopeType: syllabus.classId 
+      scopeType: syllabus.classId
         ? (syllabus.sectionId ? "SECTION_SPECIFIC" : "CLASS_WIDE")
         : "SUBJECT_WIDE",
       academicYearId: syllabus.academicYearId || undefined,
@@ -479,7 +479,7 @@ function SyllabusContent() {
     try {
       const orderResult = await getMaxUnitOrder(syllabusId);
       const nextOrder = orderResult.success && orderResult.data !== undefined ? orderResult.data + 1 : 1;
-      
+
       unitForm.reset({
         title: "",
         description: "",
@@ -497,7 +497,7 @@ function SyllabusContent() {
   function handleEditUnit(unitId: string, syllabusId: string) {
     const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
     if (!syllabus) return;
-    
+
     const unitToEdit = syllabus.units.find((unit: any) => unit.id === unitId);
     if (unitToEdit) {
       unitForm.reset({
@@ -514,7 +514,7 @@ function SyllabusContent() {
   function handleAddLesson(unitId: string, syllabusId: string) {
     const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
     if (!syllabus) return;
-    
+
     lessonForm.reset({
       title: "",
       description: "",
@@ -528,10 +528,10 @@ function SyllabusContent() {
   function handleEditLesson(lessonId: string, unitId: string, syllabusId: string) {
     const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
     if (!syllabus) return;
-    
+
     const unit = syllabus.units.find((u: any) => u.id === unitId);
     if (!unit) return;
-    
+
     const lessonToEdit = unit.lessons.find((lesson: any) => lesson.id === lessonId);
     if (lessonToEdit) {
       lessonForm.reset({
@@ -606,7 +606,7 @@ function SyllabusContent() {
           <AlertTitle className="text-primary">Enhanced Syllabus System Available</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
-              The new module-based syllabus system is now available with better organization, 
+              The new module-based syllabus system is now available with better organization,
               multiple document support, and progress tracking.
             </span>
             <Link href="/admin/academic/syllabus/modules">
@@ -629,16 +629,16 @@ function SyllabusContent() {
             {/* Subject Filter */}
             <div>
               <label htmlFor="filter-subject" className="text-sm font-medium block mb-1">Subject</label>
-              <Select 
-                value={filters.subjectId} 
-                onValueChange={(value) => setFilters({...filters, subjectId: value})}
+              <Select
+                value={filters.subjectId}
+                onValueChange={(value) => setFilters({ ...filters, subjectId: value })}
               >
                 <SelectTrigger id="filter-subject">
                   <SelectValue placeholder="All subjects" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All subjects</SelectItem>
-                  {subjects.map(subject => (
+                  <SelectItem value="all">All subjects</SelectItem>
+                  {subjects.filter(s => s.id).map(subject => (
                     <SelectItem key={subject.id} value={subject.id}>
                       {subject.name} ({subject.code})
                     </SelectItem>
@@ -646,20 +646,20 @@ function SyllabusContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Academic Year Filter */}
             <div>
               <label htmlFor="filter-academic-year" className="text-sm font-medium block mb-1">Academic Year</label>
-              <Select 
-                value={filters.academicYearId} 
-                onValueChange={(value) => setFilters({...filters, academicYearId: value})}
+              <Select
+                value={filters.academicYearId}
+                onValueChange={(value) => setFilters({ ...filters, academicYearId: value })}
               >
                 <SelectTrigger id="filter-academic-year">
                   <SelectValue placeholder="All years" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All years</SelectItem>
-                  {academicYears.map(year => (
+                  <SelectItem value="all">All years</SelectItem>
+                  {academicYears.filter(y => y.id).map(year => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
                     </SelectItem>
@@ -667,20 +667,20 @@ function SyllabusContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Class Filter */}
             <div>
               <label htmlFor="filter-class" className="text-sm font-medium block mb-1">Class</label>
-              <Select 
-                value={filters.classId} 
-                onValueChange={(value) => setFilters({...filters, classId: value, sectionId: ""})}
+              <Select
+                value={filters.classId}
+                onValueChange={(value) => setFilters({ ...filters, classId: value, sectionId: "" })}
               >
                 <SelectTrigger id="filter-class">
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All classes</SelectItem>
-                  {classes.map(cls => (
+                  <SelectItem value="all">All classes</SelectItem>
+                  {classes.filter(c => c.id).map(cls => (
                     <SelectItem key={cls.id} value={cls.id}>
                       {cls.name}
                     </SelectItem>
@@ -688,21 +688,21 @@ function SyllabusContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Section Filter */}
             <div>
               <label htmlFor="filter-section" className="text-sm font-medium block mb-1">Section</label>
-              <Select 
-                value={filters.sectionId} 
-                onValueChange={(value) => setFilters({...filters, sectionId: value})}
+              <Select
+                value={filters.sectionId}
+                onValueChange={(value) => setFilters({ ...filters, sectionId: value })}
                 disabled={!filters.classId}
               >
                 <SelectTrigger id="filter-section">
                   <SelectValue placeholder={filters.classId ? "All sections" : "Select class first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All sections</SelectItem>
-                  {sections.map(section => (
+                  <SelectItem value="all">All sections</SelectItem>
+                  {sections.filter(s => s.id).map(section => (
                     <SelectItem key={section.id} value={section.id}>
                       {section.name}
                     </SelectItem>
@@ -710,19 +710,19 @@ function SyllabusContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Curriculum Type Filter */}
             <div>
               <label htmlFor="filter-curriculum" className="text-sm font-medium block mb-1">Curriculum Type</label>
-              <Select 
-                value={filters.curriculumType} 
-                onValueChange={(value) => setFilters({...filters, curriculumType: value})}
+              <Select
+                value={filters.curriculumType}
+                onValueChange={(value) => setFilters({ ...filters, curriculumType: value })}
               >
                 <SelectTrigger id="filter-curriculum">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="GENERAL">General</SelectItem>
                   <SelectItem value="ADVANCED">Advanced</SelectItem>
                   <SelectItem value="REMEDIAL">Remedial</SelectItem>
@@ -732,19 +732,19 @@ function SyllabusContent() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Status Filter - Placeholder for now */}
             <div>
               <label htmlFor="filter-status" className="text-sm font-medium block mb-1">Status</label>
-              <Select 
-                value={filters.status.length > 0 ? filters.status[0] : ""} 
-                onValueChange={(value) => setFilters({...filters, status: value ? [value] : []})}
+              <Select
+                value={filters.status.length > 0 ? filters.status[0] : ""}
+                onValueChange={(value) => setFilters({ ...filters, status: value ? [value] : [] })}
               >
                 <SelectTrigger id="filter-status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
@@ -755,18 +755,18 @@ function SyllabusContent() {
               </Select>
             </div>
           </div>
-          
+
           {/* Clear Filters Button */}
           <div className="mt-4 flex justify-end">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => setFilters({
-                subjectId: "",
-                academicYearId: "",
-                classId: "",
-                sectionId: "",
-                curriculumType: "",
+                subjectId: "all",
+                academicYearId: "all",
+                classId: "all",
+                sectionId: "all",
+                curriculumType: "all",
                 status: [],
                 tags: [],
               })}
@@ -811,39 +811,39 @@ function SyllabusContent() {
                   <div className="flex-1">
                     <CardTitle className="text-xl">{syllabus.title}</CardTitle>
                     <CardDescription>{syllabus.description}</CardDescription>
-                    
+
                     {/* Scope Information Display */}
                     <div className="flex flex-wrap gap-2 mt-3">
                       {/* Status Badge */}
                       <StatusBadge status={syllabus.status || "DRAFT"} />
-                      
+
                       <div className="flex items-center gap-1 text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         <BookOpen className="h-3.5 w-3.5" />
                         <span>{syllabus.subject?.name} ({syllabus.subject?.code})</span>
                       </div>
-                      
+
                       {syllabus.academicYear && (
                         <div className="flex items-center gap-1 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded">
                           <span>📅 {syllabus.academicYear.name}</span>
                         </div>
                       )}
-                      
+
                       {syllabus.class && (
                         <div className="flex items-center gap-1 text-sm bg-green-100 text-green-700 px-2 py-1 rounded">
                           <span>🎓 {syllabus.class.name}</span>
                         </div>
                       )}
-                      
+
                       {syllabus.section && (
                         <div className="flex items-center gap-1 text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded">
                           <span>📚 Section {syllabus.section.name}</span>
                         </div>
                       )}
-                      
+
                       <div className="flex items-center gap-1 text-sm bg-orange-100 text-orange-700 px-2 py-1 rounded">
                         <span>{syllabus.curriculumType}</span>
                       </div>
-                      
+
                       {syllabus.boardType && (
                         <div className="flex items-center gap-1 text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded">
                           <span>{syllabus.boardType}</span>
@@ -868,10 +868,10 @@ function SyllabusContent() {
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-red-500" 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-500"
                       onClick={() => handleDeleteItem(syllabus.id, 'syllabus')}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -888,9 +888,9 @@ function SyllabusContent() {
                       <span className="font-medium">{syllabus.version}</span>
                     </div>
                     {syllabus.document && (
-                      <a 
-                        href={syllabus.document} 
-                        target="_blank" 
+                      <a
+                        href={syllabus.document}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center text-sm text-primary hover:text-primary"
                       >
@@ -927,10 +927,10 @@ function SyllabusContent() {
                             </AccordionTrigger>
                           </div>
                           <div className="flex gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditUnit(unit.id, syllabus.id);
@@ -938,10 +938,10 @@ function SyllabusContent() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0 text-red-500" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteItem(unit.id, 'unit');
@@ -955,8 +955,8 @@ function SyllabusContent() {
                           <div className="py-2">
                             <div className="flex justify-between items-center mb-3">
                               <h4 className="text-sm font-medium">Lessons</h4>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => handleAddLesson(unit.id, syllabus.id)}
                               >
@@ -982,18 +982,18 @@ function SyllabusContent() {
                                       )}
                                     </div>
                                     <div className="flex gap-1">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-7 w-7 p-0" 
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
                                         onClick={() => handleEditLesson(lesson.id, unit.id, syllabus.id)}
                                       >
                                         <Edit className="h-3.5 w-3.5" />
                                       </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-7 w-7 p-0 text-red-500" 
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0 text-red-500"
                                         onClick={() => handleDeleteItem(lesson.id, 'lesson')}
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
@@ -1021,8 +1021,8 @@ function SyllabusContent() {
           <DialogHeader>
             <DialogTitle>{editingItemId ? "Edit Syllabus" : "Create New Syllabus"}</DialogTitle>
             <DialogDescription>
-              {editingItemId 
-                ? "Update the details of the syllabus" 
+              {editingItemId
+                ? "Update the details of the syllabus"
                 : "Define a new syllabus for the selected subject"}
             </DialogDescription>
           </DialogHeader>
@@ -1051,9 +1051,9 @@ function SyllabusContent() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Brief description of the syllabus" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Brief description of the syllabus"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -1067,8 +1067,8 @@ function SyllabusContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subject</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -1142,8 +1142,8 @@ function SyllabusContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Academic Year (Optional)</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
@@ -1258,10 +1258,10 @@ function SyllabusContent() {
                           <p className="text-xs text-muted-foreground">{(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
                         </div>
                       </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={handleRemoveFile}
                         className="text-red-500"
                       >
@@ -1278,9 +1278,9 @@ function SyllabusContent() {
                             <FormItem>
                               <FormLabel className="sr-only">Document URL</FormLabel>
                               <FormControl>
-                                <Input 
-                                  placeholder="Enter document URL or upload a file" 
-                                  {...field} 
+                                <Input
+                                  placeholder="Enter document URL or upload a file"
+                                  {...field}
                                   value={field.value || ""}
                                 />
                               </FormControl>
@@ -1301,9 +1301,9 @@ function SyllabusContent() {
                             accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                             onChange={handleFileChange}
                           />
-                          <Button 
+                          <Button
                             type="button"
-                            variant="outline" 
+                            variant="outline"
                             className="w-full"
                             onClick={() => fileInputRef.current?.click()}
                           >
@@ -1340,8 +1340,8 @@ function SyllabusContent() {
           <DialogHeader>
             <DialogTitle>{editingItemId ? "Edit Unit" : "Add New Unit"}</DialogTitle>
             <DialogDescription>
-              {editingItemId 
-                ? "Update the details of this unit" 
+              {editingItemId
+                ? "Update the details of this unit"
                 : "Add a new unit to the syllabus"}
             </DialogDescription>
           </DialogHeader>
@@ -1367,9 +1367,9 @@ function SyllabusContent() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Brief description of the unit" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Brief description of the unit"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -1406,8 +1406,8 @@ function SyllabusContent() {
           <DialogHeader>
             <DialogTitle>{editingItemId ? "Edit Lesson" : "Add New Lesson"}</DialogTitle>
             <DialogDescription>
-              {editingItemId 
-                ? "Update the details of this lesson" 
+              {editingItemId
+                ? "Update the details of this lesson"
                 : "Add a new lesson to the unit"}
             </DialogDescription>
           </DialogHeader>
@@ -1433,9 +1433,9 @@ function SyllabusContent() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Brief description of the lesson" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Brief description of the lesson"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -1450,9 +1450,9 @@ function SyllabusContent() {
                   <FormItem>
                     <FormLabel>Content (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Lesson content or URL to content" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Lesson content or URL to content"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -1467,9 +1467,9 @@ function SyllabusContent() {
                   <FormItem>
                     <FormLabel>Resources (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="URLs to resources, separated by commas" 
-                        {...field} 
+                      <Textarea
+                        placeholder="URLs to resources, separated by commas"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -1484,11 +1484,11 @@ function SyllabusContent() {
                   <FormItem>
                     <FormLabel>Duration in Minutes (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1" 
-                        placeholder="e.g. 45" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 45"
+                        {...field}
                         value={field.value || ""}
                       />
                     </FormControl>
@@ -1511,8 +1511,8 @@ function SyllabusContent() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Delete {deleteItemInfo?.type === 'syllabus' ? 'Syllabus' : 
-                     deleteItemInfo?.type === 'unit' ? 'Unit' : 'Lesson'}
+              Delete {deleteItemInfo?.type === 'syllabus' ? 'Syllabus' :
+                deleteItemInfo?.type === 'unit' ? 'Unit' : 'Lesson'}
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to delete this {deleteItemInfo?.type}? This action cannot be undone.

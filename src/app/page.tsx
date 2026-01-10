@@ -4,8 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { isSetupRequired } from "@/lib/utils/setup-check";
 
 export default async function Home() {
+  // Check if setup is required - redirect to setup wizard if database is empty
+  const setupRequired = await isSetupRequired();
+  if (setupRequired) {
+    redirect("/setup");
+  }
+
   const session = await auth();
   const userId = session?.user?.id;
 

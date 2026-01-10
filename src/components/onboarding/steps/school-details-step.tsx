@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +13,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Building2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Upload, Loader2, X } from "lucide-react";
 import type { WizardData } from "../setup-wizard";
 import { useToast } from "@/hooks/use-toast";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 interface SchoolDetailsStepProps {
     data: WizardData;
@@ -35,7 +37,64 @@ const TIMEZONES = [
 
 export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDetailsStepProps) {
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [uploadingLogo, setUploadingLogo] = useState(false);
     const { toast } = useToast();
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast({
+                title: "Invalid file type",
+                description: "Please upload an image file",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast({
+                title: "File too large",
+                description: "Image size should be less than 5MB",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setUploadingLogo(true);
+        try {
+            const result = await uploadToCloudinary(file, {
+                folder: 'school-logos',
+                resource_type: 'image',
+            });
+
+            updateData({ schoolLogo: result.secure_url });
+            toast({
+                title: "Success",
+                description: "Logo uploaded successfully",
+            });
+        } catch (error) {
+            console.error("Error uploading logo:", error);
+            toast({
+                title: "Upload failed",
+                description: "Failed to upload logo. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
+    const handleRemoveLogo = () => {
+        updateData({ schoolLogo: "" });
+        toast({
+            title: "Logo removed",
+            description: "You can upload a new logo anytime",
+        });
+    };
 
     const validateAndNext = () => {
         const newErrors: Record<string, string> = {};
@@ -191,13 +250,85 @@ export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDe
                     />
                 </div>
 
-                {/* Logo Upload Placeholder */}
+                {/* Logo Upload */}
                 <div className="space-y-2">
                     <Label>School Logo</Label>
-                    <div className="border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors cursor-pointer">
-                        <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">You can upload your logo later in Settings</p>
-                    </div>
+
+                    {/* Logo Preview */}
+                    {data.schoolLogo && (
+                        <div className="relative inline-block">
+                            <div className="p-4 border rounded-md bg-muted/50">
+                                <div className="relative h-24 w-24">
+                                    <Image
+                                        src={data.schoolLogo}
+                                        alt="School logo"
+                                        fill
+                                        className="object-contain"
+                                        unoptimized
+                                        onError={(e) => {
+                                            const target = e.currentTarget as HTMLImageElement;
+                                            target.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                onClick={handleRemoveLogo}
+                                disabled={uploadingLogo}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Upload Area */}
+                    {!data.schoolLogo && (
+                        <div
+                            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${uploadingLogo
+                                    ? "border-primary bg-primary/5"
+                                    : "hover:border-primary/50 cursor-pointer"
+                                }`}
+                            onClick={() => !uploadingLogo && document.getElementById('logoUpload')?.click()}
+                        >
+                            {uploadingLogo ? (
+                                <>
+                                    <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
+                                    <p className="text-sm text-primary">Uploading logo...</p>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm text-muted-foreground">
+                                        Click to upload your school logo
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Max 5MB • JPG, PNG, SVG
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Hidden file input */}
+                    <Input
+                        id="logoUpload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo}
+                        className="hidden"
+                    />
+
+                    {/* Manual URL option */}
+                    {data.schoolLogo && (
+                        <p className="text-xs text-muted-foreground">
+                            Logo uploaded successfully. You can change it anytime in Settings.
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -207,7 +338,7 @@ export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDe
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                 </Button>
-                <Button onClick={validateAndNext}>
+                <Button onClick={validateAndNext} disabled={uploadingLogo}>
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

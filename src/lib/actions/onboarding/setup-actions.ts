@@ -98,173 +98,180 @@ export async function completeSetup(data: SetupData) {
         const hashedPassword = await bcrypt.hash(data.adminPassword, 12);
 
         // Use a transaction to ensure all data is created together
-        const result = await db.$transaction(async (tx) => {
-            // 1. Update or create system settings
-            let settings = await tx.systemSettings.findFirst();
+        // Increase timeout for creating many classes/sections (60 seconds)
+        const result = await db.$transaction(
+            async (tx) => {
+                // 1. Update or create system settings
+                let settings = await tx.systemSettings.findFirst();
 
-            if (settings) {
-                settings = await tx.systemSettings.update({
-                    where: { id: settings.id },
-                    data: {
-                        schoolName: data.schoolName,
-                        schoolEmail: data.schoolEmail,
-                        schoolPhone: data.schoolPhone,
-                        schoolAddress: data.schoolAddress || null,
-                        schoolWebsite: data.schoolWebsite || null,
-                        timezone: data.timezone,
-                        schoolLogo: data.schoolLogo || null,
-                        tagline: data.tagline || null,
-                        onboardingCompleted: true,
-                        onboardingStep: 7,
-                    },
-                });
-            } else {
-                settings = await tx.systemSettings.create({
-                    data: {
-                        schoolName: data.schoolName,
-                        schoolEmail: data.schoolEmail,
-                        schoolPhone: data.schoolPhone,
-                        schoolAddress: data.schoolAddress || null,
-                        schoolWebsite: data.schoolWebsite || null,
-                        timezone: data.timezone,
-                        schoolLogo: data.schoolLogo || null,
-                        tagline: data.tagline || null,
-                        onboardingCompleted: true,
-                        onboardingStep: 7,
-                        // Default values
-                        defaultGradingScale: "PERCENTAGE",
-                        passingGrade: 50,
-                        emailEnabled: true,
-                        defaultTheme: "LIGHT",
-                        language: "en",
-                    },
-                });
-            }
-
-            // 2. Create admin user
-            const adminUser = await tx.user.create({
-                data: {
-                    email: data.adminEmail,
-                    password: hashedPassword,
-                    firstName: data.adminFirstName,
-                    lastName: data.adminLastName,
-                    name: `${data.adminFirstName} ${data.adminLastName}`,
-                    phone: data.adminPhone || null,
-                    role: "ADMIN",
-                    active: true,
-                },
-            });
-
-            // 3. Create administrator profile
-            await tx.administrator.create({
-                data: {
-                    userId: adminUser.id,
-                    position: data.adminPosition || "Administrator",
-                    department: "Administration",
-                },
-            });
-
-            // 4. Create academic year (dates are validated above)
-            const academicYear = await tx.academicYear.create({
-                data: {
-                    name: data.academicYearName,
-                    startDate: data.academicYearStart as Date,
-                    endDate: data.academicYearEnd as Date,
-                    isCurrent: true,
-                },
-            });
-
-            // Update settings with current academic year
-            await tx.systemSettings.update({
-                where: { id: settings.id },
-                data: {
-                    currentAcademicYear: academicYear.id,
-                },
-            });
-
-            // 5. Create terms
-            const createdTerms = [];
-            for (const term of data.terms) {
-                if (term.name && term.startDate && term.endDate) {
-                    const createdTerm = await tx.term.create({
+                if (settings) {
+                    settings = await tx.systemSettings.update({
+                        where: { id: settings.id },
                         data: {
-                            name: term.name,
-                            academicYearId: academicYear.id,
-                            startDate: term.startDate,
-                            endDate: term.endDate,
+                            schoolName: data.schoolName,
+                            schoolEmail: data.schoolEmail,
+                            schoolPhone: data.schoolPhone,
+                            schoolAddress: data.schoolAddress || null,
+                            schoolWebsite: data.schoolWebsite || null,
+                            timezone: data.timezone,
+                            schoolLogo: data.schoolLogo || null,
+                            tagline: data.tagline || null,
+                            onboardingCompleted: true,
+                            onboardingStep: 7,
                         },
                     });
-                    createdTerms.push(createdTerm);
+                } else {
+                    settings = await tx.systemSettings.create({
+                        data: {
+                            schoolName: data.schoolName,
+                            schoolEmail: data.schoolEmail,
+                            schoolPhone: data.schoolPhone,
+                            schoolAddress: data.schoolAddress || null,
+                            schoolWebsite: data.schoolWebsite || null,
+                            timezone: data.timezone,
+                            schoolLogo: data.schoolLogo || null,
+                            tagline: data.tagline || null,
+                            onboardingCompleted: true,
+                            onboardingStep: 7,
+                            // Default values
+                            defaultGradingScale: "PERCENTAGE",
+                            passingGrade: 50,
+                            emailEnabled: true,
+                            defaultTheme: "LIGHT",
+                            language: "en",
+                        },
+                    });
                 }
-            }
 
-            // Set first term as current
-            if (createdTerms.length > 0) {
+                // 2. Create admin user
+                const adminUser = await tx.user.create({
+                    data: {
+                        email: data.adminEmail,
+                        password: hashedPassword,
+                        firstName: data.adminFirstName,
+                        lastName: data.adminLastName,
+                        name: `${data.adminFirstName} ${data.adminLastName}`,
+                        phone: data.adminPhone || null,
+                        role: "ADMIN",
+                        active: true,
+                    },
+                });
+
+                // 3. Create administrator profile
+                await tx.administrator.create({
+                    data: {
+                        userId: adminUser.id,
+                        position: data.adminPosition || "Administrator",
+                        department: "Administration",
+                    },
+                });
+
+                // 4. Create academic year (dates are validated above)
+                const academicYear = await tx.academicYear.create({
+                    data: {
+                        name: data.academicYearName,
+                        startDate: data.academicYearStart as Date,
+                        endDate: data.academicYearEnd as Date,
+                        isCurrent: true,
+                    },
+                });
+
+                // Update settings with current academic year
                 await tx.systemSettings.update({
                     where: { id: settings.id },
                     data: {
-                        currentTerm: createdTerms[0].id,
-                    },
-                });
-            }
-
-            // 6. Create classes and sections (if any selected)
-            for (const className of data.selectedClasses) {
-                const createdClass = await tx.class.create({
-                    data: {
-                        name: className,
-                        academicYearId: academicYear.id,
+                        currentAcademicYear: academicYear.id,
                     },
                 });
 
-                // Create sections for each class
-                for (const sectionName of data.sections) {
-                    await tx.classSection.create({
+                // 5. Create terms
+                const createdTerms = [];
+                for (const term of data.terms) {
+                    if (term.name && term.startDate && term.endDate) {
+                        const createdTerm = await tx.term.create({
+                            data: {
+                                name: term.name,
+                                academicYearId: academicYear.id,
+                                startDate: term.startDate,
+                                endDate: term.endDate,
+                            },
+                        });
+                        createdTerms.push(createdTerm);
+                    }
+                }
+
+                // Set first term as current
+                if (createdTerms.length > 0) {
+                    await tx.systemSettings.update({
+                        where: { id: settings.id },
                         data: {
-                            name: sectionName,
-                            classId: createdClass.id,
-                            capacity: 40, // Default capacity
+                            currentTerm: createdTerms[0].id,
                         },
                     });
                 }
+
+                // 6. Create classes and sections (if any selected)
+                for (const className of data.selectedClasses) {
+                    const createdClass = await tx.class.create({
+                        data: {
+                            name: className,
+                            academicYearId: academicYear.id,
+                        },
+                    });
+
+                    // Create sections for each class
+                    for (const sectionName of data.sections) {
+                        await tx.classSection.create({
+                            data: {
+                                name: sectionName,
+                                classId: createdClass.id,
+                                capacity: 40, // Default capacity
+                            },
+                        });
+                    }
+                }
+
+                // 7. Create default grade scale
+                const gradeScales = [
+                    { grade: "A+", minMarks: 90, maxMarks: 100, gpa: 10, description: "Outstanding" },
+                    { grade: "A", minMarks: 80, maxMarks: 89, gpa: 9, description: "Excellent" },
+                    { grade: "B+", minMarks: 70, maxMarks: 79, gpa: 8, description: "Very Good" },
+                    { grade: "B", minMarks: 60, maxMarks: 69, gpa: 7, description: "Good" },
+                    { grade: "C+", minMarks: 50, maxMarks: 59, gpa: 6, description: "Above Average" },
+                    { grade: "C", minMarks: 40, maxMarks: 49, gpa: 5, description: "Average" },
+                    { grade: "D", minMarks: 33, maxMarks: 39, gpa: 4, description: "Below Average" },
+                    { grade: "F", minMarks: 0, maxMarks: 32, gpa: 0, description: "Fail" },
+                ];
+
+                for (const scale of gradeScales) {
+                    await tx.gradeScale.create({ data: scale });
+                }
+
+                // 8. Create default exam types
+                const examTypes = [
+                    { name: "Unit Test", description: "Regular unit assessment", weight: 10, isActive: true, includeInGradeCard: true },
+                    { name: "Mid-Term Exam", description: "Mid-term examination", weight: 30, isActive: true, includeInGradeCard: true },
+                    { name: "Final Exam", description: "End of term examination", weight: 50, isActive: true, includeInGradeCard: true },
+                    { name: "Practical", description: "Practical examination", weight: 10, isActive: true, includeInGradeCard: true },
+                ];
+
+                for (const examType of examTypes) {
+                    await tx.examType.create({ data: examType });
+                }
+
+                return {
+                    settings,
+                    adminUser,
+                    academicYear,
+                    termsCount: createdTerms.length,
+                    classesCount: data.selectedClasses.length,
+                };
+            },
+            {
+                maxWait: 10000, // 10 seconds to acquire a transaction slot
+                timeout: 60000, // 60 seconds to complete the transaction
             }
-
-            // 7. Create default grade scale
-            const gradeScales = [
-                { grade: "A+", minMarks: 90, maxMarks: 100, gpa: 10, description: "Outstanding" },
-                { grade: "A", minMarks: 80, maxMarks: 89, gpa: 9, description: "Excellent" },
-                { grade: "B+", minMarks: 70, maxMarks: 79, gpa: 8, description: "Very Good" },
-                { grade: "B", minMarks: 60, maxMarks: 69, gpa: 7, description: "Good" },
-                { grade: "C+", minMarks: 50, maxMarks: 59, gpa: 6, description: "Above Average" },
-                { grade: "C", minMarks: 40, maxMarks: 49, gpa: 5, description: "Average" },
-                { grade: "D", minMarks: 33, maxMarks: 39, gpa: 4, description: "Below Average" },
-                { grade: "F", minMarks: 0, maxMarks: 32, gpa: 0, description: "Fail" },
-            ];
-
-            for (const scale of gradeScales) {
-                await tx.gradeScale.create({ data: scale });
-            }
-
-            // 8. Create default exam types
-            const examTypes = [
-                { name: "Unit Test", description: "Regular unit assessment", weight: 10, isActive: true, includeInGradeCard: true },
-                { name: "Mid-Term Exam", description: "Mid-term examination", weight: 30, isActive: true, includeInGradeCard: true },
-                { name: "Final Exam", description: "End of term examination", weight: 50, isActive: true, includeInGradeCard: true },
-                { name: "Practical", description: "Practical examination", weight: 10, isActive: true, includeInGradeCard: true },
-            ];
-
-            for (const examType of examTypes) {
-                await tx.examType.create({ data: examType });
-            }
-
-            return {
-                settings,
-                adminUser,
-                academicYear,
-                termsCount: createdTerms.length,
-                classesCount: data.selectedClasses.length,
-            };
-        });
+        );
 
         // Revalidate paths
         revalidatePath("/");

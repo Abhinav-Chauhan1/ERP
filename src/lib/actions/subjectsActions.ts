@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/subjectsSchemaValidation";
+import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 
 // Get all subjects with their relationships
 export async function getSubjects() {
@@ -53,13 +54,13 @@ export async function getSubjects() {
       teachers: subject.teachers.length,
       hasComplexSyllabus: subject.syllabus.length > 0 && subject.syllabus[0].units.length > 0
     }));
-    
+
     return { success: true, data: formattedSubjects };
   } catch (error) {
     console.error("Error fetching subjects:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subjects" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
 }
@@ -108,11 +109,11 @@ export async function getSubjectById(id: string) {
         }
       }
     });
-    
+
     if (!subject) {
       return { success: false, error: "Subject not found" };
     }
-    
+
     // Format teachers data
     const teachersData = subject.teachers.map(st => ({
       id: st.teacher.id,
@@ -121,25 +122,25 @@ export async function getSubjectById(id: string) {
       qualification: st.teacher.qualification || "",
       classes: st.teacher.classes.map(ct => `${ct.class.name} ${ct.isClassHead ? '(Head)' : ''}`)
     }));
-    
+
     // Format classes data
     const classesData = subject.classes.map(sc => {
-      const teacherForClass = subject.teachers.find(st => 
+      const teacherForClass = subject.teachers.find(st =>
         st.teacher.classes.some(tc => tc.classId === sc.classId)
       );
-      
+
       return {
         id: sc.classId,
         name: sc.class.name,
         students: 0, // We'll need to get this from enrollments
-        teacher: teacherForClass ? 
-          `${teacherForClass.teacher.user.firstName} ${teacherForClass.teacher.user.lastName}` : 
+        teacher: teacherForClass ?
+          `${teacherForClass.teacher.user.firstName} ${teacherForClass.teacher.user.lastName}` :
           "Not assigned",
         academicYear: sc.class.academicYear.name,
         isCurrent: sc.class.academicYear.isCurrent
       };
     });
-    
+
     // Format syllabus data
     let syllabusData = null;
     if (subject.syllabus.length > 0) {
@@ -162,7 +163,7 @@ export async function getSubjectById(id: string) {
         }))
       };
     }
-    
+
     // Format resources
     // In a real app, you'd have a resources table. 
     // For now, we'll create some placeholder resources from the syllabus document
@@ -172,7 +173,7 @@ export async function getSubjectById(id: string) {
       type: "PDF",
       link: syl.document || "#"
     }));
-    
+
     const formattedSubject = {
       id: subject.id,
       code: subject.code,
@@ -188,13 +189,13 @@ export async function getSubjectById(id: string) {
       syllabus: syllabusData,
       resources: resourcesData
     };
-    
+
     return { success: true, data: formattedSubject };
   } catch (error) {
     console.error("Error fetching subject:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subject" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subject"
     };
   }
 }
@@ -207,13 +208,13 @@ export async function getDepartments() {
         name: 'asc',
       },
     });
-    
+
     return { success: true, data: departments };
   } catch (error) {
     console.error("Error fetching departments:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch departments" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch departments"
     };
   }
 }
@@ -230,13 +231,13 @@ export async function getClasses() {
         { name: 'asc' },
       ],
     });
-    
+
     return { success: true, data: classes };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
 }
@@ -246,11 +247,11 @@ export async function createSubject(data: SubjectFormValues) {
   try {
     // Check if subject code already exists
     const existingSubject = await db.subject.findFirst({
-      where: { 
-        code: { 
+      where: {
+        code: {
           equals: data.code,
           mode: 'insensitive' // Case insensitive search
-        } 
+        }
       }
     });
 
@@ -272,14 +273,14 @@ export async function createSubject(data: SubjectFormValues) {
         }
       }
     });
-    
+
     revalidatePath("/admin/teaching/subjects");
     return { success: true, data: subject };
   } catch (error) {
     console.error("Error creating subject:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create subject" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create subject"
     };
   }
 }
@@ -289,8 +290,8 @@ export async function updateSubject(data: SubjectUpdateFormValues) {
   try {
     // Check if subject code already exists for another subject
     const existingSubject = await db.subject.findFirst({
-      where: { 
-        code: { 
+      where: {
+        code: {
           equals: data.code,
           mode: 'insensitive' // Case insensitive search
         },
@@ -322,15 +323,15 @@ export async function updateSubject(data: SubjectUpdateFormValues) {
         }
       }
     });
-    
+
     revalidatePath("/admin/teaching/subjects");
     revalidatePath(`/admin/teaching/subjects/${data.id}`);
     return { success: true, data: subject };
   } catch (error) {
     console.error("Error updating subject:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update subject" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update subject"
     };
   }
 }
@@ -343,26 +344,112 @@ export async function deleteSubject(id: string) {
     const hasTeachers = await db.subjectTeacher.findFirst({ where: { subjectId: id } });
     const hasExams = await db.exam.findFirst({ where: { subjectId: id } });
     const hasAssignments = await db.assignment.findFirst({ where: { subjectId: id } });
-    
+
     if (hasSyllabus || hasTeachers || hasExams || hasAssignments) {
       return {
         success: false,
         error: "Cannot delete this subject because it has associated syllabi, teachers, exams, or assignments. Remove these first."
       };
     }
-    
+
     // Delete the subject (this will cascade delete subject-class connections)
     await db.subject.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/teaching/subjects");
     return { success: true };
   } catch (error) {
     console.error("Error deleting subject:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete subject" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete subject"
     };
   }
 }
+
+
+
+// Get available subjects to generate (those not already created)
+export async function getAvailableSubjectTemplates() {
+  try {
+    const existingSubjects = await db.subject.findMany({
+      select: { code: true }
+    });
+    const existingCodes = new Set(existingSubjects.map(s => s.code.toUpperCase()));
+
+    const available = STANDARD_SUBJECTS.filter(
+      s => !existingCodes.has(s.code.toUpperCase())
+    );
+
+    return { success: true, data: available };
+  } catch (error) {
+    console.error("Error fetching available subject templates:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch templates"
+    };
+  }
+}
+
+// Auto-generate selected subjects
+export async function autoGenerateSubjects(selectedCodes?: string[]) {
+  try {
+    // Get existing subjects
+    const existingSubjects = await db.subject.findMany({
+      select: { code: true }
+    });
+    const existingCodes = new Set(existingSubjects.map(s => s.code.toUpperCase()));
+
+    // Get existing departments for mapping
+    const departments = await db.department.findMany({
+      select: { id: true, name: true }
+    });
+    const departmentMap = new Map(departments.map(d => [d.name.toLowerCase(), d.id]));
+
+    // Filter out subjects that already exist
+    let subjectsToCreate = STANDARD_SUBJECTS
+      .filter(s => !existingCodes.has(s.code.toUpperCase()));
+
+    // If specific codes were provided, filter to only those
+    if (selectedCodes && selectedCodes.length > 0) {
+      const selectedSet = new Set(selectedCodes.map(c => c.toUpperCase()));
+      subjectsToCreate = subjectsToCreate.filter(
+        s => selectedSet.has(s.code.toUpperCase())
+      );
+    }
+
+    if (subjectsToCreate.length === 0) {
+      return {
+        success: false,
+        error: "No new subjects to create"
+      };
+    }
+
+    // Create the new subjects
+    const result = await db.subject.createMany({
+      data: subjectsToCreate.map(s => ({
+        name: s.name,
+        code: s.code,
+        description: s.description,
+        departmentId: departmentMap.get(s.department.toLowerCase()) || null,
+      })),
+      skipDuplicates: true,
+    });
+
+    revalidatePath("/admin/teaching/subjects");
+    return {
+      success: true,
+      count: result.count,
+      message: `Created ${result.count} subjects`
+    };
+  } catch (error) {
+    console.error("Error auto-generating subjects:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to auto-generate subjects"
+    };
+  }
+}
+
+
