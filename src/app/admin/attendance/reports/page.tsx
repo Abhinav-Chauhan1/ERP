@@ -268,69 +268,123 @@ export default function AttendanceReportsPage() {
         toast.success('PDF report downloaded successfully');
 
       } else if (exportFormat === 'excel' || exportFormat === 'csv') {
-        // Generate Excel/CSV using xlsx
-        const XLSX = await import('xlsx' as any);
-        const workbook = XLSX.utils.book_new();
+        // Generate Excel using ExcelJS
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        
+        // Set workbook properties
+        workbook.creator = 'SikshaMitra';
+        workbook.created = new Date();
+        workbook.title = reportTitle;
 
-        // Prepare data
-        let sheetData: any[][];
+        const worksheet = workbook.addWorksheet('Attendance Report');
+
+        let currentRow = 1;
+
+        // Add title
+        worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+        const titleCell = worksheet.getCell(`A${currentRow}`);
+        titleCell.value = reportTitle;
+        titleCell.font = { size: 16, bold: true };
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        currentRow += 1;
+
+        // Add period
+        worksheet.mergeCells(`A${currentRow}:F${currentRow}`);
+        const periodCell = worksheet.getCell(`A${currentRow}`);
+        periodCell.value = `Period: ${monthName} ${year}`;
+        periodCell.font = { size: 12 };
+        periodCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        currentRow += 2;
+
+        // Prepare data based on report type
+        let headers: string[];
+        let dataRows: any[][];
 
         if (reportType === 'class') {
-          sheetData = [
-            [reportTitle],
-            [`Period: ${monthName} ${year}`],
-            [],
-            ['Class', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'],
-            ...reportData.map((r: any) => [
-              r.className,
-              r.totalRecords,
-              r.presentCount,
-              r.absentCount,
-              r.lateCount || 0,
-              r.attendanceRate?.toFixed(1) || 0
-            ])
-          ];
+          headers = ['Class', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'];
+          dataRows = reportData.map((r: any) => [
+            r.className,
+            r.totalRecords,
+            r.presentCount,
+            r.absentCount,
+            r.lateCount || 0,
+            r.attendanceRate?.toFixed(1) || 0
+          ]);
         } else if (reportType === 'absenteeism') {
-          sheetData = [
-            [reportTitle],
-            [`Period: ${monthName} ${year}`],
-            [],
-            ['Student Name', 'Admission ID', 'Class', 'Section', 'Absences'],
-            ...reportData.map((r: any) => [
-              r.studentName,
-              r.admissionId,
-              r.class,
-              r.section,
-              r.absenceCount
-            ])
-          ];
+          headers = ['Student Name', 'Admission ID', 'Class', 'Section', 'Absences'];
+          dataRows = reportData.map((r: any) => [
+            r.studentName,
+            r.admissionId,
+            r.class,
+            r.section,
+            r.absenceCount
+          ]);
         } else {
-          sheetData = [
-            [reportTitle],
-            [`Period: ${monthName} ${year}`],
-            [],
-            ['Date', 'Total', 'Present', 'Absent', 'Late', 'Attendance Rate'],
-            ...reportData.map((r: any) => [
-              new Date(r.date).toLocaleDateString(),
-              r.total,
-              r.present,
-              r.absent,
-              r.late || 0,
-              r.attendanceRate?.toFixed(1) || 0
-            ])
-          ];
+          headers = ['Date', 'Total', 'Present', 'Absent', 'Late', 'Attendance Rate'];
+          dataRows = reportData.map((r: any) => [
+            new Date(r.date).toLocaleDateString(),
+            r.total,
+            r.present,
+            r.absent,
+            r.late || 0,
+            r.attendanceRate?.toFixed(1) || 0
+          ]);
         }
 
-        const sheet = XLSX.utils.aoa_to_sheet(sheetData);
-        XLSX.utils.book_append_sheet(workbook, sheet, 'Attendance Report');
+        // Add header row
+        const headerRow = worksheet.getRow(currentRow);
+        headerRow.values = headers;
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2980B9' },
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        headerRow.height = 20;
+        currentRow++;
 
-        if (exportFormat === 'csv') {
-          XLSX.writeFile(workbook, `${filename}.csv`, { bookType: 'csv' });
-          toast.success('CSV report downloaded successfully');
-        } else {
-          XLSX.writeFile(workbook, `${filename}.xlsx`);
-          toast.success('Excel report downloaded successfully');
-        }
+        // Add data rows
+        dataRows.forEach((row, index) => {
+          const excelRow = worksheet.getRow(currentRow + index);
+          excelRow.values = row;
+          
+          // Alternate row colors
+          if (index % 2 === 1) {
+            excelRow.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF5F5F5' },
+            };
+          }
+        });
+
+        // Auto-fit columns
+        worksheet.columns.forEach((column) => {
+          if (column) {
+            column.width = 15;
+          }
+        });
+
+        // Generate file
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], {
+          type: exportFormat === 'csv' 
+            ? 'text/csv;charset=utf-8;'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = exportFormat === 'csv' ? `${filename}.csv` : `${filename}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success(`${exportFormat === 'csv' ? 'CSV' : 'Excel'} report downloaded successfully`);
       }
 
       setReportGenerateDialogOpen(false);
