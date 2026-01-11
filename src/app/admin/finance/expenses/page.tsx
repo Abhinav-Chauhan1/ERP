@@ -107,7 +107,6 @@ export default function ExpensesPage() {
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
   const [createExpenseDialog, setCreateExpenseDialog] = useState(false);
   const [viewExpenseDialog, setViewExpenseDialog] = useState(false);
-  const [editExpenseDialog, setEditExpenseDialog] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,7 +195,7 @@ export default function ExpensesPage() {
       const result = await updateExpense(id, data);
       if (result.success) {
         toast.success("Expense updated successfully");
-        setEditExpenseDialog(false);
+        setCreateExpenseDialog(false);
         loadExpenses();
         loadStats();
       } else {
@@ -236,7 +235,8 @@ export default function ExpensesPage() {
     },
   });
 
-  // Filter expenses based on search
+  // Filter expenses based on search logic (kept separate from API filters for search)
+  // Note: For large datasets, search should also be server-side.
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (expense.vendor && expense.vendor.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -246,12 +246,17 @@ export default function ExpensesPage() {
   });
 
   function handleOpenCreateDialog() {
+    setSelectedExpense(null);
     form.reset({
       title: "",
       amount: 0,
       date: new Date().toISOString().split('T')[0],
       description: "",
       receiptNumber: "",
+      attachmentFiles: undefined,
+      category: undefined,
+      paymentMethod: undefined,
+      paidTo: "",
     });
     setCreateExpenseDialog(true);
   }
@@ -263,14 +268,14 @@ export default function ExpensesPage() {
         title: expense.title,
         category: expense.category,
         amount: expense.amount,
-        date: expense.date,
+        date: new Date(expense.date).toISOString().split('T')[0],
         paymentMethod: expense.paymentMethod,
-        paidTo: expense.paidTo,
-        description: expense.description,
-        receiptNumber: expense.receiptNumber,
+        paidTo: expense.paidTo || "",
+        description: expense.description || "",
+        receiptNumber: expense.receiptNumber || "",
       });
       setSelectedExpense(expense);
-      setEditExpenseDialog(true);
+      setCreateExpenseDialog(true);
     }
   }
 
@@ -283,10 +288,11 @@ export default function ExpensesPage() {
   }
 
   function onSubmitExpense(values: z.infer<typeof expenseFormSchema>) {
-    console.log("Expense submitted:", values);
-    // Here you would submit the data to your backend
-    setCreateExpenseDialog(false);
-    setEditExpenseDialog(false);
+    if (selectedExpense) {
+      handleUpdateExpense(selectedExpense.id, values);
+    } else {
+      handleCreateExpense(values);
+    }
   }
 
   function handleCheckAllItems() {
@@ -333,9 +339,9 @@ export default function ExpensesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Add New Expense</DialogTitle>
+              <DialogTitle>{selectedExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
               <DialogDescription>
-                Record a new expense in the system
+                {selectedExpense ? "Update expense details" : "Record a new expense in the system"}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -513,10 +519,10 @@ export default function ExpensesPage() {
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setCreateExpenseDialog(false)}>
+                  <Button variant="outline" onClick={() => setCreateExpenseDialog(false)} type="button">
                     Cancel
                   </Button>
-                  <Button type="submit">Save Expense</Button>
+                  <Button type="submit">{selectedExpense ? "Update Expense" : "Save Expense"}</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -950,31 +956,6 @@ export default function ExpensesPage() {
               Print
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Expense Dialog - Using the same form as Create, just different state */}
-      <Dialog open={editExpenseDialog} onOpenChange={setEditExpenseDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Expense</DialogTitle>
-            <DialogDescription>
-              Update expense information
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmitExpense)} className="space-y-4">
-              {/* Same form fields as Create Expense Dialog */}
-              {/* ...existing code... */}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditExpenseDialog(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Update Expense</Button>
-              </DialogFooter>
-            </form>
-          </Form>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,16 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { format, addMonths } from "date-fns";
+import ReactDatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "@/styles/datepicker.css";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -18,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DayPicker } from "react-day-picker";
 
 interface DatePickerProps {
   date: Date | undefined;
@@ -26,6 +22,8 @@ interface DatePickerProps {
   disabled?: (date: Date) => boolean;
   placeholder?: string;
   className?: string;
+  startYear?: number;
+  endYear?: number;
 }
 
 export function DatePicker({
@@ -34,122 +32,147 @@ export function DatePicker({
   disabled,
   placeholder = "Select date",
   className,
+  startYear = 1900,
+  endYear = new Date().getFullYear() + 100,
 }: DatePickerProps) {
-  // This state is used for the month/year navigation
-  const [navMonth, setNavMonth] = React.useState<Date>(date || new Date());
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [currentMonth, setCurrentMonth] = React.useState(date || new Date());
+
+  const handleChange = (selectedDate: Date | null) => {
+    onSelect(selectedDate || undefined);
+    setIsOpen(false);
+  };
+
+  const filterDate = disabled ? (date: Date) => !disabled(date) : undefined;
+
+  const years = React.useMemo(() => {
+    const arr = [];
+    for (let i = endYear; i >= startYear; i--) {
+      arr.push(i);
+    }
+    return arr;
+  }, [startYear, endYear]);
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const handleMonthChange = (month: string) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(parseInt(month));
+    setCurrentMonth(newDate);
+  };
+
+  const handleYearChange = (year: string) => {
+    const newDate = new Date(currentMonth);
+    newDate.setFullYear(parseInt(year));
+    setCurrentMonth(newDate);
+  };
+
+  const goToPreviousMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setCurrentMonth(newDate);
+  };
+
+  const goToNextMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setCurrentMonth(newDate);
+  };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full pl-3 text-left font-normal flex justify-between",
-            !date && "text-muted-foreground",
-            className
-          )}
-        >
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
-          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="flex justify-center items-center pt-3 pb-2 px-2 w-full gap-1">
-          <div className="flex items-center gap-1 rounded-md bg-accent/50 p-1">
-            <button
-              onClick={() => setNavMonth(addMonths(navMonth, -1))}
-              className="p-1 rounded-md hover:bg-accent"
-              aria-label="Previous month"
-              type="button"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="flex items-center gap-1">
-              <Select
-                value={navMonth.getMonth().toString()}
-                onValueChange={(value) => {
-                  const newMonth = new Date(
-                    navMonth.getFullYear(),
-                    parseInt(value),
-                    1
-                  );
-                  setNavMonth(newMonth);
-                }}
-              >
-                <SelectTrigger className="h-8 w-[90px] px-2 py-0 text-sm">
-                  <SelectValue placeholder={format(navMonth, "MMMM")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <SelectItem key={i} value={i.toString()}>
-                      {format(new Date(navMonth.getFullYear(), i, 1), "MMMM")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        className={cn(
+          "w-full justify-start text-left font-normal",
+          !date && "text-muted-foreground",
+          className
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {date ? format(date, "PPP") : <span>{placeholder}</span>}
+      </Button>
 
-              <Select
-                value={navMonth.getFullYear().toString()}
-                onValueChange={(value) => {
-                  const newMonth = new Date(
-                    parseInt(value),
-                    navMonth.getMonth(),
-                    1
-                  );
-                  setNavMonth(newMonth);
-                }}
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-50 mt-2 rounded-md border border-border bg-background shadow-lg">
+            {/* Custom Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-accent"
+                onClick={goToPreviousMonth}
               >
-                <SelectTrigger className="h-8 w-[80px] px-2 py-0 text-sm">
-                  <SelectValue placeholder={navMonth.getFullYear().toString()} />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 20 }, (_, i) => {
-                    const yearValue = new Date().getFullYear() - 5 + i;
-                    return (
-                      <SelectItem key={i} value={yearValue.toString()}>
-                        {yearValue}
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Select
+                  value={currentMonth.getMonth().toString()}
+                  onValueChange={handleMonthChange}
+                >
+                  <SelectTrigger className="h-8 w-[120px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {months.map((month, index) => (
+                      <SelectItem key={index} value={index.toString()}>
+                        {month}
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={currentMonth.getFullYear().toString()}
+                  onValueChange={handleYearChange}
+                >
+                  <SelectTrigger className="h-8 w-[90px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 hover:bg-accent"
+                onClick={goToNextMonth}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <button
-              onClick={() => setNavMonth(addMonths(navMonth, 1))}
-              className="p-1 rounded-md hover:bg-accent"
-              aria-label="Next month"
-              type="button"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+
+            {/* Calendar */}
+            <ReactDatePicker
+              selected={date}
+              onChange={handleChange}
+              filterDate={filterDate}
+              inline
+              openToDate={currentMonth}
+              onMonthChange={setCurrentMonth}
+              renderCustomHeader={() => <></>}
+              calendarClassName="!border-0"
+            />
           </div>
-        </div>
-        
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onSelect}
-          month={navMonth}
-          onMonthChange={setNavMonth}
-          initialFocus
-          disabled={disabled}
-          className="rounded-md border shadow"
-          classNames={{
-            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-            day_today: "bg-accent text-accent-foreground",
-            day_outside: "text-muted-foreground opacity-50",
-            day_disabled: "text-muted-foreground opacity-50",
-            day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-            day_hidden: "invisible",
-            caption: "hidden", // Hide the default caption since we have our own custom one
-            nav: "hidden", // Hide the default navigation since we have our own custom one
-            head_cell: "text-muted-foreground rounded-md w-9 font-normal text-xs",
-            table: "w-full border-collapse space-y-1",
-            cell: "text-center text-sm relative p-0 focus-within:relative focus-within:z-20",
-            day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground",
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+        </>
+      )}
+    </div>
   );
 }

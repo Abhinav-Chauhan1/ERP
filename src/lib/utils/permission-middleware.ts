@@ -107,6 +107,34 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Syllabus Progress Tracking Routes
   { pattern: /^\/teacher\/teaching\/syllabus\/progress/, resource: 'PROGRESS', action: 'UPDATE', roles: [UserRole.TEACHER] },
   { pattern: /^\/api\/teacher\/syllabus\/progress/, resource: 'PROGRESS', action: 'UPDATE', roles: [UserRole.TEACHER] },
+  
+  // Student Promotion Routes
+  { pattern: /^\/admin\/academic\/promotion$/, resource: 'PROMOTION', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/academic\/promotion\/history/, resource: 'PROMOTION', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/promotion\/preview/, resource: 'PROMOTION', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/promotion\/execute/, resource: 'PROMOTION', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/promotion\/rollback/, resource: 'PROMOTION', action: 'DELETE', roles: [UserRole.ADMIN] },
+  
+  // Graduation Ceremony Routes
+  { pattern: /^\/admin\/academic\/graduation/, resource: 'GRADUATION', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/graduation/, resource: 'GRADUATION', action: 'CREATE', roles: [UserRole.ADMIN] },
+  
+  // Alumni Management Routes (Admin)
+  { pattern: /^\/admin\/alumni\/communication/, resource: 'ALUMNI', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/alumni\/statistics/, resource: 'ALUMNI', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/alumni\/\w+\/edit/, resource: 'ALUMNI', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/alumni\/\w+$/, resource: 'ALUMNI', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/admin\/alumni$/, resource: 'ALUMNI', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/alumni\/message/, resource: 'ALUMNI', action: 'CREATE', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/alumni\/report/, resource: 'ALUMNI', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/alumni\/search/, resource: 'ALUMNI', action: 'READ', roles: [UserRole.ADMIN] },
+  { pattern: /^\/api\/admin\/alumni\/\w+/, resource: 'ALUMNI', action: 'UPDATE', roles: [UserRole.ADMIN] },
+  
+  // Alumni Portal Routes (for Alumni users - students with graduated status)
+  { pattern: /^\/alumni\/dashboard/, resource: 'ALUMNI_PORTAL', action: 'READ', roles: [UserRole.STUDENT] },
+  { pattern: /^\/alumni\/profile/, resource: 'ALUMNI_PORTAL', action: 'UPDATE', roles: [UserRole.STUDENT] },
+  { pattern: /^\/alumni\/directory/, resource: 'ALUMNI_PORTAL', action: 'READ', roles: [UserRole.STUDENT] },
+  { pattern: /^\/api\/alumni\/profile/, resource: 'ALUMNI_PORTAL', action: 'UPDATE', roles: [UserRole.STUDENT] },
 ];
 
 /**

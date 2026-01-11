@@ -333,3 +333,5 @@ export function transformCloudinaryUrl(url: string, transformations: string): st
 
   return url.replace('/upload/', `/upload/${transformations}/`);
 }
+
+// Server-side functions moved to cloudinary-server.ts to prevent build errors in client components

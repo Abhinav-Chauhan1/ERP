@@ -667,6 +667,7 @@ export function SubModuleList({
         onSuccess={handleFormSuccess}
         moduleId={moduleId}
         subModule={editingSubModule}
+        suggestedOrder={subModules.length + 1}
       />
 
       <DocumentUploadDialog

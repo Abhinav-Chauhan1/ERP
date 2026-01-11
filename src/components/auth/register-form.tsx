@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
-import { 
-  AuthErrorCode, 
-  getErrorMessage 
+import {
+  AuthErrorCode,
+  getErrorMessage
 } from "@/lib/auth-errors"
 
 /**
@@ -160,7 +160,7 @@ export function RegisterForm() {
 
       // Success - show message and redirect after delay
       setSuccessMessage(data.message || "Registration successful! Please check your email to verify your account.")
-      
+
       // Clear form
       setFormData({
         email: "",
@@ -186,7 +186,7 @@ export function RegisterForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
+
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => {
@@ -202,7 +202,7 @@ export function RegisterForm() {
       <CardHeader>
         <CardTitle>Create an Account</CardTitle>
         <CardDescription>
-          Enter your information to register for School ERP
+          Enter your information to register for SikshaMitra
         </CardDescription>
       </CardHeader>
       <CardContent>

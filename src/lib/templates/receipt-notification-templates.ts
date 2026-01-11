@@ -172,7 +172,7 @@ export function getVerificationSuccessEmailTemplate(
     
     <p>Your payment has been recorded in our system and your fee balance has been updated accordingly.</p>
     
-    ${data.remainingBalance > 0 
+    ${data.remainingBalance > 0
       ? `<p><strong>Note:</strong> You still have a remaining balance of ₹${data.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Please make the payment at your earliest convenience.</p>`
       : `<p><strong>Congratulations!</strong> Your fee payment for ${data.feeStructureName} is now complete.</p>`
     }
@@ -183,7 +183,7 @@ export function getVerificationSuccessEmailTemplate(
   </div>
   
   <div class="footer">
-    <p>This is an automated notification from the School ERP System.</p>
+    <p>This is an automated notification from SikshaMitra.</p>
     <p>If you have any questions, please contact the administration office.</p>
   </div>
 </body>
@@ -206,15 +206,15 @@ Receipt Details:
 
 Your payment has been recorded in our system and your fee balance has been updated accordingly.
 
-${data.remainingBalance > 0 
-  ? `Note: You still have a remaining balance of ₹${data.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Please make the payment at your earliest convenience.`
-  : `Congratulations! Your fee payment for ${data.feeStructureName} is now complete.`
-}
+${data.remainingBalance > 0
+      ? `Note: You still have a remaining balance of ₹${data.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Please make the payment at your earliest convenience.`
+      : `Congratulations! Your fee payment for ${data.feeStructureName} is now complete.`
+    }
 
 View your receipt details at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/receipts
 
 ---
-This is an automated notification from the School ERP System.
+This is an automated notification from SikshaMitra.
 If you have any questions, please contact the administration office.
   `.trim();
 
@@ -405,7 +405,7 @@ export function getRejectionEmailTemplate(
   </div>
   
   <div class="footer">
-    <p>This is an automated notification from the School ERP System.</p>
+    <p>This is an automated notification from SikshaMitra.</p>
     <p>If you have any questions about the rejection, please contact the administration office.</p>
   </div>
 </body>
@@ -438,7 +438,7 @@ Please review the rejection reason above and upload a new receipt with the corre
 Upload a new receipt at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/student/fees/upload-receipt
 
 ---
-This is an automated notification from the School ERP System.
+This is an automated notification from SikshaMitra.
 If you have any questions about the rejection, please contact the administration office.
   `.trim();
 

@@ -72,6 +72,11 @@ export async function getTeacherTimetable() {
             subject: true,
           },
         },
+        topic: {
+          include: {
+            module: true,
+          },
+        },
       },
       orderBy: [
         { day: 'asc' },
@@ -109,6 +114,14 @@ export async function getTeacherTimetable() {
       room: slot.room?.name || "No Room Assigned",
       roomId: slot.roomId,
       type: "class", // Default type - can be expanded in the future
+      // Include topic information if assigned
+      topic: slot.topic ? {
+        id: slot.topic.id,
+        title: slot.topic.title,
+        chapterNumber: slot.topic.module.chapterNumber,
+        moduleTitle: slot.topic.module.title,
+      } : null,
+      topicId: slot.topicId,
     }));
 
     return {

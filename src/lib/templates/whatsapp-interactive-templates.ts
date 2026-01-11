@@ -47,7 +47,7 @@ export function createAttendanceConfirmationTemplate(params: {
       text: `Dear Parent,\n\nYour child *${studentName}* was marked *${statusText}* on ${date}.\n\nCurrent Attendance: *${attendancePercentage}%*\n\nIf this is incorrect, please contact the school immediately.`,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons: [
@@ -215,14 +215,13 @@ export function createFeePaymentReminderTemplate(params: {
       text: `${statusEmoji} Fee Payment ${statusText}`,
     },
     body: {
-      text: `Dear Parent,\n\n*${feeType}* for *${studentName}*\n\nAmount: ₹${amount.toLocaleString('en-IN')}\nDue Date: ${dueDate}\nOutstanding Balance: ₹${outstandingBalance.toLocaleString('en-IN')}\n\n${
-        isOverdue
+      text: `Dear Parent,\n\n*${feeType}* for *${studentName}*\n\nAmount: ₹${amount.toLocaleString('en-IN')}\nDue Date: ${dueDate}\nOutstanding Balance: ₹${outstandingBalance.toLocaleString('en-IN')}\n\n${isOverdue
           ? '⚠️ This payment is overdue. Please pay immediately to avoid late fees.'
           : 'Please make the payment before the due date.'
-      }`,
+        }`,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons,
@@ -269,7 +268,7 @@ export function createFeePaymentConfirmationTemplate(params: {
       text: `Dear Parent,\n\nPayment received for *${studentName}*\n\n*${feeType}*\nAmount Paid: ₹${amount.toLocaleString('en-IN')}\nDate: ${paymentDate}\nReceipt No: ${receiptNumber}\n\nRemaining Balance: ₹${remainingBalance.toLocaleString('en-IN')}\n\nThank you for your payment!`,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons: [
@@ -339,7 +338,7 @@ export function createLeaveApprovalTemplate(params: {
       text: `*${applicantType} Leave Request*\n\nName: *${applicantName}*\nType: ${leaveType}\nFrom: ${startDate}\nTo: ${endDate}\nDuration: ${duration} day${duration > 1 ? 's' : ''}\n\nReason:\n${reason}\n\nPlease review and take action.`,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons: [
@@ -407,14 +406,14 @@ export function createLeaveStatusNotificationTemplate(params: {
     type: 'reply';
     reply: { id: string; title: string };
   }> = [
-    {
-      type: 'reply',
-      reply: {
-        id: `leave_details_${leaveId}`,
-        title: '📄 View Details',
+      {
+        type: 'reply',
+        reply: {
+          id: `leave_details_${leaveId}`,
+          title: '📄 View Details',
+        },
       },
-    },
-  ];
+    ];
 
   // Add "Apply Again" button if rejected
   if (!isApproved) {
@@ -437,7 +436,7 @@ export function createLeaveStatusNotificationTemplate(params: {
       text: bodyText,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons,
@@ -515,7 +514,7 @@ export function createAnnouncementTemplate(params: {
       text: message,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons,
@@ -566,16 +565,15 @@ export function createExamReminderTemplate(params: {
       text: `${urgencyEmoji} Exam Reminder`,
     },
     body: {
-      text: `Dear Parent,\n\nUpcoming exam for *${studentName}*\n\n*${examName}*\nSubject: ${subject}\nDate: ${examDate}\nTime: ${examTime}\nVenue: ${venue}\n\n${
-        daysUntilExam === 0
+      text: `Dear Parent,\n\nUpcoming exam for *${studentName}*\n\n*${examName}*\nSubject: ${subject}\nDate: ${examDate}\nTime: ${examTime}\nVenue: ${venue}\n\n${daysUntilExam === 0
           ? '⚠️ Exam is TODAY!'
           : daysUntilExam === 1
-          ? '⚠️ Exam is TOMORROW!'
-          : `📅 ${daysUntilExam} days until exam`
-      }`,
+            ? '⚠️ Exam is TOMORROW!'
+            : `📅 ${daysUntilExam} days until exam`
+        }`,
     },
     footer: {
-      text: 'School ERP System',
+      text: 'SikshaMitra',
     },
     action: {
       buttons: [

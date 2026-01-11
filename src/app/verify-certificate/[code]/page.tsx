@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Shield, 
-  Calendar, 
-  User, 
-  FileText, 
+import {
+  CheckCircle2,
+  XCircle,
+  Shield,
+  Calendar,
+  User,
+  FileText,
   Award,
   AlertTriangle,
   ArrowLeft
@@ -26,7 +26,7 @@ interface PageProps {
 }
 
 export const metadata = {
-  title: 'Certificate Verification Result | School ERP',
+  title: 'Certificate Verification Result | SikshaMitra',
   description: 'View certificate verification details',
 };
 
@@ -64,7 +64,7 @@ async function CertificateVerificationResult({ code }: { code: string }) {
               <p className="text-sm text-muted-foreground">
                 If you believe this is an error, please contact our administration office with the certificate details.
               </p>
-              
+
               <div className="flex gap-3">
                 <Button asChild variant="outline">
                   <Link href="/verify-certificate">
@@ -86,11 +86,11 @@ async function CertificateVerificationResult({ code }: { code: string }) {
   }
 
   const certificate = result.data;
-  
+
   if (!certificate) {
     return notFound();
   }
-  
+
   const isActive = certificate.status === 'ACTIVE';
   const isRevoked = certificate.status === 'REVOKED';
 
@@ -132,7 +132,7 @@ async function CertificateVerificationResult({ code }: { code: string }) {
                 Official certificate information
               </CardDescription>
             </div>
-            <Badge 
+            <Badge
               variant={isActive ? 'default' : 'destructive'}
               className="text-sm px-3 py-1"
             >
@@ -259,8 +259,8 @@ async function CertificateVerificationResult({ code }: { code: string }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            This verification confirms that the certificate was issued by our institution. 
-            For any questions or concerns about this certificate, please contact our administration 
+            This verification confirms that the certificate was issued by our institution.
+            For any questions or concerns about this certificate, please contact our administration
             office with the certificate number provided above.
           </p>
         </CardContent>

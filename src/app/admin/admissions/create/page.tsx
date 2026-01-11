@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
 import { CalendarIcon, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -46,28 +45,28 @@ export default function CreateAdmissionPage() {
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [address, setAddress] = useState("");
-  
+
   // Father Details
   const [fatherName, setFatherName] = useState("");
   const [fatherOccupation, setFatherOccupation] = useState("");
   const [fatherPhone, setFatherPhone] = useState("");
   const [fatherEmail, setFatherEmail] = useState("");
   const [fatherAadhaar, setFatherAadhaar] = useState("");
-  
+
   // Mother Details
   const [motherName, setMotherName] = useState("");
   const [motherOccupation, setMotherOccupation] = useState("");
   const [motherPhone, setMotherPhone] = useState("");
   const [motherEmail, setMotherEmail] = useState("");
   const [motherAadhaar, setMotherAadhaar] = useState("");
-  
+
   // Guardian Details
   const [guardianName, setGuardianName] = useState("");
   const [guardianRelation, setGuardianRelation] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
   const [guardianAadhaar, setGuardianAadhaar] = useState("");
-  
+
   const [annualIncome, setAnnualIncome] = useState("");
 
   useEffect(() => {
@@ -85,7 +84,7 @@ export default function CreateAdmissionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!studentName || !dateOfBirth || !gender || !classAppliedFor || !parentName || !parentEmail || !parentPhone || !address) {
       toast.error("Please fill in all required fields");
@@ -104,7 +103,7 @@ export default function CreateAdmissionPage() {
         address,
         previousSchool: previousSchool || undefined,
         appliedClassId: classAppliedFor,
-        
+
         // Indian-specific fields
         aadhaarNumber: aadhaarNumber || undefined,
         abcId: abcId || undefined,
@@ -118,7 +117,7 @@ export default function CreateAdmissionPage() {
         tcNumber: tcNumber || undefined,
         medicalConditions: medicalConditions || undefined,
         specialNeeds: specialNeeds || undefined,
-        
+
         // Parent/Guardian details
         fatherName: fatherName || undefined,
         fatherOccupation: fatherOccupation || undefined,
@@ -192,28 +191,13 @@ export default function CreateAdmissionPage() {
                   <Label>
                     Date of Birth <span className="text-red-500">*</span>
                   </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !dateOfBirth && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateOfBirth ? format(dateOfBirth, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={dateOfBirth}
-                        onSelect={setDateOfBirth}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <AnimatedDatePicker
+                    date={dateOfBirth}
+                    onSelect={setDateOfBirth}
+                    disabled={(date) => date > new Date()}
+                    startYear={1950}
+                    endYear={new Date().getFullYear()}
+                  />
                 </div>
 
                 <div className="space-y-2">

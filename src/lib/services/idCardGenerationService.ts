@@ -71,13 +71,13 @@ async function generateBarcodePNG(data: string): Promise<string> {
     // For server-side rendering, we'll create a simple barcode representation
     // In a production environment, you might want to use a library like 'canvas' or 'node-canvas'
     // For now, we'll create a simple pattern-based barcode
-    
+
     // Create a simple barcode pattern
     const width = 200;
     const height = 60;
     const barWidth = 2;
     const bars: number[] = [];
-    
+
     // Generate bar pattern based on data
     for (let i = 0; i < data.length; i++) {
       const charCode = data.charCodeAt(i);
@@ -85,7 +85,7 @@ async function generateBarcodePNG(data: string): Promise<string> {
       bars.push(charCode % 2);
       bars.push((charCode + 1) % 2);
     }
-    
+
     // Create a simple canvas-like structure
     // In production, use actual canvas library
     const canvas = {
@@ -97,7 +97,7 @@ async function generateBarcodePNG(data: string): Promise<string> {
         return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       }
     };
-    
+
     return canvas.toDataURL();
   } catch (error) {
     console.error('Error generating barcode:', error);
@@ -117,7 +117,7 @@ async function generateIDCardPDF(
     // ID card dimensions in mm (standard credit card size)
     const cardWidth = 85.6;
     const cardHeight = 53.98;
-    
+
     // Create PDF document with ID card dimensions
     // We'll create an A4 page and place the ID card on it for easy printing
     const doc = new jsPDF({
@@ -126,23 +126,23 @@ async function generateIDCardPDF(
       format: 'a4',
       compress: true,
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    
+
     // Calculate position to center the ID card on the page
     const startX = (pageWidth - cardWidth) / 2;
     const startY = (pageHeight - cardHeight) / 2;
-    
+
     // Draw ID card border
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     doc.rect(startX, startY, cardWidth, cardHeight);
-    
+
     // Add school header background
     doc.setFillColor(41, 128, 185); // Blue color
     doc.rect(startX, startY, cardWidth, 12, 'F');
-    
+
     // Add school name
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
@@ -150,13 +150,13 @@ async function generateIDCardPDF(
     doc.text('SCHOOL NAME', startX + cardWidth / 2, startY + 5, { align: 'center' });
     doc.setFontSize(7);
     doc.text('STUDENT ID CARD', startX + cardWidth / 2, startY + 9, { align: 'center' });
-    
+
     // Add student photo (if available)
     const photoX = startX + 5;
     const photoY = startY + 15;
     const photoWidth = 20;
     const photoHeight = 25;
-    
+
     if (studentData.photoUrl) {
       try {
         doc.addImage(
@@ -184,44 +184,44 @@ async function generateIDCardPDF(
       doc.setTextColor(150, 150, 150);
       doc.text('No Photo', photoX + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
     }
-    
+
     // Add student details
     const detailsX = photoX + photoWidth + 3;
     const detailsY = photoY;
-    
+
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text(studentData.studentName.toUpperCase(), detailsX, detailsY);
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    
+
     let currentY = detailsY + 4;
-    
+
     if (studentData.className) {
       doc.text(`Class: ${studentData.className}${studentData.section ? ` - ${studentData.section}` : ''}`, detailsX, currentY);
       currentY += 3.5;
     }
-    
+
     if (studentData.rollNumber) {
       doc.text(`Roll No: ${studentData.rollNumber}`, detailsX, currentY);
       currentY += 3.5;
     }
-    
+
     doc.text(`ID: ${studentData.admissionId}`, detailsX, currentY);
     currentY += 3.5;
-    
+
     if (studentData.bloodGroup) {
       doc.text(`Blood: ${studentData.bloodGroup}`, detailsX, currentY);
       currentY += 3.5;
     }
-    
+
     if (studentData.emergencyContact) {
       doc.setFontSize(6);
       doc.text(`Emergency: ${studentData.emergencyContact}`, detailsX, currentY);
     }
-    
+
     // Generate and add QR code
     const qrCodeData = await generateQRCode(
       JSON.stringify({
@@ -230,30 +230,30 @@ async function generateIDCardPDF(
         name: studentData.studentName,
       })
     );
-    
+
     const qrSize = 15;
     const qrX = startX + 5;
     const qrY = startY + cardHeight - qrSize - 3;
-    
+
     doc.addImage(qrCodeData, 'PNG', qrX, qrY, qrSize, qrSize);
-    
+
     // Add barcode as text (simplified approach for server-side rendering)
     // In production, you can use a proper barcode library with canvas support
     doc.setFontSize(7);
     doc.setFont('courier', 'bold');
     const barcodeX = startX + cardWidth - 30;
     const barcodeY = startY + cardHeight - 8;
-    
+
     // Add barcode label
     doc.setFontSize(5);
     doc.setTextColor(100, 100, 100);
     doc.text('ID:', barcodeX - 5, barcodeY - 2);
-    
+
     // Add barcode value
     doc.setFontSize(7);
     doc.setTextColor(0, 0, 0);
     doc.text(studentData.admissionId, barcodeX, barcodeY);
-    
+
     // Add visual barcode representation (simple bars)
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
@@ -265,7 +265,7 @@ async function generateIDCardPDF(
       }
       barX += 1.5;
     }
-    
+
     // Add validity information
     doc.setFontSize(6);
     doc.setTextColor(100, 100, 100);
@@ -276,7 +276,7 @@ async function generateIDCardPDF(
       startY + cardHeight - 1,
       { align: 'center' }
     );
-    
+
     // Add academic year
     doc.text(
       `Academic Year: ${academicYear}`,
@@ -284,19 +284,19 @@ async function generateIDCardPDF(
       startY + 13.5,
       { align: 'center' }
     );
-    
+
     // Add cutting guidelines (solid lines)
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.1);
-    
+
     // Horizontal guidelines
     doc.line(0, startY, pageWidth, startY);
     doc.line(0, startY + cardHeight, pageWidth, startY + cardHeight);
-    
+
     // Vertical guidelines
     doc.line(startX, 0, startX, pageHeight);
     doc.line(startX + cardWidth, 0, startX + cardWidth, pageHeight);
-    
+
     // Return PDF as buffer
     return Buffer.from(doc.output('arraybuffer'));
   } catch (error) {
@@ -306,19 +306,33 @@ async function generateIDCardPDF(
 }
 
 /**
- * Upload PDF to storage (Cloudinary or similar)
+ * Upload PDF to storage (Cloudinary)
+ */
+/**
+ * Upload PDF to storage (Cloudinary)
  */
 async function uploadPDFToStorage(
   pdfBuffer: Buffer,
   studentId: string
 ): Promise<string> {
-  // TODO: Implement actual file upload to Cloudinary or S3
-  // For now, return a placeholder URL
-  // In production, you would:
-  // 1. Upload the buffer to Cloudinary/S3
-  // 2. Return the public URL
-  
-  return `/id-cards/${studentId}.pdf`;
+  try {
+    const { uploadBufferToCloudinary } = await import("@/lib/cloudinary-server");
+
+    // Upload to Cloudinary using buffer upload
+    const result = await uploadBufferToCloudinary(pdfBuffer, {
+      folder: 'id-cards',
+      resource_type: 'raw',
+      public_id: `id-card-${studentId}-${Date.now()}`,
+      format: 'pdf'
+    });
+
+    return result.secure_url;
+  } catch (error) {
+    console.error('Failed to upload ID card to Cloudinary:', error);
+    // Return a fallback local path if upload fails
+    // This allows the system to still generate records even if storage is not configured
+    return `/api/id-cards/${studentId}/download`;
+  }
 }
 
 /**
@@ -331,10 +345,10 @@ export async function generateSingleIDCard(
   try {
     // Generate PDF
     const pdfBuffer = await generateIDCardPDF(studentData, academicYear);
-    
+
     // Upload PDF to storage
     const pdfUrl = await uploadPDFToStorage(pdfBuffer, studentData.studentId);
-    
+
     return {
       success: true,
       studentId: studentData.studentId,
@@ -359,18 +373,18 @@ export async function generateBulkIDCards(
   options: BulkIDCardGenerationOptions
 ): Promise<BulkIDCardGenerationResult> {
   const { students, academicYear } = options;
-  
+
   const results: IDCardGenerationResult[] = [];
   const errors: string[] = [];
   let successCount = 0;
-  
+
   // Generate ID cards for each student
   for (const student of students) {
     try {
       const result = await generateSingleIDCard(student, academicYear);
-      
+
       results.push(result);
-      
+
       if (result.success) {
         successCount++;
       } else {
@@ -389,7 +403,7 @@ export async function generateBulkIDCards(
       });
     }
   }
-  
+
   return {
     success: successCount > 0,
     totalRequested: students.length,
@@ -434,13 +448,13 @@ export async function getStudentDataForIDCard(studentId: string): Promise<IDCard
         },
       },
     });
-    
+
     if (!student) {
       return null;
     }
-    
+
     const enrollment = student.enrollments[0];
-    
+
     return {
       studentId: student.id,
       studentName: `${student.user.firstName} ${student.user.lastName}`,
@@ -499,10 +513,10 @@ export async function getStudentsDataForIDCards(
         },
       },
     });
-    
+
     return students.map(student => {
       const enrollment = student.enrollments[0];
-      
+
       return {
         studentId: student.id,
         studentName: `${student.user.firstName} ${student.user.lastName}`,

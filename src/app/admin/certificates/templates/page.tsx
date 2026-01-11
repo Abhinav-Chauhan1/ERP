@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getCertificateTemplates } from '@/lib/actions/certificateTemplateActions';
-import { Plus, FileText, Award, Trophy, Medal, Star } from 'lucide-react';
+import { Plus, FileText, Award, Trophy, Medal, Star, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 async function CertificateTemplatesList() {
@@ -170,6 +170,15 @@ function TemplatesListSkeleton() {
 export default function CertificateTemplatesPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {/* Breadcrumb */}
+      <Link
+        href="/admin/certificates"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Certificates
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Certificate Templates</h1>

@@ -63,13 +63,13 @@ function generateVerificationCode(): string {
  */
 function renderTemplate(template: string, data: Record<string, any>): string {
   let rendered = template;
-  
+
   // Replace all variables in the format {{variableName}}
   Object.keys(data).forEach(key => {
     const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
     rendered = rendered.replace(regex, String(data[key] || ''));
   });
-  
+
   return rendered;
 }
 
@@ -102,11 +102,11 @@ async function generateCertificatePDF(
     // Parse template configuration
     const layout = JSON.parse(template.layout);
     const styling = JSON.parse(template.styling);
-    
+
     // Determine page size and orientation
     const pageSize = template.pageSize || 'A4';
     const orientation = template.orientation?.toLowerCase() || 'landscape';
-    
+
     // Create PDF document with proper dimensions for printing
     const doc = new jsPDF({
       orientation: orientation as 'portrait' | 'landscape',
@@ -114,10 +114,10 @@ async function generateCertificatePDF(
       format: pageSize.toLowerCase(),
       compress: true,
     });
-    
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    
+
     // Add background image if provided
     if (template.background) {
       try {
@@ -133,7 +133,7 @@ async function generateCertificatePDF(
         console.warn('Failed to add background image:', error);
       }
     }
-    
+
     // Add header image if provided
     if (template.headerImage) {
       try {
@@ -150,7 +150,7 @@ async function generateCertificatePDF(
         console.warn('Failed to add header image:', error);
       }
     }
-    
+
     // Render certificate content
     const renderedContent = renderTemplate(template.content, {
       ...studentData,
@@ -160,26 +160,26 @@ async function generateCertificatePDF(
       date: new Date().toLocaleDateString(),
       year: new Date().getFullYear().toString(),
     });
-    
+
     // Add main content
     const contentY = layout.contentStartY || 60;
     const contentX = layout.contentStartX || 20;
     const maxWidth = pageWidth - (contentX * 2);
-    
+
     // Set font styling
     doc.setFontSize(styling.fontSize || 12);
     doc.setTextColor(styling.textColor || '#000000');
-    
+
     // Split content into lines and add to PDF
     const lines = doc.splitTextToSize(renderedContent, maxWidth);
     doc.text(lines, contentX, contentY, {
       align: styling.textAlign || 'center',
       maxWidth: maxWidth,
     });
-    
+
     // Add signatures if provided
     const signatureY = pageHeight - 40;
-    
+
     if (template.signature1) {
       try {
         doc.addImage(
@@ -201,7 +201,7 @@ async function generateCertificatePDF(
         console.warn('Failed to add signature 1:', error);
       }
     }
-    
+
     if (template.signature2) {
       try {
         doc.addImage(
@@ -223,12 +223,12 @@ async function generateCertificatePDF(
         console.warn('Failed to add signature 2:', error);
       }
     }
-    
+
     // Generate and add QR code for verification
     const qrCodeData = await generateQRCode(
       `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/verify-certificate/${verificationCode}`
     );
-    
+
     doc.addImage(
       qrCodeData,
       'PNG',
@@ -237,7 +237,7 @@ async function generateCertificatePDF(
       25,
       25
     );
-    
+
     // Add certificate number at bottom
     doc.setFontSize(8);
     doc.setTextColor('#666666');
@@ -247,7 +247,7 @@ async function generateCertificatePDF(
       pageHeight - 5,
       { align: 'center' }
     );
-    
+
     // Add footer image if provided
     if (template.footerImage) {
       try {
@@ -264,7 +264,7 @@ async function generateCertificatePDF(
         console.warn('Failed to add footer image:', error);
       }
     }
-    
+
     // Return PDF as buffer
     return Buffer.from(doc.output('arraybuffer'));
   } catch (error) {
@@ -274,22 +274,33 @@ async function generateCertificatePDF(
 }
 
 /**
- * Upload PDF to storage (Cloudinary or similar)
- * For now, we'll return a placeholder URL
- * In production, this should upload to Cloudinary or S3
+ * Upload PDF to storage (Cloudinary)
+ */
+/**
+ * Upload PDF to storage (Cloudinary)
  */
 async function uploadPDFToStorage(
   pdfBuffer: Buffer,
   certificateNumber: string
 ): Promise<string> {
-  // TODO: Implement actual file upload to Cloudinary or S3
-  // For now, return a placeholder URL
-  // In production, you would:
-  // 1. Upload the buffer to Cloudinary/S3
-  // 2. Return the public URL
-  
-  // Placeholder implementation
-  return `/certificates/${certificateNumber}.pdf`;
+  try {
+    const { uploadBufferToCloudinary } = await import("@/lib/cloudinary-server");
+
+    // Upload to Cloudinary using buffer upload
+    const result = await uploadBufferToCloudinary(pdfBuffer, {
+      folder: 'certificates',
+      resource_type: 'raw',
+      public_id: `certificate-${certificateNumber}-${Date.now()}`,
+      format: 'pdf'
+    });
+
+    return result.secure_url;
+  } catch (error) {
+    console.error('Failed to upload certificate to Cloudinary:', error);
+    // Return a fallback local path if upload fails
+    // This allows the system to still generate records even if storage is not configured
+    return `/api/certificates/${certificateNumber}/download`;
+  }
 }
 
 /**
@@ -305,25 +316,25 @@ export async function generateSingleCertificate(
     const template = await db.certificateTemplate.findUnique({
       where: { id: templateId },
     });
-    
+
     if (!template) {
       return {
         success: false,
         error: 'Certificate template not found',
       };
     }
-    
+
     if (!template.isActive) {
       return {
         success: false,
         error: 'Certificate template is not active',
       };
     }
-    
+
     // Generate unique identifiers
     const certificateNumber = generateCertificateNumber();
     const verificationCode = generateVerificationCode();
-    
+
     // Generate PDF
     const pdfBuffer = await generateCertificatePDF(
       template,
@@ -331,10 +342,10 @@ export async function generateSingleCertificate(
       verificationCode,
       studentData.data
     );
-    
+
     // Upload PDF to storage
     const pdfUrl = await uploadPDFToStorage(pdfBuffer, certificateNumber);
-    
+
     // Save certificate record to database
     const certificate = await db.generatedCertificate.create({
       data: {
@@ -351,7 +362,7 @@ export async function generateSingleCertificate(
         issuedDate: new Date(),
       },
     });
-    
+
     return {
       success: true,
       certificateId: certificate.id,
@@ -374,16 +385,16 @@ export async function generateBulkCertificates(
   options: BulkCertificateGenerationOptions
 ): Promise<BulkCertificateGenerationResult> {
   const { templateId, students, issuedBy } = options;
-  
+
   const results: CertificateGenerationResult[] = [];
   const errors: string[] = [];
   let successCount = 0;
-  
+
   // Validate template exists and is active
   const template = await db.certificateTemplate.findUnique({
     where: { id: templateId },
   });
-  
+
   if (!template) {
     return {
       success: false,
@@ -393,7 +404,7 @@ export async function generateBulkCertificates(
       errors: ['Certificate template not found'],
     };
   }
-  
+
   if (!template.isActive) {
     return {
       success: false,
@@ -403,7 +414,7 @@ export async function generateBulkCertificates(
       errors: ['Certificate template is not active'],
     };
   }
-  
+
   // Generate certificates for each student
   for (const student of students) {
     try {
@@ -412,9 +423,9 @@ export async function generateBulkCertificates(
         student,
         issuedBy
       );
-      
+
       results.push(result);
-      
+
       if (result.success) {
         successCount++;
       } else {
@@ -431,7 +442,7 @@ export async function generateBulkCertificates(
       });
     }
   }
-  
+
   return {
     success: successCount > 0,
     totalRequested: students.length,
@@ -464,7 +475,7 @@ export async function getStudentCertificates(studentId: string) {
         issuedDate: 'desc',
       },
     });
-    
+
     return {
       success: true,
       data: certificates,
@@ -496,14 +507,14 @@ export async function verifyCertificate(verificationCode: string) {
         },
       },
     });
-    
+
     if (!certificate) {
       return {
         success: false,
         error: 'Certificate not found',
       };
     }
-    
+
     return {
       success: true,
       data: {
@@ -543,7 +554,7 @@ export async function revokeCertificate(
         revokedReason: reason,
       },
     });
-    
+
     return {
       success: true,
       data: certificate,

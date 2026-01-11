@@ -66,8 +66,8 @@ function ModulesContent() {
     }
   }
 
-  async function fetchSyllabusAndModules(subjectId: string) {
-    setLoading(true);
+  async function fetchSyllabusAndModules(subjectId: string, showLoading = true) {
+    if (showLoading) setLoading(true);
     setError(null);
 
     try {
@@ -86,7 +86,6 @@ function ModulesContent() {
 
       if (!syllabus) {
         setModules([]);
-        setLoading(false);
         return;
       }
 
@@ -104,13 +103,13 @@ function ModulesContent() {
       toast.error("An unexpected error occurred");
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }
 
   async function handleRefresh() {
     if (selectedSubjectId) {
-      await fetchSyllabusAndModules(selectedSubjectId);
+      await fetchSyllabusAndModules(selectedSubjectId, false);
     }
   }
 

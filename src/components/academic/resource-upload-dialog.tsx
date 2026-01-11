@@ -1,20 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,33 +48,58 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title || !file) {
       toast.error("Please provide a title and file");
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
-      
+
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
       formData.append("resourceType", resourceType);
       formData.append("file", file);
       formData.append("subjectId", subjectId);
-      
+
+      // Upload to Cloudinary
+      if (!process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+        throw new Error("Cloudinary configuration missing");
+      }
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
+        {
+          method: 'POST',
+          body: uploadFormData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      console.log("File uploaded to:", data.secure_url);
+
       // In a real app, this would call an API endpoint
+      // await createResource({ ...metadata, url: data.secure_url });
       await mockUploadResource(formData);
-      
+
       toast.success("Resource uploaded successfully");
       setOpen(false);
       resetForm();
-      
+
       if (onSuccess) {
         await onSuccess();
       }
-      
+
       router.refresh();
     } catch (error) {
       console.error("Failed to upload resource:", error);
@@ -83,7 +108,7 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
       setIsSubmitting(false);
     }
   };
-  
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -123,7 +148,7 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
                 required
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -134,7 +159,7 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
                 rows={3}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="resourceType">Resource Type</Label>
               <Select value={resourceType} onValueChange={setResourceType}>
@@ -151,14 +176,14 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="file">Upload File</Label>
               <div className="border border-dashed rounded-lg p-6 text-center">
-                <Input 
-                  type="file" 
-                  id="file" 
-                  className="hidden" 
+                <Input
+                  type="file"
+                  id="file"
+                  className="hidden"
                   onChange={handleFileChange}
                   required
                 />

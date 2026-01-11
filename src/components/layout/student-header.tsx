@@ -33,9 +33,9 @@ export function StudentHeader() {
       <div className="flex items-center gap-2 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="md:hidden"
               aria-label="Open navigation menu"
             >
@@ -51,7 +51,7 @@ export function StudentHeader() {
           </SheetContent>
         </Sheet>
         <Link href="/student" className="md:hidden" aria-label="Go to student dashboard">
-          <h1 className="text-xl font-bold">School ERP</h1>
+          <h1 className="text-xl font-bold">SikshaMitra</h1>
         </Link>
       </div>
 

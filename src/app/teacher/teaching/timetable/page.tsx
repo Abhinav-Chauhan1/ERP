@@ -22,6 +22,13 @@ type TimetableEvent = {
   endTime: Date;
   room: string;
   type: "class" | "duty" | "meeting" | "break";
+  topic?: {
+    id: string;
+    title: string;
+    chapterNumber: number;
+    moduleTitle: string;
+  } | null;
+  topicId?: string | null;
 };
 
 type TimeSlot = {
@@ -36,12 +43,12 @@ type TimeSlot = {
 export default function TeacherTimetablePage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const startOfCurrentWeek = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  
+
   const [timetableEvents, setTimetableEvents] = useState<TimetableEvent[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [weekdays, setWeekdays] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchTimetableData = async () => {
       setLoading(true);
@@ -54,13 +61,13 @@ export default function TeacherTimetablePage() {
           type: (slot.type || "class") as "class" | "duty" | "meeting" | "break"
         }));
         setTimetableEvents(typedSlots);
-        
+
         // Convert weekdays from DayOfWeek enum to title case strings
         const formattedDays = days.map((day: string) => {
           return day.charAt(0) + day.slice(1).toLowerCase();
         });
         setWeekdays(formattedDays);
-        
+
         // Fetch time slots for the grid view
         const periods = await getTimeSlots();
         setTimeSlots(periods);
@@ -71,61 +78,61 @@ export default function TeacherTimetablePage() {
         setLoading(false);
       }
     };
-    
+
     fetchTimetableData();
   }, []);
-  
+
   const getPeriodByTime = (day: string, timeSlot: string) => {
     const [startTime] = timeSlot.split(" - ");
     return timetableEvents.filter(
       event => event.day === day.toUpperCase() && event.timeStart === startTime
     );
   };
-  
+
   // Determine break times by checking gaps between time slots
   const getBreakTimes = (): string[] => {
     const breaks: string[] = [];
-    
+
     if (timeSlots.length < 2) return breaks;
-    
+
     for (let i = 1; i < timeSlots.length; i++) {
-      const prevEndTime = new Date(timeSlots[i-1].endTime);
+      const prevEndTime = new Date(timeSlots[i - 1].endTime);
       const currStartTime = new Date(timeSlots[i].startTime);
-      
+
       // If there's a gap between periods, it's a break
       if (currStartTime.getTime() - prevEndTime.getTime() > 5 * 60 * 1000) { // 5 min buffer
         breaks.push(`${format(prevEndTime, 'hh:mm a')} - ${format(currStartTime, 'hh:mm a')}`);
       }
     }
-    
+
     return breaks;
   };
-  
+
   const isBreakTime = (timeSlot: string) => {
     return getBreakTimes().includes(timeSlot);
   };
-  
+
   const formatWeekRange = () => {
     const start = format(startOfCurrentWeek, 'MMM d');
     const end = format(addDays(startOfCurrentWeek, 5), 'MMM d, yyyy');
     return `${start} - ${end}`;
   };
-  
+
   const handlePreviousWeek = () => {
     setCurrentWeek(prev => addDays(prev, -7));
   };
-  
+
   const handleNextWeek = () => {
     setCurrentWeek(prev => addDays(prev, 7));
   };
-  
+
   const isToday = (day: string) => {
     const today = new Date();
-    const dayIndex = weekdays.findIndex(d => 
+    const dayIndex = weekdays.findIndex(d =>
       d.toUpperCase() === day.toUpperCase()
     );
     if (dayIndex === -1) return false;
-    
+
     const weekdayDate = addDays(startOfCurrentWeek, dayIndex);
     return isSameDay(today, weekdayDate);
   };
@@ -146,14 +153,14 @@ export default function TeacherTimetablePage() {
         "03:00 PM - 04:00 PM"
       ];
     }
-    
+
     // Create time slots from periods and breaks
     const slots: string[] = [];
     const breaks = getBreakTimes();
-    
+
     timeSlots.forEach((slot, index) => {
       slots.push(`${slot.timeStart} - ${slot.timeEnd}`);
-      
+
       if (index < timeSlots.length - 1) {
         const breakTime = `${slot.timeEnd} - ${timeSlots[index + 1].timeStart}`;
         if (breaks.includes(breakTime)) {
@@ -161,7 +168,7 @@ export default function TeacherTimetablePage() {
         }
       }
     });
-    
+
     return slots;
   };
 
@@ -183,7 +190,7 @@ export default function TeacherTimetablePage() {
           </Button>
         </div>
       </div>
-      
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -196,14 +203,14 @@ export default function TeacherTimetablePage() {
                 </span>
               </CardDescription>
             </div>
-            
+
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setCurrentWeek(new Date())}
               >
                 Today
@@ -214,14 +221,14 @@ export default function TeacherTimetablePage() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <Tabs defaultValue="timetable">
             <TabsList className="mb-4">
               <TabsTrigger value="timetable">Grid View</TabsTrigger>
               <TabsTrigger value="list">List View</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="timetable" className="space-y-4">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -229,11 +236,10 @@ export default function TeacherTimetablePage() {
                     <tr>
                       <th className="border p-2 bg-gray-50 w-[12%] text-left">Time</th>
                       {weekdays.map((day) => (
-                        <th 
-                          key={day} 
-                          className={`border p-2 text-center w-[14.67%] ${
-                            isToday(day) ? 'bg-primary/10' : 'bg-muted'
-                          }`}
+                        <th
+                          key={day}
+                          className={`border p-2 text-center w-[14.67%] ${isToday(day) ? 'bg-primary/10' : 'bg-muted'
+                            }`}
                         >
                           {day}
                           {isToday(day) && (
@@ -245,7 +251,7 @@ export default function TeacherTimetablePage() {
                       ))}
                     </tr>
                   </thead>
-                  
+
                   <tbody>
                     {getTimeSlotGrid().map((timeSlot) => (
                       <tr key={timeSlot}>
@@ -255,46 +261,49 @@ export default function TeacherTimetablePage() {
                             {timeSlot}
                           </div>
                         </td>
-                        
+
                         {weekdays.map((day) => {
                           const periodEvents = getPeriodByTime(day, timeSlot);
                           const isBreak = isBreakTime(timeSlot);
-                          
+
                           if (isBreak) {
                             return (
-                              <td 
-                                key={`${day}-${timeSlot}`} 
+                              <td
+                                key={`${day}-${timeSlot}`}
                                 className="border p-2 bg-gray-50 text-center text-xs text-gray-500"
                               >
-                                {timeSlot.includes("10:00") || timeSlot.includes("10:15") ? "Morning Break" : 
-                                 timeSlot.includes("12:15") || timeSlot.includes("01:00") ? "Lunch Break" : "Break"}
+                                {timeSlot.includes("10:00") || timeSlot.includes("10:15") ? "Morning Break" :
+                                  timeSlot.includes("12:15") || timeSlot.includes("01:00") ? "Lunch Break" : "Break"}
                               </td>
                             );
                           }
-                          
+
                           return (
-                            <td 
-                              key={`${day}-${timeSlot}`} 
-                              className={`border p-0 ${
-                                periodEvents.length > 0 ? 'relative' : ''
-                              }`}
+                            <td
+                              key={`${day}-${timeSlot}`}
+                              className={`border p-0 ${periodEvents.length > 0 ? 'relative' : ''
+                                }`}
                             >
                               {periodEvents.length > 0 ? (
                                 periodEvents.map((event) => (
-                                  <div 
+                                  <div
                                     key={event.id}
-                                    className={`p-2 m-0.5 rounded h-full ${
-                                      event.type === 'class' ? 'bg-primary/10 border-primary/30 border' :
+                                    className={`p-2 m-0.5 rounded h-full ${event.type === 'class' ? 'bg-primary/10 border-primary/30 border' :
                                       event.type === 'duty' ? 'bg-warning/10 border-warning/30 border' :
-                                      event.type === 'meeting' ? 'bg-secondary border-secondary/30 border' :
-                                      'bg-muted'
-                                    }`}
+                                        event.type === 'meeting' ? 'bg-secondary border-secondary/30 border' :
+                                          'bg-muted'
+                                      }`}
                                   >
                                     <p className="font-medium text-sm mb-1">{event.subject}</p>
                                     <div className="text-xs flex flex-col gap-1">
                                       <div className="flex items-center gap-1">
                                         <span>{event.class}</span>
                                       </div>
+                                      {event.topic && (
+                                        <div className="flex items-center gap-1 text-primary font-medium">
+                                          <span>📖 Ch{event.topic.chapterNumber}: {event.topic.title}</span>
+                                        </div>
+                                      )}
                                       <div className="flex items-center gap-1 text-gray-500">
                                         <span>{event.room}</span>
                                       </div>
@@ -312,7 +321,7 @@ export default function TeacherTimetablePage() {
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="flex flex-wrap gap-3 pt-2">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-primary/20 border border-primary/30 rounded"></div>
@@ -332,12 +341,12 @@ export default function TeacherTimetablePage() {
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="list">
               <div className="space-y-6">
                 {weekdays.map((day) => {
                   const dayEvents = timetableEvents.filter(event => event.day === day.toUpperCase());
-                  
+
                   return (
                     <Card key={day} className="overflow-hidden">
                       <CardHeader className={`py-3 ${isToday(day) ? 'bg-primary/10' : 'bg-muted'}`}>
@@ -350,24 +359,28 @@ export default function TeacherTimetablePage() {
                           )}
                         </div>
                       </CardHeader>
-                      
+
                       <CardContent className="pt-4">
                         {dayEvents.length > 0 ? (
                           <div className="space-y-3">
                             {dayEvents.map((event) => (
-                              <div 
+                              <div
                                 key={event.id}
-                                className={`p-3 rounded-lg border ${
-                                  event.type === 'class' ? 'bg-primary/10 border-primary/30' :
+                                className={`p-3 rounded-lg border ${event.type === 'class' ? 'bg-primary/10 border-primary/30' :
                                   event.type === 'duty' ? 'bg-warning/10 border-warning/30' :
-                                  event.type === 'meeting' ? 'bg-secondary border-secondary/30' :
-                                  'bg-muted border-border'
-                                }`}
+                                    event.type === 'meeting' ? 'bg-secondary border-secondary/30' :
+                                      'bg-muted border-border'
+                                  }`}
                               >
                                 <div className="flex justify-between items-start">
                                   <div>
                                     <h3 className="font-medium">{event.subject}</h3>
                                     <p className="text-sm text-gray-600">{event.class}</p>
+                                    {event.topic && (
+                                      <p className="text-sm text-primary font-medium mt-1">
+                                        📖 Ch{event.topic.chapterNumber}: {event.topic.title}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="text-right">
                                     <div className="font-medium text-sm">
@@ -393,7 +406,7 @@ export default function TeacherTimetablePage() {
           </Tabs>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Teaching Summary</CardTitle>
@@ -430,7 +443,7 @@ export default function TeacherTimetablePage() {
                 }, weekdays[0]) || "N/A"}
               </p>
               <p className="text-xs text-gray-500">
-                {timetableEvents.filter(e => 
+                {timetableEvents.filter(e =>
                   e.day === weekdays.reduce((busiest, day) => {
                     const count = timetableEvents.filter(e => e.day === day.toUpperCase()).length;
                     const busiestCount = timetableEvents.filter(e => e.day === busiest.toUpperCase()).length;

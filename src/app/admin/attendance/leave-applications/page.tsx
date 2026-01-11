@@ -68,7 +68,10 @@ import {
   getStudentsForDropdown,
 } from "@/lib/actions/attendanceActions";
 
+import { useSession } from "next-auth/react";
+
 export default function LeaveApplicationsPage() {
+  const { data: session } = useSession();
   const [leaveApplications, setLeaveApplications] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -211,7 +214,7 @@ export default function LeaveApplicationsPage() {
     processForm.reset({
       id: leave.id,
       status: "APPROVED",
-      approvedById: "", // TODO: Get from auth
+      approvedById: session?.user?.id || "",
       remarks: "",
     });
     setSelectedLeave(leave);

@@ -2,9 +2,9 @@
 
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { 
-  admissionApplicationSchema, 
-  AdmissionApplicationFormValues 
+import {
+  admissionApplicationSchema,
+  AdmissionApplicationFormValues
 } from "../schemaValidation/admissionSchemaValidation";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { sendAdmissionConfirmationEmail } from "@/lib/utils/email-service";
@@ -49,7 +49,7 @@ export async function uploadAdmissionDocument(formData: FormData) {
   try {
     const file = formData.get("file") as File;
     const type = formData.get("type") as string;
-    
+
     if (!file) {
       return {
         success: false,
@@ -91,12 +91,12 @@ export async function createAdmissionApplication(
 
     // Generate unique application number
     let applicationNumber = generateApplicationNumber();
-    
+
     // Ensure uniqueness
     let exists = await db.admissionApplication.findUnique({
       where: { applicationNumber }
     });
-    
+
     while (exists) {
       applicationNumber = generateApplicationNumber();
       exists = await db.admissionApplication.findUnique({
@@ -117,7 +117,7 @@ export async function createAdmissionApplication(
         address: validatedData.address,
         previousSchool: validatedData.previousSchool,
         appliedClassId: validatedData.appliedClassId,
-        
+
         // Indian-specific fields
         aadhaarNumber: validatedData.aadhaarNumber,
         abcId: validatedData.abcId,
@@ -131,7 +131,7 @@ export async function createAdmissionApplication(
         tcNumber: validatedData.tcNumber,
         medicalConditions: validatedData.medicalConditions,
         specialNeeds: validatedData.specialNeeds,
-        
+
         // Parent/Guardian details
         fatherName: validatedData.fatherName,
         fatherOccupation: validatedData.fatherOccupation,
@@ -149,7 +149,7 @@ export async function createAdmissionApplication(
         guardianEmail: validatedData.guardianEmail,
         guardianAadhaar: validatedData.guardianAadhaar,
         annualIncome: validatedData.annualIncome,
-        
+
         status: "SUBMITTED",
         documents: documents && documents.length > 0 ? {
           create: documents.map(doc => ({
@@ -191,7 +191,7 @@ export async function createAdmissionApplication(
     };
   } catch (error) {
     console.error("Error creating admission application:", error);
-    
+
     if (error instanceof z.ZodError) {
       return {
         success: false,
@@ -367,12 +367,76 @@ export async function updateApplicationStatus(
 
     // Send notification email based on status
     try {
-      if (status === "ACCEPTED") {
-        // TODO: Send acceptance email
-        // await sendAdmissionAcceptanceEmail(application.parentEmail, application.studentName);
-      } else if (status === "REJECTED") {
-        // TODO: Send rejection email
-        // await sendAdmissionRejectionEmail(application.parentEmail, application.studentName);
+      const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
+
+      if (isEmailConfigured()) {
+        if (status === "ACCEPTED") {
+          await sendEmail({
+            to: application.parentEmail,
+            subject: `Admission Application Accepted - ${application.studentName}`,
+            html: `
+              <h1>Congratulations!</h1>
+              <p>Dear ${application.parentName},</p>
+              <p>We are pleased to inform you that the admission application for <strong>${application.studentName}</strong> 
+              for Class <strong>${application.appliedClass.name}</strong> has been <span style="color: green;"><strong>ACCEPTED</strong></span>.</p>
+              
+              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
+              
+              <h2>Next Steps</h2>
+              <ul>
+                <li>Please visit the school administration office to complete the enrollment process</li>
+                <li>Bring all original documents for verification</li>
+                <li>Complete the fee payment as per the schedule provided</li>
+              </ul>
+              
+              ${remarks ? `<p><strong>Remarks:</strong> ${remarks}</p>` : ''}
+              
+              <p>We look forward to welcoming ${application.studentName} to our school!</p>
+              <br>
+              <p>Best regards,<br>School Administration</p>
+            `
+          });
+        } else if (status === "REJECTED") {
+          await sendEmail({
+            to: application.parentEmail,
+            subject: `Admission Application Update - ${application.studentName}`,
+            html: `
+              <h1>Admission Application Update</h1>
+              <p>Dear ${application.parentName},</p>
+              <p>We regret to inform you that the admission application for <strong>${application.studentName}</strong> 
+              for Class <strong>${application.appliedClass.name}</strong> could not be accepted at this time.</p>
+              
+              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
+              
+              ${remarks ? `<p><strong>Reason:</strong> ${remarks}</p>` : ''}
+              
+              <p>We appreciate your interest in our school and wish ${application.studentName} all the best for the future.</p>
+              <br>
+              <p>Best regards,<br>School Administration</p>
+            `
+          });
+        } else if (status === "WAITLISTED") {
+          await sendEmail({
+            to: application.parentEmail,
+            subject: `Admission Application Waitlisted - ${application.studentName}`,
+            html: `
+              <h1>Application Waitlisted</h1>
+              <p>Dear ${application.parentName},</p>
+              <p>The admission application for <strong>${application.studentName}</strong> 
+              for Class <strong>${application.appliedClass.name}</strong> has been <strong>WAITLISTED</strong>.</p>
+              
+              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
+              
+              <p>This means your application is on hold and will be considered if seats become available.</p>
+              <p>We will notify you of any updates regarding your application status.</p>
+              
+              ${remarks ? `<p><strong>Remarks:</strong> ${remarks}</p>` : ''}
+              
+              <br>
+              <p>Best regards,<br>School Administration</p>
+            `
+          });
+        }
       }
     } catch (emailError) {
       console.error("Failed to send status email:", emailError);

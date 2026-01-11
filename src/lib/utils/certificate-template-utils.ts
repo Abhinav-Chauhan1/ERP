@@ -129,11 +129,11 @@ export function validateTemplateLayout(layout: Record<string, any>): {
   // Validate section properties
   Object.keys(layout).forEach(section => {
     const sectionConfig = layout[section];
-    
+
     if (sectionConfig.height && !isValidCSSValue(sectionConfig.height)) {
       errors.push(`Invalid height value for ${section}: ${sectionConfig.height}`);
     }
-    
+
     if (sectionConfig.alignment && !['left', 'center', 'right', 'justify'].includes(sectionConfig.alignment)) {
       errors.push(`Invalid alignment value for ${section}: ${sectionConfig.alignment}`);
     }
@@ -187,23 +187,23 @@ function isValidColor(color: string): boolean {
   if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
     return true;
   }
-  
+
   // Check rgb/rgba
   if (/^rgba?\(/.test(color)) {
     return true;
   }
-  
+
   // Check hsl/hsla
   if (/^hsla?\(/.test(color)) {
     return true;
   }
-  
+
   // Check named colors (basic check)
   const namedColors = ['red', 'blue', 'green', 'yellow', 'black', 'white', 'gray', 'purple', 'orange', 'pink'];
   if (namedColors.includes(color.toLowerCase())) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -215,22 +215,22 @@ function isValidCSSValue(value: string): boolean {
   if (/^\d+(\.\d+)?%$/.test(value)) {
     return true;
   }
-  
+
   // Check pixels
   if (/^\d+(\.\d+)?px$/.test(value)) {
     return true;
   }
-  
+
   // Check rem/em
   if (/^\d+(\.\d+)?(rem|em)$/.test(value)) {
     return true;
   }
-  
+
   // Check viewport units
   if (/^\d+(\.\d+)?(vh|vw|vmin|vmax)$/.test(value)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -241,7 +241,7 @@ export function generateCertificateNumber(prefix: string = 'CERT'): string {
   const year = new Date().getFullYear();
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  
+
   return `${prefix}-${year}-${timestamp}-${random}`;
 }
 
@@ -251,7 +251,7 @@ export function generateCertificateNumber(prefix: string = 'CERT'): string {
 export function generateVerificationCode(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 10).toUpperCase();
-  
+
   return `${timestamp}${random}`;
 }
 
@@ -380,6 +380,176 @@ export function getDefaultTemplateContent(type: string): string {
         <p style="font-size: 1rem; margin: 2rem 0;">
           {{academicYear}}
         </p>
+      </div>
+    `,
+    CHARACTER: `
+      <div style="text-align: center; padding: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: {{primaryColor}};">
+          CHARACTER CERTIFICATE
+        </h1>
+        <p style="font-size: 0.9rem; margin-bottom: 2rem; color: #666;">
+          (चरित्र प्रमाण पत्र)
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          This is to certify that <strong>{{studentName}}</strong>, Son/Daughter of 
+          <strong>{{fatherName}}</strong>, was a bonafide student of this school. 
+          He/She studied in Class <strong>{{className}}</strong> during the 
+          Academic Year <strong>{{academicYear}}</strong>.
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          During his/her stay in this institution, his/her conduct and character were found to be 
+          <strong>{{conduct}}</strong>. He/She bears a <strong>{{character}}</strong> moral character.
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          I wish him/her all success in life.
+        </p>
+        <div style="margin-top: 3rem; display: flex; justify-content: space-between;">
+          <div style="text-align: left;">
+            <p>Date: {{issueDate}}</p>
+            <p>Certificate No: {{certificateNumber}}</p>
+          </div>
+          <div style="text-align: center;">
+            <p>_____________________</p>
+            <p><strong>Principal</strong></p>
+            <p>{{schoolName}}</p>
+          </div>
+        </div>
+      </div>
+    `,
+    BONAFIDE: `
+      <div style="text-align: center; padding: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: {{primaryColor}};">
+          BONAFIDE CERTIFICATE
+        </h1>
+        <p style="font-size: 0.9rem; margin-bottom: 2rem; color: #666;">
+          (बोनाफाइड प्रमाण पत्र)
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          This is to certify that <strong>{{studentName}}</strong>, Son/Daughter of 
+          <strong>{{fatherName}}</strong> and <strong>{{motherName}}</strong>, bearing 
+          Admission No. <strong>{{admissionNumber}}</strong>, is a bonafide student of this school.
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          He/She is currently studying in Class <strong>{{className}}</strong>, 
+          Section <strong>{{section}}</strong> during the Academic Year <strong>{{academicYear}}</strong>.
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          Date of Birth as per school records: <strong>{{dateOfBirth}}</strong>
+        </p>
+        <p style="font-size: 1.1rem; margin: 1.5rem 0; text-align: justify; line-height: 1.8;">
+          This certificate is issued on request for <strong>{{purpose}}</strong>.
+        </p>
+        <div style="margin-top: 3rem; display: flex; justify-content: space-between;">
+          <div style="text-align: left;">
+            <p>Date: {{issueDate}}</p>
+            <p>Certificate No: {{certificateNumber}}</p>
+          </div>
+          <div style="text-align: center;">
+            <p>_____________________</p>
+            <p><strong>Principal</strong></p>
+            <p>{{schoolName}}</p>
+          </div>
+        </div>
+      </div>
+    `,
+    TRANSFER: `
+      <div style="padding: 1.5rem; font-size: 0.95rem;">
+        <h1 style="text-align: center; font-size: 2rem; margin-bottom: 0.5rem; color: {{primaryColor}};">
+          TRANSFER CERTIFICATE
+        </h1>
+        <p style="text-align: center; font-size: 0.85rem; margin-bottom: 1.5rem; color: #666;">
+          (स्थानांतरण प्रमाण पत्र / TC)
+        </p>
+        
+        <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd; width: 50%;"><strong>TC No:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{certificateNumber}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Admission No:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{admissionNumber}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Student Name:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{studentName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Father's Name:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{fatherName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Mother's Name:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{motherName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Date of Birth:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{dateOfBirth}} ({{dateOfBirthWords}})</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Nationality:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{nationality}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Category:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{category}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Date of Admission:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{admissionDate}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Class at Admission:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{classAtAdmission}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Class Leaving:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{classLeaving}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Date of Leaving:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{dateOfLeaving}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Reason for Leaving:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{reasonForLeaving}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Promotion Status:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{promotionStatus}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Conduct & Character:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{conduct}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Fee Status:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{feeStatus}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Games Played:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{gamesPlayed}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;"><strong>Extra-Curricular Activities:</strong></td>
+            <td style="padding: 0.5rem; border: 1px solid #ddd;">{{extraActivities}}</td>
+          </tr>
+        </table>
+        
+        <p style="margin: 1rem 0; font-size: 0.9rem;">
+          <strong>Remarks:</strong> {{remarks}}
+        </p>
+        
+        <div style="margin-top: 2rem; display: flex; justify-content: space-between;">
+          <div style="text-align: left;">
+            <p>Date: {{issueDate}}</p>
+          </div>
+          <div style="text-align: center;">
+            <p>_____________________</p>
+            <p><strong>Principal</strong></p>
+            <p>{{schoolName}}</p>
+          </div>
+        </div>
       </div>
     `,
     CUSTOM: `

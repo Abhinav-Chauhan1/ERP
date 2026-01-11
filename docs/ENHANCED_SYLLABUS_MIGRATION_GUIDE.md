@@ -1,542 +1,706 @@
-# Enhanced Syllabus System - Migration Guide
-
-## Table of Contents
-1. [Overview](#overview)
-2. [Pre-Migration Checklist](#pre-migration-checklist)
-3. [Migration Process](#migration-process)
-4. [Post-Migration Verification](#post-migration-verification)
-5. [Rollback Procedure](#rollback-procedure)
-6. [Troubleshooting](#troubleshooting)
-7. [Technical Details](#technical-details)
+# Enhanced Syllabus Scope System - Migration Guide
 
 ## Overview
 
-This guide provides step-by-step instructions for migrating from the legacy syllabus structure (Syllabus → Units → Lessons) to the enhanced structure (Syllabus → Modules → Sub-Modules).
-
-### What Gets Migrated
-
-The migration process converts:
-- **Units** → **Modules** (with sequential chapter numbers)
-- **Lessons** → **Sub-Modules** (preserving order)
-- **Relationships** → Preserved (parent-child associations)
-- **Metadata** → Preserved (titles, descriptions, timestamps)
-
-### What Doesn't Change
-
-- Syllabus records remain unchanged
-- User permissions remain unchanged
-- Existing references continue to work (backward compatibility)
-
-### Migration Strategy
-
-The migration follows a **non-destructive approach**:
-1. New tables are created alongside existing tables
-2. Data is copied and transformed
-3. Old tables remain intact for rollback capability
-4. Feature flag controls which UI is displayed
-
-## Pre-Migration Checklist
-
-### 1. Backup Your Database
-
-**Critical**: Always backup your database before migration.
-
-```bash
-# PostgreSQL backup
-pg_dump -U username -d database_name -F c -b -v -f backup_$(date +%Y%m%d_%H%M%S).dump
-
-# Or use your backup script
-npm run backup
-```
-
-### 2. Verify Database Schema
-
-Ensure the new schema has been applied:
-
-```bash
-# Check for new tables
-npx prisma db pull
-npx prisma generate
-```
-
-Verify these tables exist:
-- `Module`
-- `SubModule`
-- `Document`
-- `SubModuleProgress`
-
-### 3. Check Data Integrity
-
-Run a data integrity check on existing data:
-
-```sql
--- Check for orphaned lessons
-SELECT l.* FROM "Lesson" l
-LEFT JOIN "SyllabusUnit" u ON l."unitId" = u.id
-WHERE u.id IS NULL;
-
--- Check for orphaned units
-SELECT u.* FROM "SyllabusUnit" u
-LEFT JOIN "Syllabus" s ON u."syllabusId" = s.id
-WHERE s.id IS NULL;
-```
-
-### 4. Notify Users
-
-Inform users about:
-- Scheduled maintenance window
-- Expected downtime (if any)
-- What changes they'll see
-- When the migration will occur
-
-### 5. Test in Staging
-
-**Always test the migration in a staging environment first**:
-
-1. Clone production database to staging
-2. Run migration on staging
-3. Verify data integrity
-4. Test UI functionality
-5. Confirm rollback works
-
-## Migration Process
-
-### Step 1: Run Database Migration
-
-Apply the schema changes:
-
-```bash
-# Apply Prisma migration
-npx prisma migrate deploy
-```
-
-This creates the new tables without affecting existing data.
-
-### Step 2: Run Data Migration Script
-
-Execute the migration CLI command:
-
-```bash
-# Dry run (preview without making changes)
-npm run migrate:syllabus -- --dry-run
-
-# View detailed output
-npm run migrate:syllabus -- --dry-run --verbose
-
-# Actual migration
-npm run migrate:syllabus
-
-# With progress reporting
-npm run migrate:syllabus -- --verbose
-```
-
-### Step 3: Monitor Migration Progress
-
-The migration script provides real-time feedback:
-
-```
-Starting syllabus migration...
-Found 15 syllabi to migrate
-
-Migrating syllabus: Mathematics Grade 10 (1/15)
-  ✓ Created 8 modules from units
-  ✓ Created 24 sub-modules from lessons
-  ✓ Assigned sequential chapter numbers
-  ✓ Preserved all relationships
-
-Migrating syllabus: English Grade 9 (2/15)
-  ✓ Created 6 modules from units
-  ✓ Created 18 sub-modules from lessons
-  ...
-
-Migration completed successfully!
-Total: 15 syllabi, 120 modules, 360 sub-modules
-Duration: 45 seconds
-```
-
-### Step 4: Verify Migration
-
-Run verification queries:
-
-```sql
--- Count migrated modules
-SELECT COUNT(*) FROM "Module";
-
--- Count migrated sub-modules
-SELECT COUNT(*) FROM "SubModule";
-
--- Verify relationships
-SELECT 
-  s.title as syllabus,
-  COUNT(DISTINCT m.id) as modules,
-  COUNT(DISTINCT sm.id) as submodules
-FROM "Syllabus" s
-LEFT JOIN "Module" m ON m."syllabusId" = s.id
-LEFT JOIN "SubModule" sm ON sm."moduleId" = m.id
-GROUP BY s.id, s.title;
-```
-
-### Step 5: Enable Feature Flag
-
-Update the feature flag to show the new UI:
-
-```typescript
-// In your environment or feature flag system
-ENHANCED_SYLLABUS_ENABLED=true
-```
-
-Or update in the database:
-
-```sql
-UPDATE "SchoolSettings" 
-SET "enhancedSyllabusEnabled" = true 
-WHERE "schoolId" = 'your-school-id';
-```
-
-### Step 6: Test the New UI
-
-1. Log in as an admin user
-2. Navigate to a syllabus
-3. Verify modules and sub-modules display correctly
-4. Test creating new content
-5. Test editing existing content
-6. Test document uploads
-
-## Post-Migration Verification
-
-### Data Integrity Checks
-
-Run these queries to verify data integrity:
-
-```sql
--- 1. Verify all units were converted to modules
-SELECT 
-  (SELECT COUNT(*) FROM "SyllabusUnit") as old_units,
-  (SELECT COUNT(*) FROM "Module") as new_modules;
-
--- 2. Verify all lessons were converted to sub-modules
-SELECT 
-  (SELECT COUNT(*) FROM "Lesson") as old_lessons,
-  (SELECT COUNT(*) FROM "SubModule") as new_submodules;
-
--- 3. Check for missing relationships
-SELECT m.* FROM "Module" m
-LEFT JOIN "Syllabus" s ON m."syllabusId" = s.id
-WHERE s.id IS NULL;
-
--- 4. Verify chapter numbers are sequential
-SELECT 
-  "syllabusId",
-  COUNT(*) as total_modules,
-  MIN("chapterNumber") as min_chapter,
-  MAX("chapterNumber") as max_chapter
-FROM "Module"
-GROUP BY "syllabusId"
-HAVING MAX("chapterNumber") != COUNT(*);
-
--- 5. Check for duplicate chapter numbers
-SELECT "syllabusId", "chapterNumber", COUNT(*)
-FROM "Module"
-GROUP BY "syllabusId", "chapterNumber"
-HAVING COUNT(*) > 1;
-```
-
-### Functional Testing
-
-Test these scenarios:
-
-1. **View syllabus**: Verify all content displays correctly
-2. **Create module**: Add a new module and verify it saves
-3. **Create sub-module**: Add a new sub-module and verify it saves
-4. **Upload document**: Upload a file and verify it's accessible
-5. **Reorder content**: Drag and drop to reorder, verify persistence
-6. **Delete content**: Delete a module and verify cascade deletion
-7. **Progress tracking**: Mark sub-modules complete and verify percentages
-
-### Performance Testing
-
-Monitor performance metrics:
-
-```sql
--- Check query performance
-EXPLAIN ANALYZE
-SELECT m.*, sm.*
-FROM "Module" m
-LEFT JOIN "SubModule" sm ON sm."moduleId" = m.id
-WHERE m."syllabusId" = 'test-syllabus-id'
-ORDER BY m."chapterNumber", sm."order";
-
--- Verify indexes are being used
-SELECT schemaname, tablename, indexname, idx_scan
-FROM pg_stat_user_indexes
-WHERE tablename IN ('Module', 'SubModule', 'Document')
-ORDER BY idx_scan DESC;
-```
-
-## Rollback Procedure
-
-If issues arise, you can rollback the migration:
-
-### Option 1: Disable Feature Flag
-
-Revert to the old UI without losing migrated data:
-
-```typescript
-ENHANCED_SYLLABUS_ENABLED=false
-```
-
-This keeps the new data but shows the old UI.
-
-### Option 2: Database Rollback
-
-If you need to completely rollback:
-
-```bash
-# Restore from backup
-pg_restore -U username -d database_name -v backup_file.dump
-
-# Or use your restore script
-npm run restore -- backup_file.dump
-```
-
-### Option 3: Selective Rollback
-
-Remove only the migrated data:
-
-```sql
--- Delete migrated data (in order)
-DELETE FROM "SubModuleProgress";
-DELETE FROM "Document" WHERE "moduleId" IS NOT NULL OR "subModuleId" IS NOT NULL;
-DELETE FROM "SubModule";
-DELETE FROM "Module";
-
--- Verify old data is intact
-SELECT COUNT(*) FROM "SyllabusUnit";
-SELECT COUNT(*) FROM "Lesson";
-```
-
-## Troubleshooting
-
-### Issue: Migration Script Fails
-
-**Symptoms**: Script exits with error
-
-**Solutions**:
-1. Check database connection
-2. Verify schema is up to date
-3. Check for data integrity issues
-4. Review error logs
-5. Run with `--verbose` flag for details
-
-```bash
-npm run migrate:syllabus -- --verbose
-```
-
-### Issue: Duplicate Chapter Numbers
-
-**Symptoms**: Error about unique constraint violation
-
-**Solutions**:
-1. Check for existing modules with duplicate chapter numbers
-2. Run cleanup query:
-
-```sql
--- Find duplicates
-SELECT "syllabusId", "chapterNumber", COUNT(*)
-FROM "Module"
-GROUP BY "syllabusId", "chapterNumber"
-HAVING COUNT(*) > 1;
-
--- Fix duplicates (reassign chapter numbers)
-WITH numbered AS (
-  SELECT id, ROW_NUMBER() OVER (PARTITION BY "syllabusId" ORDER BY "order") as new_chapter
-  FROM "Module"
-)
-UPDATE "Module" m
-SET "chapterNumber" = n.new_chapter
-FROM numbered n
-WHERE m.id = n.id;
-```
-
-### Issue: Missing Relationships
-
-**Symptoms**: Sub-modules not appearing under modules
-
-**Solutions**:
-1. Verify foreign key relationships:
-
-```sql
-SELECT sm.id, sm.title, sm."moduleId", m.id as actual_module_id
-FROM "SubModule" sm
-LEFT JOIN "Module" m ON sm."moduleId" = m.id
-WHERE m.id IS NULL;
-```
-
-2. Fix orphaned sub-modules:
-
-```sql
--- Delete orphaned sub-modules
-DELETE FROM "SubModule"
-WHERE "moduleId" NOT IN (SELECT id FROM "Module");
-```
-
-### Issue: Performance Degradation
-
-**Symptoms**: Slow page loads, slow queries
-
-**Solutions**:
-1. Verify indexes exist:
-
-```sql
--- Check indexes
-SELECT tablename, indexname, indexdef
-FROM pg_indexes
-WHERE tablename IN ('Module', 'SubModule', 'Document');
-```
-
-2. Create missing indexes:
-
-```sql
-CREATE INDEX IF NOT EXISTS "Module_syllabusId_order_idx" ON "Module"("syllabusId", "order");
-CREATE INDEX IF NOT EXISTS "SubModule_moduleId_order_idx" ON "SubModule"("moduleId", "order");
-CREATE INDEX IF NOT EXISTS "Document_moduleId_idx" ON "Document"("moduleId");
-CREATE INDEX IF NOT EXISTS "Document_subModuleId_idx" ON "Document"("subModuleId");
-```
-
-3. Analyze tables:
-
-```sql
-ANALYZE "Module";
-ANALYZE "SubModule";
-ANALYZE "Document";
-```
-
-### Issue: UI Not Updating
-
-**Symptoms**: Old UI still showing after migration
-
-**Solutions**:
-1. Clear browser cache
-2. Verify feature flag is enabled
-3. Check server logs for errors
-4. Restart the application server
-
-```bash
-# Clear Next.js cache
-rm -rf .next
-npm run build
-npm run start
-```
-
-## Technical Details
-
-### Migration Algorithm
-
-The migration follows this algorithm:
-
-```typescript
-for each syllabus:
-  chapterNumber = 1
-  
-  for each unit in syllabus (ordered by unit.order):
-    // Create module from unit
-    module = createModule({
-      title: unit.title,
-      description: unit.description,
-      chapterNumber: chapterNumber++,
-      order: unit.order,
-      syllabusId: syllabus.id
-    })
-    
-    for each lesson in unit (ordered by lesson.order):
-      // Create sub-module from lesson
-      subModule = createSubModule({
-        title: lesson.title,
-        description: lesson.description,
-        order: lesson.order,
-        moduleId: module.id
-      })
-```
-
-### Data Mapping
-
-| Old Structure | New Structure | Transformation |
-|---------------|---------------|----------------|
-| `SyllabusUnit.title` | `Module.title` | Direct copy |
-| `SyllabusUnit.description` | `Module.description` | Direct copy |
-| `SyllabusUnit.order` | `Module.order` | Direct copy |
-| N/A | `Module.chapterNumber` | Sequential (1, 2, 3...) |
-| `Lesson.title` | `SubModule.title` | Direct copy |
-| `Lesson.description` | `SubModule.description` | Direct copy |
-| `Lesson.order` | `SubModule.order` | Direct copy or default to 1 |
-| `Lesson.unitId` | `SubModule.moduleId` | Mapped to new module ID |
-
-### Transaction Safety
-
-The migration uses database transactions to ensure atomicity:
-
-```typescript
-await prisma.$transaction(async (tx) => {
-  // All operations within this block are atomic
-  const module = await tx.module.create({...});
-  const subModules = await tx.subModule.createMany({...});
-  // If any operation fails, all are rolled back
-});
-```
-
-### Backward Compatibility
-
-The old tables remain in the database:
-- `Syllabus` (unchanged)
-- `SyllabusUnit` (deprecated but functional)
-- `Lesson` (deprecated but functional)
-
-This allows:
-- Rollback capability
-- Gradual transition
-- Data comparison and verification
-
-## Best Practices
-
-1. **Always backup before migration**: No exceptions
-2. **Test in staging first**: Never migrate production directly
-3. **Run during low-traffic periods**: Minimize user impact
-4. **Monitor closely**: Watch for errors during migration
-5. **Verify thoroughly**: Check data integrity after migration
-6. **Keep old data**: Don't delete old tables immediately
-7. **Document issues**: Record any problems for future reference
-8. **Communicate with users**: Keep stakeholders informed
-
-## Migration Checklist
-
-Use this checklist to track your migration:
-
-- [ ] Database backup completed
-- [ ] Staging environment tested
-- [ ] Users notified of maintenance
-- [ ] Schema migration applied
-- [ ] Data migration script executed
-- [ ] Data integrity verified
-- [ ] Feature flag enabled
-- [ ] UI functionality tested
-- [ ] Performance metrics checked
-- [ ] Documentation updated
-- [ ] Users notified of completion
-- [ ] Old data archived (after grace period)
-
-## Support
-
-For migration assistance:
-1. Review this guide thoroughly
-2. Check the troubleshooting section
-3. Review migration logs
-4. Contact technical support with:
-   - Error messages
-   - Migration logs
-   - Database version
-   - Application version
+This guide provides step-by-step instructions for migrating from the legacy syllabus system to the Enhanced Syllabus Scope System. The migration preserves all existing data while adding new capabilities.
+
+## Table of Contents
+
+- [Pre-Migration Checklist](#pre-migration-checklist)
+- [Understanding the Changes](#understanding-the-changes)
+- [Migration Process](#migration-process)
+- [Post-Migration Verification](#post-migration-verification)
+- [Rollback Procedure](#rollback-procedure)
+- [FAQ](#faq)
 
 ---
 
-**Last Updated**: December 2024  
-**Version**: 1.0
+## Pre-Migration Checklist
+
+### Before You Begin
+
+Complete these steps before starting the migration:
+
+- [ ] **Backup Database**: Create a full database backup
+- [ ] **Review Current Data**: Document existing syllabi count and structure
+- [ ] **Test Environment**: Run migration in test environment first
+- [ ] **Notify Users**: Inform users of scheduled maintenance
+- [ ] **Schedule Downtime**: Plan migration during low-usage period
+- [ ] **Verify Dependencies**: Ensure all related systems are compatible
+- [ ] **Review Documentation**: Read this guide completely
+
+### System Requirements
+
+- PostgreSQL 12 or higher
+- Prisma ORM 5.x or higher
+- Node.js 18 or higher
+- Sufficient database storage (estimate 20% increase)
+
+### Backup Procedure
+
+```bash
+# Create database backup
+pg_dump -U username -d database_name -F c -b -v -f backup_$(date +%Y%m%d_%H%M%S).dump
+
+# Verify backup
+pg_restore --list backup_YYYYMMDD_HHMMSS.dump
+```
+
+---
+
+## Understanding the Changes
+
+### Schema Changes
+
+The migration adds the following fields to the `Syllabus` table:
+
+#### New Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `academicYearId` | String? | null | Link to academic year |
+| `classId` | String? | null | Link to class (for class-wide/section-specific) |
+| `sectionId` | String? | null | Link to section (for section-specific) |
+| `curriculumType` | Enum | GENERAL | Type of curriculum |
+| `boardType` | String? | null | Educational board |
+| `status` | Enum | PUBLISHED* | Lifecycle status |
+| `isActive` | Boolean | true | Soft delete flag |
+| `effectiveFrom` | DateTime? | null | Activation date |
+| `effectiveTo` | DateTime? | null | Expiration date |
+| `version` | String | "1.0" | Version number |
+| `parentSyllabusId` | String? | null | Parent version reference |
+| `createdBy` | String | "" | Creator user ID |
+| `updatedBy` | String? | null | Last modifier user ID |
+| `approvedBy` | String? | null | Approver user ID |
+| `approvedAt` | DateTime? | null | Approval timestamp |
+| `tags` | String[] | [] | Searchable tags |
+| `difficultyLevel` | Enum | INTERMEDIATE | Difficulty classification |
+| `estimatedHours` | Int? | null | Total curriculum hours |
+| `prerequisites` | String? | null | Required prior knowledge |
+
+*Note: Existing syllabi default to PUBLISHED for backward compatibility
+
+#### New Enums
+
+```prisma
+enum SyllabusStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+}
+
+enum CurriculumType {
+  GENERAL
+  ADVANCED
+  REMEDIAL
+  INTEGRATED
+  VOCATIONAL
+  SPECIAL_NEEDS
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+```
+
+#### New Indexes
+
+```prisma
+@@unique([subjectId, academicYearId, classId, sectionId, curriculumType])
+@@index([subjectId, classId])
+@@index([academicYearId, isActive])
+@@index([status, isActive])
+@@index([curriculumType, boardType])
+```
+
+#### New Relationships
+
+```prisma
+// Syllabus model
+academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
+class          Class?        @relation(fields: [classId], references: [id])
+section        ClassSection? @relation(fields: [sectionId], references: [id])
+parentSyllabus Syllabus?     @relation("SyllabusVersions", fields: [parentSyllabusId], references: [id])
+childVersions  Syllabus[]    @relation("SyllabusVersions")
+
+// Related models
+model AcademicYear {
+  syllabi Syllabus[]
+}
+
+model Class {
+  syllabi Syllabus[]
+}
+
+model ClassSection {
+  syllabi Syllabus[]
+}
+```
+
+### Behavioral Changes
+
+#### Before Migration
+
+- One syllabus per subject (enforced constraint)
+- No scope differentiation
+- No lifecycle management
+- No versioning support
+- Limited metadata
+
+#### After Migration
+
+- Multiple syllabi per subject (different scopes)
+- Three scope levels: subject-wide, class-wide, section-specific
+- Full lifecycle management (draft → published → archived)
+- Version tracking with parent-child relationships
+- Rich metadata (tags, difficulty, hours, prerequisites)
+- Automatic fallback logic for syllabus retrieval
+
+### Data Preservation
+
+**All existing data is preserved:**
+- ✅ Syllabus titles and descriptions
+- ✅ Subject relationships
+- ✅ Document URLs
+- ✅ Units and modules
+- ✅ Creation and update timestamps
+- ✅ All existing relationships
+
+**New defaults for existing syllabi:**
+- Scope: Subject-wide (null classId, null sectionId)
+- Status: PUBLISHED (visible to all users)
+- Curriculum Type: GENERAL
+- Difficulty Level: INTERMEDIATE
+- Version: "1.0"
+- isActive: true
+
+---
+
+## Migration Process
+
+### Step 1: Prepare Migration
+
+1. **Stop Application Services**
+   ```bash
+   # Stop your application
+   pm2 stop all
+   # or
+   systemctl stop your-app-service
+   ```
+
+2. **Create Database Backup**
+   ```bash
+   pg_dump -U username -d database_name -F c -b -v -f pre_migration_backup.dump
+   ```
+
+3. **Verify Backup**
+   ```bash
+   pg_restore --list pre_migration_backup.dump | head -20
+   ```
+
+### Step 2: Run Prisma Migration
+
+1. **Generate Migration File**
+   ```bash
+   npx prisma migrate dev --name add_enhanced_syllabus_scope_fields --create-only
+   ```
+
+2. **Review Migration SQL**
+   ```bash
+   # Check the generated migration file
+   cat prisma/migrations/YYYYMMDD_add_enhanced_syllabus_scope_fields/migration.sql
+   ```
+
+3. **Apply Migration**
+   ```bash
+   # For production
+   npx prisma migrate deploy
+
+   # For development
+   npx prisma migrate dev
+   ```
+
+### Step 3: Verify Migration
+
+1. **Check Schema**
+   ```bash
+   npx prisma db pull
+   npx prisma generate
+   ```
+
+2. **Verify Data**
+   ```sql
+   -- Check existing syllabi have defaults
+   SELECT 
+     id, 
+     title, 
+     status, 
+     curriculumType, 
+     isActive,
+     classId,
+     sectionId
+   FROM "Syllabus"
+   LIMIT 10;
+   ```
+
+3. **Verify Indexes**
+   ```sql
+   SELECT indexname, indexdef 
+   FROM pg_indexes 
+   WHERE tablename = 'Syllabus';
+   ```
+
+### Step 4: Update Application Code
+
+1. **Update Imports**
+   ```typescript
+   // Update Zod schemas
+   import { syllabusFormSchema } from '@/lib/validations/syllabusSchemaValidations';
+   
+   // Update server actions
+   import { 
+     createSyllabus,
+     getSyllabusWithFallback,
+     getSyllabusByScope 
+   } from '@/app/actions/syllabusActions';
+   ```
+
+2. **Update UI Components**
+   - Replace old syllabus forms with new scope-aware forms
+   - Update syllabus list to show scope information
+   - Add filtering controls
+
+3. **Update API Calls**
+   ```typescript
+   // Old way
+   const syllabus = await getSyllabusBySubject(subjectId);
+   
+   // New way with fallback
+   const syllabus = await getSyllabusWithFallback({
+     subjectId,
+     academicYearId,
+     classId,
+     sectionId,
+     curriculumType: 'GENERAL'
+   });
+   ```
+
+### Step 5: Data Enrichment (Optional)
+
+After migration, you can enrich existing syllabi with new metadata:
+
+```sql
+-- Add academic year to existing syllabi
+UPDATE "Syllabus" s
+SET "academicYearId" = ay.id
+FROM "AcademicYear" ay
+WHERE ay."isCurrent" = true
+AND s."academicYearId" IS NULL;
+
+-- Add tags based on subject
+UPDATE "Syllabus" s
+SET tags = ARRAY[sub.name, sub.code]
+FROM "Subject" sub
+WHERE s."subjectId" = sub.id
+AND s.tags = '{}';
+
+-- Set createdBy for existing syllabi (if you have audit logs)
+UPDATE "Syllabus" s
+SET "createdBy" = 'system-migration'
+WHERE "createdBy" = '';
+```
+
+### Step 6: Restart Application
+
+1. **Start Services**
+   ```bash
+   pm2 start all
+   # or
+   systemctl start your-app-service
+   ```
+
+2. **Monitor Logs**
+   ```bash
+   pm2 logs
+   # or
+   journalctl -u your-app-service -f
+   ```
+
+3. **Check Health**
+   ```bash
+   curl http://localhost:3000/api/health
+   ```
+
+---
+
+## Post-Migration Verification
+
+### Verification Checklist
+
+- [ ] All existing syllabi are visible
+- [ ] Syllabus details pages load correctly
+- [ ] Can create new syllabi with scope selection
+- [ ] Filtering works correctly
+- [ ] Fallback logic returns correct syllabi
+- [ ] Status changes work
+- [ ] Cloning works
+- [ ] Document uploads work
+- [ ] Units and modules are intact
+- [ ] No console errors
+
+### Test Scenarios
+
+#### Test 1: View Existing Syllabi
+
+1. Navigate to syllabus list
+2. Verify all existing syllabi appear
+3. Check that scope shows as "Subject-Wide"
+4. Verify status shows as "Published"
+
+#### Test 2: Create Subject-Wide Syllabus
+
+1. Click "Create New Syllabus"
+2. Select "Subject-Wide" scope
+3. Fill in required fields
+4. Save and verify creation
+
+#### Test 3: Create Class-Wide Syllabus
+
+1. Click "Create New Syllabus"
+2. Select "Class-Wide" scope
+3. Choose class from dropdown
+4. Save and verify creation
+
+#### Test 4: Create Section-Specific Syllabus
+
+1. Click "Create New Syllabus"
+2. Select "Section-Specific" scope
+3. Choose class and section
+4. Save and verify creation
+
+#### Test 5: Test Fallback Logic
+
+1. Create syllabi at multiple scope levels for same subject
+2. Query as student in specific section
+3. Verify most specific syllabus is returned
+
+#### Test 6: Test Filtering
+
+1. Apply subject filter
+2. Apply class filter
+3. Apply status filter
+4. Verify results match filters
+
+#### Test 7: Test Cloning
+
+1. Open existing syllabus
+2. Click "Clone"
+3. Modify scope
+4. Verify clone created correctly
+
+### Performance Verification
+
+```sql
+-- Check query performance with new indexes
+EXPLAIN ANALYZE
+SELECT * FROM "Syllabus"
+WHERE "subjectId" = 'some-id'
+AND "classId" = 'some-class-id'
+AND "status" = 'PUBLISHED'
+AND "isActive" = true;
+
+-- Should use indexes efficiently
+```
+
+### Data Integrity Checks
+
+```sql
+-- Verify no orphaned relationships
+SELECT COUNT(*) FROM "Syllabus" s
+LEFT JOIN "Subject" sub ON s."subjectId" = sub.id
+WHERE sub.id IS NULL;
+
+-- Should return 0
+
+-- Verify unique constraint
+SELECT 
+  "subjectId", 
+  "academicYearId", 
+  "classId", 
+  "sectionId", 
+  "curriculumType",
+  COUNT(*)
+FROM "Syllabus"
+GROUP BY "subjectId", "academicYearId", "classId", "sectionId", "curriculumType"
+HAVING COUNT(*) > 1;
+
+-- Should return 0 rows
+```
+
+---
+
+## Rollback Procedure
+
+If issues arise, follow this rollback procedure:
+
+### Step 1: Stop Application
+
+```bash
+pm2 stop all
+```
+
+### Step 2: Restore Database
+
+```bash
+# Drop current database (CAUTION!)
+dropdb database_name
+
+# Create new database
+createdb database_name
+
+# Restore from backup
+pg_restore -U username -d database_name -v pre_migration_backup.dump
+```
+
+### Step 3: Revert Code Changes
+
+```bash
+# Revert to previous commit
+git revert HEAD
+
+# Or checkout previous version
+git checkout previous-version-tag
+```
+
+### Step 4: Restart Application
+
+```bash
+pm2 start all
+```
+
+### Step 5: Verify Rollback
+
+- Check that old system is working
+- Verify all data is intact
+- Test critical functionality
+
+---
+
+## FAQ
+
+### Q: Will existing syllabi still work after migration?
+
+**A:** Yes, all existing syllabi are preserved and will work exactly as before. They are treated as subject-wide syllabi with PUBLISHED status.
+
+### Q: Do I need to update all existing syllabi immediately?
+
+**A:** No, existing syllabi will continue to work with default values. You can gradually enrich them with new metadata over time.
+
+### Q: What happens to the "one syllabus per subject" constraint?
+
+**A:** This constraint is removed. You can now create multiple syllabi per subject with different scopes, curriculum types, or academic years.
+
+### Q: Will students see different syllabi after migration?
+
+**A:** Initially, no. Existing syllabi remain visible as before. Once you create scope-specific syllabi, students will automatically see the most relevant one.
+
+### Q: How long does the migration take?
+
+**A:** For most databases, the migration completes in under 5 minutes. Larger databases (>10,000 syllabi) may take 10-15 minutes.
+
+### Q: Can I run the migration during business hours?
+
+**A:** We recommend running during low-usage periods. The migration requires brief downtime (5-15 minutes).
+
+### Q: What if the migration fails?
+
+**A:** The migration is transactional. If it fails, changes are rolled back automatically. You can then investigate the issue and retry.
+
+### Q: Do I need to retrain users?
+
+**A:** Basic functionality remains the same. Users should be trained on new features (scope selection, filtering, cloning) but can continue using the system as before.
+
+### Q: Are there any breaking changes in the API?
+
+**A:** The old API methods are deprecated but still work. New methods provide enhanced functionality. Gradually migrate to new methods.
+
+### Q: How do I handle syllabi created during migration?
+
+**A:** Schedule migration during maintenance window when no users are creating syllabi. Any syllabi created immediately before migration will be preserved.
+
+### Q: Can I customize the default values for existing syllabi?
+
+**A:** Yes, after migration you can run SQL updates to set different defaults (e.g., specific academic year, tags, etc.).
+
+### Q: What about syllabi with special characters or large documents?
+
+**A:** All data types are preserved. Special characters and large documents are handled correctly.
+
+### Q: How do I verify the migration was successful?
+
+**A:** Follow the [Post-Migration Verification](#post-migration-verification) checklist. All tests should pass.
+
+### Q: Can I migrate in stages (e.g., one subject at a time)?
+
+**A:** The schema migration must be done all at once. However, you can gradually create scope-specific syllabi after migration.
+
+### Q: What happens to syllabus URLs?
+
+**A:** All existing URLs continue to work. New syllabi get new URLs based on their IDs.
+
+### Q: How do I handle syllabi shared across multiple classes?
+
+**A:** Create a subject-wide syllabus (no class specified) which will be available to all classes.
+
+---
+
+## Migration Timeline
+
+### Recommended Schedule
+
+**Week 1: Preparation**
+- Review documentation
+- Test in development environment
+- Create backup procedures
+- Plan communication to users
+
+**Week 2: Testing**
+- Run migration in staging environment
+- Perform thorough testing
+- Document any issues
+- Refine procedures
+
+**Week 3: Production Migration**
+- Schedule maintenance window
+- Notify users
+- Execute migration
+- Verify success
+- Monitor for issues
+
+**Week 4: Post-Migration**
+- Train users on new features
+- Gather feedback
+- Create scope-specific syllabi as needed
+- Optimize and refine
+
+---
+
+## Support and Resources
+
+### Getting Help
+
+If you encounter issues during migration:
+
+1. **Check Logs**: Review application and database logs
+2. **Consult Documentation**: Re-read relevant sections
+3. **Test Environment**: Reproduce issue in test environment
+4. **Contact Support**: Reach out to technical support team
+
+### Support Channels
+
+- **Email**: support@yourschool.edu
+- **Phone**: (555) 123-4567
+- **Slack**: #syllabus-migration channel
+- **Documentation**: https://docs.yourschool.edu/syllabus
+
+### Additional Resources
+
+- [API Reference](./ENHANCED_SYLLABUS_API_REFERENCE.md)
+- [User Guide](./ENHANCED_SYLLABUS_USER_GUIDE.md)
+- [Best Practices](./ENHANCED_SYLLABUS_BEST_PRACTICES.md)
+- [Troubleshooting Guide](./ENHANCED_SYLLABUS_TROUBLESHOOTING.md)
+
+---
+
+## Appendix
+
+### Sample Migration SQL
+
+```sql
+-- This is automatically generated by Prisma
+-- Shown here for reference only
+
+-- Add new columns
+ALTER TABLE "Syllabus" ADD COLUMN "academicYearId" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "classId" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "sectionId" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "curriculumType" TEXT NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE "Syllabus" ADD COLUMN "boardType" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'PUBLISHED';
+ALTER TABLE "Syllabus" ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "Syllabus" ADD COLUMN "effectiveFrom" TIMESTAMP(3);
+ALTER TABLE "Syllabus" ADD COLUMN "effectiveTo" TIMESTAMP(3);
+ALTER TABLE "Syllabus" ADD COLUMN "version" TEXT NOT NULL DEFAULT '1.0';
+ALTER TABLE "Syllabus" ADD COLUMN "parentSyllabusId" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "createdBy" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Syllabus" ADD COLUMN "updatedBy" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "approvedBy" TEXT;
+ALTER TABLE "Syllabus" ADD COLUMN "approvedAt" TIMESTAMP(3);
+ALTER TABLE "Syllabus" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "Syllabus" ADD COLUMN "difficultyLevel" TEXT NOT NULL DEFAULT 'INTERMEDIATE';
+ALTER TABLE "Syllabus" ADD COLUMN "estimatedHours" INTEGER;
+ALTER TABLE "Syllabus" ADD COLUMN "prerequisites" TEXT;
+
+-- Add foreign keys
+ALTER TABLE "Syllabus" ADD CONSTRAINT "Syllabus_academicYearId_fkey" 
+  FOREIGN KEY ("academicYearId") REFERENCES "AcademicYear"("id") ON DELETE SET NULL;
+ALTER TABLE "Syllabus" ADD CONSTRAINT "Syllabus_classId_fkey" 
+  FOREIGN KEY ("classId") REFERENCES "Class"("id") ON DELETE SET NULL;
+ALTER TABLE "Syllabus" ADD CONSTRAINT "Syllabus_sectionId_fkey" 
+  FOREIGN KEY ("sectionId") REFERENCES "ClassSection"("id") ON DELETE SET NULL;
+ALTER TABLE "Syllabus" ADD CONSTRAINT "Syllabus_parentSyllabusId_fkey" 
+  FOREIGN KEY ("parentSyllabusId") REFERENCES "Syllabus"("id") ON DELETE SET NULL;
+
+-- Create unique constraint
+CREATE UNIQUE INDEX "Syllabus_subjectId_academicYearId_classId_sectionId_curriculumType_key" 
+  ON "Syllabus"("subjectId", "academicYearId", "classId", "sectionId", "curriculumType");
+
+-- Create indexes
+CREATE INDEX "Syllabus_subjectId_classId_idx" ON "Syllabus"("subjectId", "classId");
+CREATE INDEX "Syllabus_academicYearId_isActive_idx" ON "Syllabus"("academicYearId", "isActive");
+CREATE INDEX "Syllabus_status_isActive_idx" ON "Syllabus"("status", "isActive");
+CREATE INDEX "Syllabus_curriculumType_boardType_idx" ON "Syllabus"("curriculumType", "boardType");
+```
+
+### Migration Checklist
+
+Print this checklist and check off items as you complete them:
+
+**Pre-Migration**
+- [ ] Database backup created
+- [ ] Backup verified
+- [ ] Test environment migration successful
+- [ ] Users notified
+- [ ] Maintenance window scheduled
+- [ ] Rollback procedure documented
+
+**Migration**
+- [ ] Application stopped
+- [ ] Migration executed
+- [ ] Schema verified
+- [ ] Data verified
+- [ ] Indexes verified
+- [ ] Application code updated
+
+**Post-Migration**
+- [ ] Application restarted
+- [ ] Health check passed
+- [ ] Existing syllabi visible
+- [ ] New syllabus creation works
+- [ ] Filtering works
+- [ ] Fallback logic works
+- [ ] Performance acceptable
+- [ ] Users notified of completion
+
+**Follow-Up**
+- [ ] User training scheduled
+- [ ] Documentation updated
+- [ ] Feedback collected
+- [ ] Issues resolved
+- [ ] Optimization completed

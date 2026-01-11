@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { 
-  TimetableFormValues, 
+import {
+  TimetableFormValues,
   TimetableUpdateFormValues,
   TimetableSlotFormValues,
   TimetableSlotUpdateFormValues
@@ -26,13 +26,13 @@ export async function getTimetables() {
         }
       }
     });
-    
+
     return { success: true, data: timetables };
   } catch (error) {
     console.error("Error fetching timetables:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch timetables" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch timetables"
     };
   }
 }
@@ -66,11 +66,11 @@ export async function getTimetableById(id: string) {
         }
       }
     });
-    
+
     if (!timetable) {
       return { success: false, error: "Timetable not found" };
     }
-    
+
     // Transform slot data for easier consumption in the frontend
     const transformedSlots = timetable.slots.map(slot => ({
       id: slot.id,
@@ -99,9 +99,9 @@ export async function getTimetableById(id: string) {
         name: slot.room.name
       } : null
     }));
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: {
         ...timetable,
         slots: transformedSlots
@@ -109,9 +109,9 @@ export async function getTimetableById(id: string) {
     };
   } catch (error) {
     console.error("Error fetching timetable:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch timetable" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch timetable"
     };
   }
 }
@@ -122,7 +122,7 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
     const whereClause: any = {
       classId,
     };
-    
+
     if (activeTimetableOnly) {
       whereClause.timetable = {
         isActive: true,
@@ -133,7 +133,7 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
         ]
       };
     }
-    
+
     const slots = await db.timetableSlot.findMany({
       where: whereClause,
       include: {
@@ -157,7 +157,7 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
         { startTime: 'asc' }
       ]
     });
-    
+
     // Transform data for easier consumption in the frontend
     const transformedSlots = slots.map(slot => ({
       id: slot.id,
@@ -190,13 +190,13 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
         name: slot.room.name
       } : null
     }));
-    
+
     return { success: true, data: transformedSlots };
   } catch (error) {
     console.error("Error fetching timetable slots:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch timetable slots" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch timetable slots"
     };
   }
 }
@@ -209,7 +209,7 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
         teacherId
       }
     };
-    
+
     if (activeTimetableOnly) {
       whereClause.timetable = {
         isActive: true,
@@ -220,7 +220,7 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
         ]
       };
     }
-    
+
     const slots = await db.timetableSlot.findMany({
       where: whereClause,
       include: {
@@ -244,7 +244,7 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
         { startTime: 'asc' }
       ]
     });
-    
+
     // Transform data
     const transformedSlots = slots.map(slot => ({
       id: slot.id,
@@ -273,13 +273,13 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
         name: slot.room.name
       } : null
     }));
-    
+
     return { success: true, data: transformedSlots };
   } catch (error) {
     console.error("Error fetching teacher's timetable slots:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch timetable slots" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch timetable slots"
     };
   }
 }
@@ -290,7 +290,7 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
     const whereClause: any = {
       roomId
     };
-    
+
     if (activeTimetableOnly) {
       whereClause.timetable = {
         isActive: true,
@@ -301,7 +301,7 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
         ]
       };
     }
-    
+
     const slots = await db.timetableSlot.findMany({
       where: whereClause,
       include: {
@@ -324,7 +324,7 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
         { startTime: 'asc' }
       ]
     });
-    
+
     // Transform data
     const transformedSlots = slots.map(slot => ({
       id: slot.id,
@@ -353,13 +353,13 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
         name: `${slot.subjectTeacher.teacher.user.firstName} ${slot.subjectTeacher.teacher.user.lastName}`
       }
     }));
-    
+
     return { success: true, data: transformedSlots };
   } catch (error) {
     console.error("Error fetching room's timetable slots:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch timetable slots" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch timetable slots"
     };
   }
 }
@@ -384,14 +384,14 @@ export async function createTimetable(data: TimetableFormValues) {
         isActive: data.isActive,
       }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     return { success: true, data: timetable };
   } catch (error) {
     console.error("Error creating timetable:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create timetable" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create timetable"
     };
   }
 }
@@ -411,7 +411,7 @@ export async function updateTimetable(data: TimetableUpdateFormValues) {
     // If this is set as active, deactivate other active timetables
     if (data.isActive && !existingTimetable.isActive) {
       await db.timetable.updateMany({
-        where: { 
+        where: {
           isActive: true,
           id: { not: data.id }
         },
@@ -429,15 +429,15 @@ export async function updateTimetable(data: TimetableUpdateFormValues) {
         isActive: data.isActive,
       }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     revalidatePath(`/admin/teaching/timetable/${data.id}`);
     return { success: true, data: timetable };
   } catch (error) {
     console.error("Error updating timetable:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update timetable" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update timetable"
     };
   }
 }
@@ -451,23 +451,23 @@ export async function deleteTimetable(id: string) {
     });
 
     if (slotsCount > 0) {
-      return { 
-        success: false, 
-        error: "Cannot delete timetable with existing slots. Please delete all slots first." 
+      return {
+        success: false,
+        error: "Cannot delete timetable with existing slots. Please delete all slots first."
       };
     }
 
     await db.timetable.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     return { success: true };
   } catch (error) {
     console.error("Error deleting timetable:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete timetable" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete timetable"
     };
   }
 }
@@ -478,7 +478,7 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
     // Process optional fields 
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
-    
+
     // Check if a slot already exists for this class/section at this time
     const conflictingSlot = await checkSlotConflict({
       timetableId: data.timetableId,
@@ -528,20 +528,21 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
         sectionId: sectionId,
         subjectTeacherId: data.subjectTeacherId,
         roomId: roomId,
+        topicId: data.topicId === "none" ? null : data.topicId || null, // Optional assigned topic
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
       }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     revalidatePath(`/admin/teaching/timetable/${data.timetableId}`);
     return { success: true, data: slot };
   } catch (error) {
     console.error("Error creating timetable slot:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create timetable slot" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create timetable slot"
     };
   }
 }
@@ -615,20 +616,21 @@ export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
         sectionId: sectionId,
         subjectTeacherId: data.subjectTeacherId,
         roomId: roomId,
+        topicId: data.topicId === "none" ? null : data.topicId || null, // Optional assigned topic
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
       }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     revalidatePath(`/admin/teaching/timetable/${data.timetableId}`);
     return { success: true, data: slot };
   } catch (error) {
     console.error("Error updating timetable slot:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update timetable slot" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update timetable slot"
     };
   }
 }
@@ -649,15 +651,15 @@ export async function deleteTimetableSlot(id: string) {
     await db.timetableSlot.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/teaching/timetable");
     revalidatePath(`/admin/teaching/timetable/${slot.timetableId}`);
     return { success: true };
   } catch (error) {
     console.error("Error deleting timetable slot:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete timetable slot" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete timetable slot"
     };
   }
 }
@@ -681,13 +683,13 @@ export async function getClassesForTimetable() {
         name: 'asc'
       }
     });
-    
+
     return { success: true, data: classes };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
 }
@@ -700,13 +702,13 @@ export async function getRoomsForTimetable() {
         name: 'asc'
       }
     });
-    
+
     return { success: true, data: rooms };
   } catch (error) {
     console.error("Error fetching rooms:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch rooms" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch rooms"
     };
   }
 }
@@ -724,7 +726,7 @@ export async function getSubjectTeachersForTimetable() {
         }
       },
       orderBy: [
-        { 
+        {
           subject: {
             name: 'asc'
           }
@@ -738,7 +740,7 @@ export async function getSubjectTeachersForTimetable() {
         }
       ]
     });
-    
+
     // Transform data for easier consumption in the frontend
     const formattedData = subjectTeachers.map(st => ({
       id: st.id,
@@ -750,24 +752,24 @@ export async function getSubjectTeachersForTimetable() {
       // This format makes it easier to display in a dropdown
       display: `${st.subject.name} (${st.subject.code}) - ${st.teacher.user.firstName} ${st.teacher.user.lastName}`
     }));
-    
+
     return { success: true, data: formattedData };
   } catch (error) {
     console.error("Error fetching subject-teachers:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subject-teachers" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subject-teachers"
     };
   }
 }
 
 // Helper function to check for slot conflicts
-async function checkSlotConflict({ 
-  timetableId, 
-  classId, 
-  sectionId, 
-  day, 
-  startTime, 
+async function checkSlotConflict({
+  timetableId,
+  classId,
+  sectionId,
+  day,
+  startTime,
   endTime,
   excludeSlotId
 }: {
@@ -824,20 +826,19 @@ async function checkSlotConflict({
   });
 
   if (conflictingSlot) {
-    return `Time slot conflict: This class ${conflictingSlot.class.name}${
-      conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
-    } already has a class scheduled during this time on ${day}.`;
+    return `Time slot conflict: This class ${conflictingSlot.class.name}${conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
+      } already has a class scheduled during this time on ${day}.`;
   }
 
   return null;
 }
 
 // Helper function to check for teacher availability
-async function checkTeacherAvailability({ 
-  timetableId, 
-  subjectTeacherId, 
-  day, 
-  startTime, 
+async function checkTeacherAvailability({
+  timetableId,
+  subjectTeacherId,
+  day,
+  startTime,
   endTime,
   excludeSlotId
 }: {
@@ -894,22 +895,20 @@ async function checkTeacherAvailability({
   });
 
   if (conflictingSlot) {
-    return `Teacher conflict: ${conflictingSlot.subjectTeacher.teacher.user.firstName} ${
-      conflictingSlot.subjectTeacher.teacher.user.lastName
-    } is already scheduled to teach ${conflictingSlot.class.name}${
-      conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
-    } during this time on ${day}.`;
+    return `Teacher conflict: ${conflictingSlot.subjectTeacher.teacher.user.firstName} ${conflictingSlot.subjectTeacher.teacher.user.lastName
+      } is already scheduled to teach ${conflictingSlot.class.name}${conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
+      } during this time on ${day}.`;
   }
 
   return null;
 }
 
 // Helper function to check for room availability
-async function checkRoomAvailability({ 
-  timetableId, 
-  roomId, 
-  day, 
-  startTime, 
+async function checkRoomAvailability({
+  timetableId,
+  roomId,
+  day,
+  startTime,
   endTime,
   excludeSlotId
 }: {
@@ -958,11 +957,9 @@ async function checkRoomAvailability({
   });
 
   if (conflictingSlot) {
-    return `Room conflict: ${conflictingSlot.room!.name} is already booked for ${
-      conflictingSlot.class.name
-    }${
-      conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
-    } during this time on ${day}.`;
+    return `Room conflict: ${conflictingSlot.room!.name} is already booked for ${conflictingSlot.class.name
+      }${conflictingSlot.section ? ` (${conflictingSlot.section.name})` : ''
+      } during this time on ${day}.`;
   }
 
   return null;

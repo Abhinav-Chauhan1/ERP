@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { db } from "@/lib/db"
 import { UserRole } from "@prisma/client"
-import bcrypt from "bcryptjs"
+import { verifyPassword } from "@/lib/password"
 import { TOTP } from "otpauth"
 
 // Extend NextAuth types to include role
@@ -46,13 +46,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         totpCode: { label: "2FA Code", type: "text", optional: true }
       },
       async authorize(credentials) {
+        console.log("DEBUG: Authorize called with keys:", Object.keys(credentials || {}))
         const email = credentials?.email as string
 
         if (!credentials?.email || !credentials?.password) {
           // Log failed login - missing credentials
           if (email) {
-            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-            await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "Missing credentials" })
+            try {
+              const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+              await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "Missing credentials" })
+            } catch (e) {
+              console.error("Failed to log audit event:", e)
+            }
           }
           return null
         }
@@ -64,102 +69,119 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!user || !user.password) {
           // Log failed login - user not found or no password
-          const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-          await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "User not found or no password" })
+          try {
+            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+            await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "User not found or no password" })
+          } catch (e) { console.error("Failed to log audit event:", e) }
           return null
         }
 
-        // Verify password
-        const isValidPassword = await bcrypt.compare(
+        // Verify password (supports both bcrypt and Web Crypto PBKDF2 hashes)
+        const isValidPassword = await verifyPassword(
           credentials.password as string,
           user.password
         )
 
         if (!isValidPassword) {
           // Log failed login - invalid password
-          const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-          await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "Invalid password" })
+          try {
+            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+            await logLoginFailure(email, "INVALID_CREDENTIALS", { reason: "Invalid password" })
+          } catch (e) { console.error("Failed to log audit event:", e) }
           return null
         }
 
         // Check if email is verified
         if (!user.emailVerified) {
           // Log failed login - email not verified
-          const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-          await logLoginFailure(email, "EMAIL_NOT_VERIFIED", { userId: user.id })
+          try {
+            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+            await logLoginFailure(email, "EMAIL_NOT_VERIFIED", { userId: user.id })
+          } catch (e) { console.error("Failed to log audit event:", e) }
           throw new Error("EMAIL_NOT_VERIFIED")
         }
 
         // Check if account is active
         if (!user.active) {
           // Log failed login - account inactive
-          const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-          await logLoginFailure(email, "ACCOUNT_INACTIVE", { userId: user.id })
+          try {
+            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+            await logLoginFailure(email, "ACCOUNT_INACTIVE", { userId: user.id })
+          } catch (e) {
+            // Silently ignore audit log errors to prevent login failure
+          }
           throw new Error("ACCOUNT_INACTIVE")
         }
 
         // Check 2FA if enabled
         if (user.twoFactorEnabled) {
-          if (!credentials.totpCode) {
+          const totpCode = credentials.totpCode as string;
+          if (!totpCode || totpCode === "undefined") {
             // Log failed login - 2FA required but not provided
-            const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
-            await logLoginFailure(email, "2FA_REQUIRED", { userId: user.id })
+            try {
+              const { logLoginFailure } = await import("@/lib/services/auth-audit-service")
+              await logLoginFailure(email, "2FA_REQUIRED", { userId: user.id })
+            } catch (e) {
+              // Silently ignore audit log errors to prevent login failure
+            }
             throw new Error("2FA_REQUIRED")
           }
 
           let isValid2FA = false
 
-          // First, try TOTP code verification
-          if (user.twoFactorSecret) {
-            const totp = new TOTP({
-              secret: user.twoFactorSecret,
-              digits: 6,
-              period: 30
-            })
+          try {
+            // Import 2FA utilities
+            const { verifyBackupCode, decrypt, verifyTOTPToken } = await import("@/lib/utils/two-factor")
 
-            const isValidTotp = totp.validate({
-              token: credentials.totpCode as string,
-              window: 1
-            })
+            // First, try TOTP code verification
+            if (user.twoFactorSecret) {
+              try {
+                const secret = await decrypt(user.twoFactorSecret)
+                const isValidTotp = verifyTOTPToken(totpCode, secret)
 
-            if (isValidTotp !== null) {
-              isValid2FA = true
-            }
-          }
-
-          // If TOTP fails, try backup codes
-          if (!isValid2FA && user.twoFactorBackupCodes) {
-            try {
-              // Import backup code verification utility
-              const { verifyBackupCode, decrypt } = await import("@/lib/utils/two-factor")
-
-              const backupResult = verifyBackupCode(
-                credentials.totpCode as string,
-                user.twoFactorBackupCodes
-              )
-
-              if (backupResult.valid) {
-                isValid2FA = true
-
-                // Update user with remaining backup codes
-                await db.user.update({
-                  where: { id: user.id },
-                  data: {
-                    twoFactorBackupCodes: backupResult.remainingCodes
-                  }
-                })
-
-                // Log backup code usage
-                const { log2FABackupCodeUsed } = await import("@/lib/services/auth-audit-service")
-                const remainingCount = backupResult.remainingCodes
-                  ? JSON.parse(decrypt(backupResult.remainingCodes)).length
-                  : 0
-                await log2FABackupCodeUsed(user.id, remainingCount)
+                if (isValidTotp) {
+                  isValid2FA = true
+                }
+              } catch (error) {
+                // Silently ignore 2FA errors to allow backup code check
               }
-            } catch (error) {
-              console.error("Error verifying backup code:", error)
             }
+
+            // If TOTP fails, try backup codes
+            if (!isValid2FA && user.twoFactorBackupCodes) {
+              try {
+                const backupResult = await verifyBackupCode(
+                  credentials.totpCode as string,
+                  user.twoFactorBackupCodes
+                )
+
+                if (backupResult.valid) {
+                  isValid2FA = true
+
+                  // Update user with remaining backup codes
+                  await db.user.update({
+                    where: { id: user.id },
+                    data: {
+                      twoFactorBackupCodes: backupResult.remainingCodes
+                    }
+                  })
+
+                  // Log backup code usage
+                  const { log2FABackupCodeUsed } = await import("@/lib/services/auth-audit-service")
+                  const remainingCount = backupResult.remainingCodes
+                    ? JSON.parse(await decrypt(backupResult.remainingCodes)).length
+                    : 0
+                  await log2FABackupCodeUsed(user.id, remainingCount)
+                }
+              } catch (error) {
+                console.error("Error verifying backup code:", error)
+              }
+            }
+          } catch (error) {
+            console.error("Error loading 2FA utils:", error)
           }
+
+
 
           // If both TOTP and backup code fail, throw error
           if (!isValid2FA) {

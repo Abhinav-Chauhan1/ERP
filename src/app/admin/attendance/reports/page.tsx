@@ -147,14 +147,198 @@ export default function AttendanceReportsPage() {
     }
   }, [activeTab, loadClassWiseData]);
 
+  const [exportFormat, setExportFormat] = useState("pdf");
+  const [exporting, setExporting] = useState(false);
+
   const handleExportReport = async () => {
     try {
-      // TODO: Implement export functionality
-      toast.success("Export functionality coming soon");
+      setExporting(true);
+
+      const month = parseInt(selectedMonth);
+      const year = parseInt(selectedYear);
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+
+      // Fetch data based on report type
+      let reportData: any[] = [];
+      let reportTitle = '';
+
+      if (reportType === 'class') {
+        const result = await getClassWiseAttendance({ startDate, endDate });
+        if (result.success && result.data) {
+          reportData = result.data;
+          reportTitle = 'Class Attendance Report';
+        }
+      } else if (reportType === 'absenteeism') {
+        const result = await getAbsenteeismAnalysis({ startDate, endDate });
+        if (result.success && result.data) {
+          reportData = result.data;
+          reportTitle = 'Absenteeism Analysis Report';
+        }
+      } else if (reportType === 'student' || reportType === 'teacher') {
+        // For daily summary, we fetch today's data
+        const result = await getDailyAttendanceSummary(new Date());
+        if (result.success && result.data) {
+          // Wrap the summary in an array for consistent handling
+          reportData = [result.data.summary];
+          reportTitle = `${reportType === 'student' ? 'Student' : 'Teacher'} Attendance Report`;
+        }
+      }
+
+      if (reportData.length === 0) {
+        toast.error('No data available for the selected period');
+        return;
+      }
+
+      const monthName = months.find(m => m.id === selectedMonth)?.name || '';
+      const filename = `attendance-report-${monthName}-${year}`;
+
+      if (exportFormat === 'pdf') {
+        // Generate PDF using jsPDF
+        const { default: jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default;
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Header
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(reportTitle, pageWidth / 2, 15, { align: 'center' });
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Period: ${monthName} ${year}`, 14, 25);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 60, 25);
+
+        // Table data based on report type
+        let headers: string[] = [];
+        let tableData: any[][] = [];
+
+        if (reportType === 'class') {
+          headers = ['Class', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'];
+          tableData = reportData.map((r: any) => [
+            r.className,
+            r.totalRecords,
+            r.presentCount,
+            r.absentCount,
+            r.lateCount || 0,
+            `${r.attendanceRate?.toFixed(1) || 0}%`
+          ]);
+        } else if (reportType === 'absenteeism') {
+          headers = ['Student Name', 'Admission ID', 'Class', 'Section', 'Absences'];
+          tableData = reportData.map((r: any) => [
+            r.studentName,
+            r.admissionId,
+            r.class,
+            r.section,
+            r.absenceCount
+          ]);
+        } else {
+          headers = ['Date', 'Total', 'Present', 'Absent', 'Late', 'Attendance Rate'];
+          tableData = reportData.map((r: any) => [
+            new Date(r.date).toLocaleDateString(),
+            r.total,
+            r.present,
+            r.absent,
+            r.late || 0,
+            `${r.attendanceRate?.toFixed(1) || 0}%`
+          ]);
+        }
+
+        autoTable(doc, {
+          startY: 35,
+          head: [headers],
+          body: tableData,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+        });
+
+        // Download
+        doc.save(`${filename}.pdf`);
+        toast.success('PDF report downloaded successfully');
+
+      } else if (exportFormat === 'excel' || exportFormat === 'csv') {
+        // Generate Excel/CSV using xlsx
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.utils.book_new();
+
+        // Prepare data
+        let sheetData: any[][];
+
+        if (reportType === 'class') {
+          sheetData = [
+            [reportTitle],
+            [`Period: ${monthName} ${year}`],
+            [],
+            ['Class', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'],
+            ...reportData.map((r: any) => [
+              r.className,
+              r.totalRecords,
+              r.presentCount,
+              r.absentCount,
+              r.lateCount || 0,
+              r.attendanceRate?.toFixed(1) || 0
+            ])
+          ];
+        } else if (reportType === 'absenteeism') {
+          sheetData = [
+            [reportTitle],
+            [`Period: ${monthName} ${year}`],
+            [],
+            ['Student Name', 'Admission ID', 'Class', 'Section', 'Absences'],
+            ...reportData.map((r: any) => [
+              r.studentName,
+              r.admissionId,
+              r.class,
+              r.section,
+              r.absenceCount
+            ])
+          ];
+        } else {
+          sheetData = [
+            [reportTitle],
+            [`Period: ${monthName} ${year}`],
+            [],
+            ['Date', 'Total', 'Present', 'Absent', 'Late', 'Attendance Rate'],
+            ...reportData.map((r: any) => [
+              new Date(r.date).toLocaleDateString(),
+              r.total,
+              r.present,
+              r.absent,
+              r.late || 0,
+              r.attendanceRate?.toFixed(1) || 0
+            ])
+          ];
+        }
+
+        const sheet = XLSX.utils.aoa_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(workbook, sheet, 'Attendance Report');
+
+        if (exportFormat === 'csv') {
+          XLSX.writeFile(workbook, `${filename}.csv`, { bookType: 'csv' });
+          toast.success('CSV report downloaded successfully');
+        } else {
+          XLSX.writeFile(workbook, `${filename}.xlsx`);
+          toast.success('Excel report downloaded successfully');
+        }
+      }
+
       setReportGenerateDialogOpen(false);
     } catch (error) {
       console.error("Error exporting report:", error);
       toast.error("Failed to export report");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -254,7 +438,7 @@ export default function AttendanceReportsPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Report Format</label>
-                <Select defaultValue="pdf">
+                <Select value={exportFormat} onValueChange={setExportFormat}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select format" />
                   </SelectTrigger>
@@ -267,11 +451,11 @@ export default function AttendanceReportsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setReportGenerateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setReportGenerateDialogOpen(false)} disabled={exporting}>
                 Cancel
               </Button>
-              <Button onClick={handleExportReport}>
-                Generate
+              <Button onClick={handleExportReport} disabled={exporting}>
+                {exporting ? 'Generating...' : 'Generate'}
               </Button>
             </DialogFooter>
           </DialogContent>

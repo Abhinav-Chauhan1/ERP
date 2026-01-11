@@ -42,20 +42,10 @@ import {
 import { CommunicationChannel } from '@prisma/client';
 import { useToast } from '@/hooks/use-toast';
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
+  SimpleBarChart,
+  SimpleLineChart,
+  SimplePieChart,
+} from '@/components/ui/charts';
 
 // ============================================================================
 // Types
@@ -354,16 +344,14 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Distribution across communication channels</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.channelBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="channel" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="total" fill="#3b82f6" name="Total Messages" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <SimpleBarChart
+                  data={analytics.channelBreakdown as unknown as { [key: string]: unknown }[]}
+                  dataKey="total"
+                  xAxisKey="channel"
+                  fill="#3b82f6"
+                  height={300}
+                  legendLabel="Total Messages"
+                />
               </CardContent>
             </Card>
 
@@ -374,19 +362,17 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Daily message volume</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={timeSeriesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="SMS" stroke={CHANNEL_COLORS.SMS} />
-                    <Line type="monotone" dataKey="WHATSAPP" stroke={CHANNEL_COLORS.WHATSAPP} />
-                    <Line type="monotone" dataKey="EMAIL" stroke={CHANNEL_COLORS.EMAIL} />
-                    <Line type="monotone" dataKey="IN_APP" stroke={CHANNEL_COLORS.IN_APP} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <SimpleLineChart
+                  data={timeSeriesData as unknown as { [key: string]: unknown }[]}
+                  lines={[
+                    { dataKey: 'SMS', stroke: CHANNEL_COLORS.SMS, name: 'SMS' },
+                    { dataKey: 'WHATSAPP', stroke: CHANNEL_COLORS.WHATSAPP, name: 'WhatsApp' },
+                    { dataKey: 'EMAIL', stroke: CHANNEL_COLORS.EMAIL, name: 'Email' },
+                    { dataKey: 'IN_APP', stroke: CHANNEL_COLORS.IN_APP, name: 'In-App' },
+                  ]}
+                  xAxisKey="date"
+                  height={300}
+                />
               </CardContent>
             </Card>
           </div>
@@ -401,16 +387,15 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Total spending per channel</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.channelBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="channel" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => `₹${value.toFixed(2)}`} />
-                    <Legend />
-                    <Bar dataKey="totalCost" fill="#10b981" name="Total Cost (₹)" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <SimpleBarChart
+                  data={analytics.channelBreakdown as unknown as { [key: string]: unknown }[]}
+                  dataKey="totalCost"
+                  xAxisKey="channel"
+                  fill="#10b981"
+                  height={300}
+                  legendLabel="Total Cost (₹)"
+                  formatter={(value) => `₹${value.toFixed(2)}`}
+                />
               </CardContent>
             </Card>
 
@@ -421,16 +406,15 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Comparison of per-message costs</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.costComparison}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="channel" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => `₹${value.toFixed(4)}`} />
-                    <Legend />
-                    <Bar dataKey="costPerMessage" fill="#f59e0b" name="Cost Per Message (₹)" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <SimpleBarChart
+                  data={(analytics.costComparison || []) as unknown as { [key: string]: unknown }[]}
+                  dataKey="costPerMessage"
+                  xAxisKey="channel"
+                  fill="#f59e0b"
+                  height={300}
+                  legendLabel="Cost Per Message (₹)"
+                  formatter={(value) => `₹${value.toFixed(4)}`}
+                />
               </CardContent>
             </Card>
           </div>
@@ -445,24 +429,13 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Message status distribution</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={deliveryStats}
-                      dataKey="count"
-                      nameKey="status"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={(entry) => `${entry.status}: ${entry.percentage.toFixed(1)}%`}
-                    >
-                      {deliveryStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status as keyof typeof STATUS_COLORS] || '#gray'} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <SimplePieChart
+                  data={deliveryStats}
+                  dataKey="count"
+                  nameKey="status"
+                  colors={Object.values(STATUS_COLORS)}
+                  height={300}
+                />
               </CardContent>
             </Card>
 
@@ -473,16 +446,15 @@ export default function MessageAnalyticsDashboard() {
                 <CardDescription>Success rate per channel</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.channelBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="channel" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                    <Legend />
-                    <Bar dataKey="deliveryRate" fill="#10b981" name="Delivery Rate (%)" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <SimpleBarChart
+                  data={analytics.channelBreakdown as unknown as { [key: string]: unknown }[]}
+                  dataKey="deliveryRate"
+                  xAxisKey="channel"
+                  fill="#10b981"
+                  height={300}
+                  legendLabel="Delivery Rate (%)"
+                  formatter={(value) => `${value.toFixed(1)}%`}
+                />
               </CardContent>
             </Card>
           </div>

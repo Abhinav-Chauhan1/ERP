@@ -1,5 +1,5 @@
 {
-  "name": "school-erp",
+  "name": "sikshamitra",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,7 @@
     "test:migrate-cli": "tsx scripts/test-migration-cli.ts",
     "migrate:fee-structures": "tsx scripts/migrate-fee-structure-classes.ts",
     "test:fee-migration": "tsx scripts/test-fee-structure-migration.ts",
+    "import:alumni": "tsx scripts/import-historical-alumni.ts",
     "cleanup:sessions": "tsx scripts/cleanup-expired-sessions.ts",
     "cleanup:sessions:dry-run": "tsx scripts/cleanup-expired-sessions.ts --dry-run",
     "cleanup:sessions:verbose": "tsx scripts/cleanup-expired-sessions.ts --verbose --stats"
@@ -52,7 +53,7 @@
     "@types/jszip": "^3.4.0",
     "@types/node-cron": "3.0.11",
     "@types/qrcode": "1.5.6",
-    "@types/react-datepicker": "7.0.0",
+    "@types/react-datepicker": "^7.0.0",
     "@upstash/ratelimit": "2.0.7",
     "@upstash/redis": "1.36.0",
     "axios": "1.13.2",
@@ -67,6 +68,7 @@
     "csv-stringify": "6.6.0",
     "date-fns": "3.6.0",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.26",
     "ics": "3.8.1",
     "isomorphic-dompurify": "2.35.0",
     "jsbarcode": "3.12.1",
@@ -84,7 +86,7 @@
     "qrcode": "1.5.4",
     "razorpay": "2.9.6",
     "react": "18.3.1",
-    "react-datepicker": "9.1.0",
+    "react-datepicker": "^9.1.0",
     "react-day-picker": "9.13.0",
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",

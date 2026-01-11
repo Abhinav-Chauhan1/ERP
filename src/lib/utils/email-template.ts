@@ -14,7 +14,7 @@ export function generateBrandedEmail({
   body,
   branding,
 }: EmailTemplateOptions): string {
-  const schoolName = branding?.schoolName || "School ERP";
+  const schoolName = branding?.schoolName || "SikshaMitra";
   const logo = branding?.emailLogo || branding?.logoUrl || branding?.schoolLogo;
   const primaryColor = branding?.primaryColor || "#3b82f6";
   const footer = branding?.emailFooter || "";
@@ -104,11 +104,10 @@ export function generateBrandedEmail({
     </div>
     <div class="content">
       ${body}
-      ${
-        signature
-          ? `<div class="signature">${signature.replace(/\n/g, "<br>")}</div>`
-          : ""
-      }
+      ${signature
+      ? `<div class="signature">${signature.replace(/\n/g, "<br>")}</div>`
+      : ""
+    }
     </div>
     <div class="footer">
       ${footer ? `<p>${footer.replace(/\n/g, "<br>")}</p>` : ""}
@@ -118,12 +117,11 @@ export function generateBrandedEmail({
         ${email ? `<p>Email: ${email}</p>` : ""}
         ${website ? `<p>Website: <a href="${website}">${website}</a></p>` : ""}
       </div>
-      ${
-        branding?.facebookUrl ||
-        branding?.twitterUrl ||
-        branding?.linkedinUrl ||
-        branding?.instagramUrl
-          ? `
+      ${branding?.facebookUrl ||
+      branding?.twitterUrl ||
+      branding?.linkedinUrl ||
+      branding?.instagramUrl
+      ? `
         <div class="social-links">
           ${branding.facebookUrl ? `<a href="${branding.facebookUrl}">Facebook</a>` : ""}
           ${branding.twitterUrl ? `<a href="${branding.twitterUrl}">Twitter</a>` : ""}
@@ -131,8 +129,8 @@ export function generateBrandedEmail({
           ${branding.instagramUrl ? `<a href="${branding.instagramUrl}">Instagram</a>` : ""}
         </div>
       `
-          : ""
-      }
+      : ""
+    }
       <p style="margin-top: 15px; color: #999;">
         © ${new Date().getFullYear()} ${schoolName}. All rights reserved.
       </p>
@@ -151,7 +149,7 @@ export function generatePlainTextEmail({
   body,
   branding,
 }: EmailTemplateOptions): string {
-  const schoolName = branding?.schoolName || "School ERP";
+  const schoolName = branding?.schoolName || "SikshaMitra";
   const footer = branding?.emailFooter || "";
   const signature = branding?.emailSignature || "";
   const address = branding?.schoolAddress || "";

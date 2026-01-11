@@ -76,6 +76,7 @@ import {
   updateTimetableSlot,
   deleteTimetableSlot
 } from "@/lib/actions/timetableActions";
+import { getTopicsForSubject } from "@/lib/actions/timetableTopicActions";
 
 // Import formatters from the utils file directly
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
@@ -90,6 +91,7 @@ interface TimetableSlotFormValues {
   classId: string;
   sectionId?: string | undefined;
   roomId?: string | undefined;
+  topicId?: string | undefined; // Optional syllabus topic for this slot
   subjectTeacherId: string;
   day: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
   startTime: Date;
@@ -122,6 +124,9 @@ export default function TimetablePage() {
   const [periods, setPeriods] = useState<any[]>([]);
   const [weekDays, setWeekDays] = useState<string[]>([]);
 
+  // State for syllabus topics (for topic selector in slot form)
+  const [availableTopics, setAvailableTopics] = useState<{ id: string; title: string; chapterNumber: number; moduleTitle: string }[]>([]);
+
   // Form handling for timetable
   const timetableForm = useForm<TimetableFormValues>({
     resolver: zodResolver(timetableSchema),
@@ -141,6 +146,7 @@ export default function TimetablePage() {
       classId: "",
       sectionId: undefined,
       roomId: undefined,
+      topicId: undefined,
       day: "MONDAY",
       subjectTeacherId: "",
       startTime: new Date(),
@@ -258,6 +264,30 @@ export default function TimetablePage() {
       setSelectedDay(weekDays[0]);
     }
   }, [weekDays, selectedDay]);
+
+  // Fetch topics when subject changes in the slot form
+  const watchSubjectTeacherId = slotForm.watch("subjectTeacherId");
+  useEffect(() => {
+    const fetchTopics = async () => {
+      if (!watchSubjectTeacherId) {
+        setAvailableTopics([]);
+        return;
+      }
+      // Get subject ID from the selected subject-teacher
+      const selectedST = subjectTeachers.find(st => st.id === watchSubjectTeacherId);
+      if (!selectedST) {
+        setAvailableTopics([]);
+        return;
+      }
+      const result = await getTopicsForSubject(selectedST.subjectId);
+      if (result.success && result.data) {
+        setAvailableTopics(result.data);
+      } else {
+        setAvailableTopics([]);
+      }
+    };
+    fetchTopics();
+  }, [watchSubjectTeacherId, subjectTeachers]);
 
   async function fetchSlotsForClass(classId: string, timetableId: string) {
     try {
@@ -1440,6 +1470,35 @@ export default function TimetablePage() {
                         {rooms.map(room => (
                           <SelectItem key={room.id} value={room.id}>
                             {room.name} {room.capacity && `(Capacity: ${room.capacity})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField<TimetableSlotFormValues>
+                control={slotForm.control}
+                name="topicId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Syllabus Topic (Optional)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={typeof field.value === 'string' ? field.value : "none"}
+                      disabled={availableTopics.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={availableTopics.length > 0 ? "Select topic to teach" : "Select subject first"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No Topic Assigned</SelectItem>
+                        {availableTopics.map(topic => (
+                          <SelectItem key={topic.id} value={topic.id}>
+                            Ch{topic.chapterNumber}: {topic.title}
                           </SelectItem>
                         ))}
                       </SelectContent>

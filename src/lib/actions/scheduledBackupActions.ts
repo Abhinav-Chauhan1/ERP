@@ -25,7 +25,7 @@ export async function getScheduledBackupStatusAction() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -34,10 +34,18 @@ export async function getScheduledBackupStatusAction() {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required',
+        data: null
+      };
+    }
+
     const status = getScheduledBackupStatus();
-    
+
     return {
       success: true,
       data: status
@@ -59,7 +67,7 @@ export async function startScheduledBackupsAction() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -67,10 +75,17 @@ export async function startScheduledBackupsAction() {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     startScheduledBackups();
-    
+
     // Log the action
     await logAudit({
       userId,
@@ -82,7 +97,7 @@ export async function startScheduledBackupsAction() {
         timestamp: new Date().toISOString()
       }
     });
-    
+
     return {
       success: true,
       message: 'Scheduled backups started successfully'
@@ -103,7 +118,7 @@ export async function stopScheduledBackupsAction() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -111,10 +126,17 @@ export async function stopScheduledBackupsAction() {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     stopScheduledBackups();
-    
+
     // Log the action
     await logAudit({
       userId,
@@ -126,7 +148,7 @@ export async function stopScheduledBackupsAction() {
         timestamp: new Date().toISOString()
       }
     });
-    
+
     return {
       success: true,
       message: 'Scheduled backups stopped successfully'
@@ -147,7 +169,7 @@ export async function triggerManualBackupAction() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       return {
         success: false,
@@ -155,8 +177,15 @@ export async function triggerManualBackupAction() {
       };
     }
 
-    // TODO: Add role check to ensure user is admin
-    
+    // Verify admin role
+    const userRole = session?.user?.role;
+    if (userRole !== 'ADMIN') {
+      return {
+        success: false,
+        error: 'Forbidden: Admin access required'
+      };
+    }
+
     // Log the action
     await logAudit({
       userId,
@@ -168,12 +197,12 @@ export async function triggerManualBackupAction() {
         timestamp: new Date().toISOString()
       }
     });
-    
+
     // Trigger the backup (this runs asynchronously)
     triggerManualBackup().catch(error => {
       console.error('Manual backup failed:', error);
     });
-    
+
     return {
       success: true,
       message: 'Manual backup triggered successfully. Check logs for progress.'

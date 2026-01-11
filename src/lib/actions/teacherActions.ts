@@ -11,7 +11,7 @@ export async function getTeacherWithDetails(teacherId: string) {
 
   try {
     console.log(`Fetching teacher details for ID: ${teacherId}`);
-    
+
     const teacher = await db.teacher.findUnique({
       where: { id: teacherId },
       include: {
@@ -71,5 +71,104 @@ export async function getTeacherWithDetails(teacherId: string) {
   } catch (error) {
     console.error(`Error in getTeacherWithDetails for ID ${teacherId}:`, error);
     throw error;
+  }
+}
+
+// Get available subjects that can be assigned to a teacher
+export async function getAvailableSubjectsForTeacher(teacherId: string) {
+  try {
+    // Get subjects already assigned to this teacher
+    const assignedSubjects = await db.subjectTeacher.findMany({
+      where: { teacherId },
+      select: { subjectId: true }
+    });
+
+    const assignedSubjectIds = assignedSubjects.map(s => s.subjectId);
+
+    // Get all active subjects not assigned to this teacher
+    const availableSubjects = await db.subject.findMany({
+      where: {
+        id: {
+          notIn: assignedSubjectIds
+        }
+      },
+      include: {
+        department: {
+          select: { name: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return {
+      success: true,
+      data: availableSubjects.map(s => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        department: s.department?.name
+      }))
+    };
+  } catch (error) {
+    console.error("Error fetching available subjects:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch available subjects"
+    };
+  }
+}
+
+// Get available classes that can be assigned to a teacher
+export async function getAvailableClassesForTeacher(teacherId: string) {
+  try {
+    // Get classes already assigned to this teacher
+    const assignedClasses = await db.classTeacher.findMany({
+      where: { teacherId },
+      select: { classId: true }
+    });
+
+    const assignedClassIds = assignedClasses.map(c => c.classId);
+
+    // Get all classes not assigned to this teacher, with their sections
+    const availableClasses = await db.class.findMany({
+      where: {
+        id: {
+          notIn: assignedClassIds
+        }
+      },
+      include: {
+        sections: {
+          select: {
+            id: true,
+            name: true
+          },
+          orderBy: { name: 'asc' }
+        },
+        academicYear: {
+          select: {
+            name: true,
+            isCurrent: true
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return {
+      success: true,
+      data: availableClasses.map(c => ({
+        id: c.id,
+        name: c.name,
+        sections: c.sections,
+        academicYear: c.academicYear?.name,
+        isCurrent: c.academicYear?.isCurrent
+      }))
+    };
+  } catch (error) {
+    console.error("Error fetching available classes:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch available classes"
+    };
   }
 }

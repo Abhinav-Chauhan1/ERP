@@ -33,17 +33,20 @@ interface AssignmentSubmissionFormProps {
   dueDate: Date | string;
 }
 
-export function AssignmentSubmissionForm({ 
+import { toast } from "react-hot-toast";
+
+export function AssignmentSubmissionForm({
   assignmentId,
-  dueDate 
+  dueDate
 }: AssignmentSubmissionFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
+
   const isOverdue = new Date(dueDate) < new Date();
-  
+
   const form = useForm<FormValues>({
     resolver: zodResolver(localSubmissionSchema),
     defaultValues: {
@@ -52,14 +55,14 @@ export function AssignmentSubmissionForm({
       attachments: "",
     },
   });
-  
+
   async function onSubmit(values: FormValues) {
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       const result = await submitAssignment(values);
-      
+
       if (result.success) {
         setSuccess(true);
         setTimeout(() => {
@@ -74,7 +77,7 @@ export function AssignmentSubmissionForm({
       setIsSubmitting(false);
     }
   }
-  
+
   if (success) {
     return (
       <Alert className="bg-green-50 border-green-200">
@@ -98,7 +101,7 @@ export function AssignmentSubmissionForm({
           </AlertDescription>
         </Alert>
       )}
-      
+
       {error && (
         <Alert className="mb-6 bg-red-50 border-red-200">
           <AlertCircle className="h-4 w-4 text-red-600" />
@@ -108,7 +111,7 @@ export function AssignmentSubmissionForm({
           </AlertDescription>
         </Alert>
       )}
-      
+
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
@@ -127,7 +130,7 @@ export function AssignmentSubmissionForm({
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control}
           name="attachments"
@@ -149,17 +152,56 @@ export function AssignmentSubmissionForm({
                         PDF, DOCX, JPG, PNG (MAX. 10MB)
                       </p>
                     </div>
-                    <input 
-                      id="dropzone-file" 
-                      type="file" 
-                      className="hidden" 
-                      onChange={(e) => {
-                        // In a real app, you would handle file uploads here
-                        // and set the field value to the file URL or data
-                        field.onChange(JSON.stringify([{ 
-                          name: e.target.files?.[0]?.name || "document.pdf",
-                          url: "/example.pdf" 
-                        }]));
+                    <input
+                      id="dropzone-file"
+                      type="file"
+                      className="hidden"
+                      disabled={isUploading || isSubmitting}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          setIsUploading(true);
+
+                          if (!process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+                            throw new Error("Cloudinary configuration missing");
+                          }
+
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+
+                          const response = await fetch(
+                            `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
+                            {
+                              method: 'POST',
+                              body: formData,
+                            }
+                          );
+
+                          if (!response.ok) {
+                            throw new Error('Upload failed');
+                          }
+
+                          const data = await response.json();
+
+                          // Convert to string format expected by server (JSON string of array)
+                          const attachmentData = JSON.stringify([{
+                            name: file.name,
+                            url: data.secure_url,
+                            type: file.type,
+                            size: file.size
+                          }]);
+
+                          field.onChange(attachmentData);
+                          toast.success("File uploaded successfully");
+                        } catch (error) {
+                          console.error("Upload error:", error);
+                          toast.error("Failed to upload file");
+                        } finally {
+                          setIsUploading(false);
+                        }
                       }}
                     />
                   </label>
@@ -169,7 +211,7 @@ export function AssignmentSubmissionForm({
             </FormItem>
           )}
         />
-        
+
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? (
             <>

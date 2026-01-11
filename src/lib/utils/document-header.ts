@@ -14,7 +14,7 @@ export function generateDocumentHeader({
   title,
   includeLetterhead = true,
 }: DocumentHeaderOptions): string {
-  const schoolName = branding?.schoolName || "School ERP";
+  const schoolName = branding?.schoolName || "SikshaMitra";
   const logo = branding?.letterheadLogo || branding?.logoUrl || branding?.schoolLogo;
   const letterheadText = branding?.letterheadText || "";
   const address = branding?.schoolAddress || "";
@@ -35,11 +35,10 @@ export function generateDocumentHeader({
   return `
     <div style="border-bottom: 3px solid ${branding?.primaryColor || "#3b82f6"}; padding-bottom: 20px; margin-bottom: 30px;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
-        ${
-          logo
-            ? `<img src="${logo}" alt="${schoolName}" style="max-height: 80px;">`
-            : ""
-        }
+        ${logo
+      ? `<img src="${logo}" alt="${schoolName}" style="max-height: 80px;">`
+      : ""
+    }
         <div style="text-align: ${logo ? "right" : "center"}; flex: 1;">
           <h1 style="margin: 0; font-size: 28px; color: #333; font-weight: bold;">${schoolName}</h1>
           ${letterheadText ? `<p style="margin: 5px 0; font-size: 14px; color: #666;">${letterheadText}</p>` : ""}
@@ -62,7 +61,7 @@ export function generateDocumentFooter({
 }: {
   branding: SystemSettings | null;
 }): string {
-  const schoolName = branding?.schoolName || "School ERP";
+  const schoolName = branding?.schoolName || "SikshaMitra";
   const footer = branding?.documentFooter || "";
   const website = branding?.schoolWebsite || "";
 

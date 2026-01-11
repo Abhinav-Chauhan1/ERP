@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Users, BookOpen, Calendar, CreditCard,
   GraduationCap, School, PenTool, UserCheck
@@ -255,30 +256,30 @@ export async function QuickActionsSection() {
           <CardTitle className="text-base font-medium">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <a href="/admin/users/students/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          <Link href="/admin/users/students/create" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Add Student</span>
-          </a>
-          <a href="/admin/users/teachers/new" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </Link>
+          <Link href="/admin/users/teachers/create" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <GraduationCap className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Add Teacher</span>
-          </a>
-          <a href="/admin/attendance" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </Link>
+          <Link href="/admin/attendance" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Take Attendance</span>
-          </a>
-          <a href="/admin/finance/receipt-verification" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+          </Link>
+          <Link href="/admin/finance/receipt-verification" className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
             <div className="p-2 rounded-full bg-primary/10 text-primary">
               <CreditCard className="h-5 w-5" />
             </div>
             <span className="text-xs text-center">Verify Receipts</span>
-          </a>
+          </Link>
         </CardContent>
       </Card>
 

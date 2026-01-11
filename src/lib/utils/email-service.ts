@@ -22,7 +22,7 @@ export async function sendEmail(options: EmailOptions) {
       return { success: false, error: "Email service not configured" };
     }
 
-    const from = process.env.EMAIL_FROM || "School ERP <noreply@schoolerp.com>";
+    const from = process.env.EMAIL_FROM || "SikshaMitra <noreply@sikshamitra.com>";
 
     const result = await resend.emails.send({
       from,
@@ -32,10 +32,10 @@ export async function sendEmail(options: EmailOptions) {
       attachments: options.attachments,
     });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       data: result,
-      messageId: result.data?.id 
+      messageId: result.data?.id
     };
   } catch (error) {
     console.error("Error sending email:", error);
@@ -121,7 +121,7 @@ export async function sendAdmissionConfirmationEmail(
             <p>Best regards,<br>School Administration</p>
           </div>
           <div class="footer">
-            <p>This is an automated email from School ERP System.</p>
+            <p>This is an automated email from SikshaMitra.</p>
           </div>
         </body>
       </html>
@@ -206,7 +206,7 @@ export function generateReportEmailTemplate(
           <p>Please find the attached report file.</p>
         </div>
         <div class="footer">
-          <p>This is an automated email from School ERP System.</p>
+          <p>This is an automated email from SikshaMitra.</p>
           <p>If you wish to stop receiving these reports, please contact your administrator.</p>
         </div>
       </body>

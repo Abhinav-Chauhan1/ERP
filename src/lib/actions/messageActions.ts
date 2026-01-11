@@ -505,3 +505,78 @@ export async function getMessageStats() {
     return { success: false, error: "Failed to fetch statistics" };
   }
 }
+
+// Get weekly communication stats (messages and announcements)
+export async function getWeeklyCommunicationStats() {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const dbUser = await db.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!dbUser) {
+      return { success: false, error: "User not found" };
+    }
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 6); // Last 7 days including today
+    startDate.setHours(0, 0, 0, 0);
+
+    // Fetch messages sent/received in last 7 days
+    const messages = await db.message.findMany({
+      where: {
+        OR: [
+          { senderId: dbUser.id },
+          { recipientId: dbUser.id }
+        ],
+        createdAt: {
+          gte: startDate,
+        }
+      },
+      select: {
+        createdAt: true,
+        senderId: true,
+        recipientId: true,
+      }
+    });
+
+    // Initialize daily data
+    const dailyData: Record<string, { date: string, sent: number, received: number }> = {};
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Create entries for last 7 days
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayName = days[date.getDay()];
+      dailyData[dateStr] = { date: dayName, sent: 0, received: 0 };
+    }
+
+    // Populate data
+    messages.forEach(msg => {
+      const dateStr = msg.createdAt.toISOString().split('T')[0];
+      if (dailyData[dateStr]) {
+        if (msg.senderId === dbUser.id) {
+          dailyData[dateStr].sent++;
+        }
+        if (msg.recipientId === dbUser.id) {
+          dailyData[dateStr].received++;
+        }
+      }
+    });
+
+    return {
+      success: true,
+      data: Object.values(dailyData)
+    };
+  } catch (error) {
+    console.error("Error fetching weekly communication stats:", error);
+    return { success: false, error: "Failed to fetch weekly stats" };
+  }
+}

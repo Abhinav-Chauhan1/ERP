@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     // Need either email or token to identify user
     if (!email && !token) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Email address or token is required" 
+        {
+          success: false,
+          error: "Email address or token is required"
         },
         { status: 400 }
       )
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
 
     if (!userEmail) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Unable to identify user" 
+        {
+          success: false,
+          error: "Unable to identify user"
         },
         { status: 400 }
       )
@@ -52,9 +52,9 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(userEmail)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid email format" 
+        {
+          success: false,
+          error: "Invalid email format"
         },
         { status: 400 }
       )
@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
     if (!user) {
       // Don't reveal if user exists (security)
       return NextResponse.json(
-        { 
-          success: true, 
+        {
+          success: true,
           message: "If an account exists with this email, a verification link has been sent."
         },
         { status: 200 }
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
     // Check if email is already verified
     if (user.emailVerified) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: "Email is already verified. You can log in now.",
           alreadyVerified: true
         },
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     // Send new verification email (Requirement 12.8)
     const verificationUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`
-    
+
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
           </div>
           <div class="content">
             <p>Hello ${user.firstName},</p>
-            <p>You requested a new verification link for your School ERP account. Click the button below to verify your email address:</p>
+            <p>You requested a new verification link for your SikshaMitra account. Click the button below to verify your email address:</p>
             
             <div style="text-align: center;">
               <a href="${verificationUrl}" class="button">Verify Email Address</a>
@@ -175,10 +175,10 @@ export async function POST(request: NextRequest) {
             
             <p>If you didn't request this verification email, please ignore it.</p>
             
-            <p>Best regards,<br>School ERP Team</p>
+            <p>Best regards,<br>SikshaMitra Team</p>
           </div>
           <div class="footer">
-            <p>This is an automated email from School ERP System.</p>
+            <p>This is an automated email from SikshaMitra.</p>
           </div>
         </body>
       </html>
@@ -186,16 +186,16 @@ export async function POST(request: NextRequest) {
 
     const emailResult = await sendEmail({
       to: [userEmail.toLowerCase()],
-      subject: "Verify Your Email - School ERP",
+      subject: "Verify Your Email - SikshaMitra",
       html: emailHtml
     })
 
     if (!emailResult.success) {
       console.error("Failed to send verification email:", emailResult.error)
       return NextResponse.json(
-        { 
-          success: false, 
-          error: "Failed to send verification email. Please try again later." 
+        {
+          success: false,
+          error: "Failed to send verification email. Please try again later."
         },
         { status: 500 }
       )
@@ -216,8 +216,8 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         message: "Verification email sent successfully. Please check your inbox.",
         email: userEmail.toLowerCase()
       },
@@ -227,9 +227,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Resend verification error:", error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "An error occurred while sending verification email. Please try again." 
+      {
+        success: false,
+        error: "An error occurred while sending verification email. Please try again."
       },
       { status: 500 }
     )

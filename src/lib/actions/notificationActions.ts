@@ -72,7 +72,7 @@ export async function getNotificationById(id: string) {
   }
 }
 
-// Create new notification
+// Create new notification (Broadcast capable)
 export async function createNotification(data: any) {
   try {
     const user = await currentUser();
@@ -88,27 +88,46 @@ export async function createNotification(data: any) {
       return { success: false, error: "User not found" };
     }
 
-    const notification = await db.notification.create({
-      data: {
+    // Determine recipients
+    let recipients: { id: string }[] = [];
+
+    if (data.recipientRole && data.recipientRole !== "ALL") {
+      // Fetch users by role
+      recipients = await db.user.findMany({
+        where: { role: data.recipientRole },
+        select: { id: true }
+      });
+    } else if (data.recipientRole === "ALL") {
+      // Fetch all users
+      recipients = await db.user.findMany({
+        select: { id: true }
+      });
+    } else {
+      // Default to self for testing if no recipient specified
+      recipients = [{ id: dbUser.id }];
+    }
+
+    if (recipients.length === 0) {
+      return { success: false, error: "No recipients found for the selected role" };
+    }
+
+    // Create notifications for all recipients
+    // We use createMany for efficiency
+    await db.notification.createMany({
+      data: recipients.map(recipient => ({
         title: data.title,
         message: data.message,
         type: data.type || "INFO",
         link: data.link || null,
-        userId: dbUser.id, // Notification belongs to a user
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            role: true,
-          },
-        },
-      },
+        userId: recipient.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isRead: false
+      }))
     });
 
     revalidatePath("/admin/communication/notifications");
-    return { success: true, data: notification };
+    return { success: true, count: recipients.length };
   } catch (error) {
     console.error("Error creating notification:", error);
     return { success: false, error: "Failed to create notification" };

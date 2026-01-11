@@ -22,6 +22,7 @@ const timetableSlotBase = z.object({
   sectionId: z.string().optional(),
   subjectTeacherId: z.string().min(1, "Subject and teacher combination is required"),
   roomId: z.string().optional(),
+  topicId: z.string().optional(), // Optional assigned syllabus topic (sub-module)
   day: z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"], {
     required_error: "Day is required",
   }),

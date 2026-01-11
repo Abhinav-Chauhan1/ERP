@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
   Building, Users, Activity,
   Search, SlidersHorizontal,
   MoreVertical, Check, MapPin, X, Loader2, AlertCircle,
@@ -60,7 +60,7 @@ import toast from "react-hot-toast";
 
 // Import schema validation and actions
 import { roomSchema, RoomFormValues } from "@/lib/schemaValidation/roomsSchemaValidation";
-import { getRooms, createRoom, updateRoom, deleteRoom, getRoomUsageStats } from "@/lib/actions/roomsActions";
+import { getRooms, createRoom, updateRoom, deleteRoom, getRoomUsageStats, assignRoomToSection, unassignRoom, getClassesAndSections } from "@/lib/actions/roomsActions";
 
 // Building options
 const buildings = [
@@ -114,7 +114,7 @@ export default function ClassroomsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filter state
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
@@ -139,6 +139,27 @@ export default function ClassroomsPage() {
     },
   });
 
+  // Assignment state
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [selectedSectionId, setSelectedSectionId] = useState("");
+  const [roomToAssign, setRoomToAssign] = useState<any>(null);
+
+  useEffect(() => {
+    if (assignDialogOpen) {
+      fetchClasses();
+    }
+  }, [assignDialogOpen]);
+
+  async function fetchClasses() {
+    const result = await getClassesAndSections();
+    if (result.success) {
+      setClasses(result.data || []);
+    }
+  }
+
   useEffect(() => {
     fetchRooms();
     fetchRoomStats();
@@ -147,10 +168,10 @@ export default function ClassroomsPage() {
   async function fetchRooms() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getRooms();
-      
+
       if (result.success) {
         setRooms(result.data || []);
       } else {
@@ -169,7 +190,7 @@ export default function ClassroomsPage() {
   async function fetchRoomStats() {
     try {
       const result = await getRoomUsageStats();
-      
+
       if (result.success) {
         setStats(result.data);
       }
@@ -181,7 +202,7 @@ export default function ClassroomsPage() {
   async function onSubmit(values: RoomFormValues) {
     try {
       let result;
-      
+
       if (selectedRoomId) {
         // Update existing room
         result = await updateRoom({ ...values, id: selectedRoomId });
@@ -189,7 +210,7 @@ export default function ClassroomsPage() {
         // Create new room
         result = await createRoom(values);
       }
-      
+
       if (result.success) {
         toast.success(`Classroom ${selectedRoomId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -214,7 +235,7 @@ export default function ClassroomsPage() {
       if (roomToEdit.hasProjector) roomFeatures.push("Projector");
       if (roomToEdit.hasSmartBoard) roomFeatures.push("Smart Board");
       if (roomToEdit.hasAC) roomFeatures.push("AC");
-      
+
       form.reset({
         name: roomToEdit.name,
         building: roomToEdit.building,
@@ -224,7 +245,7 @@ export default function ClassroomsPage() {
         features: roomFeatures,
         description: roomToEdit.description,
       });
-      
+
       setSelectedRoomId(id);
       setDialogOpen(true);
     }
@@ -239,7 +260,7 @@ export default function ClassroomsPage() {
     if (selectedRoomId) {
       try {
         const result = await deleteRoom(selectedRoomId);
-        
+
         if (result.success) {
           toast.success("Classroom deleted successfully");
           setDeleteDialogOpen(false);
@@ -253,6 +274,59 @@ export default function ClassroomsPage() {
         console.error(err);
         toast.error("An unexpected error occurred");
       }
+    }
+  }
+
+
+  function openAssignDialog(room: any) {
+    setRoomToAssign(room);
+    setSelectedClassId("");
+    setSelectedSectionId("");
+    setAssignDialogOpen(true);
+  }
+
+  async function handleAssign() {
+    if (!roomToAssign || !selectedSectionId) return;
+
+    setAssignLoading(true);
+    try {
+      const result = await assignRoomToSection(roomToAssign.id, selectedSectionId);
+
+      if (result.success) {
+        toast.success("Room assigned successfully");
+        setAssignDialogOpen(false);
+        fetchRooms();
+        fetchRoomStats();
+      } else {
+        toast.error(result.error || "Failed to assign room");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  async function handleUnassign(roomId: string) {
+    if (!confirm("Are you sure you want to unassign this room?")) return;
+
+    setLoading(true);
+    try {
+      const result = await unassignRoom(roomId);
+
+      if (result.success) {
+        toast.success("Room unassigned successfully");
+        fetchRooms();
+        fetchRoomStats();
+      } else {
+        toast.error(result.error || "Failed to unassign room");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -315,31 +389,31 @@ export default function ClassroomsPage() {
   // Apply filters and search term
   const filteredRooms = rooms.filter(room => {
     // Check search term
-    const matchesSearch = room.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        room.building.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        room.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        false;
-    
+    const matchesSearch = room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      room.building.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      room.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false;
+
     // Check building filter
-    const matchesBuilding = filters.building.length === 0 || 
-                           filters.building.includes(room.building);
-    
+    const matchesBuilding = filters.building.length === 0 ||
+      filters.building.includes(room.building);
+
     // Check room type filter
-    const matchesRoomType = filters.roomType.length === 0 || 
-                           filters.roomType.includes(room.type);
-    
+    const matchesRoomType = filters.roomType.length === 0 ||
+      filters.roomType.includes(room.type);
+
     // Check availability filter
-    const matchesAvailability = filters.availability.length === 0 || 
-                              (filters.availability.includes('Available') && room.status === 'Available') ||
-                              (filters.availability.includes('In Use') && room.status === 'In Use');
-    
+    const matchesAvailability = filters.availability.length === 0 ||
+      (filters.availability.includes('Available') && room.status === 'Available') ||
+      (filters.availability.includes('In Use') && room.status === 'In Use');
+
     // Check features
     const matchesProjector = !filters.hasProjector || room.hasProjector;
     const matchesSmartBoard = !filters.hasSmartBoard || room.hasSmartBoard;
     const matchesAC = !filters.hasAC || room.hasAC;
-    
-    return matchesSearch && matchesBuilding && matchesRoomType && 
-           matchesAvailability && matchesProjector && matchesSmartBoard && matchesAC;
+
+    return matchesSearch && matchesBuilding && matchesRoomType &&
+      matchesAvailability && matchesProjector && matchesSmartBoard && matchesAC;
   });
 
   return (
@@ -376,13 +450,16 @@ export default function ClassroomsPage() {
             <DialogHeader>
               <DialogTitle>{selectedRoomId ? "Edit Classroom" : "Add New Classroom"}</DialogTitle>
               <DialogDescription>
-                {selectedRoomId 
-                  ? "Update the details of the existing classroom." 
+                {selectedRoomId
+                  ? "Update the details of the existing classroom."
                   : "Add a new classroom or teaching space to your school."}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.error("Form validation errors:", errors);
+                toast.error("Please check the form for errors");
+              })} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -478,11 +555,11 @@ export default function ClassroomsPage() {
                       <FormItem>
                         <FormLabel>Capacity</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min={1} 
-                            max={500} 
-                            {...field} 
+                          <Input
+                            type="number"
+                            min={1}
+                            max={500}
+                            {...field}
                             onChange={e => field.onChange(parseInt(e.target.value))}
                           />
                         </FormControl>
@@ -535,9 +612,9 @@ export default function ClassroomsPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Describe the room and its features" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Describe the room and its features"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -554,15 +631,67 @@ export default function ClassroomsPage() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Assign Dialog */}
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Assign Room to Class</DialogTitle>
+              <DialogDescription>
+                Select a class and section to assign <strong>{roomToAssign?.name}</strong> as their home room.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Class</label>
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedClassId && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Section</label>
+                  <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.find(c => c.id === selectedClassId)?.sections.map((sec: any) => (
+                        <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAssign} disabled={!selectedSectionId || assignLoading}>
+                {assignLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Assign Room
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {
+        error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )
+      }
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -647,12 +776,12 @@ export default function ClassroomsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         {buildings.map((building) => (
                           <div key={building} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`filter-building-${building}`} 
+                            <Checkbox
+                              id={`filter-building-${building}`}
                               checked={filters.building.includes(building)}
                               onCheckedChange={() => toggleBuildingFilter(building)}
                             />
-                            <label 
+                            <label
                               htmlFor={`filter-building-${building}`}
                               className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
@@ -667,12 +796,12 @@ export default function ClassroomsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         {roomTypes.slice(0, 6).map((type) => (
                           <div key={type} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`filter-type-${type}`} 
+                            <Checkbox
+                              id={`filter-type-${type}`}
                               checked={filters.roomType.includes(type)}
                               onCheckedChange={() => toggleRoomTypeFilter(type)}
                             />
-                            <label 
+                            <label
                               htmlFor={`filter-type-${type}`}
                               className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
@@ -686,12 +815,12 @@ export default function ClassroomsPage() {
                       <h4 className="font-medium leading-none">Availability</h4>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filter-available" 
+                          <Checkbox
+                            id="filter-available"
                             checked={filters.availability.includes('Available')}
                             onCheckedChange={() => toggleAvailabilityFilter('Available')}
                           />
-                          <label 
+                          <label
                             htmlFor="filter-available"
                             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
@@ -699,12 +828,12 @@ export default function ClassroomsPage() {
                           </label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filter-in-use" 
+                          <Checkbox
+                            id="filter-in-use"
                             checked={filters.availability.includes('In Use')}
                             onCheckedChange={() => toggleAvailabilityFilter('In Use')}
                           />
-                          <label 
+                          <label
                             htmlFor="filter-in-use"
                             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
@@ -717,12 +846,12 @@ export default function ClassroomsPage() {
                       <h4 className="font-medium leading-none">Features</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filter-projector" 
+                          <Checkbox
+                            id="filter-projector"
                             checked={filters.hasProjector}
                             onCheckedChange={() => setFilters(prev => ({ ...prev, hasProjector: !prev.hasProjector }))}
                           />
-                          <label 
+                          <label
                             htmlFor="filter-projector"
                             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
@@ -730,12 +859,12 @@ export default function ClassroomsPage() {
                           </label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filter-smartboard" 
+                          <Checkbox
+                            id="filter-smartboard"
                             checked={filters.hasSmartBoard}
                             onCheckedChange={() => setFilters(prev => ({ ...prev, hasSmartBoard: !prev.hasSmartBoard }))}
                           />
-                          <label 
+                          <label
                             htmlFor="filter-smartboard"
                             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
@@ -743,12 +872,12 @@ export default function ClassroomsPage() {
                           </label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filter-ac" 
+                          <Checkbox
+                            id="filter-ac"
                             checked={filters.hasAC}
                             onCheckedChange={() => setFilters(prev => ({ ...prev, hasAC: !prev.hasAC }))}
                           />
-                          <label 
+                          <label
                             htmlFor="filter-ac"
                             className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
@@ -772,7 +901,7 @@ export default function ClassroomsPage() {
               {filters.building.map(building => (
                 <Badge key={building} variant="outline" className="flex items-center gap-1">
                   {building}
-                  <button 
+                  <button
                     onClick={() => toggleBuildingFilter(building)}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -783,7 +912,7 @@ export default function ClassroomsPage() {
               {filters.roomType.map(type => (
                 <Badge key={type} variant="outline" className="flex items-center gap-1">
                   {type}
-                  <button 
+                  <button
                     onClick={() => toggleRoomTypeFilter(type)}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -794,7 +923,7 @@ export default function ClassroomsPage() {
               {filters.availability.map(status => (
                 <Badge key={status} variant="outline" className="flex items-center gap-1">
                   {status}
-                  <button 
+                  <button
                     onClick={() => toggleAvailabilityFilter(status)}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -805,7 +934,7 @@ export default function ClassroomsPage() {
               {filters.hasProjector && (
                 <Badge variant="outline" className="flex items-center gap-1">
                   Projector
-                  <button 
+                  <button
                     onClick={() => setFilters(prev => ({ ...prev, hasProjector: false }))}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -816,7 +945,7 @@ export default function ClassroomsPage() {
               {filters.hasSmartBoard && (
                 <Badge variant="outline" className="flex items-center gap-1">
                   Smart Board
-                  <button 
+                  <button
                     onClick={() => setFilters(prev => ({ ...prev, hasSmartBoard: false }))}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -827,7 +956,7 @@ export default function ClassroomsPage() {
               {filters.hasAC && (
                 <Badge variant="outline" className="flex items-center gap-1">
                   Air Conditioning
-                  <button 
+                  <button
                     onClick={() => setFilters(prev => ({ ...prev, hasAC: false }))}
                     className="ml-1 rounded-full hover:bg-muted p-0.5"
                   >
@@ -873,7 +1002,7 @@ export default function ClassroomsPage() {
                               View Assigned Class
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openAssignDialog(room)}>
                               <Check className="h-4 w-4 mr-2" />
                               Assign to Class
                             </DropdownMenuItem>
@@ -906,21 +1035,20 @@ export default function ClassroomsPage() {
                       </div>
                       <div className="flex justify-between items-center text-sm">
                         <span>Status:</span>
-                        <Badge className={`${
-                          room.status === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
+                        <Badge className={`${room.status === 'Available' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
                           'bg-primary/10 text-primary hover:bg-primary/10'
-                        }`}>
+                          }`}>
                           {room.status}
                         </Badge>
                       </div>
                       {room.currentClass && (
                         <div className="flex justify-between items-center text-sm">
-                          <span>Current Class:</span>
+                          <span>{room.status === 'In Use' ? 'Current Class:' : 'Home Room:'}</span>
                           <span className="font-medium">{room.currentClass}</span>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-1 mb-3">
                       {room.hasProjector && (
                         <Badge variant="outline" className="text-xs bg-accent">Projector</Badge>
@@ -932,7 +1060,7 @@ export default function ClassroomsPage() {
                         <Badge variant="outline" className="text-xs bg-accent">AC</Badge>
                       )}
                     </div>
-                    
+
                     {room.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-2">{room.description}</p>
                     )}
@@ -943,12 +1071,12 @@ export default function ClassroomsPage() {
                         Edit
                       </Button>
                       {room.status === "Available" ? (
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => openAssignDialog(room)}>
                           <Check className="h-3.5 w-3.5 mr-1.5" />
                           Assign
                         </Button>
                       ) : (
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleUnassign(room.id)}>
                           <EyeOff className="h-3.5 w-3.5 mr-1.5" />
                           Unassign
                         </Button>
@@ -965,8 +1093,8 @@ export default function ClassroomsPage() {
               <Building className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium mb-1">No classrooms found</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {getActiveFilterCount() > 0 
-                  ? "Try adjusting your filters or search terms" 
+                {getActiveFilterCount() > 0
+                  ? "Try adjusting your filters or search terms"
                   : "No classrooms have been added yet"}
               </p>
               <Button onClick={() => setDialogOpen(true)}>
@@ -1001,7 +1129,7 @@ export default function ClassroomsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
 

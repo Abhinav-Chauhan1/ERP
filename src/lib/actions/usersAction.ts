@@ -12,6 +12,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
+import { hashPassword } from "@/lib/password";
 
 // Helper function to create base user
 const createBaseUser = async (userData: {
@@ -23,6 +24,11 @@ const createBaseUser = async (userData: {
   role: UserRole;
   password?: string;
 }) => {
+  // Generate default password if not provided: {firstName}@123
+  const passwordToHash = userData.password || `${userData.firstName.toLowerCase()}@123`;
+  // Hash password using Web Crypto API (PBKDF2)
+  const hashedPassword = await hashPassword(passwordToHash);
+
   // Sanitize inputs
   const sanitizedData = {
     firstName: sanitizeText(userData.firstName),
@@ -31,7 +37,8 @@ const createBaseUser = async (userData: {
     phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,
-    password: userData.password, // In a real app, this should be hashed
+    password: hashedPassword,
+    emailVerified: new Date(), // Admin-created users are pre-verified
   };
 
   return await db.user.create({
@@ -164,7 +171,42 @@ export async function createStudent(data: CreateStudentFormData) {
           gender: data.gender,
           address: data.address,
           bloodGroup: data.bloodGroup,
+          height: data.height,
+          weight: data.weight,
           emergencyContact: data.emergencyContact,
+          emergencyPhone: data.emergencyPhone,
+          // Indian-specific fields
+          aadhaarNumber: data.aadhaarNumber,
+          apaarId: data.apaarId,
+          pen: data.pen,
+          abcId: data.abcId,
+          nationality: data.nationality || "Indian",
+          religion: data.religion,
+          caste: data.caste,
+          category: data.category,
+          motherTongue: data.motherTongue,
+          birthPlace: data.birthPlace,
+          previousSchool: data.previousSchool,
+          previousClass: data.previousClass,
+          tcNumber: data.tcNumber,
+          medicalConditions: data.medicalConditions,
+          specialNeeds: data.specialNeeds,
+          // Parent/Guardian details
+          fatherName: data.fatherName,
+          fatherOccupation: data.fatherOccupation,
+          fatherPhone: data.fatherPhone,
+          fatherEmail: data.fatherEmail || undefined,
+          fatherAadhaar: data.fatherAadhaar,
+          motherName: data.motherName,
+          motherOccupation: data.motherOccupation,
+          motherPhone: data.motherPhone,
+          motherEmail: data.motherEmail || undefined,
+          motherAadhaar: data.motherAadhaar,
+          guardianName: data.guardianName,
+          guardianRelation: data.guardianRelation,
+          guardianPhone: data.guardianPhone,
+          guardianEmail: data.guardianEmail || undefined,
+          guardianAadhaar: data.guardianAadhaar,
         }
       });
 
@@ -416,7 +458,42 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
           gender: data.gender,
           address: data.address,
           bloodGroup: data.bloodGroup,
+          height: data.height,
+          weight: data.weight,
           emergencyContact: data.emergencyContact,
+          emergencyPhone: data.emergencyPhone,
+          // Indian-specific fields
+          aadhaarNumber: data.aadhaarNumber,
+          apaarId: data.apaarId,
+          pen: data.pen,
+          abcId: data.abcId,
+          nationality: data.nationality,
+          religion: data.religion,
+          caste: data.caste,
+          category: data.category,
+          motherTongue: data.motherTongue,
+          birthPlace: data.birthPlace,
+          previousSchool: data.previousSchool,
+          previousClass: data.previousClass,
+          tcNumber: data.tcNumber,
+          medicalConditions: data.medicalConditions,
+          specialNeeds: data.specialNeeds,
+          // Parent/Guardian details
+          fatherName: data.fatherName,
+          fatherOccupation: data.fatherOccupation,
+          fatherPhone: data.fatherPhone,
+          fatherEmail: data.fatherEmail || undefined,
+          fatherAadhaar: data.fatherAadhaar,
+          motherName: data.motherName,
+          motherOccupation: data.motherOccupation,
+          motherPhone: data.motherPhone,
+          motherEmail: data.motherEmail || undefined,
+          motherAadhaar: data.motherAadhaar,
+          guardianName: data.guardianName,
+          guardianRelation: data.guardianRelation,
+          guardianPhone: data.guardianPhone,
+          guardianEmail: data.guardianEmail || undefined,
+          guardianAadhaar: data.guardianAadhaar,
         }
       });
 
@@ -593,3 +670,58 @@ export async function getUsersByRole(role: UserRole) {
     orderBy: { createdAt: 'desc' }
   });
 }
+
+// Update user password
+export async function updateUserPassword(userId: string, newPassword: string) {
+  try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+    const currentUserRole = session?.user?.role;
+
+    if (!currentUserId) {
+      throw new Error('Unauthorized');
+    }
+
+    // Only admins can change passwords for now (or the user themselves, but this action is used by admin)
+    if (currentUserRole !== UserRole.ADMIN) {
+      throw new Error('Unauthorized: Only administrators can update other users passwords');
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash the new password using our Web Crypto compatible utility
+    const hashedPassword = await hashPassword(newPassword);
+
+    // Update in database
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword
+      }
+    });
+
+    // Log the password change
+    await logUpdate(
+      currentUserId,
+      'user',
+      userId,
+      {
+        before: { passwordChanged: false },
+        after: { passwordChanged: true }
+      }
+    );
+
+    revalidatePath('/admin/users');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating password:', error);
+    throw error; // Throw original error to see details in client/logs
+  }
+}
+

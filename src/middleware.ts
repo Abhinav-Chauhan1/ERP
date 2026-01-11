@@ -2,8 +2,6 @@ import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { UserRole } from "@prisma/client";
-import { rateLimit, getClientIp, createRateLimitResponse } from "@/lib/utils/rate-limit";
-import { isIpWhitelisted, createIpBlockedResponse } from "@/lib/utils/ip-whitelist";
 import { checkPermissionInMiddleware } from "@/lib/utils/permission-middleware";
 
 // Use Node.js runtime instead of Edge Runtime for compatibility with bcryptjs and crypto
@@ -31,6 +29,7 @@ function matchesRoute(pathname: string, patterns: string[]): boolean {
 const adminRoutePatterns = ["/admin"];
 const teacherRoutePatterns = ["/teacher", "/shared"];
 const studentRoutePatterns = ["/student", "/shared"];
+const alumniRoutePatterns = ["/alumni"];
 const parentRoutePatterns = ["/parent", "/shared"];
 const publicRoutePatterns = [
   "/",
@@ -45,7 +44,8 @@ const publicRoutePatterns = [
   "/api/webhooks",
   "/api/users/sync",
   "/api/test-rate-limit",
-  "/verify-certificate"
+  "/verify-certificate",
+  "/setup" // Onboarding setup wizard
 ];
 const authRedirectRoutePatterns = ["/auth-redirect"];
 const apiRoutePatterns = ["/api"];
@@ -53,6 +53,10 @@ const apiRoutePatterns = ["/api"];
 export default auth(async (req) => {
   const session = req.auth;
   const pathname = req.nextUrl.pathname;
+
+  // Dynamic imports for Edge Runtime compatibility
+  const { rateLimit, getClientIp, createRateLimitResponse } = await import("@/lib/utils/rate-limit");
+  const { isIpWhitelisted, createIpBlockedResponse } = await import("@/lib/utils/ip-whitelist");
 
   // Get client IP for rate limiting and IP whitelisting
   const clientIp = getClientIp(req.headers);
@@ -211,7 +215,8 @@ export default auth(async (req) => {
       return NextResponse.redirect(new URL("/teacher", req.url));
     }
   } else if (role === UserRole.STUDENT) {
-    // Students cannot access admin or teacher routes
+    // Students can access student routes and alumni routes (for graduated students)
+    // Alumni routes are accessible to students with graduated status
     if (matchesRoute(pathname, adminRoutePatterns) || matchesRoute(pathname, teacherRoutePatterns)) {
       // Log failed authorization - role-based access denied
       const { logAuthorizationFailure } = await import("@/lib/services/auth-audit-service");
@@ -225,16 +230,23 @@ export default auth(async (req) => {
 
       return NextResponse.redirect(new URL("/student", req.url));
     }
+    
+    // Allow access to alumni routes for students (permission check will verify graduated status in route handler)
+    if (matchesRoute(pathname, alumniRoutePatterns)) {
+      return NextResponse.next();
+    }
   } else if (role === UserRole.PARENT) {
-    // Parents cannot access admin, teacher, or student routes
+    // Parents cannot access admin, teacher, student, or alumni routes
     if (matchesRoute(pathname, adminRoutePatterns) ||
       matchesRoute(pathname, teacherRoutePatterns) ||
-      matchesRoute(pathname, studentRoutePatterns)) {
+      matchesRoute(pathname, studentRoutePatterns) ||
+      matchesRoute(pathname, alumniRoutePatterns)) {
       // Log failed authorization - role-based access denied
       const { logAuthorizationFailure } = await import("@/lib/services/auth-audit-service");
       let requiredRole = "ADMIN";
       if (matchesRoute(pathname, teacherRoutePatterns)) requiredRole = "TEACHER";
       if (matchesRoute(pathname, studentRoutePatterns)) requiredRole = "STUDENT";
+      if (matchesRoute(pathname, alumniRoutePatterns)) requiredRole = "STUDENT";
 
       await logAuthorizationFailure(
         session.user.id,

@@ -60,6 +60,9 @@ export default function AdminCalendarPage() {
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventWithCategory | null>(null);
 
+  // Track if categories have been loaded
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+
   /**
    * Fetch all event categories
    */
@@ -71,10 +74,12 @@ export default function AdminCalendarPage() {
       }
       const data = await response.json();
       setCategories(data.categories || []);
+      setCategoriesLoaded(true);
     } catch (err) {
       console.error("Error fetching categories:", err);
       setError("Failed to load categories");
       toast.error("Failed to load categories");
+      setCategoriesLoaded(true); // Mark as loaded even on error to stop spinner
     }
   }, []);
 
@@ -115,12 +120,12 @@ export default function AdminCalendarPage() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // Fetch events when categories change
+  // Fetch events after categories are loaded
   useEffect(() => {
-    if (categories.length > 0) {
+    if (categoriesLoaded) {
       fetchEvents();
     }
-  }, [categories, selectedCategories, fetchEvents]);
+  }, [categoriesLoaded, selectedCategories, fetchEvents]);
 
   /**
    * Handle event click - show detail modal

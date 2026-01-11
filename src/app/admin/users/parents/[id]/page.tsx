@@ -20,7 +20,7 @@ export default async function ParentDetailPage({
 }) {
   // Access the id directly - Next.js handles this correctly at runtime
   const param = await params;
-  const  id  = param.id;
+  const id = param.id;
 
   // Get parent data with children and meetings
   const parent = await db.parent.findUnique({
@@ -65,7 +65,7 @@ export default async function ParentDetailPage({
   if (!parent) {
     notFound();
   }
-  
+
   // Get all students that are not associated with this parent
   const unassociatedStudents = await db.student.findMany({
     where: {
@@ -173,7 +173,7 @@ export default async function ParentDetailPage({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
-                <Badge 
+                <Badge
                   className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                 >
                   {parent.user.active ? "Active" : "Inactive"}
@@ -191,9 +191,9 @@ export default async function ParentDetailPage({
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Children</CardTitle>
-              <ParentStudentAssociationDialog 
-                parentId={parent.id} 
-                students={unassociatedStudents} 
+              <ParentStudentAssociationDialog
+                parentId={parent.id}
+                students={unassociatedStudents}
               />
             </div>
           </CardHeader>
@@ -204,8 +204,8 @@ export default async function ParentDetailPage({
                   <div key={child.id} className="flex items-center justify-between p-3 rounded-md border">
                     <div className="flex items-center gap-3">
                       {child.student.user.avatar ? (
-                        <OptimizedImage 
-                          src={child.student.user.avatar} 
+                        <OptimizedImage
+                          src={child.student.user.avatar}
                           alt={`${child.student.user.firstName} ${child.student.user.lastName}`}
                           width={40}
                           height={40}
@@ -226,7 +226,7 @@ export default async function ParentDetailPage({
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {child.student.enrollments.length > 0 
+                          {child.student.enrollments.length > 0
                             ? `${child.student.enrollments[0].class.name} - ${child.student.enrollments[0].section.name}`
                             : "Not enrolled"
                           }
@@ -237,9 +237,7 @@ export default async function ParentDetailPage({
                       <Link href={`/admin/users/students/${child.student.id}`}>
                         <Button variant="ghost" size="sm">View</Button>
                       </Link>
-                      <form action={async (formData: FormData) => {
-                        await removeStudentFromParent(formData);
-                      }}>
+                      <form action={removeStudentFromParent}>
                         <input type="hidden" name="parentId" value={parent.id} />
                         <input type="hidden" name="studentId" value={child.student.id} />
                         <Button variant="ghost" size="sm" className="text-red-500">Remove</Button>
@@ -283,12 +281,12 @@ export default async function ParentDetailPage({
                           <td className="py-3 px-4 align-middle">{meeting.teacher.user.firstName} {meeting.teacher.user.lastName}</td>
                           <td className="py-3 px-4 align-middle">{formatDate(meeting.scheduledDate)}</td>
                           <td className="py-3 px-4 align-middle">
-                            <Badge 
+                            <Badge
                               className={
-                                meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
-                                meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary hover:bg-primary/10' :
-                                meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
-                                'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
+                                meeting.status === 'COMPLETED' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                  meeting.status === 'SCHEDULED' ? 'bg-primary/10 text-primary hover:bg-primary/10' :
+                                    meeting.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' :
+                                      'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
                               }
                             >
                               {meeting.status.charAt(0) + meeting.status.slice(1).toLowerCase()}

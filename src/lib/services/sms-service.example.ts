@@ -38,7 +38,7 @@ async function example1_CheckConfiguration() {
 async function example2_SendSingleSMS() {
   const result = await sendSMS(
     '+1234567890',
-    'Hello! This is a test message from School ERP.'
+    'Hello! This is a test message from SikshaMitra.'
   );
 
   if (result.success) {

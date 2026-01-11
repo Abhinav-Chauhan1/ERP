@@ -211,12 +211,15 @@ export function MarksAuditLogViewer() {
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
-            <Select value={selectedExamId} onValueChange={setSelectedExamId}>
+            <Select
+              value={selectedExamId || "all"}
+              onValueChange={(value) => setSelectedExamId(value === "all" ? "" : value)}
+            >
               <SelectTrigger id="exam-filter">
                 <SelectValue placeholder="All exams" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All exams</SelectItem>
+                <SelectItem value="all">All exams</SelectItem>
                 {exams.map((exam) => (
                   <SelectItem key={exam.id} value={exam.id}>
                     <div className="flex flex-col">

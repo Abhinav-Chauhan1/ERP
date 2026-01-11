@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { AdministratorsTable } from "@/components/users/administrators-table";
 
 export const metadata = {
-  title: "Administrators - School ERP",
+  title: "Administrators - SikshaMitra",
 };
 
 export default async function AdministratorsPage() {

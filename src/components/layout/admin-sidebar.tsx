@@ -23,6 +23,8 @@ import {
   LucideIcon,
   ChevronDown,
   ChevronRight,
+  Bus,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@/components/auth/user-button";
@@ -68,6 +70,7 @@ const routes: RouteItem[] = [
       { label: "Grades", href: "/admin/academic/grades" },
       { label: "Curriculum", href: "/admin/academic/curriculum" },
       { label: "Syllabus", href: "/admin/academic/syllabus" },
+      { label: "Promotion", href: "/admin/academic/promotion" },
     ],
   },
   {
@@ -96,6 +99,11 @@ const routes: RouteItem[] = [
       { label: "Overview", href: "/admin/assessment" },
       { label: "Exam Types", href: "/admin/assessment/exam-types" },
       { label: "Exams", href: "/admin/assessment/exams" },
+      { label: "Marks Entry", href: "/admin/assessment/marks-entry" },
+      { label: "Marks Audit", href: "/admin/assessment/marks-audit" },
+      { label: "Mark Sheet", href: "/admin/assessment/consolidated-mark-sheet" },
+      { label: "Subject Performance", href: "/admin/assessment/subject-performance" },
+      { label: "Co-Scholastic", href: "/admin/assessment/co-scholastic" },
       { label: "Assignments", href: "/admin/assessment/assignments" },
       { label: "Results", href: "/admin/assessment/results" },
       { label: "Report Cards", href: "/admin/assessment/report-cards" },
@@ -118,6 +126,8 @@ const routes: RouteItem[] = [
       { label: "Overview", href: "/admin/finance" },
       { label: "Fee Structure", href: "/admin/finance/fee-structure" },
       { label: "Payments", href: "/admin/finance/payments" },
+      { label: "Receipt Verification", href: "/admin/finance/receipt-verification" },
+      { label: "Analytics", href: "/admin/finance/analytics" },
       { label: "Scholarships", href: "/admin/finance/scholarships" },
       { label: "Payroll", href: "/admin/finance/payroll" },
       { label: "Expenses", href: "/admin/finance/expenses" },
@@ -144,9 +154,17 @@ const routes: RouteItem[] = [
     submenu: [
       { label: "Overview", href: "/admin/library" },
       { label: "Books", href: "/admin/library/books" },
-      { label: "Issues", href: "/admin/library/issues" },
-      { label: "Reservations", href: "/admin/library/reservations" },
       { label: "Reports", href: "/admin/library/reports" },
+    ],
+  },
+  {
+    label: "Transport",
+    icon: Bus,
+    submenu: [
+      { label: "Overview", href: "/admin/transport" },
+      { label: "Vehicles", href: "/admin/transport/vehicles" },
+      { label: "Routes", href: "/admin/transport/routes" },
+      { label: "Attendance", href: "/admin/transport/attendance" },
     ],
   },
   {
@@ -166,6 +184,15 @@ const routes: RouteItem[] = [
     href: "/admin/admissions",
   },
   {
+    label: "Alumni",
+    icon: UserCheck,
+    submenu: [
+      { label: "Directory", href: "/admin/alumni" },
+      { label: "Communication", href: "/admin/alumni/communication" },
+      { label: "Statistics", href: "/admin/alumni/statistics" },
+    ],
+  },
+  {
     label: "Calendar",
     icon: CalendarDays,
     href: "/admin/calendar",
@@ -178,7 +205,11 @@ const routes: RouteItem[] = [
   {
     label: "Documents",
     icon: FileText,
-    href: "/admin/documents",
+    submenu: [
+      { label: "Overview", href: "/admin/documents" },
+      { label: "ID Cards", href: "/admin/id-cards" },
+      { label: "Certificates", href: "/admin/certificates" },
+    ],
   },
   {
     label: "Reports",
@@ -189,12 +220,24 @@ const routes: RouteItem[] = [
       { label: "Financial Reports", href: "/admin/reports/financial" },
       { label: "Attendance Reports", href: "/admin/reports/attendance" },
       { label: "Performance Analytics", href: "/admin/reports/performance" },
+      { label: "Report Builder", href: "/admin/reports/builder" },
+      { label: "Scheduled Reports", href: "/admin/reports/scheduled" },
+      { label: "Comparative", href: "/admin/reports/comparative" },
     ],
   },
   {
     label: "Settings",
     icon: Settings,
-    href: "/admin/settings",
+    submenu: [
+      { label: "General", href: "/admin/settings" },
+      { label: "Branding", href: "/admin/settings/branding" },
+      { label: "Permissions", href: "/admin/settings/permissions" },
+      { label: "Notifications", href: "/admin/settings/notifications" },
+      { label: "Two-Factor Auth", href: "/admin/settings/two-factor" },
+      { label: "Payment Config", href: "/admin/settings/payment-configuration" },
+      { label: "Sessions", href: "/admin/settings/sessions" },
+      { label: "Backups", href: "/admin/settings/backups" },
+    ],
   },
 ];
 
@@ -213,17 +256,17 @@ export function AdminSidebar() {
   // Auto-open section if current path matches
   const isSectionOpen = (route: RouteItem) => {
     if (!route.submenu) return false;
-    
+
     // Check if manually toggled
     if (openSections[route.label] !== undefined) {
       return openSections[route.label];
     }
-    
+
     // Auto-open if current path is within this section
     const basePath = route.submenu[0]?.href.split('/').slice(0, 3).join('/');
     return pathname.startsWith(basePath);
   };
-  
+
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
       <div className="p-4 md:p-6">
@@ -236,12 +279,12 @@ export function AdminSidebar() {
         {routes.map((route) => {
           const hasSubmenu = route.submenu && route.submenu.length > 0;
           const isOpen = isSectionOpen(route);
-          
+
           // Check if this route or any of its submenu items is active
           const isMainRouteActive = route.href && pathname === route.href;
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
           const isRouteActive = isMainRouteActive || isSubRouteActive;
-          
+
           return (
             <div key={route.label}>
               {/* Main heading - clickable only if no submenu, otherwise just toggle */}
@@ -250,8 +293,8 @@ export function AdminSidebar() {
                   onClick={() => toggleSection(route.label)}
                   className={cn(
                     "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
-                    isRouteActive ? 
-                      "text-primary bg-primary/10" : 
+                    isRouteActive ?
+                      "text-primary bg-primary/10" :
                       "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
@@ -270,8 +313,8 @@ export function AdminSidebar() {
                   href={route.href!}
                   className={cn(
                     "text-sm md:text-base font-medium flex items-center py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
-                    isMainRouteActive ? 
-                      "text-primary bg-primary/10 border-r-4 border-primary" : 
+                    isMainRouteActive ?
+                      "text-primary bg-primary/10 border-r-4 border-primary" :
                       "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
@@ -279,7 +322,7 @@ export function AdminSidebar() {
                   <span>{route.label}</span>
                 </Link>
               )}
-              
+
               {/* Submenu */}
               {hasSubmenu && isOpen && (
                 <div className="ml-8 md:ml-9 border-l pl-3 my-1">
@@ -289,8 +332,8 @@ export function AdminSidebar() {
                       href={item.href}
                       className={cn(
                         "text-xs md:text-sm flex items-center py-2.5 md:py-2 px-2 rounded transition-colors min-h-[40px]",
-                        pathname === item.href ? 
-                          "text-primary font-medium bg-primary/10" : 
+                        pathname === item.href ?
+                          "text-primary font-medium bg-primary/10" :
                           "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                       )}
                     >

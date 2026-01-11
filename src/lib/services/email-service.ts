@@ -129,9 +129,9 @@ export async function sendEmail(options: EmailOptions): Promise<EmailSendResult>
 
     // Check if email service is configured
     if (!isEmailConfigured()) {
-      console.warn('Email service not configured. Message not sent:', { 
-        to: options.to, 
-        subject: options.subject 
+      console.warn('Email service not configured. Message not sent:', {
+        to: options.to,
+        subject: options.subject
       });
       return {
         success: false,
@@ -225,9 +225,9 @@ export async function sendBulkEmail(
 
     // Check if email service is configured
     if (!isEmailConfigured()) {
-      console.warn('Email service not configured. Bulk emails not sent:', { 
-        recipients, 
-        subject 
+      console.warn('Email service not configured. Bulk emails not sent:', {
+        recipients,
+        subject
       });
       return recipients.map(to => ({
         success: false,
@@ -241,7 +241,7 @@ export async function sendBulkEmail(
     // Send emails in batches to avoid rate limits
     // Resend has rate limits, so we send sequentially with small delays
     const results: EmailSendResult[] = [];
-    
+
     for (const recipient of recipients) {
       const result = await sendEmail({
         to: recipient,
@@ -250,7 +250,7 @@ export async function sendBulkEmail(
         text,
       });
       results.push(result);
-      
+
       // Small delay between emails to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -281,14 +281,14 @@ export async function sendEmailWithRetry(
   maxRetries: number = 3
 ): Promise<EmailSendResult> {
   let lastResult: EmailSendResult | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     lastResult = await sendEmail(options);
-    
+
     if (lastResult.success) {
       return lastResult;
     }
-    
+
     // If not the last attempt, wait before retrying
     if (attempt < maxRetries) {
       // Exponential backoff: 1s, 2s, 4s
@@ -297,7 +297,7 @@ export async function sendEmailWithRetry(
       console.log(`Retrying email send (attempt ${attempt + 1}/${maxRetries})...`);
     }
   }
-  
+
   return lastResult!;
 }
 
@@ -396,7 +396,7 @@ export async function sendTemplatedEmail(
   // Template definitions
   const templates = {
     welcome: {
-      subject: `Welcome to ${data.schoolName || 'School ERP'}`,
+      subject: `Welcome to ${data.schoolName || 'SikshaMitra'}`,
       html: `
         <h1>Welcome ${data.name}!</h1>
         <p>Your account has been created successfully.</p>
@@ -437,7 +437,7 @@ export async function sendTemplatedEmail(
   };
 
   const templateConfig = templates[template];
-  
+
   return sendEmail({
     to,
     subject: templateConfig.subject,

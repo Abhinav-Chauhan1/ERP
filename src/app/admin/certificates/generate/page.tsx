@@ -7,10 +7,12 @@ import { db } from '@/lib/db';
 import { BulkCertificateGenerator } from '@/components/admin/certificates/bulk-certificate-generator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 async function CertificateGeneratorContent() {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     redirect('/login');
   }
@@ -119,6 +121,15 @@ function LoadingSkeleton() {
 export default function CertificateGeneratePage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {/* Breadcrumb */}
+      <Link
+        href="/admin/certificates"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Certificates
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Generate Certificates</h1>
         <p className="text-muted-foreground mt-2">

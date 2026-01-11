@@ -13,7 +13,7 @@ import Image from "next/image";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "Student Profile | School ERP",
+  title: "Student Profile | SikshaMitra",
   description: "View and manage your student profile",
 };
 

@@ -48,104 +48,13 @@ import {
   getUsersForNotifications,
 } from "@/lib/actions/notificationActions";
 
-// Mock data for notifications (fallback)
-const mockNotifications = [
-  {
-    id: "n1",
-    title: "Exam Results Published",
-    message: "The results for the Mid-term exams have been published. Students can now view their results in the student portal.",
-    type: "INFO",
-    link: "/admin/assessment/results",
-    sentTo: "All Students",
-    sentToCount: 1245,
-    readCount: 934,
-    deliveryRate: 98,
-    createdAt: "2023-12-05T10:30:00",
-    createdBy: "John Smith",
-    creatorRole: "Admin",
-  },
-  {
-    id: "n2",
-    title: "Upcoming Maintenance",
-    message: "The school's online portal will be undergoing maintenance on Sunday, December 10, from 2:00 AM to 5:00 AM. During this time, the portal may be unavailable.",
-    type: "WARNING",
-    link: null,
-    sentTo: "All Users",
-    sentToCount: 2500,
-    readCount: 1200,
-    deliveryRate: 98,
-    createdAt: "2023-12-04T14:15:00",
-    createdBy: "System",
-    creatorRole: "System",
-  },
-  {
-    id: "n3",
-    title: "Fee Payment Reminder",
-    message: "This is a reminder that the second installment of the annual school fee is due on December 15, 2023. Please ensure timely payment to avoid late fees.",
-    type: "WARNING",
-    link: "/admin/finance/payments",
-    sentTo: "Parents",
-    sentToCount: 875,
-    readCount: 650,
-    deliveryRate: 97,
-    createdAt: "2023-12-03T09:45:00",
-    createdBy: "Finance Department",
-    creatorRole: "Department",
-  },
-  {
-    id: "n4",
-    title: "Library Books Due",
-    message: "Please return all borrowed library books before the winter break. The library will be closed during the break period.",
-    type: "INFO",
-    link: null,
-    sentTo: "Students",
-    sentToCount: 1245,
-    readCount: 980,
-    deliveryRate: 99,
-    createdAt: "2023-12-02T11:20:00",
-    createdBy: "Library Staff",
-    creatorRole: "Staff",
-  },
-  {
-    id: "n5",
-    title: "Emergency Drill",
-    message: "An emergency evacuation drill will be conducted on December 12, 2023, at 10:00 AM. All students and staff are required to participate.",
-    type: "ALERT",
-    link: null,
-    sentTo: "All Users",
-    sentToCount: 2500,
-    readCount: 2100,
-    deliveryRate: 100,
-    createdAt: "2023-12-01T13:10:00",
-    createdBy: "Safety Committee",
-    creatorRole: "Committee",
-  },
-  {
-    id: "n6",
-    title: "System Update Complete",
-    message: "The student management system has been successfully updated to version 2.5. New features include improved grade reporting and attendance tracking.",
-    type: "SUCCESS",
-    link: null,
-    sentTo: "Teachers",
-    sentToCount: 85,
-    readCount: 75,
-    deliveryRate: 100,
-    createdAt: "2023-11-30T16:45:00",
-    createdBy: "IT Department",
-    creatorRole: "Department",
-  },
-];
-
-// Mock data for user segments
+// Mock data for user segments - aligned with UserRole enum
 const userSegments = [
   { id: "all", name: "All Users" },
-  { id: "students", name: "All Students" },
-  { id: "teachers", name: "All Teachers" },
-  { id: "parents", name: "All Parents" },
-  { id: "staff", name: "Administrative Staff" },
-  { id: "grade10", name: "Grade 10 Students" },
-  { id: "grade11", name: "Grade 11 Students" },
-  { id: "grade12", name: "Grade 12 Students" },
+  { id: "STUDENT", name: "All Students" },
+  { id: "TEACHER", name: "All Teachers" },
+  { id: "PARENT", name: "All Parents" },
+  { id: "ADMIN", name: "Administrators" },
 ];
 
 export default function NotificationsPage() {
@@ -176,7 +85,7 @@ export default function NotificationsPage() {
     try {
       const filters: any = {};
       if (typeFilter !== "all") filters.type = typeFilter;
-      if (audienceFilter !== "all") filters.recipientRole = audienceFilter.toUpperCase();
+      if (audienceFilter !== "all") filters.recipientRole = audienceFilter;
 
       const result = await getNotifications(filters);
       if (result.success && result.data) {
@@ -266,21 +175,12 @@ export default function NotificationsPage() {
     }
   };
 
-  // Filter notifications based on search, type, audience, and tab
+  // Filter notifications only based on search (others handled by API)
   const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       notification.message.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesType = typeFilter === "all" || notification.type === typeFilter;
-
-    const matchesAudience = audienceFilter === "all" ||
-      notification.sentTo === userSegments.find(seg => seg.id === audienceFilter)?.name;
-
-    // For demonstration purposes, we're not actually filtering by tab since we don't have those properties
-    // In a real app, you would have read/unread status per user
-    const matchesTab = true;
-
-    return matchesSearch && matchesType && matchesAudience && matchesTab;
+    return matchesSearch;
   });
 
   const handleViewNotification = (id: string) => {

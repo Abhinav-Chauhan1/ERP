@@ -218,9 +218,43 @@ async function handleEmailUpdate(user: any, body: any) {
       }
     })
 
-    // TODO: Send verification email
-    // This would integrate with your email service (Resend)
-    // await sendVerificationEmail(email, token)
+    // Send verification email
+    try {
+      const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
+
+      if (isEmailConfigured()) {
+        const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/verify-email?token=${token}`;
+
+        await sendEmail({
+          to: email,
+          subject: 'Verify Your Email Address',
+          html: `
+            <h1>Email Verification Required</h1>
+            <p>Dear ${user.firstName || 'User'},</p>
+            <p>You have requested to change your email address. Please click the link below to verify your new email:</p>
+            
+            <p style="margin: 30px 0;">
+              <a href="${verificationUrl}" 
+                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                Verify Email Address
+              </a>
+            </p>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all;">${verificationUrl}</p>
+            
+            <p><strong>This link will expire in 24 hours.</strong></p>
+            
+            <p>If you did not request this change, please ignore this email or contact support.</p>
+            <br>
+            <p>Best regards,<br>School Administration</p>
+          `
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Email sending failed but the update was successful
+    }
 
     return NextResponse.json({
       success: true,

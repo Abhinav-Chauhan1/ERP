@@ -1,15 +1,15 @@
 "use server";
 
-import { 
-  getClassDeletionCascadeInfo, 
-  logCascadeDeletion, 
-  validateClassDeletionSafety 
+import {
+  getClassDeletionCascadeInfo,
+  logCascadeDeletion,
+  validateClassDeletionSafety
 } from "@/lib/services/cascade-deletion.service";
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { 
-  ClassFormValues, 
+import {
+  ClassFormValues,
   ClassUpdateFormValues,
   ClassSectionFormValues,
   ClassSectionUpdateFormValues,
@@ -23,7 +23,7 @@ import {
 export async function getClasses(academicYearFilter?: string) {
   try {
     const where = academicYearFilter ? { academicYearId: academicYearFilter } : {};
-    
+
     const classes = await db.class.findMany({
       where,
       include: {
@@ -71,7 +71,7 @@ export async function getClasses(academicYearFilter?: string) {
     // Group classes by "grade" (extract from name)
     const classesByGrade = classes.reduce((acc: any, cls) => {
       const gradeName = cls.name.split(' ')[0] + ' ' + (cls.name.split(' ')[1] || '');
-      
+
       if (!acc[gradeName]) {
         acc[gradeName] = {
           grade: gradeName,
@@ -82,30 +82,30 @@ export async function getClasses(academicYearFilter?: string) {
           isCurrent: cls.academicYear.isCurrent
         };
       }
-      
+
       acc[gradeName].classes += 1;
       acc[gradeName].students += cls._count.enrollments;
-      
+
       // Add unique sections
       cls.sections.forEach(section => {
         if (!acc[gradeName].sections.includes(section.name)) {
           acc[gradeName].sections.push(section.name);
         }
       });
-      
+
       return acc;
     }, {});
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: classes,
       summary: Object.values(classesByGrade)
     };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
 }
@@ -208,11 +208,11 @@ export async function getClassById(id: string) {
         }
       }
     });
-    
+
     if (!classDetails) {
       return { success: false, error: "Class not found" };
     }
-    
+
     // Format the data for the frontend
     const formattedClass = {
       id: classDetails.id,
@@ -226,8 +226,8 @@ export async function getClassById(id: string) {
         capacity: section.capacity,
         students: section._count.enrollments
       })),
-      classTeacher: classDetails.teachers.find(t => t.isClassHead)?.teacher.user.firstName + ' ' + 
-                   classDetails.teachers.find(t => t.isClassHead)?.teacher.user.lastName,
+      classTeacher: classDetails.teachers.find(t => t.isClassHead)?.teacher.user.firstName + ' ' +
+        classDetails.teachers.find(t => t.isClassHead)?.teacher.user.lastName,
       classTeacherId: classDetails.teachers.find(t => t.isClassHead)?.teacher.id,
       teachers: classDetails.teachers.map(teacher => ({
         id: teacher.id,
@@ -266,7 +266,7 @@ export async function getClassById(id: string) {
             periods: []
           };
         }
-        
+
         acc[slot.day].periods.push({
           id: slot.id,
           time: `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
@@ -281,18 +281,19 @@ export async function getClassById(id: string) {
           section: slot.section?.name,
           sectionId: slot.sectionId
         });
-        
+
         return acc;
       }, {})),
-      // Exam data would come from a separate query in a real application
+      // Fetch exams for this class based on subjects and academic year
+      exams: await getExamsForClass(id, classDetails.academicYearId),
     };
-    
+
     return { success: true, data: formattedClass };
   } catch (error) {
     console.error("Error fetching class details:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch class details" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch class details"
     };
   }
 }
@@ -315,14 +316,14 @@ export async function createClass(data: ClassFormValues) {
         academicYearId: data.academicYearId,
       }
     });
-    
+
     revalidatePath("/admin/classes");
     return { success: true, data: newClass };
   } catch (error) {
     console.error("Error creating class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create class"
     };
   }
 }
@@ -355,15 +356,15 @@ export async function updateClass(data: ClassUpdateFormValues) {
         academicYearId: data.academicYearId,
       }
     });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.id}`);
     return { success: true, data: updatedClass };
   } catch (error) {
     console.error("Error updating class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update class"
     };
   }
 }
@@ -374,45 +375,45 @@ export async function deleteClass(id: string) {
     // Check if class has any enrollments, timetable slots, etc.
     const enrollments = await db.classEnrollment.findFirst({ where: { classId: id } });
     const timetableSlots = await db.timetableSlot.findFirst({ where: { classId: id } });
-    
+
     if (enrollments || timetableSlots) {
       return {
         success: false,
         error: "Cannot delete this class because it has associated data. Please remove all students and timetable entries first."
       };
     }
-    
+
     // Get cascade deletion information and log it
     const cascadeInfo = await getClassDeletionCascadeInfo(id);
     logCascadeDeletion(cascadeInfo);
-    
+
     // Validate deletion safety and get warnings
     const safetyCheck = await validateClassDeletionSafety(id);
     if (safetyCheck.warnings.length > 0) {
       console.warn(`[CASCADE DELETE] Warnings for class ${id}:`, safetyCheck.warnings);
     }
-    
+
     // Delete class sections
     await db.classSection.deleteMany({ where: { classId: id } });
-    
+
     // Delete class teacher assignments
     await db.classTeacher.deleteMany({ where: { classId: id } });
-    
+
     // Delete subject-class relationships
     await db.subjectClass.deleteMany({ where: { classId: id } });
-    
+
     // Delete the class (cascade will handle FeeStructureClass and FeeTypeClassAmount)
     await db.class.delete({ where: { id } });
-    
+
     console.log(`[CASCADE DELETE] Successfully deleted class ${cascadeInfo.className} (${id}) and ${cascadeInfo.totalRecordsAffected} related fee records`);
-    
+
     revalidatePath("/admin/classes");
     return { success: true };
   } catch (error) {
     console.error("Error deleting class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete class"
     };
   }
 }
@@ -448,15 +449,15 @@ export async function createClassSection(data: ClassSectionFormValues) {
         capacity: data.capacity,
       }
     });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: newSection };
   } catch (error) {
     console.error("Error creating class section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create class section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create class section"
     };
   }
 }
@@ -494,15 +495,15 @@ export async function updateClassSection(data: ClassSectionUpdateFormValues) {
         capacity: data.capacity,
       }
     });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: updatedSection };
   } catch (error) {
     console.error("Error updating class section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update class section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update class section"
     };
   }
 }
@@ -515,50 +516,54 @@ export async function deleteClassSection(id: string) {
       where: { id },
       select: { classId: true }
     });
-    
+
     if (!section) {
       return { success: false, error: "Section not found" };
     }
-    
+
     // Check if section has any enrollments or timetable slots
     const enrollments = await db.classEnrollment.findFirst({ where: { sectionId: id } });
     const timetableSlots = await db.timetableSlot.findFirst({ where: { sectionId: id } });
-    
+
     if (enrollments || timetableSlots) {
       return {
         success: false,
         error: "Cannot delete this section because it has associated data. Please remove all students and timetable entries first."
       };
     }
-    
+
     // Delete the section
     await db.classSection.delete({ where: { id } });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${section.classId}`);
     return { success: true };
   } catch (error) {
     console.error("Error deleting class section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete class section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete class section"
     };
   }
 }
 
-// Assign teacher to class
+// Assign teacher to class (optionally to a specific section)
 export async function assignTeacherToClass(data: ClassTeacherFormValues) {
   try {
-    // Check if this teacher is already assigned to this class
+    // Check if this teacher is already assigned to this class/section combination
     const existingAssignment = await db.classTeacher.findFirst({
       where: {
         classId: data.classId,
+        sectionId: data.sectionId || null,
         teacherId: data.teacherId
       }
     });
 
     if (existingAssignment) {
-      return { success: false, error: "This teacher is already assigned to this class" };
+      const message = data.sectionId
+        ? "This teacher is already assigned to this section"
+        : "This teacher is already assigned to this class";
+      return { success: false, error: message };
     }
 
     // If this teacher will be the class head, remove class head status from any other teacher
@@ -577,19 +582,21 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
     const assignment = await db.classTeacher.create({
       data: {
         classId: data.classId,
+        sectionId: data.sectionId || null,
         teacherId: data.teacherId,
         isClassHead: data.isClassHead
       }
     });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.classId}`);
+    revalidatePath(`/admin/users/teachers/${data.teacherId}`);
     return { success: true, data: assignment };
   } catch (error) {
     console.error("Error assigning teacher to class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to assign teacher to class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to assign teacher to class"
     };
   }
 }
@@ -626,15 +633,15 @@ export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues
         isClassHead: data.isClassHead
       }
     });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: updatedAssignment };
   } catch (error) {
     console.error("Error updating teacher assignment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update teacher assignment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update teacher assignment"
     };
   }
 }
@@ -647,21 +654,21 @@ export async function removeTeacherFromClass(id: string) {
       where: { id },
       select: { classId: true }
     });
-    
+
     if (!assignment) {
       return { success: false, error: "Teacher assignment not found" };
     }
-    
+
     await db.classTeacher.delete({ where: { id } });
-    
+
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${assignment.classId}`);
     return { success: true };
   } catch (error) {
     console.error("Error removing teacher from class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to remove teacher from class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to remove teacher from class"
     };
   }
 }
@@ -679,20 +686,20 @@ export async function getAcademicYearsForDropdown() {
         isCurrent: true
       }
     });
-    
+
     // Sort to show current year first
     const sortedYears = academicYears.sort((a, b) => {
       if (a.isCurrent) return -1;
       if (b.isCurrent) return 1;
       return 0;
     });
-    
+
     return { success: true, data: sortedYears };
   } catch (error) {
     console.error("Error fetching academic years:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch academic years" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch academic years"
     };
   }
 }
@@ -717,7 +724,7 @@ export async function getTeachersForDropdown() {
         }
       }
     });
-    
+
     // Format the response
     const formattedTeachers = teachers.map(teacher => ({
       id: teacher.id,
@@ -726,13 +733,13 @@ export async function getTeachersForDropdown() {
       email: teacher.user.email,
       avatar: teacher.user.avatar
     }));
-    
+
     return { success: true, data: formattedTeachers };
   } catch (error) {
     console.error("Error fetching teachers:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch teachers" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch teachers"
     };
   }
 }
@@ -745,19 +752,19 @@ export async function getAvailableStudentsForClass(classId: string) {
       where: { id: classId },
       select: { academicYearId: true }
     });
-    
+
     if (!classData) {
       return { success: false, error: "Class not found" };
     }
-    
+
     // Get IDs of students already enrolled in this class
     const enrolledStudents = await db.classEnrollment.findMany({
       where: { classId: classId },
       select: { studentId: true }
     });
-    
+
     const enrolledStudentIds = enrolledStudents.map(enrollment => enrollment.studentId);
-    
+
     // Get all active students not already enrolled in this class
     const availableStudents = await db.student.findMany({
       where: {
@@ -778,20 +785,20 @@ export async function getAvailableStudentsForClass(classId: string) {
         { user: { firstName: 'asc' } },
       ],
     });
-    
+
     // Format the response
     const formattedStudents = availableStudents.map(student => ({
       id: student.id,
       name: `${student.user.firstName} ${student.user.lastName}`,
       admissionId: student.admissionId,
     }));
-    
+
     return { success: true, data: formattedStudents };
   } catch (error) {
     console.error("Error fetching available students:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch available students" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch available students"
     };
   }
 }
@@ -803,11 +810,11 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
     const student = await db.student.findUnique({
       where: { id: data.studentId }
     });
-    
+
     if (!student) {
       return { success: false, error: "Student not found" };
     }
-    
+
     const classSection = await db.classSection.findUnique({
       where: { id: data.sectionId },
       include: {
@@ -815,16 +822,16 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
         _count: { select: { enrollments: true } }
       }
     });
-    
+
     if (!classSection) {
       return { success: false, error: "Section not found" };
     }
-    
+
     // Check if section has capacity
     if (classSection.capacity && classSection._count.enrollments >= classSection.capacity) {
       return { success: false, error: "Section is at full capacity" };
     }
-    
+
     // Check if student is already enrolled in the class
     const existingEnrollment = await db.classEnrollment.findFirst({
       where: {
@@ -832,11 +839,11 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
         classId: data.classId,
       }
     });
-    
+
     if (existingEnrollment) {
       return { success: false, error: "Student is already enrolled in this class" };
     }
-    
+
     // Check if roll number is already used in the section
     if (data.rollNumber) {
       const existingRollNumber = await db.classEnrollment.findFirst({
@@ -845,12 +852,12 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
           rollNumber: data.rollNumber,
         }
       });
-      
+
       if (existingRollNumber) {
         return { success: false, error: "Roll number is already assigned in this section" };
       }
     }
-    
+
     // Create enrollment
     const enrollment = await db.classEnrollment.create({
       data: {
@@ -862,14 +869,14 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
         enrollDate: new Date(),
       }
     });
-    
+
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: enrollment };
   } catch (error) {
     console.error("Error enrolling student:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to enroll student" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to enroll student"
     };
   }
 }
@@ -881,11 +888,11 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
     const existingEnrollment = await db.classEnrollment.findUnique({
       where: { id: data.id }
     });
-    
+
     if (!existingEnrollment) {
       return { success: false, error: "Enrollment not found" };
     }
-    
+
     // Check if roll number is already used in the section (if changed)
     if (data.rollNumber && data.rollNumber !== existingEnrollment.rollNumber) {
       const existingRollNumber = await db.classEnrollment.findFirst({
@@ -895,12 +902,12 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
           id: { not: data.id }
         }
       });
-      
+
       if (existingRollNumber) {
         return { success: false, error: "Roll number is already assigned in this section" };
       }
     }
-    
+
     // Update enrollment
     const enrollment = await db.classEnrollment.update({
       where: { id: data.id },
@@ -910,14 +917,14 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
         status: data.status,
       }
     });
-    
+
     revalidatePath(`/admin/classes/${data.classId}`);
     return { success: true, data: enrollment };
   } catch (error) {
     console.error("Error updating enrollment:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update enrollment" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update enrollment"
     };
   }
 }
@@ -930,32 +937,99 @@ export async function removeStudentFromClass(enrollmentId: string) {
       where: { id: enrollmentId },
       select: { classId: true }
     });
-    
+
     if (!enrollment) {
       return { success: false, error: "Enrollment not found" };
     }
-    
+
     // Delete the enrollment
     await db.classEnrollment.delete({
       where: { id: enrollmentId }
     });
-    
+
     revalidatePath(`/admin/classes/${enrollment.classId}`);
     return { success: true };
   } catch (error) {
     console.error("Error removing student from class:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to remove student from class" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to remove student from class"
     };
   }
 }
 
 // Helper function to format time
 function formatTime(date: Date) {
-  return new Date(date).toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
+  return new Date(date).toLocaleTimeString('en-US', {
+    hour: '2-digit',
     minute: '2-digit',
-    hour12: true 
+    hour12: true
   });
+}
+
+// Get exams for a specific class
+export async function getExamsForClass(classId: string, academicYearId?: string) {
+  try {
+    // If academicYearId is not provided, fetch it from the class
+    if (!academicYearId) {
+      const classData = await db.class.findUnique({
+        where: { id: classId },
+        select: { academicYearId: true }
+      });
+      if (!classData) return [];
+      academicYearId = classData.academicYearId;
+    }
+
+    // 1. Get subjects assigned to this class
+    const subjectClasses = await db.subjectClass.findMany({
+      where: { classId },
+      select: { subjectId: true }
+    });
+
+    const subjectIds = subjectClasses.map(sc => sc.subjectId);
+
+    if (subjectIds.length === 0) return [];
+
+    // 2. Get exams for these subjects within the academic year
+    // We filter by terms belonging to the academic year
+    const exams = await db.exam.findMany({
+      where: {
+        subjectId: { in: subjectIds },
+        term: {
+          academicYearId: academicYearId
+        }
+      },
+      include: {
+        subject: {
+          select: { name: true, code: true }
+        },
+        examType: {
+          select: { name: true }
+        },
+        term: {
+          select: { name: true }
+        }
+      },
+      orderBy: {
+        examDate: 'asc'
+      }
+    });
+
+    // Format exams
+    return exams.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      subject: exam.subject.name,
+      subjectCode: exam.subject.code,
+      type: exam.examType.name,
+      term: exam.term.name,
+      date: exam.examDate,
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      totalMarks: exam.totalMarks
+    }));
+  } catch (error) {
+    console.error("Error fetching exams for class:", error);
+    return [];
+  }
 }

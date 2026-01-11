@@ -325,9 +325,17 @@ export default function PayrollPage() {
   }
 
   function onSubmitPayroll(values: z.infer<typeof payrollSchema>) {
-    console.log("Creating payroll:", values);
-    // Here you would submit the payroll data to your backend
-    setCreateDialogOpen(false);
+    // Map staffId to teacherId as expected by the server action
+    const payrollData = {
+      teacherId: values.staffId,
+      month: values.month,
+      year: values.year,
+      basicSalary: values.basicSalary,
+      allowances: values.allowances || 0,
+      deductions: values.deductions || 0,
+      remarks: values.remarks,
+    };
+    handleGeneratePayroll(payrollData);
   }
 
   function onSubmitPayment(values: z.infer<typeof paymentSchema>) {
@@ -531,13 +539,11 @@ export default function PayrollPage() {
                     <div className="bg-accent p-4 rounded-lg mt-4">
                       <div className="flex justify-between items-center">
                         <span className="font-medium">Net Salary:</span>
-                        <span className="font-bold">$
-                          {(
-                            payrollForm.getValues().basicSalary +
-                            (payrollForm.getValues().allowances || 0) -
-                            (payrollForm.getValues().deductions || 0)
-                          ).toLocaleString()}
-                        </span>
+                        <span className="font-bold">₹{(
+                          payrollForm.getValues().basicSalary +
+                          (payrollForm.getValues().allowances || 0) -
+                          (payrollForm.getValues().deductions || 0)
+                        ).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

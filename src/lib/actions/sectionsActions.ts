@@ -8,7 +8,7 @@ import { SectionFormValues, SectionUpdateFormValues } from "../schemaValidation/
 export async function getSections(classFilter?: string) {
   try {
     const where = classFilter ? { classId: classFilter } : {};
-    
+
     const sections = await db.classSection.findMany({
       where,
       include: {
@@ -22,6 +22,7 @@ export async function getSections(classFilter?: string) {
             }
           }
         },
+        homeRoom: true, // Include the home room
         _count: {
           select: {
             enrollments: true,
@@ -33,7 +34,7 @@ export async function getSections(classFilter?: string) {
         { name: 'asc' },
       ],
     });
-    
+
     // Get related teachers for these sections
     const sectionsWithTeachers = await Promise.all(
       sections.map(async (section) => {
@@ -68,12 +69,12 @@ export async function getSections(classFilter?: string) {
 
         return {
           ...section,
-          teacherName: classTeacher 
+          teacherName: classTeacher
             ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
             : "Not assigned",
           teacherId: classTeacher?.teacherId,
-          room: timetableSlot?.room?.name || "Not assigned",
-          roomId: timetableSlot?.roomId,
+          room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
+          roomId: section.homeRoom?.id || null,
           students: section._count.enrollments,
           academicYear: section.class.academicYear.name,
           isCurrent: section.class.academicYear.isCurrent,
@@ -81,13 +82,13 @@ export async function getSections(classFilter?: string) {
         };
       })
     );
-    
+
     return { success: true, data: sectionsWithTeachers };
   } catch (error) {
     console.error("Error fetching sections:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch sections" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch sections"
     };
   }
 }
@@ -116,14 +117,15 @@ export async function getSectionById(id: string) {
               }
             }
           }
-        }
+        },
+        homeRoom: true, // Include home room
       }
     });
-    
+
     if (!section) {
       return { success: false, error: "Section not found" };
     }
-    
+
     // Get class teacher for this section
     const classTeacher = await db.classTeacher.findFirst({
       where: {
@@ -153,15 +155,15 @@ export async function getSectionById(id: string) {
         room: true,
       }
     });
-    
+
     const formattedSection = {
       ...section,
-      teacherName: classTeacher 
+      teacherName: classTeacher
         ? `${classTeacher.teacher.user.firstName} ${classTeacher.teacher.user.lastName}`
         : "Not assigned",
       teacherId: classTeacher?.teacherId,
-      room: timetableSlot?.room?.name || "Not assigned",
-      roomId: timetableSlot?.roomId,
+      room: section.homeRoom?.name || "Not assigned", // Prioritize Home Room
+      roomId: section.homeRoom?.id || null,
       students: section.enrollments.map(enrollment => ({
         id: enrollment.studentId,
         enrollmentId: enrollment.id,
@@ -170,13 +172,13 @@ export async function getSectionById(id: string) {
         status: enrollment.status,
       }))
     };
-    
+
     return { success: true, data: formattedSection };
   } catch (error) {
     console.error("Error fetching section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch section"
     };
   }
 }
@@ -198,13 +200,13 @@ export async function getClassesForDropdown() {
         }
       }
     });
-    
+
     return { success: true, data: classes };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
 }
@@ -227,19 +229,19 @@ export async function getTeachersForDropdown() {
         }
       }
     });
-    
+
     const formattedTeachers = teachers.map(teacher => ({
       id: teacher.id,
       name: `${teacher.user.firstName} ${teacher.user.lastName}`,
       employeeId: teacher.employeeId,
     }));
-    
+
     return { success: true, data: formattedTeachers };
   } catch (error) {
     console.error("Error fetching teachers:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch teachers" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch teachers"
     };
   }
 }
@@ -252,13 +254,13 @@ export async function getClassRoomsForDropdown() {
         name: 'asc',
       }
     });
-    
+
     return { success: true, data: rooms };
   } catch (error) {
     console.error("Error fetching classrooms:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classrooms" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classrooms"
     };
   }
 }
@@ -286,7 +288,7 @@ export async function createSection(data: SectionFormValues) {
         capacity: data.capacity,
       }
     });
-    
+
     // If teacher is provided, assign as class teacher
     if (data.teacherId) {
       // Check if teacher is already assigned to this class
@@ -312,21 +314,21 @@ export async function createSection(data: SectionFormValues) {
           where: { classId: data.classId, isClassHead: true },
           data: { isClassHead: false },
         });
-        
+
         await db.classTeacher.update({
           where: { id: existingTeacher.id },
           data: { isClassHead: true },
         });
       }
     }
-    
+
     revalidatePath("/admin/classes/sections");
     return { success: true, data: section };
   } catch (error) {
     console.error("Error creating section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create section"
     };
   }
 }
@@ -356,7 +358,7 @@ export async function updateSection(data: SectionUpdateFormValues) {
         capacity: data.capacity,
       }
     });
-    
+
     // If teacher is provided, update class teacher assignment
     if (data.teacherId) {
       // Check if teacher is already assigned to this class
@@ -382,22 +384,22 @@ export async function updateSection(data: SectionUpdateFormValues) {
           where: { classId: data.classId, isClassHead: true },
           data: { isClassHead: false },
         });
-        
+
         await db.classTeacher.update({
           where: { id: existingTeacher.id },
           data: { isClassHead: true },
         });
       }
     }
-    
+
     revalidatePath("/admin/classes/sections");
     revalidatePath(`/admin/classes/sections/${data.id}`);
     return { success: true, data: section };
   } catch (error) {
     console.error("Error updating section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update section"
     };
   }
 }
@@ -411,35 +413,35 @@ export async function deleteSection(id: string) {
     });
 
     if (enrollments) {
-      return { 
-        success: false, 
-        error: "Cannot delete section with enrolled students. Please move or remove students first." 
+      return {
+        success: false,
+        error: "Cannot delete section with enrolled students. Please move or remove students first."
       };
     }
-    
+
     // Check if section has timetable slots
     const timetableSlots = await db.timetableSlot.findFirst({
       where: { sectionId: id }
     });
 
     if (timetableSlots) {
-      return { 
-        success: false, 
-        error: "Cannot delete section with timetable entries. Please remove timetable entries first." 
+      return {
+        success: false,
+        error: "Cannot delete section with timetable entries. Please remove timetable entries first."
       };
     }
-    
+
     // Get class ID for revalidation
     const section = await db.classSection.findUnique({
       where: { id },
       select: { classId: true }
     });
-    
+
     // Delete the section
     await db.classSection.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/classes/sections");
     if (section?.classId) {
       revalidatePath(`/admin/classes/${section.classId}`);
@@ -447,9 +449,9 @@ export async function deleteSection(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error deleting section:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete section" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete section"
     };
   }
 }

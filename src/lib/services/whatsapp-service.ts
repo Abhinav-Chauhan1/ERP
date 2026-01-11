@@ -976,7 +976,8 @@ export async function uploadMedia(
 
     // Create form data for file upload
     const formData = new FormData();
-    const blob = new Blob([file], { type: mimeType });
+    // Use type assertion for Buffer to BlobPart compatibility
+    const blob = new Blob([file as unknown as BlobPart], { type: mimeType });
     formData.append('file', blob);
     formData.append('messaging_product', 'whatsapp');
     formData.append('type', mimeType);

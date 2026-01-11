@@ -45,6 +45,9 @@ export const CACHE_TAGS = {
   CALENDAR_EVENTS: "calendar-events",
   CALENDAR_CATEGORIES: "calendar-categories",
   CALENDAR_PREFERENCES: "calendar-preferences",
+  ALUMNI: "alumni",
+  ALUMNI_STATISTICS: "alumni-statistics",
+  PROMOTION_HISTORY: "promotion-history",
 } as const;
 
 export const CACHE_DURATION = {
@@ -75,6 +78,9 @@ export const CACHE_DURATION = {
   CALENDAR_EVENTS: 300, // 5 minutes
   CALENDAR_CATEGORIES: 3600, // 1 hour - rarely change
   CALENDAR_PREFERENCES: 1800, // 30 minutes
+  ALUMNI: 600, // 10 minutes - alumni data changes occasionally
+  ALUMNI_STATISTICS: 1800, // 30 minutes - statistics can be cached longer
+  PROMOTION_HISTORY: 600, // 10 minutes
 } as const;
 
 /**
@@ -428,6 +434,20 @@ export const CACHE_CONFIG = {
   calendarPreferences: {
     tags: [CACHE_TAGS.CALENDAR_PREFERENCES],
     revalidate: CACHE_DURATION.CALENDAR_PREFERENCES,
+  },
+  
+  // Alumni data
+  alumni: {
+    tags: [CACHE_TAGS.ALUMNI],
+    revalidate: CACHE_DURATION.ALUMNI,
+  },
+  alumniStatistics: {
+    tags: [CACHE_TAGS.ALUMNI_STATISTICS, CACHE_TAGS.ALUMNI],
+    revalidate: CACHE_DURATION.ALUMNI_STATISTICS,
+  },
+  promotionHistory: {
+    tags: [CACHE_TAGS.PROMOTION_HISTORY],
+    revalidate: CACHE_DURATION.PROMOTION_HISTORY,
   },
 } as const;
 

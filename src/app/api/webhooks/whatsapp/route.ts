@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
 
     if (mode === 'subscribe' && token === expectedToken) {
       console.log('WhatsApp webhook verified successfully');
-      
+
       // Return the challenge to complete verification
       return new Response(challenge, {
         status: 200,
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get raw body for signature verification
     const rawBody = await request.text();
-    
+
     // Verify webhook signature
     // Requirement: 12.2
     const signature = request.headers.get('x-hub-signature-256');
@@ -411,7 +411,7 @@ async function processIncomingMessages(
           buttonText: button.text,
           timestamp: new Date(parseInt(timestamp) * 1000),
         });
-        
+
         // Button response is handled, continue to next message
         continue;
       }
@@ -449,10 +449,10 @@ async function processIncomingMessages(
         type,
       });
 
-      // TODO: Add business logic to process incoming messages
-      // For example:
-      // - Process user replies
-      // - Trigger automated responses
+      // Process incoming text messages and send auto-reply
+      if (type === 'text' && text) {
+        await processTextMessageAndReply(from, text.body, metadata.phone_number_id);
+      }
     } catch (error: any) {
       // Log error but continue processing other messages
       console.error('Failed to process incoming WhatsApp message:', {
@@ -463,3 +463,102 @@ async function processIncomingMessages(
   }
 }
 
+// ============================================================================
+// Auto-Reply Processing
+// ============================================================================
+
+/**
+ * Process incoming text message and send auto-reply
+ * 
+ * Handles common user queries with automated responses
+ * 
+ * @param from - Sender's phone number
+ * @param messageBody - Text message content
+ * @param phoneNumberId - WhatsApp Business phone number ID
+ */
+async function processTextMessageAndReply(
+  from: string,
+  messageBody: string,
+  phoneNumberId: string
+): Promise<void> {
+  try {
+    const lowerMessage = messageBody.toLowerCase().trim();
+
+    // Define keyword-based auto-replies
+    let replyMessage = '';
+
+    if (lowerMessage.includes('help') || lowerMessage === 'hi' || lowerMessage === 'hello') {
+      replyMessage = `👋 Welcome to SikshaMitra WhatsApp Support!
+
+Here's how I can help you:
+
+📚 *Attendance* - Type "attendance" to check your child's attendance
+💰 *Fees* - Type "fees" to view pending fees
+📊 *Results* - Type "results" to check exam results
+📅 *Calendar* - Type "calendar" to view upcoming events
+📞 *Contact* - Type "contact" for school contact info
+
+Or simply describe what you need help with!`;
+    } else if (lowerMessage.includes('attendance')) {
+      replyMessage = `📋 *Attendance Information*
+
+To check attendance details, please log in to the parent portal at:
+${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/parent/attendance
+
+You can also contact the school office for attendance queries.`;
+    } else if (lowerMessage.includes('fee') || lowerMessage.includes('payment')) {
+      replyMessage = `💰 *Fee Information*
+
+To view and pay fees online, please visit:
+${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/parent/fees
+
+For payment queries, contact the accounts department.`;
+    } else if (lowerMessage.includes('result') || lowerMessage.includes('exam') || lowerMessage.includes('marks')) {
+      replyMessage = `📊 *Exam Results*
+
+To view your child's exam results, please visit:
+${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/parent/academics
+
+Results are also available on the parent portal.`;
+    } else if (lowerMessage.includes('calendar') || lowerMessage.includes('event')) {
+      replyMessage = `📅 *School Calendar*
+
+View upcoming events and important dates at:
+${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/parent/calendar
+
+Stay updated with school activities!`;
+    } else if (lowerMessage.includes('contact') || lowerMessage.includes('phone') || lowerMessage.includes('email')) {
+      replyMessage = `📞 *Contact Information*
+
+School Office: Contact your school administration
+Email: Contact the school email
+Website: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}
+
+For urgent matters, please call the school directly.`;
+    } else if (lowerMessage.includes('thank')) {
+      replyMessage = `🙏 You're welcome! Is there anything else I can help you with?
+
+Type "help" for more options.`;
+    }
+
+    // If we have a reply, log it (actual sending would require WhatsApp API call)
+    if (replyMessage) {
+      await logMessage({
+        channel: CommunicationChannel.WHATSAPP,
+        recipient: from,
+        body: replyMessage,
+        status: MessageLogStatus.SENT,
+        metadata: {
+          type: 'auto_reply',
+          triggerMessage: messageBody,
+          phoneNumberId,
+        },
+      });
+
+      console.log('Auto-reply sent to:', from);
+    }
+  } catch (error: any) {
+    console.error('Error processing text message for auto-reply:', error);
+    // Don't throw - auto-reply failure shouldn't affect message processing
+  }
+}

@@ -18,7 +18,7 @@ import { Toaster } from "react-hot-toast";
 
 // Optimize font loading with font-display: swap to prevent FOIT (Flash of Invisible Text)
 // This ensures text remains visible during font loading, improving perceived performance
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   display: 'swap', // Use font-display: swap to show fallback font immediately
   preload: true, // Preload the font for faster initial load
@@ -30,8 +30,8 @@ export async function generateMetadata() {
   const settings = settingsResult.success ? settingsResult.data : null;
 
   return {
-    title: settings?.schoolName || "School ERP",
-    description: settings?.tagline || "Comprehensive School Management System",
+    title: settings?.schoolName || "SikshaMitra",
+    description: settings?.tagline || "The Digital Partner of Modern Schools",
   };
 }
 
@@ -47,7 +47,36 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {settings?.faviconUrl && <link rel="icon" href={settings.faviconUrl} />}
+        {/* Favicon links - use settings if available, otherwise use static files */}
+        {settings?.faviconUrl ? (
+          <link rel="icon" href={settings.faviconUrl} />
+        ) : (
+          <>
+            {/* Apple Touch Icons */}
+            <link rel="apple-touch-icon" sizes="57x57" href="/apple-icon-57x57.png" />
+            <link rel="apple-touch-icon" sizes="60x60" href="/apple-icon-60x60.png" />
+            <link rel="apple-touch-icon" sizes="72x72" href="/apple-icon-72x72.png" />
+            <link rel="apple-touch-icon" sizes="76x76" href="/apple-icon-76x76.png" />
+            <link rel="apple-touch-icon" sizes="114x114" href="/apple-icon-114x114.png" />
+            <link rel="apple-touch-icon" sizes="120x120" href="/apple-icon-120x120.png" />
+            <link rel="apple-touch-icon" sizes="144x144" href="/apple-icon-144x144.png" />
+            <link rel="apple-touch-icon" sizes="152x152" href="/apple-icon-152x152.png" />
+            <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
+            {/* Android/Chrome Icons */}
+            <link rel="icon" type="image/png" sizes="192x192" href="/android-icon-192x192.png" />
+            {/* Standard Favicons */}
+            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+            <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+            <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+            <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+            {/* Web App Manifest */}
+            <link rel="manifest" href="/manifest.json" />
+            {/* Microsoft Tiles */}
+            <meta name="msapplication-TileColor" content="#ffffff" />
+            <meta name="msapplication-TileImage" content="/ms-icon-144x144.png" />
+            <meta name="theme-color" content="#ef4444" />
+          </>
+        )}
         {settings?.primaryColor && (
           <style>{`:root { --primary-color: ${settings.primaryColor}; --secondary-color: ${settings.secondaryColor}; }`}</style>
         )}

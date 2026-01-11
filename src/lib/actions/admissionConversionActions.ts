@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { logCreate } from "@/lib/utils/audit-log";
+import { hashPassword } from "@/lib/password";
 
 /**
  * Generate a unique admission ID for the student
@@ -112,6 +113,9 @@ export async function convertAdmissionToStudent(
 
     // 3. Create user and student in database (transaction)
     const result = await db.$transaction(async (tx) => {
+      // Hash the temporary password
+      const hashedPassword = await hashPassword(temporaryPassword);
+
       // Create base user
       const user = await tx.user.create({
         data: {
@@ -121,8 +125,8 @@ export async function convertAdmissionToStudent(
           phone: application.parentPhone,
           role: UserRole.STUDENT,
           active: true,
-          // In a real app with Credentials provider, you'd save the hashed password here
-          // password: hash(temporaryPassword)
+          password: hashedPassword,
+          emailVerified: new Date(), // Admin-converted users are pre-verified
         },
       });
 
@@ -223,14 +227,46 @@ export async function convertAdmissionToStudent(
 
     // 5. Send credentials email (optional)
     if (options?.sendCredentials) {
-      // TODO: Implement email sending
-      // await sendStudentCredentialsEmail(
-      //   application.parentEmail,
-      //   application.studentName,
-      //   application.parentEmail,
-      //   temporaryPassword,
-      //   admissionId
-      // );
+      try {
+        const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
+
+        if (isEmailConfigured()) {
+          await sendEmail({
+            to: application.parentEmail,
+            subject: 'Student Account Created - Login Credentials',
+            html: `
+              <h1>Welcome to Our School</h1>
+              <p>Dear Parent/Guardian,</p>
+              <p>The student account for <strong>${application.studentName}</strong> has been created successfully.</p>
+              
+              <h2>Login Credentials</h2>
+              <table style="border-collapse: collapse; margin: 20px 0;">
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Email:</strong></td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${application.parentEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Temporary Password:</strong></td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${result.temporaryPassword}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Admission ID:</strong></td>
+                  <td style="padding: 8px; border: 1px solid #ddd;">${admissionId}</td>
+                </tr>
+              </table>
+              
+              <p><strong>Important:</strong> Please change the password after your first login.</p>
+              <p>You can access the student portal to view academic information, attendance, and more.</p>
+              
+              <br>
+              <p>Best regards,<br>School Administration</p>
+            `
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send credentials email:', emailError);
+        // Don't fail the conversion if email fails
+      }
     }
 
     revalidatePath('/admin/admissions');

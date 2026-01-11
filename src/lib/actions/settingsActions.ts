@@ -26,7 +26,7 @@ export async function getSystemSettings() {
     }
 
     let settings = await db.systemSettings.findFirst();
-    
+
     // Create default settings if none exist
     if (!settings) {
       settings = await db.systemSettings.create({
@@ -47,7 +47,7 @@ export async function getSystemSettings() {
         },
       });
     }
-    
+
     return { success: true, data: settings };
   } catch (error) {
     console.error("Error fetching system settings:", error);
@@ -59,7 +59,7 @@ export async function getSystemSettings() {
 export async function getPublicSystemSettings() {
   try {
     let settings = await db.systemSettings.findFirst();
-    
+
     // Create default settings if none exist
     if (!settings) {
       settings = await db.systemSettings.create({
@@ -80,7 +80,7 @@ export async function getPublicSystemSettings() {
         },
       });
     }
-    
+
     return { success: true, data: settings };
   } catch (error) {
     console.error("Error fetching system settings:", error);
@@ -123,11 +123,11 @@ export async function updateSchoolInfo(data: {
     }
 
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       return { success: false, error: "Settings not found" };
     }
-    
+
     // Sanitize inputs
     const sanitizedData = {
       schoolName: sanitizeText(data.schoolName),
@@ -144,12 +144,12 @@ export async function updateSchoolInfo(data: {
       linkedinUrl: data.linkedinUrl ? sanitizeUrl(data.linkedinUrl) : undefined,
       instagramUrl: data.instagramUrl ? sanitizeUrl(data.instagramUrl) : undefined,
     };
-    
+
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
       data: sanitizedData,
     });
-    
+
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };
@@ -201,11 +201,11 @@ export async function updateAcademicSettings(data: {
     }
 
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       return { success: false, error: "Settings not found" };
     }
-    
+
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
       data: {
@@ -218,7 +218,7 @@ export async function updateAcademicSettings(data: {
         attendanceThreshold: data.attendanceThreshold,
       },
     });
-    
+
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -257,16 +257,16 @@ export async function updateNotificationSettings(data: {
     }
 
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       return { success: false, error: "Settings not found" };
     }
-    
+
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
       data,
     });
-    
+
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -306,16 +306,16 @@ export async function updateSecuritySettings(data: {
     }
 
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       return { success: false, error: "Settings not found" };
     }
-    
+
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
       data,
     });
-    
+
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
   } catch (error) {
@@ -361,16 +361,16 @@ export async function updateAppearanceSettings(data: {
     }
 
     const settings = await db.systemSettings.findFirst();
-    
+
     if (!settings) {
       return { success: false, error: "Settings not found" };
     }
-    
+
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
       data,
     });
-    
+
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };
@@ -400,13 +400,22 @@ export async function triggerBackup() {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // TODO: Implement actual backup logic
-    // This would typically involve:
-    // 1. Creating a database dump
-    // 2. Uploading to cloud storage (S3, etc.)
-    // 3. Logging the backup
-    
-    return { success: true, message: "Backup initiated successfully" };
+    // Import and call the backup service
+    const { createBackup } = await import("@/lib/utils/backup-service");
+    const backupResult = await createBackup(false, "manual");
+
+    if (!backupResult.success) {
+      return { success: false, error: backupResult.error || "Failed to create backup" };
+    }
+
+    return {
+      success: true,
+      message: "Backup initiated successfully",
+      data: {
+        filename: backupResult.metadata?.filename,
+        size: backupResult.metadata?.size,
+      }
+    };
   } catch (error) {
     console.error("Error triggering backup:", error);
     return { success: false, error: "Failed to trigger backup" };

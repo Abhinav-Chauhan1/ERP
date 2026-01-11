@@ -3,6 +3,39 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { parse, isValid } from "date-fns";
+import { hashPassword } from "@/lib/password";
+
+/**
+ * Helper to parse dates from various formats
+ */
+function parseImportDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+
+  // Try standard constructor first (handles ISO strings YYYY-MM-DD)
+  const date = new Date(dateStr);
+  if (isValid(date)) return date;
+
+  // Try common CSV formats
+  const formats = [
+    'd/M/yyyy',
+    'dd/MM/yyyy',
+    'M/d/yyyy',
+    'MM/dd/yyyy',
+    'dd-MM-yyyy',
+    'd-M-yyyy',
+    'yyyy/MM/dd',
+    'yyyy.MM.dd'
+  ];
+
+  const now = new Date();
+  for (const fmt of formats) {
+    const parsed = parse(dateStr, fmt, now);
+    if (isValid(parsed)) return parsed;
+  }
+
+  throw new Error(`Invalid date format: ${dateStr}. Please use YYYY-MM-DD or DD/MM/YYYY`);
+}
 
 // Types for import results
 export type ImportResult = {
@@ -37,8 +70,8 @@ const studentImportSchema = z.object({
   address: z.string().optional(),
   bloodGroup: z.string().optional(),
   emergencyContact: z.string().optional(),
-  classId: z.string().min(1, "Class ID is required"),
-  sectionId: z.string().min(1, "Section ID is required"),
+  classId: z.string().optional(), // Optional - can be provided via UI selector
+  sectionId: z.string().optional(), // Optional - can be provided via UI selector
   rollNumber: z.string().optional(),
 });
 
@@ -80,17 +113,17 @@ export async function validateImportData(
   errors: Array<{ row: number; field?: string; message: string }>;
 }> {
   const errors: Array<{ row: number; field?: string; message: string }> = [];
-  
+
   const schema =
     type === "student"
       ? studentImportSchema
       : type === "teacher"
-      ? teacherImportSchema
-      : parentImportSchema;
+        ? teacherImportSchema
+        : parentImportSchema;
 
   data.forEach((row, index) => {
     const rowNumber = index + 2; // +2 because index starts at 0 and row 1 is header
-    
+
     try {
       schema.parse(row);
     } catch (error) {
@@ -121,11 +154,13 @@ export async function validateImportData(
  */
 export async function importStudents(
   data: StudentImportData[],
-  duplicateHandling: DuplicateHandling = "skip"
+  duplicateHandling: DuplicateHandling = "skip",
+  defaultClassId?: string,
+  defaultSectionId?: string
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -154,11 +189,15 @@ export async function importStudents(
       // Validate the row
       const validated = studentImportSchema.parse(row);
 
+      // Use provided values or fall back to defaults
+      const classId = validated.classId || defaultClassId;
+      const sectionId = validated.sectionId || defaultSectionId;
+
       // Check if student already exists
       const existingStudent = await db.student.findFirst({
         where: {
           OR: [
-            { 
+            {
               user: {
                 email: validated.email
               }
@@ -186,7 +225,7 @@ export async function importStudents(
                   phone: validated.phone,
                 }
               },
-              dateOfBirth: new Date(validated.dateOfBirth),
+              dateOfBirth: parseImportDate(validated.dateOfBirth),
               gender: validated.gender,
               address: validated.address,
               bloodGroup: validated.bloodGroup,
@@ -200,45 +239,60 @@ export async function importStudents(
         // If "create", fall through to create a new record with different ID
       }
 
+      // Verify class ID is available (either from CSV or defaults)
+      if (!classId) {
+        result.errors.push({
+          row: rowNumber,
+          field: "classId",
+          message: "Class ID is required - provide in CSV or select from dropdown",
+        });
+        result.summary.failed++;
+        continue;
+      }
+
       // Verify class exists
       const classExists = await db.class.findUnique({
-        where: { id: validated.classId },
+        where: { id: classId },
       });
 
       if (!classExists) {
         result.errors.push({
           row: rowNumber,
           field: "classId",
-          message: `Class with ID ${validated.classId} not found`,
+          message: `Class with ID ${classId} not found`,
         });
         result.summary.failed++;
         continue;
       }
 
-      // Verify section exists (required for enrollment)
-      if (!validated.sectionId) {
+      // Verify section ID is available
+      if (!sectionId) {
         result.errors.push({
           row: rowNumber,
           field: "sectionId",
-          message: "Section ID is required for enrollment",
+          message: "Section ID is required - provide in CSV or select from dropdown",
         });
         result.summary.failed++;
         continue;
       }
 
       const sectionExists = await db.classSection.findUnique({
-        where: { id: validated.sectionId },
+        where: { id: sectionId },
       });
 
       if (!sectionExists) {
         result.errors.push({
           row: rowNumber,
           field: "sectionId",
-          message: `Section with ID ${validated.sectionId} not found`,
+          message: `Section with ID ${sectionId} not found`,
         });
         result.summary.failed++;
         continue;
       }
+
+      // Generate default password: {firstName}@123
+      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedPassword = await hashPassword(defaultPassword);
 
       // Create new student with user and enrollment
       const newStudent = await db.student.create({
@@ -249,13 +303,14 @@ export async function importStudents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "STUDENT",
+              password: hashedPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           admissionId: validated.admissionId,
           admissionDate: new Date(),
-          dateOfBirth: new Date(validated.dateOfBirth),
+          dateOfBirth: parseImportDate(validated.dateOfBirth),
           gender: validated.gender,
           address: validated.address,
           bloodGroup: validated.bloodGroup,
@@ -268,8 +323,8 @@ export async function importStudents(
       await db.classEnrollment.create({
         data: {
           studentId: newStudent.id,
-          classId: validated.classId,
-          sectionId: validated.sectionId,
+          classId: classId,
+          sectionId: sectionId,
           rollNumber: validated.rollNumber,
           enrollDate: new Date(),
           status: "ACTIVE",
@@ -279,7 +334,7 @@ export async function importStudents(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -314,8 +369,8 @@ export async function importTeachers(
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -347,7 +402,7 @@ export async function importTeachers(
       const existingTeacher = await db.teacher.findFirst({
         where: {
           OR: [
-            { 
+            {
               user: {
                 email: validated.email
               }
@@ -374,7 +429,7 @@ export async function importTeachers(
                 }
               },
               qualification: validated.qualification,
-              joinDate: new Date(validated.joinDate),
+              joinDate: parseImportDate(validated.joinDate),
               salary: validated.salary ? parseFloat(validated.salary) : undefined,
             },
           });
@@ -400,6 +455,10 @@ export async function importTeachers(
         }
       }
 
+      // Generate default password: {firstName}@123
+      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedTeacherPassword = await hashPassword(defaultPassword);
+
       // Create new teacher with user
       await db.teacher.create({
         data: {
@@ -409,13 +468,14 @@ export async function importTeachers(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "TEACHER",
+              password: hashedTeacherPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           employeeId: validated.employeeId,
           qualification: validated.qualification,
-          joinDate: new Date(validated.joinDate),
+          joinDate: parseImportDate(validated.joinDate),
           salary: validated.salary ? parseFloat(validated.salary) : undefined,
         },
       });
@@ -423,7 +483,7 @@ export async function importTeachers(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -458,8 +518,8 @@ export async function importParents(
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
   const session = await auth();
-    const userId = session?.user?.id;
-  
+  const userId = session?.user?.id;
+
   if (!userId) {
     return {
       success: false,
@@ -504,7 +564,7 @@ export async function importParents(
 
       // Check if parent already exists
       const existingParent = await db.parent.findFirst({
-        where: { 
+        where: {
           user: {
             email: validated.email
           }
@@ -529,7 +589,7 @@ export async function importParents(
               occupation: validated.occupation,
             },
           });
-          
+
           // Create parent-student association if it doesn't exist
           const existingAssociation = await db.studentParent.findFirst({
             where: {
@@ -553,6 +613,10 @@ export async function importParents(
         }
       }
 
+      // Generate default password: {firstName}@123
+      const defaultParentPassword = `${validated.firstName.toLowerCase()}@123`;
+      const hashedParentPassword = await hashPassword(defaultParentPassword);
+
       // Create new parent with user
       const newParent = await db.parent.create({
         data: {
@@ -562,8 +626,9 @@ export async function importParents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              // User will be created without clerkId
               role: "PARENT",
+              password: hashedParentPassword,
+              emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           occupation: validated.occupation,
@@ -582,7 +647,7 @@ export async function importParents(
       result.summary.created++;
     } catch (error) {
       result.summary.failed++;
-      
+
       if (error instanceof z.ZodError) {
         error.errors.forEach((err) => {
           result.errors.push({
@@ -599,8 +664,8 @@ export async function importParents(
       } else {
         result.errors.push({
           row: rowNumber,
-           
-        message: "Unknown error occurred",
+
+          message: "Unknown error occurred",
         });
       }
     }
