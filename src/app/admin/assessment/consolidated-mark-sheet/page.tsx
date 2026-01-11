@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
+import { exportToExcel } from "@/lib/utils/excel";
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
   getConsolidatedMarkSheet,
@@ -164,52 +164,40 @@ export default function ConsolidatedMarkSheetPage() {
       });
 
       if (result.success && result.data) {
-        const { headerRow1, headerRow2, dataRows } = result.data;
+        const { headerRow2, dataRows, subjects } = result.data;
 
-        // Create workbook and worksheet
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
+        // Flatten data for simple export
+        const exportData = dataRows.map((row: any[]) => {
+          const obj: any = {
+            'Roll No': row[0],
+            'Admission ID': row[1],
+            'Student Name': row[2],
+          };
 
-        // Set column widths
-        const colWidths = [
-          { wch: 10 }, // Roll No
-          { wch: 15 }, // Admission ID
-          { wch: 25 }, // Student Name
-        ];
-
-        // Add widths for subject columns
-        result.data.subjects.forEach(() => {
-          colWidths.push(
-            { wch: 10 }, // Theory
-            { wch: 10 }, // Practical
-            { wch: 10 }, // Internal
-            { wch: 10 }, // Total
-            { wch: 8 }   // Grade
-          );
-        });
-
-        colWidths.push(
-          { wch: 12 }, // Overall Total
-          { wch: 10 }, // Overall %
-          { wch: 8 }   // Grade
-        );
-
-        ws['!cols'] = colWidths;
-
-        // Merge cells for subject headers
-        const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
-        let colIndex = 3; // Start after Roll No, Admission ID, Student Name
-        result.data.subjects.forEach(() => {
-          merges.push({
-            s: { r: 0, c: colIndex },
-            e: { r: 0, c: colIndex + 4 }
+          // Add subject marks
+          let colIndex = 3;
+          subjects.forEach((subject: string) => {
+            obj[`${subject} - Theory`] = row[colIndex++] || '';
+            obj[`${subject} - Practical`] = row[colIndex++] || '';
+            obj[`${subject} - Internal`] = row[colIndex++] || '';
+            obj[`${subject} - Total`] = row[colIndex++] || '';
+            obj[`${subject} - Grade`] = row[colIndex++] || '';
           });
-          colIndex += 5;
-        });
-        ws['!merges'] = merges;
 
-        XLSX.utils.book_append_sheet(wb, ws, "Consolidated Mark Sheet");
-        XLSX.writeFile(wb, `consolidated-mark-sheet-${Date.now()}.xlsx`);
+          obj['Overall Total'] = row[colIndex++] || '';
+          obj['Overall %'] = row[colIndex++] || '';
+          obj['Overall Grade'] = row[colIndex] || '';
+
+          return obj;
+        });
+
+        // Use ExcelJS for export
+        await exportToExcel(exportData, {
+          filename: `consolidated-mark-sheet-${Date.now()}`,
+          title: 'Consolidated Mark Sheet',
+          subtitle: `Class: ${classFilter} | Section: ${sectionFilter}`,
+          includeTimestamp: true,
+        });
 
         toast.success("Mark sheet exported successfully");
       } else {

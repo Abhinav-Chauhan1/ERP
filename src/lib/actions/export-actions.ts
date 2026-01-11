@@ -2,7 +2,6 @@
 
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import * as XLSX from "xlsx";
 import Papa from "papaparse";
 
 export interface ExportJobResult {

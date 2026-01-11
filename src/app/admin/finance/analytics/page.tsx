@@ -8,7 +8,7 @@ import { FeeStructureAnalyticsComponent } from "@/components/fees/fee-structure-
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 import { getClasses } from "@/lib/actions/classesActions";
 import { getFeeStructureAnalytics } from "@/lib/actions/feeStructureActions";
-import * as XLSX from "xlsx";
+import { exportToExcel as exportToExcelJS } from "@/lib/utils/excel";
 import toast from "react-hot-toast";
 
 export default function AnalyticsPage() {
@@ -111,73 +111,30 @@ export default function AnalyticsPage() {
     toast.success("Analytics exported to CSV");
   }
 
-  function exportToExcel(analytics: any) {
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
+  async function exportToExcel(analytics: any) {
+    // Prepare data for export
+    const exportData = analytics.structureDetails.map((structure: any) => ({
+      'Fee Structure Name': structure.name,
+      'Academic Year': structure.academicYearName,
+      'Classes': structure.classNames.join("; "),
+      'Status': structure.isActive ? "Active" : "Inactive",
+      'Is Template': structure.isTemplate ? "Yes" : "No",
+      'Students Affected': structure.studentsAffected,
+      'Total Amount (INR)': structure.totalAmount,
+      'Revenue Projection (INR)': structure.revenueProjection,
+      'Created At': new Date(structure.createdAt).toLocaleDateString(),
+    }));
 
-    // Sheet 1: Summary
-    const summaryData = [
-      ["Fee Structure Analytics Summary"],
-      ["Generated on:", new Date().toLocaleString()],
-      [],
-      ["Metric", "Value"],
-      ["Total Structures", analytics.totalStructures],
-      ["Active Structures", analytics.activeStructures],
-      ["Template Structures", analytics.templateStructures],
-      [
-        "Total Students Affected",
-        analytics.structuresByAcademicYear.reduce(
-          (sum: number, year: any) => sum + year.totalStudentsAffected,
-          0
-        ),
-      ],
-      [
-        "Total Revenue Projection",
-        analytics.structuresByAcademicYear.reduce(
-          (sum: number, year: any) => sum + year.totalRevenueProjection,
-          0
-        ),
-      ],
-    ];
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+    // Use ExcelJS for export
+    await exportToExcelJS(exportData, {
+      filename: `fee-structure-analytics-${new Date().toISOString().split('T')[0]}`,
+      title: 'Fee Structure Analytics',
+      subtitle: `Total Structures: ${analytics.totalStructures} | Active: ${analytics.activeStructures}`,
+      includeTimestamp: true,
+    });
 
-    // Sheet 2: Academic Year Breakdown
-    const yearData = [
-      [
-        "Academic Year",
-        "Total Structures",
-        "Active Structures",
-        "Students Affected",
-        "Revenue Projection (INR)",
-      ],
-      ...analytics.structuresByAcademicYear.map((year: any) => [
-        year.academicYearName,
-        year.totalStructures,
-        year.activeStructures,
-        year.totalStudentsAffected,
-        year.totalRevenueProjection,
-      ]),
-    ];
-    const yearSheet = XLSX.utils.aoa_to_sheet(yearData);
-    XLSX.utils.book_append_sheet(workbook, yearSheet, "By Academic Year");
-
-    // Sheet 3: Structure Details
-    const detailsData = [
-      [
-        "Fee Structure Name",
-        "Academic Year",
-        "Classes",
-        "Status",
-        "Is Template",
-        "Students Affected",
-        "Total Amount (INR)",
-        "Revenue Projection (INR)",
-        "Created At",
-      ],
-      ...analytics.structureDetails.map((structure: any) => [
-        structure.name,
-        structure.academicYearName,
+    toast.success("Analytics exported successfully");
+  }
         structure.classNames.join(", "),
         structure.isActive ? "Active" : "Inactive",
         structure.isTemplate ? "Yes" : "No",

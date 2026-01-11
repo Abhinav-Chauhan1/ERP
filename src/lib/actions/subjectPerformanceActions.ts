@@ -230,7 +230,7 @@ export async function exportSubjectPerformanceToPDF(filters: SubjectPerformanceF
     ]);
 
     // Import jsPDF dynamically
-    const { default: jsPDF } = await import('jspdf');
+    const { jsPDF } = await import('jspdf');
     const autoTable = (await import('jspdf-autotable')).default;
 
     // Create PDF document
@@ -368,74 +368,82 @@ export async function exportSubjectPerformanceToExcel(filters: SubjectPerformanc
         : null,
     ]);
 
-    // Import xlsx dynamically
-    const XLSX = await import('xlsx');
+    // Import ExcelJS dynamically
+    const ExcelJS = (await import('exceljs')).default;
 
     // Create workbook
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'SikshaMitra';
+    workbook.created = new Date();
 
-    // Prepare header info
-    const headerInfo = [
-      ['Subject Performance Report'],
-      [`Term: ${term?.name || 'All Terms'}`],
-      [`Academic Year: ${term?.academicYear?.name || 'N/A'}`],
-      classInfo ? [`Class: ${classInfo.name}${sectionInfo ? ` - ${sectionInfo.name}` : ''}`] : [],
-      [`Generated: ${new Date().toLocaleDateString()}`],
-      [], // Empty row
-    ].filter(row => row.length > 0);
+    // Create main worksheet
+    const mainSheet = workbook.addWorksheet('Subject Performance');
 
-    // Prepare main data table
-    const tableHeaders = [
+    // Add header info
+    mainSheet.addRow(['Subject Performance Report']);
+    mainSheet.addRow([`Term: ${term?.name || 'All Terms'}`]);
+    mainSheet.addRow([`Academic Year: ${term?.academicYear?.name || 'N/A'}`]);
+    if (classInfo) {
+      mainSheet.addRow([`Class: ${classInfo.name}${sectionInfo ? ` - ${sectionInfo.name}` : ''}`]);
+    }
+    mainSheet.addRow([`Generated: ${new Date().toLocaleDateString()}`]);
+    mainSheet.addRow([]); // Empty row
+
+    // Add table headers
+    const headerRow = mainSheet.addRow([
       'Subject Code', 'Subject Name', 'Total Students', 'Average Marks',
       'Highest Marks', 'Lowest Marks', 'Passed', 'Failed', 'Absent', 'Pass %'
-    ];
-
-    const tableData = result.data.map((subject: SubjectStats) => [
-      subject.subjectCode,
-      subject.subjectName,
-      subject.totalStudents,
-      Number(subject.averageMarks.toFixed(1)),
-      subject.highestMarks,
-      subject.lowestMarks,
-      subject.passedStudents,
-      subject.failedStudents,
-      subject.absentStudents,
-      Number(subject.passPercentage.toFixed(1)),
     ]);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF3B82F6' },
+    };
 
-    // Combine all data for the main sheet
-    const mainSheetData = [
-      ...headerInfo,
-      tableHeaders,
-      ...tableData,
-    ];
-
-    // Create the main worksheet
-    const mainSheet = XLSX.utils.aoa_to_sheet(mainSheetData);
+    // Add data rows
+    result.data.forEach((subject: SubjectStats) => {
+      mainSheet.addRow([
+        subject.subjectCode,
+        subject.subjectName,
+        subject.totalStudents,
+        Number(subject.averageMarks.toFixed(1)),
+        subject.highestMarks,
+        subject.lowestMarks,
+        subject.passedStudents,
+        subject.failedStudents,
+        subject.absentStudents,
+        Number(subject.passPercentage.toFixed(1)),
+      ]);
+    });
 
     // Set column widths
-    mainSheet['!cols'] = [
-      { wch: 15 }, // Subject Code
-      { wch: 30 }, // Subject Name
-      { wch: 15 }, // Total Students
-      { wch: 15 }, // Average Marks
-      { wch: 15 }, // Highest Marks
-      { wch: 15 }, // Lowest Marks
-      { wch: 10 }, // Passed
-      { wch: 10 }, // Failed
-      { wch: 10 }, // Absent
-      { wch: 10 }, // Pass %
+    mainSheet.columns = [
+      { width: 15 }, // Subject Code
+      { width: 30 }, // Subject Name
+      { width: 15 }, // Total Students
+      { width: 15 }, // Average Marks
+      { width: 15 }, // Highest Marks
+      { width: 15 }, // Lowest Marks
+      { width: 10 }, // Passed
+      { width: 10 }, // Failed
+      { width: 10 }, // Absent
+      { width: 10 }, // Pass %
     ];
 
-    XLSX.utils.book_append_sheet(workbook, mainSheet, 'Subject Performance');
-
     // Create Grade Distribution sheet
-    const gradeSheetHeaders = ['Subject', 'Grade', 'Count', 'Percentage'];
-    const gradeData: any[][] = [gradeSheetHeaders];
+    const gradeSheet = workbook.addWorksheet('Grade Distribution');
+    const gradeHeaderRow = gradeSheet.addRow(['Subject', 'Grade', 'Count', 'Percentage']);
+    gradeHeaderRow.font = { bold: true };
+    gradeHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF3B82F6' },
+    };
 
     result.data.forEach((subject: SubjectStats) => {
       subject.gradeDistribution.forEach((grade) => {
-        gradeData.push([
+        gradeSheet.addRow([
           subject.subjectName,
           grade.grade,
           grade.count,
@@ -444,21 +452,18 @@ export async function exportSubjectPerformanceToExcel(filters: SubjectPerformanc
       });
     });
 
-    const gradeSheet = XLSX.utils.aoa_to_sheet(gradeData);
-    gradeSheet['!cols'] = [
-      { wch: 30 }, // Subject
-      { wch: 10 }, // Grade
+    gradeSheet.columns = [
+      { width: 30 }, // Subject
+      { width: 10 }, // Grade
+      { width: 10 }, // Count
+      { width: 15 }, // Percentage
+    ];
       { wch: 10 }, // Count
       { wch: 12 }, // Percentage
     ];
 
-    XLSX.utils.book_append_sheet(workbook, gradeSheet, 'Grade Distribution');
-
     // Generate Excel buffer
-    const excelBuffer = XLSX.write(workbook, {
-      type: 'buffer',
-      bookType: 'xlsx',
-    });
+    const excelBuffer = await workbook.xlsx.writeBuffer();
 
     // Convert to base64
     const base64 = Buffer.from(excelBuffer).toString('base64');

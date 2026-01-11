@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import { parseExcelFile } from "@/lib/utils/excel";
 import { importMarksFromFile, type ImportResult } from "@/lib/actions/importMarksActions";
 
 interface ImportMarksDialogProps {
@@ -147,44 +147,28 @@ export function ImportMarksDialog({
   };
 
   const parseExcel = async (file: File): Promise<ParsedRow[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+    try {
+      const jsonData = await parseExcelFile(file);
 
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: "binary" });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const parsedData = jsonData.map((row: any) => ({
+        studentId: row.studentId || row.student_id || row.StudentID || "",
+        rollNumber: row.rollNumber || row.roll_number || row.RollNumber || "",
+        name: row.name || row.studentName || row.Name || "",
+        theoryMarks: parseMarks(row.theoryMarks || row.theory_marks || row.Theory),
+        practicalMarks: parseMarks(
+          row.practicalMarks || row.practical_marks || row.Practical
+        ),
+        internalMarks: parseMarks(
+          row.internalMarks || row.internal_marks || row.Internal
+        ),
+        isAbsent: parseBoolean(row.isAbsent || row.is_absent || row.Absent),
+        remarks: row.remarks || row.Remarks || "",
+      }));
 
-          const parsedData = jsonData.map((row: any) => ({
-            studentId: row.studentId || row.student_id || row.StudentID || "",
-            rollNumber: row.rollNumber || row.roll_number || row.RollNumber || "",
-            name: row.name || row.studentName || row.Name || "",
-            theoryMarks: parseMarks(row.theoryMarks || row.theory_marks || row.Theory),
-            practicalMarks: parseMarks(
-              row.practicalMarks || row.practical_marks || row.Practical
-            ),
-            internalMarks: parseMarks(
-              row.internalMarks || row.internal_marks || row.Internal
-            ),
-            isAbsent: parseBoolean(row.isAbsent || row.is_absent || row.Absent),
-            remarks: row.remarks || row.Remarks || "",
-          }));
-
-          resolve(parsedData);
-        } catch (error) {
-          reject(new Error(`Excel parsing error: ${error instanceof Error ? error.message : "Unknown error"}`));
-        }
-      };
-
-      reader.onerror = () => {
-        reject(new Error("Failed to read file"));
-      };
-
-      reader.readAsBinaryString(file);
-    });
+      return parsedData;
+    } catch (error) {
+      throw new Error(`Excel parsing error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   };
 
   const parseMarks = (value: any): number | null => {

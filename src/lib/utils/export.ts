@@ -3,9 +3,9 @@
  * Supports PDF, Excel (XLSX), and CSV formats
  */
 
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import { exportToExcel as exportToExcelJS } from './excel';
 import Papa from 'papaparse';
 
 export type ExportFormat = 'pdf' | 'excel' | 'csv';
@@ -46,41 +46,23 @@ export function exportToCSV(
 }
 
 /**
- * Export data to Excel format
+ * Export data to Excel format using ExcelJS
  */
-export function exportToExcel(
+export async function exportToExcel(
   data: any[],
   options: ExportOptions
-): void {
+): Promise<void> {
   if (!data || data.length === 0) {
     throw new Error('No data to export');
   }
 
-  // Create workbook
-  const wb = XLSX.utils.book_new();
-
-  // Add metadata if provided
-  if (options.title) {
-    wb.Props = {
-      Title: options.title,
-      Subject: options.subtitle || '',
-      Author: 'SikshaMitra',
-      CreatedDate: new Date(),
-    };
-  }
-
-  // Create worksheet from data
-  const ws = XLSX.utils.json_to_sheet(data);
-
-  // Auto-size columns
-  const colWidths = calculateColumnWidths(data);
-  ws['!cols'] = colWidths;
-
-  // Add worksheet to workbook
-  XLSX.utils.book_append_sheet(wb, ws, 'Report Data');
-
-  // Generate Excel file
-  XLSX.writeFile(wb, `${options.filename}.xlsx`);
+  // Use ExcelJS for secure Excel export
+  await exportToExcelJS(data, {
+    filename: options.filename,
+    title: options.title,
+    subtitle: options.subtitle,
+    includeTimestamp: options.includeTimestamp,
+  });
 }
 
 /**
@@ -181,28 +163,7 @@ export function exportToPDF(
   doc.save(`${options.filename}.pdf`);
 }
 
-/**
- * Calculate optimal column widths for Excel
- */
-function calculateColumnWidths(data: any[]): Array<{ wch: number }> {
-  if (data.length === 0) return [];
 
-  const keys = Object.keys(data[0]);
-  const widths = keys.map((key) => {
-    // Get max length of values in this column
-    const maxLength = Math.max(
-      key.length,
-      ...data.map((row) => {
-        const value = row[key];
-        return value ? String(value).length : 0;
-      })
-    );
-    // Add some padding and cap at reasonable width
-    return { wch: Math.min(maxLength + 2, 50) };
-  });
-
-  return widths;
-}
 
 /**
  * Format header text (convert camelCase to Title Case)
@@ -244,19 +205,19 @@ function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Main export function that handles all formats
  */
-export function exportReport(
+export async function exportReport(
   data: any[],
   format: ExportFormat,
   options: ExportOptions,
   charts?: ChartData[]
-): void {
+): Promise<void> {
   try {
     switch (format) {
       case 'csv':
         exportToCSV(data, options);
         break;
       case 'excel':
-        exportToExcel(data, options);
+        await exportToExcel(data, options);
         break;
       case 'pdf':
         exportToPDF(data, options, charts);

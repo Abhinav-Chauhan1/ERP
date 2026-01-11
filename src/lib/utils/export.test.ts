@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { exportToCSV, exportToExcel, exportToPDF, exportReport } from './export';
+import { exportToCSV, exportToPDF, exportReport } from './export';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 
 // Mock the dependencies
 vi.mock('papaparse');

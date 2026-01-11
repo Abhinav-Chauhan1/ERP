@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { generateReport, ReportConfig } from "@/lib/actions/reportBuilderActions";
 import { updateScheduledReportRunTime } from "@/lib/actions/scheduledReportActions";
 import { sendEmail, generateReportEmailTemplate } from "@/lib/utils/email-service";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
+import ExcelJS from "exceljs";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 /**
@@ -42,23 +42,42 @@ function generatePDF(reportName: string, data: any[]): Buffer {
 }
 
 /**
- * Generate Excel from report data
+ * Generate Excel from report data using ExcelJS
  */
-function generateExcel(reportName: string, data: any[]): Buffer {
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+async function generateExcel(reportName: string, data: any[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Report");
+
+  if (data.length > 0) {
+    // Set columns from first data row
+    const columns = Object.keys(data[0]).map(key => ({
+      header: key,
+      key: key,
+      width: 15,
+    }));
+    worksheet.columns = columns;
+
+    // Add data rows
+    data.forEach(row => {
+      worksheet.addRow(row);
+    });
+
+    // Style header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF3B82F6' },
+    };
+  }
 
   // Add metadata
-  workbook.Props = {
-    Title: reportName,
-    Subject: "Scheduled Report",
-    Author: "SikshaMitra",
-    CreatedDate: new Date(),
-  };
+  workbook.creator = "SikshaMitra";
+  workbook.title = reportName;
+  workbook.subject = "Scheduled Report";
+  workbook.created = new Date();
 
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-  return buffer;
+  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 /**
@@ -133,7 +152,7 @@ async function executeScheduledReport(reportId: string) {
         mimeType = "application/pdf";
         break;
       case "excel":
-        fileBuffer = generateExcel(report.name, result.data);
+        fileBuffer = await generateExcel(report.name, result.data);
         filename = `${report.name.replace(/\s+/g, "_")}_${timestamp}.xlsx`;
         mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;

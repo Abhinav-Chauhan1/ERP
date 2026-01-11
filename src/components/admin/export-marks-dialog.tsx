@@ -24,7 +24,7 @@ import { Download, FileSpreadsheet, FileText, Loader2, CheckCircle2 } from "luci
 import { useToast } from "@/hooks/use-toast";
 import { exportMarksToFile } from "@/lib/actions/exportMarksActions";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import { exportToExcel } from "@/lib/utils/excel";
 
 interface ExportMarksDialogProps {
   examId: string;
@@ -68,7 +68,7 @@ export function ExportMarksDialog({
       } else {
         // Generate Excel file from JSON data
         const jsonData = JSON.parse(result.data.content);
-        downloadExcel(jsonData, result.data.filename);
+        await downloadExcel(jsonData, result.data.filename);
       }
 
       setExportComplete(true);
@@ -100,79 +100,31 @@ export function ExportMarksDialog({
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = (jsonData: any, filename: string) => {
+  const downloadExcel = async (jsonData: any, filename: string) => {
     const { data, metadata } = jsonData;
 
-    // Create a new workbook
-    const wb = XLSX.utils.book_new();
+    // Prepare data for export
+    const exportData = data.map((row: any) => ({
+      'Student ID': row.studentId,
+      'Roll Number': row.rollNumber,
+      'Student Name': row.studentName,
+      'Theory Marks': row.theoryMarks !== null ? row.theoryMarks : '',
+      'Practical Marks': row.practicalMarks !== null ? row.practicalMarks : '',
+      'Internal Marks': row.internalMarks !== null ? row.internalMarks : '',
+      'Total Marks': row.totalMarks !== null ? row.totalMarks : '',
+      'Percentage': row.percentage !== null ? row.percentage.toFixed(2) : '',
+      'Grade': row.grade || '',
+      'Status': row.status,
+      'Remarks': row.remarks || '',
+    }));
 
-    // Create metadata sheet
-    const metadataSheet = [
-      ["Exam", metadata.examName],
-      ["Class", metadata.class],
-      ["Section", metadata.section],
-      ["Term", metadata.term],
-      ["Academic Year", metadata.academicYear],
-      ["Total Marks", metadata.totalMarks],
-      ["Export Date", new Date(metadata.exportDate).toLocaleDateString()],
-    ];
-
-    // Create marks data sheet with headers
-    const marksData = [
-      [
-        "Student ID",
-        "Roll Number",
-        "Student Name",
-        "Theory Marks",
-        "Practical Marks",
-        "Internal Marks",
-        "Total Marks",
-        "Percentage",
-        "Grade",
-        "Status",
-        "Remarks",
-      ],
-      ...data.map((row: any) => [
-        row.studentId,
-        row.rollNumber,
-        row.studentName,
-        row.theoryMarks !== null ? row.theoryMarks : "",
-        row.practicalMarks !== null ? row.practicalMarks : "",
-        row.internalMarks !== null ? row.internalMarks : "",
-        row.totalMarks !== null ? row.totalMarks : "",
-        row.percentage !== null ? row.percentage.toFixed(2) : "",
-        row.grade || "",
-        row.status,
-        row.remarks || "",
-      ]),
-    ];
-
-    // Convert to worksheets
-    const metadataWS = XLSX.utils.aoa_to_sheet(metadataSheet);
-    const marksWS = XLSX.utils.aoa_to_sheet(marksData);
-
-    // Set column widths
-    metadataWS["!cols"] = [{ wch: 20 }, { wch: 40 }];
-    marksWS["!cols"] = [
-      { wch: 25 }, // Student ID
-      { wch: 12 }, // Roll Number
-      { wch: 25 }, // Student Name
-      { wch: 12 }, // Theory Marks
-      { wch: 14 }, // Practical Marks
-      { wch: 14 }, // Internal Marks
-      { wch: 12 }, // Total Marks
-      { wch: 12 }, // Percentage
-      { wch: 8 },  // Grade
-      { wch: 10 }, // Status
-      { wch: 30 }, // Remarks
-    ];
-
-    // Add worksheets to workbook
-    XLSX.utils.book_append_sheet(wb, metadataWS, "Exam Info");
-    XLSX.utils.book_append_sheet(wb, marksWS, "Marks");
-
-    // Generate Excel file and download
-    XLSX.writeFile(wb, filename);
+    // Use ExcelJS for export
+    await exportToExcel(exportData, {
+      filename: filename.replace('.xlsx', ''),
+      title: metadata.examName,
+      subtitle: `${metadata.class} - ${metadata.section} | ${metadata.term} | ${metadata.academicYear}`,
+      includeTimestamp: true,
+    });
   };
 
   const handleClose = () => {
