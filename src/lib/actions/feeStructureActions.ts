@@ -15,6 +15,7 @@ import {
   feeStructureAnalyticsService,
   type AnalyticsFilters,
 } from "@/lib/services/fee-structure-analytics-service";
+import { STANDARD_FEE_TYPES } from "@/lib/constants/fee-standards";
 
 // Get all fee structures with related data
 export async function getFeeStructures(filters?: FeeStructureFilters) {
@@ -403,6 +404,99 @@ export async function getAvailableFeeStructuresForBulkAssignment(
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "Failed to fetch available fee structures" 
+    };
+  }
+}
+
+// ============================================================================
+// Auto-Generate Fee Types
+// ============================================================================
+
+/**
+ * Auto-generate standard fee types for Indian schools
+ * Similar to auto-generate for departments and grades
+ */
+export async function autoGenerateFeeTypes(selectedNames?: string[]) {
+  try {
+    // Get existing fee types
+    const existingFeeTypes = await db.feeType.findMany({
+      select: { name: true }
+    });
+    const existingNames = new Set(existingFeeTypes.map(ft => ft.name.toLowerCase()));
+
+    // Filter fee types to create
+    let feeTypesToCreate = STANDARD_FEE_TYPES.filter(
+      ft => !existingNames.has(ft.name.toLowerCase())
+    );
+
+    // If specific names were provided, filter to only those
+    if (selectedNames && selectedNames.length > 0) {
+      const selectedSet = new Set(selectedNames.map(n => n.toLowerCase()));
+      feeTypesToCreate = feeTypesToCreate.filter(
+        ft => selectedSet.has(ft.name.toLowerCase())
+      );
+    }
+
+    if (feeTypesToCreate.length === 0) {
+      return {
+        success: false,
+        error: "No new fee types to create. All selected fee types already exist."
+      };
+    }
+
+    // Create the new fee types
+    const result = await db.feeType.createMany({
+      data: feeTypesToCreate,
+      skipDuplicates: true,
+    });
+
+    revalidatePath("/admin/finance/fee-structure");
+    return {
+      success: true,
+      count: result.count,
+      message: `Created ${result.count} fee type${result.count === 1 ? '' : 's'} successfully`
+    };
+  } catch (error) {
+    console.error("Error auto-generating fee types:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to auto-generate fee types"
+    };
+  }
+}
+
+/**
+ * Get list of standard fee types that can be auto-generated
+ */
+export async function getAvailableStandardFeeTypes() {
+  try {
+    // Get existing fee types
+    const existingFeeTypes = await db.feeType.findMany({
+      select: { name: true }
+    });
+    const existingNames = new Set(existingFeeTypes.map(ft => ft.name.toLowerCase()));
+
+    // Filter to show only fee types that don't exist yet
+    const availableFeeTypes = STANDARD_FEE_TYPES.filter(
+      ft => !existingNames.has(ft.name.toLowerCase())
+    ).map(ft => ({
+      name: ft.name,
+      description: ft.description,
+      amount: ft.amount,
+      frequency: ft.frequency,
+      isOptional: ft.isOptional,
+    }));
+
+    return {
+      success: true,
+      data: availableFeeTypes,
+      total: availableFeeTypes.length
+    };
+  } catch (error) {
+    console.error("Error fetching available standard fee types:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch available fee types"
     };
   }
 }
