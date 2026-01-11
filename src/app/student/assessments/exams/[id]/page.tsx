@@ -21,31 +21,32 @@ export const metadata: Metadata = {
   description: "View detailed information about your exam",
 };
 
-export default async function ExamDetailsPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function ExamDetailsPage(
+  props: { 
+    params: Promise<{ id: string }> 
+  }
+) {
+  const params = await props.params;
   // Fix the params issue by awaiting it first
   const resolvedParams = await Promise.resolve(params);
   const examDetails = await getExamDetails(resolvedParams.id);
-  
+
   // Check if exam date is in the past
   const isPastExam = new Date(examDetails.examDate) < new Date();
-  
+
   // Calculate time remaining until exam
   const examDate = new Date(examDetails.examDate);
   const currentDate = new Date();
   const diffTime = examDate.getTime() - currentDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  
+
   const timeRemaining = diffDays > 0 
     ? `${diffDays} days and ${diffHours} hours` 
     : diffHours > 0 
     ? `${diffHours} hours` 
     : "Less than an hour";
-  
+
   return (
     <div className="container p-6">
       <div className="mb-6">

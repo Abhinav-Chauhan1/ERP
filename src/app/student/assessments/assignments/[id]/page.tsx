@@ -25,15 +25,16 @@ export const metadata: Metadata = {
   description: "View and submit your assignment",
 };
 
-export default async function AssignmentDetailsPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function AssignmentDetailsPage(
+  props: { 
+    params: Promise<{ id: string }> 
+  }
+) {
+  const params = await props.params;
   // Fix the params issue by awaiting it first
   const resolvedParams = await Promise.resolve(params);
   const assignment = await getAssignmentDetails(resolvedParams.id);
-  
+
   // Determine status and timing
   const currentDate = new Date();
   const dueDate = new Date(assignment.dueDate);
@@ -41,10 +42,10 @@ export default async function AssignmentDetailsPage({
   const timeRemaining = dueDate > currentDate 
     ? Math.ceil((dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
-  
+
   // Parse assignment attachments
   const attachments = assignment.attachments || [];
-  
+
   return (
     <div className="container p-6">
       <Link href="/student/assessments/assignments">

@@ -460,7 +460,7 @@ export async function invalidateCache(tags: string | string[]) {
   const tagArray = Array.isArray(tags) ? tags : [tags];
   
   for (const tag of tagArray) {
-    revalidateTag(tag);
+    revalidateTag(tag, "default");
   }
 }
 

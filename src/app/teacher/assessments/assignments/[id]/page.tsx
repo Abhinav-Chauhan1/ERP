@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAssignmentDetails, updateAssignmentGrades } from "@/lib/actions/teacherAssignmentsActions";
@@ -44,7 +44,8 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function AssignmentDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function AssignmentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const [assignment, setAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -53,12 +54,7 @@ export default function AssignmentDetailPage({ params: paramsPromise }: { params
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [assignmentId, setAssignmentId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setAssignmentId(p.id));
-  }, [paramsPromise]);
+  const assignmentId = params.id;
 
   useEffect(() => {
     if (!assignmentId) return;

@@ -147,7 +147,7 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
     
     // Also invalidate the settings cache tag
     const { revalidateTag } = await import("next/cache");
-    revalidateTag("settings");
+    revalidateTag("settings", "default");
     
     // Extract payment configuration from updated settings
     const updatedConfig: PaymentConfigType = {

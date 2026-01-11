@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-01-11T00:00:00.000Z",
+  "gitCommit": "75f0409b14a21fbb4080b28e126b32f70d382ad3",
+  "versions": {
+    "nextjs": "15.1.11",
+    "react": "18.3.1",
+    "reactDom": "18.3.1"
+  },
+  "performance": {
+    "buildTime": {
+      "value": 179.65,
+      "unit": "seconds",
+      "description": "Time to complete production build"
+    },
+    "bundleSize": {
+      "total": {
+        "value": 2280.64,
+        "unit": "MB",
+        "description": "Total size of .next directory"
+      }
+    },
+    "devServerStartup": {
+      "value": null,
+      "unit": "seconds",
+      "description": "Time for dev server to start (not measured in this run)",
+      "note": "Will be measured manually when needed"
+    },
+    "pageLoadTimes": {
+      "description": "Page load times for key routes (not measured in this run)",
+      "note": "Will be measured manually when needed",
+      "routes": []
+    }
+  },
+  "thresholds": {
+    "buildTime": {
+      "max": 215.58,
+      "description": "120% of baseline (179.65 * 1.2)"
+    },
+    "devStartup": {
+      "max": null,
+      "description": "120% of baseline (to be calculated)"
+    },
+    "pageLoad": {
+      "max": null,
+      "description": "110% of baseline (to be calculated)"
+    }
+  },
+  "notes": [
+    "Build time measured on Windows system",
+    "Bundle size includes all compiled assets in .next directory",
+    "Dev server startup and page load times can be measured manually if needed",
+    "These metrics will be compared against post-migration measurements"
+  ]
+}

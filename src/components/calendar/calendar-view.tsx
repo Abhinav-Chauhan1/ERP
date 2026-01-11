@@ -240,7 +240,7 @@ export function CalendarView({
                       );
                     }}
                     className={cn(
-                      "min-h-[80px] md:min-h-[100px] p-2 border rounded-md text-left hover:bg-accent transition-colors",
+                      "min-h-[120px] md:min-h-[140px] p-2 border rounded-md text-left hover:bg-accent transition-colors",
                       getHighContrastFocusRing(),
                       !isCurrentMonth && "text-muted-foreground bg-muted/50",
                       isTodayDate && "border-primary"
@@ -349,7 +349,7 @@ export function CalendarView({
               <div
                 key={day.toISOString()}
                 role="gridcell"
-                className="border rounded-md p-2 min-h-[200px]"
+                className="border rounded-md p-2 min-h-[280px]"
                 aria-label={`${format(day, "EEEE")}, ${dayEvents.length} events`}
               >
                 <div className="space-y-2">

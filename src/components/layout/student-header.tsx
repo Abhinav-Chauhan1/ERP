@@ -8,8 +8,6 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -78,8 +76,6 @@ export function StudentHeader() {
       </div>
 
       <div className="flex items-center gap-2">
-        <ColorThemeToggle />
-        <ThemeToggle />
         <NotificationCenter />
         <UserButton afterSignOutUrl="/login" />
       </div>

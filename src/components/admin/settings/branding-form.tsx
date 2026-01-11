@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 
 interface BrandingFormProps {
   initialData: SystemSettings | null;
@@ -43,6 +45,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
     twitterUrl: initialData?.twitterUrl || "",
     linkedinUrl: initialData?.linkedinUrl || "",
     instagramUrl: initialData?.instagramUrl || "",
+    fax: initialData?.schoolFax || "",
   });
 
   const handleChange = (
@@ -65,6 +68,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
         schoolAddress: formData.address || undefined,
         schoolWebsite: formData.website || undefined,
         schoolLogo: formData.logo || undefined,
+        schoolFax: formData.fax || undefined,
         tagline: formData.tagline || undefined,
         timezone: initialData?.timezone || "UTC",
         facebookUrl: formData.facebookUrl || undefined,
@@ -196,6 +200,25 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
         </TabsContent>
 
         <TabsContent value="colors" className="space-y-4 mt-4">
+          <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Theme Preferences</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Choose your preferred theme mode and color scheme
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label>Theme Mode:</Label>
+                  <ThemeToggle />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label>Color Theme:</Label>
+                  <ColorThemeToggle />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="primaryColor">Primary Color</Label>
             <div className="flex gap-2">
@@ -356,6 +379,17 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+1 234 567 8900"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fax">Fax</Label>
+              <Input
+                id="fax"
+                name="fax"
+                value={formData.fax}
+                onChange={handleChange}
+                placeholder="+1 234 567 8901"
               />
             </div>
 

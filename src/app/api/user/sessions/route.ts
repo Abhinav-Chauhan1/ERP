@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
+import { cookies } from "next/headers"
 
 /**
  * GET /api/user/sessions
- * Retrieves all active sessions for the current user
+ * Retrieves session information for the current user
+ * 
+ * Note: With JWT strategy, we can only show the current session
+ * as sessions are not stored in the database
  */
 export async function GET() {
   try {
@@ -17,42 +21,42 @@ export async function GET() {
       )
     }
 
-    // Get all sessions for the user
-    const sessions = await db.session.findMany({
-      where: {
-        userId: session.user.id,
-        expires: {
-          gt: new Date() // Only active sessions
-        }
-      },
-      orderBy: {
-        expires: 'desc'
-      },
-      select: {
-        id: true,
-        sessionToken: true,
-        expires: true
-      }
-    })
+    // With JWT strategy, we can only show the current session
+    // Get session cookie to extract expiry
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("authjs.session-token") || 
+                         cookieStore.get("__Secure-authjs.session-token")
 
-    // Get current session token from the request
-    const currentSessionToken = session ? await getCurrentSessionToken() : null
+    if (!sessionCookie) {
+      return NextResponse.json({
+        success: true,
+        sessions: []
+      })
+    }
 
-    // Format sessions with additional info
-    const formattedSessions = sessions.map(s => ({
-      id: s.id,
-      isCurrent: s.sessionToken === currentSessionToken,
-      expiresAt: s.expires,
-      createdAt: new Date(s.expires.getTime() - 1800000), // Approximate (30 min before expiry)
-      // Note: Device and location info would require additional tracking
-      // This is a simplified version
-      device: "Unknown Device",
-      location: "Unknown Location"
-    }))
+    // Calculate expiry based on maxAge (30 minutes = 1800 seconds)
+    const maxAge = 1800 // from auth.ts config
+    const expiresAt = new Date(Date.now() + maxAge * 1000)
+    
+    // Get user agent for device info
+    const userAgent = (await import("next/headers")).headers().then(h => h.get("user-agent") || "Unknown")
+    const ua = await userAgent
+    
+    const device = getDeviceFromUserAgent(ua)
+
+    const currentSession = {
+      id: "current",
+      isCurrent: true,
+      expiresAt: expiresAt,
+      createdAt: new Date(), // Approximate
+      device: device,
+      location: "Current Location" // Would need IP geolocation service for actual location
+    }
 
     return NextResponse.json({
       success: true,
-      sessions: formattedSessions
+      sessions: [currentSession],
+      note: "JWT sessions: Only current session is displayed. For multi-device session management, consider switching to database session strategy."
     })
   } catch (error) {
     console.error("Error fetching sessions:", error)
@@ -65,7 +69,7 @@ export async function GET() {
 
 /**
  * DELETE /api/user/sessions
- * Revokes a specific session or all sessions except current
+ * With JWT strategy, we can only sign out the current session
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -82,87 +86,19 @@ export async function DELETE(request: NextRequest) {
     const sessionId = searchParams.get("sessionId")
     const revokeAll = searchParams.get("revokeAll") === "true"
 
-    if (revokeAll) {
-      // Get current session to preserve it
-      const currentSession = await db.session.findFirst({
-        where: { userId: session.user.id },
-        orderBy: { expires: 'desc' }
-      })
-
-      // Delete all sessions except current
-      const result = await db.session.deleteMany({
-        where: {
-          userId: session.user.id,
-          id: currentSession ? { not: currentSession.id } : undefined
-        }
-      })
-
-      // Log session revocation
-      await db.auditLog.create({
-        data: {
-          action: "DELETE",
-          resource: "SESSION",
-          userId: session.user.id,
-          changes: {
-            event: "ALL_SESSIONS_REVOKED",
-            sessionsRevoked: result.count
-          }
-        }
-      })
-
+    // With JWT strategy, we can't revoke other sessions
+    // User needs to sign out from each device manually
+    if (revokeAll || sessionId) {
       return NextResponse.json({
-        success: true,
-        message: `${result.count} session(s) revoked successfully`
-      })
-    } else if (sessionId) {
-      // Verify the session belongs to the user
-      const sessionToDelete = await db.session.findUnique({
-        where: { id: sessionId }
-      })
-
-      if (!sessionToDelete) {
-        return NextResponse.json(
-          { success: false, error: "Session not found" },
-          { status: 404 }
-        )
-      }
-
-      if (sessionToDelete.userId !== session.user.id) {
-        return NextResponse.json(
-          { success: false, error: "Unauthorized to revoke this session" },
-          { status: 403 }
-        )
-      }
-
-      // Delete the session
-      await db.session.delete({
-        where: { id: sessionId }
-      })
-
-      // Log session revocation
-      await db.auditLog.create({
-        data: {
-          action: "DELETE",
-          resource: "SESSION",
-          resourceId: sessionId,
-          userId: session.user.id,
-          changes: {
-            event: "SESSION_REVOKED",
-            sessionId
-          }
-        }
-      })
-
-      return NextResponse.json({
-        success: true,
-        message: "Session revoked successfully"
-      })
-    } else {
-      return NextResponse.json(
-        { success: false, error: "Missing sessionId or revokeAll parameter" },
-        { status: 400 }
-      )
+        success: false,
+        error: "Session revocation not available with JWT strategy. Please sign out from each device manually."
+      }, { status: 400 })
     }
+
+    return NextResponse.json({
+      success: false,
+      error: "Invalid request"
+    }, { status: 400 })
   } catch (error) {
     console.error("Error revoking session:", error)
     return NextResponse.json(
@@ -173,22 +109,25 @@ export async function DELETE(request: NextRequest) {
 }
 
 /**
- * Helper function to get current session token
- * This is a simplified version - in production you'd extract from cookies
+ * Helper function to extract device info from user agent
  */
-async function getCurrentSessionToken(): Promise<string | null> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) return null
-
-    const currentSession = await db.session.findFirst({
-      where: { userId: session.user.id },
-      orderBy: { expires: 'desc' }
-    })
-
-    return currentSession?.sessionToken || null
-  } catch (error) {
-    console.error("Error getting current session token:", error)
-    return null
+function getDeviceFromUserAgent(userAgent: string): string {
+  const ua = userAgent.toLowerCase()
+  
+  if (ua.includes("mobile") || ua.includes("android") || ua.includes("iphone")) {
+    if (ua.includes("iphone")) return "iPhone"
+    if (ua.includes("android")) return "Android Phone"
+    return "Mobile Device"
   }
+  
+  if (ua.includes("tablet") || ua.includes("ipad")) {
+    if (ua.includes("ipad")) return "iPad"
+    return "Tablet"
+  }
+  
+  if (ua.includes("windows")) return "Windows PC"
+  if (ua.includes("mac")) return "Mac"
+  if (ua.includes("linux")) return "Linux PC"
+  
+  return "Desktop Browser"
 }

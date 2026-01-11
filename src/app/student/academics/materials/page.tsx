@@ -45,17 +45,18 @@ interface Subject {
   syllabus?: Syllabus | null;
 }
 
-export default async function LearningMaterialsPage({
-  searchParams
-}: {
-  searchParams: Promise<{ subject?: string }>
-}) {
+export default async function LearningMaterialsPage(
+  props: {
+    searchParams: Promise<{ subject?: string }>
+  }
+) {
+  const searchParams = await props.searchParams;
   // Fix: await searchParams before accessing its properties
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const selectedSubjectId = resolvedSearchParams.subject || "";
-  
+
   const subjects = await getStudentSubjects();
-  
+
   return (
     <div className="flex flex-col gap-4 p-6">
       {/* Page Header */}

@@ -209,9 +209,9 @@ export async function updateProfile(input: UpdateProfileInput) {
     }
     
     // Invalidate cache and revalidate settings page
-    revalidateTag(CACHE_TAGS.SETTINGS);
-    revalidateTag(CACHE_TAGS.PARENTS);
-    revalidateTag(`parent-${parent.id}`);
+    revalidateTag(CACHE_TAGS.SETTINGS, "default");
+    revalidateTag(CACHE_TAGS.PARENTS, "default");
+    revalidateTag(`parent-${parent.id}`, "default");
     revalidatePath("/parent/settings");
     
     return {
@@ -331,9 +331,9 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
     }
     
     // Invalidate cache and revalidate settings page
-    revalidateTag(CACHE_TAGS.SETTINGS);
-    revalidateTag(CACHE_TAGS.PARENTS);
-    revalidateTag(`parent-${parent.id}`);
+    revalidateTag(CACHE_TAGS.SETTINGS, "default");
+    revalidateTag(CACHE_TAGS.PARENTS, "default");
+    revalidateTag(`parent-${parent.id}`, "default");
     revalidatePath("/parent/settings");
     
     return {
@@ -400,9 +400,9 @@ export async function uploadAvatar(formData: FormData) {
       });
       
       // Invalidate cache and revalidate settings page
-      revalidateTag(CACHE_TAGS.SETTINGS);
-      revalidateTag(CACHE_TAGS.PARENTS);
-      revalidateTag(CACHE_TAGS.USERS);
+      revalidateTag(CACHE_TAGS.SETTINGS, "default");
+      revalidateTag(CACHE_TAGS.PARENTS, "default");
+      revalidateTag(CACHE_TAGS.USERS, "default");
       revalidatePath("/parent/settings");
       
       return {
@@ -450,9 +450,9 @@ export async function updateAvatarUrl(input: AvatarUrlInput) {
     });
     
     // Invalidate cache and revalidate settings page
-    revalidateTag(CACHE_TAGS.SETTINGS);
-    revalidateTag(CACHE_TAGS.PARENTS);
-    revalidateTag(CACHE_TAGS.USERS);
+    revalidateTag(CACHE_TAGS.SETTINGS, "default");
+    revalidateTag(CACHE_TAGS.PARENTS, "default");
+    revalidateTag(CACHE_TAGS.USERS, "default");
     revalidatePath("/parent/settings");
     
     return {
@@ -493,9 +493,9 @@ export async function removeAvatar() {
     });
     
     // Invalidate cache and revalidate settings page
-    revalidateTag(CACHE_TAGS.SETTINGS);
-    revalidateTag(CACHE_TAGS.PARENTS);
-    revalidateTag(CACHE_TAGS.USERS);
+    revalidateTag(CACHE_TAGS.SETTINGS, "default");
+    revalidateTag(CACHE_TAGS.PARENTS, "default");
+    revalidateTag(CACHE_TAGS.USERS, "default");
     revalidatePath("/parent/settings");
     
     return {

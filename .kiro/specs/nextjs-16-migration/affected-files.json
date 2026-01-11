@@ -1,0 +1,182 @@
+{
+  "timestamp": "2026-01-11T00:00:00.000Z",
+  "gitCommit": "75f0409b14a21fbb4080b28e126b32f70d382ad3",
+  "summary": {
+    "totalFilesWithParams": 107,
+    "totalFilesWithSearchParams": 107,
+    "totalFilesWithCookies": 1,
+    "totalFilesWithHeaders": 3,
+    "totalAffectedFiles": 111
+  },
+  "categories": {
+    "paramsFiles": {
+      "description": "Files using params (route parameters)",
+      "count": 107,
+      "files": [
+        "src/app/(auth)/verify-email/page.tsx",
+        "src/app/admin/academic/academic-years/[id]/page.tsx",
+        "src/app/admin/academic/syllabus/page.tsx",
+        "src/app/admin/academic/syllabus/modules/page.tsx",
+        "src/app/admin/academic/terms/page.tsx",
+        "src/app/admin/admissions/merit-lists/[id]/page.tsx",
+        "src/app/admin/admissions/merit-lists/[id]/export/page.tsx",
+        "src/app/admin/admissions/[id]/page.tsx",
+        "src/app/admin/alumni/[id]/page.tsx",
+        "src/app/admin/assessment/exams/[id]/page.tsx",
+        "src/app/admin/assessment/report-cards/templates/[id]/page.tsx",
+        "src/app/admin/assessment/report-cards/[id]/page.tsx",
+        "src/app/admin/assessment/subject-mark-config/[examId]/page.tsx",
+        "src/app/admin/audit-logs/page.tsx",
+        "src/app/admin/calendar/page.tsx",
+        "src/app/admin/certificates/templates/[id]/page.tsx",
+        "src/app/admin/certificates/templates/[id]/preview/page.tsx",
+        "src/app/admin/classes/[id]/page.tsx",
+        "src/app/admin/communication/announcements/[id]/page.tsx",
+        "src/app/admin/communication/history/[id]/page.tsx",
+        "src/app/admin/communication/templates/[id]/page.tsx",
+        "src/app/admin/communication/templates/[id]/edit/page.tsx",
+        "src/app/admin/documents/[id]/page.tsx",
+        "src/app/admin/events/[id]/page.tsx",
+        "src/app/admin/finance/receipt-audit-logs/page.tsx",
+        "src/app/admin/library/books/page.tsx",
+        "src/app/admin/library/books/[id]/page.tsx",
+        "src/app/admin/library/books/[id]/edit/page.tsx",
+        "src/app/admin/reports/scheduled/[id]/edit/page.tsx",
+        "src/app/admin/teaching/lessons/[id]/page.tsx",
+        "src/app/admin/teaching/subjects/[id]/page.tsx",
+        "src/app/admin/teaching/subjects/[id]/assign-teacher/page.tsx",
+        "src/app/admin/transport/routes/[id]/page.tsx",
+        "src/app/admin/transport/routes/[id]/edit/page.tsx",
+        "src/app/admin/transport/vehicles/page.tsx",
+        "src/app/admin/transport/vehicles/[id]/page.tsx",
+        "src/app/admin/users/administrators/[id]/page.tsx",
+        "src/app/admin/users/administrators/[id]/edit/page.tsx",
+        "src/app/admin/users/parents/create/page.tsx",
+        "src/app/admin/users/parents/[id]/page.tsx",
+        "src/app/admin/users/parents/[id]/edit/page.tsx",
+        "src/app/admin/users/students/[id]/page.tsx",
+        "src/app/admin/users/students/[id]/edit/page.tsx",
+        "src/app/admin/users/teachers/[id]/page.tsx",
+        "src/app/admin/users/teachers/[id]/edit/page.tsx",
+        "src/app/parent/academics/homework/page.tsx",
+        "src/app/parent/academics/process/page.tsx",
+        "src/app/parent/academics/schedule/page.tsx",
+        "src/app/parent/academics/subjects/page.tsx",
+        "src/app/parent/academics/subjects/[id]/page.tsx",
+        "src/app/parent/academics/timetable/page.tsx",
+        "src/app/parent/attendance/page.tsx",
+        "src/app/parent/calendar/page.tsx",
+        "src/app/parent/children/progress/page.tsx",
+        "src/app/parent/children/[id]/page.tsx",
+        "src/app/parent/children/[id]/attendance/page.tsx",
+        "src/app/parent/children/[id]/performance/page.tsx",
+        "src/app/parent/communication/messages/page.tsx",
+        "src/app/parent/documents/page.tsx",
+        "src/app/parent/fees/history/page.tsx",
+        "src/app/parent/fees/overview/page.tsx",
+        "src/app/parent/fees/payment/page.tsx",
+        "src/app/parent/fees/payment/failed/page.tsx",
+        "src/app/parent/fees/payment/success/page.tsx",
+        "src/app/parent/fees/receipts/page.tsx",
+        "src/app/parent/fees/upload-receipt/page.tsx",
+        "src/app/parent/performance/report-cards/[id]/page.tsx",
+        "src/app/parent/performance/reports/page.tsx",
+        "src/app/parent/performance/results/page.tsx",
+        "src/app/student/academics/materials/page.tsx",
+        "src/app/student/academics/materials/[id]/page.tsx",
+        "src/app/student/academics/subjects/[id]/page.tsx",
+        "src/app/student/academics/subjects/[id]/syllabus/page.tsx",
+        "src/app/student/assessments/assignments/[id]/page.tsx",
+        "src/app/student/assessments/exams/online/[id]/take/page.tsx",
+        "src/app/student/assessments/exams/[id]/page.tsx",
+        "src/app/student/assessments/report-cards/[id]/page.tsx",
+        "src/app/student/assessments/results/[id]/page.tsx",
+        "src/app/student/calendar/page.tsx",
+        "src/app/student/communication/messages/page.tsx",
+        "src/app/student/courses/[courseId]/page.tsx",
+        "src/app/student/courses/[courseId]/lessons/[lessonId]/page.tsx",
+        "src/app/student/events/[eventId]/page.tsx",
+        "src/app/teacher/assessments/assignments/[id]/page.tsx",
+        "src/app/teacher/assessments/assignments/[id]/edit/page.tsx",
+        "src/app/teacher/assessments/exams/[id]/page.tsx",
+        "src/app/teacher/assessments/online-exams/[id]/page.tsx",
+        "src/app/teacher/assessments/question-bank/[id]/edit/page.tsx",
+        "src/app/teacher/assessments/results/assignments/[id]/page.tsx",
+        "src/app/teacher/assessments/results/exams/[id]/page.tsx",
+        "src/app/teacher/attendance/mark/page.tsx",
+        "src/app/teacher/attendance/reports/page.tsx",
+        "src/app/teacher/calendar/page.tsx",
+        "src/app/teacher/documents/page.tsx",
+        "src/app/teacher/documents/[id]/page.tsx",
+        "src/app/teacher/events/page.tsx",
+        "src/app/teacher/events/[id]/page.tsx",
+        "src/app/teacher/students/page.tsx",
+        "src/app/teacher/students/[id]/page.tsx",
+        "src/app/teacher/students/[id]/attendance/page.tsx",
+        "src/app/teacher/teaching/classes/[id]/page.tsx",
+        "src/app/teacher/teaching/lessons/page.tsx",
+        "src/app/teacher/teaching/lessons/create/page.tsx",
+        "src/app/teacher/teaching/lessons/[id]/page.tsx",
+        "src/app/teacher/teaching/lessons/[id]/edit/page.tsx",
+        "src/app/teacher/teaching/subjects/[id]/page.tsx",
+        "src/app/verify-certificate/[code]/page.tsx"
+      ]
+    },
+    "cookiesFiles": {
+      "description": "Files using cookies() from next/headers",
+      "count": 1,
+      "files": [
+        "src/lib/utils/csrf.ts"
+      ]
+    },
+    "headersFiles": {
+      "description": "Files using headers() from next/headers",
+      "count": 3,
+      "files": [
+        "src/lib/utils/audit-log.ts",
+        "src/lib/services/auth-audit-service.ts",
+        "src/lib/actions/auth-actions.ts"
+      ]
+    }
+  },
+  "migrationStrategy": {
+    "automated": {
+      "description": "Files that can be migrated using Next.js codemod",
+      "estimatedCount": 100,
+      "note": "Most server components with params/searchParams"
+    },
+    "manual": {
+      "description": "Files requiring manual migration",
+      "estimatedCount": 11,
+      "categories": [
+        {
+          "type": "Client components with params",
+          "count": 4,
+          "note": "Need React.use() instead of await"
+        },
+        {
+          "type": "cookies() usage",
+          "count": 1,
+          "note": "Need await before cookies() calls"
+        },
+        {
+          "type": "headers() usage",
+          "count": 3,
+          "note": "Need await before headers() calls"
+        },
+        {
+          "type": "Complex patterns",
+          "count": 3,
+          "note": "May need special handling"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "All page.tsx files with dynamic routes ([id], [code], etc.) use params",
+    "Many pages also use searchParams for filtering and pagination",
+    "Client components using params will need React.use() instead of await",
+    "The codemod should handle most server component migrations automatically",
+    "Manual review required for all files after codemod execution"
+  ]
+}

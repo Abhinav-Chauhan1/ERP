@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-export { default } from "./page-client";
+export { /* @next-codemod-error `default` export is re-exported. Check if this component uses `params` or `searchParams`*/
+default } from "./page-client";
 

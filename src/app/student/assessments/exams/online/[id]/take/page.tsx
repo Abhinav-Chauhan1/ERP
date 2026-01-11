@@ -1,7 +1,8 @@
 "use client";
 
+import { use } from "react";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -50,10 +51,9 @@ interface ExamAttempt {
   };
 }
 
-export default function TakeExamPage() {
-  const params = useParams();
+export default function TakeExamPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: examId } = use(params);
   const router = useRouter();
-  const examId = params.id as string;
 
   const [attempt, setAttempt] = useState<ExamAttempt | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);

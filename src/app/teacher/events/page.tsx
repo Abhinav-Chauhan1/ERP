@@ -94,7 +94,10 @@ function EventsLoading() {
   );
 }
 
-export default function TeacherEventsPage({ searchParams }: { searchParams: Promise<{ category?: string; month?: string; year?: string }> }) {
+export default async function TeacherEventsPage(
+  props: { searchParams: Promise<{ category?: string; month?: string; year?: string }> }
+) {
+  const searchParams = await props.searchParams;
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
@@ -108,7 +111,7 @@ export default function TeacherEventsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <Suspense fallback={<EventsLoading />}>
-        <EventsContent searchParams={searchParams} />
+        <EventsContent searchParams={props.searchParams} />
       </Suspense>
     </div>
   );

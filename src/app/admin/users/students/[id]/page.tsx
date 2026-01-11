@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { use } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -262,9 +263,8 @@ function DetailItem({ label, value, icon: Icon }: { label: string; value: string
   );
 }
 
-export default function StudentDetailPage() {
-  const params = useParams();
-  const id = params.id as string;
+export default function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
 
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);

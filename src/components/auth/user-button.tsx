@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ interface UserButtonProps {
 export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   if (!session?.user) {
     return null;
@@ -40,6 +41,21 @@ export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
       .toUpperCase()
       .slice(0, 2)
     : user.email.slice(0, 2).toUpperCase();
+
+  // Determine the base path from current route
+  const getBasePath = () => {
+    if (pathname.startsWith("/admin")) return "/admin";
+    if (pathname.startsWith("/teacher")) return "/teacher";
+    if (pathname.startsWith("/student")) return "/student";
+    if (pathname.startsWith("/parent")) return "/parent";
+    if (pathname.startsWith("/alumni")) return "/alumni";
+    return "";
+  };
+
+  const basePath = getBasePath();
+  
+  // Only student and alumni have profile pages
+  const hasProfilePage = basePath === "/student" || basePath === "/alumni";
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -64,14 +80,18 @@ export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/settings")}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
+        {basePath && (
+          <DropdownMenuItem onClick={() => router.push(`${basePath}/settings`)}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+        )}
+        {hasProfilePage && (
+          <DropdownMenuItem onClick={() => router.push(`${basePath}/profile`)}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />

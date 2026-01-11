@@ -266,14 +266,33 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                         {teacher.subjects.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {teacher.subjects.map((subjectTeacher) => (
-                                    <div key={subjectTeacher.id} className="p-4 rounded-md border bg-accent flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-full">
-                                            <BookOpen className="h-5 w-5 text-primary" />
+                                    <div key={subjectTeacher.id} className="p-4 rounded-md border bg-accent flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-full">
+                                                <BookOpen className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{subjectTeacher.subject.name}</p>
+                                                <p className="text-xs text-muted-foreground">{subjectTeacher.subject.code}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium">{subjectTeacher.subject.name}</p>
-                                            <p className="text-xs text-muted-foreground">{subjectTeacher.subject.code}</p>
-                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                            onClick={async () => {
+                                                const { deleteSubjectTeacherAssignment } = await import("@/lib/actions/subjectTeacherActions");
+                                                const result = await deleteSubjectTeacherAssignment(subjectTeacher.id);
+                                                if (result.success) {
+                                                    toast.success("Subject removed successfully");
+                                                    handleRefresh();
+                                                } else {
+                                                    toast.error(result.error || "Failed to remove subject");
+                                                }
+                                            }}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
@@ -300,13 +319,32 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                     <div key={classTeacher.id} className="p-3 rounded-md border flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-primary"></div>
-                                            <span className="font-medium">{classTeacher.class.name}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{classTeacher.class.name}</span>
+                                                {classTeacher.isClassHead && (
+                                                    <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 w-fit mt-1">
+                                                        Class Head
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
-                                        {classTeacher.isClassHead && (
-                                            <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-                                                Class Head
-                                            </Badge>
-                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                            onClick={async () => {
+                                                const { removeTeacherFromClass } = await import("@/lib/actions/classesActions");
+                                                const result = await removeTeacherFromClass(classTeacher.id);
+                                                if (result.success) {
+                                                    toast.success("Class removed successfully");
+                                                    handleRefresh();
+                                                } else {
+                                                    toast.error(result.error || "Failed to remove class");
+                                                }
+                                            }}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
