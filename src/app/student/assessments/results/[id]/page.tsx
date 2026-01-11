@@ -12,15 +12,16 @@ export const metadata: Metadata = {
   description: "View detailed information about your exam result",
 };
 
-export default async function ExamResultPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function ExamResultPage(
+  props: { 
+    params: Promise<{ id: string }> 
+  }
+) {
+  const params = await props.params;
   // Fix the params issue by awaiting it first
   const resolvedParams = await Promise.resolve(params);
   const examDetails = await getExamDetails(resolvedParams.id);
-  
+
   // Check if the result exists
   if (!examDetails.result) {
     return (
@@ -42,11 +43,11 @@ export default async function ExamResultPage({
       </div>
     );
   }
-  
+
   // Calculate percentage
   const percentage = Math.round((examDetails.result.marks / examDetails.totalMarks) * 100);
   const isPassing = examDetails.result.marks >= examDetails.passingMarks;
-  
+
   return (
     <div className="container p-6">
       <Link href="/student/assessments/results">

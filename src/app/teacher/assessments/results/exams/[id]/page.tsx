@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getExamResultDetails, updateExamResults } from "@/lib/actions/teacherResultsActions";
@@ -39,7 +39,8 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function ExamResultDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function ExamResultDetailPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [examData, setExamData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
   useEffect(() => {
     paramsPromise.then(p => setExamId(p.id));
   }, [paramsPromise]);
-  
+
   useEffect(() => {
     if (!examId) return;
     
@@ -73,7 +74,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
     
     fetchExamDetails();
   }, [examId]);
-  
+
   const handleResultChange = (studentId: string, field: string, value: any) => {
     setStudents(prevStudents => 
       prevStudents.map(student => 
@@ -83,7 +84,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
       )
     );
   };
-  
+
   const saveResults = async () => {
     setIsSaving(true);
     try {
@@ -115,7 +116,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
       setIsSaving(false);
     }
   };
-  
+
   const handleAbsentToggle = (studentId: string, isAbsent: boolean) => {
     setStudents(prevStudents => 
       prevStudents.map(student => 
@@ -129,25 +130,25 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
       )
     );
   };
-  
+
   const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   // Sort students by marks (highest to lowest)
   const sortedStudents = [...filteredStudents].sort((a, b) => {
     if (a.isAbsent && !b.isAbsent) return 1;
     if (!a.isAbsent && b.isAbsent) return -1;
     return b.marks - a.marks;
   });
-  
+
   // Prepare data for charts
   const gradeData = examData ? Object.entries(examData.statistics.gradeDistribution).map(
     ([grade, count]) => ({ grade, count })
   ) : [];
-  
+
   const scoreRanges = [
     { range: '91-100', count: 0 },
     { range: '81-90', count: 0 },
@@ -160,7 +161,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
     { range: '11-20', count: 0 },
     { range: '0-10', count: 0 },
   ];
-  
+
   // Calculate score distribution
   if (examData) {
     examData.students.forEach((student: any) => {
@@ -179,7 +180,7 @@ export default function ExamResultDetailPage({ params: paramsPromise }: { params
       else scoreRanges[9].count++;
     });
   }
-  
+
   // Filter only ranges with counts for better visualization
   const filteredScoreRanges = scoreRanges.filter(range => range.count > 0);
 

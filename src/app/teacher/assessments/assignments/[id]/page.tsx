@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAssignmentDetails, updateAssignmentGrades } from "@/lib/actions/teacherAssignmentsActions";
@@ -44,7 +44,8 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function AssignmentDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function AssignmentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [assignment, setAssignment] = useState<any>(null);
   const [loading, setLoading] = useState(true);

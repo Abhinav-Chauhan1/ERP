@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAssignmentResultDetails } from "@/lib/actions/teacherResultsActions";
@@ -37,7 +37,8 @@ import {
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
-export default function AssignmentResultDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function AssignmentResultDetailPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [assignmentData, setAssignmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export default function AssignmentResultDetailPage({ params: paramsPromise }: { 
   useEffect(() => {
     paramsPromise.then(p => setAssignmentId(p.id));
   }, [paramsPromise]);
-  
+
   useEffect(() => {
     if (!assignmentId) return;
     
@@ -67,13 +68,13 @@ export default function AssignmentResultDetailPage({ params: paramsPromise }: { 
     
     fetchAssignmentDetails();
   }, [assignmentId]);
-  
+
   const filteredSubmissions = assignmentData?.submissions.filter((submission: any) => 
     submission.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     submission.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
     submission.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
-  
+
   // Sort submissions by marks (highest to lowest)
   const sortedSubmissions = [...filteredSubmissions].sort((a, b) => {
     if (a.status !== "GRADED" && b.status === "GRADED") return 1;
@@ -81,7 +82,7 @@ export default function AssignmentResultDetailPage({ params: paramsPromise }: { 
     if (a.status === "GRADED" && b.status === "GRADED") return (b.marks || 0) - (a.marks || 0);
     return 0;
   });
-  
+
   // Prepare data for charts
   const distributionData = assignmentData ? Object.entries(assignmentData.statistics.marksDistribution || {}).map(
     ([range, count]) => ({ range, count })

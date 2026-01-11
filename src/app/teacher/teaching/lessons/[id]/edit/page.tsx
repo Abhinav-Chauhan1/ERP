@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -27,12 +27,13 @@ import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/a
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
-export default function EditLessonPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function EditLessonPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paramLessonId, setParamLessonId] = useState<string>("");
-  
+
   const [lessonId, setLessonId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -41,7 +42,7 @@ export default function EditLessonPage({ params: paramsPromise }: { params: Prom
   const [duration, setDuration] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
-  
+
   const [subjects, setSubjects] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
 

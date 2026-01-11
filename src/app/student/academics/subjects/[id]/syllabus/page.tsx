@@ -12,11 +12,12 @@ export const metadata: Metadata = {
   description: "View subject syllabus and learning materials",
 };
 
-export default async function SubjectSyllabusPage({
-  params
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function SubjectSyllabusPage(
+  props: {
+    params: Promise<{ id: string }>
+  }
+) {
+  const params = await props.params;
   const paramsResolved = await Promise.resolve(params);
   const subjectId = await paramsResolved.id;
   const subjectDetails = await getSubjectDetails(subjectId);

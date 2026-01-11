@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -41,7 +41,8 @@ import { getAssignmentDetails, getTeacherClasses, updateAssignment } from "@/lib
 import { toast } from "react-hot-toast";
 import { CldUploadWidget } from "next-cloudinary";
 
-export default function EditAssignmentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function EditAssignmentPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +53,7 @@ export default function EditAssignmentPage({ params: paramsPromise }: { params: 
   useEffect(() => {
     paramsPromise.then(p => setAssignmentId(p.id));
   }, [paramsPromise]);
-  
+
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -63,7 +64,7 @@ export default function EditAssignmentPage({ params: paramsPromise }: { params: 
   const [totalMarks, setTotalMarks] = useState("100");
   const [instructions, setInstructions] = useState("");
   const [attachments, setAttachments] = useState<{name: string; url: string; size: number; type: string}[]>([]);
-  
+
   // Options for selects
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -105,7 +106,7 @@ export default function EditAssignmentPage({ params: paramsPromise }: { params: 
     
     fetchData();
   }, [assignmentId]);
-  
+
   const handleClassToggle = (classId: string) => {
     setSelectedClasses(prev => {
       if (prev.includes(classId)) {

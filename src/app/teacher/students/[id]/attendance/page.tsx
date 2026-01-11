@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,8 @@ import { toast } from "react-hot-toast";
 import { AttendanceStatus } from "@prisma/client";
 import { AttendanceCalendarWidget } from "@/components/attendance/attendance-calendar-widget";
 
-export default function StudentAttendanceReportPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function StudentAttendanceReportPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [studentId, setStudentId] = useState<string>("");
 

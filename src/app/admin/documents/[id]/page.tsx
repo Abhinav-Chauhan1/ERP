@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OptimizedImage } from "@/components/shared/optimized-image";
@@ -76,7 +76,8 @@ const getFileIcon = (fileType?: string, size = 24) => {
   return <FileBox size={size} />;
 };
 
-export default function DocumentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function DocumentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);

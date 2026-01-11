@@ -10,11 +10,12 @@ export const metadata: Metadata = {
   description: "View detailed information about your subject",
 };
 
-export default async function SubjectDetailsPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function SubjectDetailsPage(
+  props: { 
+    params: Promise<{ id: string }> 
+  }
+) {
+  const params = await props.params;
   // Fix by awaiting the params object if it's a promise
   const paramsResolved = await Promise.resolve(params);
   const subjectId = await paramsResolved.id;

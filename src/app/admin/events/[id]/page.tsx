@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OptimizedImage } from "@/components/shared/optimized-image";
@@ -100,7 +100,8 @@ const addParticipantSchema = z.object({
   role: z.string().default("ATTENDEE"),
 });
 
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EventDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);

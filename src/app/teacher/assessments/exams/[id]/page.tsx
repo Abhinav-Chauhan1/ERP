@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getTeacherExam, updateExamResults } from "@/lib/actions/teacherExamsActions";
@@ -41,7 +41,8 @@ import { format } from "date-fns";
 import { Chart } from "@/components/dashboard/chart";
 import { toast } from "react-hot-toast";
 
-export default function ExamDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function ExamDetailPage(props: { params: Promise<{ id: string }> }) {
+  const paramsPromise = use(props.params);
   const router = useRouter();
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
