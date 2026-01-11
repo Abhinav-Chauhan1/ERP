@@ -278,11 +278,12 @@ export function startScheduledBackups(): void {
   scheduledTask = cron.schedule('0 2 * * *', async () => {
     await executeScheduledBackup();
   }, {
-    timezone: process.env.TZ || 'UTC'
+    // Remove leading colon from timezone if present (e.g., ":UTC" -> "UTC")
+    timezone: (process.env.TZ || 'UTC').replace(/^:/, '')
   });
 
   console.log('✓ Scheduled backups started');
-  console.log(`  Schedule: Daily at 2:00 AM (${process.env.TZ || 'UTC'})`);
+  console.log(`  Schedule: Daily at 2:00 AM (${(process.env.TZ || 'UTC').replace(/^:/, '')})`);
 }
 
 /**
