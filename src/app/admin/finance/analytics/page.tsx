@@ -135,39 +135,6 @@ export default function AnalyticsPage() {
 
     toast.success("Analytics exported successfully");
   }
-        structure.classNames.join(", "),
-        structure.isActive ? "Active" : "Inactive",
-        structure.isTemplate ? "Yes" : "No",
-        structure.studentsAffected,
-        structure.totalAmount,
-        structure.revenueProjection,
-        new Date(structure.createdAt).toLocaleDateString(),
-      ]),
-    ];
-    const detailsSheet = XLSX.utils.aoa_to_sheet(detailsData);
-    XLSX.utils.book_append_sheet(workbook, detailsSheet, "Structure Details");
-
-    // Generate Excel file
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    // Download file
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `fee-structure-analytics-${new Date().toISOString().split("T")[0]}.xlsx`
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast.success("Analytics exported to Excel");
-  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">

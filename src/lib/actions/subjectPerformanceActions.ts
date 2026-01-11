@@ -458,9 +458,6 @@ export async function exportSubjectPerformanceToExcel(filters: SubjectPerformanc
       { width: 10 }, // Count
       { width: 15 }, // Percentage
     ];
-      { wch: 10 }, // Count
-      { wch: 12 }, // Percentage
-    ];
 
     // Generate Excel buffer
     const excelBuffer = await workbook.xlsx.writeBuffer();
