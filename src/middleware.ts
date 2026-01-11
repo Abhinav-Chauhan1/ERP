@@ -29,6 +29,7 @@ function matchesRoute(pathname: string, patterns: string[]): boolean {
 const adminRoutePatterns = ["/admin"];
 const teacherRoutePatterns = ["/teacher", "/shared"];
 const studentRoutePatterns = ["/student", "/shared"];
+const alumniRoutePatterns = ["/alumni"];
 const parentRoutePatterns = ["/parent", "/shared"];
 const publicRoutePatterns = [
   "/",
@@ -214,7 +215,8 @@ export default auth(async (req) => {
       return NextResponse.redirect(new URL("/teacher", req.url));
     }
   } else if (role === UserRole.STUDENT) {
-    // Students cannot access admin or teacher routes
+    // Students can access student routes and alumni routes (for graduated students)
+    // Alumni routes are accessible to students with graduated status
     if (matchesRoute(pathname, adminRoutePatterns) || matchesRoute(pathname, teacherRoutePatterns)) {
       // Log failed authorization - role-based access denied
       const { logAuthorizationFailure } = await import("@/lib/services/auth-audit-service");
@@ -228,16 +230,23 @@ export default auth(async (req) => {
 
       return NextResponse.redirect(new URL("/student", req.url));
     }
+    
+    // Allow access to alumni routes for students (permission check will verify graduated status in route handler)
+    if (matchesRoute(pathname, alumniRoutePatterns)) {
+      return NextResponse.next();
+    }
   } else if (role === UserRole.PARENT) {
-    // Parents cannot access admin, teacher, or student routes
+    // Parents cannot access admin, teacher, student, or alumni routes
     if (matchesRoute(pathname, adminRoutePatterns) ||
       matchesRoute(pathname, teacherRoutePatterns) ||
-      matchesRoute(pathname, studentRoutePatterns)) {
+      matchesRoute(pathname, studentRoutePatterns) ||
+      matchesRoute(pathname, alumniRoutePatterns)) {
       // Log failed authorization - role-based access denied
       const { logAuthorizationFailure } = await import("@/lib/services/auth-audit-service");
       let requiredRole = "ADMIN";
       if (matchesRoute(pathname, teacherRoutePatterns)) requiredRole = "TEACHER";
       if (matchesRoute(pathname, studentRoutePatterns)) requiredRole = "STUDENT";
+      if (matchesRoute(pathname, alumniRoutePatterns)) requiredRole = "STUDENT";
 
       await logAuthorizationFailure(
         session.user.id,

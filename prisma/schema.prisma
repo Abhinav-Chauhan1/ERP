@@ -246,6 +246,8 @@ model Student {
   quizAttempts          QuizAttempt[] // LMS quiz attempts
   admissionApplication  AdmissionApplication? // Link to original admission application
   coScholasticGrades    CoScholasticGrade[] // Co-scholastic activity grades
+  alumni                Alumni? // Alumni profile (created when student graduates)
+  promotionRecords      PromotionRecord[] // Promotion history records
 
   @@index([aadhaarNumber])
   @@index([abcId])
@@ -1964,7 +1966,6 @@ model SystemSettings {
   timezone      String  @default("UTC")
   tagline       String? // School tagline/motto
 
-
   // Academic Settings
   currentAcademicYear String?
   currentTerm         String?
@@ -3371,3 +3372,130 @@ model UserCalendarPreferences {
 
 // DEPRECATED: SchoolBranding model has been merged into SystemSettings
 // This model will be removed in a future migration
+
+// Student Promotion and Alumni Management System Models
+
+// Alumni profile with extended information
+model Alumni {
+  id        String  @id @default(cuid())
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  studentId String  @unique
+
+  // Graduation details
+  graduationDate    DateTime
+  finalClass        String // e.g., "Grade 12"
+  finalSection      String // e.g., "A"
+  finalAcademicYear String // e.g., "2023-2024"
+
+  // Current information
+  currentOccupation String?
+  currentEmployer   String?
+  currentJobTitle   String?
+  currentAddress    String?
+  currentCity       String?
+  currentState      String?
+  currentCountry    String? @default("India")
+  currentPhone      String?
+  currentEmail      String?
+
+  // Higher education
+  higherEducation       String? // e.g., "Bachelor of Engineering"
+  collegeName           String?
+  collegeLocation       String?
+  graduationYearCollege Int?
+
+  // Additional information
+  achievements    String? @db.Text // JSON array of achievements
+  linkedInProfile String?
+  profilePhoto    String? // URL to updated photo
+
+  // Communication preferences
+  allowCommunication Boolean @default(true)
+  communicationEmail String? // Preferred email for alumni communications
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String // User ID who created the record
+  updatedBy String? // User ID who last updated
+
+  // Indexes for search optimization
+  @@index([graduationDate])
+  @@index([finalClass])
+  @@index([currentCity])
+  @@index([collegeName])
+  @@index([currentOccupation])
+  @@index([currentEmployer])
+  @@index([graduationDate, finalClass]) // Composite index for common filter combination
+  @@index([finalClass, graduationDate]) // Composite index for class-based queries
+  @@index([currentCity, currentOccupation]) // Composite index for location-occupation queries
+  @@map("alumni")
+}
+
+// Promotion history for audit trail
+model PromotionHistory {
+  id String @id @default(cuid())
+
+  // Promotion details
+  sourceAcademicYear String
+  sourceClass        String
+  sourceSection      String?
+  targetAcademicYear String
+  targetClass        String
+  targetSection      String?
+
+  // Statistics
+  totalStudents    Int
+  promotedStudents Int
+  excludedStudents Int
+  failedStudents   Int
+
+  // Execution details
+  executedAt DateTime @default(now())
+  executedBy String // User ID
+
+  // Additional data
+  notes          String? @db.Text
+  excludedList   String? @db.Text // JSON array of excluded student IDs with reasons
+  failureDetails String? @db.Text // JSON array of failures
+
+  // Relationships
+  records PromotionRecord[]
+
+  @@index([sourceAcademicYear, sourceClass])
+  @@index([targetAcademicYear, targetClass])
+  @@index([executedAt])
+  @@map("promotion_history")
+}
+
+// Individual promotion records
+model PromotionRecord {
+  id        String           @id @default(cuid())
+  history   PromotionHistory @relation(fields: [historyId], references: [id], onDelete: Cascade)
+  historyId String
+
+  student   Student @relation(fields: [studentId], references: [id])
+  studentId String
+
+  // Previous enrollment
+  previousEnrollmentId String
+
+  // New enrollment (null if excluded or failed)
+  newEnrollmentId String?
+
+  // Status
+  status PromotionStatus
+  reason String? // Reason for exclusion or failure
+
+  createdAt DateTime @default(now())
+
+  @@index([historyId])
+  @@index([studentId])
+  @@map("promotion_records")
+}
+
+enum PromotionStatus {
+  PROMOTED
+  EXCLUDED
+  FAILED
+}

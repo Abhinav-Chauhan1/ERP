@@ -1,0 +1,41 @@
+// Promotion Schemas
+export {
+  studentSelectionSchema,
+  excludedStudentSchema,
+  rollNumberStrategyEnum,
+  promotionPreviewSchema,
+  bulkPromotionSchema,
+  promotionHistoryFilterSchema,
+  rollbackPromotionSchema,
+  graduationCeremonySchema,
+  type StudentSelectionInput,
+  type ExcludedStudentInput,
+  type RollNumberStrategy,
+  type PromotionPreviewInput,
+  type BulkPromotionInput,
+  type PromotionHistoryFilterInput,
+  type RollbackPromotionInput,
+  type GraduationCeremonyInput,
+} from "./promotionSchemaValidation";
+
+// Alumni Schemas
+export {
+  createAlumniProfileSchema,
+  updateAlumniProfileSchema,
+  alumniSearchFilterSchema,
+  alumniStatisticsFilterSchema,
+  alumniReportSchema,
+  communicationChannelEnum,
+  alumniMessageSchema,
+  alumniCommunicationFilterSchema,
+  alumniSelfUpdateSchema,
+  type CreateAlumniProfileInput,
+  type UpdateAlumniProfileInput,
+  type AlumniSearchFilterInput,
+  type AlumniStatisticsFilterInput,
+  type AlumniReportInput,
+  type CommunicationChannel,
+  type AlumniMessageInput,
+  type AlumniCommunicationFilterInput,
+  type AlumniSelfUpdateInput,
+} from "./alumniSchemaValidation";

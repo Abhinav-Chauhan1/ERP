@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   Bus,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@/components/auth/user-button";
@@ -69,6 +70,7 @@ const routes: RouteItem[] = [
       { label: "Grades", href: "/admin/academic/grades" },
       { label: "Curriculum", href: "/admin/academic/curriculum" },
       { label: "Syllabus", href: "/admin/academic/syllabus" },
+      { label: "Promotion", href: "/admin/academic/promotion" },
     ],
   },
   {
@@ -180,6 +182,15 @@ const routes: RouteItem[] = [
     label: "Admissions",
     icon: GraduationCap,
     href: "/admin/admissions",
+  },
+  {
+    label: "Alumni",
+    icon: UserCheck,
+    submenu: [
+      { label: "Directory", href: "/admin/alumni" },
+      { label: "Communication", href: "/admin/alumni/communication" },
+      { label: "Statistics", href: "/admin/alumni/statistics" },
+    ],
   },
   {
     label: "Calendar",

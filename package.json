@@ -21,6 +21,7 @@
     "test:migrate-cli": "tsx scripts/test-migration-cli.ts",
     "migrate:fee-structures": "tsx scripts/migrate-fee-structure-classes.ts",
     "test:fee-migration": "tsx scripts/test-fee-structure-migration.ts",
+    "import:alumni": "tsx scripts/import-historical-alumni.ts",
     "cleanup:sessions": "tsx scripts/cleanup-expired-sessions.ts",
     "cleanup:sessions:dry-run": "tsx scripts/cleanup-expired-sessions.ts --dry-run",
     "cleanup:sessions:verbose": "tsx scripts/cleanup-expired-sessions.ts --verbose --stats"

@@ -44,6 +44,10 @@ const RESOURCES = {
   CERTIFICATE: 'CERTIFICATE',
   BACKUP: 'BACKUP',
   SETTINGS: 'SETTINGS',
+  PROMOTION: 'PROMOTION',
+  GRADUATION: 'GRADUATION',
+  ALUMNI: 'ALUMNI',
+  ALUMNI_PORTAL: 'ALUMNI_PORTAL',
 };
 
 // Define all permissions
@@ -183,6 +187,26 @@ const PERMISSIONS = [
   // System Settings
   { name: 'READ_SETTINGS', resource: RESOURCES.SETTINGS, action: PermissionAction.READ, category: PERMISSION_CATEGORIES.SYSTEM, description: 'View system settings' },
   { name: 'UPDATE_SETTINGS', resource: RESOURCES.SETTINGS, action: PermissionAction.UPDATE, category: PERMISSION_CATEGORIES.SYSTEM, description: 'Update system settings' },
+
+  // Student Promotion Management
+  { name: 'CREATE_PROMOTION', resource: RESOURCES.PROMOTION, action: PermissionAction.CREATE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Execute student promotions' },
+  { name: 'READ_PROMOTION', resource: RESOURCES.PROMOTION, action: PermissionAction.READ, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'View promotion history' },
+  { name: 'DELETE_PROMOTION', resource: RESOURCES.PROMOTION, action: PermissionAction.DELETE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Rollback promotions' },
+
+  // Graduation Ceremony Management
+  { name: 'CREATE_GRADUATION', resource: RESOURCES.GRADUATION, action: PermissionAction.CREATE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Mark students as graduated' },
+  { name: 'READ_GRADUATION', resource: RESOURCES.GRADUATION, action: PermissionAction.READ, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'View graduation records' },
+
+  // Alumni Management (Admin)
+  { name: 'CREATE_ALUMNI', resource: RESOURCES.ALUMNI, action: PermissionAction.CREATE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Create alumni profiles' },
+  { name: 'READ_ALUMNI', resource: RESOURCES.ALUMNI, action: PermissionAction.READ, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'View alumni directory' },
+  { name: 'UPDATE_ALUMNI', resource: RESOURCES.ALUMNI, action: PermissionAction.UPDATE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Update alumni profiles' },
+  { name: 'DELETE_ALUMNI', resource: RESOURCES.ALUMNI, action: PermissionAction.DELETE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Delete alumni profiles' },
+  { name: 'EXPORT_ALUMNI', resource: RESOURCES.ALUMNI, action: PermissionAction.EXPORT, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Export alumni data' },
+
+  // Alumni Portal (for graduated students)
+  { name: 'READ_ALUMNI_PORTAL', resource: RESOURCES.ALUMNI_PORTAL, action: PermissionAction.READ, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Access alumni portal' },
+  { name: 'UPDATE_ALUMNI_PORTAL', resource: RESOURCES.ALUMNI_PORTAL, action: PermissionAction.UPDATE, category: PERMISSION_CATEGORIES.ACADEMIC, description: 'Update own alumni profile' },
 ];
 
 // Define role-permission mappings
@@ -228,6 +252,7 @@ const ROLE_PERMISSIONS = {
     'READ_REPORT',
     'EXPORT_REPORT',
     'READ_BOOK',
+    'READ_ALUMNI', // Teachers can view alumni directory
   ],
   [UserRole.STUDENT]: [
     // Students can view their own data
@@ -246,6 +271,8 @@ const ROLE_PERMISSIONS = {
     'READ_DOCUMENT',
     'READ_BOOK',
     'READ_CERTIFICATE',
+    'READ_ALUMNI_PORTAL', // Graduated students can access alumni portal
+    'UPDATE_ALUMNI_PORTAL', // Graduated students can update their alumni profile
   ],
   [UserRole.PARENT]: [
     // Parents can view their children's data
