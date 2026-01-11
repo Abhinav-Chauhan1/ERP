@@ -42,17 +42,12 @@ import { toast } from "react-hot-toast";
 import { CldUploadWidget } from "next-cloudinary";
 
 export default function EditAssignmentPage(props: { params: Promise<{ id: string }> }) {
-  const paramsPromise = use(props.params);
+  const params = use(props.params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [assignmentId, setAssignmentId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setAssignmentId(p.id));
-  }, [paramsPromise]);
+  const assignmentId = params.id;
 
   // Form state
   const [title, setTitle] = useState("");

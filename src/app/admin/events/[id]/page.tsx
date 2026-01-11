@@ -112,12 +112,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addParticipantDialogOpen, setAddParticipantDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
-  const [eventId, setEventId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    params.then(p => setEventId(p.id));
-  }, [params]);
+  const eventId = params.id;
 
   // Initialize edit form
   const editForm = useForm<EventFormDataWithRefinement>({

@@ -1,7 +1,8 @@
 "use client";
 
+import { use } from "react";
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,16 +12,14 @@ import type { ReportCardData } from "@/lib/services/report-card-data-aggregation
 import { useSession } from "next-auth/react";
 import { useAuth } from "@/lib/auth-context";
 
-export default function StudentReportCardDetailPage() {
+export default function StudentReportCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const params = useParams();
+  const { id: reportCardId } = use(params);
   const { user } = useAuth();
   const userId = user?.id;
   const [loading, setLoading] = useState(true);
   const [reportCard, setReportCard] = useState<ReportCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const reportCardId = params.id as string;
 
   useEffect(() => {
     const fetchReportCard = async () => {

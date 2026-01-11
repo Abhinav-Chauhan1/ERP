@@ -82,12 +82,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
   const [document, setDocument] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentId, setDocumentId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    params.then(p => setDocumentId(p.id));
-  }, [params]);
+  const documentId = params.id;
 
   // Fetch document data
   useEffect(() => {

@@ -28,11 +28,11 @@ import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
 
 export default function EditLessonPage(props: { params: Promise<{ id: string }> }) {
-  const paramsPromise = use(props.params);
+  const params = use(props.params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paramLessonId, setParamLessonId] = useState<string>("");
+  const paramLessonId = params.id;
 
   const [lessonId, setLessonId] = useState("");
   const [title, setTitle] = useState("");
@@ -45,11 +45,6 @@ export default function EditLessonPage(props: { params: Promise<{ id: string }> 
 
   const [subjects, setSubjects] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setParamLessonId(p.id));
-  }, [paramsPromise]);
 
   // Fetch lesson data and subjects when the component mounts
   useEffect(() => {

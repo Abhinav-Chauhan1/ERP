@@ -40,7 +40,7 @@ import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
 export default function ExamResultDetailPage(props: { params: Promise<{ id: string }> }) {
-  const paramsPromise = use(props.params);
+  const params = use(props.params);
   const router = useRouter();
   const [examData, setExamData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,12 +48,7 @@ export default function ExamResultDetailPage(props: { params: Promise<{ id: stri
   const [students, setStudents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [examId, setExamId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setExamId(p.id));
-  }, [paramsPromise]);
+  const examId = params.id;
 
   useEffect(() => {
     if (!examId) return;

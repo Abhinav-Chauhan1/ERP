@@ -14,7 +14,7 @@ export async function invalidateCacheTags(tags: string | string[]) {
   const tagArray = Array.isArray(tags) ? tags : [tags];
   
   for (const tag of tagArray) {
-    revalidateTag(tag);
+    revalidateTag(tag, "default");
   }
 }
 
@@ -38,7 +38,7 @@ export async function invalidateCacheBatch(options: {
   
   // Invalidate tags
   for (const tag of tags) {
-    revalidateTag(tag);
+    revalidateTag(tag, "default");
   }
   
   // Invalidate paths
@@ -330,7 +330,7 @@ export async function invalidateAllCaches() {
   const allTags = Object.values(CACHE_TAGS);
   
   for (const tag of allTags) {
-    revalidateTag(tag);
+    revalidateTag(tag, "default");
   }
   
   // Invalidate common paths

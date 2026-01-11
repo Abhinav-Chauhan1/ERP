@@ -42,7 +42,7 @@ import { Chart } from "@/components/dashboard/chart";
 import { toast } from "react-hot-toast";
 
 export default function ExamDetailPage(props: { params: Promise<{ id: string }> }) {
-  const paramsPromise = use(props.params);
+  const params = use(props.params);
   const router = useRouter();
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -51,12 +51,7 @@ export default function ExamDetailPage(props: { params: Promise<{ id: string }> 
   const [results, setResults] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [examId, setExamId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setExamId(p.id));
-  }, [paramsPromise]);
+  const examId = params.id;
 
   useEffect(() => {
     if (!examId) return;

@@ -65,17 +65,17 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
 - [ ] 3. Checkpoint - Verify dependencies installed
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 4. Phase 3: Automated Code Migration
+- [x] 4. Phase 3: Automated Code Migration
   - Run Next.js codemod to automatically migrate code patterns
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8_
 
-- [-] 4.1 Run Next.js upgrade codemod
+- [x] 4.1 Run Next.js upgrade codemod
   - Execute: `npx @next/codemod@canary upgrade latest`
   - Review codemod output and changes
   - Commit codemod changes separately
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 4.2 Generate TypeScript types for routes
+- [x] 4.2 Generate TypeScript types for routes
   - Execute: `npx next typegen`
   - Verify types generated in .next/types
   - Review generated types for correctness
@@ -93,16 +93,16 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - Test that all server components with searchParams use await
   - Test that searchParams is typed as Promise
 
-- [ ] 5. Phase 4: Middleware Migration
+- [x] 5. Phase 4: Middleware Migration
   - Rename middleware to proxy and update exports
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 5.1 Rename middleware file
+- [x] 5.1 Rename middleware file
   - Rename src/middleware.ts to src/proxy.ts
   - Update any imports referencing middleware.ts
   - _Requirements: 3.1_
 
-- [ ] 5.2 Update proxy exports
+- [x] 5.2 Update proxy exports
   - Change default export to named export "proxy"
   - Maintain nodejs runtime configuration
   - Preserve existing matcher configuration
@@ -117,11 +117,11 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - Test that matcher config is preserved
   - _Requirements: 3.1, 3.2, 3.3, 3.5_
 
-- [ ] 6. Phase 5: Configuration Updates
+- [x] 6. Phase 5: Configuration Updates
   - Update Next.js and ESLint configurations
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 6.1 Update Next.js image configuration
+- [x] 6.1 Update Next.js image configuration
   - Replace images.domains with images.remotePatterns
   - Add protocol: 'https' for res.cloudinary.com
   - Add protocol: 'https' for img.clerk.com
@@ -129,12 +129,12 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - Preserve formats configuration
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 6.2 Move experimental serverActions to top level
+- [x] 6.2 Move experimental serverActions to top level
   - Move experimental.serverActions to top-level serverActions
   - Remove experimental object if empty
   - _Requirements: 5.1_
 
-- [ ] 6.3 Create ESLint flat config
+- [x] 6.3 Create ESLint flat config
   - Create eslint.config.js
   - Import @next/eslint-plugin-next
   - Configure recommended and core-web-vitals rules
@@ -151,11 +151,11 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
 - [ ] 7. Checkpoint - Verify configurations updated
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Phase 6: Manual Async API Migration
+- [x] 8. Phase 6: Manual Async API Migration
   - Manually update files that codemod couldn't handle
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 8.1 Update client components with params
+- [x] 8.1 Update client components with params
   - Update src/app/admin/users/students/[id]/page.tsx
   - Update src/app/teacher/assessments/online-exams/[id]/page.tsx
   - Update src/app/student/assessments/report-cards/[id]/page.tsx
@@ -164,13 +164,13 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - Use React.use() to unwrap params Promise
   - _Requirements: 2.3_
 
-- [ ] 8.2 Update cookies() usage
+- [x] 8.2 Update cookies() usage
   - Update src/lib/utils/csrf.ts
   - Add await before cookies() calls
   - Update type annotations if needed
   - _Requirements: 2.5_
 
-- [ ] 8.3 Update headers() usage
+- [x] 8.3 Update headers() usage
   - Update src/lib/utils/audit-log.ts
   - Update src/lib/services/auth-audit-service.ts
   - Update src/lib/actions/auth-actions.ts
@@ -193,11 +193,11 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - **Validates: Requirements 2.6**
   - Test that all headers() calls are awaited
 
-- [ ] 9. Phase 7: TypeScript Compilation Verification
+- [x] 9. Phase 7: TypeScript Compilation Verification
   - Verify all TypeScript compiles without errors
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 9.1 Run TypeScript compiler
+- [x] 9.1 Run TypeScript compiler
   - Execute: `npx tsc --noEmit`
   - Fix any type errors related to async APIs
   - Verify no compilation errors
@@ -211,11 +211,11 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
 - [ ] 10. Checkpoint - Verify code migration complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Phase 8: Build Verification
+- [x] 11. Phase 8: Build Verification
   - Verify development and production builds work
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
 
-- [ ] 11.1 Test development build
+- [x] 11.1 Test development build
   - Run: `npm run dev`
   - Verify dev server starts without errors
   - Verify hot module replacement works
@@ -223,14 +223,14 @@ This implementation plan breaks down the Next.js 16 migration into discrete, act
   - Test accessing several routes
   - _Requirements: 12.1, 12.2, 12.3_
 
-- [ ] 11.2 Test production build
+- [x] 11.2 Test production build
   - Run: `npm run build`
   - Verify build completes without errors
   - Verify all pages and assets are optimized
   - Check build output for warnings
   - _Requirements: 12.4, 12.5_
 
-- [ ] 11.3 Test production server
+- [x] 11.3 Test production server
   - Run: `npm run start`
   - Verify production server starts
   - Test accessing several routes

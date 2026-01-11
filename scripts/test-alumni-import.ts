@@ -203,7 +203,7 @@ async function verifyImport() {
     const status = hasAlumni ? '✅' : '❌';
     console.log(`${status} ${student.user.firstName} ${student.user.lastName} - Alumni profile: ${hasAlumni ? 'Yes' : 'No'}`);
     
-    if (hasAlumni) {
+    if (hasAlumni && student.alumni) {
       console.log(`   Graduation Date: ${student.alumni.graduationDate.toISOString().split('T')[0]}`);
       console.log(`   Final Class: ${student.alumni.finalClass} - ${student.alumni.finalSection}`);
       console.log(`   Academic Year: ${student.alumni.finalAcademicYear}`);

@@ -37,6 +37,24 @@ export function DatePicker({
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(date || new Date());
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // If not enough space below (need ~400px for calendar), show above
+      const showAbove = spaceBelow < 400 && spaceAbove > spaceBelow;
+      
+      setPosition({
+        top: showAbove ? rect.top - 400 : rect.bottom + 8,
+        left: rect.left,
+      });
+    }
+  }, [isOpen]);
 
   const handleChange = (selectedDate: Date | null) => {
     onSelect(selectedDate || undefined);
@@ -83,8 +101,9 @@ export function DatePicker({
   };
 
   return (
-    <div className="relative">
+    <>
       <Button
+        ref={buttonRef}
         type="button"
         variant="outline"
         className={cn(
@@ -98,12 +117,20 @@ export function DatePicker({
         {date ? format(date, "PPP") : <span>{placeholder}</span>}
       </Button>
 
-      {isOpen && (
+      {isOpen && position && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-50 mt-2 rounded-md border border-border bg-background shadow-lg">
+          <div 
+            className="fixed z-50 rounded-md border border-border bg-background shadow-lg"
+            style={{
+              top: `${position.top}px`,
+              left: `${position.left}px`,
+              maxHeight: '400px',
+              overflow: 'auto'
+            }}
+          >
             {/* Custom Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 bg-background sticky top-0 z-10">
               <Button
                 type="button"
                 variant="ghost"
@@ -173,6 +200,6 @@ export function DatePicker({
           </div>
         </>
       )}
-    </div>
+    </>
   );
 }

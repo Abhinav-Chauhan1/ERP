@@ -1,7 +1,8 @@
 "use client";
 
+import { use } from "react";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -72,10 +73,9 @@ interface OnlineExam {
   attempts: Attempt[];
 }
 
-export default function OnlineExamDetailPage() {
-  const params = useParams();
+export default function OnlineExamDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: examId } = use(params);
   const router = useRouter();
-  const examId = params.id as string;
 
   const [exam, setExam] = useState<OnlineExam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);

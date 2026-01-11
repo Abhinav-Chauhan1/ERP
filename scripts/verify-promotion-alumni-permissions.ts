@@ -103,7 +103,7 @@ async function verifyPermissionMiddleware() {
     let roleTestsPassed = true;
     for (const role of Object.values(UserRole)) {
       const result = checkPermissionInMiddleware(path, role);
-      const shouldBeAllowed = allowedRoles.includes(role);
+      const shouldBeAllowed = (allowedRoles as UserRole[]).includes(role);
       
       if (result.allowed !== shouldBeAllowed) {
         console.log(`  ❌ FAIL: Role ${role} - Expected allowed=${shouldBeAllowed}, got allowed=${result.allowed}`);

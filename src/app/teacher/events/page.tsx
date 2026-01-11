@@ -111,7 +111,7 @@ export default async function TeacherEventsPage(
       </div>
 
       <Suspense fallback={<EventsLoading />}>
-        <EventsContent searchParams={searchParams} />
+        <EventsContent searchParams={props.searchParams} />
       </Suspense>
     </div>
   );

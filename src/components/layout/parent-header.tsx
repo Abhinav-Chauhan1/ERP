@@ -7,8 +7,6 @@ import { UserButton } from "@/components/auth/user-button";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 import { GlobalSearch } from "@/components/shared/global-search";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { SchoolLogo } from "@/components/shared/school-logo";
@@ -73,8 +71,6 @@ export function ParentHeader() {
       </div>
 
       <div className="flex items-center gap-2">
-        <ColorThemeToggle />
-        <ThemeToggle />
         <NotificationCenter />
         <UserButton afterSignOutUrl="/login" />
       </div>

@@ -232,3 +232,52 @@ export async function removeTeacherFromSubject(subjectId: string, teacherId: str
     };
   }
 }
+
+// Remove a teacher from a subject by assignment ID
+export async function deleteSubjectTeacherAssignment(assignmentId: string) {
+  try {
+    // Get the assignment to check if it exists and get IDs for revalidation
+    const assignment = await db.subjectTeacher.findUnique({
+      where: { id: assignmentId },
+      select: { 
+        id: true, 
+        subjectId: true, 
+        teacherId: true 
+      }
+    });
+    
+    if (!assignment) {
+      return { success: false, error: "Assignment not found" };
+    }
+    
+    // Check if this assignment is used in timetables
+    const usedInTimetable = await db.timetableSlot.findFirst({
+      where: {
+        subjectTeacherId: assignmentId
+      }
+    });
+    
+    if (usedInTimetable) {
+      return { 
+        success: false, 
+        error: "Cannot remove this teacher as they're assigned to this subject in the timetable. Please update the timetable first." 
+      };
+    }
+    
+    // Remove the assignment
+    await db.subjectTeacher.delete({
+      where: { id: assignmentId }
+    });
+    
+    revalidatePath(`/admin/teaching/subjects/${assignment.subjectId}`);
+    revalidatePath(`/admin/users/teachers/${assignment.teacherId}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting subject teacher assignment:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to delete assignment" 
+    };
+  }
+}

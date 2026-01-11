@@ -38,17 +38,12 @@ import { format } from "date-fns";
 import { toast } from "react-hot-toast";
 
 export default function AssignmentResultDetailPage(props: { params: Promise<{ id: string }> }) {
-  const paramsPromise = use(props.params);
+  const params = use(props.params);
   const router = useRouter();
   const [assignmentData, setAssignmentData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [assignmentId, setAssignmentId] = useState<string>("");
-
-  // Unwrap params
-  useEffect(() => {
-    paramsPromise.then(p => setAssignmentId(p.id));
-  }, [paramsPromise]);
+  const assignmentId = params.id;
 
   useEffect(() => {
     if (!assignmentId) return;
