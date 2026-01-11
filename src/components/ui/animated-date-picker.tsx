@@ -169,7 +169,7 @@ export function AnimatedDatePicker({
                             inline
                             openToDate={currentMonth}
                             onMonthChange={setCurrentMonth}
-                            renderCustomHeader={() => null}
+                            renderCustomHeader={() => <></>}
                             calendarClassName="custom-calendar"
                         />
                     </div>

@@ -142,8 +142,8 @@ export default function PromotionHistoryPage() {
     try {
       const result = await getPromotionHistory({
         academicYear: filters.academicYear || undefined,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
+        startDate: filters.startDate ? filters.startDate.toISOString() : undefined,
+        endDate: filters.endDate ? filters.endDate.toISOString() : undefined,
         page: pagination.page,
         pageSize: pagination.pageSize,
       });

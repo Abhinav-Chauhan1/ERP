@@ -468,7 +468,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
                 <Label>Graduation Date</Label>
                 <DatePicker
                   date={graduationDate}
-                  onDateChange={(date) => date && setGraduationDate(date)}
+                  onSelect={(date) => date && setGraduationDate(date)}
                 />
               </div>
 

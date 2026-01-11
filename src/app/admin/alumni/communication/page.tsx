@@ -138,7 +138,12 @@ export default function AlumniCommunicationPage() {
       });
 
       if (result.success && result.data) {
-        setAlumni(result.data.alumni);
+        // Transform the data to match AlumniRecipient type
+        const transformedAlumni = result.data.alumni.map((a: any) => ({
+          ...a,
+          currentPhone: a.currentPhone ?? undefined,
+        }));
+        setAlumni(transformedAlumni);
       } else {
         toast.error(result.error || "Failed to load alumni");
       }

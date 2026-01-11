@@ -19,6 +19,7 @@ import {
 interface DatePickerProps {
   date: Date | undefined;
   onSelect: (date: Date | undefined) => void;
+  onDateChange?: (date: Date | undefined) => void;
   disabled?: (date: Date) => boolean;
   placeholder?: string;
   className?: string;
@@ -29,6 +30,7 @@ interface DatePickerProps {
 export function DatePicker({
   date,
   onSelect,
+  onDateChange,
   disabled,
   placeholder = "Select date",
   className,
@@ -57,7 +59,11 @@ export function DatePicker({
   }, [isOpen]);
 
   const handleChange = (selectedDate: Date | null) => {
-    onSelect(selectedDate || undefined);
+    const dateValue = selectedDate || undefined;
+    onSelect(dateValue);
+    if (onDateChange) {
+      onDateChange(dateValue);
+    }
     setIsOpen(false);
   };
 

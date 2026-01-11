@@ -176,12 +176,12 @@ export default function ConsolidatedMarkSheetPage() {
 
           // Add subject marks
           let colIndex = 3;
-          subjects.forEach((subject: string) => {
-            obj[`${subject} - Theory`] = row[colIndex++] || '';
-            obj[`${subject} - Practical`] = row[colIndex++] || '';
-            obj[`${subject} - Internal`] = row[colIndex++] || '';
-            obj[`${subject} - Total`] = row[colIndex++] || '';
-            obj[`${subject} - Grade`] = row[colIndex++] || '';
+          subjects.forEach((subject: { id: string; name: string }) => {
+            obj[`${subject.name} - Theory`] = row[colIndex++] || '';
+            obj[`${subject.name} - Practical`] = row[colIndex++] || '';
+            obj[`${subject.name} - Internal`] = row[colIndex++] || '';
+            obj[`${subject.name} - Total`] = row[colIndex++] || '';
+            obj[`${subject.name} - Grade`] = row[colIndex++] || '';
           });
 
           obj['Overall Total'] = row[colIndex++] || '';

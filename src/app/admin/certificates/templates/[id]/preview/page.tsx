@@ -102,7 +102,7 @@ export default async function CertificateTemplatePreviewPage({ params }: PagePro
                         {previewHtml ? (
                             <div
                                 className="w-full h-full overflow-auto"
-                                dangerouslySetInnerHTML={{ __html: previewHtml }}
+                                dangerouslySetInnerHTML={{ __html: (previewHtml as unknown) as string }}
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-gray-500">

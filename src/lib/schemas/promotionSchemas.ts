@@ -56,7 +56,7 @@ export const bulkPromotionSchema = z.object({
   sourceAcademicYearId: z.string().optional(),
   targetAcademicYearId: z.string().min(1, "Target academic year ID is required"),
   targetClassId: z.string().min(1, "Target class ID is required"),
-  targetSectionId: z.string().min(1, "Target section ID is required"),
+  targetSectionId: z.string().optional(),
   studentIds: z.array(z.string().min(1)).min(1, "At least one student must be selected"),
   excludedStudents: z.array(excludedStudentSchema).default([]),
   rollNumberStrategy: rollNumberStrategyEnum,

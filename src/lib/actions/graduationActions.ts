@@ -152,7 +152,6 @@ async function sendGraduationNotifications(
             recipientId: student.userId,
             subject: "Congratulations on Your Graduation!",
             content: message,
-            type: "ANNOUNCEMENT",
           },
         });
         notificationCount++;
@@ -169,7 +168,6 @@ async function sendGraduationNotifications(
               recipientId: parentRelation.parent.userId,
               subject: `Congratulations! ${student.user.firstName} ${student.user.lastName} has graduated`,
               content: message,
-              type: "ANNOUNCEMENT",
             },
           });
           notificationCount++;

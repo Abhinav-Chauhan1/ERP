@@ -407,7 +407,7 @@ export async function executeBulkPromotion(
         rollNumbers = await promotionService.generateRollNumbers(
           rollNumberStrategy,
           validationResult.eligible,
-          targetSectionId,
+          targetSectionId ?? "",
           rollNumberStrategy === "preserve" ? currentRollNumbers : undefined
         );
       }
@@ -596,12 +596,12 @@ export async function getPromotionHistory(
     // Validate input
     const validation = filters
       ? promotionHistoryFiltersSchema.safeParse(filters)
-      : { success: true, data: { page: 1, pageSize: 20 } };
+      : { success: true as const, data: { page: 1, pageSize: 20 } };
 
     if (!validation.success) {
       return {
         success: false,
-        error: validation.error.errors.map((e) => e.message).join(", "),
+        error: validation.error.errors.map((e: any) => e.message).join(", "),
       };
     }
 
@@ -612,7 +612,7 @@ export async function getPromotionHistory(
       endDate,
       page,
       pageSize,
-    } = validation.data;
+    } = validation.data as any;
 
     // Build query filters
     const whereFilters: any = {};
@@ -906,12 +906,12 @@ export async function exportPromotionHistory(
     // Validate input
     const validation = filters
       ? promotionHistoryFiltersSchema.safeParse(filters)
-      : { success: true, data: { page: 1, pageSize: 1000 } }; // Large page size for export
+      : { success: true as const, data: { page: 1, pageSize: 1000 } }; // Large page size for export
 
     if (!validation.success) {
       return {
         success: false,
-        error: validation.error.errors.map((e) => e.message).join(", "),
+        error: validation.error.errors.map((e: any) => e.message).join(", "),
       };
     }
 
@@ -920,7 +920,7 @@ export async function exportPromotionHistory(
       classId,
       startDate,
       endDate,
-    } = validation.data;
+    } = validation.data as any;
 
     // Build query filters
     const whereFilters: any = {};

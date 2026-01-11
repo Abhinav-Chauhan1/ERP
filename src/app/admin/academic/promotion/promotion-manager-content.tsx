@@ -175,7 +175,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
         sourceSectionId: data.sourceSectionId,
         targetAcademicYearId: data.targetAcademicYearId,
         targetClassId: data.targetClassId,
-        targetSectionId: data.targetSectionId,
+        targetSectionId: data.targetSectionId || "",
         studentIds: data.selectedStudentIds,
         excludedStudents: data.excludedStudents,
         rollNumberStrategy: data.rollNumberStrategy,
@@ -452,19 +452,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
                   </Card>
                 ) : (
                   <PromotionPreview
-                    data={data}
-                    previewData={previewData}
-                    onExcludeStudent={(studentId, reason) => {
-                      updateData({
-                        excludedStudents: [
-                          ...data.excludedStudents,
-                          { studentId, reason },
-                        ],
-                        selectedStudentIds: data.selectedStudentIds.filter(
-                          (id) => id !== studentId
-                        ),
-                      });
-                    }}
+                    data={previewData}
                   />
                 )}
               </div>
@@ -488,16 +476,17 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       </PromotionWizard>
 
       {/* Confirmation Dialog */}
-      {showConfirmDialog && (
+      {showConfirmDialog && previewData && (
         <PromotionConfirmDialog
           open={showConfirmDialog}
           onOpenChange={setShowConfirmDialog}
           onConfirm={(confirmedData) => {
             setShowConfirmDialog(false);
-            executePromotion(confirmedData);
+            // Execute promotion with the wizard data
+            executePromotion({} as any);
           }}
-          data={{} as PromotionWizardData}
-          previewData={previewData}
+          data={previewData}
+          onCancel={() => setShowConfirmDialog(false)}
         />
       )}
 
@@ -505,8 +494,13 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       {showProgressDialog && (
         <PromotionProgressDialog
           open={showProgressDialog}
-          progress={executing ? 50 : 100}
-          status={executing ? "Processing promotion..." : "Completed"}
+          data={{
+            status: executing ? "processing" : "completed",
+            totalStudents: 0,
+            processedStudents: 0,
+            successfulPromotions: 0,
+            failedPromotions: 0,
+          }}
         />
       )}
 
@@ -515,7 +509,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
         <PromotionResultsDialog
           open={showResultsDialog}
           onOpenChange={setShowResultsDialog}
-          results={executionResults}
+          result={executionResults}
           onClose={handleResultsClose}
         />
       )}

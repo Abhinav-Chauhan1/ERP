@@ -45,8 +45,19 @@ export function PromotionHistoryExportButton({
     setExportingFormat(format);
 
     try {
+      // Transform filters to match expected type
+      const transformedFilters = filters ? {
+        academicYear: filters.academicYear,
+        classId: filters.classId,
+        startDate: filters.startDate?.toISOString(),
+        endDate: filters.endDate?.toISOString(),
+        page: 1,
+        pageSize: 1000,
+      } : undefined;
+
       // Call server action to get export data
-      const result = await exportPromotionHistory(filters, format);
+      const exportFormat = format === "csv" ? "excel" : format;
+      const result = await exportPromotionHistory(transformedFilters, exportFormat as "pdf" | "excel");
 
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to export promotion history");

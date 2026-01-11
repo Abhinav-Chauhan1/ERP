@@ -91,7 +91,7 @@ export default async function AlumniDirectoryPage() {
   }
 
   // Check authorization - only ADMIN and TEACHER can access
-  if (![UserRole.ADMIN, UserRole.TEACHER].includes(session.user.role)) {
+  if (!["ADMIN", "TEACHER"].includes(session.user.role)) {
     redirect("/unauthorized");
   }
 

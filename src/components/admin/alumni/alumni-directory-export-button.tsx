@@ -42,7 +42,8 @@ export function AlumniDirectoryExportButton({
 
     try {
       // Call server action to get export data
-      const result = await exportAlumniDirectory(filters, format);
+      const exportFormat = format === "csv" ? "excel" : format;
+      const result = await exportAlumniDirectory(filters, exportFormat as "pdf" | "excel");
 
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to export alumni directory");

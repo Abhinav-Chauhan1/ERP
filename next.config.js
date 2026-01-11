@@ -2,9 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // Temporarily disable TypeScript checking during build for migration testing
+  // TypeScript checking is now enabled
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   images: {

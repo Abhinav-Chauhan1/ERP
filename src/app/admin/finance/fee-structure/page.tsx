@@ -1444,7 +1444,7 @@ export default function FeeStructurePage() {
       </Dialog>
 
       {/* View Fee Type Dialog */}
-      <Dialog open={viewFeeTypeDialogOpen} onValueChange={setViewFeeTypeDialogOpen}>
+      <Dialog open={viewFeeTypeDialogOpen} onOpenChange={setViewFeeTypeDialogOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Fee Type Details</DialogTitle>

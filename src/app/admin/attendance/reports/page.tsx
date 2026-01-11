@@ -269,7 +269,7 @@ export default function AttendanceReportsPage() {
 
       } else if (exportFormat === 'excel' || exportFormat === 'csv') {
         // Generate Excel/CSV using xlsx
-        const XLSX = await import('xlsx');
+        const XLSX = await import('xlsx' as any);
         const workbook = XLSX.utils.book_new();
 
         // Prepare data
