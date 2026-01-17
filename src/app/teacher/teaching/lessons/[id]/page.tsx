@@ -43,6 +43,7 @@ import {
 import { getTeacherLesson, updateLesson, getSubjectSyllabusUnits } from "@/lib/actions/teacherLessonsActions";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions";
 import { toast } from "react-hot-toast";
+import DOMPurify from "isomorphic-dompurify";
 
 export default function LessonDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -436,7 +437,7 @@ export default function LessonDetailPage({ params }: { params: Promise<{ id: str
               </CardHeader>
               <CardContent className="prose max-w-none">
                 {lesson.content ? (
-                  <div dangerouslySetInnerHTML={{ __html: lesson.content.replace(/\n/g, '<br/>') }} />
+                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lesson.content).replace(/\n/g, '<br/>') }} />
                 ) : (
                   <p className="text-gray-500 italic">No content provided for this lesson.</p>
                 )}
