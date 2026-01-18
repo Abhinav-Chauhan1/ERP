@@ -51,9 +51,7 @@ export default async function LearningMaterialsPage(
   }
 ) {
   const searchParams = await props.searchParams;
-  // Fix: await searchParams before accessing its properties
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const selectedSubjectId = resolvedSearchParams.subject || "";
+  const selectedSubjectId = searchParams.subject || "";
 
   const subjects = await getStudentSubjects();
 
