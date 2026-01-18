@@ -105,6 +105,52 @@ async function getFeeAmountForClass(feeTypeId: string, classId: string | undefin
 }
 
 /**
+ * Bulk get correct fee amounts for fee types based on class
+ * Checks for class-specific amount first, falls back to default amount
+ */
+async function getFeeAmountsForClass(feeTypeIds: string[], classId: string | undefined): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  const uniqueFeeTypeIds = Array.from(new Set(feeTypeIds));
+
+  if (uniqueFeeTypeIds.length === 0) {
+    return result;
+  }
+
+  if (!classId) {
+    // If no class ID, get all default amounts
+    const feeTypes = await db.feeType.findMany({
+      where: { id: { in: uniqueFeeTypeIds } }
+    });
+    feeTypes.forEach(ft => result.set(ft.id, ft.amount));
+    return result;
+  }
+
+  // Check for class-specific amounts
+  const classAmounts = await db.feeTypeClassAmount.findMany({
+    where: {
+      feeTypeId: { in: uniqueFeeTypeIds },
+      classId
+    }
+  });
+
+  // Map class amounts
+  classAmounts.forEach(ca => result.set(ca.feeTypeId, ca.amount));
+
+  // Identify missing feeTypes (those that didn't have a class-specific amount)
+  const missingFeeTypeIds = uniqueFeeTypeIds.filter(id => !result.has(id));
+
+  if (missingFeeTypeIds.length > 0) {
+    // Fall back to default amounts for missing ones
+    const feeTypes = await db.feeType.findMany({
+      where: { id: { in: missingFeeTypeIds } }
+    });
+    feeTypes.forEach(ft => result.set(ft.id, ft.amount));
+  }
+
+  return result;
+}
+
+/**
  * Get student fee details
  */
 export async function getStudentFeeDetails() {
@@ -181,21 +227,11 @@ export async function getStudentFeeDetails() {
   let totalFees = 0;
   if (feeStructure && classId) {
     // Optimized batch calculation to avoid sequential N+1 queries
-    const allFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
-    const totalClassAmountMap = new Map<string, number>();
-
-    if (allFeeTypeIds.length > 0) {
-       const amounts = await db.feeTypeClassAmount.findMany({
-          where: {
-             classId,
-             feeTypeId: { in: allFeeTypeIds }
-          }
-       });
-       amounts.forEach(a => totalClassAmountMap.set(a.feeTypeId, a.amount));
-    }
+    const feeTypeIds = feeStructure.items.map(item => item.feeTypeId);
+    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId);
 
     for (const item of feeStructure.items) {
-      const correctAmount = totalClassAmountMap.get(item.feeTypeId) ?? item.feeType.amount;
+      const correctAmount = amountMap.get(item.feeTypeId) || item.feeType.amount;
       totalFees += correctAmount;
     }
   } else if (feeStructure) {
@@ -214,25 +250,13 @@ export async function getStudentFeeDetails() {
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
     .slice(0, 3) || [];
 
-  // Enrich with class-specific amounts
-  // Optimized to avoid N+1 queries
+  // Enrich with class-specific amounts (optimized to avoid N+1 queries)
   const upcomingFeeTypeIds = upcomingFeesRaw.map(item => item.feeTypeId);
-  const classAmountMap = new Map<string, number>();
+  const upcomingAmountMap = await getFeeAmountsForClass(upcomingFeeTypeIds, classId);
 
-  if (classId && upcomingFeeTypeIds.length > 0) {
-    const classAmounts = await db.feeTypeClassAmount.findMany({
-      where: {
-        classId,
-        feeTypeId: { in: upcomingFeeTypeIds }
-      }
-    });
-    classAmounts.forEach(ca => classAmountMap.set(ca.feeTypeId, ca.amount));
-  }
-
-  const upcomingFees = upcomingFeesRaw.map((item) => {
+  const upcomingFees = upcomingFeesRaw.map(item => {
     // Use class-specific amount if available, otherwise use the fee type default amount
-    // item.feeType is already loaded via include
-    const correctAmount = classAmountMap.get(item.feeTypeId) ?? item.feeType.amount;
+    const correctAmount = upcomingAmountMap.get(item.feeTypeId) || item.feeType.amount;
     return {
       ...item,
       amount: correctAmount
@@ -249,26 +273,12 @@ export async function getStudentFeeDetails() {
       return !paymentForItem;
     }) || [];
 
-  // Enrich with class-specific amounts
-  // Reuse the map if already fetched, or fetch for overdue fees if not covered
-  // Since upcomingFees and overdueFees might overlap in fee types, we could have fetched them together if we restructured code.
-  // But let's just optimize this block locally for now to keep it simple.
-
+  // Enrich with class-specific amounts (optimized to avoid N+1 queries)
   const overdueFeeTypeIds = overdueFeesRaw.map(item => item.feeTypeId);
-  const overdueClassAmountMap = new Map<string, number>();
+  const overdueAmountMap = await getFeeAmountsForClass(overdueFeeTypeIds, classId);
 
-  if (classId && overdueFeeTypeIds.length > 0) {
-    const overdueClassAmounts = await db.feeTypeClassAmount.findMany({
-      where: {
-        classId,
-        feeTypeId: { in: overdueFeeTypeIds }
-      }
-    });
-    overdueClassAmounts.forEach(ca => overdueClassAmountMap.set(ca.feeTypeId, ca.amount));
-  }
-
-  const overdueFees = overdueFeesRaw.map((item) => {
-    const correctAmount = overdueClassAmountMap.get(item.feeTypeId) ?? item.feeType.amount;
+  const overdueFees = overdueFeesRaw.map(item => {
+    const correctAmount = overdueAmountMap.get(item.feeTypeId) || item.feeType.amount;
     return {
       ...item,
       amount: correctAmount
@@ -417,22 +427,12 @@ export async function getDuePayments() {
     return new Date(item.dueDate) <= now && !paymentForItem;
   });
 
-  // Enrich with class-specific amounts
-  const dueFeeTypeIds = dueItemsRaw.map(item => item.feeTypeId);
-  const dueClassAmountMap = new Map<string, number>();
+  // Enrich with class-specific amounts (optimized to avoid N+1 queries)
+  const feeTypeIds = dueItemsRaw.map(item => item.feeTypeId);
+  const amountMap = await getFeeAmountsForClass(feeTypeIds, classId);
 
-  if (classId && dueFeeTypeIds.length > 0) {
-    const dueClassAmounts = await db.feeTypeClassAmount.findMany({
-      where: {
-        classId,
-        feeTypeId: { in: dueFeeTypeIds }
-      }
-    });
-    dueClassAmounts.forEach(ca => dueClassAmountMap.set(ca.feeTypeId, ca.amount));
-  }
-
-  const dueItems = dueItemsRaw.map((item) => {
-    const correctAmount = dueClassAmountMap.get(item.feeTypeId) ?? item.feeType.amount;
+  const dueItems = dueItemsRaw.map(item => {
+    const correctAmount = amountMap.get(item.feeTypeId) || item.feeType.amount;
     return {
       ...item,
       amount: correctAmount
