@@ -10,6 +10,7 @@ import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
 import { EmptyState } from "./empty-state";
+import { ResponsiveTable } from "@/components/shared/responsive-table";
 
 interface Administrator {
   id: string;
@@ -76,9 +77,110 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
     currentPage * itemsPerPage
   );
 
+  const columns = [
+    {
+      key: "name",
+      label: "Name",
+      isHeader: true,
+      render: (admin: Administrator) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
+            <AvatarFallback>{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="font-medium">
+            {admin.user.firstName} {admin.user.lastName}
+          </div>
+        </div>
+      ),
+      mobileRender: (admin: Administrator) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
+            <AvatarFallback className="text-xs">{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">
+              {admin.user.firstName} {admin.user.lastName}
+            </div>
+          </div>
+          <Badge
+            className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+          >
+            {admin.user.active ? "Active" : "Inactive"}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      key: "email",
+      label: "Email",
+      mobilePriority: "low" as const,
+      render: (admin: Administrator) => admin.user.email,
+      mobileRender: (admin: Administrator) => (
+        <span className="truncate max-w-[150px] inline-block">{admin.user.email}</span>
+      ),
+    },
+    {
+      key: "position",
+      label: "Position",
+      render: (admin: Administrator) => admin.position || "N/A",
+    },
+    {
+      key: "department",
+      label: "Department",
+      mobileLabel: "Dept",
+      render: (admin: Administrator) => admin.department || "N/A",
+    },
+    {
+      key: "joined",
+      label: "Joined",
+      mobilePriority: "low" as const,
+      render: (admin: Administrator) => formatDate(admin.createdAt),
+    },
+    {
+      key: "status",
+      label: "Status",
+      mobilePriority: "low" as const, // Already shown in header on mobile
+      render: (admin: Administrator) => (
+        <Badge
+          className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+        >
+          {admin.user.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      className: "text-right",
+      isAction: true,
+      render: (admin: Administrator) => (
+        <>
+          <Link href={`/admin/users/administrators/${admin.id}`}>
+            <Button variant="ghost" size="sm">View</Button>
+          </Link>
+          <Link href={`/admin/users/administrators/${admin.id}/edit`}>
+            <Button variant="ghost" size="sm">Edit</Button>
+          </Link>
+        </>
+      ),
+      mobileRender: (admin: Administrator) => (
+        <>
+          <Link href={`/admin/users/administrators/${admin.id}`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">View</Button>
+          </Link>
+          <Link href={`/admin/users/administrators/${admin.id}/edit`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+          </Link>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <UserSearch
           placeholder="Search administrators by name, email, position..."
           onSearch={setSearchQuery}
@@ -89,75 +191,22 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
         />
       </div>
 
-      <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-accent border-b">
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Position</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Department</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Joined</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedAdmins.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      title={searchQuery ? "No administrators found" : "No administrators yet"}
-                      description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first administrator to the system."}
-                      actionLabel={!searchQuery ? "Add Administrator" : undefined}
-                      actionHref={!searchQuery ? "/admin/users/administrators/create" : undefined}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                paginatedAdmins.map((admin) => (
-                  <tr key={admin.id} className="border-b hover:bg-accent/50">
-                    <td className="py-3 px-4 align-middle whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
-                          <AvatarFallback>{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">
-                          {admin.user.firstName} {admin.user.lastName}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 align-middle">{admin.user.email}</td>
-                    <td className="py-3 px-4 align-middle">{admin.position || "N/A"}</td>
-                    <td className="py-3 px-4 align-middle">{admin.department || "N/A"}</td>
-                    <td className="py-3 px-4 align-middle">{formatDate(admin.createdAt)}</td>
-                    <td className="py-3 px-4 align-middle">
-                      <Badge
-                        className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
-                      >
-                        {admin.user.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 align-middle text-right">
-                      <Link href={`/admin/users/administrators/${admin.id}`}>
-                        <Button variant="ghost" size="sm">View</Button>
-                      </Link>
-                      <Link href={`/admin/users/administrators/${admin.id}/edit`}>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveTable
+        data={paginatedAdmins}
+        columns={columns}
+        keyExtractor={(admin) => admin.id}
+        emptyState={
+          <EmptyState
+            title={searchQuery ? "No administrators found" : "No administrators yet"}
+            description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first administrator to the system."}
+            actionLabel={!searchQuery ? "Add Administrator" : undefined}
+            actionHref={!searchQuery ? "/admin/users/administrators/create" : undefined}
+          />
+        }
+      />
 
       {filteredAndSortedAdmins.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedAdmins.length)} of {filteredAndSortedAdmins.length} administrators
           </div>

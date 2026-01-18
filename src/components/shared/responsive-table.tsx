@@ -9,6 +9,10 @@ interface Column<T> {
   render: (item: T) => ReactNode;
   className?: string;
   mobileLabel?: string; // Optional custom label for mobile view
+  mobilePriority?: "high" | "low"; // Priority for mobile display - high shows always, low is hidden
+  mobileRender?: (item: T) => ReactNode; // Optional custom render for mobile
+  isHeader?: boolean; // If true, renders as main card header on mobile
+  isAction?: boolean; // If true, renders in action bar on mobile
 }
 
 interface ResponsiveTableProps<T> {
@@ -31,6 +35,16 @@ export function ResponsiveTable<T>({
   if (data.length === 0 && emptyState) {
     return <div className="rounded-md border p-8">{emptyState}</div>;
   }
+
+  // Separate columns by mobile role
+  const headerColumn = columns.find((col) => col.isHeader);
+  const actionColumn = columns.find((col) => col.isAction);
+  const highPriorityColumns = columns.filter(
+    (col) => !col.isHeader && !col.isAction && col.mobilePriority !== "low"
+  );
+  const lowPriorityColumns = columns.filter(
+    (col) => !col.isHeader && !col.isAction && col.mobilePriority === "low"
+  );
 
   return (
     <>
@@ -79,26 +93,79 @@ export function ResponsiveTable<T>({
       </div>
 
       {/* Mobile Card View - Visible only on mobile */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {data.map((item) => (
           <div
             key={keyExtractor(item)}
             className={cn(
-              "rounded-lg border bg-card p-4 space-y-3 shadow-sm",
+              "rounded-lg border bg-card overflow-hidden shadow-sm",
               onRowClick && "cursor-pointer active:bg-accent/50 transition-colors"
             )}
             onClick={() => onRowClick?.(item)}
           >
-            {columns.map((column) => (
-              <div key={column.key} className="flex justify-between items-start gap-4">
-                <span className="text-sm font-medium text-muted-foreground min-w-[100px]">
-                  {column.mobileLabel || column.label}
-                </span>
-                <div className="text-sm text-right flex-1">
-                  {column.render(item)}
+            {/* Card Header - Primary info (Name + Avatar typically) */}
+            {headerColumn && (
+              <div className="px-3 py-2.5 bg-accent/30 border-b">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {headerColumn.mobileRender
+                      ? headerColumn.mobileRender(item)
+                      : headerColumn.render(item)}
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Card Body - High priority columns */}
+            <div className="px-3 py-2 space-y-1.5">
+              {highPriorityColumns.map((column) => (
+                <div
+                  key={column.key}
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="text-muted-foreground font-medium shrink-0">
+                    {column.mobileLabel || column.label}
+                  </span>
+                  <div className="text-right truncate">
+                    {column.mobileRender
+                      ? column.mobileRender(item)
+                      : column.render(item)}
+                  </div>
+                </div>
+              ))}
+
+              {/* Low priority columns - shown smaller */}
+              {lowPriorityColumns.length > 0 && (
+                <div className="pt-1.5 mt-1.5 border-t border-dashed space-y-1">
+                  {lowPriorityColumns.map((column) => (
+                    <div
+                      key={column.key}
+                      className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+                    >
+                      <span className="font-medium shrink-0">
+                        {column.mobileLabel || column.label}
+                      </span>
+                      <div className="text-right truncate">
+                        {column.mobileRender
+                          ? column.mobileRender(item)
+                          : column.render(item)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card Footer - Actions */}
+            {actionColumn && (
+              <div className="px-3 py-2 bg-accent/20 border-t">
+                <div className="flex justify-end gap-1">
+                  {actionColumn.mobileRender
+                    ? actionColumn.mobileRender(item)
+                    : actionColumn.render(item)}
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

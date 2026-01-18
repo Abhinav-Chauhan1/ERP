@@ -10,6 +10,7 @@ import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
 import { EmptyState } from "./empty-state";
+import { ResponsiveTable } from "@/components/shared/responsive-table";
 
 interface Student {
   id: string;
@@ -78,9 +79,127 @@ export function StudentsTable({ students }: StudentsTableProps) {
     currentPage * itemsPerPage
   );
 
+  const columns = [
+    {
+      key: "name",
+      label: "Name",
+      isHeader: true,
+      render: (student: Student) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+            <AvatarFallback>{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="font-medium">
+            {student.user.firstName} {student.user.lastName}
+          </div>
+        </div>
+      ),
+      mobileRender: (student: Student) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
+            <AvatarFallback className="text-xs">{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">
+              {student.user.firstName} {student.user.lastName}
+            </div>
+          </div>
+          <Badge
+            className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+          >
+            {student.user.active ? "Active" : "Inactive"}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      key: "admissionId",
+      label: "Admission ID",
+      mobileLabel: "Adm. ID",
+      render: (student: Student) => student.admissionId,
+    },
+    {
+      key: "class",
+      label: "Class",
+      render: (student: Student) => (
+        student.enrollments.length > 0 ? (
+          <div>
+            {student.enrollments[0].class.name} - {student.enrollments[0].section.name}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">Not enrolled</span>
+        )
+      ),
+      mobileRender: (student: Student) => (
+        student.enrollments.length > 0 ? (
+          <Badge variant="outline" className="text-[10px] px-1 py-0">
+            {student.enrollments[0].class.name} - {student.enrollments[0].section.name}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">Not enrolled</span>
+        )
+      ),
+    },
+    {
+      key: "gender",
+      label: "Gender",
+      mobilePriority: "low" as const,
+      render: (student: Student) => (
+        <span className="capitalize">{student.gender.toLowerCase()}</span>
+      ),
+    },
+    {
+      key: "admissionDate",
+      label: "Admission Date",
+      mobileLabel: "Admitted",
+      mobilePriority: "low" as const,
+      render: (student: Student) => formatDate(student.admissionDate),
+    },
+    {
+      key: "status",
+      label: "Status",
+      mobilePriority: "low" as const, // Already shown in header on mobile
+      render: (student: Student) => (
+        <Badge
+          className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+        >
+          {student.user.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      className: "text-right",
+      isAction: true,
+      render: (student: Student) => (
+        <>
+          <Link href={`/admin/users/students/${student.id}`}>
+            <Button variant="ghost" size="sm">View</Button>
+          </Link>
+          <Link href={`/admin/users/students/${student.id}/edit`}>
+            <Button variant="ghost" size="sm">Edit</Button>
+          </Link>
+        </>
+      ),
+      mobileRender: (student: Student) => (
+        <>
+          <Link href={`/admin/users/students/${student.id}`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">View</Button>
+          </Link>
+          <Link href={`/admin/users/students/${student.id}/edit`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+          </Link>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <UserSearch
           placeholder="Search students by name or admission ID..."
           onSearch={setSearchQuery}
@@ -91,83 +210,22 @@ export function StudentsTable({ students }: StudentsTableProps) {
         />
       </div>
 
-      <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-accent border-b">
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Admission ID</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Gender</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Admission Date</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      title={searchQuery ? "No students found" : "No students yet"}
-                      description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first student to the system."}
-                      actionLabel={!searchQuery ? "Add Student" : undefined}
-                      actionHref={!searchQuery ? "/admin/users/students/create" : undefined}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                paginatedStudents.map((student) => (
-                  <tr key={student.id} className="border-b hover:bg-accent/50">
-                    <td className="py-3 px-4 align-middle whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={student.user.avatar || undefined} alt={`${student.user.firstName} ${student.user.lastName}`} />
-                          <AvatarFallback>{student.user.firstName[0]}{student.user.lastName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">
-                          {student.user.firstName} {student.user.lastName}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 align-middle">{student.admissionId}</td>
-                    <td className="py-3 px-4 align-middle">
-                      {student.enrollments.length > 0 ? (
-                        <div>
-                          {student.enrollments[0].class.name} - {student.enrollments[0].section.name}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">Not enrolled</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 align-middle capitalize">{student.gender.toLowerCase()}</td>
-                    <td className="py-3 px-4 align-middle">{formatDate(student.admissionDate)}</td>
-                    <td className="py-3 px-4 align-middle">
-                      <Badge
-                        className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
-                      >
-                        {student.user.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 align-middle text-right">
-                      <Link href={`/admin/users/students/${student.id}`}>
-                        <Button variant="ghost" size="sm">View</Button>
-                      </Link>
-                      <Link href={`/admin/users/students/${student.id}/edit`}>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveTable
+        data={paginatedStudents}
+        columns={columns}
+        keyExtractor={(student) => student.id}
+        emptyState={
+          <EmptyState
+            title={searchQuery ? "No students found" : "No students yet"}
+            description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first student to the system."}
+            actionLabel={!searchQuery ? "Add Student" : undefined}
+            actionHref={!searchQuery ? "/admin/users/students/create" : undefined}
+          />
+        }
+      />
 
       {filteredAndSortedStudents.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedStudents.length)} of {filteredAndSortedStudents.length} students
           </div>

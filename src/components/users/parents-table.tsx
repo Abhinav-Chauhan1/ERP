@@ -9,6 +9,7 @@ import { UserSearch } from "./user-search";
 import { UserFilters } from "./user-filters";
 import { Pagination } from "./pagination";
 import { EmptyState } from "./empty-state";
+import { ResponsiveTable } from "@/components/shared/responsive-table";
 
 interface Parent {
   id: string;
@@ -84,9 +85,150 @@ export function ParentsTable({ parents }: ParentsTableProps) {
     currentPage * itemsPerPage
   );
 
+  const columns = [
+    {
+      key: "name",
+      label: "Name",
+      isHeader: true,
+      render: (parent: Parent) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
+            <AvatarFallback>{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="font-medium">
+            {parent.user.firstName} {parent.user.lastName}
+          </div>
+        </div>
+      ),
+      mobileRender: (parent: Parent) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
+            <AvatarFallback className="text-xs">{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">
+              {parent.user.firstName} {parent.user.lastName}
+            </div>
+          </div>
+          <Badge
+            className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+          >
+            {parent.user.active ? "Active" : "Inactive"}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      key: "email",
+      label: "Email",
+      mobilePriority: "low" as const,
+      render: (parent: Parent) => parent.user.email,
+      mobileRender: (parent: Parent) => (
+        <span className="truncate max-w-[150px] inline-block">{parent.user.email}</span>
+      ),
+    },
+    {
+      key: "phone",
+      label: "Phone",
+      render: (parent: Parent) => parent.user.phone || parent.alternatePhone || "N/A",
+    },
+    {
+      key: "children",
+      label: "Children",
+      render: (parent: Parent) => (
+        <div className="flex flex-wrap gap-1">
+          {parent.children.length > 0 ? (
+            <>
+              {parent.children.slice(0, 2).map((child) => (
+                <Badge key={child.id} variant="outline" className="text-xs">
+                  {child.student.user.firstName} {child.student.user.lastName}
+                </Badge>
+              ))}
+              {parent.children.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{parent.children.length - 2}
+                </Badge>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground">No children</span>
+          )}
+        </div>
+      ),
+      mobileRender: (parent: Parent) => (
+        <div className="flex flex-wrap gap-0.5 justify-end">
+          {parent.children.length > 0 ? (
+            <>
+              {parent.children.slice(0, 1).map((child) => (
+                <Badge key={child.id} variant="outline" className="text-[10px] px-1 py-0">
+                  {child.student.user.firstName}
+                </Badge>
+              ))}
+              {parent.children.length > 1 && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                  +{parent.children.length - 1}
+                </Badge>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground text-xs">None</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "relation",
+      label: "Relation",
+      mobilePriority: "low" as const,
+      render: (parent: Parent) => (
+        <span className="capitalize">{parent.relation?.toLowerCase() || "N/A"}</span>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      mobilePriority: "low" as const, // Already shown in header on mobile
+      render: (parent: Parent) => (
+        <Badge
+          className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+        >
+          {parent.user.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      className: "text-right",
+      isAction: true,
+      render: (parent: Parent) => (
+        <>
+          <Link href={`/admin/users/parents/${parent.id}`}>
+            <Button variant="ghost" size="sm">View</Button>
+          </Link>
+          <Link href={`/admin/users/parents/${parent.id}/edit`}>
+            <Button variant="ghost" size="sm">Edit</Button>
+          </Link>
+        </>
+      ),
+      mobileRender: (parent: Parent) => (
+        <>
+          <Link href={`/admin/users/parents/${parent.id}`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">View</Button>
+          </Link>
+          <Link href={`/admin/users/parents/${parent.id}/edit`}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">Edit</Button>
+          </Link>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <UserSearch
           placeholder="Search parents by name, email or phone..."
           onSearch={setSearchQuery}
@@ -97,94 +239,22 @@ export function ParentsTable({ parents }: ParentsTableProps) {
         />
       </div>
 
-      <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-accent border-b">
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Phone</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Children</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Relation</th>
-                <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedParents.length === 0 ? (
-                <tr>
-                  <td colSpan={7}>
-                    <EmptyState
-                      title={searchQuery ? "No parents found" : "No parents yet"}
-                      description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first parent to the system."}
-                      actionLabel={!searchQuery ? "Add Parent" : undefined}
-                      actionHref={!searchQuery ? "/admin/users/parents/create" : undefined}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                paginatedParents.map((parent) => (
-                  <tr key={parent.id} className="border-b hover:bg-accent/50">
-                    <td className="py-3 px-4 align-middle whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={parent.user.avatar || undefined} alt={`${parent.user.firstName} ${parent.user.lastName}`} />
-                          <AvatarFallback>{parent.user.firstName[0]}{parent.user.lastName[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">
-                          {parent.user.firstName} {parent.user.lastName}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 align-middle">{parent.user.email}</td>
-                    <td className="py-3 px-4 align-middle">{parent.user.phone || parent.alternatePhone || "N/A"}</td>
-                    <td className="py-3 px-4 align-middle">
-                      <div className="flex flex-wrap gap-1">
-                        {parent.children.length > 0 ? (
-                          <>
-                            {parent.children.slice(0, 2).map((child) => (
-                              <Badge key={child.id} variant="outline" className="text-xs">
-                                {child.student.user.firstName} {child.student.user.lastName}
-                              </Badge>
-                            ))}
-                            {parent.children.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{parent.children.length - 2}
-                              </Badge>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">No children</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 align-middle capitalize">{parent.relation?.toLowerCase() || "N/A"}</td>
-                    <td className="py-3 px-4 align-middle">
-                      <Badge
-                        className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
-                      >
-                        {parent.user.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 align-middle text-right">
-                      <Link href={`/admin/users/parents/${parent.id}`}>
-                        <Button variant="ghost" size="sm">View</Button>
-                      </Link>
-                      <Link href={`/admin/users/parents/${parent.id}/edit`}>
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveTable
+        data={paginatedParents}
+        columns={columns}
+        keyExtractor={(parent) => parent.id}
+        emptyState={
+          <EmptyState
+            title={searchQuery ? "No parents found" : "No parents yet"}
+            description={searchQuery ? "Try adjusting your search or filters." : "Get started by adding your first parent to the system."}
+            actionLabel={!searchQuery ? "Add Parent" : undefined}
+            actionHref={!searchQuery ? "/admin/users/parents/create" : undefined}
+          />
+        }
+      />
 
       {filteredAndSortedParents.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedParents.length)} of {filteredAndSortedParents.length} parents
           </div>
