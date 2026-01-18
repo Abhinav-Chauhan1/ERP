@@ -253,26 +253,6 @@ export class PromotionService {
         }
       }
 
-      // Check for pending disciplinary actions
-      // Note: This assumes a disciplinary action model exists
-      // If not, this check can be removed or modified
-      try {
-        const disciplinaryActions = await db.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(*) as count
-          FROM "DisciplinaryAction"
-          WHERE "studentId" = ${studentId}
-          AND "status" = 'PENDING'
-        `;
-
-        if (disciplinaryActions.length > 0 && Number(disciplinaryActions[0].count) > 0) {
-          studentWarnings.push(
-            `Pending disciplinary actions: ${Number(disciplinaryActions[0].count)}`
-          );
-        }
-      } catch (error) {
-        // Disciplinary action table might not exist, skip this check
-        console.log("Disciplinary action check skipped:", error);
-      }
 
       if (studentWarnings.length > 0) {
         warnings.set(studentId, studentWarnings);
