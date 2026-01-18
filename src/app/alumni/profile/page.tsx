@@ -18,6 +18,7 @@ import { AlumniProfileEditor } from "@/components/alumni/alumni-profile-editor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { updateAlumniProfile } from "@/lib/actions/alumniActions";
+import { uploadBufferToCloudinary } from "@/lib/cloudinary-server";
 
 export const metadata = {
   title: "My Profile - Alumni Portal",
@@ -145,15 +146,38 @@ async function handleProfileSave(alumniId: string, data: any) {
 /**
  * Handle photo upload
  */
-async function handlePhotoUpload(file: File) {
+export async function handlePhotoUpload(file: File) {
   "use server";
   
   try {
-    // TODO: Implement actual photo upload to Cloudinary or other storage
-    // For now, return a placeholder
+    if (!file) {
+      throw new Error("No file provided");
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      throw new Error("File must be an image");
+    }
+
+    // Validate file size (5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      throw new Error("File size must be less than 5MB");
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Upload to Cloudinary
+    // Using a specific folder for alumni profiles to keep things organized
+    const result = await uploadBufferToCloudinary(buffer, {
+      folder: "alumni-profiles",
+      resource_type: "image",
+    });
+
     return {
       success: true,
-      url: "/placeholder-avatar.png",
+      url: result.secure_url,
     };
   } catch (error) {
     console.error("Error uploading photo:", error);
