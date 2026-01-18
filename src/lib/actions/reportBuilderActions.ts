@@ -462,10 +462,17 @@ export async function saveReportConfig(config: ReportConfig) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // TODO: Implement saving report configuration to database
-    // This requires a new model 'SavedReportConfig' in the schema which is currently referenced in future requirements.
-    // For now, we simulate success to allow UI testing.
-    console.log("Saving report config (Simulation):", config);
+    await prisma.savedReportConfig.create({
+      data: {
+        name: config.name,
+        dataSource: config.dataSource,
+        selectedFields: config.selectedFields,
+        filters: JSON.parse(JSON.stringify(config.filters)), // Ensure it's a plain object/array for Json
+        sorting: JSON.parse(JSON.stringify(config.sorting)),
+        chartConfig: config.chartConfig ? JSON.parse(JSON.stringify(config.chartConfig)) : undefined,
+        userId: userId,
+      },
+    });
 
     revalidatePath("/admin/reports");
     return { success: true, message: "Report configuration saved successfully" };

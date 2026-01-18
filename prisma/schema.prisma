@@ -55,6 +55,7 @@ model User {
   messageHistory   MessageHistory[] @relation("MessageHistorySentBy")
   userPermissions  UserPermission[]
   eventRSVPs       EventRSVP[]
+  savedReports     SavedReportConfig[]
 }
 
 // NextAuth v5 Models
@@ -3498,4 +3499,26 @@ enum PromotionStatus {
   PROMOTED
   EXCLUDED
   FAILED
+}
+
+// Saved Reports Configuration
+model SavedReportConfig {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  dataSource     String
+  selectedFields String[] // Array of field names
+  filters        Json // Stores ReportFilter[]
+  sorting        Json // Stores ReportSort[]
+  chartConfig    Json? // Stores ChartConfig
+
+  // User relationship
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("saved_report_configs")
 }
