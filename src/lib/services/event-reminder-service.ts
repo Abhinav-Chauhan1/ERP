@@ -7,13 +7,11 @@
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
  */
 
-import { PrismaClient, EventReminder, ReminderType, CalendarEvent } from '@prisma/client';
+import { EventReminder, ReminderType, CalendarEvent } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { sendEmail, isEmailConfigured } from './email-service';
 import { createReminderNotification } from './notification-service';
 import { db } from '@/lib/db';
-
-const prisma = new PrismaClient();
 
 // Types for reminder creation
 export interface CreateReminderInput {
@@ -145,12 +143,12 @@ export function generateReminderNotification(
   event: CalendarEvent
 ): ReminderNotificationData {
   // Format time
-  const eventTime = event.isAllDay 
-    ? 'All Day' 
-    : event.startDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+  const eventTime = event.isAllDay
+    ? 'All Day'
+    : event.startDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
   return {
     eventTitle: event.title,
@@ -256,7 +254,7 @@ export async function hasExistingReminder(
   userId: string,
   reminderType: ReminderType
 ): Promise<boolean> {
-  const existingReminder = await prisma.eventReminder.findFirst({
+  const existingReminder = await db.eventReminder.findFirst({
     where: {
       eventId,
       userId,
@@ -278,7 +276,7 @@ export async function hasExistingReminder(
 export async function markReminderAsSent(
   reminderId: string
 ): Promise<EventReminder> {
-  return await prisma.eventReminder.update({
+  return await db.eventReminder.update({
     where: { id: reminderId },
     data: {
       isSent: true,
@@ -296,7 +294,7 @@ export async function markReminderAsSent(
 export async function getPendingReminders(
   beforeTime: Date = new Date()
 ): Promise<Array<EventReminder & { event: CalendarEvent }>> {
-  return await prisma.eventReminder.findMany({
+  return await db.eventReminder.findMany({
     where: {
       isSent: false,
       reminderTime: {
@@ -335,7 +333,7 @@ export async function synchronizeRemindersOnEventUpdate(
   const timeDifference = newStartDate.getTime() - oldStartDate.getTime();
 
   // Get all unsent reminders for this event
-  const reminders = await prisma.eventReminder.findMany({
+  const reminders = await db.eventReminder.findMany({
     where: {
       eventId,
       isSent: false
@@ -346,14 +344,14 @@ export async function synchronizeRemindersOnEventUpdate(
   let updatedCount = 0;
   for (const reminder of reminders) {
     const newReminderTime = new Date(reminder.reminderTime.getTime() + timeDifference);
-    
-    await prisma.eventReminder.update({
+
+    await db.eventReminder.update({
       where: { id: reminder.id },
       data: {
         reminderTime: newReminderTime
       }
     });
-    
+
     updatedCount++;
   }
 
@@ -370,7 +368,7 @@ export async function synchronizeRemindersOnEventUpdate(
 export async function deleteRemindersForEvent(
   eventId: string
 ): Promise<number> {
-  const result = await prisma.eventReminder.deleteMany({
+  const result = await db.eventReminder.deleteMany({
     where: { eventId }
   });
 
@@ -387,11 +385,56 @@ export async function deleteRemindersForEvent(
 export async function deleteRemindersForUser(
   userId: string
 ): Promise<number> {
-  const result = await prisma.eventReminder.deleteMany({
+  const result = await db.eventReminder.deleteMany({
     where: { userId }
   });
 
   return result.count;
+}
+
+// Concurrency limiter helper
+function pLimit(concurrency: number) {
+  const queue: Array<{
+    fn: () => Promise<any>;
+    resolve: (value: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
+  let active = 0;
+
+  const next = () => {
+    active--;
+    if (queue.length > 0) {
+      const item = queue.shift();
+      if (item) {
+        run(item.fn, item.resolve, item.reject);
+      }
+    }
+  };
+
+  const run = async (
+    fn: () => Promise<any>,
+    resolve: (value: any) => void,
+    reject: (reason?: any) => void
+  ) => {
+    active++;
+    try {
+      const result = await fn();
+      resolve(result);
+    } catch (e) {
+      reject(e);
+    } finally {
+      next();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> =>
+    new Promise((resolve, reject) => {
+      if (active < concurrency) {
+        run(fn, resolve, reject);
+      } else {
+        queue.push({ fn, resolve, reject });
+      }
+    });
 }
 
 /**
@@ -407,55 +450,99 @@ export async function processPendingReminders(): Promise<{
   failed: number;
 }> {
   const pendingReminders = await getPendingReminders();
-  
-  let sent = 0;
-  let failed = 0;
 
-  for (const reminder of pendingReminders) {
-    // Check for duplicates before sending
-    const isDuplicate = await hasExistingReminder(
-      reminder.eventId,
-      reminder.userId,
-      reminder.reminderType
-    );
-
-    if (isDuplicate) {
-      // Mark as sent without actually sending
-      await markReminderAsSent(reminder.id);
-      continue;
-    }
-
-    try {
-      // Fetch user data
-      const user = await db.user.findUnique({
-        where: { id: reminder.userId },
-        select: { email: true }
-      });
-
-      if (!user) {
-        console.error('User not found for reminder:', reminder.userId);
-        failed++;
-        continue;
-      }
-
-      // Send the notification
-      const success = await sendReminderNotification(
-        reminder,
-        reminder.event,
-        user.email
-      );
-
-      if (success) {
-        await markReminderAsSent(reminder.id);
-        sent++;
-      } else {
-        failed++;
-      }
-    } catch (error) {
-      console.error('Error processing reminder:', error);
-      failed++;
-    }
+  if (pendingReminders.length === 0) {
+    return { processed: 0, sent: 0, failed: 0 };
   }
+
+  // 1. Batch fetch sent reminders to optimize duplicate checking
+  // We check for any sent reminders for the same event, user, and type combination
+  const eventIds = [...new Set(pendingReminders.map(r => r.eventId))];
+  const userIds = [...new Set(pendingReminders.map(r => r.userId))];
+
+  // Optimize: Fetch sent reminders for the relevant events/users
+  // This replaces the N calls to hasExistingReminder
+  const sentReminders = await db.eventReminder.findMany({
+    where: {
+      eventId: { in: eventIds },
+      userId: { in: userIds },
+      isSent: true
+    },
+    select: {
+      eventId: true,
+      userId: true,
+      reminderType: true
+    }
+  });
+
+  // Create a set of sent reminder keys for O(1) lookup
+  const sentReminderKeys = new Set(
+    sentReminders.map(r => `${r.eventId}-${r.userId}-${r.reminderType}`)
+  );
+
+  // 2. Batch fetch user emails
+  // This replaces the N calls to db.user.findUnique
+  const users = await db.user.findMany({
+    where: {
+      id: { in: userIds }
+    },
+    select: {
+      id: true,
+      email: true
+    }
+  });
+
+  const userMap = new Map(users.map(u => [u.id, u]));
+
+  // 3. Process reminders in parallel with concurrency limit
+  const limit = pLimit(10); // Process 10 reminders concurrently
+
+  const results = await Promise.all(
+    pendingReminders.map(reminder =>
+      limit(async () => {
+        const key = `${reminder.eventId}-${reminder.userId}-${reminder.reminderType}`;
+
+        // Check for duplicates (including those we just marked as sent in this batch)
+        if (sentReminderKeys.has(key)) {
+          // Mark as sent without actually sending
+          await markReminderAsSent(reminder.id);
+          return { status: 'duplicate' };
+        }
+
+        // Add to set to prevent duplicates within this batch
+        sentReminderKeys.add(key);
+
+        try {
+          const user = userMap.get(reminder.userId);
+
+          if (!user) {
+            console.error('User not found for reminder:', reminder.userId);
+            return { status: 'failed' };
+          }
+
+          // Send the notification
+          const success = await sendReminderNotification(
+            reminder,
+            reminder.event,
+            user.email
+          );
+
+          if (success) {
+            await markReminderAsSent(reminder.id);
+            return { status: 'sent' };
+          } else {
+            return { status: 'failed' };
+          }
+        } catch (error) {
+          console.error('Error processing reminder:', error);
+          return { status: 'failed' };
+        }
+      })
+    )
+  );
+
+  const sent = results.filter(r => r.status === 'sent').length;
+  const failed = results.filter(r => r.status === 'failed').length;
 
   return {
     processed: pendingReminders.length,
