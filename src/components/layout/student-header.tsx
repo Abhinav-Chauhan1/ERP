@@ -27,33 +27,38 @@ export function StudentHeader() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-card px-6 gap-4">
-      <div className="flex items-center gap-2 md:hidden">
+    <div className="flex h-16 items-center border-b bg-card px-4 md:px-6 gap-2 md:gap-4">
+      {/* Mobile: Menu button */}
+      <div className="md:hidden">
         <Sheet>
           <SheetTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              className="md:hidden"
               aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0" aria-label="Navigation menu">
+          <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw] overflow-y-auto" aria-label="Navigation menu">
             <VisuallyHidden>
               <SheetTitle>Navigation Menu</SheetTitle>
             </VisuallyHidden>
-            <StudentSidebar />
+            <div className="pt-14 h-full">
+              <StudentSidebar />
+            </div>
           </SheetContent>
         </Sheet>
-        <Link href="/student" className="md:hidden" aria-label="Go to student dashboard">
-          <h1 className="text-xl font-bold">SikshaMitra</h1>
-        </Link>
       </div>
 
-      <div className="hidden md:block">
+      {/* Mobile: SikshaMitra branding - centered */}
+      <Link href="/student" className="md:hidden flex-1 text-center" aria-label="Go to student dashboard">
+        <h1 className="text-lg font-bold pt-[10px]">SikshaMitra</h1>
+      </Link>
+
+      {/* Desktop: Page title */}
+      <div className="hidden md:block flex-1">
         <h1 className="text-xl font-semibold">
           {pathname === "/student" && "Dashboard"}
           {pathname.startsWith("/student/academics") && "Academics"}
@@ -71,10 +76,11 @@ export function StudentHeader() {
       </div>
 
       {/* Global Search - Hidden on mobile, visible on tablet and up */}
-      <div className="hidden sm:block flex-1 max-w-md mx-4">
+      <div className="hidden sm:block max-w-md">
         <GlobalSearch />
       </div>
 
+      {/* Right side: Notifications and User */}
       <div className="flex items-center gap-2">
         <NotificationCenter />
         <UserButton afterSignOutUrl="/login" />

@@ -152,7 +152,7 @@ export function TeacherSidebar() {
           <p className="text-xs text-muted-foreground mt-1">Teacher Portal</p>
         </Link>
       </div>
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full pb-4">
         {routes.map((route) => {
           // Check if any submenu item is active
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
@@ -166,14 +166,14 @@ export function TeacherSidebar() {
                 <button
                   onClick={() => toggleMenu(route.label)}
                   className={cn(
-                    "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 px-4 md:px-6 transition-colors min-h-[44px]",
+                    "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                     isRouteActive
                       ? "text-primary bg-primary/10"
                       : "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <route.icon className="h-5 w-5 flex-shrink-0" />
+                    <route.icon className="h-5 w-5 md:h-5 md:w-5 flex-shrink-0" />
                     <span>{route.label}</span>
                   </div>
                   {isOpen ? (
@@ -212,13 +212,13 @@ export function TeacherSidebar() {
               key={route.href}
               href={route.href!}
               className={cn(
-                "text-sm md:text-base font-medium flex items-center py-3 px-4 md:px-6 transition-colors min-h-[44px]",
+                "text-sm md:text-base font-medium flex items-center py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
                 isRouteActive
                   ? "text-primary bg-primary/10 border-r-4 border-primary"
                   : "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
               )}
             >
-              <route.icon className="h-5 w-5 mr-3 flex-shrink-0" />
+              <route.icon className="h-5 w-5 md:h-5 md:w-5 mr-3 flex-shrink-0" />
               <span>{route.label}</span>
             </Link>
           );
@@ -227,7 +227,7 @@ export function TeacherSidebar() {
       <div className="mt-auto p-4 border-t">
         <div className="flex items-center gap-x-2">
           <UserButton afterSignOutUrl="/login" />
-          <span className="text-sm font-medium">Teacher Account</span>
+          <span className="text-xs md:text-sm font-medium">Teacher Account</span>
         </div>
       </div>
     </div>

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { 
-  Users, UserCheck, Calendar, FileText, 
-  BarChart2, Clock, DollarSign, MessageSquare, 
+import {
+  Users, UserCheck, Calendar, FileText,
+  BarChart2, Clock, DollarSign, MessageSquare,
   FolderOpen, Award, Settings, CalendarCheck,
   LucideIcon, BookOpen, School, BookOpenCheck,
   ChevronDown, ChevronRight, CalendarDays
@@ -132,16 +132,16 @@ export function ParentSidebar() {
   // Auto-open section if current path matches
   const isSectionOpen = (route: RouteItem) => {
     if (!route.submenu) return false;
-    
+
     // Check if manually toggled
     if (openSections[route.label] !== undefined) {
       return openSections[route.label];
     }
-    
+
     // Auto-open if current path is within this section
     return route.submenu.some(item => pathname === item.href);
   };
-  
+
   return (
     <div className="h-full border-r flex flex-col overflow-y-auto bg-card shadow-sm">
       <div className="p-4 md:p-6">
@@ -154,12 +154,12 @@ export function ParentSidebar() {
         {routes.map((route) => {
           const hasSubmenu = route.submenu && route.submenu.length > 0;
           const isOpen = isSectionOpen(route);
-          
+
           // Check if this route or any of its submenu items is active
           const isMainRouteActive = route.href && pathname === route.href;
           const isSubRouteActive = route.submenu?.some(item => pathname === item.href);
           const isRouteActive = isMainRouteActive || isSubRouteActive;
-          
+
           return (
             <div key={route.label}>
               {/* Main heading - clickable only if no submenu, otherwise just toggle */}
@@ -170,8 +170,8 @@ export function ParentSidebar() {
                   aria-expanded={isOpen}
                   className={cn(
                     "w-full text-sm md:text-base font-medium flex items-center justify-between py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
-                    isRouteActive ? 
-                      "text-primary bg-primary/10" : 
+                    isRouteActive ?
+                      "text-primary bg-primary/10" :
                       "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
@@ -191,8 +191,8 @@ export function ParentSidebar() {
                   aria-label={`Navigate to ${route.label}`}
                   className={cn(
                     "text-sm md:text-base font-medium flex items-center py-3 md:py-3 px-4 md:px-6 transition-colors min-h-[44px]",
-                    isMainRouteActive ? 
-                      "text-primary bg-primary/10 border-r-4 border-primary" : 
+                    isMainRouteActive ?
+                      "text-primary bg-primary/10 border-r-4 border-primary" :
                       "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                   )}
                 >
@@ -200,7 +200,7 @@ export function ParentSidebar() {
                   <span>{route.label}</span>
                 </Link>
               )}
-              
+
               {/* Submenu */}
               {hasSubmenu && isOpen && (
                 <div className="ml-8 md:ml-9 border-l pl-3 my-1">
@@ -210,8 +210,8 @@ export function ParentSidebar() {
                       href={item.href}
                       className={cn(
                         "text-xs md:text-sm flex items-center py-2.5 md:py-2 px-2 rounded transition-colors min-h-[40px]",
-                        pathname === item.href ? 
-                          "text-primary font-medium bg-primary/10" : 
+                        pathname === item.href ?
+                          "text-primary font-medium bg-primary/10" :
                           "text-muted-foreground hover:text-primary hover:bg-accent active:bg-accent"
                       )}
                     >

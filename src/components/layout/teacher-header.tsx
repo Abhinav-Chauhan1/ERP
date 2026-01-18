@@ -26,28 +26,35 @@ export function TeacherHeader() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b bg-card px-6 gap-4">
-      <div className="flex items-center gap-2 md:hidden">
+    <div className="flex h-16 items-center border-b bg-card px-4 md:px-6 gap-2 md:gap-4">
+      {/* Mobile: Menu button */}
+      <div className="md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="md:hidden"
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Open navigation menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
+              <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
-            <TeacherSidebar />
+          <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw] overflow-y-auto" aria-label="Navigation menu">
+            <div className="pt-14 h-full">
+              <TeacherSidebar />
+            </div>
           </SheetContent>
         </Sheet>
-        <Link href="/teacher" className="md:hidden">
-          <SchoolLogo showName={true} />
-        </Link>
       </div>
 
-      <div className="hidden md:block">
+      {/* Mobile: SikshaMitra branding - centered */}
+      <Link href="/teacher" className="md:hidden flex-1 text-center" aria-label="Go to teacher dashboard">
+        <h1 className="text-lg font-bold pt-[10px]">SikshaMitra</h1>
+      </Link>
+
+      {/* Desktop: Page title */}
+      <div className="hidden md:block flex-1">
         <h1 className="text-xl font-semibold">
           {pathname === "/teacher" && "Dashboard"}
           {pathname.startsWith("/teacher/teaching") && "Teaching"}
@@ -60,10 +67,11 @@ export function TeacherHeader() {
       </div>
 
       {/* Global Search - Hidden on mobile, visible on tablet and up */}
-      <div className="hidden sm:block flex-1 max-w-md mx-4">
+      <div className="hidden sm:block max-w-md">
         <GlobalSearch />
       </div>
 
+      {/* Right side: Notifications and User */}
       <div className="flex items-center gap-2">
         <NotificationCenter />
         <UserButton afterSignOutUrl="/login" />
