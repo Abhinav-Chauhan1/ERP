@@ -70,6 +70,7 @@ import {
   getFeeStructureStats,
   autoGenerateFeeTypes,
   getAvailableStandardFeeTypes,
+  bulkCreateFeeStructuresByClass,
 } from "@/lib/actions/feeStructureActions";
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
 import { getClasses } from "@/lib/actions/classesActions";
@@ -85,6 +86,7 @@ import {
 // Import custom components
 import { MultiClassSelector } from "@/components/fees/multi-class-selector";
 import { FeeTypeClassAmountConfig } from "@/components/fees/fee-type-class-amount-config";
+import { QuickCreateFeeStructures } from "@/components/fees/quick-create-fee-structures";
 import { FeeTypesTable } from "@/components/admin/fee-types-table";
 
 // Fee frequency options
@@ -125,6 +127,7 @@ export default function FeeStructurePage() {
   const [availableStandardFeeTypes, setAvailableStandardFeeTypes] = useState<any[]>([]);
   const [selectedStandardFeeTypes, setSelectedStandardFeeTypes] = useState<string[]>([]);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [quickCreateDialogOpen, setQuickCreateDialogOpen] = useState(false);
 
   // Initialize forms
   const form = useForm<FeeStructureFormValues>({
@@ -576,6 +579,10 @@ export default function FeeStructurePage() {
                       Bulk Operations
                     </Button>
                   </Link>
+                  <Button variant="outline" onClick={() => setQuickCreateDialogOpen(true)}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Quick Create by Class
+                  </Button>
                   <Button onClick={handleCreateStructure}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Fee Structure
@@ -1645,6 +1652,25 @@ export default function FeeStructurePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Quick Create Fee Structures by Class Dialog */}
+      <QuickCreateFeeStructures
+        open={quickCreateDialogOpen}
+        onOpenChange={setQuickCreateDialogOpen}
+        classes={classes}
+        feeTypes={feeTypes}
+        academicYears={academicYears}
+        onCreateStructures={async (academicYearId, structures) => {
+          const result = await bulkCreateFeeStructuresByClass(academicYearId, structures);
+          if (result.success) {
+            toast.success(result.message || `Created ${result.count} fee structures`);
+            fetchAllData();
+          } else {
+            toast.error(result.error || "Failed to create fee structures");
+          }
+          return result;
+        }}
+      />
     </div>
   );
 }

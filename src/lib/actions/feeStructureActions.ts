@@ -2,8 +2,8 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { 
-  feeStructureService, 
+import {
+  feeStructureService,
   type CreateFeeStructureInput,
   type UpdateFeeStructureInput,
   type FeeStructureFilters,
@@ -11,7 +11,7 @@ import {
   type CreateFromTemplateInput,
 } from "@/lib/services/fee-structure-service";
 import { feeTypeService } from "@/lib/services/fee-type-service";
-import { 
+import {
   feeStructureAnalyticsService,
   type AnalyticsFilters,
 } from "@/lib/services/fee-structure-analytics-service";
@@ -354,9 +354,9 @@ export async function bulkAssignFeeStructuresToClass(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error bulk assigning fee structures:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to bulk assign fee structures" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to bulk assign fee structures"
     };
   }
 }
@@ -377,9 +377,9 @@ export async function bulkRemoveFeeStructuresFromClass(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error bulk removing fee structures:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to bulk remove fee structures" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to bulk remove fee structures"
     };
   }
 }
@@ -401,9 +401,9 @@ export async function getAvailableFeeStructuresForBulkAssignment(
     return { success: true, data: result };
   } catch (error) {
     console.error("Error fetching available fee structures:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch available fee structures" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch available fee structures"
     };
   }
 }
@@ -500,3 +500,122 @@ export async function getAvailableStandardFeeTypes() {
     };
   }
 }
+
+// ============================================================================
+// Quick Create Fee Structures by Class
+// ============================================================================
+
+interface BulkCreateStructureInput {
+  name: string;
+  classIds: string[];
+  items: Array<{ feeTypeId: string; amount: number }>;
+}
+
+/**
+ * Bulk create fee structures for multiple classes
+ * Creates one fee structure per class with class-specific amounts
+ */
+export async function bulkCreateFeeStructuresByClass(
+  academicYearId: string,
+  structures: BulkCreateStructureInput[]
+) {
+  try {
+    // Validate academic year exists
+    const academicYear = await db.academicYear.findUnique({
+      where: { id: academicYearId },
+    });
+
+    if (!academicYear) {
+      return { success: false, error: "Academic year not found" };
+    }
+
+    // Create all fee structures
+    const createdStructures = [];
+    const errors: string[] = [];
+
+    for (const structure of structures) {
+      try {
+        // Validate all classes exist
+        const classIds = structure.classIds;
+        const classCount = await db.class.count({
+          where: { id: { in: classIds } },
+        });
+
+        if (classCount !== classIds.length) {
+          errors.push(`${structure.name}: One or more classes not found`);
+          continue;
+        }
+
+        // Validate all fee types exist
+        const feeTypeIds = structure.items.map((item) => item.feeTypeId);
+        const feeTypeCount = await db.feeType.count({
+          where: { id: { in: feeTypeIds } },
+        });
+
+        if (feeTypeCount !== feeTypeIds.length) {
+          errors.push(`${structure.name}: One or more fee types not found`);
+          continue;
+        }
+
+        // Create the fee structure
+        const created = await db.feeStructure.create({
+          data: {
+            name: structure.name,
+            academicYearId,
+            validFrom: new Date(),
+            isActive: true,
+            isTemplate: false,
+            classes: {
+              create: classIds.map((classId) => ({
+                classId,
+              })),
+            },
+            items: {
+              create: structure.items.map((item) => ({
+                feeTypeId: item.feeTypeId,
+                amount: item.amount,
+              })),
+            },
+          },
+          include: {
+            classes: {
+              include: { class: true },
+            },
+            items: {
+              include: { feeType: true },
+            },
+          },
+        });
+
+        createdStructures.push(created);
+      } catch (err) {
+        console.error(`Error creating structure ${structure.name}:`, err);
+        errors.push(`${structure.name}: ${err instanceof Error ? err.message : "Creation failed"}`);
+      }
+    }
+
+    revalidatePath("/admin/finance/fee-structure");
+
+    if (createdStructures.length === 0 && errors.length > 0) {
+      return {
+        success: false,
+        error: `Failed to create fee structures: ${errors.join(", ")}`,
+      };
+    }
+
+    return {
+      success: true,
+      count: createdStructures.length,
+      data: createdStructures,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Successfully created ${createdStructures.length} fee structure${createdStructures.length !== 1 ? "s" : ""}${errors.length > 0 ? ` (${errors.length} failed)` : ""}`,
+    };
+  } catch (error) {
+    console.error("Error bulk creating fee structures:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to bulk create fee structures",
+    };
+  }
+}
+

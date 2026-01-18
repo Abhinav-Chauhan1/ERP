@@ -53,7 +53,7 @@ export function AdminHeader() {
       </Link>
 
       {/* Desktop: Page title */}
-      <div className="hidden md:block flex-1">
+      <div className="hidden md:block">
         <h1 className="text-xl font-semibold">
           {pathname === "/admin" && "Dashboard"}
           {pathname.startsWith("/admin/users") && "Users"}
@@ -71,8 +71,8 @@ export function AdminHeader() {
         </h1>
       </div>
 
-      {/* Global Search - Hidden on mobile, visible on tablet and up */}
-      <div className="hidden sm:block max-w-md">
+      {/* Global Search - Hidden on mobile, visible on tablet and up, centered */}
+      <div className="hidden sm:flex flex-1 justify-center">
         <GlobalSearch />
       </div>
 
