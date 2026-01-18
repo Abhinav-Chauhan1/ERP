@@ -39,8 +39,8 @@ export function AdminHeader() {
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw]" aria-label="Navigation menu">
-            <div className="pt-10">
+          <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw] overflow-y-auto" aria-label="Navigation menu">
+            <div className="pt-10 h-full">
               <AdminSidebar />
             </div>
           </SheetContent>
