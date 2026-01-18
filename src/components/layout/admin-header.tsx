@@ -49,7 +49,7 @@ export function AdminHeader() {
 
       {/* Mobile: SikshaMitra branding - centered */}
       <Link href="/admin" className="md:hidden flex-1 text-center" aria-label="Go to admin dashboard">
-        <h1 className="text-lg font-bold">SikshaMitra</h1>
+        <h1 className="text-lg font-bold pt-[10px]">SikshaMitra</h1>
       </Link>
 
       {/* Desktop: Page title */}
