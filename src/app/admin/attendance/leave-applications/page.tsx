@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LeaveApplicationsTable } from "@/components/admin/leave-applications-table";
 import {
   Dialog,
   DialogContent,
@@ -405,101 +406,14 @@ export default function LeaveApplicationsPage() {
                 </Button>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-accent border-b">
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Applicant</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date Range</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                        <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredLeaveApplications.map((leave) => (
-                        <tr key={leave.id} className="border-b">
-                          <td className="py-3 px-4 align-middle">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={leave.applicant?.avatar || ""} alt={leave.applicant?.name} />
-                                <AvatarFallback className="text-xs">
-                                  {leave.applicant?.name?.substring(0, 2).toUpperCase() || "N/A"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="font-medium">{leave.applicant?.name || "Unknown"}</div>
-                                <div className="text-xs text-muted-foreground">{leave.applicant?.id || ""}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            <Badge variant="outline" className={leave.applicantType === "STUDENT"
-                              ? "bg-primary/10 text-primary border-primary/30"
-                              : "bg-purple-50 text-purple-700 border-purple-200"}>
-                              {leave.applicantType === "STUDENT" ? "Student" : "Teacher"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            <div className="flex items-center gap-1.5">
-                              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>
-                                {format(new Date(leave.fromDate), "MMM d, yyyy")} - {format(new Date(leave.toDate), "MMM d, yyyy")}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            {leave.duration} {leave.duration === 1 ? "day" : "days"}
-                          </td>
-                          <td className="py-3 px-4 align-middle">
-                            {getStatusBadge(leave.status)}
-                          </td>
-                          <td className="py-3 px-4 align-middle text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleView(leave.id)}
-                            >
-                              <Info className="h-4 w-4" />
-                            </Button>
-                            {leave.status === "PENDING" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => handleEdit(leave)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-green-600"
-                                  onClick={() => handleProcess(leave)}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-500"
-                                  onClick={() => handleDelete(leave)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <LeaveApplicationsTable
+                applications={filteredLeaveApplications}
+                onView={handleView}
+                onEdit={handleEdit}
+                onProcess={handleProcess}
+                onDelete={handleDelete}
+                emptyMessage="No leave applications found"
+              />
             )}
           </CardContent>
         </Card>

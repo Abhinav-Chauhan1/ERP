@@ -31,14 +31,8 @@ import {
 } from "lucide-react";
 import { getPendingReceipts, getVerificationStats, bulkVerifyReceipts, bulkRejectReceipts } from "@/lib/actions/receiptVerificationActions";
 import toast from "react-hot-toast";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
+import { ResponsiveTable } from "@/components/shared/responsive-table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import {
@@ -295,6 +289,183 @@ export function PendingReceiptsTable({ onVerify, onReject }: PendingReceiptsTabl
 
   const isAllSelected = receipts.length > 0 && selectedReceipts.size === receipts.length;
 
+  const columns = [
+    {
+      key: "select",
+      label: (
+        <Checkbox
+          checked={isAllSelected}
+          onCheckedChange={handleSelectAll}
+          aria-label="Select all receipts"
+        />
+      ),
+      className: "w-[40px]",
+      mobileLabel: "Select",
+      render: (receipt: PendingReceipt) => (
+        <Checkbox
+          checked={selectedReceipts.has(receipt.id)}
+          onCheckedChange={() => handleSelectReceipt(receipt.id)}
+          aria-label={`Select receipt ${receipt.referenceNumber}`}
+        />
+      ),
+    },
+    {
+      key: "reference",
+      label: "Reference",
+      render: (receipt: PendingReceipt) => <span className="font-mono text-xs">{receipt.referenceNumber}</span>,
+      mobilePriority: "low" as const,
+    },
+    {
+      key: "student",
+      label: "Student",
+      isHeader: true,
+      render: (receipt: PendingReceipt) => (
+        <div className="flex flex-col">
+          <span className="font-medium">
+            {receipt.student.user.firstName} {receipt.student.user.lastName}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {receipt.feeStructure.name}
+          </span>
+        </div>
+      ),
+      mobileRender: (receipt: PendingReceipt) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-sm">
+            {receipt.student.user.firstName} {receipt.student.user.lastName}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {receipt.referenceNumber}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: "class",
+      label: "Class",
+      mobilePriority: "low" as const,
+      render: (receipt: PendingReceipt) => receipt.student.enrollments[0] ? (
+        <div className="flex flex-col">
+          <span>{receipt.student.enrollments[0].class.name}</span>
+          <span className="text-xs text-muted-foreground">
+            {receipt.student.enrollments[0].section.name}
+          </span>
+        </div>
+      ) : "N/A",
+    },
+    {
+      key: "amount",
+      label: "Amount",
+      render: (receipt: PendingReceipt) => <span className="font-semibold">₹{receipt.amount.toFixed(2)}</span>,
+    },
+    {
+      key: "paymentDate",
+      label: "Payment Date",
+      mobilePriority: "low" as const,
+      render: (receipt: PendingReceipt) => format(new Date(receipt.paymentDate), "MMM dd, yyyy"),
+    },
+    {
+      key: "submitted",
+      label: "Submitted",
+      mobilePriority: "low" as const,
+      render: (receipt: PendingReceipt) => format(new Date(receipt.createdAt), "MMM dd, yyyy"),
+    },
+    {
+      key: "receipt",
+      label: "Receipt",
+      render: (receipt: PendingReceipt) => (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedImage(receipt.receiptImageUrl)}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              View
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Receipt Image</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    handleDownloadReceipt(
+                      receipt.receiptImageUrl,
+                      receipt.referenceNumber
+                    )
+                  }
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download
+                </Button>
+              </div>
+              <div className="relative w-full h-[600px] bg-muted rounded-lg overflow-hidden">
+                <Image
+                  src={receipt.receiptImageUrl}
+                  alt={`Receipt ${receipt.referenceNumber}`}
+                  fill
+                  className="object-contain"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      className: "text-right",
+      isAction: true,
+      render: (receipt: PendingReceipt) => (
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleVerify(receipt.id)}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <CheckCircle className="h-4 w-4 mr-1" />
+            Verify
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleReject(receipt.id)}
+          >
+            <XCircle className="h-4 w-4 mr-1" />
+            Reject
+          </Button>
+        </div>
+      ),
+      mobileRender: (receipt: PendingReceipt) => (
+        <div className="flex gap-2 w-full mt-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleVerify(receipt.id)}
+            className="flex-1 bg-green-600 hover:bg-green-700 h-8 text-xs"
+          >
+            Verify
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleReject(receipt.id)}
+            className="flex-1 h-8 text-xs"
+          >
+            Reject
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Statistics Cards */}
@@ -539,257 +710,11 @@ export function PendingReceiptsTable({ onVerify, onReject }: PendingReceiptsTabl
       {receipts.length > 0 && (
         <>
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-4">
-            {receipts.map((receipt) => (
-              <Card key={receipt.id} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={selectedReceipts.has(receipt.id)}
-                        onCheckedChange={() => handleSelectReceipt(receipt.id)}
-                        aria-label={`Select receipt ${receipt.referenceNumber}`}
-                        className="mt-1"
-                      />
-                      <div>
-                        <CardTitle className="text-base">
-                          {receipt.student.user.firstName} {receipt.student.user.lastName}
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-1">
-                          {receipt.referenceNumber}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {receipt.student.enrollments[0]?.class.name || "N/A"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Receipt Details */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Amount:</span>
-                      <p className="font-semibold">₹{receipt.amount.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Fee Type:</span>
-                      <p className="font-medium text-xs">{receipt.feeStructure.name}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Payment Date:</span>
-                      <p className="text-xs">{format(new Date(receipt.paymentDate), "MMM dd, yyyy")}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Submitted:</span>
-                      <p className="text-xs">{format(new Date(receipt.createdAt), "MMM dd, yyyy")}</p>
-                    </div>
-                  </div>
-
-                  {/* Receipt Image Preview */}
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setSelectedImage(receipt.receiptImageUrl)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Receipt
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-[95vw] max-h-[90vh]">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-base font-semibold">Receipt Image</h3>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleDownloadReceipt(
-                                receipt.receiptImageUrl,
-                                receipt.referenceNumber
-                              )
-                            }
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="relative w-full h-[60vh] bg-muted rounded-lg overflow-hidden">
-                          <Image
-                            src={receipt.receiptImageUrl}
-                            alt={`Receipt ${receipt.referenceNumber}`}
-                            fill
-                            className="object-contain"
-                            loading="lazy"
-                          />
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleVerify(receipt.id)}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Verify
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleReject(receipt.id)}
-                      className="flex-1"
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Desktop Table View */}
-          <div className="hidden md:block rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={isAllSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all receipts"
-                    />
-                  </TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment Date</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {receipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedReceipts.has(receipt.id)}
-                        onCheckedChange={() => handleSelectReceipt(receipt.id)}
-                        aria-label={`Select receipt ${receipt.referenceNumber}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {receipt.referenceNumber}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {receipt.student.user.firstName} {receipt.student.user.lastName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {receipt.feeStructure.name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {receipt.student.enrollments[0] ? (
-                        <div className="flex flex-col">
-                          <span>{receipt.student.enrollments[0].class.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {receipt.student.enrollments[0].section.name}
-                          </span>
-                        </div>
-                      ) : (
-                        "N/A"
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      ₹{receipt.amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {format(new Date(receipt.paymentDate), "MMM dd, yyyy")}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {format(new Date(receipt.createdAt), "MMM dd, yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedImage(receipt.receiptImageUrl)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl">
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                              <h3 className="text-lg font-semibold">Receipt Image</h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleDownloadReceipt(
-                                    receipt.receiptImageUrl,
-                                    receipt.referenceNumber
-                                  )
-                                }
-                              >
-                                <Download className="h-4 w-4 mr-1" />
-                                Download
-                              </Button>
-                            </div>
-                            <div className="relative w-full h-[600px] bg-muted rounded-lg overflow-hidden">
-                              <Image
-                                src={receipt.receiptImageUrl}
-                                alt={`Receipt ${receipt.referenceNumber}`}
-                                fill
-                                className="object-contain"
-                                loading="lazy"
-                              />
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleVerify(receipt.id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Verify
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleReject(receipt.id)}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ResponsiveTable
+            data={receipts}
+            columns={columns}
+            keyExtractor={(item) => item.id}
+          />
 
           {/* Pagination */}
           <div className="flex items-center justify-between">

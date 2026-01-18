@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  PlusCircle, Search, Filter, Edit, Eye,
+  PlusCircle, Search,
   Loader2, AlertCircle, BookOpen
 } from "lucide-react";
+import { ClassesTable } from "@/components/admin/classes-table";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -360,69 +361,15 @@ export default function ClassesPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-accent border-b">
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Academic Year</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sections</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Students</th>
-                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredClasses.length > 0 ? (
-                          filteredClasses.map((cls) => (
-                            <tr key={cls.id} className="border-b">
-                              <td className="py-3 px-4 align-middle font-medium">
-                                {cls.name}
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                {cls.academicYear.name}
-                                {cls.academicYear.isCurrent && (
-                                  <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                                    Current
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                {cls.sections.map((section: any) => (
-                                  <span
-                                    key={section.id}
-                                    className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary mr-1"
-                                  >
-                                    {section.name}
-                                  </span>
-                                ))}
-                              </td>
-                              <td className="py-3 px-4 align-middle">{cls._count.enrollments}</td>
-                              <td className="py-3 px-4 align-middle text-right">
-                                <Button variant="ghost" size="sm" onClick={() => handleEditClass(cls.id)}>
-                                  <Edit className="h-4 w-4 mr-1" /> Edit
-                                </Button>
-                                <Link href={`/admin/classes/${cls.id}`}>
-                                  <Button variant="ghost" size="sm">
-                                    <Eye className="h-4 w-4 mr-1" /> View
-                                  </Button>
-                                </Link>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                              {searchTerm || academicYearFilter !== "all"
-                                ? "No classes match your search criteria"
-                                : "No classes found"}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <ClassesTable
+                  classes={filteredClasses}
+                  onEdit={handleEditClass}
+                  emptyMessage={
+                    searchTerm || academicYearFilter !== "all"
+                      ? "No classes match your search criteria"
+                      : "No classes found"
+                  }
+                />
               </CardContent>
             </Card>
           )}

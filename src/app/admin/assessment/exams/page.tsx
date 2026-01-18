@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
-  Search, Calendar, Clock, BookOpen, 
+import {
+  ChevronLeft, Edit, Trash2, PlusCircle,
+  Search, Calendar, Clock, BookOpen,
   MoreVertical, Download, Printer, FileText,
   CheckCircle2, School, Loader2, AlertCircle
 } from "lucide-react";
@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ExamsTable } from "@/components/admin/exams-table";
 import {
   Dialog,
   DialogContent,
@@ -55,11 +56,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 // Import schema validation and server actions
 import { examSchema, ExamFormValues } from "@/lib/schemaValidation/examsSchemaValidation";
-import { 
-  getUpcomingExams, 
-  getPastExams, 
-  getExamTypes, 
-  getSubjects, 
+import {
+  getUpcomingExams,
+  getPastExams,
+  getExamTypes,
+  getSubjects,
   getTerms,
   createExam,
   updateExam,
@@ -72,12 +73,12 @@ export default function ExamsPage() {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [termFilter, setTermFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+
   const [examDialogOpen, setExamDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<string>("upcoming");
-  
+
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
@@ -109,7 +110,7 @@ export default function ExamsPage() {
   async function fetchExams() {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Fetch upcoming exams
       const upcomingResult = await getUpcomingExams();
@@ -118,7 +119,7 @@ export default function ExamsPage() {
       } else {
         toast.error("Failed to fetch upcoming exams");
       }
-      
+
       // Fetch past exams
       const pastResult = await getPastExams();
       if (pastResult.success) {
@@ -142,13 +143,13 @@ export default function ExamsPage() {
       if (typesResult.success) {
         setExamTypes(typesResult.data || []);
       }
-      
+
       // Fetch subjects
       const subjectsResult = await getSubjects();
       if (subjectsResult.success) {
         setSubjects(subjectsResult.data || []);
       }
-      
+
       // Fetch terms
       const termsResult = await getTerms();
       if (termsResult.success) {
@@ -193,7 +194,7 @@ export default function ExamsPage() {
 
   function handleEditExam(examId: string) {
     const examToEdit = upcomingExams.find(e => e.id === examId) || pastExams.find(e => e.id === examId);
-    
+
     if (examToEdit) {
       form.reset({
         title: examToEdit.title,
@@ -207,7 +208,7 @@ export default function ExamsPage() {
         passingMarks: examToEdit.passingMarks,
         instructions: examToEdit.instructions || "",
       });
-      
+
       setSelectedExamId(examId);
       setExamDialogOpen(true);
     }
@@ -221,11 +222,11 @@ export default function ExamsPage() {
   async function onSubmit(values: ExamFormValues) {
     try {
       setLoading(true);
-      
+
       if (selectedExamId) {
         // Update existing exam
         const result = await updateExam({ ...values, id: selectedExamId });
-        
+
         if (result.success) {
           toast.success("Exam updated successfully");
           fetchExams();
@@ -237,7 +238,7 @@ export default function ExamsPage() {
       } else {
         // Create new exam - no teacherId needed for admin
         const result = await createExam(values);
-        
+
         if (result.success) {
           toast.success("Exam created successfully");
           fetchExams();
@@ -258,7 +259,7 @@ export default function ExamsPage() {
     if (selectedExamId) {
       try {
         const result = await deleteExam(selectedExamId);
-        
+
         if (result.success) {
           toast.success("Exam deleted successfully");
           fetchExams();
@@ -276,11 +277,11 @@ export default function ExamsPage() {
   // Filter exams based on search and filters
   const filteredUpcomingExams = upcomingExams.filter(exam => {
     const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
     const matchesTerm = termFilter === "all" || exam.termId === termFilter;
-    
+
     return matchesSearch && matchesSubject && matchesTerm;
   });
 
@@ -296,7 +297,7 @@ export default function ExamsPage() {
     const now = new Date();
     const date = new Date(examDate);
     const oneDayInMs = 24 * 60 * 60 * 1000;
-    
+
     if (date < now) {
       return 'bg-green-100 text-green-800'; // Past
     } else if (date.getTime() - now.getTime() < oneDayInMs) {
@@ -311,7 +312,7 @@ export default function ExamsPage() {
     const now = new Date();
     const date = new Date(examDate);
     const oneDayInMs = 24 * 60 * 60 * 1000;
-    
+
     if (date < now) {
       return 'Completed';
     } else if (date.getTime() - now.getTime() < oneDayInMs) {
@@ -361,7 +362,7 @@ export default function ExamsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -387,7 +388,7 @@ export default function ExamsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="subjectId"
@@ -413,7 +414,7 @@ export default function ExamsPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="termId"
@@ -438,7 +439,7 @@ export default function ExamsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -457,7 +458,7 @@ export default function ExamsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="startTime"
@@ -465,8 +466,8 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Start Time</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
+                          <Input
+                            type="time"
                             onChange={(e) => {
                               const [hours, minutes] = e.target.value.split(":");
                               const now = new Date();
@@ -481,7 +482,7 @@ export default function ExamsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="endTime"
@@ -489,8 +490,8 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>End Time</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
+                          <Input
+                            type="time"
                             onChange={(e) => {
                               const [hours, minutes] = e.target.value.split(":");
                               const now = new Date();
@@ -506,7 +507,7 @@ export default function ExamsPage() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -515,17 +516,17 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Total Marks</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="passingMarks"
@@ -533,10 +534,10 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Passing Marks</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -544,7 +545,7 @@ export default function ExamsPage() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="instructions"
@@ -552,7 +553,7 @@ export default function ExamsPage() {
                     <FormItem>
                       <FormLabel>Instructions (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Instructions for students taking the exam"
                           rows={4}
                           {...field}
@@ -563,7 +564,7 @@ export default function ExamsPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={() => setExamDialogOpen(false)}>
                     Cancel
@@ -642,62 +643,12 @@ export default function ExamsPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filteredUpcomingExams.length > 0 ? (
-            <div className="rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-accent border-b">
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Subject</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date & Time</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
-                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                    <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUpcomingExams.map(exam => (
-                    <tr key={exam.id} className="border-b">
-                      <td className="py-3 px-4 align-middle font-medium">{exam.title}</td>
-                      <td className="py-3 px-4 align-middle">{exam.subject.name}</td>
-                      <td className="py-3 px-4 align-middle">
-                        {format(new Date(exam.examDate), 'MMM d, yyyy')}
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(exam.startTime), 'h:mm a')} - {format(new Date(exam.endTime), 'h:mm a')}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 align-middle">{exam.examType.name}</td>
-                      <td className="py-3 px-4 align-middle">
-                        <Badge className={getStatusColor(exam.examDate)}>
-                          {getStatusText(exam.examDate)}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 align-middle text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/admin/assessment/exams/${exam.id}`}>
-                            <Button variant="ghost" size="sm">View</Button>
-                          </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleEditExam(exam.id)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-500"
-                            onClick={() => handleDeleteExam(exam.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ExamsTable
+              exams={filteredUpcomingExams}
+              onEdit={handleEditExam}
+              onDelete={handleDeleteExam}
+              emptyMessage="No exams found"
+            />
           ) : (
             <div className="text-center py-10">
               <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
@@ -744,7 +695,7 @@ export default function ExamsPage() {
                   Next: {statistics?.nextExam || "None scheduled"}
                 </p>
               </div>
-              
+
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-1">
                   <div className="p-2 bg-green-50 rounded-md text-green-600">
@@ -755,7 +706,7 @@ export default function ExamsPage() {
                 <p className="text-3xl font-bold ml-11">{statistics?.completedExamsCount || 0}</p>
                 <p className="text-sm text-muted-foreground ml-11">This term: {pastExams.length}</p>
               </div>
-              
+
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-1">
                   <div className="p-2 bg-purple-50 rounded-md text-purple-600">

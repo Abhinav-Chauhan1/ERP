@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DocumentsTable } from "@/components/admin/documents-table";
 import toast from "react-hot-toast";
 import {
   Dialog,
@@ -808,75 +809,15 @@ export default function DocumentsPage() {
                 </svg>
               </div>
             ) : documents.length > 0 ? (
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Document</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Uploaded By</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {documents.map((doc) => (
-                      <tr key={doc.id} className="border-b">
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            {getFileIcon(doc.fileType, 20)}
-                            <div>
-                              <p className="font-medium">{doc.title}</p>
-                              <p className="text-xs text-muted-foreground">{doc.fileName}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          {doc.documentType ? (
-                            <Badge variant="outline">{doc.documentType.name}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                              {doc.user.firstName.charAt(0)}{doc.user.lastName.charAt(0)}
-                            </div>
-                            <span>{doc.user.firstName} {doc.user.lastName}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">{formatDate(doc.createdAt)}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={`${doc.isPublic ? 'bg-green-100 text-green-800' : 'bg-muted text-gray-800'}`}>
-                            {doc.isPublic ? 'Public' : 'Private'}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Link href={doc.fileUrl} target="_blank">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4 mr-1" /> View
-                            </Button>
-                          </Link>
-                          <Link href={doc.fileUrl} download>
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-4 w-4 mr-1" /> Download
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteDocument(doc.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" /> Delete
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DocumentsTable
+                documents={documents}
+                onDelete={handleDeleteDocument}
+                emptyMessage={
+                  searchTerm || typeFilter
+                    ? "Try adjusting your filters to find what you're looking for"
+                    : "Get started by uploading your first document"
+                }
+              />
             ) : (
               <div className="text-center py-10">
                 <FileText className="h-10 w-10 mx-auto text-gray-300 mb-2" />

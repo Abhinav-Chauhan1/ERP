@@ -45,6 +45,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { ParentMeetingsTable } from "@/components/admin/parent-meetings-table";
 import toast from "react-hot-toast";
 import {
   getParentMeetings,
@@ -500,138 +501,31 @@ export default function ParentMeetingsPage() {
                 <div className="flex items-center justify-center py-12">
                   <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
+              ) : filteredMeetings.length > 0 ? (
+                <ParentMeetingsTable
+                  meetings={filteredMeetings}
+                  onView={handleViewMeeting}
+                  onComplete={handleCompleteMeeting}
+                  onCancel={handleCancelMeeting}
+                  onDelete={handleDeleteMeeting}
+                  emptyMessage="No meetings found"
+                />
               ) : (
-                <div className="rounded-md border">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-accent border-b">
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Participants</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Schedule</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Location</th>
-                          <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                          <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredMeetings.length > 0 ? (
-                          filteredMeetings.map((meeting) => {
-                            const parentName = `${meeting.parent?.user?.firstName || ""} ${meeting.parent?.user?.lastName || ""}`;
-                            const parentInitials = `${meeting.parent?.user?.firstName?.[0] || ""}${meeting.parent?.user?.lastName?.[0] || ""}`;
-                            const studentInfo = meeting.parent?.children?.[0]?.student;
-                            const studentName = studentInfo?.user
-                              ? `${studentInfo.user.firstName} ${studentInfo.user.lastName}`
-                              : "No student";
-                            const grade = studentInfo?.enrollments?.[0]
-                              ? `${studentInfo.enrollments[0].class.name}-${studentInfo.enrollments[0].section.name}`
-                              : "";
-
-                            return (
-                              <tr key={meeting.id} className="border-b">
-                                <td className="py-3 px-4 align-middle">
-                                  <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarFallback>{parentInitials}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <div className="font-medium">{parentName}</div>
-                                      <div className="text-xs text-muted-foreground">{studentName}{grade ? `, ${grade}` : ""}</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 align-middle font-medium">{meeting.purpose || "Meeting"}</td>
-                                <td className="py-3 px-4 align-middle">
-                                  <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span>{new Date(meeting.scheduledAt).toLocaleDateString()}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    <span>({meeting.duration} min)</span>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 align-middle">{meeting.location || "TBD"}</td>
-                                <td className="py-3 px-4 align-middle">
-                                  {getStatusBadge(meeting.status)}
-                                </td>
-                                <td className="py-3 px-4 align-middle text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleViewMeeting(meeting.id)}
-                                  >
-                                    View
-                                  </Button>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <Mail className="h-4 w-4 mr-2" />
-                                        Email Reminder
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <SendIcon className="h-4 w-4 mr-2" />
-                                        Send SMS
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      {meeting.status === "SCHEDULED" && (
-                                        <>
-                                          <DropdownMenuItem onClick={() => handleCompleteMeeting(meeting.id)}>
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                            Mark as Completed
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleCancelMeeting(meeting.id)}>
-                                            <XCircle className="h-4 w-4 mr-2" />
-                                            Cancel Meeting
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-                                      <DropdownMenuItem
-                                        className="text-red-600"
-                                        onClick={() => handleDeleteMeeting(meeting.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={6} className="py-10 text-center text-muted-foreground">
-                              <CalendarX className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                              <p>No meetings found matching your criteria</p>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => {
-                                  setSearchTerm("");
-                                  setStatusFilter("all");
-                                  setTimeFilter("upcoming");
-                                }}
-                              >
-                                Clear Filters
-                              </Button>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="text-center py-10 border rounded-md">
+                  <CalendarX className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-muted-foreground">No meetings found matching your criteria</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("all");
+                      setTimeFilter("upcoming");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
                 </div>
               )}
             </TabsContent>

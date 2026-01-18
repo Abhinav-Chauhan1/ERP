@@ -4,10 +4,11 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
-  Clock, CalendarIcon, AlertCircle, Loader2
+import {
+  ChevronLeft, PlusCircle,
+  Clock, AlertCircle, Loader2
 } from "lucide-react";
+import { TermsTable } from "@/components/admin/terms-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,7 +30,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,24 +40,23 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { format } from "date-fns";
 import { DatePicker } from "@/components/ui/date-picker";
 
 // Import schema validation and server actions
 import { termSchema, TermFormValues, termUpdateSchema, TermUpdateFormValues } from "@/lib/schemaValidation/termsSchemaValidation";
-import { 
-  getTerms, 
-  getAcademicYearsForDropdown, 
-  createTerm, 
-  updateTerm, 
-  deleteTerm 
+import {
+  getTerms,
+  getAcademicYearsForDropdown,
+  createTerm,
+  updateTerm,
+  deleteTerm
 } from "@/lib/actions/termsActions";
 
 function TermsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialAcademicYearId = searchParams.get('academicYearId');
-  
+
   const [terms, setTerms] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,10 +81,10 @@ function TermsContent() {
   async function fetchTerms() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getTerms();
-      
+
       if (result.success) {
         setTerms(result.data || []);
       } else {
@@ -103,7 +103,7 @@ function TermsContent() {
   async function fetchAcademicYears() {
     try {
       const result = await getAcademicYearsForDropdown();
-      
+
       if (result.success) {
         setAcademicYears(result.data || []);
       } else {
@@ -118,7 +118,7 @@ function TermsContent() {
   async function onSubmit(values: TermFormValues) {
     try {
       let result;
-      
+
       if (selectedTermId) {
         // Update existing term
         const updateData: TermUpdateFormValues = { ...values, id: selectedTermId };
@@ -127,7 +127,7 @@ function TermsContent() {
         // Create new term
         result = await createTerm(values);
       }
-      
+
       if (result.success) {
         toast.success(`Term ${selectedTermId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -158,7 +158,7 @@ function TermsContent() {
   }
 
   function handleAddNew() {
-    form.reset({ 
+    form.reset({
       name: "",
       academicYearId: initialAcademicYearId || "",
     });
@@ -175,7 +175,7 @@ function TermsContent() {
     if (selectedTermId) {
       try {
         const result = await deleteTerm(selectedTermId);
-        
+
         if (result.success) {
           toast.success("Term deleted successfully");
           setDeleteDialogOpen(false);
@@ -213,8 +213,8 @@ function TermsContent() {
             <DialogHeader>
               <DialogTitle>{selectedTermId ? "Edit Term" : "Add New Term"}</DialogTitle>
               <DialogDescription>
-                {selectedTermId 
-                  ? "Update the details of the academic term" 
+                {selectedTermId
+                  ? "Update the details of the academic term"
                   : "Create a new academic term for your institution"}
               </DialogDescription>
             </DialogHeader>
@@ -239,8 +239,8 @@ function TermsContent() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Academic Year</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -339,62 +339,12 @@ function TermsContent() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Term Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Academic Year</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Start Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">End Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Duration</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Exams</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {terms.map((term) => (
-                      <tr key={term.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">{term.name}</td>
-                        <td className="py-3 px-4 align-middle">
-                          {term.academicYear.name}
-                          {term.academicYear.isCurrent && (
-                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                              Current
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 align-middle">{format(new Date(term.startDate), 'MMM d, yyyy')}</td>
-                        <td className="py-3 px-4 align-middle">{format(new Date(term.endDate), 'MMM d, yyyy')}</td>
-                        <td className="py-3 px-4 align-middle">
-                          {Math.round((new Date(term.endDate).getTime() - new Date(term.startDate).getTime()) / (1000 * 60 * 60 * 24))} days
-                        </td>
-                        <td className="py-3 px-4 align-middle">{term._count?.exams || 0}</td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleEdit(term.id)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500"
-                            onClick={() => handleDelete(term.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <TermsTable
+              terms={terms}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              emptyMessage="No terms found"
+            />
           )}
         </CardContent>
       </Card>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { deleteBook } from "@/lib/actions/libraryActions";
-import { OptimizedImage } from "@/components/shared/optimized-image";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,18 +24,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  Edit,
-  Eye,
   Search,
-  Trash2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import type { Book } from "@prisma/client";
+import { BooksTable } from "@/components/admin/library/books-table";
 
 interface BookListProps {
   data: {
@@ -156,96 +145,14 @@ export function BookList({ data, categories }: BookListProps) {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cover</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>ISBN</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-center">Quantity</TableHead>
-                  <TableHead className="text-center">Available</TableHead>
-                  <TableHead className="text-center">Issued</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.books.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center">
-                      No books found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.books.map((book) => (
-                    <TableRow key={book.id}>
-                      <TableCell>
-                        {book.coverImage ? (
-                          <OptimizedImage
-                            src={book.coverImage}
-                            alt={book.title}
-                            width={48}
-                            height={64}
-                            className="h-16 w-12 rounded object-cover"
-                            qualityPreset="medium"
-                          />
-                        ) : (
-                          <div className="flex h-16 w-12 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-                            No Image
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {book.isbn}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{book.category}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{book.quantity}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant={book.available > 0 ? "default" : "destructive"}
-                        >
-                          {book.available}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {book._count.issues}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/admin/library/books/${book.id}`}>
-                            <Button variant="ghost" size="icon">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link href={`/admin/library/books/${book.id}/edit`}>
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setBookToDelete(book.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <BooksTable
+            books={data.books}
+            onDelete={(id) => {
+              setBookToDelete(id);
+              setDeleteDialogOpen(true);
+            }}
+            emptyMessage="No books found"
+          />
         </CardContent>
       </Card>
 

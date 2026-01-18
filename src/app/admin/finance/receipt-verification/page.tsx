@@ -6,14 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Loader2,
@@ -32,6 +25,7 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { PendingReceiptsTable } from "@/components/admin/pending-receipts-table";
+import { ReceiptsHistoryTable } from "@/components/admin/receipts-history-table";
 import { ReceiptVerificationDialog } from "@/components/admin/receipt-verification-dialog";
 import { ReceiptRejectionDialog } from "@/components/admin/receipt-rejection-dialog";
 import {
@@ -96,7 +90,7 @@ export default function ReceiptVerificationPage() {
   const [isLoadingRejected, setIsLoadingRejected] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  
+
   // Dialog states
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
@@ -458,76 +452,11 @@ export default function ReceiptVerificationPage() {
                   </AlertDescription>
                 </Alert>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Payment Date</TableHead>
-                        <TableHead>Verified On</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {verifiedReceipts.map((receipt) => (
-                        <TableRow key={receipt.id}>
-                          <TableCell className="font-mono text-xs">
-                            {receipt.referenceNumber}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {receipt.student.user.firstName}{" "}
-                                {receipt.student.user.lastName}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {receipt.feeStructure.name}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {receipt.student.enrollments[0] ? (
-                              <div className="flex flex-col">
-                                <span>
-                                  {receipt.student.enrollments[0].class.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {receipt.student.enrollments[0].section.name}
-                                </span>
-                              </div>
-                            ) : (
-                              "N/A"
-                            )}
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            ₹{receipt.amount.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {format(new Date(receipt.paymentDate), "MMM dd, yyyy")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {receipt.verifiedAt
-                              ? format(new Date(receipt.verifiedAt), "MMM dd, yyyy")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetails(receipt.id)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <ReceiptsHistoryTable
+                  data={verifiedReceipts}
+                  type="verified"
+                  onView={handleViewDetails}
+                />
               )}
             </CardContent>
           </Card>
@@ -568,82 +497,11 @@ export default function ReceiptVerificationPage() {
                   </AlertDescription>
                 </Alert>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Payment Date</TableHead>
-                        <TableHead>Rejected On</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {rejectedReceipts.map((receipt) => (
-                        <TableRow key={receipt.id}>
-                          <TableCell className="font-mono text-xs">
-                            {receipt.referenceNumber}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {receipt.student.user.firstName}{" "}
-                                {receipt.student.user.lastName}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {receipt.feeStructure.name}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {receipt.student.enrollments[0] ? (
-                              <div className="flex flex-col">
-                                <span>
-                                  {receipt.student.enrollments[0].class.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {receipt.student.enrollments[0].section.name}
-                                </span>
-                              </div>
-                            ) : (
-                              "N/A"
-                            )}
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            ₹{receipt.amount.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {format(new Date(receipt.paymentDate), "MMM dd, yyyy")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {receipt.verifiedAt
-                              ? format(new Date(receipt.verifiedAt), "MMM dd, yyyy")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell className="max-w-xs">
-                            <p className="text-sm text-muted-foreground truncate">
-                              {receipt.rejectionReason || "No reason provided"}
-                            </p>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetails(receipt.id)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <ReceiptsHistoryTable
+                  data={rejectedReceipts}
+                  type="rejected"
+                  onView={handleViewDetails}
+                />
               )}
             </CardContent>
           </Card>

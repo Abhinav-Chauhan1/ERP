@@ -3,10 +3,10 @@ export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getUsersOverview, getRecentUsers } from "@/lib/actions/userActions";
 import { getFilterOptions } from "@/lib/actions/students-filters";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
+import { RecentUsersTable } from "@/components/users/recent-users-table";
 
 export default async function UsersPage() {
   const [overviewResult, recentUsersResult, filterOptions] = await Promise.all([
@@ -88,47 +88,7 @@ export default async function UsersPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Name</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Email</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Role</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Added</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentUsers.map((user) => (
-                      <tr key={user.id} className="border-b">
-                        <td className="py-3 px-4 align-middle">
-                          <div className="font-medium">{user.name}</div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">{user.email}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge variant="outline" className="capitalize">{user.role.toLowerCase()}</Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle">{user.date}</td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge
-                            className={user.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'}
-                          >
-                            {user.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">View</Button>
-                          <Button variant="ghost" size="sm">Edit</Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <RecentUsersTable users={recentUsers} />
           </CardContent>
         </Card>
       </div>

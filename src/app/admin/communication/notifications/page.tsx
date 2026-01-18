@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { NotificationsTable } from "@/components/admin/notifications-table";
 import {
   Dialog,
   DialogContent,
@@ -427,117 +428,26 @@ export default function NotificationsPage() {
                 <div className="flex items-center justify-center py-12">
                   <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
+              ) : filteredNotifications.length > 0 ? (
+                <NotificationsTable
+                  notifications={filteredNotifications}
+                  onView={handleViewNotification}
+                  onDelete={handleDeleteNotification}
+                  emptyMessage="No notifications found"
+                />
               ) : (
-                <div className="rounded-md border">
-                  {filteredNotifications.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-accent border-b">
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Notification</th>
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Type</th>
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Sent To</th>
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Read Rate</th>
-                            <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredNotifications.map((notification) => (
-                            <tr key={notification.id} className="border-b">
-                              <td className="py-3 px-4 align-middle">
-                                <div className="font-medium">{notification.title}</div>
-                                <div className="text-xs text-muted-foreground truncate max-w-xs">
-                                  {notification.message}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                <Badge className={getTypeColor(notification.type)}>
-                                  <div className="flex items-center gap-1">
-                                    {getTypeIcon(notification.type)}
-                                    <span>{notification.type}</span>
-                                  </div>
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>{notification.recipientRole || "ALL"}</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {notification.sender ? `By ${notification.sender.firstName} ${notification.sender.lastName}` : "System"}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span>
-                                    {new Date(notification.createdAt).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(notification.createdAt).toLocaleTimeString()}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle">
-                                <div className="text-xs text-muted-foreground">
-                                  Sent to {notification.recipientRole || "ALL"}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 align-middle text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewNotification(notification.id)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
-                                      <Send className="h-4 w-4 mr-2" />
-                                      Resend
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <PlusCircle className="h-4 w-4 mr-2" />
-                                      Duplicate
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={() => handleDeleteNotification(notification.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <BellOff className="h-12 w-12 text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No notifications found</h3>
-                      <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                        {searchTerm || typeFilter !== "all" || audienceFilter !== "all"
-                          ? "No notifications match your search criteria. Try adjusting your filters."
-                          : "There are no notifications yet. Create your first notification to get started."}
-                      </p>
-                      <Button onClick={() => setCreateNotificationDialog(true)}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Create New Notification
-                      </Button>
-                    </div>
-                  )}
+                <div className="flex flex-col items-center justify-center py-12 text-center border rounded-md">
+                  <BellOff className="h-12 w-12 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No notifications found</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+                    {searchTerm || typeFilter !== "all" || audienceFilter !== "all"
+                      ? "No notifications match your search criteria. Try adjusting your filters."
+                      : "There are no notifications yet. Create your first notification to get started."}
+                  </p>
+                  <Button onClick={() => setCreateNotificationDialog(true)}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create New Notification
+                  </Button>
                 </div>
               )}
             </div>

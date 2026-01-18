@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { GradesTable } from "@/components/admin/grades-table";
 import {
   Dialog,
   DialogContent,
@@ -342,53 +343,12 @@ export default function GradesPage() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grade</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Minimum Marks (%)</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Maximum Marks (%)</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">GPA</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Description</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grades.map((grade) => (
-                      <tr key={grade.id} className="border-b">
-                        <td className="py-3 px-4 align-middle font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-full 
-                              ${grade.grade.startsWith('A') ? 'bg-green-100 text-green-700' :
-                                grade.grade.startsWith('B') ? 'bg-primary/10 text-primary' :
-                                  grade.grade.startsWith('C') ? 'bg-yellow-100 text-yellow-700' :
-                                    grade.grade.startsWith('D') ? 'bg-orange-100 text-orange-700' :
-                                      'bg-red-100 text-red-700'}`}>
-                              <Award className="h-4 w-4" />
-                            </div>
-                            {grade.grade}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">{grade.minMarks.toFixed(2)}%</td>
-                        <td className="py-3 px-4 align-middle">{grade.maxMarks.toFixed(2)}%</td>
-                        <td className="py-3 px-4 align-middle">{grade.gpa !== null ? grade.gpa.toFixed(1) : "N/A"}</td>
-                        <td className="py-3 px-4 align-middle max-w-xs truncate">{grade.description}</td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(grade.id)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => handleDelete(grade.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <GradesTable
+              grades={grades}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              emptyMessage="No grades found"
+            />
           )}
         </CardContent>
       </Card>

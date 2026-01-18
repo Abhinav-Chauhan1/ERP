@@ -59,6 +59,7 @@ import {
   getPayrollStats,
   bulkGeneratePayrolls,
 } from "@/lib/actions/payrollActions";
+import { PayrollTable } from "@/components/admin/payroll-table";
 
 // Months for dropdown
 const months = [
@@ -710,86 +711,20 @@ export default function PayrollPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-accent border-b">
-                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Staff</th>
-                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Department</th>
-                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Month</th>
-                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
-                  <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="border-b">
-                    <td className="py-3 px-4 align-middle">
-                      <div className="font-medium">{payment.staffName}</div>
-                      <div className="text-xs text-muted-foreground">{payment.employeeId}</div>
-                    </td>
-                    <td className="py-3 px-4 align-middle">{payment.department}</td>
-                    <td className="py-3 px-4 align-middle">
-                      {getMonthName(payment.month)} {payment.year}
-                    </td>
-                    <td className="py-3 px-4 align-middle font-medium">
-                      ₹{payment.netSalary.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 align-middle">
-                      <Badge className={
-                        payment.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                          payment.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                            "bg-red-100 text-red-800"
-                      }>
-                        {payment.status === "COMPLETED" ? (
-                          <>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Paid
-                          </>
-                        ) : payment.status === "PENDING" ? (
-                          <>
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Pending
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Failed
-                          </>
-                        )}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 align-middle text-right">
-                      {payment.status === "COMPLETED" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewPayslip(payment)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Payslip
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMakePayment(payment)}
-                        >
-                          <Wallet className="h-4 w-4 mr-1" />
-                          Pay
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PayrollTable
+            payments={filteredPayments}
+            onViewPayslip={handleViewPayslip}
+            onMakePayment={handleMakePayment}
+            onEdit={(payment) => {
+              // Edit logic not explicitly defined in original component's state, but button existed.
+              // Assuming it opens create dialog with pre-filled? 
+              // The original "Edit" button didn't have onClick handler in the view I saw (lines 783-786).
+              // Checked: <Button variant="ghost" size="sm"><Edit .../> Edit</Button> had NO onClick.
+              // So I'll pass a no-op or handle it if I missed it.
+              console.log("Edit clicked", payment);
+            }}
+            months={months}
+          />
         </CardContent>
       </Card>
 

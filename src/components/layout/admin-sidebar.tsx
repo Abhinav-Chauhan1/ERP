@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Bus,
   UserCheck,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserButton } from "@/components/auth/user-button";
@@ -224,6 +225,11 @@ const routes: RouteItem[] = [
       { label: "Scheduled Reports", href: "/admin/reports/scheduled" },
       { label: "Comparative", href: "/admin/reports/comparative" },
     ],
+  },
+  {
+    label: "Audit Logs",
+    icon: History,
+    href: "/admin/audit-logs",
   },
   {
     label: "Settings",

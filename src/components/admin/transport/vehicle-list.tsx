@@ -12,14 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +36,7 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 import type { Vehicle, Driver, Route } from "@prisma/client";
+import { VehiclesTable } from "@/components/admin/transport/vehicles-table";
 
 interface VehicleListProps {
   data: {
@@ -115,18 +109,7 @@ export function VehicleList({ data }: VehicleListProps) {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-      case "INACTIVE":
-        return <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>;
-      case "MAINTENANCE":
-        return <Badge className="bg-red-100 text-red-800">Maintenance</Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
+
 
   return (
     <div className="space-y-4">
@@ -168,93 +151,14 @@ export function VehicleList({ data }: VehicleListProps) {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Registration No.</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Driver</TableHead>
-                  <TableHead>Routes</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.vehicles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <div className="flex flex-col items-center gap-2">
-                        <Bus className="h-12 w-12 text-muted-foreground" />
-                        <p className="text-muted-foreground">No vehicles found</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.vehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
-                      <TableCell className="font-medium">
-                        {vehicle.registrationNo}
-                      </TableCell>
-                      <TableCell>{vehicle.vehicleType}</TableCell>
-                      <TableCell>{vehicle.capacity}</TableCell>
-                      <TableCell>
-                        {vehicle.driver ? (
-                          <div>
-                            <p className="font-medium">{vehicle.driver.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {vehicle.driver.licenseNo}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Not assigned</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {vehicle.routes.length > 0 ? (
-                          <div className="text-sm">
-                            <p className="font-medium">
-                              {vehicle.routes.length} route(s)
-                            </p>
-                            <p className="text-muted-foreground">
-                              {vehicle.routes.reduce(
-                                (sum, route) => sum + route._count.students,
-                                0
-                              )}{" "}
-                              students
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">No routes</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/admin/transport/vehicles/${vehicle.id}`}>
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setVehicleToDelete(vehicle.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <VehiclesTable
+            vehicles={data.vehicles}
+            onDelete={(id) => {
+              setVehicleToDelete(id);
+              setDeleteDialogOpen(true);
+            }}
+            emptyMessage="No vehicles found"
+          />
         </CardContent>
       </Card>
 

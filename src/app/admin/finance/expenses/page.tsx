@@ -58,6 +58,7 @@ import {
   getExpenseStats,
   getExpensesByCategory,
 } from "@/lib/actions/expenseActions";
+import { ExpensesTable } from "@/components/admin/expenses-table";
 
 // Mock data for expense categories
 const expenseCategories = [
@@ -643,88 +644,14 @@ export default function ExpensesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground w-[40px]">
-                        <Checkbox
-                          checked={selectedItems.length === filteredExpenses.length && filteredExpenses.length > 0}
-                          onCheckedChange={handleCheckAllItems}
-                        />
-                      </th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Title</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Category</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Date</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredExpenses.map((expense) => (
-                      <tr key={expense.id} className="border-b">
-                        <td className="py-3 px-4 align-middle">
-                          <Checkbox
-                            checked={selectedItems.includes(expense.id)}
-                            onCheckedChange={() => handleItemChecked(expense.id)}
-                          />
-                        </td>
-                        <td className="py-3 px-4 align-middle font-medium">
-                          {expense.title}
-                          <div className="text-xs text-muted-foreground">{expense.receiptNumber}</div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={getCategoryColor(expense.category)}>
-                            {getCategoryLabel(expense.category)}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle font-medium">
-                          ₹{expense.amount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          {new Date(expense.date).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={
-                            expense.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                              expense.status === "PENDING" ? "bg-amber-100 text-amber-800" :
-                                "bg-red-100 text-red-800"
-                          }>
-                            {expense.status}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewExpense(expense.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditExpense(expense.id)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {filteredExpenses.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                          No expenses found matching your criteria
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <ExpensesTable
+                expenses={filteredExpenses}
+                selectedItems={selectedItems}
+                onSelectAll={handleCheckAllItems}
+                onSelectItem={handleItemChecked}
+                onView={handleViewExpense}
+                onEdit={handleEditExpense}
+              />
 
               {selectedItems.length > 0 && (
                 <div className="flex items-center justify-between mt-4 p-2 bg-accent rounded-md">

@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 
 interface Column<T> {
   key: string;
-  label: string;
-  render: (item: T) => ReactNode;
+  label: string | ReactNode;
+  render: (item: T, index: number) => ReactNode;
   className?: string;
   mobileLabel?: string; // Optional custom label for mobile view
   mobilePriority?: "high" | "low"; // Priority for mobile display - high shows always, low is hidden
-  mobileRender?: (item: T) => ReactNode; // Optional custom render for mobile
+  mobileRender?: (item: T, index: number) => ReactNode; // Optional custom render for mobile
   isHeader?: boolean; // If true, renders as main card header on mobile
   isAction?: boolean; // If true, renders in action bar on mobile
 }
@@ -68,7 +68,7 @@ export function ResponsiveTable<T>({
               </tr>
             </thead>
             <tbody>
-              {data.map((item) => (
+              {data.map((item, index) => (
                 <tr
                   key={keyExtractor(item)}
                   className={cn(
@@ -82,7 +82,7 @@ export function ResponsiveTable<T>({
                       key={column.key}
                       className={cn("py-3 px-4 align-middle", column.className)}
                     >
-                      {column.render(item)}
+                      {column.render(item, index)}
                     </td>
                   ))}
                 </tr>
@@ -94,7 +94,7 @@ export function ResponsiveTable<T>({
 
       {/* Mobile Card View - Visible only on mobile */}
       <div className="md:hidden space-y-3">
-        {data.map((item) => (
+        {data.map((item, index) => (
           <div
             key={keyExtractor(item)}
             className={cn(
@@ -109,8 +109,8 @@ export function ResponsiveTable<T>({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     {headerColumn.mobileRender
-                      ? headerColumn.mobileRender(item)
-                      : headerColumn.render(item)}
+                      ? headerColumn.mobileRender(item, index)
+                      : headerColumn.render(item, index)}
                   </div>
                 </div>
               </div>
@@ -128,8 +128,8 @@ export function ResponsiveTable<T>({
                   </span>
                   <div className="text-right truncate">
                     {column.mobileRender
-                      ? column.mobileRender(item)
-                      : column.render(item)}
+                      ? column.mobileRender(item, index)
+                      : column.render(item, index)}
                   </div>
                 </div>
               ))}
@@ -147,8 +147,8 @@ export function ResponsiveTable<T>({
                       </span>
                       <div className="text-right truncate">
                         {column.mobileRender
-                          ? column.mobileRender(item)
-                          : column.render(item)}
+                          ? column.mobileRender(item, index)
+                          : column.render(item, index)}
                       </div>
                     </div>
                   ))}
@@ -161,8 +161,8 @@ export function ResponsiveTable<T>({
               <div className="px-3 py-2 bg-accent/20 border-t">
                 <div className="flex justify-end gap-1">
                   {actionColumn.mobileRender
-                    ? actionColumn.mobileRender(item)
-                    : actionColumn.render(item)}
+                    ? actionColumn.mobileRender(item, index)
+                    : actionColumn.render(item, index)}
                 </div>
               </div>
             )}

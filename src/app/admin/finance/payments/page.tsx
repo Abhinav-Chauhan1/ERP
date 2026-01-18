@@ -67,6 +67,7 @@ import {
   paymentSchema,
   PaymentFormValues,
 } from "@/lib/schemaValidation/feePaymentSchemaValidation";
+import { PaymentsTable, PendingFeesTable } from "@/components/admin/finance-tables";
 
 // Payment method options
 const paymentMethods = [
@@ -468,102 +469,13 @@ export default function PaymentsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Receipt No.</TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Paid</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredPayments.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
-                            {payment.receiptNumber || "—"}
-                          </TableCell>
-                          <TableCell>
-                            {payment.student?.user?.firstName}{" "}
-                            {payment.student?.user?.lastName}
-                            <div className="text-xs text-muted-foreground">
-                              {payment.student?.admissionId}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {payment.student?.enrollments?.[0]?.class?.name || "—"}
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(payment.paymentDate), "MMM dd, yyyy")}
-                          </TableCell>
-                          <TableCell>₹{payment.amount.toLocaleString()}</TableCell>
-                          <TableCell>₹{payment.paidAmount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <span
-                              className={
-                                payment.balance > 0
-                                  ? "text-orange-600 font-medium"
-                                  : "text-green-600"
-                              }
-                            >
-                              ₹{payment.balance.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {paymentMethods.find(
-                                (m) => m.value === payment.paymentMethod
-                              )?.label || payment.paymentMethod}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                payment.status === "COMPLETED"
-                                  ? "default"
-                                  : payment.status === "PARTIAL"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                            >
-                              {payment.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewPayment(payment)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditPayment(payment)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeletePayment(payment.id)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PaymentsTable
+                  payments={filteredPayments}
+                  onView={handleViewPayment}
+                  onEdit={handleEditPayment}
+                  onDelete={handleDeletePayment}
+                  emptyMessage="No payments found"
+                />
               )}
             </CardContent>
           </Card>
@@ -588,58 +500,18 @@ export default function PaymentsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Admission ID</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Fee Structure</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        <TableHead>Paid</TableHead>
-                        <TableHead>Balance</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingFees.map((fee) => (
-                        <TableRow key={fee.studentId}>
-                          <TableCell className="font-medium">
-                            {fee.studentName}
-                          </TableCell>
-                          <TableCell>{fee.admissionId}</TableCell>
-                          <TableCell>
-                            {fee.class} - {fee.section}
-                          </TableCell>
-                          <TableCell>{fee.feeStructureName}</TableCell>
-                          <TableCell>₹{fee.totalAmount.toLocaleString()}</TableCell>
-                          <TableCell>₹{fee.totalPaid.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <span className="text-orange-600 font-medium">
-                              ₹{fee.balance.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedStudentId(fee.studentId);
-                                form.setValue("studentId", fee.studentId);
-                                form.setValue("feeStructureId", fee.feeStructureId);
-                                form.setValue("amount", fee.balance);
-                                form.setValue("paidAmount", fee.balance);
-                                handleCreatePayment();
-                              }}
-                            >
-                              Collect Payment
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <PendingFeesTable
+                  fees={pendingFees}
+                  onCollect={(fee) => {
+                    setSelectedStudentId(fee.studentId);
+                    form.setValue("studentId", fee.studentId);
+                    form.setValue("feeStructureId", fee.feeStructureId);
+                    form.setValue("amount", fee.balance);
+                    form.setValue("paidAmount", fee.balance);
+                    handleCreatePayment();
+                  }}
+                  emptyMessage="No pending fees found"
+                />
               )}
             </CardContent>
           </Card>

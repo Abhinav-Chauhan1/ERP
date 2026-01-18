@@ -61,6 +61,8 @@ import {
   getStudentAttendanceReport,
   deleteStudentAttendance
 } from "@/lib/actions/attendanceActions";
+import { StudentAttendanceTable } from "@/components/admin/attendance/student-attendance-table";
+import { StudentAttendanceReportTable } from "@/components/admin/attendance/student-attendance-report-table";
 
 export default function StudentAttendancePage() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -429,151 +431,12 @@ export default function StudentAttendancePage() {
                     <>
                       <Form {...bulkAttendanceForm}>
                         <form onSubmit={bulkAttendanceForm.handleSubmit(onBulkAttendanceSubmit)}>
-                          <div className="border rounded-md">
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="bg-accent border-b">
-                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
-                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Roll Number</th>
-                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
-                                    <th className="py-3 px-4 text-left font-medium text-muted-foreground">Reason</th>
-                                    <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {filteredAttendanceRecords.map((student, index) => (
-                                    <tr key={student.id} className="border-b">
-                                      <td className="py-3 px-4 align-middle">
-                                        <div className="flex items-center gap-2">
-                                          <Avatar className="h-8 w-8">
-                                            <AvatarImage src={student.avatar || ""} alt={student.name} />
-                                            <AvatarFallback className="text-xs">{student.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                          </Avatar>
-                                          <span className="font-medium">{student.name}</span>
-                                        </div>
-                                      </td>
-                                      <td className="py-3 px-4 align-middle">{student.rollNumber || "—"}</td>
-                                      <td className="py-3 px-4 align-middle">
-                                        <FormField
-                                          control={bulkAttendanceForm.control}
-                                          name={`attendanceRecords.${index}.status`}
-                                          render={({ field }) => (
-                                            <Select
-                                              value={field.value}
-                                              onValueChange={field.onChange}
-                                            >
-                                              <SelectTrigger className="w-32 h-8">
-                                                <SelectValue>
-                                                  {field.value === "PRESENT" && (
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                                                      <span>Present</span>
-                                                    </div>
-                                                  )}
-                                                  {field.value === "ABSENT" && (
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                                                      <span>Absent</span>
-                                                    </div>
-                                                  )}
-                                                  {field.value === "LATE" && (
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
-                                                      <span>Late</span>
-                                                    </div>
-                                                  )}
-                                                  {field.value === "HALF_DAY" && (
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-orange-500"></span>
-                                                      <span>Half Day</span>
-                                                    </div>
-                                                  )}
-                                                  {field.value === "LEAVE" && (
-                                                    <div className="flex items-center gap-2">
-                                                      <span className="h-2 w-2 rounded-full bg-primary"></span>
-                                                      <span>Leave</span>
-                                                    </div>
-                                                  )}
-                                                </SelectValue>
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="PRESENT">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                                                    <span>Present</span>
-                                                  </div>
-                                                </SelectItem>
-                                                <SelectItem value="ABSENT">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                                                    <span>Absent</span>
-                                                  </div>
-                                                </SelectItem>
-                                                <SelectItem value="LATE">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
-                                                    <span>Late</span>
-                                                  </div>
-                                                </SelectItem>
-                                                <SelectItem value="HALF_DAY">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-orange-500"></span>
-                                                    <span>Half Day</span>
-                                                  </div>
-                                                </SelectItem>
-                                                <SelectItem value="LEAVE">
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-primary"></span>
-                                                    <span>Leave</span>
-                                                  </div>
-                                                </SelectItem>
-                                              </SelectContent>
-                                            </Select>
-                                          )}
-                                        />
-                                      </td>
-                                      <td className="py-3 px-4 align-middle">
-                                        <FormField
-                                          control={bulkAttendanceForm.control}
-                                          name={`attendanceRecords.${index}.reason`}
-                                          render={({ field }) => (
-                                            <Input
-                                              className="h-8"
-                                              placeholder="Reason (if absent/late/leave)"
-                                              value={field.value || ""}
-                                              onChange={field.onChange}
-                                              disabled={["PRESENT"].includes(bulkAttendanceForm.watch(`attendanceRecords.${index}.status`))}
-                                            />
-                                          )}
-                                        />
-                                      </td>
-                                      <td className="py-3 px-4 align-middle text-right">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 w-8 p-0"
-                                          onClick={() => handleEditAttendance(student)}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        {student.attendanceId && (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 text-red-500"
-                                            onClick={() => handleDeleteAttendance(student.attendanceId)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
+                          <StudentAttendanceTable
+                            data={filteredAttendanceRecords}
+                            form={bulkAttendanceForm}
+                            onEdit={handleEditAttendance}
+                            onDelete={handleDeleteAttendance}
+                          />
 
                           <div className="mt-4 flex justify-end">
                             <Button type="submit">
@@ -772,51 +635,18 @@ export default function StudentAttendancePage() {
                     </Card>
                   </div>
 
-                  <div className="rounded-md border">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-accent border-b">
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
-                            <th className="py-3 px-4 text-left font-medium text-muted-foreground">Roll Number</th>
-                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Present</th>
-                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Absent</th>
-                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Late</th>
-                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Leave</th>
-                            <th className="py-3 px-4 text-center font-medium text-muted-foreground">Present %</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportData.data.map((entry: any) => (
-                            <tr key={entry.studentId} className="border-b">
-                              <td className="py-3 px-4 align-middle font-medium">{entry.studentName}</td>
-                              <td className="py-3 px-4 align-middle">{entry.rollNumber || "—"}</td>
-                              <td className="py-3 px-4 align-middle text-center">{entry.summary.present}</td>
-                              <td className="py-3 px-4 align-middle text-center">{entry.summary.absent}</td>
-                              <td className="py-3 px-4 align-middle text-center">{entry.summary.late}</td>
-                              <td className="py-3 px-4 align-middle text-center">{entry.summary.leave}</td>
-                              <td className="py-3 px-4 align-middle text-center">
-                                <div className="flex justify-center">
-                                  <Badge variant={entry.summary.present / entry.summary.total > 0.5 ? "default" : "destructive"}>
-                                    {((entry.summary.present / entry.summary.total) * 100).toFixed(1)}%
-                                  </Badge>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  <StudentAttendanceReportTable data={reportData.data} />
+
+                </div >
+              )
+              }
+            </CardContent >
+          </Card >
+        </TabsContent >
+      </Tabs >
 
       {/* Single Student Attendance Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      < Dialog open={dialogOpen} onOpenChange={setDialogOpen} >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Attendance Record</DialogTitle>
@@ -902,10 +732,10 @@ export default function StudentAttendancePage() {
             </form>
           </Form>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      < Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen} >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Attendance Record</DialogTitle>
@@ -922,8 +752,8 @@ export default function StudentAttendancePage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
-    </div>
+      </Dialog >
+    </div >
   );
 }
 

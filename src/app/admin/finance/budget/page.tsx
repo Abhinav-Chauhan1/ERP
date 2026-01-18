@@ -60,18 +60,10 @@ import {
   getBudgetStats,
   getBudgetAlerts,
 } from "@/lib/actions/budgetActions";
+import { BudgetsTable, budgetCategories, getCategoryLabel, getCategoryColor, getPercentUsed } from "@/components/admin/budgets-table";
 
 // Budget categories
-const budgetCategories = [
-  { id: "salaries", name: "Staff Salaries", color: "bg-primary/10 text-primary" },
-  { id: "infrastructure", name: "Infrastructure", color: "bg-purple-100 text-purple-800" },
-  { id: "utilities", name: "Utilities", color: "bg-green-100 text-green-800" },
-  { id: "supplies", name: "Educational Supplies", color: "bg-amber-100 text-amber-800" },
-  { id: "events", name: "School Events", color: "bg-pink-100 text-pink-800" },
-  { id: "maintenance", name: "Maintenance", color: "bg-indigo-100 text-indigo-800" },
-  { id: "technology", name: "Technology", color: "bg-red-100 text-red-800" },
-  { id: "miscellaneous", name: "Miscellaneous", color: "bg-muted text-gray-800" },
-];
+// Budget categories imported from budgets-table.tsx
 
 // Schema for budget form
 const budgetFormSchema = z.object({
@@ -300,18 +292,7 @@ export default function BudgetPage() {
     setEditBudgetDialog(false);
   }
 
-  function getCategoryLabel(categoryId: string) {
-    return budgetCategories.find(cat => cat.id === categoryId)?.name || categoryId;
-  }
-
-  function getCategoryColor(categoryId: string) {
-    return budgetCategories.find(cat => cat.id === categoryId)?.color || "bg-muted text-gray-800";
-  }
-
-  // Calculate percent used for a budget
-  function getPercentUsed(budget: any) {
-    return Math.round((budget.usedAmount / budget.allocatedAmount) * 100);
-  }
+  // Helper functions imported from budgets-table.tsx
 
   return (
     <div className="flex flex-col gap-4">
@@ -621,87 +602,12 @@ export default function BudgetPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-accent border-b">
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Budget</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Category</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Used</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Remaining</th>
-                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Usage</th>
-                      <th className="py-3 px-4 text-right font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBudgets.map((budget) => (
-                      <tr key={budget.id} className="border-b">
-                        <td className="py-3 px-4 align-middle">
-                          <div className="font-medium">{budget.title}</div>
-                          <div className="text-xs text-muted-foreground">{budget.academicYear}</div>
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <Badge className={getCategoryColor(budget.category)}>
-                            {getCategoryLabel(budget.category)}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 align-middle font-medium">
-                          ${budget.allocatedAmount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          ${budget.usedAmount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          ${budget.remainingAmount.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={getPercentUsed(budget)}
-                              className="h-2"
-                              style={{
-                                "--progress-foreground": getPercentUsed(budget) > 90 ? "rgb(239, 68, 68)" :
-                                  getPercentUsed(budget) > 70 ? "rgb(245, 158, 11)" :
-                                    "rgb(34, 197, 94)"
-                              } as React.CSSProperties}
-                            />
-                            <span className="text-xs font-medium">
-                              {getPercentUsed(budget)}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 align-middle text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewBudget(budget.id)}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditBudget(budget.id)}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {filteredBudgets.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-6 text-center text-muted-foreground">
-                          No budgets found matching your criteria
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <BudgetsTable
+                budgets={filteredBudgets}
+                onView={handleViewBudget}
+                onEdit={handleEditBudget}
+                emptyMessage="No budgets found matching your criteria"
+              />
             </CardContent>
           </Card>
         </TabsContent>
