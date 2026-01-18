@@ -40,7 +40,7 @@ export function AdminHeader() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[280px] max-w-[85vw] overflow-y-auto" aria-label="Navigation menu">
-            <div className="pt-10 h-full">
+            <div className="pt-14 h-full">
               <AdminSidebar />
             </div>
           </SheetContent>
