@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -74,6 +75,8 @@ export function LoginForm() {
     return Object.keys(newErrors).length === 0
   }
 
+  const { update } = useSession()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setServerError("")
@@ -114,7 +117,9 @@ export function LoginForm() {
         return
       }
 
-      // Success - redirect to appropriate dashboard
+      // Success - update session and redirect to appropriate dashboard
+      await update()
+
       if (result.redirectUrl) {
         router.push(result.redirectUrl)
         router.refresh()
