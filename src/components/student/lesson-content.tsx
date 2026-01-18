@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, ExternalLink } from "lucide-react";
+import DOMPurify from "isomorphic-dompurify";
 
 interface Resource {
   name: string;
@@ -36,7 +37,7 @@ export function LessonContent({ content, resources }: LessonContentProps) {
         <TabsContent value="content" className="mt-0">
           <CardContent className="p-6">
             <div className="prose max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: content }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
             </div>
           </CardContent>
         </TabsContent>
