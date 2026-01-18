@@ -8,6 +8,7 @@
  */
 
 import { PrismaClient, EventReminder, ReminderType, CalendarEvent } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { sendEmail, isEmailConfigured } from './email-service';
 import { createReminderNotification } from './notification-service';
 import { db } from '@/lib/db';
@@ -68,7 +69,7 @@ export async function createRemindersForEvent(
   userIds: string[]
 ): Promise<EventReminder[]> {
   // Get the event details
-  const event = await prisma.calendarEvent.findUnique({
+  const event = await db.calendarEvent.findUnique({
     where: { id: eventId }
   });
 
@@ -76,14 +77,24 @@ export async function createRemindersForEvent(
     throw new ReminderValidationError('Event not found');
   }
 
-  const reminders: EventReminder[] = [];
+  // Fetch all user preferences in a single batch query
+  // This solves the N+1 query issue
+  const allPreferences = await db.userCalendarPreferences.findMany({
+    where: { userId: { in: userIds } }
+  });
 
-  // Create reminders for each user based on their preferences
+  // Create a map for O(1) lookup
+  const preferencesMap = new Map(
+    allPreferences.map(p => [p.userId, p])
+  );
+
+  const remindersToCreate: EventReminder[] = [];
+  const now = new Date();
+
+  // Prepare reminders for each user
   for (const userId of userIds) {
-    // Get user's reminder preferences
-    const preferences = await db.userCalendarPreferences.findUnique({
-      where: { userId }
-    });
+    // Get user's reminder preferences from map or use default
+    const preferences = preferencesMap.get(userId);
 
     // Use default preferences if not set
     const reminderOffsetMinutes = preferences?.defaultReminderTime ?? 1440; // Default: 1 day
@@ -93,24 +104,34 @@ export async function createRemindersForEvent(
     const reminderTime = calculateReminderTime(event.startDate, reminderOffsetMinutes);
 
     // Only create reminders for future events
-    if (reminderTime > new Date()) {
+    if (reminderTime > now) {
       // Create a reminder for each enabled reminder type
       for (const reminderType of reminderTypes) {
-        const reminder = await prisma.eventReminder.create({
-          data: {
-            eventId,
-            userId,
-            reminderTime,
-            reminderType: reminderType as ReminderType,
-            isSent: false
-          }
+        // Generate ID and timestamps client-side to avoid fetching back created records
+        // and to enable batch insertion while returning full objects
+        remindersToCreate.push({
+          id: randomUUID(),
+          eventId,
+          userId,
+          reminderTime,
+          reminderType: reminderType as ReminderType,
+          isSent: false,
+          sentAt: null,
+          createdAt: now,
+          updatedAt: now
         });
-        reminders.push(reminder);
       }
     }
   }
 
-  return reminders;
+  if (remindersToCreate.length > 0) {
+    // Use createMany for efficient batch insertion
+    await db.eventReminder.createMany({
+      data: remindersToCreate
+    });
+  }
+
+  return remindersToCreate;
 }
 
 /**
