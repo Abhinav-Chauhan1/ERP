@@ -717,22 +717,22 @@ export async function getTeacherAttendanceReports(filters?: {
 
     const dailyTrendsArray = Object.values(dailyTrendsFormatted);
 
-    // FIX: We can't use section.classId in groupBy, so let's fetch the attendance with sections
-    // and then process the data manually
-    const attendanceRecords = await db.studentAttendance.findMany({
+    // Optimized aggregation using groupBy instead of fetching all records
+    // We group by sectionId and status, then aggregate by classId in memory
+    const attendanceStatsBySection = await db.studentAttendance.groupBy({
+      by: ['sectionId', 'status'],
       where: whereClause,
-      include: {
-        section: {
-          select: {
-            id: true,
-            name: true,
-            classId: true,
-          }
-        }
+      _count: {
+        id: true,
       },
-      orderBy: {
-        date: 'desc',
-      },
+    });
+
+    // Create a map of sectionId to classId from the already fetched teacherClasses
+    const sectionToClassId = new Map<string, string>();
+    teacherClasses.forEach(tc => {
+      tc.class.sections.forEach(section => {
+        sectionToClassId.set(section.id, tc.classId);
+      });
     });
 
     // Process attendance by class
@@ -752,12 +752,12 @@ export async function getTeacherAttendanceReports(filters?: {
       };
     });
     
-    // Count attendance by class and status
-    attendanceRecords.forEach(record => {
-      const classId = record.section.classId;
-      if (classWiseFormatted[classId]) {
-        classWiseFormatted[classId][record.status]++;
-        classWiseFormatted[classId].total++;
+    // Aggregate counts
+    attendanceStatsBySection.forEach(stat => {
+      const classId = sectionToClassId.get(stat.sectionId);
+      if (classId && classWiseFormatted[classId]) {
+        classWiseFormatted[classId][stat.status] += stat._count.id;
+        classWiseFormatted[classId].total += stat._count.id;
       }
     });
 
