@@ -30,52 +30,60 @@ vi.mock('@/lib/db', () => ({
     auditLog: {
       create: vi.fn()
     },
-    user: { findMany: vi.fn() },
-    teacher: { findMany: vi.fn() },
-    student: { findMany: vi.fn() },
-    parent: { findMany: vi.fn() },
-    academicYear: { findMany: vi.fn() },
-    term: { findMany: vi.fn() },
-    class: { findMany: vi.fn() },
-    classSection: { findMany: vi.fn() },
-    subject: { findMany: vi.fn() },
-    studentAttendance: { findMany: vi.fn() },
-    exam: { findMany: vi.fn() },
-    examResult: { findMany: vi.fn() },
-    assignment: { findMany: vi.fn() },
-    feeStructure: { findMany: vi.fn() },
-    feePayment: { findMany: vi.fn() },
-    announcement: { findMany: vi.fn() },
-    message: { findMany: vi.fn() },
-    notification: { findMany: vi.fn() },
-    document: { findMany: vi.fn() },
-    event: { findMany: vi.fn() }
+    user: { findMany: vi.fn().mockResolvedValue([]) },
+    teacher: { findMany: vi.fn().mockResolvedValue([]) },
+    student: { findMany: vi.fn().mockResolvedValue([]) },
+    parent: { findMany: vi.fn().mockResolvedValue([]) },
+    academicYear: { findMany: vi.fn().mockResolvedValue([]) },
+    term: { findMany: vi.fn().mockResolvedValue([]) },
+    class: { findMany: vi.fn().mockResolvedValue([]) },
+    classSection: { findMany: vi.fn().mockResolvedValue([]) },
+    subject: { findMany: vi.fn().mockResolvedValue([]) },
+    studentAttendance: { findMany: vi.fn().mockResolvedValue([]) },
+    exam: { findMany: vi.fn().mockResolvedValue([]) },
+    examResult: { findMany: vi.fn().mockResolvedValue([]) },
+    assignment: { findMany: vi.fn().mockResolvedValue([]) },
+    feeStructure: { findMany: vi.fn().mockResolvedValue([]) },
+    feePayment: { findMany: vi.fn().mockResolvedValue([]) },
+    announcement: { findMany: vi.fn().mockResolvedValue([]) },
+    message: { findMany: vi.fn().mockResolvedValue([]) },
+    notification: { findMany: vi.fn().mockResolvedValue([]) },
+    document: { findMany: vi.fn().mockResolvedValue([]) },
+    event: { findMany: vi.fn().mockResolvedValue([]) }
   }
 }));
 
 // Mock crypto and other Node.js modules
-vi.mock('crypto', () => ({
-  randomBytes: vi.fn(() => Buffer.from('test-random-bytes')),
-  createHash: vi.fn(() => ({
-    update: vi.fn().mockReturnThis(),
-    digest: vi.fn(() => 'test-checksum')
-  })),
-  createCipheriv: vi.fn(() => ({
-    update: vi.fn(() => Buffer.from('encrypted')),
-    final: vi.fn(() => Buffer.from('')),
-    getAuthTag: vi.fn(() => Buffer.from('auth-tag'))
-  })),
-  createDecipheriv: vi.fn(() => ({
-    setAuthTag: vi.fn(),
-    update: vi.fn(() => Buffer.from('decrypted')),
-    final: vi.fn(() => Buffer.from(''))
-  }))
-}));
+vi.mock('crypto', async () => {
+  const { PassThrough } = await vi.importActual<typeof import('stream')>('stream');
+  return {
+    randomBytes: vi.fn(() => Buffer.from('test-random-bytes')),
+    createHash: vi.fn(() => ({
+      update: vi.fn().mockReturnThis(),
+      digest: vi.fn(() => 'test-checksum')
+    })),
+    createCipheriv: vi.fn(() => {
+      const stream = new PassThrough();
+      (stream as any).getAuthTag = vi.fn(() => Buffer.from('auth-tag'));
+      (stream as any).final = vi.fn();
+      return stream;
+    }),
+    createDecipheriv: vi.fn(() => ({
+      setAuthTag: vi.fn(),
+      update: vi.fn(() => Buffer.from('decrypted')),
+      final: vi.fn(() => Buffer.from(''))
+    }))
+  };
+});
 
-vi.mock('zlib', () => ({
-  gzip: vi.fn((data, callback) => callback(null, Buffer.from('compressed'))),
-  gunzip: vi.fn((data, callback) => callback(null, Buffer.from('decompressed')))
-}));
+vi.mock('zlib', async () => {
+  const { PassThrough } = await vi.importActual<typeof import('stream')>('stream');
+  return {
+    gzip: vi.fn((data, callback) => callback(null, Buffer.from('compressed'))),
+    gunzip: vi.fn((data, callback) => callback(null, Buffer.from('decompressed'))),
+    createGzip: vi.fn(() => new PassThrough())
+  };
+});
 
 vi.mock('fs/promises', () => ({
   mkdir: vi.fn(() => Promise.resolve()),
@@ -83,8 +91,20 @@ vi.mock('fs/promises', () => ({
   readFile: vi.fn(() => Promise.resolve(Buffer.from('test-data'))),
   stat: vi.fn(() => Promise.resolve({ size: 1024 })),
   access: vi.fn(() => Promise.resolve()),
-  unlink: vi.fn(() => Promise.resolve())
+  unlink: vi.fn(() => Promise.resolve()),
+  open: vi.fn(() => Promise.resolve({
+    fd: 123,
+    write: vi.fn(),
+    close: vi.fn(() => Promise.resolve())
+  }))
 }));
+
+vi.mock('fs', async () => {
+  const { PassThrough } = await vi.importActual<typeof import('stream')>('stream');
+  return {
+    createWriteStream: vi.fn(() => new PassThrough())
+  };
+});
 
 describe('Backup Failure Notification', () => {
   beforeEach(() => {
