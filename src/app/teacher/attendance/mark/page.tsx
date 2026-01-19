@@ -129,10 +129,16 @@ function MarkAttendanceContent() {
   const handleClassSelect = (cls: any) => {
     setSelectedClass(cls);
     setClassId(cls.id);
-    setSectionId(null); // Reset section when class changes
 
-    // Update URL
-    router.push(`/teacher/attendance/mark?classId=${cls.id}`);
+    // Use the sectionId from the selected class if available (for Section Heads)
+    // Otherwise reset (for Class Heads who can choose any section)
+    if (cls.sectionId) {
+      setSectionId(cls.sectionId);
+      router.push(`/teacher/attendance/mark?classId=${cls.id}&sectionId=${cls.sectionId}`);
+    } else {
+      setSectionId(null);
+      router.push(`/teacher/attendance/mark?classId=${cls.id}`);
+    }
   };
 
   // Handle section selection
@@ -308,199 +314,275 @@ function MarkAttendanceContent() {
             {classId ? (
               <>
                 {filteredStudents.length > 0 ? (
-                  <div className="rounded-md border">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50 border-b">
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Roll #</th>
-                            <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
-                            <th className="py-3 px-4 text-center font-medium text-gray-500">Status</th>
-                            <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredStudents.map((student) => (
-                            <tr key={student.id} className="border-b">
-                              <td className="py-3 px-4 align-middle">{student.rollNumber}</td>
-                              <td className="py-3 px-4 align-middle font-medium">{student.name}</td>
-                              <td className="py-3 px-4 align-middle text-center">
-                                <div className="flex justify-center">
-                                  {student.attendance?.status === "PRESENT" && (
-                                    <Badge variant="default" className="capitalize bg-green-500 hover:bg-green-600">Present</Badge>
-                                  )}
-                                  {student.attendance?.status === "ABSENT" && (
-                                    <Badge variant="destructive" className="capitalize">Absent</Badge>
-                                  )}
-                                  {student.attendance?.status === "LATE" && (
-                                    <Badge variant="default" className="capitalize bg-amber-500 hover:bg-amber-600">Late</Badge>
-                                  )}
-                                  {student.attendance?.status === "LEAVE" && (
-                                    <Badge variant="outline" className="capitalize">On Leave</Badge>
-                                  )}
-                                  {student.attendance?.status === "HALF_DAY" && (
-                                    <Badge variant="default" className="capitalize bg-blue-500 hover:bg-blue-600">Half Day</Badge>
-                                  )}
-                                </div>
+                  {/* Desktop Table View */ }
+                  < div className="hidden md:block rounded-md border">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b">
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Roll #</th>
+                        <th className="py-3 px-4 text-left font-medium text-gray-500">Name</th>
+                        <th className="py-3 px-4 text-center font-medium text-gray-500">Status</th>
+                        <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map((student) => (
+                        <tr key={student.id} className="border-b">
+                          <td className="py-3 px-4 align-middle">{student.rollNumber}</td>
+                          <td className="py-3 px-4 align-middle font-medium">{student.name}</td>
+                          <td className="py-3 px-4 align-middle text-center">
+                            <div className="flex justify-center">
+                              {student.attendance?.status === "PRESENT" && (
+                                <Badge variant="default" className="capitalize bg-green-500 hover:bg-green-600">Present</Badge>
+                              )}
+                              {student.attendance?.status === "ABSENT" && (
+                                <Badge variant="destructive" className="capitalize">Absent</Badge>
+                              )}
+                              {student.attendance?.status === "LATE" && (
+                                <Badge variant="default" className="capitalize bg-amber-500 hover:bg-amber-600">Late</Badge>
+                              )}
+                              {student.attendance?.status === "LEAVE" && (
+                                <Badge variant="outline" className="capitalize">On Leave</Badge>
+                              )}
+                              {student.attendance?.status === "HALF_DAY" && (
+                                <Badge variant="default" className="capitalize bg-blue-500 hover:bg-blue-600">Half Day</Badge>
+                              )}
+                            </div>
 
-                                {/* Show reason field for absent or leave students */}
-                                {(student.attendance?.status === "ABSENT" || student.attendance?.status === "LEAVE") && (
-                                  <div className="mt-2">
-                                    <Textarea
-                                      placeholder="Reason for absence..."
-                                      className="min-h-0 h-16 text-xs"
-                                      value={student.attendance?.reason || ""}
-                                      onChange={(e) => handleReasonChange(student.id, e.target.value)}
-                                    />
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 align-middle text-right">
-                                <div className="flex justify-end gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant={student.attendance?.status === "PRESENT" ? "default" : "outline"}
-                                    className={student.attendance?.status === "PRESENT" ? "bg-green-500 hover:bg-green-600" : ""}
-                                    onClick={() => handleAttendanceChange(student.id, "PRESENT")}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" /> Present
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={student.attendance?.status === "ABSENT" ? "destructive" : "outline"}
-                                    onClick={() => handleAttendanceChange(student.id, "ABSENT")}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-1" /> Absent
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={student.attendance?.status === "LATE" ? "default" : "outline"}
-                                    className={student.attendance?.status === "LATE" ? "bg-amber-500 hover:bg-amber-600" : ""}
-                                    onClick={() => handleAttendanceChange(student.id, "LATE")}
-                                  >
-                                    <Clock4 className="h-4 w-4 mr-1" /> Late
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                            {/* Show reason field for absent or leave students */}
+                            {(student.attendance?.status === "ABSENT" || student.attendance?.status === "LEAVE") && (
+                              <div className="mt-2">
+                                <Textarea
+                                  placeholder="Reason for absence..."
+                                  className="min-h-0 h-16 text-xs"
+                                  value={student.attendance?.reason || ""}
+                                  onChange={(e) => handleReasonChange(student.id, e.target.value)}
+                                />
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 align-middle text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant={student.attendance?.status === "PRESENT" ? "default" : "outline"}
+                                className={student.attendance?.status === "PRESENT" ? "bg-green-500 hover:bg-green-600" : ""}
+                                onClick={() => handleAttendanceChange(student.id, "PRESENT")}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" /> Present
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={student.attendance?.status === "ABSENT" ? "destructive" : "outline"}
+                                onClick={() => handleAttendanceChange(student.id, "ABSENT")}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" /> Absent
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={student.attendance?.status === "LATE" ? "default" : "outline"}
+                                className={student.attendance?.status === "LATE" ? "bg-amber-500 hover:bg-amber-600" : ""}
+                                onClick={() => handleAttendanceChange(student.id, "LATE")}
+                              >
+                                <Clock4 className="h-4 w-4 mr-1" /> Late
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {filteredStudents.map((student) => (
+                <div key={student.id} className="border rounded-lg p-4 bg-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="font-medium">{student.name}</div>
+                      <div className="text-sm text-gray-500">Roll: {student.rollNumber}</div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-10">
-                    <UserX className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium mb-1">No Students Found</h3>
-                    {searchQuery ? (
-                      <p className="text-gray-500">No students match your search criteria.</p>
-                    ) : (
-                      <p className="text-gray-500">There are no students enrolled in this class section.</p>
+                    {student.attendance?.status === "PRESENT" && (
+                      <Badge variant="default" className="capitalize bg-green-500 hover:bg-green-600">Present</Badge>
+                    )}
+                    {student.attendance?.status === "ABSENT" && (
+                      <Badge variant="destructive" className="capitalize">Absent</Badge>
+                    )}
+                    {student.attendance?.status === "LATE" && (
+                      <Badge variant="default" className="capitalize bg-amber-500 hover:bg-amber-600">Late</Badge>
+                    )}
+                    {student.attendance?.status === "LEAVE" && (
+                      <Badge variant="outline" className="capitalize">On Leave</Badge>
+                    )}
+                    {student.attendance?.status === "HALF_DAY" && (
+                      <Badge variant="default" className="capitalize bg-blue-500 hover:bg-blue-600">Half Day</Badge>
                     )}
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-10">
-                <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <h3 className="text-lg font-medium mb-1">No Class Selected</h3>
-                <p className="text-gray-500">Please select a class and section to mark attendance.</p>
-              </div>
-            )}
-          </CardContent>
 
-          <CardFooter className="flex justify-between border-t pt-6">
-            <div className="flex gap-4">
-              <div className="text-center">
-                <div className="text-sm text-gray-500">Total</div>
-                <div className="font-bold text-lg">{totalStudents}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-green-500">Present</div>
-                <div className="font-bold text-lg">{totalPresent}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-red-500">Absent</div>
-                <div className="font-bold text-lg">{totalAbsent}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-amber-500">Late</div>
-                <div className="font-bold text-lg">{totalLate}</div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => router.push('/teacher/attendance')}>Cancel</Button>
-              <Button
-                onClick={handleSaveAttendance}
-                disabled={saving || !classId || students.length === 0}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Attendance"
-                )}
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
+                  {/* Action Buttons - Grid layout for mobile */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      size="sm"
+                      variant={student.attendance?.status === "PRESENT" ? "default" : "outline"}
+                      className={`w-full ${student.attendance?.status === "PRESENT" ? "bg-green-500 hover:bg-green-600" : ""}`}
+                      onClick={() => handleAttendanceChange(student.id, "PRESENT")}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={student.attendance?.status === "ABSENT" ? "destructive" : "outline"}
+                      className="w-full"
+                      onClick={() => handleAttendanceChange(student.id, "ABSENT")}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={student.attendance?.status === "LATE" ? "default" : "outline"}
+                      className={`w-full ${student.attendance?.status === "LATE" ? "bg-amber-500 hover:bg-amber-600" : ""}`}
+                      onClick={() => handleAttendanceChange(student.id, "LATE")}
+                    >
+                      <Clock4 className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-      {recentAttendance.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Attendance</CardTitle>
-            <CardDescription>Class attendance history</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {recentAttendance.map((record, index) => (
-                <div key={index} className="border rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="font-medium">{format(new Date(record.date), "EEEE, MMMM d")}</div>
-                    <div className="flex gap-2 items-center">
-                      <Clock4 className="h-3.5 w-3.5 text-gray-500" />
-                      <span className="text-xs text-gray-500">Recorded</span>
+                  {/* Show reason field for absent or leave students */}
+                  {(student.attendance?.status === "ABSENT" || student.attendance?.status === "LEAVE") && (
+                    <div className="mt-3">
+                      <Textarea
+                        placeholder="Reason for absence..."
+                        className="min-h-0 h-16 text-xs"
+                        value={student.attendance?.reason || ""}
+                        onChange={(e) => handleReasonChange(student.id, e.target.value)}
+                      />
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1 bg-gray-100 rounded p-2 text-center">
-                      <div className="text-xs text-gray-500">Present</div>
-                      <div className="font-medium">{record.present}/{record.total}</div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div
-                          className="bg-green-500 h-1.5 rounded-full"
-                          style={{ width: `${(record.present / record.total) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-gray-100 rounded p-2 text-center">
-                      <div className="text-xs text-gray-500">Absent</div>
-                      <div className="font-medium">{record.absent}/{record.total}</div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div
-                          className="bg-red-500 h-1.5 rounded-full"
-                          style={{ width: `${(record.absent / record.total) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
-          </CardContent>
-          <CardFooter className="border-t pt-4">
-            <Link href="/teacher/attendance/reports" className="w-full">
-              <Button variant="outline" className="w-full">
-                <FileText className="mr-2 h-4 w-4" /> View Full Attendance Reports
-              </Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      )}
+            ) : (
+            <div className="text-center py-10">
+              <UserX className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <h3 className="text-lg font-medium mb-1">No Students Found</h3>
+              {searchQuery ? (
+                <p className="text-gray-500">No students match your search criteria.</p>
+              ) : (
+                <p className="text-gray-500">There are no students enrolled in this class section.</p>
+              )}
+            </div>
+                )}
+          </>
+          ) : (
+          <div className="text-center py-10">
+            <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-lg font-medium mb-1">No Class Selected</h3>
+            <p className="text-gray-500">Please select a class and section to mark attendance.</p>
+          </div>
+            )}
+        </CardContent>
+
+        <CardFooter className="flex flex-col sm:flex-row justify-between gap-4 border-t pt-6">
+          {/* Stats - Grid on mobile for compact display */}
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-4 w-full sm:w-auto">
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-gray-500">Total</div>
+              <div className="font-bold text-base sm:text-lg">{totalStudents}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-green-500">Present</div>
+              <div className="font-bold text-base sm:text-lg">{totalPresent}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-red-500">Absent</div>
+              <div className="font-bold text-base sm:text-lg">{totalAbsent}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-amber-500">Late</div>
+              <div className="font-bold text-base sm:text-lg">{totalLate}</div>
+            </div>
+          </div>
+
+          {/* Buttons - Full width on mobile */}
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => router.push('/teacher/attendance')}>Cancel</Button>
+            <Button
+              className="flex-1 sm:flex-none"
+              onClick={handleSaveAttendance}
+              disabled={saving || !classId || students.length === 0}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Attendance"
+              )}
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
     </div>
+
+      {
+    recentAttendance.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Attendance</CardTitle>
+          <CardDescription>Class attendance history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {recentAttendance.map((record, index) => (
+              <div key={index} className="border rounded-lg p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="font-medium">{format(new Date(record.date), "EEEE, MMMM d")}</div>
+                  <div className="flex gap-2 items-center">
+                    <Clock4 className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="text-xs text-gray-500">Recorded</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 bg-gray-100 rounded p-2 text-center">
+                    <div className="text-xs text-gray-500">Present</div>
+                    <div className="font-medium">{record.present}/{record.total}</div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className="bg-green-500 h-1.5 rounded-full"
+                        style={{ width: `${(record.present / record.total) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="flex-1 bg-gray-100 rounded p-2 text-center">
+                    <div className="text-xs text-gray-500">Absent</div>
+                    <div className="font-medium">{record.absent}/{record.total}</div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className="bg-red-500 h-1.5 rounded-full"
+                        style={{ width: `${(record.absent / record.total) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter className="border-t pt-4">
+          <Link href="/teacher/attendance/reports" className="w-full">
+            <Button variant="outline" className="w-full">
+              <FileText className="mr-2 h-4 w-4" /> View Full Attendance Reports
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
+    )
+  }
+    </div >
   );
 }
 
