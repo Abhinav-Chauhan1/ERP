@@ -27,6 +27,12 @@ interface Teacher {
     id: string;
     subject: { name: string };
   }>;
+  classes: Array<{
+    id: string;
+    isClassHead: boolean;
+    class: { name: string };
+    section: { name: string } | null;
+  }>;
 }
 
 interface TeachersTableProps {
@@ -131,49 +137,70 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
     },
     {
       key: "subjects",
-      label: "Subjects",
+      label: "assignments", // Renamed from Subjects
       render: (teacher: Teacher) => (
-        <div className="flex flex-wrap gap-1">
-          {teacher.subjects.length > 0 ? (
-            <>
-              {teacher.subjects.slice(0, 2).map((subjectTeacher) => (
-                subjectTeacher.subject ? (
-                  <Badge key={subjectTeacher.id} variant="outline" className="text-xs">
-                    {subjectTeacher.subject.name}
+        <div className="flex flex-col gap-1 items-start">
+          {/* Show Head Teacher roles */}
+          {teacher.classes?.filter(ct => ct.isClassHead).map(ct => (
+            <Badge key={ct.id} className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs whitespace-nowrap">
+              Head: {ct.class.name}{ct.section ? ` - ${ct.section.name}` : ''}
+            </Badge>
+          ))}
+
+          <div className="flex flex-wrap gap-1">
+            {teacher.subjects.length > 0 ? (
+              <>
+                {teacher.subjects.slice(0, 2).map((subjectTeacher) => (
+                  subjectTeacher.subject ? (
+                    <Badge key={subjectTeacher.id} variant="outline" className="text-xs">
+                      {subjectTeacher.subject.name}
+                    </Badge>
+                  ) : null
+                ))}
+                {teacher.subjects.length > 2 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{teacher.subjects.length - 2}
                   </Badge>
-                ) : null
-              ))}
-              {teacher.subjects.length > 2 && (
-                <Badge variant="outline" className="text-xs">
-                  +{teacher.subjects.length - 2}
-                </Badge>
-              )}
-            </>
-          ) : (
-            <span className="text-muted-foreground">None assigned</span>
-          )}
+                )}
+              </>
+            ) : (
+              // Only show "None assigned" if they also don't have a class head role
+              (!teacher.classes || teacher.classes.filter(ct => ct.isClassHead).length === 0) && (
+                <span className="text-muted-foreground text-xs">None assigned</span>
+              )
+            )}
+          </div>
         </div>
       ),
       mobileRender: (teacher: Teacher) => (
-        <div className="flex flex-wrap gap-0.5 justify-end">
-          {teacher.subjects.length > 0 ? (
-            <>
-              {teacher.subjects.slice(0, 1).map((subjectTeacher) => (
-                subjectTeacher.subject ? (
-                  <Badge key={subjectTeacher.id} variant="outline" className="text-[10px] px-1 py-0">
-                    {subjectTeacher.subject.name}
+        <div className="flex flex-col gap-0.5 items-end">
+          {teacher.classes?.filter(ct => ct.isClassHead).map(ct => (
+            <Badge key={ct.id} className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] px-1 py-0 whitespace-nowrap">
+              Head: {ct.class.name}{ct.section ? `-${ct.section.name}` : ''}
+            </Badge>
+          ))}
+          <div className="flex flex-wrap gap-0.5 justify-end">
+            {teacher.subjects.length > 0 ? (
+              <>
+                {teacher.subjects.slice(0, 1).map((subjectTeacher) => (
+                  subjectTeacher.subject ? (
+                    <Badge key={subjectTeacher.id} variant="outline" className="text-[10px] px-1 py-0">
+                      {subjectTeacher.subject.name}
+                    </Badge>
+                  ) : null
+                ))}
+                {teacher.subjects.length > 1 && (
+                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+                    +{teacher.subjects.length - 1}
                   </Badge>
-                ) : null
-              ))}
-              {teacher.subjects.length > 1 && (
-                <Badge variant="outline" className="text-[10px] px-1 py-0">
-                  +{teacher.subjects.length - 1}
-                </Badge>
-              )}
-            </>
-          ) : (
-            <span className="text-muted-foreground text-xs">None</span>
-          )}
+                )}
+              </>
+            ) : (
+              (!teacher.classes || teacher.classes.filter(ct => ct.isClassHead).length === 0) && (
+                <span className="text-muted-foreground text-xs">None</span>
+              )
+            )}
+          </div>
         </div>
       ),
     },

@@ -81,6 +81,12 @@ export async function getFilteredTeachers(filters: TeacherFilters) {
             subject: true,
           },
         },
+        classes: {
+          include: {
+            class: true,
+            section: true,
+          }
+        },
       },
       orderBy: {
         createdAt: "desc",

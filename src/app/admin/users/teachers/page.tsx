@@ -22,6 +22,12 @@ export default async function TeachersPage() {
             subject: true,
           },
         },
+        classes: {
+          include: {
+            class: true,
+            section: true,
+          }
+        },
       },
       orderBy: {
         createdAt: "desc",

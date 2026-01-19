@@ -38,9 +38,11 @@ export async function getSections(classFilter?: string) {
     // Get related teachers for these sections
     const sectionsWithTeachers = await Promise.all(
       sections.map(async (section) => {
-        const classTeacher = await db.classTeacher.findFirst({
+        // Find teacher specifically assigned to this section
+        let classTeacher = await db.classTeacher.findFirst({
           where: {
             classId: section.classId,
+            sectionId: section.id,
             isClassHead: true,
           },
           include: {
@@ -56,6 +58,29 @@ export async function getSections(classFilter?: string) {
             }
           }
         });
+
+        // If no section-specific head, check for class-level head (sectionId: null)
+        if (!classTeacher) {
+          classTeacher = await db.classTeacher.findFirst({
+            where: {
+              classId: section.classId,
+              sectionId: null,
+              isClassHead: true,
+            },
+            include: {
+              teacher: {
+                include: {
+                  user: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
 
         // Get room information
         const timetableSlot = await db.timetableSlot.findFirst({
@@ -300,10 +325,11 @@ export async function createSection(data: SectionFormValues) {
       });
 
       if (!existingTeacher) {
-        // Create new class teacher relationship
+        // Create new class teacher relationship linked to this section
         await db.classTeacher.create({
           data: {
             classId: data.classId,
+            sectionId: section.id, // Link to the new section
             teacherId: data.teacherId,
             isClassHead: data.isClassHead,
           }
@@ -370,10 +396,11 @@ export async function updateSection(data: SectionUpdateFormValues) {
       });
 
       if (!existingTeacher) {
-        // Create new class teacher relationship
+        // Create new class teacher relationship linked to this section
         await db.classTeacher.create({
           data: {
             classId: data.classId,
+            sectionId: data.id, // Link to the section being updated
             teacherId: data.teacherId,
             isClassHead: data.isClassHead,
           }

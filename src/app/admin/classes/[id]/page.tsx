@@ -53,7 +53,9 @@ import {
   studentEnrollmentSchema,
   ClassSectionFormValues,
   ClassTeacherFormValues,
-  StudentEnrollmentFormValues
+  ClassTeacherUpdateFormValues,
+  StudentEnrollmentFormValues,
+  classTeacherUpdateSchema
 } from "@/lib/schemaValidation/classesSchemaValidation";
 import {
   getClassById,
@@ -62,7 +64,9 @@ import {
   getTeachersForDropdown,
   assignTeacherToClass,
   enrollStudentInClass,
-  getAvailableStudentsForClass
+  getAvailableStudentsForClass,
+  updateTeacherAssignment,
+  removeTeacherFromClass
 } from "@/lib/actions/classesActions";
 
 export default function ClassDetailsPage() {
@@ -80,6 +84,7 @@ export default function ClassDetailsPage() {
   // Section dialog state
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
   const [teacherDialogOpen, setTeacherDialogOpen] = useState(false);
+  const [editTeacherDialogOpen, setEditTeacherDialogOpen] = useState(false);
   const [teachers, setTeachers] = useState<any[]>([]);
 
   // New state for student enrollment
@@ -102,6 +107,16 @@ export default function ClassDetailsPage() {
     defaultValues: {
       teacherId: "",
       classId: "",
+      isClassHead: false,
+    },
+  });
+
+  const editTeacherForm = useForm<ClassTeacherUpdateFormValues>({
+    resolver: zodResolver(classTeacherUpdateSchema),
+    defaultValues: {
+      id: "",
+      classId: "",
+      teacherId: "",
       isClassHead: false,
     },
   });
@@ -243,10 +258,7 @@ export default function ClassDetailsPage() {
 
   async function onTeacherSubmit(values: ClassTeacherFormValues) {
     try {
-      // Convert empty string sectionId to undefined/null for the API if needed, 
-      // but zod schema expects string | null | undefined.
-      // If user selected "All Sections", we might be passing "" or "ALL". 
-      // Let's ensure if it's "ALL" or "", we pass null.
+      // Convert empty string sectionId to undefined/null for the API if needed
       const payload = {
         ...values,
         sectionId: values.sectionId === "ALL" || values.sectionId === "" ? null : values.sectionId
@@ -264,6 +276,56 @@ export default function ClassDetailsPage() {
     } catch (err) {
       console.error(err);
       toast.error("An unexpected error occurred");
+    }
+  }
+
+  function handleEditTeacher(teacher: any) {
+    editTeacherForm.reset({
+      id: teacher.id, // Assignment ID
+      classId: params.id as string,
+      teacherId: teacher.teacherId,
+      sectionId: teacher.sectionId || "ALL", // Handle null as "ALL"
+      isClassHead: teacher.isClassHead,
+    });
+
+    setEditTeacherDialogOpen(true);
+  }
+
+  async function onUpdateTeacherSubmit(values: ClassTeacherUpdateFormValues) {
+    try {
+      const payload = {
+        ...values,
+        sectionId: values.sectionId === "ALL" || values.sectionId === "" ? null : values.sectionId
+      };
+
+      const result = await updateTeacherAssignment(payload);
+
+      if (result.success) {
+        toast.success("Teacher assignment updated");
+        setEditTeacherDialogOpen(false);
+        fetchClassDetails();
+      } else {
+        toast.error(result.error || "Failed to update assignment");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred");
+    }
+  }
+
+  async function handleRemoveTeacher(id: string) {
+    if (!confirm("Are you sure you want to remove this teacher?")) return;
+
+    try {
+      const result = await removeTeacherFromClass(id);
+      if (result.success) {
+        toast.success("Teacher removed successfully");
+        fetchClassDetails();
+      } else {
+        toast.error(result.error || "Failed to remove teacher");
+      }
+    } catch (err) {
+      toast.error("An error occurred");
     }
   }
 
@@ -630,11 +692,28 @@ export default function ClassDetailsPage() {
                                 ) : "Subject Teacher"}
                               </td>
                               <td className="py-3 px-4 align-middle text-right">
-                                <Link href={`/admin/teachers/${teacher.teacherId}`}>
-                                  <Button variant="ghost" size="sm">
-                                    View
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditTeacher(teacher)}
+                                  >
+                                    <Edit className="h-4 w-4" />
                                   </Button>
-                                </Link>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    onClick={() => handleRemoveTeacher(teacher.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  <Link href={`/admin/teachers/${teacher.teacherId}`}>
+                                    <Button variant="ghost" size="sm">
+                                      View
+                                    </Button>
+                                  </Link>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -922,7 +1001,80 @@ export default function ClassDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+
+
+      {/* Edit Teacher Dialog */}
+      <Dialog open={editTeacherDialogOpen} onOpenChange={setEditTeacherDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Teacher Assignment</DialogTitle>
+            <DialogDescription>
+              Modify teacher assignment details
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editTeacherForm}>
+            <form onSubmit={editTeacherForm.handleSubmit(onUpdateTeacherSubmit)} className="space-y-4">
+              <FormField
+                control={editTeacherForm.control}
+                name="sectionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assign to Section</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select section (Optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Sections (Class Head)</SelectItem>
+                        {classDetails?.sections?.map((section: any) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            Section {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      If "All Sections" is selected, this teacher will be the head for the entire class.
+                      Select a specific section to assign a Section Head.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editTeacherForm.control}
+                name="isClassHead"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Set as class teacher
+                      </FormLabel>
+                      <p className="text-sm text-gray-500">
+                        This teacher will be responsible for this class.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit">Update Assignment</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1062,6 +1214,6 @@ export default function ClassDetailsPage() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
