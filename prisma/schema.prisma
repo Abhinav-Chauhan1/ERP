@@ -1986,6 +1986,14 @@ model SystemSettings {
   notifyExamResults Boolean @default(true)
   notifyLeaveApps   Boolean @default(true)
 
+  // Granular Notification Channels (Array of CommunicationChannel strings)
+  // Default values include "IN_APP" and commonly used external channels
+  enrollmentNotificationChannels String[] @default(["EMAIL", "IN_APP"])
+  paymentNotificationChannels    String[] @default(["EMAIL", "IN_APP"])
+  attendanceNotificationChannels String[] @default(["SMS", "IN_APP"])
+  examResultNotificationChannels String[] @default(["EMAIL", "IN_APP"])
+  leaveAppNotificationChannels   String[] @default(["EMAIL", "IN_APP"])
+
   // Security Settings
   sessionTimeout             Int     @default(30) // Minutes
   passwordMinLength          Int     @default(8)

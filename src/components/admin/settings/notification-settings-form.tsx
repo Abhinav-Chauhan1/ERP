@@ -19,34 +19,62 @@ interface NotificationSettingsFormProps {
     notifyAttendance: boolean;
     notifyExamResults: boolean;
     notifyLeaveApps: boolean;
+    // Granular settings
+    enrollmentNotificationChannels?: string[];
+    paymentNotificationChannels?: string[];
+    attendanceNotificationChannels?: string[];
+    examResultNotificationChannels?: string[];
+    leaveAppNotificationChannels?: string[];
   };
 }
 
+const AVAILABLE_CHANNELS = [
+  { id: 'EMAIL', label: 'Email', icon: Mail },
+  { id: 'SMS', label: 'SMS', icon: Bell },
+  { id: 'WHATSAPP', label: 'WhatsApp', icon: Bell }, // Using Bell as placeholder if MessageCircle isn't available
+  { id: 'IN_APP', label: 'In-App', icon: Bell },
+];
+
 export function NotificationSettingsForm({ initialData }: NotificationSettingsFormProps) {
   const [loading, setLoading] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(initialData.emailEnabled);
-  const [smsNotifications, setSmsNotifications] = useState(initialData.smsEnabled);
-  const [pushNotifications, setPushNotifications] = useState(initialData.pushEnabled);
+  const [emailEnabled, setEmailEnabled] = useState(initialData.emailEnabled);
+  const [smsEnabled, setSmsEnabled] = useState(initialData.smsEnabled);
+  const [pushEnabled, setPushEnabled] = useState(initialData.pushEnabled);
+
+  // Legacy toggles (kept for backward compatibility or master switches)
   const [notifyEnrollment, setNotifyEnrollment] = useState(initialData.notifyEnrollment);
   const [notifyPayment, setNotifyPayment] = useState(initialData.notifyPayment);
   const [notifyAttendance, setNotifyAttendance] = useState(initialData.notifyAttendance);
   const [notifyExamResults, setNotifyExamResults] = useState(initialData.notifyExamResults);
   const [notifyLeaveApps, setNotifyLeaveApps] = useState(initialData.notifyLeaveApps);
 
+  // Granular channel states
+  const [enrollmentChannels, setEnrollmentChannels] = useState<string[]>(initialData.enrollmentNotificationChannels || ['EMAIL', 'IN_APP']);
+  const [paymentChannels, setPaymentChannels] = useState<string[]>(initialData.paymentNotificationChannels || ['EMAIL', 'IN_APP']);
+  const [attendanceChannels, setAttendanceChannels] = useState<string[]>(initialData.attendanceNotificationChannels || ['SMS', 'IN_APP']);
+  const [examResultChannels, setExamResultChannels] = useState<string[]>(initialData.examResultNotificationChannels || ['EMAIL', 'IN_APP']);
+  const [leaveAppChannels, setLeaveAppChannels] = useState<string[]>(initialData.leaveAppNotificationChannels || ['EMAIL', 'IN_APP']);
+
   const handleSave = async () => {
     setLoading(true);
     try {
       const result = await updateNotificationSettings({
-        emailEnabled: emailNotifications,
-        smsEnabled: smsNotifications,
-        pushEnabled: pushNotifications,
+        emailEnabled,
+        smsEnabled,
+        pushEnabled,
         notifyEnrollment,
         notifyPayment,
         notifyAttendance,
         notifyExamResults,
         notifyLeaveApps,
+        // Save granular settings
+        enrollmentNotificationChannels: enrollmentChannels,
+        paymentNotificationChannels: paymentChannels,
+        attendanceNotificationChannels: attendanceChannels,
+        examResultNotificationChannels: examResultChannels,
+        leaveAppNotificationChannels: leaveAppChannels,
       });
-      
+
       if (result.success) {
         toast.success("Notification settings saved successfully");
       } else {
@@ -60,13 +88,64 @@ export function NotificationSettingsForm({ initialData }: NotificationSettingsFo
     }
   };
 
+  const toggleChannel = (
+    currentChannels: string[],
+    setChannels: (channels: string[]) => void,
+    channelId: string
+  ) => {
+    if (currentChannels.includes(channelId)) {
+      setChannels(currentChannels.filter(id => id !== channelId));
+    } else {
+      setChannels([...currentChannels, channelId]);
+    }
+  };
+
+  const renderChannelSelector = (
+    label: string,
+    description: string,
+    enabled: boolean,
+    setEnabled: (enabled: boolean) => void,
+    channels: string[],
+    setChannels: (channels: string[]) => void
+  ) => (
+    <div className="border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-0.5">
+          <Label className="text-base font-medium">{label}</Label>
+          <p className="text-sm text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <Switch checked={enabled} onCheckedChange={setEnabled} />
+      </div>
+
+      {enabled && (
+        <div className="pl-4 border-l-2 border-muted grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
+          {AVAILABLE_CHANNELS.map((channel) => (
+            <div key={channel.id} className="flex items-center space-x-2">
+              <Switch
+                id={`${label}-${channel.id}`}
+                checked={channels.includes(channel.id)}
+                onCheckedChange={() => toggleChannel(channels, setChannels, channel.id)}
+                className="scale-75"
+              />
+              <Label htmlFor={`${label}-${channel.id}`} className="text-sm cursor-pointer">
+                {channel.label}
+              </Label>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Notification Channels</CardTitle>
+          <CardTitle>Global Channel Settings</CardTitle>
           <CardDescription>
-            Enable or disable notification delivery methods
+            Master switches for communication services
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -74,104 +153,90 @@ export function NotificationSettingsForm({ initialData }: NotificationSettingsFo
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <Label>Email Notifications</Label>
+                <Label>Email Service</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Send notifications via email
+                Enable/Disable email sending system-wide
               </p>
             </div>
             <Switch
-              checked={emailNotifications}
-              onCheckedChange={setEmailNotifications}
+              checked={emailEnabled}
+              onCheckedChange={setEmailEnabled}
             />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4" />
-                <Label>SMS Notifications</Label>
+                <Label>SMS Service</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Send notifications via SMS (requires SMS gateway)
+                Enable/Disable SMS sending system-wide
               </p>
             </div>
             <Switch
-              checked={smsNotifications}
-              onCheckedChange={setSmsNotifications}
+              checked={smsEnabled}
+              onCheckedChange={setSmsEnabled}
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                <Label>Push Notifications</Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Send push notifications in browser
-              </p>
-            </div>
-            <Switch
-              checked={pushNotifications}
-              onCheckedChange={setPushNotifications}
-            />
-          </div>
+          {/* Push/In-App is usually always enabled, but keeping the switch if needed */}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Notification Events</CardTitle>
+          <CardTitle>Event Notification Rules</CardTitle>
           <CardDescription>
-            Choose which events trigger system-wide notifications
+            Configure which channels are used for specific events
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>New Student Enrollment</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify admins when a new student enrolls
-              </p>
-            </div>
-            <Switch checked={notifyEnrollment} onCheckedChange={setNotifyEnrollment} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Fee Payment Received</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify when fee payments are received
-              </p>
-            </div>
-            <Switch checked={notifyPayment} onCheckedChange={setNotifyPayment} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Attendance Alerts</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify parents about student attendance issues
-              </p>
-            </div>
-            <Switch checked={notifyAttendance} onCheckedChange={setNotifyAttendance} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Exam Results Published</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify students and parents when results are published
-              </p>
-            </div>
-            <Switch checked={notifyExamResults} onCheckedChange={setNotifyExamResults} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Leave Applications</Label>
-              <p className="text-sm text-muted-foreground">
-                Notify admins about new leave applications
-              </p>
-            </div>
-            <Switch checked={notifyLeaveApps} onCheckedChange={setNotifyLeaveApps} />
-          </div>
-          <div className="flex justify-end">
+          {renderChannelSelector(
+            "New Student Enrollment",
+            "Notify admins when a new student enrolls",
+            notifyEnrollment,
+            setNotifyEnrollment,
+            enrollmentChannels,
+            setEnrollmentChannels
+          )}
+
+          {renderChannelSelector(
+            "Fee Payment Received",
+            "Notify when fee payments are received",
+            notifyPayment,
+            setNotifyPayment,
+            paymentChannels,
+            setPaymentChannels
+          )}
+
+          {renderChannelSelector(
+            "Attendance Alerts",
+            "Notify parents about student attendance issues",
+            notifyAttendance,
+            setNotifyAttendance,
+            attendanceChannels,
+            setAttendanceChannels
+          )}
+
+          {renderChannelSelector(
+            "Exam Results Published",
+            "Notify students and parents when results are published",
+            notifyExamResults,
+            setNotifyExamResults,
+            examResultChannels,
+            setExamResultChannels
+          )}
+
+          {renderChannelSelector(
+            "Leave Applications",
+            "Notify admins about new leave applications",
+            notifyLeaveApps,
+            setNotifyLeaveApps,
+            leaveAppChannels,
+            setLeaveAppChannels
+          )}
+
+          <div className="flex justify-end pt-4">
             <Button onClick={handleSave} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? "Saving..." : "Save Changes"}

@@ -237,6 +237,12 @@ export async function updateNotificationSettings(data: {
   notifyAttendance: boolean;
   notifyExamResults: boolean;
   notifyLeaveApps: boolean;
+  // New granular settings
+  enrollmentNotificationChannels?: string[];
+  paymentNotificationChannels?: string[];
+  attendanceNotificationChannels?: string[];
+  examResultNotificationChannels?: string[];
+  leaveAppNotificationChannels?: string[];
 }) {
   try {
     // Authentication check
@@ -264,7 +270,22 @@ export async function updateNotificationSettings(data: {
 
     const updated = await db.systemSettings.update({
       where: { id: settings.id },
-      data,
+      data: {
+        emailEnabled: data.emailEnabled,
+        smsEnabled: data.smsEnabled,
+        pushEnabled: data.pushEnabled, // Kept for backward compatibility
+        notifyEnrollment: data.notifyEnrollment,
+        notifyPayment: data.notifyPayment,
+        notifyAttendance: data.notifyAttendance,
+        notifyExamResults: data.notifyExamResults,
+        notifyLeaveApps: data.notifyLeaveApps,
+        // Update new granular fields if provided
+        enrollmentNotificationChannels: data.enrollmentNotificationChannels,
+        paymentNotificationChannels: data.paymentNotificationChannels,
+        attendanceNotificationChannels: data.attendanceNotificationChannels,
+        examResultNotificationChannels: data.examResultNotificationChannels,
+        leaveAppNotificationChannels: data.leaveAppNotificationChannels,
+      },
     });
 
     revalidatePath("/admin/settings");

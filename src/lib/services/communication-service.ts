@@ -425,11 +425,65 @@ export async function sendNotification(
   try {
     const { userId, type, title, message, data, channels: overrideChannels } = params;
 
-    // Get user preferences
+    // 1. Get System Settings to determine globally allowed channels for this event type
+    const systemSettings = await db.systemSettings.findFirst();
+    let allowedSystemChannels: CommunicationChannel[] = [];
+
+    // Default to all channels if settings missing (fallback)
+    if (!systemSettings) {
+      allowedSystemChannels = Object.values(CommunicationChannel);
+    } else {
+      // Map NotificationType to specific settings field
+      let settingsChannels: string[] = [];
+
+      switch (type) {
+        case NotificationType.ATTENDANCE:
+          settingsChannels = systemSettings.attendanceNotificationChannels;
+          break;
+        case NotificationType.FEE:
+          settingsChannels = systemSettings.paymentNotificationChannels;
+          break;
+        case NotificationType.EXAM:
+          settingsChannels = systemSettings.examResultNotificationChannels;
+          break;
+        case NotificationType.LEAVE:
+          settingsChannels = systemSettings.leaveAppNotificationChannels;
+          break;
+        // For other types (or generic ones), fall back to checking global enables or allow all
+        // Adding specific handling for ENROLLMENT if it becomes a NotificationType
+        default:
+          // If it's a type not covered by granular settings, check legacy global flags or default to allowed
+          // For now, we'll allow all valid channels if not strictly restricted
+          settingsChannels = Object.values(CommunicationChannel);
+
+          // Respect legacy global toggles as a secondary check if needed, 
+          // but granular settings are preferred. 
+          // If we want to strictly enforce legacy globals for generic types:
+          /*
+          if (!systemSettings.emailEnabled) settingsChannels = settingsChannels.filter(c => c !== 'EMAIL');
+          if (!systemSettings.smsEnabled) settingsChannels = settingsChannels.filter(c => c !== 'SMS');
+          */
+          break;
+      }
+
+      // Convert string[] to CommunicationChannel[]
+      allowedSystemChannels = settingsChannels
+        .map(c => c as CommunicationChannel)
+        .filter(c => Object.values(CommunicationChannel).includes(c));
+    }
+
+    // 2. Get user preferences
     const preferences = await getUserContactPreferences(userId);
 
-    // Use override channels if provided, otherwise use user preferences
-    const targetChannels = overrideChannels || preferences.channels;
+    // 3. Determine target channels
+    // Start with user's preferred channels (or overrides)
+    const preferredChannels = overrideChannels || preferences.channels;
+
+    // 4. Filter allowed channels: Intersection of (User Preferences) AND (System Allowed Channels)
+    // The user cannot receive a notification on a channel the system has disabled for this event.
+    const targetChannels = preferredChannels.filter(channel =>
+      allowedSystemChannels.includes(channel)
+    );
 
     const result: CommunicationResult = {
       success: false,

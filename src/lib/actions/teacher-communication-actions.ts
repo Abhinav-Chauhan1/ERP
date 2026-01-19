@@ -334,6 +334,8 @@ export async function getAnnouncements(filters?: z.infer<typeof getAnnouncements
       }
     }
 
+    console.log("[Teacher] Fetching announcements with where:", JSON.stringify(where));
+
     // Execute count and query in parallel with monitoring
     const [totalCount, announcements] = await Promise.all([
       monitoredQuery(
@@ -353,6 +355,8 @@ export async function getAnnouncements(filters?: z.infer<typeof getAnnouncements
         "teacher-announcements-list"
       )
     ]);
+
+    console.log(`[Teacher] Found ${totalCount} announcements.`);
 
     return {
       success: true,
