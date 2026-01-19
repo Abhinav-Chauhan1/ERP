@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { AttendanceStatus } from "@prisma/client";
+import { sendAttendanceNotification } from "@/lib/services/notification-service";
 
 type StudentAttendanceData = {
   studentId: string;
@@ -19,7 +20,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -62,7 +63,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
     }
 
     // Get all sections if sectionId is not provided
-    const sections = sectionId 
+    const sections = sectionId
       ? classDetails.sections.filter(s => s.id === sectionId)
       : classDetails.sections;
 
@@ -94,7 +95,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
     // Check if attendance has already been marked for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -124,7 +125,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
 
     const students = enrollments.map(enrollment => {
       const existingRecord = existingAttendanceByStudentId.get(enrollment.studentId);
-      
+
       return {
         id: enrollment.student.id,
         name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
@@ -166,11 +167,11 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
 
     // Get counts for each date
     const attendanceSummary = [];
-    
+
     for (const record of recentAttendance) {
       const date = record.date;
       const sectionId = record.sectionId;
-      
+
       const allStudents = await db.classEnrollment.count({
         where: {
           classId,
@@ -178,7 +179,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
           status: "ACTIVE",
         },
       });
-      
+
       const presentStudents = await db.studentAttendance.count({
         where: {
           sectionId,
@@ -186,7 +187,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
           status: "PRESENT",
         },
       });
-      
+
       const absentStudents = await db.studentAttendance.count({
         where: {
           sectionId,
@@ -194,7 +195,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
           status: "ABSENT",
         },
       });
-      
+
       attendanceSummary.push({
         date: date.toISOString().split('T')[0],
         total: allStudents,
@@ -227,7 +228,7 @@ export async function getTeacherClassesForAttendance() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -333,7 +334,7 @@ export async function getTeacherClassesForAttendance() {
       classes,
       todayClasses: todaySchedule.map(schedule => ({
         id: schedule.id,
-        classId: schedule.classId, 
+        classId: schedule.classId,
         className: schedule.class.name,
         sectionId: schedule.sectionId,
         sectionName: schedule.section?.name,
@@ -358,7 +359,7 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -433,6 +434,10 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
           },
         });
       }
+
+      // Trigger notification (async, don't await blocking)
+      sendAttendanceNotification(record.studentId, record.status, record.date)
+        .catch(err => console.error("Error triggering attendance notification:", err));
     }
 
     revalidatePath(`/teacher/attendance/mark`);
@@ -450,7 +455,7 @@ export async function getClassAttendanceForDate(classId: string, sectionId: stri
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -469,7 +474,7 @@ export async function getClassAttendanceForDate(classId: string, sectionId: stri
     // Convert date string to Date object
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
-    
+
     const nextDay = new Date(targetDate);
     nextDay.setDate(nextDay.getDate() + 1);
 
@@ -536,7 +541,7 @@ export async function getClassAttendanceForDate(classId: string, sectionId: stri
 
     const students = enrollments.map(enrollment => {
       const record = attendanceByStudentId.get(enrollment.studentId);
-      
+
       return {
         id: enrollment.student.id,
         name: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
@@ -592,7 +597,7 @@ export async function getTeacherAttendanceReports(filters?: {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -646,7 +651,7 @@ export async function getTeacherAttendanceReports(filters?: {
     } else {
       // Otherwise, filter by sections that belong to the teacher's classes
       const sectionIds = teacherClasses.flatMap(tc => tc.class.sections.map(s => s.id));
-      
+
       if (filters?.classId) {
         // If classId is provided, get only sections from that class
         const classSections = teacherClasses
@@ -699,7 +704,7 @@ export async function getTeacherAttendanceReports(filters?: {
 
     // Format daily trends for chart display
     const dailyTrendsFormatted: Record<string, any> = {};
-    
+
     dailyTrends.forEach(record => {
       const dateStr = record.date.toISOString().split('T')[0];
       if (!dailyTrendsFormatted[dateStr]) {
@@ -737,7 +742,7 @@ export async function getTeacherAttendanceReports(filters?: {
 
     // Process attendance by class
     const classWiseFormatted: Record<string, any> = {};
-    
+
     // Initialize data for all teacher classes
     teacherClasses.forEach(tc => {
       classWiseFormatted[tc.classId] = {
@@ -751,7 +756,7 @@ export async function getTeacherAttendanceReports(filters?: {
         total: 0,
       };
     });
-    
+
     // Aggregate counts
     attendanceStatsBySection.forEach(stat => {
       const classId = sectionToClassId.get(stat.sectionId);
@@ -763,12 +768,12 @@ export async function getTeacherAttendanceReports(filters?: {
 
     // Calculate percentages and other metrics for each class
     Object.values(classWiseFormatted).forEach((classStats: any) => {
-      classStats.presentPercentage = classStats.total > 0 
-        ? Math.round((classStats.PRESENT / classStats.total) * 100) 
+      classStats.presentPercentage = classStats.total > 0
+        ? Math.round((classStats.PRESENT / classStats.total) * 100)
         : 0;
-      
-      classStats.absentPercentage = classStats.total > 0 
-        ? Math.round((classStats.ABSENT / classStats.total) * 100) 
+
+      classStats.absentPercentage = classStats.total > 0
+        ? Math.round((classStats.ABSENT / classStats.total) * 100)
         : 0;
     });
 
@@ -792,7 +797,7 @@ export async function getTeacherAttendanceReports(filters?: {
 
     // Group and calculate statistics by student
     const studentMap = new Map();
-    
+
     studentsAttendance.forEach(record => {
       const studentId = record.studentId;
       if (!studentMap.has(studentId)) {
@@ -809,10 +814,10 @@ export async function getTeacherAttendanceReports(filters?: {
           totalRecords: 0
         });
       }
-      
+
       const studentStats = studentMap.get(studentId);
       studentStats.totalRecords++;
-      
+
       switch (record.status) {
         case "PRESENT":
           studentStats.presentCount++;
@@ -831,7 +836,7 @@ export async function getTeacherAttendanceReports(filters?: {
           break;
       }
     });
-    
+
     // Convert to array and sort by attendance percentage (ascending)
     const studentsWithLowAttendance = Array.from(studentMap.values())
       .sort((a, b) => {
@@ -913,7 +918,7 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -978,7 +983,7 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
 
     // Group by month for trend analysis
     const monthlyTrends: Record<string, any> = {};
-    
+
     attendanceRecords.forEach(record => {
       const month = record.date.toLocaleString('default', { month: 'short' });
       if (!monthlyTrends[month]) {
@@ -992,7 +997,7 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
           total: 0,
         };
       }
-      
+
       monthlyTrends[month][record.status]++;
       monthlyTrends[month].total++;
     });
@@ -1047,10 +1052,10 @@ export async function getStudentAttendanceReport(studentId: string, filters?: {
  * Helper function to format time
  */
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit', 
-    hour12: true 
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
   });
 }
 
@@ -1061,6 +1066,6 @@ function isTimeInRange(current: Date, start: Date, end: Date): boolean {
   const currentTime = current.getHours() * 60 + current.getMinutes();
   const startTime = start.getHours() * 60 + start.getMinutes();
   const endTime = end.getHours() * 60 + end.getMinutes();
-  
+
   return currentTime >= startTime && currentTime <= endTime;
 }

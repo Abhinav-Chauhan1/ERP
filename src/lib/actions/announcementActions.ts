@@ -137,6 +137,44 @@ export async function createAnnouncement(data: any) {
     });
 
     revalidatePath("/admin/communication/announcements");
+
+    // Notification logic
+    const targetRoles: string[] = Array.isArray(data.targetAudience)
+      ? data.targetAudience
+      : [data.targetAudience];
+
+    // valid roles from UserRole enum
+    const validRoles = ["ADMIN", "TEACHER", "STUDENT", "PARENT"];
+    const rolesToNotify = targetRoles.filter(role => validRoles.includes(role));
+
+    if (rolesToNotify.length > 0) {
+      // Find all active users with these roles
+      // Note: In a large system, this should be done via a background job
+      const usersToNotify = await db.user.findMany({
+        where: {
+          role: {
+            in: rolesToNotify as any
+          },
+          active: true
+        },
+        select: { id: true }
+      });
+
+      if (usersToNotify.length > 0) {
+        // Batch create notifications
+        await db.notification.createMany({
+          data: usersToNotify.map(u => ({
+            userId: u.id,
+            title: "New Announcement",
+            message: announcement.title,
+            type: "ANNOUNCEMENT",
+            link: `/communication/announcements/${announcement.id}`,
+            isRead: false,
+          }))
+        });
+      }
+    }
+
     return { success: true, data: announcement };
   } catch (error) {
     console.error("Error creating announcement:", error);

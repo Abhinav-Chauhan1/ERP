@@ -196,6 +196,19 @@ export async function sendMessage(data: any) {
     });
 
     revalidatePath("/admin/communication/messages");
+
+    // Create notification for recipient
+    await db.notification.create({
+      data: {
+        userId: data.recipientId,
+        title: "New Message",
+        message: `You have a new message from ${dbUser.firstName} ${dbUser.lastName}${data.subject ? `: ${data.subject}` : ""}`,
+        type: "MESSAGE",
+        link: `/communication/messages/${message.id}`,
+        isRead: false,
+      },
+    });
+
     return { success: true, data: message };
   } catch (error) {
     console.error("Error sending message:", error);
@@ -260,6 +273,19 @@ export async function replyToMessage(messageId: string, content: string) {
     });
 
     revalidatePath("/admin/communication/messages");
+
+    // Create notification for recipient
+    await db.notification.create({
+      data: {
+        userId: originalMessage.senderId,
+        title: "New Reply",
+        message: `${dbUser.firstName} ${dbUser.lastName} replied: ${originalMessage.subject || "(No Subject)"}`,
+        type: "MESSAGE",
+        link: `/communication/messages/${reply.id}`,
+        isRead: false,
+      },
+    });
+
     return { success: true, data: reply };
   } catch (error) {
     console.error("Error replying to message:", error);
@@ -324,6 +350,19 @@ export async function forwardMessage(messageId: string, recipientId: string) {
     });
 
     revalidatePath("/admin/communication/messages");
+
+    // Create notification for recipient
+    await db.notification.create({
+      data: {
+        userId: recipientId,
+        title: "Forwarded Message",
+        message: `${dbUser.firstName} ${dbUser.lastName} forwarded a message to you`,
+        type: "MESSAGE",
+        link: `/communication/messages/${forwarded.id}`,
+        isRead: false,
+      },
+    });
+
     return { success: true, data: forwarded };
   } catch (error) {
     console.error("Error forwarding message:", error);

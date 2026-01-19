@@ -44,6 +44,12 @@ export function NotificationCenter() {
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 60000); // Poll every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (open) {
       loadNotifications();
     }
@@ -176,8 +182,8 @@ export function NotificationCenter() {
     activeTab === "all"
       ? notifications
       : activeTab === "unread"
-      ? notifications.filter((n) => !n.isRead)
-      : notifications.filter((n) => n.isRead);
+        ? notifications.filter((n) => !n.isRead)
+        : notifications.filter((n) => n.isRead);
 
   const groupedNotifications = groupNotificationsByDate(filteredNotifications);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -204,9 +210,8 @@ export function NotificationCenter() {
           variant="outline"
           size="icon"
           className="relative"
-          aria-label={`Notifications${
-            unreadCount > 0 ? `, ${unreadCount} unread` : ""
-          }`}
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""
+            }`}
         >
           <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
@@ -281,8 +286,8 @@ export function NotificationCenter() {
                     {activeTab === "unread"
                       ? "No unread notifications"
                       : activeTab === "read"
-                      ? "No read notifications"
-                      : "No notifications yet"}
+                        ? "No read notifications"
+                        : "No notifications yet"}
                   </p>
                 </div>
               ) : (
@@ -299,9 +304,8 @@ export function NotificationCenter() {
                           {groupNotifications.map((notification) => (
                             <div
                               key={notification.id}
-                              className={`group relative flex gap-3 p-4 transition-colors hover:bg-accent ${
-                                !notification.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
-                              }`}
+                              className={`group relative flex gap-3 p-4 transition-colors hover:bg-accent ${!notification.isRead ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
+                                }`}
                             >
                               <div className="flex-1 space-y-1">
                                 {notification.link ? (
@@ -315,11 +319,10 @@ export function NotificationCenter() {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1">
                                         <p
-                                          className={`text-sm font-medium ${
-                                            !notification.isRead
+                                          className={`text-sm font-medium ${!notification.isRead
                                               ? "font-semibold"
                                               : ""
-                                          }`}
+                                            }`}
                                         >
                                           {notification.title}
                                         </p>
@@ -358,11 +361,10 @@ export function NotificationCenter() {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1">
                                         <p
-                                          className={`text-sm font-medium ${
-                                            !notification.isRead
+                                          className={`text-sm font-medium ${!notification.isRead
                                               ? "font-semibold"
                                               : ""
-                                          }`}
+                                            }`}
                                         >
                                           {notification.title}
                                         </p>

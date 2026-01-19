@@ -8,7 +8,8 @@
  */
 
 import { db } from '@/lib/db';
-import { Notification } from '@prisma/client';
+import { Notification, AttendanceStatus } from '@prisma/client';
+import { sendSMS } from './sms-service';
 
 export interface CreateNotificationInput {
   userId: string;
@@ -73,7 +74,7 @@ export async function createReminderNotification(
   });
 
   const message = `${dateStr} at ${eventTime}${location ? ` - ${location}` : ''}`;
-  
+
   return await createNotification({
     userId,
     title: `Reminder: ${eventTitle}`,
@@ -238,4 +239,129 @@ export async function deleteOldNotifications(
   });
 
   return result.count;
+}
+
+/**
+ * Send attendance notification (Internal + SMS)
+ * Requirements: 11.2, 5.1
+ */
+export async function sendAttendanceNotification(
+  studentId: string,
+  status: AttendanceStatus,
+  date: Date
+): Promise<{ success: boolean; smsSent?: boolean; notificationCreated?: boolean }> {
+  try {
+    // Only notify for ABSENT or LATE
+    if (status !== 'ABSENT' && status !== 'LATE') {
+      return { success: true, smsSent: false, notificationCreated: false };
+    }
+
+    // 1. Check System Settings
+    const systemSettings = await db.systemSettings.findFirst();
+
+    // Default to true if settings don't exist (safety fallback)
+    const smsEnabledSystem = systemSettings?.smsEnabled ?? false;
+    const notifyAttendanceSystem = systemSettings?.notifyAttendance ?? true;
+
+    if (!notifyAttendanceSystem) {
+      return { success: true, notificationCreated: false, smsSent: false };
+    }
+
+    // 2. Get Student & Parent details with settings
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: true,
+        settings: true,
+        parents: {
+          include: {
+            parent: {
+              include: {
+                user: true,
+                settings: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!student) return { success: false };
+
+    // 3. Check for recent duplicate notification (to prevent spam if teacher updates multiple times)
+    const dateStart = new Date(date);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(date);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const existingNotification = await db.notification.findFirst({
+      where: {
+        userId: student.userId,
+        type: 'ATTENDANCE',
+        createdAt: {
+          gte: dateStart,
+          lte: dateEnd
+        },
+        message: {
+          contains: status // Simple check to avoid notifying for same status twice
+        }
+      }
+    });
+
+    if (existingNotification) {
+      return { success: true, notificationCreated: false, smsSent: false }; // Already notified
+    }
+
+    // 4. Create Internal Notification for Student
+    // Check student preference
+    const studentNotify = student.settings?.attendanceAlerts ?? true;
+    let notificationCreated = false;
+
+    if (studentNotify) {
+      await createNotification({
+        userId: student.userId,
+        title: `Attendance Alert: ${status}`,
+        message: `You have been marked ${status} for ${date.toLocaleDateString()}`,
+        type: 'ATTENDANCE',
+        link: '/student/academics/attendance'
+      });
+      notificationCreated = true;
+    }
+
+    // 5. Notify Parents (Internal + SMS)
+    let smsSent = false;
+
+    for (const p of student.parents) {
+      const parent = p.parent;
+      const parentNotify = parent.settings?.attendanceAlerts ?? true;
+      const parentSmsPref = parent.settings?.smsNotifications ?? false; // User preference
+
+      if (parentNotify) {
+        // Internal Notification
+        await createNotification({
+          userId: parent.userId,
+          title: `Attendance Alert: ${student.user.firstName}`,
+          message: `${student.user.firstName} has been marked ${status} for ${date.toLocaleDateString()}`,
+          type: 'ATTENDANCE', // Or separate PARENT_ATTENDANCE type
+          link: `/parent/children/${student.id}/attendance`
+        });
+        notificationCreated = true;
+
+        // SMS Notification
+        // Condition: System SMS enabled AND Parent SMS enabled AND Phone exists
+        if (smsEnabledSystem && parentSmsPref && parent.user.phone) {
+          const smsBody = `Alert: ${student.user.firstName} is marked ${status} on ${date.toLocaleDateString()}. - ${systemSettings?.schoolName || 'School Admin'}`;
+
+          await sendSMS(parent.user.phone, smsBody);
+          smsSent = true;
+        }
+      }
+    }
+
+    return { success: true, notificationCreated, smsSent };
+
+  } catch (error) {
+    console.error("Error sending attendance notification:", error);
+    return { success: false };
+  }
 }
