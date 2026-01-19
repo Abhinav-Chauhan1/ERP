@@ -23,6 +23,7 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
+import { StudentAvatarUpload } from "@/components/admin/student-avatar-upload";
 
 // Create a standalone edit schema
 const editStudentSchema = z.object({
@@ -98,6 +99,8 @@ export default function EditStudentPage() {
   const [newPassword, setNewPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState<string>("");
 
   const handlePasswordUpdate = async () => {
     try {
@@ -189,6 +192,8 @@ export default function EditStudentPage() {
         }
 
         setUserId(student.userId);
+        setStudentAvatar(student.user.avatar || null);
+        setStudentName(`${student.user.firstName} ${student.user.lastName}`);
 
         form.reset({
           firstName: student.user.firstName,
@@ -311,6 +316,16 @@ export default function EditStudentPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
+                {/* Profile Photo Section */}
+                <div className="flex justify-center pb-4 border-b">
+                  <StudentAvatarUpload
+                    studentId={id}
+                    currentAvatar={studentAvatar}
+                    studentName={studentName}
+                    onSuccess={(avatarUrl) => setStudentAvatar(avatarUrl)}
+                  />
+                </div>
+
                 <h3 className="text-lg font-medium">Basic Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField

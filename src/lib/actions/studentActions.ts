@@ -1,6 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
+import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
+import { validateImageFile } from "@/lib/utils/file-security";
+import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 
 // Get student with detailed information
 export async function getStudentWithDetails(studentId: string) {
@@ -11,7 +16,7 @@ export async function getStudentWithDetails(studentId: string) {
 
   try {
     console.log(`Fetching student details for ID: ${studentId}`);
-    
+
     const student = await db.student.findUnique({
       where: { id: studentId },
       include: {
@@ -69,5 +74,197 @@ export async function getStudentWithDetails(studentId: string) {
   } catch (error) {
     console.error(`Error in getStudentWithDetails for ID ${studentId}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Upload student profile photo (Admin only)
+ * Following best practices from teacher/parent avatar upload
+ */
+export async function uploadStudentAvatar(formData: FormData) {
+  try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
+    if (!currentUserId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+      };
+    }
+
+    // Verify current user is an admin
+    const currentUser = await db.user.findUnique({
+      where: { id: currentUserId },
+    });
+
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      return {
+        success: false,
+        message: "Only administrators can update student photos",
+      };
+    }
+
+    const studentId = formData.get("studentId") as string;
+    const file = formData.get("avatar") as File;
+
+    if (!studentId) {
+      return {
+        success: false,
+        message: "Student ID is required",
+      };
+    }
+
+    if (!file) {
+      return {
+        success: false,
+        message: "No file provided",
+      };
+    }
+
+    // Get student and their user
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { user: true },
+    });
+
+    if (!student) {
+      return {
+        success: false,
+        message: "Student not found",
+      };
+    }
+
+    // Rate limiting for file uploads
+    const rateLimitKey = `file-upload:${currentUser.id}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.FILE_UPLOAD);
+    if (!rateLimitResult) {
+      return {
+        success: false,
+        message: "Too many upload requests. Please try again later.",
+      };
+    }
+
+    // Validate file using security utility
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      return {
+        success: false,
+        message: validation.error || "Invalid file",
+      };
+    }
+
+    // Convert file to base64
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString("base64");
+    const dataURI = `data:${file.type};base64,${base64}`;
+
+    // Upload to Cloudinary using shared utility
+    const uploadResponse = await uploadToCloudinary(dataURI, {
+      folder: "student-avatars",
+      publicId: `student_${student.userId}`,
+      transformation: "w_400,h_400,c_fill,g_face",
+    });
+
+    // Update user avatar
+    await db.user.update({
+      where: { id: student.userId },
+      data: { avatar: uploadResponse.secure_url },
+    });
+
+    revalidatePath(`/admin/users/students/${studentId}`);
+    revalidatePath(`/admin/users/students/${studentId}/edit`);
+
+    return {
+      success: true,
+      message: "Student photo updated successfully",
+      data: { avatar: uploadResponse.secure_url },
+    };
+  } catch (error) {
+    console.error("Error uploading student avatar:", error);
+    return {
+      success: false,
+      message: "Failed to upload student photo",
+    };
+  }
+}
+
+/**
+ * Remove student profile photo (Admin only)
+ */
+export async function removeStudentAvatar(studentId: string) {
+  try {
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
+    if (!currentUserId) {
+      return {
+        success: false,
+        message: "Unauthorized",
+      };
+    }
+
+    // Verify current user is an admin
+    const currentUser = await db.user.findUnique({
+      where: { id: currentUserId },
+    });
+
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      return {
+        success: false,
+        message: "Only administrators can update student photos",
+      };
+    }
+
+    if (!studentId) {
+      return {
+        success: false,
+        message: "Student ID is required",
+      };
+    }
+
+    // Get student
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: { user: true },
+    });
+
+    if (!student) {
+      return {
+        success: false,
+        message: "Student not found",
+      };
+    }
+
+    // Try to delete from Cloudinary if avatar exists
+    if (student.user.avatar) {
+      try {
+        await deleteFromCloudinary(`student-avatars/student_${student.userId}`);
+      } catch (cloudinaryError) {
+        console.error("Error deleting from Cloudinary:", cloudinaryError);
+        // Continue anyway - the important thing is to clear the database
+      }
+    }
+
+    // Update user to remove avatar
+    await db.user.update({
+      where: { id: student.userId },
+      data: { avatar: null },
+    });
+
+    revalidatePath(`/admin/users/students/${studentId}`);
+    revalidatePath(`/admin/users/students/${studentId}/edit`);
+
+    return {
+      success: true,
+      message: "Student photo removed successfully",
+    };
+  } catch (error) {
+    console.error("Error removing student avatar:", error);
+    return {
+      success: false,
+      message: "Failed to remove student photo",
+    };
   }
 }
