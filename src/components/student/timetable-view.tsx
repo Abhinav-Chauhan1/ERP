@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -42,8 +42,8 @@ export function TimetableView({ days, timetable }: TimetableViewProps) {
   // Get current day for default tab
   const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
   const [activeDay, setActiveDay] = useState(
-    days.find(day => day.day === currentDay && day.slots.length > 0) 
-      ? currentDay 
+    days.find(day => day.day === currentDay && day.slots.length > 0)
+      ? currentDay
       : days.find(day => day.slots.length > 0)?.day || "MONDAY"
   );
 
@@ -78,37 +78,40 @@ export function TimetableView({ days, timetable }: TimetableViewProps) {
         <CardTitle>Class Schedule</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs 
-          defaultValue={activeDay} 
+        <Tabs
+          defaultValue={activeDay}
           onValueChange={setActiveDay}
           value={activeDay}
         >
-          <TabsList className="grid grid-cols-7 mb-4">
-            {days.map((day) => (
-              <TabsTrigger 
-                key={day.day} 
-                value={day.day}
-                disabled={day.slots.length === 0}
-              >
-                {day.day.slice(0, 3)}
-                {day.slots.length === 0 && 
-                  <span className="sr-only"> (No classes)</span>
-                }
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
+          <div className="w-full overflow-x-auto pb-2 mb-2">
+            <TabsList className="w-full justify-start md:grid md:grid-cols-7 h-auto p-1">
+              {days.map((day) => (
+                <TabsTrigger
+                  key={day.day}
+                  value={day.day}
+                  disabled={day.slots.length === 0}
+                  className="flex-1 min-w-[80px]"
+                >
+                  {day.day.slice(0, 3)}
+                  {day.slots.length === 0 &&
+                    <span className="sr-only"> (No classes)</span>
+                  }
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+
           {days.map((day) => (
             <TabsContent key={day.day} value={day.day} className="mt-0">
               {day.slots.length > 0 ? (
                 <div className="space-y-3">
                   {day.slots
-                    .sort((a, b) => 
+                    .sort((a, b) =>
                       new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
                     )
                     .map((slot) => (
-                      <div 
-                        key={slot.id} 
+                      <div
+                        key={slot.id}
                         className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-md border"
                       >
                         <div className="flex items-start gap-3 mb-2 sm:mb-0">
@@ -127,7 +130,7 @@ export function TimetableView({ days, timetable }: TimetableViewProps) {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex flex-col sm:items-end gap-1 ml-8 sm:ml-0">
                           <div className="flex items-center text-sm">
                             <BookOpen className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />

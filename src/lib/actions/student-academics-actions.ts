@@ -305,7 +305,10 @@ export async function getStudentTimetable() {
     where: {
       timetableId: activeTimetable.id,
       classId: currentEnrollment.classId,
-      sectionId: currentEnrollment.sectionId,
+      OR: [
+        { sectionId: currentEnrollment.sectionId },
+        { sectionId: null }
+      ],
     },
     include: {
       subjectTeacher: {
