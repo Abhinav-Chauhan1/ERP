@@ -705,6 +705,12 @@ export interface BulkMessageRecipient {
  * @param data - Bulk message input
  * @returns Action result with delivery summary
  */
+/**
+ * Send bulk message (wrapper function for UI compatibility)
+ * 
+ * @param data - Bulk message input
+ * @returns Action result with delivery summary
+ */
 export async function sendBulkMessage(
   data: BulkMessageInput
 ): Promise<ActionResult<BulkMessageSummary>> {
@@ -721,21 +727,148 @@ export async function sendBulkMessage(
       };
     }
 
-    // Map to appropriate function based on recipient type
-    if (data.recipientType === "ALL_PARENTS") {
+    const { recipientType, messageType, subject, body } = data;
+    const channel = messageType === "SMS" ? CommunicationChannel.SMS : CommunicationChannel.EMAIL;
+    const title = subject || "Notification";
+    const notificationType = NotificationType.GENERAL;
+
+    let recipients: string[] = [];
+
+    // 1. ALL PARENTS
+    if (recipientType === "ALL_PARENTS") {
       return await sendBulkToAllParents({
-        channel: data.messageType === "SMS" ? CommunicationChannel.SMS : CommunicationChannel.EMAIL,
-        title: data.subject || "Notification",
-        message: data.body,
-        notificationType: NotificationType.GENERAL,
+        channel,
+        title,
+        message: body,
+        notificationType,
       });
     }
 
-    // For other types, return not implemented
+    // 2. ALL TEACHERS
+    else if (recipientType === "ALL_TEACHERS") {
+      const teachers = await db.teacher.findMany({
+        where: { user: { active: true } },
+        select: { userId: true }
+      });
+      recipients = teachers.map(t => t.userId);
+    }
+
+    // 3. ALL STUDENTS
+    else if (recipientType === "ALL_STUDENTS") {
+      const students = await db.student.findMany({
+        where: { user: { active: true } },
+        select: { userId: true }
+      });
+      recipients = students.map(s => s.userId);
+    }
+
+    // 4. BY CLASS (Parents of students in these classes)
+    else if (recipientType === "CLASS" && data.selectedClasses?.length) {
+      // Find all students in these classes
+      const enrollments = await db.classEnrollment.findMany({
+        where: {
+          classId: { in: data.selectedClasses },
+          status: "ACTIVE",
+        },
+        include: {
+          student: {
+            include: {
+              parents: {
+                include: {
+                  parent: {
+                    include: { user: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const parentIds = new Set<string>();
+      enrollments.forEach(enrollment => {
+        enrollment.student.parents.forEach(p => {
+          if (p.parent.user.active) {
+            parentIds.add(p.parent.user.id);
+          }
+        });
+      });
+      recipients = Array.from(parentIds);
+    }
+
+    // 5. BY ROLE
+    else if (recipientType === "ROLE" && data.selectedRoles?.length) {
+      // "PARENT", "TEACHER", "STUDENT"
+      // Note: "ADMIN" is not user select in UI but can be mapped if needed.
+      // We assume roles match UserRole enum or derived logic
+
+      const userIds = new Set<string>();
+
+      if (data.selectedRoles.includes("TEACHER")) {
+        const t = await db.teacher.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        t.forEach(x => userIds.add(x.userId));
+      }
+      if (data.selectedRoles.includes("STUDENT")) {
+        const s = await db.student.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        s.forEach(x => userIds.add(x.userId));
+      }
+      if (data.selectedRoles.includes("PARENT")) {
+        const p = await db.parent.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        p.forEach(x => userIds.add(x.userId));
+      }
+      recipients = Array.from(userIds);
+    }
+
+    if (recipients.length === 0) {
+      return {
+        success: false,
+        error: "No recipients found for the selected criteria."
+      };
+    }
+
+    // Common Sending Logic
+    const result = await sendBulkNotification({
+      recipients,
+      type: notificationType,
+      title,
+      message: body,
+      channel,
+    });
+
+    // Log audit
+    // We fetch user names for summary - this might be slow for large batches so we can skip or do a lightweight fetch
+    // For now, let's keep it consistent with other actions: return without detailed per-user results if list is huge?
+    // The BulkMessageSummary interface expects results array.
+
+    const auditResource = `BULK_MESSAGE_${recipientType}`;
+
+    await db.auditLog.create({
+      data: {
+        action: AuditAction.CREATE,
+        resource: auditResource,
+        userId: session.user.id,
+        changes: {
+          channel,
+          recipientType,
+          totalRecipients: result.totalRecipients,
+          successful: result.successCount,
+          failed: result.failureCount,
+          title,
+        },
+      },
+    });
+
     return {
-      success: false,
-      error: "This recipient type is not yet implemented.",
+      success: true,
+      data: {
+        totalRecipients: result.totalRecipients,
+        successCount: result.successCount,
+        failureCount: result.failureCount,
+        channel,
+        results: result.results.map(r => ({ ...r, userId: r.userId })), // We skip name lookup for optimization here for now
+      },
     };
+
   } catch (error: any) {
     console.error("Error sending bulk message:", error);
     return {
@@ -767,10 +900,115 @@ export async function previewRecipients(
       };
     }
 
-    // Return empty list for now
+    const { recipientType } = data;
+    let recipients: BulkMessageRecipient[] = [];
+
+    // 1. ALL PARENTS
+    if (recipientType === "ALL_PARENTS") {
+      const parents = await db.parent.findMany({
+        include: { user: true },
+        where: { user: { active: true } }
+      });
+      recipients = parents.map(p => ({
+        id: p.user.id,
+        name: p.user.name || "Unknown Parent",
+        email: p.user.email,
+        phone: p.user.phone || undefined,
+        role: "Parent"
+      }));
+    }
+
+    // 2. ALL TEACHERS
+    else if (recipientType === "ALL_TEACHERS") {
+      const teachers = await db.teacher.findMany({
+        include: { user: true },
+        where: { user: { active: true } }
+      });
+      recipients = teachers.map(t => ({
+        id: t.user.id,
+        name: t.user.name || "Unknown Teacher",
+        email: t.user.email,
+        phone: t.user.phone || undefined,
+        role: "Teacher"
+      }));
+    }
+
+    // 3. ALL STUDENTS
+    else if (recipientType === "ALL_STUDENTS") {
+      const students = await db.student.findMany({
+        include: { user: true },
+        where: { user: { active: true } }
+      });
+      recipients = students.map(s => ({
+        id: s.user.id,
+        name: s.user.name || "Unknown Student",
+        email: s.user.email,
+        phone: s.user.phone || undefined,
+        role: "Student"
+      }));
+    }
+
+    // 4. BY CLASS (Parents)
+    else if (recipientType === "CLASS" && data.selectedClasses?.length) {
+      const enrollments = await db.classEnrollment.findMany({
+        where: {
+          classId: { in: data.selectedClasses },
+          status: "ACTIVE",
+        },
+        include: {
+          student: {
+            include: {
+              parents: {
+                include: {
+                  parent: {
+                    include: { user: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const uniqueMap = new Map<string, BulkMessageRecipient>();
+      enrollments.forEach(enrollment => {
+        enrollment.student.parents.forEach(p => {
+          if (p.parent.user.active && !uniqueMap.has(p.parent.user.id)) {
+            uniqueMap.set(p.parent.user.id, {
+              id: p.parent.user.id,
+              name: p.parent.user.name || "Unknown Parent",
+              email: p.parent.user.email,
+              phone: p.parent.user.phone || undefined,
+              role: "Parent"
+            });
+          }
+        });
+      });
+      recipients = Array.from(uniqueMap.values());
+    }
+
+    // 5. BY ROLE
+    else if (recipientType === "ROLE" && data.selectedRoles?.length) {
+      const map = new Map<string, BulkMessageRecipient>();
+
+      if (data.selectedRoles.includes("TEACHER")) {
+        const res = await db.teacher.findMany({ include: { user: true }, where: { user: { active: true } } });
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Teacher" }));
+      }
+      if (data.selectedRoles.includes("STUDENT")) {
+        const res = await db.student.findMany({ include: { user: true }, where: { user: { active: true } } });
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Student" }));
+      }
+      if (data.selectedRoles.includes("PARENT")) {
+        const res = await db.parent.findMany({ include: { user: true }, where: { user: { active: true } } });
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Parent" }));
+      }
+      recipients = Array.from(map.values());
+    }
+
     return {
       success: true,
-      data: [],
+      data: recipients,
     };
   } catch (error: any) {
     console.error("Error previewing recipients:", error);
