@@ -18,14 +18,14 @@ export const metadata: Metadata = {
 
 export default async function DuePaymentsPage() {
   const { duePayments, totalDue, feeStructure } = await getDuePayments();
-  
+
   // Get today's date for comparison
   const today = new Date();
-  
+
   // Calculate total fees
   const totalFees = feeStructure?.items.reduce((sum, item) => sum + item.amount, 0) || 0;
   const duePercentage = totalFees > 0 ? (totalDue / totalFees) * 100 : 0;
-  
+
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
@@ -42,7 +42,7 @@ export default async function DuePaymentsPage() {
           </p>
         </div>
       </div>
-      
+
       <Card className="overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl">Payment Overview</CardTitle>
@@ -83,7 +83,7 @@ export default async function DuePaymentsPage() {
               )}
             </div>
           </div>
-          
+
           {totalDue > 0 && (
             <div className="bg-amber-100 p-4 rounded-lg border border-amber-300">
               <div className="flex items-start gap-3">
@@ -100,7 +100,7 @@ export default async function DuePaymentsPage() {
           )}
         </CardContent>
       </Card>
-      
+
       <Card className="overflow-hidden">
         <CardHeader className="pb-4">
           <CardTitle className="text-xl">Due & Upcoming Payments</CardTitle>
@@ -113,7 +113,7 @@ export default async function DuePaymentsPage() {
             <div className="space-y-4">
               {duePayments.map((fee) => {
                 const isOverdue = fee.dueDate && new Date(fee.dueDate) < today;
-                
+
                 return (
                   <Card key={fee.id} className={`overflow-hidden hover:shadow-md transition-shadow ${isOverdue ? 'border-red-200 bg-red-50/50' : ''}`}>
                     <CardContent className="pt-6">
@@ -127,7 +127,7 @@ export default async function DuePaymentsPage() {
                               <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Due</Badge>
                             )}
                           </div>
-                          
+
                           {fee.dueDate && (
                             <div className={`flex items-center gap-1 text-sm mb-3 ${isOverdue ? 'text-red-700' : 'text-muted-foreground'}`}>
                               <CalendarClock className="h-4 w-4" />
@@ -137,27 +137,11 @@ export default async function DuePaymentsPage() {
                               </span>
                             </div>
                           )}
-                          
+
                           <div className="flex items-baseline gap-2">
                             <p className="text-3xl font-bold">₹{fee.amount.toFixed(2)}</p>
                             <span className="text-sm text-muted-foreground">amount due</span>
                           </div>
-                        </div>
-                        
-                        <div>
-                          <PaymentDialog
-                            feeItems={[fee]}
-                            totalAmount={fee.amount}
-                            isPayAll={false}
-                            trigger={
-                              <Button 
-                                className={`min-h-[44px] ${isOverdue ? "bg-red-600 hover:bg-red-700" : ""}`}
-                              >
-                                <DollarSign className="h-4 w-4 mr-2" />
-                                Pay Now
-                              </Button>
-                            }
-                          />
                         </div>
                       </div>
                     </CardContent>

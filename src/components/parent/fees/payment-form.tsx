@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { AlertCircle, CheckCircle, CreditCard, DollarSign, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, CreditCard, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
@@ -52,9 +51,7 @@ export function PaymentForm({
   onSubmit,
   isLoading = false,
 }: PaymentFormProps) {
-  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<string>("");
-  const [customAmount, setCustomAmount] = useState<string>("");
   const [remarks, setRemarks] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -63,66 +60,29 @@ export function PaymentForm({
     (item) => item.status !== "PAID" && item.balance > 0
   );
 
-  // Calculate total amount based on selected fees
-  const calculateTotalAmount = () => {
-    if (customAmount) {
-      return parseFloat(customAmount) || 0;
-    }
-    
-    return selectedFeeIds.reduce((total, feeId) => {
-      const feeItem = unpaidFeeItems.find((item) => item.id === feeId);
-      return total + (feeItem?.balance || 0);
-    }, 0);
-  };
+  // Calculate total balance for all unpaid items
+  const totalAmount = unpaidFeeItems.reduce((total, item) => total + item.balance, 0);
 
-  const totalAmount = calculateTotalAmount();
-
-  const handleFeeSelection = (feeId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedFeeIds([...selectedFeeIds, feeId]);
-    } else {
-      setSelectedFeeIds(selectedFeeIds.filter((id) => id !== feeId));
+  const getStatusBadge = (status: FeeItem["status"]) => {
+    switch (status) {
+      case "OVERDUE":
+        return <Badge variant="destructive" className="text-xs">Overdue</Badge>;
+      case "PARTIAL":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">Partial</Badge>;
+      default:
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">Pending</Badge>;
     }
-    // Clear custom amount when selecting fees
-    setCustomAmount("");
-    setErrors({});
-  };
-
-  const handleSelectAll = () => {
-    if (selectedFeeIds.length === unpaidFeeItems.length) {
-      setSelectedFeeIds([]);
-    } else {
-      setSelectedFeeIds(unpaidFeeItems.map((item) => item.id));
-    }
-    setCustomAmount("");
-  };
-
-  const handleCustomAmountChange = (value: string) => {
-    setCustomAmount(value);
-    // Clear fee selections when entering custom amount
-    if (value) {
-      setSelectedFeeIds([]);
-    }
-    setErrors({});
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (selectedFeeIds.length === 0 && !customAmount) {
-      newErrors.fees = "Please select at least one fee item or enter a custom amount";
-    }
-
-    if (customAmount && parseFloat(customAmount) <= 0) {
-      newErrors.amount = "Amount must be greater than 0";
-    }
 
     if (!paymentMethod) {
       newErrors.paymentMethod = "Please select a payment method";
     }
 
     if (totalAmount <= 0) {
-      newErrors.amount = "Payment amount must be greater than 0";
+      newErrors.amount = "No pending fees to pay";
     }
 
     setErrors(newErrors);
@@ -137,25 +97,15 @@ export function PaymentForm({
     }
 
     try {
+      // Always pay all unpaid items
       await onSubmit({
-        feeTypeIds: selectedFeeIds.length > 0 ? selectedFeeIds : unpaidFeeItems.map(item => item.id),
+        feeTypeIds: unpaidFeeItems.map(item => item.id),
         amount: totalAmount,
         paymentMethod,
         remarks: remarks || undefined,
       });
     } catch (error) {
       console.error("Payment submission error:", error);
-    }
-  };
-
-  const getStatusBadge = (status: FeeItem["status"]) => {
-    switch (status) {
-      case "OVERDUE":
-        return <Badge variant="destructive" className="text-xs">Overdue</Badge>;
-      case "PARTIAL":
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">Partial</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">Pending</Badge>;
     }
   };
 
@@ -169,21 +119,9 @@ export function PaymentForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Fee Selection */}
+          {/* Fee Summary - Read Only */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-base">Select Fee Items</Label>
-              {unpaidFeeItems.length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  {selectedFeeIds.length === unpaidFeeItems.length ? "Deselect All" : "Select All"}
-                </Button>
-              )}
-            </div>
+            <Label className="text-base">Pending Fees</Label>
 
             {unpaidFeeItems.length === 0 ? (
               <Alert>
@@ -197,24 +135,11 @@ export function PaymentForm({
                 {unpaidFeeItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-start space-x-3 p-2 rounded hover:bg-gray-50"
+                    className="flex items-start justify-between p-2 rounded bg-gray-50"
                   >
-                    <Checkbox
-                      id={item.id}
-                      checked={selectedFeeIds.includes(item.id)}
-                      onCheckedChange={(checked) =>
-                        handleFeeSelection(item.id, checked as boolean)
-                      }
-                      disabled={!!customAmount}
-                    />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <Label
-                          htmlFor={item.id}
-                          className="font-medium cursor-pointer"
-                        >
-                          {item.name}
-                        </Label>
+                        <span className="font-medium">{item.name}</span>
                         {getStatusBadge(item.status)}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
@@ -234,40 +159,12 @@ export function PaymentForm({
               </div>
             )}
 
-            {errors.fees && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.fees}
-              </p>
-            )}
-          </div>
-
-          {/* Custom Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="customAmount">Or Enter Custom Amount</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                id="customAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={customAmount}
-                onChange={(e) => handleCustomAmountChange(e.target.value)}
-                className="pl-9"
-                disabled={selectedFeeIds.length > 0}
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              Enter a custom amount if you want to make a partial payment
-            </p>
-            {errors.amount && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.amount}
-              </p>
-            )}
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Full payment is required. You will pay all pending fees at once.
+              </AlertDescription>
+            </Alert>
           </div>
 
           {/* Payment Method */}
@@ -339,7 +236,7 @@ export function PaymentForm({
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Proceed to Payment
+                Pay Full Amount (₹{totalAmount.toFixed(2)})
               </>
             )}
           </Button>
@@ -348,3 +245,4 @@ export function PaymentForm({
     </Card>
   );
 }
+

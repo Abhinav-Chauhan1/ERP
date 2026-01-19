@@ -135,49 +135,53 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Fee Overview</h1>
-          <p className="text-gray-600 mt-1">View and manage fee payments</p>
+          <h1 className="text-xl md:text-2xl font-bold">Fee Overview</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">View and manage fee payments</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Child Selector */}
-          {children.length > 1 && (
-            <div className="flex gap-2">
-              {children.map((child) => (
-                <Link key={child.id} href={`/parent/fees/overview?childId=${child.id}`}>
-                  <Button
-                    variant={child.id === selectedChildId ? "default" : "outline"}
-                    size="sm"
-                  >
-                    {child.name}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          )}
+        {/* Child Selector - Horizontal scroll on mobile */}
+        {children.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
+            {children.map((child) => (
+              <Link key={child.id} href={`/parent/fees/overview?childId=${child.id}`}>
+                <Button
+                  variant={child.id === selectedChildId ? "default" : "outline"}
+                  size="sm"
+                  className="whitespace-nowrap"
+                >
+                  {child.name}
+                </Button>
+              </Link>
+            ))}
+          </div>
+        )}
 
+        {/* Action Buttons - Grid layout for mobile */}
+        <div className="grid grid-cols-2 sm:flex gap-2">
           {/* Export to PDF Button */}
-          <Button variant="outline" disabled>
-            <Download className="h-4 w-4 mr-2" />
-            Export to PDF
+          <Button variant="outline" disabled className="text-xs sm:text-sm">
+            <Download className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Export to PDF</span>
+            <span className="sm:hidden">Export</span>
           </Button>
 
           {/* Payment Options based on configuration */}
           {paymentConfig?.enableOfflineVerification && (
-            <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`}>
-              <Button variant="outline">
-                <Receipt className="h-4 w-4 mr-2" />
-                Upload Receipt
+            <Link href={`/parent/fees/upload-receipt?childId=${selectedChild.id}`} className="contents">
+              <Button variant="outline" className="text-xs sm:text-sm">
+                <Receipt className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Upload Receipt</span>
+                <span className="sm:hidden">Upload</span>
               </Button>
             </Link>
           )}
 
           {paymentConfig?.enableOnlinePayment && (
-            <Link href={`/parent/fees/payment?childId=${selectedChild.id}`}>
-              <Button>
-                <CreditCard className="h-4 w-4 mr-2" />
+            <Link href={`/parent/fees/payment?childId=${selectedChild.id}`} className="contents">
+              <Button className="text-xs sm:text-sm col-span-2 sm:col-span-1">
+                <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
                 Pay Online
               </Button>
             </Link>
@@ -185,9 +189,9 @@ export default async function FeeOverviewPage({ searchParams: searchParamsPromis
 
           {/* Show warning if no payment methods are enabled */}
           {!paymentConfig?.enableOfflineVerification && !paymentConfig?.enableOnlinePayment && (
-            <Button disabled>
-              <FileText className="h-4 w-4 mr-2" />
-              No Payment Methods Available
+            <Button disabled className="text-xs sm:text-sm col-span-2">
+              <FileText className="h-4 w-4 mr-1 sm:mr-2" />
+              No Payment Methods
             </Button>
           )}
         </div>

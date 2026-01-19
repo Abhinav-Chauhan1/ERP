@@ -3,11 +3,11 @@ export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
-import { 
-  DollarSign, 
-  CreditCard, 
-  FileText, 
-  Award, 
+import {
+  DollarSign,
+  CreditCard,
+  FileText,
+  Award,
   ChevronRight,
   Receipt,
   AlertCircle
@@ -25,22 +25,22 @@ export const metadata: Metadata = {
 
 export default async function StudentFeesPage() {
   // Get fee summary for the student
-  const { 
-    totalFees, 
-    paidAmount, 
-    balance, 
-    paymentPercentage, 
-    overdueFees, 
-    className, 
-    academicYear 
+  const {
+    totalFees,
+    paidAmount,
+    balance,
+    paymentPercentage,
+    overdueFees,
+    className,
+    academicYear
   } = await getStudentFeeDetails();
-  
+
   // Get payment configuration
   const paymentConfigResult = await getPaymentConfig();
   const paymentConfig = paymentConfigResult.success ? paymentConfigResult.data : null;
-  
+
   const overdueAmount = overdueFees.reduce((sum, fee) => sum + fee.amount, 0);
-  
+
   const feeLinks = [
     {
       title: "Fee Details",
@@ -80,10 +80,10 @@ export default async function StudentFeesPage() {
       color: "bg-purple-50 text-purple-600",
     },
   ];
-  
+
   // Add payment options based on configuration
   const paymentOptions = [];
-  
+
   if (paymentConfig?.enableOfflineVerification) {
     paymentOptions.push({
       title: "Upload Receipt",
@@ -93,7 +93,7 @@ export default async function StudentFeesPage() {
       color: "bg-indigo-50 text-indigo-600",
     });
   }
-  
+
   if (paymentConfig?.enableOnlinePayment) {
     paymentOptions.push({
       title: "Pay Online",
@@ -103,7 +103,7 @@ export default async function StudentFeesPage() {
       color: "bg-emerald-50 text-emerald-600",
     });
   }
-  
+
   return (
     <div className="container p-6">
       <div className="mb-6">
@@ -112,58 +112,69 @@ export default async function StudentFeesPage() {
           View and manage your fee details and payments
         </p>
       </div>
-      
-      <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">Fee Summary</h2>
-            <p className="text-gray-600">Class: <span className="font-medium">{className}</span> | Academic Year: <span className="font-medium">{academicYear}</span></p>
-          </div>
-          
-          <div className="flex flex-col items-center bg-white px-6 py-3 rounded-lg shadow-sm">
-            <span className="text-gray-500 text-sm">Payment Progress</span>
-            <span 
-              className={`text-3xl font-bold ${
-                paymentPercentage >= 90 ? 'text-green-600' :
-                paymentPercentage >= 75 ? 'text-blue-600' :
-                paymentPercentage >= 60 ? 'text-amber-600' :
-                'text-red-600'
-              }`}
-            >
-              {Math.round(paymentPercentage)}%
-            </span>
-          </div>
-          
-          <div className="flex gap-3">
-            <div className="flex flex-col items-center bg-white px-4 py-3 rounded-lg shadow-sm">
-              <span className="text-gray-500 text-xs">Total Fees</span>
-              <span className="text-2xl font-bold text-gray-800">₹{totalFees.toFixed(2)}</span>
+
+      <div className="mb-8 p-4 md:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+        <div className="flex flex-col gap-4">
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg md:text-xl font-semibold">Fee Summary</h2>
+              <p className="text-sm md:text-base text-gray-600">
+                Class: <span className="font-medium">{className}</span> | Academic Year: <span className="font-medium">{academicYear}</span>
+              </p>
             </div>
-            
-            <div className="flex flex-col items-center bg-white px-4 py-3 rounded-lg shadow-sm">
+
+            {/* Payment Progress - Moved to top right on larger screens */}
+            <div className="flex flex-col items-center bg-white px-4 md:px-6 py-2 md:py-3 rounded-lg shadow-sm">
+              <span className="text-gray-500 text-xs md:text-sm">Payment Progress</span>
+              <span
+                className={`text-2xl md:text-3xl font-bold ${paymentPercentage >= 90 ? 'text-green-600' :
+                    paymentPercentage >= 75 ? 'text-blue-600' :
+                      paymentPercentage >= 60 ? 'text-amber-600' :
+                        'text-red-600'
+                  }`}
+              >
+                {Math.round(paymentPercentage)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Stats Grid - Responsive 2 columns on mobile */}
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <div className="flex flex-col items-center bg-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm">
+              <span className="text-gray-500 text-xs">Total Fees</span>
+              <span className="text-lg md:text-2xl font-bold text-gray-800">₹{totalFees.toFixed(2)}</span>
+            </div>
+
+            <div className="flex flex-col items-center bg-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm">
+              <span className="text-gray-500 text-xs">Paid</span>
+              <span className="text-lg md:text-2xl font-bold text-green-600">₹{paidAmount.toFixed(2)}</span>
+            </div>
+
+            <div className="flex flex-col items-center bg-white px-3 md:px-4 py-2 md:py-3 rounded-lg shadow-sm col-span-2 sm:col-span-1">
               <span className="text-gray-500 text-xs">Balance Due</span>
-              <span className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <span className={`text-lg md:text-2xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 ₹{balance.toFixed(2)}
               </span>
             </div>
           </div>
         </div>
-        
+
         {overdueAmount > 0 && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <p className="text-red-800 font-medium">You have overdue payments!</p>
                 <p className="text-sm text-red-600">Total overdue amount: ₹{overdueAmount.toFixed(2)}</p>
               </div>
-              <Button asChild variant="destructive" size="sm">
+              <Button asChild variant="destructive" size="sm" className="w-full sm:w-auto">
                 <Link href="/student/fees/due">Pay Now</Link>
               </Button>
             </div>
           </div>
         )}
       </div>
-      
+
       {/* Payment Options Section */}
       {paymentOptions.length > 0 && (
         <div className="mb-8">
@@ -193,7 +204,7 @@ export default async function StudentFeesPage() {
           </div>
         </div>
       )}
-      
+
       {/* Warning if no payment methods are enabled */}
       {paymentOptions.length === 0 && (
         <Alert className="mb-8">
@@ -203,7 +214,7 @@ export default async function StudentFeesPage() {
           </AlertDescription>
         </Alert>
       )}
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {feeLinks.map((link) => (
           <Card key={link.href}>

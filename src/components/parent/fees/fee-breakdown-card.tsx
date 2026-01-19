@@ -162,25 +162,26 @@ export function FeeBreakdownCard({
             {feeItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                className="p-3 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-medium text-sm">{item.name}</p>
-                    {getStatusBadge(item.status)}
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span>Amount: ₹{item.amount.toFixed(2)}</span>
-                    {item.paidAmount > 0 && (
-                      <span className="text-green-600">Paid: ₹{item.paidAmount.toFixed(2)}</span>
-                    )}
-                    {item.balance > 0 && (
-                      <span className="text-red-600">Balance: ₹{item.balance.toFixed(2)}</span>
-                    )}
-                    {item.dueDate && (
-                      <span>Due: {format(item.dueDate, "MMM d, yyyy")}</span>
-                    )}
-                  </div>
+                {/* Header with name and badge */}
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-sm">{item.name}</p>
+                  {getStatusBadge(item.status)}
+                </div>
+
+                {/* Details - Grid on mobile, flex on desktop */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <span>Amount: ₹{item.amount.toFixed(2)}</span>
+                  {item.paidAmount > 0 && (
+                    <span className="text-green-600">Paid: ₹{item.paidAmount.toFixed(2)}</span>
+                  )}
+                  {item.balance > 0 && (
+                    <span className="text-red-600">Balance: ₹{item.balance.toFixed(2)}</span>
+                  )}
+                  {item.dueDate && (
+                    <span className="col-span-2 sm:col-span-1">Due: {format(item.dueDate, "MMM d, yyyy")}</span>
+                  )}
                 </div>
               </div>
             ))}
