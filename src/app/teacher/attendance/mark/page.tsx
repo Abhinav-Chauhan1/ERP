@@ -457,7 +457,7 @@ function MarkAttendanceContent() {
                   <div className="flex justify-between items-center mb-2">
                     <div className="font-medium">{format(new Date(record.date), "EEEE, MMMM d")}</div>
                     <div className="flex gap-2 items-center">
-                      <Clock className="h-3.5 w-3.5 text-gray-500" />
+                      <Clock4 className="h-3.5 w-3.5 text-gray-500" />
                       <span className="text-xs text-gray-500">Recorded</span>
                     </div>
                   </div>
