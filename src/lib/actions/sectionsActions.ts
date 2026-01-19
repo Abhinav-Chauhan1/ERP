@@ -336,8 +336,13 @@ export async function createSection(data: SectionFormValues) {
         });
       } else if (data.isClassHead && !existingTeacher.isClassHead) {
         // Update existing teacher to be class head
+        // Only unset other heads for THIS section
         await db.classTeacher.updateMany({
-          where: { classId: data.classId, isClassHead: true },
+          where: {
+            classId: data.classId,
+            isClassHead: true,
+            sectionId: section.id // Scoped to this section
+          },
           data: { isClassHead: false },
         });
 
@@ -407,8 +412,13 @@ export async function updateSection(data: SectionUpdateFormValues) {
         });
       } else if (data.isClassHead && !existingTeacher.isClassHead) {
         // Update existing teacher to be class head
+        // Only unset other heads for THIS section
         await db.classTeacher.updateMany({
-          where: { classId: data.classId, isClassHead: true },
+          where: {
+            classId: data.classId,
+            isClassHead: true,
+            sectionId: data.id // Scoped to this section
+          },
           data: { isClassHead: false },
         });
 

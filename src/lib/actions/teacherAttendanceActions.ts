@@ -36,18 +36,51 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
       throw new Error("Teacher not found");
     }
 
-    // Verify that this teacher is the HEAD CLASS TEACHER for this class/section
-    const classTeacher = await db.classTeacher.findFirst({
+    // Find ALL Head Teacher assignments for this teacher in this class
+    const assignments = await db.classTeacher.findMany({
       where: {
         classId,
         teacherId: teacher.id,
-        sectionId: sectionId || undefined, // If sectionId provided, match it. If not, match specific or null? logic needs care
-        isClassHead: true, // STRICTLY ENFORCE THIS
+        isClassHead: true,
       },
     });
 
-    if (!classTeacher) {
+    if (assignments.length === 0) {
+      console.error(`Unauthorized: Teacher ${teacher.id} is not a Head Teacher for class ${classId}`);
       throw new Error("Unauthorized: Only the Head Class Teacher can take attendance.");
+    }
+
+    // Determine authorization for the requested section (or default)
+    let targetSectionId = sectionId;
+
+    if (targetSectionId) {
+      // User requested a specific section.
+      // Check if they are authorized:
+      // 1. They are Head of this specific section.
+      // 2. OR They are Head of the Class (sectionId: null).
+      const isAuthorized = assignments.some(a =>
+        a.sectionId === targetSectionId || a.sectionId === null
+      );
+
+      if (!isAuthorized) {
+        console.error(`Unauthorized: Teacher ${teacher.id} attempted to access section ${targetSectionId} but has no rights.`);
+        throw new Error("Unauthorized: You are not the Head Teacher for this section.");
+      }
+    } else {
+      // User did not request a specific section (initial load).
+      // We must determine a valid default section they are authorized for.
+
+      // If they are a Class Head (sectionId: null), they can access ANY section.
+      const isClassHead = assignments.some(a => a.sectionId === null);
+
+      if (isClassHead) {
+        // Will select first section usually, handling later
+      } else {
+        // If they are only a Section Head, they can ONLY access their assigned section.
+        // We generally expect only 1 assignment per class if not Class Head, but pick the first valid one.
+        targetSectionId = assignments[0].sectionId!;
+        // Note: If assumption fails (sectionId is null but isClassHead checked above), logic holds.
+      }
     }
 
     // Get class details
@@ -64,13 +97,42 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
       throw new Error("Class not found");
     }
 
-    // Get all sections if sectionId is not provided
-    const sections = sectionId
-      ? classDetails.sections.filter(s => s.id === sectionId)
-      : classDetails.sections;
+    // Finalize the section list to return/filter
+    // If targetSectionId is set (either requested & auth'd, or defaulted from assignment), filter by it.
+    // If not set (meaning user is Class Head and didn't specify), allow all (or default selection logic).
 
-    // First section as default if no section is specified
+    let sections = classDetails.sections;
+    if (targetSectionId) {
+      sections = classDetails.sections.filter(s => s.id === targetSectionId);
+    }
+
+    // Default section (for the UI selection)
     const defaultSection = sections[0]?.id;
+
+    if (!defaultSection) {
+      // Should not happen if class has sections
+      throw new Error("No valid sections found for attendance.");
+    }
+
+    // Use specific section for enrollment fetch
+    const sectionToFetch = sectionId || defaultSection;
+
+    // Double check auth for "defaultSection" if we just derived it
+    if (!sectionId && targetSectionId === undefined) {
+      // We are Class Head, picking first section. Allowed.
+    } else if (!sectionId && targetSectionId) {
+      // We forced a section ID (Section Head). sectionToFetch should match targetSectionId.
+      // sectionId is undefined, defaultSection is targetSectionId.
+      // sectionToFetch is targetSectionId.
+    }
+
+    // Correction: sectionId might be undefined.
+    // simpler: usage of sectionToFetch
+    // Check if we are authorized for `sectionToFetch`
+    // We already validated `targetSectionId` if it was passed.
+    // If we derived `targetSectionId` (Section Head case), then `sections` only contains that one. `defaultSection` is that one.
+    // If we are Class Head, `sections` has all. `defaultSection` is [0]. Class Head authorizes all.
+    // So logic is safe.
 
     // Get students enrolled in this class and sections
     const enrollments = await db.classEnrollment.findMany({
@@ -314,12 +376,16 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
     }
 
     // Verify that this teacher is the HEAD CLASS TEACHER for this class/section
+    // Check if they are head of this SPECIFIC section OR head of the WHOLE class
     const classTeacher = await db.classTeacher.findFirst({
       where: {
         classId,
         teacherId: teacher.id,
-        sectionId: sectionId,
-        isClassHead: true, // STRICTLY ENFORCE THIS
+        isClassHead: true,
+        OR: [
+          { sectionId: sectionId }, // Specific section
+          { sectionId: null }       // Whole class head
+        ]
       },
     });
 
