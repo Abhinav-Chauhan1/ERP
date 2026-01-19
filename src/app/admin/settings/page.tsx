@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { School, FileText, Loader2 } from "lucide-react";
+import { School, FileText, Loader2, Bell } from "lucide-react";
 import { getSystemSettings } from "@/lib/actions/settingsActions";
 import { SchoolInfoForm } from "@/components/admin/settings/school-info-form";
 import { AcademicSettingsForm } from "@/components/admin/settings/academic-settings-form";
+import { NotificationSettingsForm } from "@/components/admin/settings/notification-settings-form";
 import toast from "react-hot-toast";
 
 export default function SettingsPage() {
@@ -69,8 +70,11 @@ export default function SettingsPage() {
             School Info
           </TabsTrigger>
           <TabsTrigger value="academic">
-            <FileText className="h-4 w-4 mr-2" />
             Academic
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="h-4 w-4 mr-2" />
+            Notifications
           </TabsTrigger>
         </TabsList>
 
@@ -80,6 +84,10 @@ export default function SettingsPage() {
 
         <TabsContent value="academic" className="space-y-4">
           <AcademicSettingsForm initialData={settings} />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <NotificationSettingsForm initialData={settings} />
         </TabsContent>
       </Tabs>
     </div>
