@@ -83,10 +83,14 @@ function MarkAttendanceContent() {
           if (data.classes[0].sectionId) {
             setSectionId(data.classes[0].sectionId);
           }
+        } else {
+          // If no classes found (e.g. not a Head Teacher), stop loading
+          setLoading(false);
         }
       } catch (error) {
         console.error("Failed to fetch classes:", error);
         toast.error("Failed to load classes");
+        setLoading(false); // Ensure loading stops on error
       }
     };
 
