@@ -1,8 +1,9 @@
 "use client";
 
-import { StudentSidebar } from "@/components/layout/student-sidebar";
-import { StudentHeader } from "@/components/layout/student-header";
+import { UnifiedSidebar } from "@/components/layout/unified-sidebar";
+import { UnifiedHeader } from "@/components/layout/unified-header";
 import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
+import { studentSidebarConfig, studentHeaderConfig } from "@/components/layout/sidebar-routes";
 
 export default function StudentLayout({
   children
@@ -11,15 +12,15 @@ export default function StudentLayout({
 }) {
   return (
     <UserThemeWrapper userRole="student">
-      <nav 
+      <nav
         className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
         aria-label="Student navigation"
       >
-        <StudentSidebar />
+        <UnifiedSidebar config={studentSidebarConfig} />
       </nav>
       <div className="md:pl-72 h-full">
-        <StudentHeader />
-        <main 
+        <UnifiedHeader headerConfig={studentHeaderConfig} sidebarConfig={studentSidebarConfig} />
+        <main
           id="main-content"
           className="h-[calc(100%-4rem)] overflow-y-auto bg-background p-4 md:p-6"
           tabIndex={-1}
