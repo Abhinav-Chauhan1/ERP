@@ -36,16 +36,18 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
       throw new Error("Teacher not found");
     }
 
-    // Verify that this teacher is assigned to this class
+    // Verify that this teacher is the HEAD CLASS TEACHER for this class/section
     const classTeacher = await db.classTeacher.findFirst({
       where: {
         classId,
         teacherId: teacher.id,
+        sectionId: sectionId || undefined, // If sectionId provided, match it. If not, match specific or null? logic needs care
+        isClassHead: true, // STRICTLY ENFORCE THIS
       },
     });
 
     if (!classTeacher) {
-      throw new Error("Unauthorized to mark attendance for this class");
+      throw new Error("Unauthorized: Only the Head Class Teacher can take attendance.");
     }
 
     // Get class details
@@ -223,6 +225,7 @@ export async function getClassStudentsForAttendance(classId: string, sectionId?:
 
 /**
  * Get teacher's classes for attendance
+ * Only returns classes where the teacher is a Head Class Teacher
  */
 export async function getTeacherClassesForAttendance() {
   try {
@@ -244,107 +247,42 @@ export async function getTeacherClassesForAttendance() {
       throw new Error("Teacher not found");
     }
 
-    // Get teacher's assigned classes
-    const teacherClasses = await db.classTeacher.findMany({
+    // Get teacher's assigned classes where they are Head Class Teacher
+    const headClasses = await db.classTeacher.findMany({
       where: {
         teacherId: teacher.id,
-      },
-      include: {
-        class: true,
-      },
-    });
-
-    // Get subject details for teacher
-    const teacherSubjects = await db.subjectTeacher.findMany({
-      where: {
-        teacherId: teacher.id,
-      },
-      include: {
-        subject: true,
-      },
-    });
-
-    // Get today's class schedule from timetable
-    const today = new Date();
-    const dayOfWeek = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][today.getDay()];
-
-    const todaySchedule = await db.timetableSlot.findMany({
-      where: {
-        subjectTeacher: {
-          teacherId: teacher.id,
-        },
-        day: dayOfWeek as any,
+        isClassHead: true, // STRICTLY ENFORCE THIS
       },
       include: {
         class: true,
         section: true,
-        room: true,
-        subjectTeacher: {
-          include: {
-            subject: true,
-          },
-        },
       },
-      orderBy: {
-        startTime: 'asc',
-      },
-    });
-
-    // Map subjects to their classes
-    const classesBySubject = new Map();
-    teacherSubjects.forEach(subjectTeacher => {
-      classesBySubject.set(subjectTeacher.subjectId, subjectTeacher.subject.name);
     });
 
     // Format classes data
-    const classes = teacherClasses.map(classTeacher => {
-      // Find scheduled classes for today
-      const classSchedules = todaySchedule.filter(
-        schedule => schedule.classId === classTeacher.classId
-      );
-
-      // Count students in this class
+    const classes = headClasses.map(classTeacher => {
+      // Count students in this class/section
       const studentCount = db.classEnrollment.count({
         where: {
           classId: classTeacher.classId,
+          sectionId: classTeacher.sectionId || undefined,
           status: "ACTIVE",
         },
       });
 
-      // Use first subject from schedule or default if not found
-      const subjectId = classSchedules[0]?.subjectTeacher.subjectId;
-      const subject = subjectId ? classesBySubject.get(subjectId) : "Multiple Subjects";
-
-      const timeSlots = classSchedules.map(schedule => ({
-        time: `${formatTime(schedule.startTime)} - ${formatTime(schedule.endTime)}`,
-        room: schedule.room?.name || "Unassigned",
-      }));
-
       return {
         id: classTeacher.classId,
         name: classTeacher.class.name,
-        subject: subject,
+        sectionId: classTeacher.sectionId,
+        sectionName: classTeacher.section?.name || "All Sections",
         studentCount: studentCount,
-        isClassHead: classTeacher.isClassHead,
-        timeSlots,
+        isClassHead: true,
       };
     });
 
     return {
       classes,
-      todayClasses: todaySchedule.map(schedule => ({
-        id: schedule.id,
-        classId: schedule.classId,
-        className: schedule.class.name,
-        sectionId: schedule.sectionId,
-        sectionName: schedule.section?.name,
-        subject: schedule.subjectTeacher.subject.name,
-        time: `${formatTime(schedule.startTime)} - ${formatTime(schedule.endTime)}`,
-        room: schedule.room?.name || "Unassigned",
-        isNow: isTimeInRange(new Date(), schedule.startTime, schedule.endTime),
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-      })),
+      todayClasses: [], // Deprecated: No longer using schedule for attendance
     };
   } catch (error) {
     console.error("Failed to get teacher classes for attendance:", error);
@@ -375,16 +313,18 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
       throw new Error("Teacher not found");
     }
 
-    // Verify that this teacher is assigned to this class
+    // Verify that this teacher is the HEAD CLASS TEACHER for this class/section
     const classTeacher = await db.classTeacher.findFirst({
       where: {
         classId,
         teacherId: teacher.id,
+        sectionId: sectionId,
+        isClassHead: true, // STRICTLY ENFORCE THIS
       },
     });
 
     if (!classTeacher) {
-      throw new Error("Unauthorized to mark attendance for this class");
+      throw new Error("Unauthorized: Only the Head Class Teacher can mark attendance.");
     }
 
     // Process each attendance record

@@ -8,33 +8,31 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Calendar, 
-  Clock, 
-  Search, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
-  Clock4, 
+import {
+  Calendar,
+  Search,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock4,
   ArrowLeft,
   UserX,
   FileText,
   Download,
-  Loader2,
-  ClipboardCheck
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SelectClass } from "@/components/forms/select-class";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  getClassStudentsForAttendance, 
+import {
+  getClassStudentsForAttendance,
   getTeacherClassesForAttendance,
   saveAttendanceRecords
 } from "@/lib/actions/teacherAttendanceActions";
@@ -47,75 +45,59 @@ function MarkAttendanceContent() {
   const searchParams = useSearchParams();
   const classIdParam = searchParams.get('classId');
   const sectionIdParam = searchParams.get('sectionId');
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   const [classId, setClassId] = useState<string | null>(classIdParam);
   const [sectionId, setSectionId] = useState<string | null>(sectionIdParam);
   const [attendanceDate, setAttendanceDate] = useState(new Date());
-  
+
   const [classes, setClasses] = useState<any[]>([]);
-  const [todayClasses, setTodayClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const [alreadyMarked, setAlreadyMarked] = useState(false);
   const [sections, setSections] = useState<any[]>([]);
-  
+
   // Fetch teacher's classes
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const data = await getTeacherClassesForAttendance();
         setClasses(data.classes);
-        setTodayClasses(data.todayClasses);
-        
+
         // If classId is provided in URL and exists in the classes, select it
         if (classIdParam) {
           const classInfo = data.classes.find((c: any) => c.id === classIdParam);
           if (classInfo) {
             setSelectedClass(classInfo);
           }
-        } else if (data.todayClasses.length > 0) {
-          // If no class is specified but there are classes today, select the current or next class
-          const currentClass = data.todayClasses.find((c: any) => c.isNow);
-          if (currentClass) {
-            const classInfo = data.classes.find((c: any) => c.id === currentClass.classId);
-            if (classInfo) {
-              setSelectedClass(classInfo);
-              setClassId(currentClass.classId);
-              setSectionId(currentClass.sectionId);
-            }
-          } else {
-            // Select the first class of the day if no current class
-            const classInfo = data.classes.find((c: any) => c.id === data.todayClasses[0].classId);
-            if (classInfo) {
-              setSelectedClass(classInfo);
-              setClassId(data.todayClasses[0].classId);
-              setSectionId(data.todayClasses[0].sectionId);
-            }
-          }
         } else if (data.classes.length > 0) {
-          // Otherwise select the first class
+          // Select the first class by default if no class is specified
           setSelectedClass(data.classes[0]);
           setClassId(data.classes[0].id);
+
+          // Auto-select the first section (or only section) if available
+          if (data.classes[0].sectionId) {
+            setSectionId(data.classes[0].sectionId);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch classes:", error);
         toast.error("Failed to load classes");
       }
     };
-    
+
     fetchClasses();
   }, [classIdParam]);
-  
+
   // Fetch students when class is selected
   useEffect(() => {
     const fetchStudents = async () => {
       if (!classId) return;
-      
+
       setLoading(true);
       try {
         const data = await getClassStudentsForAttendance(classId, sectionId || undefined);
@@ -123,7 +105,7 @@ function MarkAttendanceContent() {
         setRecentAttendance(data.recentAttendance);
         setAlreadyMarked(data.alreadyMarked);
         setSections(data.classInfo.sections);
-        
+
         // If no section is selected, use the default section from the response
         if (!sectionId && data.classInfo.selectedSection) {
           setSectionId(data.classInfo.selectedSection);
@@ -135,31 +117,31 @@ function MarkAttendanceContent() {
         setLoading(false);
       }
     };
-    
+
     fetchStudents();
   }, [classId, sectionId]);
-  
+
   // Handle class selection
   const handleClassSelect = (cls: any) => {
     setSelectedClass(cls);
     setClassId(cls.id);
     setSectionId(null); // Reset section when class changes
-    
+
     // Update URL
     router.push(`/teacher/attendance/mark?classId=${cls.id}`);
   };
-  
+
   // Handle section selection
   const handleSectionChange = (sectionId: string) => {
     setSectionId(sectionId);
-    
+
     // Update URL
     router.push(`/teacher/attendance/mark?classId=${classId}&sectionId=${sectionId}`);
   };
-  
+
   // Handle attendance status change
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
-    setStudents(prev => 
+    setStudents(prev =>
       prev.map(student => {
         if (student.id === studentId) {
           return {
@@ -174,10 +156,10 @@ function MarkAttendanceContent() {
       })
     );
   };
-  
+
   // Handle reason change for absence
   const handleReasonChange = (studentId: string, reason: string) => {
-    setStudents(prev => 
+    setStudents(prev =>
       prev.map(student => {
         if (student.id === studentId) {
           return {
@@ -192,29 +174,29 @@ function MarkAttendanceContent() {
       })
     );
   };
-  
+
   // Save attendance
   const handleSaveAttendance = async () => {
     if (!classId || !sectionId) {
       toast.error("Please select a class and section");
       return;
     }
-    
+
     setSaving(true);
-    
+
     try {
       // Format attendance records
       const records = students.map(student => ({
         studentId: student.id,
         status: student.attendance.status,
-        reason: student.attendance.status === "ABSENT" || student.attendance.status === "LEAVE" 
-          ? student.attendance.reason 
+        reason: student.attendance.status === "ABSENT" || student.attendance.status === "LEAVE"
+          ? student.attendance.reason
           : undefined,
         date: new Date(attendanceDate),
       }));
-      
+
       const result = await saveAttendanceRecords(classId, sectionId, records);
-      
+
       if (result.success) {
         toast.success("Attendance saved successfully");
         setAlreadyMarked(true);
@@ -228,12 +210,12 @@ function MarkAttendanceContent() {
       setSaving(false);
     }
   };
-  
-  const filteredStudents = students.filter(student => 
+
+  const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   const totalStudents = students.length;
   const totalPresent = students.filter(student => student.attendance?.status === "PRESENT").length;
   const totalAbsent = students.filter(student => student.attendance?.status === "ABSENT").length;
@@ -265,19 +247,19 @@ function MarkAttendanceContent() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-3">
           <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
               <CardTitle>Attendance Sheet</CardTitle>
               <CardDescription>Mark student attendance for today</CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <SelectClass 
+              <SelectClass
                 classes={classes}
                 selected={selectedClass}
                 onSelect={handleClassSelect}
               />
-              
+
               {sections.length > 0 && (
                 <Select value={sectionId || ""} onValueChange={handleSectionChange}>
                   <SelectTrigger className="w-[140px]">
@@ -292,7 +274,7 @@ function MarkAttendanceContent() {
                   </SelectContent>
                 </Select>
               )}
-              
+
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
@@ -305,7 +287,7 @@ function MarkAttendanceContent() {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             {alreadyMarked && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
@@ -318,8 +300,8 @@ function MarkAttendanceContent() {
                 </div>
               </div>
             )}
-            
-            {classId && sectionId ? (
+
+            {classId ? (
               <>
                 {filteredStudents.length > 0 ? (
                   <div className="rounded-md border">
@@ -356,7 +338,7 @@ function MarkAttendanceContent() {
                                     <Badge variant="default" className="capitalize bg-blue-500 hover:bg-blue-600">Half Day</Badge>
                                   )}
                                 </div>
-                                
+
                                 {/* Show reason field for absent or leave students */}
                                 {(student.attendance?.status === "ABSENT" || student.attendance?.status === "LEAVE") && (
                                   <div className="mt-2">
@@ -373,7 +355,7 @@ function MarkAttendanceContent() {
                                 <div className="flex justify-end gap-1">
                                   <Button
                                     size="sm"
-                                    variant={student.attendance?.status === "PRESENT" ? "default" : "outline"} 
+                                    variant={student.attendance?.status === "PRESENT" ? "default" : "outline"}
                                     className={student.attendance?.status === "PRESENT" ? "bg-green-500 hover:bg-green-600" : ""}
                                     onClick={() => handleAttendanceChange(student.id, "PRESENT")}
                                   >
@@ -422,7 +404,7 @@ function MarkAttendanceContent() {
               </div>
             )}
           </CardContent>
-          
+
           <CardFooter className="flex justify-between border-t pt-6">
             <div className="flex gap-4">
               <div className="text-center">
@@ -446,7 +428,7 @@ function MarkAttendanceContent() {
               <Button variant="outline" onClick={() => router.push('/teacher/attendance')}>Cancel</Button>
               <Button
                 onClick={handleSaveAttendance}
-                disabled={saving || !classId || !sectionId || students.length === 0}
+                disabled={saving || !classId || students.length === 0}
               >
                 {saving ? (
                   <>
@@ -460,69 +442,8 @@ function MarkAttendanceContent() {
             </div>
           </CardFooter>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Classes</CardTitle>
-            <CardDescription>Schedule for {format(new Date(), "EEEE, MMMM d")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {todayClasses.length > 0 ? (
-              <div className="space-y-3">
-                {todayClasses.map((classItem, index) => (
-                  <div 
-                    key={classItem.id} 
-                    className={`p-3 border rounded-lg ${classItem.isNow ? 'bg-green-50 border-green-200' : ''} ${
-                      classItem.classId === classId && classItem.sectionId === sectionId ? 
-                        'ring-2 ring-primary ring-offset-2' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-1">
-                      <div className="font-medium">{classItem.className}</div>
-                      <Badge variant={classItem.isNow ? "default" : "outline"}>
-                        {classItem.isNow ? "Now" : "Upcoming"}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between text-sm">
-                      <div className="flex gap-1 items-center">
-                        <span>Section: {classItem.sectionName || "All"}</span>
-                        <span>•</span>
-                        <span>{classItem.subject}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-500">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>{classItem.time}</span>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => {
-                          setClassId(classItem.classId);
-                          setSectionId(classItem.sectionId);
-                          setSelectedClass(classes.find(c => c.id === classItem.classId));
-                          
-                          // Update URL
-                          router.push(`/teacher/attendance/mark?classId=${classItem.classId}&sectionId=${classItem.sectionId}`);
-                        }}
-                      >
-                        <ClipboardCheck className="mr-1 h-4 w-4" /> Mark Attendance
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-gray-500">No classes scheduled for today.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
-      
+
       {recentAttendance.length > 0 && (
         <Card>
           <CardHeader>
@@ -545,8 +466,8 @@ function MarkAttendanceContent() {
                       <div className="text-xs text-gray-500">Present</div>
                       <div className="font-medium">{record.present}/{record.total}</div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div 
-                          className="bg-green-500 h-1.5 rounded-full" 
+                        <div
+                          className="bg-green-500 h-1.5 rounded-full"
                           style={{ width: `${(record.present / record.total) * 100}%` }}
                         ></div>
                       </div>
@@ -555,8 +476,8 @@ function MarkAttendanceContent() {
                       <div className="text-xs text-gray-500">Absent</div>
                       <div className="font-medium">{record.absent}/{record.total}</div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div 
-                          className="bg-red-500 h-1.5 rounded-full" 
+                        <div
+                          className="bg-red-500 h-1.5 rounded-full"
                           style={{ width: `${(record.absent / record.total) * 100}%` }}
                         ></div>
                       </div>
