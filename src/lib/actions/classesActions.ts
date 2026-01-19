@@ -128,6 +128,7 @@ export async function getClassById(id: string) {
         },
         teachers: {
           include: {
+            section: true,
             teacher: {
               include: {
                 user: {
@@ -226,14 +227,16 @@ export async function getClassById(id: string) {
         capacity: section.capacity,
         students: section._count.enrollments
       })),
-      classTeacher: classDetails.teachers.find(t => t.isClassHead)?.teacher.user.firstName + ' ' +
-        classDetails.teachers.find(t => t.isClassHead)?.teacher.user.lastName,
-      classTeacherId: classDetails.teachers.find(t => t.isClassHead)?.teacher.id,
+      classTeacher: classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.user.firstName + ' ' +
+        classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.user.lastName,
+      classTeacherId: classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.id,
       teachers: classDetails.teachers.map(teacher => ({
         id: teacher.id,
         teacherId: teacher.teacherId,
         name: teacher.teacher.user.firstName + ' ' + teacher.teacher.user.lastName,
         isClassHead: teacher.isClassHead,
+        sectionName: teacher.section?.name || null,
+        sectionId: teacher.sectionId,
         email: teacher.teacher.user.email,
         avatar: teacher.teacher.user.avatar,
         employeeId: teacher.teacher.employeeId
@@ -567,12 +570,23 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
     }
 
     // If this teacher will be the class head, remove class head status from any other teacher
+    // Logic updated:
+    // - If sectionId is provided, remove isClassHead from other teachers in THIS section
+    // - If sectionId is NULL, remove isClassHead from other teachers who are Class Heads for the WHOLE class (sectionId: null)
     if (data.isClassHead) {
+      const whereClause: any = {
+        classId: data.classId,
+        isClassHead: true,
+      };
+
+      if (data.sectionId) {
+        whereClause.sectionId = data.sectionId;
+      } else {
+        whereClause.sectionId = null;
+      }
+
       await db.classTeacher.updateMany({
-        where: {
-          classId: data.classId,
-          isClassHead: true
-        },
+        where: whereClause,
         data: {
           isClassHead: false
         }
@@ -615,16 +629,32 @@ export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues
 
     // If this teacher will be the class head, remove class head status from any other teacher
     if (data.isClassHead) {
-      await db.classTeacher.updateMany({
-        where: {
-          id: { not: data.id },
-          classId: data.classId,
-          isClassHead: true
-        },
-        data: {
-          isClassHead: false
-        }
+      // Need to find out the sectionId of the current assignment to scope the check
+      const currentAssignment = await db.classTeacher.findUnique({
+        where: { id: data.id },
+        select: { sectionId: true, classId: true }
       });
+
+      if (currentAssignment) {
+        const whereClause: any = {
+          id: { not: data.id },
+          classId: currentAssignment.classId,
+          isClassHead: true,
+        };
+
+        if (currentAssignment.sectionId) {
+          whereClause.sectionId = currentAssignment.sectionId;
+        } else {
+          whereClause.sectionId = null;
+        }
+
+        await db.classTeacher.updateMany({
+          where: whereClause,
+          data: {
+            isClassHead: false
+          }
+        });
+      }
     }
 
     const updatedAssignment = await db.classTeacher.update({
@@ -799,6 +829,82 @@ export async function getAvailableStudentsForClass(classId: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch available students"
+    };
+  }
+}
+
+// Get sections that need a head teacher
+export async function getSectionsWithoutHeadTeacher() {
+  try {
+    // 1. Get all active classes and their sections
+    const classes = await db.class.findMany({
+      where: {
+        academicYear: {
+          isCurrent: true
+        }
+      },
+      include: {
+        // Get class-level head teacher (sectionId is null)
+        teachers: {
+          where: {
+            isClassHead: true,
+            sectionId: null
+          }
+        },
+        sections: {
+          include: {
+            // Get section-level head teacher
+            teachers: {
+              where: {
+                isClassHead: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    const pendingAssignments: any[] = [];
+
+    classes.forEach(cls => {
+      // Check if class has a global head teacher
+      const hasGlobalHead = cls.teachers.length > 0;
+
+      cls.sections.forEach(section => {
+        // If no teacher is assigned as head specifically for this section
+        // AND there is no global head for the class
+        if (section.teachers.length === 0 && !hasGlobalHead) {
+          pendingAssignments.push({
+            classId: cls.id,
+            className: cls.name,
+            sectionId: section.id,
+            sectionName: section.name,
+            type: 'SECTION'
+          });
+        }
+      });
+
+      // Also check if class has no sections and no global head (optional, but good for completeness)
+      if (cls.sections.length === 0 && !hasGlobalHead) {
+        pendingAssignments.push({
+          classId: cls.id,
+          className: cls.name,
+          sectionId: 'ALL',
+          sectionName: 'All Sections',
+          type: 'CLASS'
+        });
+      }
+    });
+
+    return { success: true, data: pendingAssignments };
+  } catch (error) {
+    console.error("Error fetching pending assignments:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch pending assignments"
     };
   }
 }

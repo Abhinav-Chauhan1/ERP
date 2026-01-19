@@ -14,6 +14,7 @@ import {
   ActivitySkeleton,
   QuickActionsSkeleton,
 } from "./dashboard-skeletons";
+import { PendingClassTeachersSection } from "./dashboard/pending-class-teachers";
 
 // Enable React Server Component caching with revalidation
 // Dashboard data is revalidated every 60 seconds (1 minute)
@@ -56,7 +57,11 @@ export default async function AdminDashboard() {
 
       {/* Quick Actions and Notifications - Wrapped in Suspense */}
       <Suspense fallback={<QuickActionsSkeleton />}>
-        <QuickActionsSection />
+        <div className="grid gap-4">
+          {/* @ts-ignore - PendingClassTeachersSection is an async server component */}
+          <PendingClassTeachersSection />
+          <QuickActionsSection />
+        </div>
       </Suspense>
     </div>
   );

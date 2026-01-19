@@ -234,6 +234,7 @@ export default function ClassDetailsPage() {
     teacherForm.reset({
       teacherId: "",
       classId: params.id as string,
+      sectionId: "", // Default to empty (which might mean "All" or "Select One" depending on logic)
       isClassHead: false,
     });
 
@@ -242,7 +243,16 @@ export default function ClassDetailsPage() {
 
   async function onTeacherSubmit(values: ClassTeacherFormValues) {
     try {
-      const result = await assignTeacherToClass(values);
+      // Convert empty string sectionId to undefined/null for the API if needed, 
+      // but zod schema expects string | null | undefined.
+      // If user selected "All Sections", we might be passing "" or "ALL". 
+      // Let's ensure if it's "ALL" or "", we pass null.
+      const payload = {
+        ...values,
+        sectionId: values.sectionId === "ALL" || values.sectionId === "" ? null : values.sectionId
+      };
+
+      const result = await assignTeacherToClass(payload);
 
       if (result.success) {
         toast.success("Teacher assigned successfully");
@@ -594,6 +604,7 @@ export default function ClassDetailsPage() {
                             <th className="py-3 px-4 text-left font-medium text-gray-500">Teacher</th>
                             <th className="py-3 px-4 text-left font-medium text-gray-500">Employee ID</th>
                             <th className="py-3 px-4 text-left font-medium text-gray-500">Email</th>
+                            <th className="py-3 px-4 text-left font-medium text-gray-500">Section</th>
                             <th className="py-3 px-4 text-left font-medium text-gray-500">Role</th>
                             <th className="py-3 px-4 text-right font-medium text-gray-500">Actions</th>
                           </tr>
@@ -604,6 +615,15 @@ export default function ClassDetailsPage() {
                               <td className="py-3 px-4 align-middle font-medium">{teacher.name}</td>
                               <td className="py-3 px-4 align-middle">{teacher.employeeId}</td>
                               <td className="py-3 px-4 align-middle">{teacher.email}</td>
+                              <td className="py-3 px-4 align-middle">
+                                {teacher.sectionName ? (
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                    {teacher.sectionName}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-500 italic">All Sections</span>
+                                )}
+                              </td>
                               <td className="py-3 px-4 align-middle">
                                 {teacher.isClassHead ? (
                                   <Badge className="bg-green-100 text-green-800">Class Teacher</Badge>
@@ -836,6 +856,38 @@ export default function ClassDetailsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={teacherForm.control}
+                name="sectionId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assign to Section</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select section (Optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Sections (Class Head)</SelectItem>
+                        {classDetails?.sections?.map((section: any) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            Section {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      If "All Sections" is selected, this teacher will be the head for the entire class.
+                      Select a specific section to assign a Section Head.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

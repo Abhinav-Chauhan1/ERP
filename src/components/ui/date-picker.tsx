@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import ReactDOM from "react-dom";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/datepicker.css";
@@ -47,10 +48,10 @@ export function DatePicker({
       const rect = buttonRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      
+
       // If not enough space below (need ~400px for calendar), show above
       const showAbove = spaceBelow < 400 && spaceAbove > spaceBelow;
-      
+
       setPosition({
         top: showAbove ? rect.top - 400 : rect.bottom + 8,
         left: rect.left,
@@ -123,11 +124,11 @@ export function DatePicker({
         {date ? format(date, "PPP") : <span>{placeholder}</span>}
       </Button>
 
-      {isOpen && position && (
+      {isOpen && position && typeof document !== 'undefined' && ReactDOM.createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div 
-            className="fixed z-50 rounded-md border border-border bg-background shadow-lg"
+          <div className="fixed inset-0 z-[9999]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed z-[10000] rounded-md border border-border bg-background shadow-lg"
             style={{
               top: `${position.top}px`,
               left: `${position.left}px`,
@@ -204,7 +205,8 @@ export function DatePicker({
               calendarClassName="!border-0"
             />
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
