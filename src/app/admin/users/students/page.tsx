@@ -38,21 +38,21 @@ export default async function StudentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Students</h1>
           <p className="text-muted-foreground mt-1">
             Manage student records and enrollments
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <BulkImportDialog
             defaultImportType="student"
             classes={filterOptions.classes}
             sections={filterOptions.sections}
           />
-          <Link href="/admin/users/students/create">
-            <Button>
+          <Link href="/admin/users/students/create" className="flex-1 sm:flex-none">
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Student
             </Button>
           </Link>

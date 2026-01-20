@@ -39,7 +39,7 @@ export default async function ParentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Parents</h1>
           <p className="text-muted-foreground mt-1">

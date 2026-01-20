@@ -227,7 +227,8 @@ export function CalendarView({
               className="text-center text-sm font-medium text-muted-foreground py-2"
               aria-label={day}
             >
-              <span aria-hidden="true">{day.slice(0, 3)}</span>
+              <span className="hidden md:inline" aria-hidden="true">{day.slice(0, 3)}</span>
+              <span className="md:hidden" aria-hidden="true">{day.slice(0, 1)}</span>
             </div>
           ))}
         </div>
@@ -277,39 +278,45 @@ export function CalendarView({
                       {format(day, "d")}
                     </div>
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map((event) => (
+                      {dayEvents.slice(0, 5).map((event) => (
                         <div
                           key={event.id}
-                          className="text-xs p-1 rounded truncate"
-                          style={{
-                            backgroundColor: isHighContrast
-                              ? getHighContrastStyles(event.category.color)
-                              : `${event.category.color}20`,
-                            color: isHighContrast
-                              ? "#000000"
-                              : event.category.color,
-                            borderLeft: isHighContrast
-                              ? `${getHighContrastBorderWidth(3)}px solid ${getHighContrastStyles(
-                                event.category.color
-                              )}`
-                              : undefined,
-                          }}
+                          className="rounded cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             onEventClick(event);
                           }}
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onEventClick(event);
-                            }
-                          }}
                           aria-label={`Event: ${event.title}`}
                         >
-                          {event.title}
+                          {/* Desktop View: Full Title */}
+                          <div
+                            className="hidden md:block text-xs p-1 rounded truncate transition-opacity hover:opacity-80"
+                            style={{
+                              backgroundColor: isHighContrast
+                                ? getHighContrastStyles(event.category.color)
+                                : `${event.category.color}20`,
+                              color: isHighContrast
+                                ? "#000000"
+                                : event.category.color,
+                              borderLeft: isHighContrast
+                                ? `${getHighContrastBorderWidth(3)}px solid ${getHighContrastStyles(
+                                  event.category.color
+                                )}`
+                                : undefined,
+                            }}
+                          >
+                            {event.title}
+                          </div>
+
+                          {/* Mobile View: Simple Dot */}
+                          <div
+                            className="md:hidden h-2 w-2 rounded-full mx-auto mb-1"
+                            style={{
+                              backgroundColor: event.category.color
+                            }}
+                          />
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
@@ -481,124 +488,121 @@ export function CalendarView({
   };
 
   return (
-    <Card className={cn("", className)} role="region" aria-label="Academic calendar">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" aria-hidden="true" />
-            Academic Calendar
-          </CardTitle>
+    <Card className={cn("w-full overflow-hidden", className)} role="region" aria-label="Academic calendar">
+      <CardHeader className="p-3 sm:p-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <CalendarIcon className="h-5 w-5" aria-hidden="true" />
+              Academic Calendar
+            </CardTitle>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Keyboard shortcuts help */}
-            <KeyboardShortcutsHelp shortcuts={shortcuts} />
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+              {/* Keyboard shortcuts help - Hidden on mobile */}
+              <div className="hidden sm:block">
+                <KeyboardShortcutsHelp shortcuts={shortcuts} />
+              </div>
 
-            {/* High contrast toggle */}
-            <HighContrastToggle />
+              {/* High contrast toggle */}
+              <HighContrastToggle />
 
-            {showCreateButton && onCreateEvent && (
-              <Button
-                onClick={onCreateEvent}
-                size="sm"
-                className="min-h-[44px]" // Minimum touch target size
-                aria-label="Create new event"
-              >
-                <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                Create Event
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation and view controls */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mt-4">
-          {/* Left: Navigation controls */}
-          <div className="flex items-center gap-2" role="group" aria-label="Calendar navigation">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={goToPrevious}
-              className={cn("min-h-[44px] min-w-[44px]", getHighContrastFocusRing())}
-              aria-label={`Previous ${view}`}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              onClick={goToToday}
-              className={cn("min-h-[44px]", getHighContrastFocusRing())}
-              aria-label="Go to today"
-            >
-              Today
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={goToNext}
-              className={cn("min-h-[44px] min-w-[44px]", getHighContrastFocusRing())}
-              aria-label={`Next ${view}`}
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+              {showCreateButton && onCreateEvent && (
+                <Button
+                  onClick={onCreateEvent}
+                  size="sm"
+                  className="min-h-[44px]"
+                  aria-label="Create new event"
+                >
+                  <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                  <span className="hidden sm:inline">Create Event</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Center: Current date/period title */}
-          <div
-            className="text-lg font-semibold text-center min-w-[200px]"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {view === "month" && format(currentDate, "MMMM yyyy")}
-            {view === "week" &&
-              `${format(startOfWeek(currentDate), "MMM d")} - ${format(
-                endOfWeek(currentDate),
-                "MMM d, yyyy"
-              )}`}
-            {view === "day" && format(currentDate, "MMMM d, yyyy")}
-            {view === "agenda" && "All Events"}
-          </div>
+          {/* Navigation and view controls */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* View tabs - Full width on mobile */}
+            <Tabs
+              value={view}
+              onValueChange={(v) => {
+                setView(v as any);
+                announceToScreenReader(`Switched to ${v} view`);
+              }}
+              className="w-full md:w-auto order-2 md:order-3"
+            >
+              <TabsList className="grid w-full grid-cols-4 md:w-auto border h-10">
+                <TabsTrigger value="month" className="text-xs sm:text-sm">Month</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs sm:text-sm">Week</TabsTrigger>
+                <TabsTrigger value="day" className="text-xs sm:text-sm">Day</TabsTrigger>
+                <TabsTrigger value="agenda" className="text-xs sm:text-sm gap-1">
+                  <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Agenda</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-          {/* Right: View tabs */}
-          <Tabs
-            value={view}
-            onValueChange={(v) => {
-              setView(v as any);
-              announceToScreenReader(`Switched to ${v} view`);
-            }}
-          >
-            <TabsList role="tablist" aria-label="Calendar view options">
-              <TabsTrigger
-                value="month"
-                aria-label="Month view"
-                className={cn("min-h-[44px]", getHighContrastFocusRing())}
+            {/* Navigation controls - Centered on mobile */}
+            <div className="flex items-center justify-between w-full md:w-auto order-1 md:order-1 gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToPrevious}
+                  className="h-9 w-9"
+                  aria-label={`Previous ${view}`}
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={goToToday}
+                  className="h-9 px-3 text-sm"
+                  aria-label="Go to today"
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToNext}
+                  className="h-9 w-9"
+                  aria-label={`Next ${view}`}
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              {/* Current date title - Visible here on mobile, centered */}
+              <div
+                className="text-sm font-semibold text-center md:hidden"
+                role="status"
+                aria-live="polite"
               >
-                Month
-              </TabsTrigger>
-              <TabsTrigger
-                value="week"
-                aria-label="Week view"
-                className={cn("min-h-[44px]", getHighContrastFocusRing())}
-              >
-                Week
-              </TabsTrigger>
-              <TabsTrigger
-                value="day"
-                aria-label="Day view"
-                className={cn("min-h-[44px]", getHighContrastFocusRing())}
-              >
-                Day
-              </TabsTrigger>
-              <TabsTrigger
-                value="agenda"
-                aria-label="Agenda view"
-                className={cn("min-h-[44px] gap-1", getHighContrastFocusRing())}
-              >
-                <List className="h-4 w-4" aria-hidden="true" />
-                Agenda
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+                {view === "month" && format(currentDate, "MMM yyyy")}
+                {view === "week" && `${format(startOfWeek(currentDate), "MMM d")} - ${format(endOfWeek(currentDate), "d")}`}
+                {view === "day" && format(currentDate, "MMM d")}
+                {view === "agenda" && "Events"}
+              </div>
+            </div>
+
+            {/* Desktop Center Title */}
+            <div
+              className="hidden md:block text-lg font-semibold text-center min-w-[200px] order-1 md:order-2"
+              role="status"
+              aria-live="polite"
+            >
+              {view === "month" && format(currentDate, "MMMM yyyy")}
+              {view === "week" &&
+                `${format(startOfWeek(currentDate), "MMM d")} - ${format(
+                  endOfWeek(currentDate),
+                  "MMM d, yyyy"
+                )}`}
+              {view === "day" && format(currentDate, "MMMM d, yyyy")}
+              {view === "agenda" && "All Events"}
+            </div>
+          </div>
         </div>
       </CardHeader>
 
