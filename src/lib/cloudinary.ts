@@ -26,6 +26,7 @@ export interface CloudinaryUploadOptions {
   secure?: boolean; // Force HTTPS only
   access_control?: string; // Access control settings
   type?: 'upload' | 'authenticated' | 'private'; // Access type (upload = public)
+  overwrite?: boolean;
 }
 
 /**

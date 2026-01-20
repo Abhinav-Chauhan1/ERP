@@ -8,34 +8,19 @@
  */
 
 import jsPDF from 'jspdf';
-import QRCode from 'qrcode';
-import JsBarcode from 'jsbarcode';
 import { db } from '@/lib/db';
-
-export interface IDCardGenerationData {
-  studentId: string;
-  studentName: string;
-  admissionId: string;
-  className?: string;
-  section?: string;
-  rollNumber?: string;
-  bloodGroup?: string;
-  emergencyContact?: string;
-  photoUrl?: string;
-  validUntil?: Date;
-}
-
-export interface BulkIDCardGenerationOptions {
-  students: IDCardGenerationData[];
-  academicYear: string;
-}
 
 export interface IDCardGenerationResult {
   success: boolean;
-  studentId?: string;
-  studentName?: string;
+  studentId: string;
+  studentName: string;
   pdfUrl?: string;
   error?: string;
+}
+
+export interface BulkIDCardGenerationOptions {
+  students: TemplateIDCardData[];
+  academicYear: string;
 }
 
 export interface BulkIDCardGenerationResult {
@@ -46,80 +31,26 @@ export interface BulkIDCardGenerationResult {
   errors: string[];
 }
 
-/**
- * Generate QR code as data URL
- */
-async function generateQRCode(data: string): Promise<string> {
-  try {
-    return await QRCode.toDataURL(data, {
-      width: 150,
-      margin: 1,
-      errorCorrectionLevel: 'H',
-    });
-  } catch (error) {
-    console.error('Error generating QR code:', error);
-    throw new Error('Failed to generate QR code');
-  }
-}
+
+// QR Code and Barcode functions moved to id-card-templates.ts
+
+// Re-export shared types
+export type { IDCardGenerationData } from './id-card-templates';
+import {
+  ID_CARD_TEMPLATES,
+  SchoolSettingsData,
+  IDCardGenerationData as TemplateIDCardData
+} from './id-card-templates';
 
 /**
- * Generate barcode as PNG data URL using canvas
- * This creates a simple visual representation of the barcode
- */
-async function generateBarcodePNG(data: string): Promise<string> {
-  try {
-    // For server-side rendering, we'll create a simple barcode representation
-    // In a production environment, you might want to use a library like 'canvas' or 'node-canvas'
-    // For now, we'll create a simple pattern-based barcode
-
-    // Create a simple barcode pattern
-    const width = 200;
-    const height = 60;
-    const barWidth = 2;
-    const bars: number[] = [];
-
-    // Generate bar pattern based on data
-    for (let i = 0; i < data.length; i++) {
-      const charCode = data.charCodeAt(i);
-      // Create alternating pattern based on character code
-      bars.push(charCode % 2);
-      bars.push((charCode + 1) % 2);
-    }
-
-    // Create a simple canvas-like structure
-    // In production, use actual canvas library
-    const canvas = {
-      width,
-      height,
-      toDataURL: () => {
-        // Return a placeholder data URL
-        // In production, this would be actual canvas rendering
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      }
-    };
-
-    return canvas.toDataURL();
-  } catch (error) {
-    console.error('Error generating barcode:', error);
-    throw new Error('Failed to generate barcode');
-  }
-}
-
-/**
- * Generate a single ID card PDF
- * ID card dimensions: 85.6mm x 53.98mm (standard credit card size)
+ * Generate a single ID card PDF using the selected template
  */
 async function generateIDCardPDF(
-  studentData: IDCardGenerationData,
-  academicYear: string
+  studentData: TemplateIDCardData,
+  academicYear: string,
+  templateId: string = 'STANDARD'
 ): Promise<Buffer> {
   try {
-    // ID card dimensions in mm (standard credit card size)
-    const cardWidth = 85.6;
-    const cardHeight = 53.98;
-
-    // Create PDF document with ID card dimensions
-    // We'll create an A4 page and place the ID card on it for easy printing
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -127,177 +58,21 @@ async function generateIDCardPDF(
       compress: true,
     });
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    const settings = await db.systemSettings.findFirst();
+    const schoolSettings: SchoolSettingsData = {
+      schoolName: settings?.schoolName || 'School Name',
+      schoolAddress: settings?.schoolAddress || undefined,
+      schoolPhone: settings?.schoolPhone || undefined,
+      schoolEmail: settings?.schoolEmail || undefined,
+      schoolLogo: settings?.schoolLogo || undefined,
+      affiliationNumber: settings?.affiliationNumber || undefined,
+      schoolCode: settings?.schoolCode || undefined,
+      board: settings?.board || undefined,
+    };
 
-    // Calculate position to center the ID card on the page
-    const startX = (pageWidth - cardWidth) / 2;
-    const startY = (pageHeight - cardHeight) / 2;
+    const template = ID_CARD_TEMPLATES[templateId] || ID_CARD_TEMPLATES['STANDARD'];
+    await template.generate(doc, studentData, schoolSettings, academicYear);
 
-    // Draw ID card border
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.rect(startX, startY, cardWidth, cardHeight);
-
-    // Add school header background
-    doc.setFillColor(41, 128, 185); // Blue color
-    doc.rect(startX, startY, cardWidth, 12, 'F');
-
-    // Add school name
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SCHOOL NAME', startX + cardWidth / 2, startY + 5, { align: 'center' });
-    doc.setFontSize(7);
-    doc.text('STUDENT ID CARD', startX + cardWidth / 2, startY + 9, { align: 'center' });
-
-    // Add student photo (if available)
-    const photoX = startX + 5;
-    const photoY = startY + 15;
-    const photoWidth = 20;
-    const photoHeight = 25;
-
-    if (studentData.photoUrl) {
-      try {
-        doc.addImage(
-          studentData.photoUrl,
-          'JPEG',
-          photoX,
-          photoY,
-          photoWidth,
-          photoHeight
-        );
-      } catch (error) {
-        console.warn('Failed to add student photo:', error);
-        // Draw placeholder rectangle
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(photoX, photoY, photoWidth, photoHeight);
-        doc.setFontSize(6);
-        doc.setTextColor(150, 150, 150);
-        doc.text('No Photo', photoX + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
-      }
-    } else {
-      // Draw placeholder rectangle
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(photoX, photoY, photoWidth, photoHeight);
-      doc.setFontSize(6);
-      doc.setTextColor(150, 150, 150);
-      doc.text('No Photo', photoX + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
-    }
-
-    // Add student details
-    const detailsX = photoX + photoWidth + 3;
-    const detailsY = photoY;
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(studentData.studentName.toUpperCase(), detailsX, detailsY);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-
-    let currentY = detailsY + 4;
-
-    if (studentData.className) {
-      doc.text(`Class: ${studentData.className}${studentData.section ? ` - ${studentData.section}` : ''}`, detailsX, currentY);
-      currentY += 3.5;
-    }
-
-    if (studentData.rollNumber) {
-      doc.text(`Roll No: ${studentData.rollNumber}`, detailsX, currentY);
-      currentY += 3.5;
-    }
-
-    doc.text(`ID: ${studentData.admissionId}`, detailsX, currentY);
-    currentY += 3.5;
-
-    if (studentData.bloodGroup) {
-      doc.text(`Blood: ${studentData.bloodGroup}`, detailsX, currentY);
-      currentY += 3.5;
-    }
-
-    if (studentData.emergencyContact) {
-      doc.setFontSize(6);
-      doc.text(`Emergency: ${studentData.emergencyContact}`, detailsX, currentY);
-    }
-
-    // Generate and add QR code
-    const qrCodeData = await generateQRCode(
-      JSON.stringify({
-        studentId: studentData.studentId,
-        admissionId: studentData.admissionId,
-        name: studentData.studentName,
-      })
-    );
-
-    const qrSize = 15;
-    const qrX = startX + 5;
-    const qrY = startY + cardHeight - qrSize - 3;
-
-    doc.addImage(qrCodeData, 'PNG', qrX, qrY, qrSize, qrSize);
-
-    // Add barcode as text (simplified approach for server-side rendering)
-    // In production, you can use a proper barcode library with canvas support
-    doc.setFontSize(7);
-    doc.setFont('courier', 'bold');
-    const barcodeX = startX + cardWidth - 30;
-    const barcodeY = startY + cardHeight - 8;
-
-    // Add barcode label
-    doc.setFontSize(5);
-    doc.setTextColor(100, 100, 100);
-    doc.text('ID:', barcodeX - 5, barcodeY - 2);
-
-    // Add barcode value
-    doc.setFontSize(7);
-    doc.setTextColor(0, 0, 0);
-    doc.text(studentData.admissionId, barcodeX, barcodeY);
-
-    // Add visual barcode representation (simple bars)
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    let barX = barcodeX;
-    for (let i = 0; i < studentData.admissionId.length; i++) {
-      const charCode = studentData.admissionId.charCodeAt(i);
-      if (charCode % 2 === 0) {
-        doc.line(barX, barcodeY + 1, barX, barcodeY + 5);
-      }
-      barX += 1.5;
-    }
-
-    // Add validity information
-    doc.setFontSize(6);
-    doc.setTextColor(100, 100, 100);
-    const validUntil = studentData.validUntil || new Date(new Date().getFullYear() + 1, 11, 31);
-    doc.text(
-      `Valid Until: ${validUntil.toLocaleDateString()}`,
-      startX + cardWidth / 2,
-      startY + cardHeight - 1,
-      { align: 'center' }
-    );
-
-    // Add academic year
-    doc.text(
-      `Academic Year: ${academicYear}`,
-      startX + cardWidth / 2,
-      startY + 13.5,
-      { align: 'center' }
-    );
-
-    // Add cutting guidelines (solid lines)
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.1);
-
-    // Horizontal guidelines
-    doc.line(0, startY, pageWidth, startY);
-    doc.line(0, startY + cardHeight, pageWidth, startY + cardHeight);
-
-    // Vertical guidelines
-    doc.line(startX, 0, startX, pageHeight);
-    doc.line(startX + cardWidth, 0, startX + cardWidth, pageHeight);
-
-    // Return PDF as buffer
     return Buffer.from(doc.output('arraybuffer'));
   } catch (error) {
     console.error('Error generating ID card PDF:', error);
@@ -306,8 +81,43 @@ async function generateIDCardPDF(
 }
 
 /**
- * Upload PDF to storage (Cloudinary)
+ * Generate ID card preview (Base64)
  */
+export async function generateIDCardPreview(
+  studentData: TemplateIDCardData,
+  academicYear: string,
+  templateId: string = 'STANDARD'
+): Promise<string> {
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const settings = await db.systemSettings.findFirst();
+    const schoolSettings: SchoolSettingsData = {
+      schoolName: settings?.schoolName || 'School Name',
+      schoolAddress: settings?.schoolAddress || undefined,
+      schoolPhone: settings?.schoolPhone || undefined,
+      schoolEmail: settings?.schoolEmail || undefined,
+      schoolLogo: settings?.schoolLogo || undefined,
+      affiliationNumber: settings?.affiliationNumber || undefined,
+      schoolCode: settings?.schoolCode || undefined,
+      board: settings?.board || undefined,
+    };
+
+    const template = ID_CARD_TEMPLATES[templateId] || ID_CARD_TEMPLATES['STANDARD'];
+    await template.generate(doc, studentData, schoolSettings, academicYear);
+
+    return doc.output('datauristring');
+  } catch (error) {
+    console.error('Error generating ID card preview:', error);
+    throw new Error('Failed to generate ID card preview');
+  }
+}
+
 /**
  * Upload PDF to storage (Cloudinary)
  */
@@ -323,14 +133,13 @@ async function uploadPDFToStorage(
       folder: 'id-cards',
       resource_type: 'raw',
       public_id: `id-card-${studentId}-${Date.now()}`,
-      format: 'pdf'
+      format: 'pdf',
+      overwrite: true,
     });
 
     return result.secure_url;
   } catch (error) {
     console.error('Failed to upload ID card to Cloudinary:', error);
-    // Return a fallback local path if upload fails
-    // This allows the system to still generate records even if storage is not configured
     return `/api/id-cards/${studentId}/download`;
   }
 }
@@ -339,12 +148,13 @@ async function uploadPDFToStorage(
  * Generate a single ID card
  */
 export async function generateSingleIDCard(
-  studentData: IDCardGenerationData,
-  academicYear: string
+  studentData: TemplateIDCardData,
+  academicYear: string,
+  templateId: string = 'STANDARD'
 ): Promise<IDCardGenerationResult> {
   try {
     // Generate PDF
-    const pdfBuffer = await generateIDCardPDF(studentData, academicYear);
+    const pdfBuffer = await generateIDCardPDF(studentData, academicYear, templateId);
 
     // Upload PDF to storage
     const pdfUrl = await uploadPDFToStorage(pdfBuffer, studentData.studentId);
@@ -366,11 +176,16 @@ export async function generateSingleIDCard(
   }
 }
 
+// ... types reused from previous steps ...
+
+// Remove unused local helper functions generateQRCode and generateBarcodePNG
+
 /**
  * Generate ID cards in bulk for multiple students
  */
 export async function generateBulkIDCards(
-  options: BulkIDCardGenerationOptions
+  options: BulkIDCardGenerationOptions,
+  templateId: string = 'STANDARD'
 ): Promise<BulkIDCardGenerationResult> {
   const { students, academicYear } = options;
 
@@ -381,7 +196,7 @@ export async function generateBulkIDCards(
   // Generate ID cards for each student
   for (const student of students) {
     try {
-      const result = await generateSingleIDCard(student, academicYear);
+      const result = await generateSingleIDCard(student, academicYear, templateId);
 
       results.push(result);
 
@@ -416,7 +231,7 @@ export async function generateBulkIDCards(
 /**
  * Get student data for ID card generation
  */
-export async function getStudentDataForIDCard(studentId: string): Promise<IDCardGenerationData | null> {
+export async function getStudentDataForIDCard(studentId: string): Promise<TemplateIDCardData | null> {
   try {
     const student = await db.student.findUnique({
       where: { id: studentId },
@@ -426,6 +241,8 @@ export async function getStudentDataForIDCard(studentId: string): Promise<IDCard
             firstName: true,
             lastName: true,
             avatar: true,
+            email: true,
+            phone: true,
           },
         },
         enrollments: {
@@ -463,8 +280,12 @@ export async function getStudentDataForIDCard(studentId: string): Promise<IDCard
       section: enrollment?.section?.name,
       rollNumber: student.rollNumber || undefined,
       bloodGroup: student.bloodGroup || undefined,
-      emergencyContact: student.emergencyContact || undefined,
+      emergencyContact: student.emergencyContact || student.user.phone || undefined,
       photoUrl: student.user.avatar || undefined,
+      dob: student.dateOfBirth,
+      fatherName: student.fatherName || undefined,
+      motherName: student.motherName || undefined,
+      address: student.address || undefined,
     };
   } catch (error) {
     console.error('Error fetching student data:', error);
@@ -477,7 +298,7 @@ export async function getStudentDataForIDCard(studentId: string): Promise<IDCard
  */
 export async function getStudentsDataForIDCards(
   studentIds: string[]
-): Promise<IDCardGenerationData[]> {
+): Promise<TemplateIDCardData[]> {
   try {
     const students = await db.student.findMany({
       where: {
@@ -491,6 +312,7 @@ export async function getStudentsDataForIDCards(
             firstName: true,
             lastName: true,
             avatar: true,
+            phone: true,
           },
         },
         enrollments: {
@@ -525,8 +347,12 @@ export async function getStudentsDataForIDCards(
         section: enrollment?.section?.name,
         rollNumber: student.rollNumber || undefined,
         bloodGroup: student.bloodGroup || undefined,
-        emergencyContact: student.emergencyContact || undefined,
+        emergencyContact: student.emergencyContact || student.user.phone || undefined,
         photoUrl: student.user.avatar || undefined,
+        dob: student.dateOfBirth,
+        fatherName: student.fatherName || undefined,
+        motherName: student.motherName || undefined,
+        address: student.address || undefined,
       };
     });
   } catch (error) {

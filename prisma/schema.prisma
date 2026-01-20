@@ -1964,6 +1964,9 @@ model SystemSettings {
   schoolLogo    String? // Main school logo URL
   schoolWebsite String?
   schoolFax     String?
+  affiliationNumber String? // CBSE/Board Affiliation Number
+  schoolCode        String? // School Code
+  board             String? @default("CBSE") // CBSE, ICSE, STATE
   timezone      String  @default("UTC")
   tagline       String? // School tagline/motto
 

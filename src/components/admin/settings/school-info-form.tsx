@@ -34,6 +34,9 @@ interface SchoolInfoFormProps {
     twitterUrl?: string | null;
     linkedinUrl?: string | null;
     instagramUrl?: string | null;
+    affiliationNumber?: string | null;
+    schoolCode?: string | null;
+    board?: string | null;
   };
 }
 
@@ -53,6 +56,9 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [twitterUrl, setTwitterUrl] = useState(initialData.twitterUrl || "");
   const [linkedinUrl, setLinkedinUrl] = useState(initialData.linkedinUrl || "");
   const [instagramUrl, setInstagramUrl] = useState(initialData.instagramUrl || "");
+  const [affiliationNumber, setAffiliationNumber] = useState(initialData.affiliationNumber || "");
+  const [schoolCode, setSchoolCode] = useState(initialData.schoolCode || "");
+  const [board, setBoard] = useState(initialData.board || "CBSE");
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,6 +126,9 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         twitterUrl: twitterUrl || undefined,
         linkedinUrl: linkedinUrl || undefined,
         instagramUrl: instagramUrl || undefined,
+        affiliationNumber: affiliationNumber || undefined,
+        schoolCode: schoolCode || undefined,
+        board: board || undefined,
       });
 
       if (result.success) {
@@ -211,6 +220,53 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
               placeholder="Enter school address"
               rows={3}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Academic Information</CardTitle>
+          <CardDescription>
+            Board affiliation and school codes
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="board">School Board</Label>
+              <Select value={board} onValueChange={setBoard}>
+                <SelectTrigger id="board">
+                  <SelectValue placeholder="Select Board" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CBSE">CBSE</SelectItem>
+                  <SelectItem value="ICSE">ICSE</SelectItem>
+                  <SelectItem value="STATE">State Board</SelectItem>
+                  <SelectItem value="IB">IB</SelectItem>
+                  <SelectItem value="CAMBRIDGE">Cambridge</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="affiliationNumber">Affiliation Number</Label>
+              <Input
+                id="affiliationNumber"
+                value={affiliationNumber}
+                onChange={(e) => setAffiliationNumber(e.target.value)}
+                placeholder="e.g. 1030123"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="schoolCode">School Code</Label>
+              <Input
+                id="schoolCode"
+                value={schoolCode}
+                onChange={(e) => setSchoolCode(e.target.value)}
+                placeholder="e.g. 50123"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -103,6 +103,9 @@ export async function updateSchoolInfo(data: {
   twitterUrl?: string;
   linkedinUrl?: string;
   instagramUrl?: string;
+  affiliationNumber?: string;
+  schoolCode?: string;
+  board?: string;
 }) {
   try {
     // Authentication check
@@ -142,7 +145,11 @@ export async function updateSchoolInfo(data: {
       facebookUrl: data.facebookUrl ? sanitizeUrl(data.facebookUrl) : undefined,
       twitterUrl: data.twitterUrl ? sanitizeUrl(data.twitterUrl) : undefined,
       linkedinUrl: data.linkedinUrl ? sanitizeUrl(data.linkedinUrl) : undefined,
+      linkedinUrl: data.linkedinUrl ? sanitizeUrl(data.linkedinUrl) : undefined,
       instagramUrl: data.instagramUrl ? sanitizeUrl(data.instagramUrl) : undefined,
+      affiliationNumber: data.affiliationNumber ? sanitizeText(data.affiliationNumber) : undefined,
+      schoolCode: data.schoolCode ? sanitizeText(data.schoolCode) : undefined,
+      board: data.board ? sanitizeText(data.board) : undefined,
     };
 
     const updated = await db.systemSettings.update({

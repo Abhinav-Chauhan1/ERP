@@ -62,6 +62,8 @@ import {
   updateEventStatus
 } from "@/lib/actions/eventActions";
 
+import { ImageUpload } from "@/components/image-upload";
+
 // Utility function to format dates
 const formatDate = (date: Date) => {
   return new Date(date).toLocaleDateString("en-US", {
@@ -496,18 +498,19 @@ export default function EventsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={createForm.control}
                     name="thumbnail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Thumbnail URL</FormLabel>
+                        <FormLabel>Event Thumbnail</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Image URL for event thumbnail"
-                            {...field}
+                          <ImageUpload
                             value={field.value || ""}
+                            onChange={field.onChange}
+                            folder="events/thumbnails"
+                            label="Upload or paste thumbnail URL"
                           />
                         </FormControl>
                         <FormMessage />
@@ -1068,7 +1071,26 @@ export default function EventsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="thumbnail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Event Thumbnail</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          folder="events/thumbnails"
+                          label="Upload or paste thumbnail URL"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={editForm.control}
                   name="status"
@@ -1092,24 +1114,6 @@ export default function EventsPage() {
                           <SelectItem value="POSTPONED">Postponed</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="thumbnail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Thumbnail URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Image URL for event thumbnail"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

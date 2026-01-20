@@ -14,51 +14,53 @@ import {
   generateBulkIDCards,
   getStudentDataForIDCard,
   getStudentsDataForIDCards,
+  generateIDCardPreview as generateIDCardPreviewService,
   type IDCardGenerationData,
   type BulkIDCardGenerationOptions,
+  type IDCardGenerationResult,
 } from '@/lib/services/idCardGenerationService';
 import { db } from '@/lib/db';
 
 /**
  * Generate ID card for a single student
  */
-export async function generateStudentIDCard(studentId: string, academicYear: string) {
+export async function generateStudentIDCard(studentId: string, academicYear: string, templateId: string = 'STANDARD') {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return {
         success: false,
         error: 'Unauthorized',
       };
     }
-    
+
     // Check if user has permission (admin or teacher)
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
       select: { role: true },
     });
-    
+
     if (!dbUser || (dbUser.role !== 'ADMIN' && dbUser.role !== 'TEACHER')) {
       return {
         success: false,
         error: 'Insufficient permissions',
       };
     }
-    
+
     // Get student data
     const studentData = await getStudentDataForIDCard(studentId);
-    
+
     if (!studentData) {
       return {
         success: false,
         error: 'Student not found',
       };
     }
-    
+
     // Generate ID card
-    const result = await generateSingleIDCard(studentData, academicYear);
-    
+    const result = await generateSingleIDCard(studentData, academicYear, templateId);
+
     return result;
   } catch (error: any) {
     console.error('Error in generateStudentIDCard:', error);
@@ -70,15 +72,37 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
 }
 
 /**
+ * Get ID card preview (Base64)
+ */
+export async function getStudentIDCardPreview(studentId: string, academicYear: string, templateId: string = 'STANDARD') {
+  try {
+    const user = await currentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const studentData = await getStudentDataForIDCard(studentId);
+    if (!studentData) return { success: false, error: 'Student not found' };
+
+    const previewUrl = await generateIDCardPreviewService(studentData, academicYear, templateId);
+
+    return { success: true, previewUrl };
+  } catch (error: any) {
+    console.error('Error generating preview:', error);
+    return { success: false, error: 'Failed to generate preview' };
+  }
+}
+
+
+/**
  * Generate ID cards for multiple students
  */
 export async function generateBulkStudentIDCards(
   studentIds: string[],
-  academicYear: string
+  academicYear: string,
+  templateId: string = 'STANDARD'
 ) {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return {
         success: false,
@@ -89,13 +113,13 @@ export async function generateBulkStudentIDCards(
         errors: ['Unauthorized'],
       };
     }
-    
+
     // Check if user has permission (admin only for bulk operations)
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
       select: { role: true },
     });
-    
+
     if (!dbUser || dbUser.role !== 'ADMIN') {
       return {
         success: false,
@@ -106,10 +130,10 @@ export async function generateBulkStudentIDCards(
         errors: ['Insufficient permissions'],
       };
     }
-    
+
     // Get students data
     const studentsData = await getStudentsDataForIDCards(studentIds);
-    
+
     if (studentsData.length === 0) {
       return {
         success: false,
@@ -120,15 +144,15 @@ export async function generateBulkStudentIDCards(
         errors: ['No valid students found'],
       };
     }
-    
+
     // Generate ID cards
     const options: BulkIDCardGenerationOptions = {
       students: studentsData,
       academicYear,
     };
-    
-    const result = await generateBulkIDCards(options);
-    
+
+    const result = await generateBulkIDCards(options, templateId);
+
     return result;
   } catch (error: any) {
     console.error('Error in generateBulkStudentIDCards:', error);
@@ -149,11 +173,12 @@ export async function generateBulkStudentIDCards(
 export async function generateClassIDCards(
   classId: string,
   sectionId: string | null,
-  academicYear: string
+  academicYear: string,
+  templateId: string = 'STANDARD'
 ) {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return {
         success: false,
@@ -164,13 +189,13 @@ export async function generateClassIDCards(
         errors: ['Unauthorized'],
       };
     }
-    
+
     // Check if user has permission (admin only)
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
       select: { role: true },
     });
-    
+
     if (!dbUser || dbUser.role !== 'ADMIN') {
       return {
         success: false,
@@ -181,7 +206,7 @@ export async function generateClassIDCards(
         errors: ['Insufficient permissions'],
       };
     }
-    
+
     // Get all students in the class/section
     const enrollments = await db.classEnrollment.findMany({
       where: {
@@ -193,9 +218,9 @@ export async function generateClassIDCards(
         studentId: true,
       },
     });
-    
+
     const studentIds = enrollments.map(e => e.studentId);
-    
+
     if (studentIds.length === 0) {
       return {
         success: false,
@@ -206,9 +231,9 @@ export async function generateClassIDCards(
         errors: ['No students found'],
       };
     }
-    
+
     // Generate ID cards for all students
-    return await generateBulkStudentIDCards(studentIds, academicYear);
+    return await generateBulkStudentIDCards(studentIds, academicYear, templateId);
   } catch (error: any) {
     console.error('Error in generateClassIDCards:', error);
     return {
@@ -223,12 +248,49 @@ export async function generateClassIDCards(
 }
 
 /**
+ * Get ID card preview for a random student in a class
+ */
+export async function getClassIDCardPreview(
+  classId: string,
+  academicYear: string,
+  templateId: string = 'STANDARD'
+) {
+  try {
+    const user = await currentUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    // Get one student from the class
+    const enrollment = await db.classEnrollment.findFirst({
+      where: {
+        classId,
+        status: "ACTIVE",
+      },
+      select: {
+        studentId: true,
+      },
+      orderBy: { // Random-ish or just first
+        studentId: 'asc'
+      }
+    });
+
+    if (!enrollment) {
+      return { success: false, error: 'No students found in this class' };
+    }
+
+    return await getStudentIDCardPreview(enrollment.studentId, academicYear, templateId);
+  } catch (error: any) {
+    console.error('Error in getClassIDCardPreview:', error);
+    return { success: false, error: error.message || 'Failed to generate preview' };
+  }
+}
+
+/**
  * Get list of classes for ID card generation
  */
 export async function getClassesForIDCardGeneration() {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return {
         success: false,
@@ -236,7 +298,7 @@ export async function getClassesForIDCardGeneration() {
         data: [],
       };
     }
-    
+
     const classes = await db.class.findMany({
       include: {
         sections: {
@@ -259,7 +321,7 @@ export async function getClassesForIDCardGeneration() {
         name: 'asc',
       },
     });
-    
+
     return {
       success: true,
       data: classes.map(c => ({
@@ -293,7 +355,7 @@ export async function getCurrentAcademicYear() {
         name: true,
       },
     });
-    
+
     if (!academicYear) {
       // Fallback to current year
       const currentYear = new Date().getFullYear();
@@ -305,7 +367,7 @@ export async function getCurrentAcademicYear() {
         },
       };
     }
-    
+
     return {
       success: true,
       data: {
