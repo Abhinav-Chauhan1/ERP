@@ -465,16 +465,52 @@ export async function getEventParticipants(eventId: string) {
       where: {
         eventId,
       },
-      include: {
-        // Cannot directly include user since it appears to be a foreign key
-        // Include any other relationships that you need
-      },
       orderBy: {
         registrationDate: 'desc',
       },
     });
 
-    return { success: true, data: participants };
+    // Fetch user details for each participant
+    const userIds = participants.map((p) => p.userId);
+    const users = await db.user.findMany({
+      where: {
+        id: {
+          in: userIds,
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        image: true,
+        student: {
+          select: {
+            enrollments: {
+              where: {
+                status: "ACTIVE",
+              },
+              include: {
+                class: true,
+                section: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Map users to participants
+    const participantsWithUser = participants.map((participant) => {
+      const user = users.find((u) => u.id === participant.userId);
+      return {
+        ...participant,
+        user: user || null,
+      };
+    });
+
+    return { success: true, data: participantsWithUser };
   } catch (error) {
     console.error(`Failed to fetch participants for event ${eventId}:`, error);
     return { success: false, error: "Failed to fetch event participants", data: [] };

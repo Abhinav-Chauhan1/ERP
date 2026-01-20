@@ -997,17 +997,27 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
                             <td className="py-3 px-4 align-middle">
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
+                                  <AvatarImage src={participant.user?.image || participant.user?.avatar || ""} />
                                   <AvatarFallback>
-                                    {mockUsers.find(u => u.id === participant.userId)?.name.substring(0, 2) || "U"}
+                                    {participant.user?.firstName?.substring(0, 1) || "U"}
+                                    {participant.user?.lastName?.substring(0, 1) || ""}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <p className="font-medium">
-                                    {mockUsers.find(u => u.id === participant.userId)?.name || "Unknown User"}
+                                    {participant.user
+                                      ? `${participant.user.firstName} ${participant.user.lastName}`
+                                      : "Unknown User"}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {mockUsers.find(u => u.id === participant.userId)?.role || ""}
+                                    {participant.user?.role || ""}
                                   </p>
+                                  {participant.user?.role === "STUDENT" && participant.user.student?.enrollments?.[0] && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {participant.user.student.enrollments[0].class.name} -{" "}
+                                      {participant.user.student.enrollments[0].section.name}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -1024,6 +1034,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
                               />
                             </td>
                             <td className="py-3 px-4 align-middle text-right">
+                              {/* Actions remain same */}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1088,9 +1099,9 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {mockUsers.map((user) => (
+                        {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
-                            {user.name} ({user.role})
+                            {user.name || `${user.firstName} ${user.lastName}`} ({user.role})
                           </SelectItem>
                         ))}
                       </SelectContent>
