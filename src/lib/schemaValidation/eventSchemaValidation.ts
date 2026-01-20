@@ -2,20 +2,20 @@ import { z } from "zod";
 
 // Event status enum that matches Prisma schema
 export const EventStatusEnum = z.enum([
-  "UPCOMING", 
-  "ONGOING", 
-  "COMPLETED", 
-  "CANCELLED", 
+  "UPCOMING",
+  "ONGOING",
+  "COMPLETED",
+  "CANCELLED",
   "POSTPONED"
 ]);
 
 // Event type enum
 export const EventTypeEnum = z.enum([
-  "ACADEMIC", 
-  "CULTURAL", 
-  "SPORTS", 
-  "ADMINISTRATIVE", 
-  "HOLIDAY", 
+  "ACADEMIC",
+  "CULTURAL",
+  "SPORTS",
+  "ADMINISTRATIVE",
+  "HOLIDAY",
   "OTHER"
 ]);
 
@@ -33,7 +33,7 @@ export const eventSchema = z.object({
   maxParticipants: z.number().int().positive().optional(),
   registrationDeadline: z.coerce.date().optional(),
   isPublic: z.boolean().default(true),
-  thumbnail: z.string().url().optional(),
+  thumbnail: z.string().url().or(z.literal('')).optional(),
 });
 
 // Add a refinement for date validation
