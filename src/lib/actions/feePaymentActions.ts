@@ -672,6 +672,19 @@ export async function getPaymentReceiptHTML(paymentId: string) {
       feeItems,
     };
 
+    // Fetch school info from SystemSettings
+    const systemSettings = await db.systemSettings.findFirst();
+    if (systemSettings) {
+      (receiptData as any).school = {
+        name: systemSettings.schoolName,
+        address: systemSettings.schoolAddress,
+        phone: systemSettings.schoolPhone,
+        email: systemSettings.schoolEmail,
+        website: systemSettings.schoolWebsite,
+        logo: systemSettings.schoolLogo
+      };
+    }
+
     // Generate the HTML receipt
     const html = getReceiptHTML(receiptData);
 

@@ -440,7 +440,7 @@ function formatIndianCurrency(num: number): string {
 }
 
 /**
- * Generate HTML template for payment receipt (Indian Format)
+ * Generate HTML template for payment receipt (Indian Format - Compact Single Page)
  */
 function generateReceiptHTML(data: ReceiptData): string {
   const {
@@ -450,7 +450,14 @@ function generateReceiptHTML(data: ReceiptData): string {
     payment,
     feeStructure,
     feeItems,
+    school,
   } = data;
+
+  // School information with fallbacks
+  const schoolName = school?.name || 'School Management System';
+  const schoolAddress = school?.address || '';
+  const schoolPhone = school?.phone || '';
+  const schoolEmail = school?.email || '';
 
   const totalAmount = feeItems.reduce((sum, item) => sum + item.amount, 0);
   const amountInWords = numberToIndianWords(Math.floor(payment.paidAmount)) + ' Rupees Only';
@@ -459,6 +466,12 @@ function generateReceiptHTML(data: ReceiptData): string {
   const currentDate = format(new Date(), "dd/MM/yyyy");
   const currentTime = format(new Date(), "hh:mm a");
 
+  // Build contact line
+  const contactParts = [];
+  if (schoolPhone) contactParts.push(`Ph: ${schoolPhone}`);
+  if (schoolEmail) contactParts.push(`Email: ${schoolEmail}`);
+  const contactLine = contactParts.join(' | ');
+
   return `
     <!DOCTYPE html>
     <html>
@@ -466,564 +479,131 @@ function generateReceiptHTML(data: ReceiptData): string {
       <meta charset="UTF-8">
       <title>Fee Receipt - ${receiptNumber}</title>
       <style>
-        @page {
-          size: A4;
-          margin: 10mm;
-        }
-        
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Arial', 'Noto Sans Devanagari', sans-serif;
-          font-size: 12px;
-          color: #1a1a1a;
-          background: #fff;
-          line-height: 1.4;
-        }
-        
-        .receipt-wrapper {
-          max-width: 210mm;
-          margin: 0 auto;
-          padding: 15px;
-        }
-        
-        .receipt-container {
-          border: 3px double #1e3a5f;
-          padding: 20px;
-          background: #fff;
-          position: relative;
-        }
-        
-        /* Watermark */
-        .watermark {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-30deg);
-          font-size: 80px;
-          color: rgba(30, 58, 95, 0.05);
-          font-weight: bold;
-          pointer-events: none;
-          white-space: nowrap;
-        }
-        
-        /* Header Section */
-        .header {
-          text-align: center;
-          border-bottom: 2px solid #1e3a5f;
-          padding-bottom: 15px;
-          margin-bottom: 15px;
-        }
-        
-        .school-logo-section {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 15px;
-          margin-bottom: 8px;
-        }
-        
-        .school-emblem {
-          width: 60px;
-          height: 60px;
-          border: 2px solid #1e3a5f;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          color: #1e3a5f;
-          font-weight: bold;
-        }
-        
-        .school-info {
-          text-align: center;
-        }
-        
-        .school-name-hindi {
-          font-size: 16px;
-          color: #1e3a5f;
-          font-weight: 600;
-          margin-bottom: 2px;
-        }
-        
-        .school-name-english {
-          font-size: 22px;
-          font-weight: bold;
-          color: #1e3a5f;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-        
-        .school-address {
-          font-size: 11px;
-          color: #4a5568;
-          margin-top: 5px;
-        }
-        
-        .school-contact {
-          font-size: 10px;
-          color: #4a5568;
-          margin-top: 3px;
-        }
-        
-        .receipt-title-section {
-          background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
-          color: white;
-          padding: 8px 20px;
-          margin: 10px auto;
-          border-radius: 4px;
-          display: inline-block;
-        }
-        
-        .receipt-title {
-          font-size: 16px;
-          font-weight: bold;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-        }
-        
-        .receipt-title-hindi {
-          font-size: 12px;
-          margin-top: 2px;
-        }
-        
-        /* Receipt Meta Info */
-        .receipt-meta {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 15px;
-          padding: 10px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-        }
-        
-        .meta-item {
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .meta-label {
-          font-size: 10px;
-          color: #64748b;
-          text-transform: uppercase;
-          font-weight: 600;
-        }
-        
-        .meta-value {
-          font-size: 13px;
-          font-weight: bold;
-          color: #1e3a5f;
-        }
-        
-        /* Student Details Section */
-        .section-title {
-          background: #1e3a5f;
-          color: white;
-          padding: 6px 12px;
-          font-size: 11px;
-          font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 10px;
-        }
-        
-        .student-details {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-bottom: 15px;
-          padding: 12px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-        }
-        
-        .detail-row {
-          display: flex;
-          gap: 8px;
-        }
-        
-        .detail-label {
-          font-weight: 600;
-          color: #64748b;
-          min-width: 100px;
-          font-size: 11px;
-        }
-        
-        .detail-value {
-          color: #1a1a1a;
-          font-weight: 500;
-          font-size: 12px;
-        }
-        
-        /* Fee Details Table */
-        .fee-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 15px;
-        }
-        
-        .fee-table th {
-          background: #1e3a5f;
-          color: white;
-          padding: 10px 12px;
-          text-align: left;
-          font-size: 11px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .fee-table th:first-child {
-          width: 50px;
-          text-align: center;
-        }
-        
-        .fee-table th:last-child {
-          text-align: right;
-          width: 120px;
-        }
-        
-        .fee-table td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #e2e8f0;
-          font-size: 12px;
-        }
-        
-        .fee-table td:first-child {
-          text-align: center;
-          font-weight: 500;
-        }
-        
-        .fee-table td:last-child {
-          text-align: right;
-          font-weight: 600;
-          font-family: 'Courier New', monospace;
-        }
-        
-        .fee-table tr:nth-child(even) {
-          background: #f8fafc;
-        }
-        
-        .fee-table tr:hover {
-          background: #eef2ff;
-        }
-        
-        /* Totals Section */
-        .totals-section {
-          border: 2px solid #1e3a5f;
-          border-radius: 4px;
-          margin-bottom: 15px;
-          overflow: hidden;
-        }
-        
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 10px 15px;
-          border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .total-row:last-child {
-          border-bottom: none;
-        }
-        
-        .total-label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 12px;
-        }
-        
-        .total-value {
-          font-weight: bold;
-          font-family: 'Courier New', monospace;
-          font-size: 13px;
-          color: #1e3a5f;
-        }
-        
-        .grand-total-row {
-          background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
-          color: white;
-        }
-        
-        .grand-total-row .total-label,
-        .grand-total-row .total-value {
-          color: white;
-          font-size: 14px;
-        }
-        
-        /* Amount in Words */
-        .amount-words {
-          background: #fef3c7;
-          border: 1px solid #fbbf24;
-          padding: 10px 15px;
-          margin-bottom: 15px;
-          border-radius: 4px;
-        }
-        
-        .amount-words-label {
-          font-size: 10px;
-          color: #92400e;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-        
-        .amount-words-value {
-          font-size: 12px;
-          font-weight: bold;
-          color: #78350f;
-          font-style: italic;
-        }
-        
-        /* Payment Mode Section */
-        .payment-mode-section {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 15px;
-          margin-bottom: 20px;
-        }
-        
-        .payment-box {
-          padding: 12px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-        }
-        
-        .payment-box-title {
-          font-size: 10px;
-          color: #64748b;
-          font-weight: 600;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-          padding-bottom: 5px;
-          border-bottom: 1px dashed #cbd5e1;
-        }
-        
-        /* Signature Section */
-        .signature-section {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px dashed #cbd5e1;
-        }
-        
-        .signature-box {
-          text-align: center;
-          min-width: 150px;
-        }
-        
-        .signature-line {
-          margin-top: 40px;
-          border-top: 1px solid #1a1a1a;
-          padding-top: 5px;
-        }
-        
-        .signature-title {
-          font-size: 11px;
-          font-weight: 600;
-          color: #374151;
-        }
-        
-        .signature-subtitle {
-          font-size: 9px;
-          color: #64748b;
-        }
-        
-        .stamp-box {
-          width: 90px;
-          height: 90px;
-          border: 2px dashed #cbd5e1;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          font-size: 9px;
-          color: #94a3b8;
-        }
-        
-        /* Footer */
-        .receipt-footer {
-          margin-top: 20px;
-          padding-top: 15px;
-          border-top: 2px solid #1e3a5f;
-          text-align: center;
-        }
-        
-        .footer-note {
-          font-size: 10px;
-          color: #64748b;
-          margin-bottom: 5px;
-        }
-        
-        .footer-note strong {
-          color: #1e3a5f;
-        }
-        
-        .print-info {
-          font-size: 9px;
-          color: #94a3b8;
-          margin-top: 10px;
-        }
-        
-        /* Terms Section */
-        .terms-section {
-          margin-top: 15px;
-          padding: 10px;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          border-radius: 4px;
-        }
-        
-        .terms-title {
-          font-size: 10px;
-          font-weight: bold;
-          color: #991b1b;
-          margin-bottom: 5px;
-        }
-        
-        .terms-list {
-          font-size: 9px;
-          color: #7f1d1d;
-          padding-left: 15px;
-        }
-        
-        .terms-list li {
-          margin-bottom: 2px;
-        }
-        
-        /* Status Badge */
-        .status-badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 10px;
-          font-weight: bold;
-          text-transform: uppercase;
-        }
-        
-        .status-completed {
-          background: #d1fae5;
-          color: #065f46;
-          border: 1px solid #10b981;
-        }
-        
-        .status-pending {
-          background: #fef3c7;
-          color: #92400e;
-          border: 1px solid #f59e0b;
-        }
-        
-        .status-partial {
-          background: #dbeafe;
-          color: #1e40af;
-          border: 1px solid #3b82f6;
-        }
-        
-        /* Print Styles */
-        @media print {
-          body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          
-          .receipt-wrapper {
-            padding: 0;
-          }
-          
-          .no-print {
-            display: none !important;
-          }
-        }
+        @page { size: A4; margin: 8mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 9px; color: #1a1a1a; background: #fff; line-height: 1.2; }
+        .receipt-wrapper { max-width: 210mm; margin: 0 auto; padding: 5px; }
+        .receipt-container { border: 2px solid #1e3a5f; padding: 10px; background: #fff; position: relative; }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 50px; color: rgba(30,58,95,0.04); font-weight: bold; pointer-events: none; }
+        .header { text-align: center; border-bottom: 1px solid #1e3a5f; padding-bottom: 6px; margin-bottom: 6px; }
+        .school-name { font-size: 14px; font-weight: bold; color: #1e3a5f; text-transform: uppercase; }
+        .school-address { font-size: 8px; color: #4a5568; margin-top: 1px; }
+        .school-contact { font-size: 7px; color: #64748b; margin-top: 1px; }
+        .receipt-title-box { background: #1e3a5f; color: white; padding: 3px 12px; margin: 4px auto 0; display: inline-block; border-radius: 2px; }
+        .receipt-title { font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+        .receipt-meta { display: flex; justify-content: space-between; margin-bottom: 6px; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 2px; }
+        .meta-item { display: flex; flex-direction: column; }
+        .meta-label { font-size: 6px; color: #64748b; text-transform: uppercase; font-weight: 600; }
+        .meta-value { font-size: 8px; font-weight: bold; color: #1e3a5f; }
+        .section-title { background: #1e3a5f; color: white; padding: 2px 6px; font-size: 7px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+        .student-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px 8px; margin-bottom: 6px; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 2px; }
+        .detail-row { display: flex; gap: 3px; }
+        .detail-label { font-weight: 600; color: #64748b; font-size: 7px; min-width: 55px; }
+        .detail-value { color: #1a1a1a; font-weight: 500; font-size: 8px; }
+        .fee-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        .fee-table th { background: #1e3a5f; color: white; padding: 3px 6px; text-align: left; font-size: 7px; font-weight: 600; }
+        .fee-table th:first-child { width: 25px; text-align: center; }
+        .fee-table th:last-child { text-align: right; width: 80px; }
+        .fee-table td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; font-size: 8px; }
+        .fee-table td:first-child { text-align: center; }
+        .fee-table td:last-child { text-align: right; font-weight: 600; font-family: 'Courier New', monospace; }
+        .fee-table tr:nth-child(even) { background: #f8fafc; }
+        .totals-section { border: 1px solid #1e3a5f; border-radius: 2px; margin-bottom: 6px; overflow: hidden; }
+        .total-row { display: flex; justify-content: space-between; padding: 3px 8px; border-bottom: 1px solid #e2e8f0; }
+        .total-row:last-child { border-bottom: none; }
+        .total-label { font-weight: 600; color: #374151; font-size: 8px; }
+        .total-value { font-weight: bold; font-family: 'Courier New', monospace; font-size: 9px; color: #1e3a5f; }
+        .grand-total-row { background: #1e3a5f; }
+        .grand-total-row .total-label, .grand-total-row .total-value { color: white; font-size: 9px; }
+        .amount-words { background: #fef3c7; border: 1px solid #fbbf24; padding: 3px 6px; margin-bottom: 6px; border-radius: 2px; }
+        .amount-words-label { font-size: 6px; color: #92400e; font-weight: 600; }
+        .amount-words-value { font-size: 8px; font-weight: bold; color: #78350f; font-style: italic; }
+        .payment-mode-section { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+        .payment-box { padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 2px; }
+        .payment-box-title { font-size: 6px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1px; }
+        .signature-section { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #cbd5e1; }
+        .signature-box { text-align: center; min-width: 100px; }
+        .signature-line { margin-top: 20px; border-top: 1px solid #1a1a1a; padding-top: 2px; }
+        .signature-title { font-size: 7px; font-weight: 600; color: #374151; }
+        .stamp-box { width: 50px; height: 50px; border: 1px dashed #cbd5e1; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 6px; color: #94a3b8; }
+        .receipt-footer { margin-top: 6px; padding-top: 4px; border-top: 1px solid #1e3a5f; text-align: center; }
+        .footer-note { font-size: 7px; color: #64748b; }
+        .footer-note strong { color: #1e3a5f; }
+        .print-info { font-size: 6px; color: #94a3b8; margin-top: 2px; }
+        .terms-section { margin-top: 4px; padding: 3px 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 2px; }
+        .terms-title { font-size: 6px; font-weight: bold; color: #991b1b; }
+        .terms-list { font-size: 6px; color: #7f1d1d; padding-left: 10px; margin: 0; }
+        .terms-list li { margin-bottom: 0; }
+        .status-badge { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 7px; font-weight: bold; text-transform: uppercase; }
+        .status-completed { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+        .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+        .status-partial { background: #dbeafe; color: #1e40af; border: 1px solid #3b82f6; }
       </style>
     </head>
     <body>
       <div class="receipt-wrapper">
         <div class="receipt-container">
-          <!-- Watermark -->
           <div class="watermark">${payment.status === 'COMPLETED' ? 'PAID' : 'PENDING'}</div>
           
           <!-- Header -->
           <div class="header">
-            <div class="school-logo-section">
-              <div class="school-emblem">🏫</div>
-              <div class="school-info">
-                <div class="school-name-hindi">विद्यालय प्रबंधन प्रणाली</div>
-                <div class="school-name-english">School Management System</div>
-                <div class="school-address">123 Education Street, Knowledge City - 123456</div>
-                <div class="school-contact">Phone: +91-XXXX-XXXXXX | Email: info@school.edu.in | GSTIN: XXXXXXXXXXXX</div>
-              </div>
-            </div>
-            <div class="receipt-title-section">
-              <div class="receipt-title">Fee Receipt / फीस रसीद</div>
+            <div class="school-name">${schoolName}</div>
+            ${schoolAddress ? `<div class="school-address">${schoolAddress}</div>` : ''}
+            ${contactLine ? `<div class="school-contact">${contactLine}</div>` : ''}
+            <div class="receipt-title-box">
+              <div class="receipt-title">FEE RECEIPT / फीस रसीद</div>
             </div>
           </div>
           
-          <!-- Receipt Meta Information -->
+          <!-- Meta Info -->
           <div class="receipt-meta">
             <div class="meta-item">
-              <span class="meta-label">Receipt No. / रसीद संख्या</span>
+              <span class="meta-label">Receipt No.</span>
               <span class="meta-value">${receiptNumber || 'N/A'}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Date / दिनांक</span>
+              <span class="meta-label">Date</span>
               <span class="meta-value">${formattedDate}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Time / समय</span>
+              <span class="meta-label">Time</span>
               <span class="meta-value">${formattedTime}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">Academic Year / शैक्षणिक वर्ष</span>
+              <span class="meta-label">Academic Year</span>
               <span class="meta-value">${feeStructure.academicYear}</span>
             </div>
           </div>
           
           <!-- Student Details -->
-          <div class="section-title">Student Details / विद्यार्थी विवरण</div>
+          <div class="section-title">Student Details</div>
           <div class="student-details">
             <div class="detail-row">
-              <span class="detail-label">Name / नाम:</span>
+              <span class="detail-label">Name:</span>
               <span class="detail-value">${student.name}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Admission No.:</span>
+              <span class="detail-label">Adm. No.:</span>
               <span class="detail-value">${student.admissionId}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Class / कक्षा:</span>
-              <span class="detail-value">${student.class}</span>
+              <span class="detail-label">Class:</span>
+              <span class="detail-value">${student.class} - ${student.section}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Section / अनुभाग:</span>
-              <span class="detail-value">${student.section}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Fee Structure:</span>
+              <span class="detail-label">Fee Type:</span>
               <span class="detail-value">${feeStructure.name}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Email / ईमेल:</span>
-              <span class="detail-value">${student.email}</span>
             </div>
           </div>
           
-          <!-- Fee Details Table -->
-          <div class="section-title">Fee Particulars / शुल्क विवरण</div>
+          <!-- Fee Table -->
+          <div class="section-title">Fee Particulars</div>
           <table class="fee-table">
             <thead>
               <tr>
                 <th>Sr.</th>
-                <th>Particulars / विवरण</th>
-                <th>Amount / राशि (₹)</th>
+                <th>Particulars</th>
+                <th>Amount (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -1037,96 +617,79 @@ function generateReceiptHTML(data: ReceiptData): string {
             </tbody>
           </table>
           
-          <!-- Totals Section -->
+          <!-- Totals -->
           <div class="totals-section">
             <div class="total-row">
-              <span class="total-label">Gross Amount / कुल राशि</span>
+              <span class="total-label">Gross Amount</span>
               <span class="total-value">${formatIndianCurrency(totalAmount)}</span>
             </div>
             <div class="total-row">
-              <span class="total-label">Amount Paid / भुगतान राशि</span>
+              <span class="total-label">Amount Paid</span>
               <span class="total-value">${formatIndianCurrency(payment.paidAmount)}</span>
             </div>
             ${payment.balance > 0 ? `
               <div class="total-row">
-                <span class="total-label">Balance Due / शेष राशि</span>
+                <span class="total-label">Balance Due</span>
                 <span class="total-value" style="color: #dc2626;">${formatIndianCurrency(payment.balance)}</span>
               </div>
             ` : ''}
             <div class="total-row grand-total-row">
-              <span class="total-label">Net Amount Received / प्राप्त राशि</span>
+              <span class="total-label">Net Amount Received</span>
               <span class="total-value">${formatIndianCurrency(payment.paidAmount)}</span>
             </div>
           </div>
           
-          <!-- Amount in Words -->
+          <!-- Amount Words -->
           <div class="amount-words">
-            <div class="amount-words-label">Amount in Words / शब्दों में राशि:</div>
-            <div class="amount-words-value">${amountInWords}</div>
+            <span class="amount-words-label">In Words: </span>
+            <span class="amount-words-value">${amountInWords}</span>
           </div>
           
-          <!-- Payment Mode Section -->
+          <!-- Payment Mode -->
           <div class="payment-mode-section">
             <div class="payment-box">
-              <div class="payment-box-title">Payment Mode / भुगतान माध्यम</div>
+              <div class="payment-box-title">Payment Mode</div>
               <div class="detail-row">
                 <span class="detail-label">Mode:</span>
                 <span class="detail-value">${payment.paymentMethod.replace(/_/g, ' ')}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Transaction ID:</span>
+                <span class="detail-label">Txn ID:</span>
                 <span class="detail-value">${payment.transactionId || 'N/A'}</span>
               </div>
             </div>
             <div class="payment-box">
-              <div class="payment-box-title">Payment Status / भुगतान स्थिति</div>
-              <div style="text-align: center; padding-top: 10px;">
+              <div class="payment-box-title">Status</div>
+              <div style="text-align: center; padding-top: 4px;">
                 <span class="status-badge status-${payment.status.toLowerCase()}">${payment.status}</span>
               </div>
             </div>
           </div>
           
-          <!-- Signature Section -->
+          <!-- Signatures -->
           <div class="signature-section">
             <div class="signature-box">
               <div class="signature-line">
                 <div class="signature-title">Parent/Guardian</div>
-                <div class="signature-subtitle">अभिभावक हस्ताक्षर</div>
               </div>
             </div>
-            <div class="stamp-box">
-              School<br/>Seal/Stamp<br/>मुहर
-            </div>
+            <div class="stamp-box">Seal</div>
             <div class="signature-box">
               <div class="signature-line">
-                <div class="signature-title">Cashier/Accountant</div>
-                <div class="signature-subtitle">कैशियर/लेखाकार</div>
+                <div class="signature-title">Cashier</div>
               </div>
             </div>
           </div>
           
-          <!-- Terms & Conditions -->
+          <!-- Terms -->
           <div class="terms-section">
-            <div class="terms-title">Terms & Conditions / नियम एवं शर्तें:</div>
-            <ol class="terms-list">
-              <li>Fees once paid will not be refunded under any circumstances.</li>
-              <li>Please keep this receipt safe for future reference.</li>
-              <li>This is a computer-generated receipt and does not require a physical signature.</li>
-              <li>For any discrepancy, please contact the accounts department within 7 days.</li>
-            </ol>
+            <span class="terms-title">Note:</span> Fees once paid are non-refundable. This is a computer-generated receipt.
           </div>
           
           <!-- Footer -->
           <div class="receipt-footer">
-            <div class="footer-note">
-              <strong>Thank you for your payment! / भुगतान के लिए धन्यवाद!</strong>
-            </div>
-            <div class="footer-note">
-              For queries, contact: accounts@school.edu.in | Helpline: 1800-XXX-XXXX
-            </div>
-            <div class="print-info">
-              Receipt generated on: ${currentDate} at ${currentTime} | This is a computer-generated document
-            </div>
+            <div class="footer-note"><strong>Thank you!</strong></div>
+            <div class="print-info">Generated: ${currentDate} ${currentTime}</div>
           </div>
         </div>
       </div>

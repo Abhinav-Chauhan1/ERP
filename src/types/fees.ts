@@ -84,6 +84,14 @@ export interface ReceiptData {
     name: string;
     amount: number;
   }>;
+  school?: {
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+    logo?: string | null;
+  };
 }
 
 export interface ActionResponse<T = any> {
