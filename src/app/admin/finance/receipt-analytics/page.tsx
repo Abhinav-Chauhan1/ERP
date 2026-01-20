@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   Clock,
   TrendingUp,
-  RoundingDown,
+  TrendingDown,
   Calendar,
   BarChart3,
   CheckCircle,
