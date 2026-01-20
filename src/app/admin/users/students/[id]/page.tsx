@@ -41,6 +41,9 @@ import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import { studentEnrollmentSchema, StudentEnrollmentFormValues } from "@/lib/schemaValidation/classesSchemaValidation";
 import { enrollStudentInClass } from "@/lib/actions/classesActions";
+import { getFeePayments, getPaymentReceiptHTML, getConsolidatedReceiptHTML } from "@/lib/actions/feePaymentActions";
+import { PaymentsTable } from "@/components/admin/finance-tables";
+import { Download } from "lucide-react";
 
 // Add Parent Dialog Component
 function AddParentDialog({
@@ -271,7 +274,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [viewPaymentOpen, setViewPaymentOpen] = useState(false);
 
   const enrollmentForm = useForm<StudentEnrollmentFormValues>({
     resolver: zodResolver(studentEnrollmentSchema),
@@ -374,6 +382,84 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [watchClassId, fetchSections, enrollmentForm]);
 
+  const fetchPayments = useCallback(async () => {
+    setLoadingPayments(true);
+    try {
+      const result = await getFeePayments({ studentId: id });
+
+      if (Array.isArray(result)) {
+        setPayments(result);
+      } else if (result && typeof result === 'object' && 'data' in result && Array.isArray((result as any).data)) {
+        setPayments((result as any).data);
+      } else {
+        setPayments([]);
+      }
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      toast.error("Failed to load payments");
+    } finally {
+      setLoadingPayments(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
+
+  async function handleDownloadReceipt(paymentId: string) {
+    try {
+      const result = await getPaymentReceiptHTML(paymentId);
+
+      if (result.success && result.data?.html) {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(result.data.html);
+          printWindow.document.close();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          toast.error("Please allow popups to download receipt");
+        }
+        toast.success("Receipt generated successfully");
+      } else {
+        toast.error(result.error || "Failed to generate receipt");
+      }
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
+    }
+  }
+
+  async function handleConsolidatedReceipt(studentId: string, paymentDate: Date) {
+    try {
+      const result = await getConsolidatedReceiptHTML(studentId, paymentDate);
+
+      if (result.success && result.data?.html) {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(result.data.html);
+          printWindow.document.close();
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          toast.error("Please allow popups to download receipt");
+        }
+        toast.success(`Consolidated receipt generated (${result.data.paymentCount} payments)`);
+      } else {
+        toast.error(result.error || "Failed to generate consolidated receipt");
+      }
+    } catch (error) {
+      console.error("Error generating consolidated receipt:", error);
+      toast.error("Failed to generate consolidated receipt");
+    }
+  }
+
+
+
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -437,6 +523,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           <TabsTrigger value="personal">Personal Details</TabsTrigger>
           <TabsTrigger value="family">Family Details</TabsTrigger>
           <TabsTrigger value="academic">Academic</TabsTrigger>
+          <TabsTrigger value="academic">Academic</TabsTrigger>
+          <TabsTrigger value="fees">Fees</TabsTrigger>
           <TabsTrigger value="health">Health</TabsTrigger>
         </TabsList>
 
@@ -751,6 +839,34 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           )}
         </TabsContent>
 
+        {/* Fees Tab */}
+        <TabsContent value="fees" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Fee Payment History</CardTitle>
+              <CardDescription>View and download receipts for all fee payments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingPayments ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <PaymentsTable
+                  payments={payments}
+                  onView={(payment) => {
+                    setSelectedPayment(payment);
+                    setViewPaymentOpen(true);
+                  }}
+                  onEdit={() => { }} // Read-only view
+                  onDelete={() => { }} // Read-only view
+                  emptyMessage="No payment records found for this student"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Academic Tab */}
         <TabsContent value="academic" className="space-y-4">
           <Card>
@@ -999,6 +1115,64 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={viewPaymentOpen} onOpenChange={setViewPaymentOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+          </DialogHeader>
+          {selectedPayment && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Receipt Number</h4>
+                  <p className="font-mono">{selectedPayment.receiptNumber || "Pending"}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Date</h4>
+                  <p>{formatDate(selectedPayment.paymentDate)}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Amount</h4>
+                  <p className="font-semibold text-lg">₹{selectedPayment.paidAmount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Status</h4>
+                  <Badge className={selectedPayment.status === "COMPLETED" ? "bg-green-100 text-green-800" : ""}>
+                    {selectedPayment.status}
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Fee Structure</h4>
+                  <p>{selectedPayment.feeStructure?.name}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Payment Method</h4>
+                  <p>{selectedPayment.paymentMethod}</p>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="secondary"
+                  onClick={() => handleConsolidatedReceipt(selectedPayment.studentId, new Date(selectedPayment.paymentDate))}
+                  disabled={selectedPayment.status !== "COMPLETED"}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  All Day Receipts
+                </Button>
+                <Button
+                  onClick={() => handleDownloadReceipt(selectedPayment.id)}
+                  disabled={selectedPayment.status !== "COMPLETED"}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  This Receipt
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
