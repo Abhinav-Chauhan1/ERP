@@ -11,6 +11,7 @@ import {
 } from "@/lib/schemaValidation/eventSchemaValidation";
 import { revalidatePath } from "next/cache";
 import { EventStatus, EventCategory } from "@prisma/client";
+import { createNotification } from "@/lib/actions/notificationActions";
 
 export async function getEvents(filter?: EventFilterData) {
   try {
@@ -130,6 +131,34 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
         isPublic: validatedData.isPublic,
         thumbnail: validatedData.thumbnail,
       },
+    });
+
+    // Create notifications for all user types
+    const notificationData = {
+      title: `New Event: ${validatedData.title}`,
+      message: `A new event "${validatedData.title}" has been scheduled. Check the events page for details.`,
+      type: "INFO",
+    };
+
+    // Notify Students
+    await createNotification({
+      ...notificationData,
+      recipientRole: "STUDENT",
+      link: "/student/events",
+    });
+
+    // Notify Parents
+    await createNotification({
+      ...notificationData,
+      recipientRole: "PARENT",
+      link: "/parent/events",
+    });
+
+    // Notify Teachers
+    await createNotification({
+      ...notificationData,
+      recipientRole: "TEACHER",
+      link: "/teacher/events",
     });
 
     revalidatePath("/admin/events");
