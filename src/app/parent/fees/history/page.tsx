@@ -154,10 +154,20 @@ export default function PaymentHistoryPage() {
         childId: selectedChildId
       });
 
-      if (result.success) {
-        toast.success("Receipt downloaded successfully");
-        // In a real implementation, this would trigger a PDF download
-        console.log("Receipt data:", result.data);
+      if (result.success && result.data?.html) {
+        // Open a new window with the receipt HTML for printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(result.data.html);
+          printWindow.document.close();
+          // Trigger print dialog after a short delay to ensure content is loaded
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          toast.error("Please allow popups to download receipt");
+        }
+        toast.success("Receipt generated successfully");
       } else {
         toast.error(result.message || "Failed to download receipt");
       }

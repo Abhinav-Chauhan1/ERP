@@ -20,31 +20,32 @@ import { sanitizeText, sanitizeAlphanumeric } from "@/lib/utils/input-sanitizati
 import { verifyCsrfToken } from "@/lib/utils/csrf";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { revalidatePath } from "next/cache";
+import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 
 /**
  * Helper function to get current parent and verify authentication
  */
 async function getCurrentParent() {
   const clerkUser = await currentUser();
-  
+
   if (!clerkUser) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: { id: clerkUser.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     return null;
   }
-  
+
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
     }
   });
-  
+
   return parent;
 }
 
@@ -93,7 +94,7 @@ async function getFeeAmountForClass(feeTypeId: string, classId: string | undefin
   const feeType = await db.feeType.findUnique({
     where: { id: feeTypeId }
   });
-  
+
   return feeType?.amount || 0;
 }
 
@@ -105,19 +106,19 @@ export async function getFeeOverview(input: FeeOverviewInput) {
   try {
     // Validate input
     const validated = feeOverviewSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student with current enrollment
     const student = await db.student.findUnique({
       where: { id: validated.childId },
@@ -142,15 +143,15 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         }
       }
     });
-    
+
     if (!student || !student.enrollments[0]) {
       return { success: false, message: "Student enrollment not found" };
     }
-    
+
     const currentEnrollment = student.enrollments[0];
     const academicYearId = currentEnrollment.class.academicYearId;
     const classId = currentEnrollment.class.id;
-    
+
     // Get active fee structure for the student's class using FeeStructureClass junction table
     // This supports the new class-based system while maintaining backward compatibility
     // Requirements: 12.1, 12.4
@@ -198,7 +199,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         }
       }
     });
-    
+
     if (!feeStructure) {
       return {
         success: true,
@@ -219,7 +220,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         }
       };
     }
-    
+
     // Get all payments for this student and fee structure
     const payments = await db.feePayment.findMany({
       where: {
@@ -227,7 +228,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         feeStructureId: feeStructure.id
       }
     });
-    
+
     // Calculate totals using class-specific amounts
     // Requirements: 12.2, 12.3
     let totalFees = 0;
@@ -235,24 +236,24 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
       totalFees += correctAmount;
     }
-    
+
     const paidAmount = payments
       .filter(p => p.status === PaymentStatus.COMPLETED)
       .reduce((sum, p) => sum + p.paidAmount, 0);
     const pendingAmount = totalFees - paidAmount;
-    
+
     // Calculate fee items with status using class-specific amounts
     // Requirements: 12.2, 12.3
     const now = new Date();
     const feeItems = await Promise.all(
       feeStructure.items.map(async (item) => {
         const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
-        const itemPayments = payments.filter(p => 
+        const itemPayments = payments.filter(p =>
           p.status === PaymentStatus.COMPLETED
         );
         const itemPaidAmount = itemPayments.reduce((sum, p) => sum + p.paidAmount, 0);
         const itemBalance = correctAmount - itemPaidAmount;
-        
+
         let status: "PAID" | "PENDING" | "OVERDUE" | "PARTIAL";
         if (itemBalance <= 0) {
           status = "PAID";
@@ -263,7 +264,7 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         } else {
           status = "PENDING";
         }
-        
+
         return {
           id: item.id,
           name: item.feeType.name,
@@ -275,19 +276,19 @@ export async function getFeeOverview(input: FeeOverviewInput) {
         };
       })
     );
-    
+
     // Calculate overdue amount
     const overdueAmount = feeItems
       .filter(item => item.status === "OVERDUE")
       .reduce((sum, item) => sum + item.balance, 0);
-    
+
     // Find next due date
     const upcomingDueDates = feeStructure.items
       .filter(item => item.dueDate && item.dueDate >= now)
       .map(item => item.dueDate!)
       .sort((a, b) => a.getTime() - b.getTime());
     const nextDueDate = upcomingDueDates[0] || null;
-    
+
     return {
       success: true,
       data: {
@@ -321,19 +322,19 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
   try {
     // Validate input
     const validated = paymentHistoryFilterSchema.parse(filters);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student's class for class-specific amount calculations
     const student = await db.student.findUnique({
       where: { id: validated.childId },
@@ -348,22 +349,22 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
         }
       }
     });
-    
+
     const classId = student?.enrollments[0]?.class?.id;
-    
+
     // Build where clause
     const where: any = {
       studentId: validated.childId
     };
-    
+
     if (validated.status) {
       where.status = validated.status;
     }
-    
+
     if (validated.paymentMethod) {
       where.paymentMethod = validated.paymentMethod;
     }
-    
+
     if (validated.dateFrom || validated.dateTo) {
       where.paymentDate = {};
       if (validated.dateFrom) {
@@ -373,10 +374,10 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
         where.paymentDate.lte = validated.dateTo;
       }
     }
-    
+
     // Get total count
     const totalCount = await db.feePayment.count({ where });
-    
+
     // Get paginated payments
     const skip = (validated.page - 1) * validated.limit;
     const payments = await db.feePayment.findMany({
@@ -394,7 +395,7 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
       skip,
       take: validated.limit
     });
-    
+
     // Format payment records with class-specific amounts reflected
     // Requirements: 12.2, 12.3
     const paymentRecords = payments.map(payment => ({
@@ -411,7 +412,7 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
       feeStructureName: payment.feeStructure.name,
       academicYear: payment.feeStructure.academicYear.name
     }));
-    
+
     return {
       success: true,
       data: {
@@ -443,29 +444,29 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
         return { success: false, message: "Invalid CSRF token" };
       }
     }
-    
+
     // Validate input
     const validated = createPaymentSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Rate limiting for payment operations
     const rateLimitKey = `payment:${parent.id}`;
     const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
     if (!rateLimitResult) {
       return { success: false, message: "Too many payment requests. Please try again later." };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student's class for class-specific amount calculations
     // Requirements: 12.2, 12.3
     const student = await db.student.findUnique({
@@ -481,9 +482,9 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
         }
       }
     });
-    
+
     const classId = student?.enrollments[0]?.class?.id;
-    
+
     // Verify fee structure exists and is active
     const feeStructure = await db.feeStructure.findUnique({
       where: { id: validated.feeStructureId },
@@ -495,11 +496,11 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
         }
       }
     });
-    
+
     if (!feeStructure || !feeStructure.isActive) {
       return { success: false, message: "Invalid fee structure" };
     }
-    
+
     // Verify fee type IDs are valid and calculate correct amounts
     // Requirements: 12.2, 12.3
     const validFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
@@ -507,18 +508,18 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
     if (invalidFeeTypes.length > 0) {
       return { success: false, message: "Invalid fee types selected" };
     }
-    
+
     // Generate receipt number
     const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-    
+
     // Sanitize transaction ID and remarks
-    const sanitizedTransactionId = validated.transactionId 
+    const sanitizedTransactionId = validated.transactionId
       ? sanitizeAlphanumeric(validated.transactionId, "-_")
       : null;
-    const sanitizedRemarks = validated.remarks 
+    const sanitizedRemarks = validated.remarks
       ? sanitizeText(validated.remarks)
       : null;
-    
+
     // Create payment record with class-specific amounts
     // Requirements: 12.2, 12.3
     const payment = await db.feePayment.create({
@@ -532,16 +533,16 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
         paymentMethod: validated.paymentMethod,
         transactionId: sanitizedTransactionId,
         receiptNumber,
-        status: validated.paymentMethod === PaymentMethod.ONLINE_PAYMENT 
-          ? PaymentStatus.PENDING 
+        status: validated.paymentMethod === PaymentMethod.ONLINE_PAYMENT
+          ? PaymentStatus.PENDING
           : PaymentStatus.COMPLETED,
         remarks: sanitizedRemarks
       }
     });
-    
+
     // Revalidate fee pages
     revalidatePath("/parent/fees");
-    
+
     return {
       success: true,
       data: {
@@ -570,39 +571,39 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         return { success: false, message: "Invalid CSRF token" };
       }
     }
-    
+
     // Validate input
     const validated = verifyPaymentSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Rate limiting for payment verification
     const rateLimitKey = `payment-verify:${parent.id}`;
     const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
     if (!rateLimitResult) {
       return { success: false, message: "Too many verification requests. Please try again later." };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Note: Actual signature verification would be done by payment gateway utility
     // For now, we'll create/update the payment record
-    
+
     // Check if payment already exists with this transaction ID
     const existingPayment = await db.feePayment.findFirst({
       where: {
         transactionId: validated.paymentId
       }
     });
-    
+
     if (existingPayment) {
       if (existingPayment.status === PaymentStatus.COMPLETED) {
         return {
@@ -615,10 +616,10 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
           message: "Payment already verified"
         };
       }
-      
+
       // Sanitize payment ID
       const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
-      
+
       // Update existing payment
       const updatedPayment = await db.feePayment.update({
         where: { id: existingPayment.id },
@@ -627,10 +628,10 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
           transactionId: sanitizedPaymentId
         }
       });
-      
+
       // Revalidate fee pages
       revalidatePath("/parent/fees");
-      
+
       return {
         success: true,
         data: {
@@ -641,14 +642,14 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         message: "Payment verified successfully"
       };
     }
-    
+
     // Create new payment record
     const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-    
+
     // Sanitize payment and order IDs
     const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
     const sanitizedOrderId = sanitizeAlphanumeric(validated.orderId, "-_");
-    
+
     const payment = await db.feePayment.create({
       data: {
         studentId: validated.childId,
@@ -664,10 +665,10 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         remarks: `Online payment verified. Order ID: ${sanitizedOrderId}`
       }
     });
-    
+
     // Revalidate fee pages
     revalidatePath("/parent/fees");
-    
+
     return {
       success: true,
       data: {
@@ -691,19 +692,19 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
   try {
     // Validate input
     const validated = downloadReceiptSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get payment details
     const payment = await db.feePayment.findUnique({
       where: { id: validated.paymentId },
@@ -740,20 +741,20 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
         }
       }
     });
-    
+
     if (!payment) {
       return { success: false, message: "Payment not found" };
     }
-    
+
     // Verify the payment belongs to the specified child
     if (payment.studentId !== validated.childId) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get class ID for class-specific amounts
     // Requirements: 12.2, 12.3
     const classId = payment.student.enrollments[0]?.class?.id;
-    
+
     // Prepare fee items with class-specific amounts
     const feeItems = await Promise.all(
       payment.feeStructure.items.map(async (item) => {
@@ -764,7 +765,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
         };
       })
     );
-    
+
     // Prepare receipt data
     const receiptData = {
       receiptNumber: payment.receiptNumber,
@@ -790,13 +791,17 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
       },
       feeItems
     };
-    
-    // Note: Actual PDF generation would be done by a PDF utility
-    // For now, return the receipt data
+
+    // Generate the printable HTML receipt
+    const receiptHTML = getReceiptHTML(receiptData);
+
     return {
       success: true,
-      data: receiptData,
-      message: "Receipt data retrieved successfully"
+      data: {
+        ...receiptData,
+        html: receiptHTML
+      },
+      message: "Receipt generated successfully"
     };
   } catch (error) {
     console.error("Error downloading receipt:", error);

@@ -6,6 +6,7 @@ import { PaymentStatus, PaymentMethod, PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 import { sendFeeReminder } from "@/lib/services/communication-service";
+import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -596,6 +597,90 @@ export async function generateReceiptNumber() {
   }
 }
 
+// Get payment receipt HTML for printing
+export async function getPaymentReceiptHTML(paymentId: string) {
+  try {
+    const payment = await db.feePayment.findUnique({
+      where: { id: paymentId },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+            enrollments: {
+              where: { status: "ACTIVE" },
+              orderBy: { enrollDate: "desc" },
+              take: 1,
+              include: {
+                class: true,
+                section: true,
+              },
+            },
+          },
+        },
+        feeStructure: {
+          include: {
+            academicYear: true,
+            items: {
+              include: {
+                feeType: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      return { success: false, error: "Payment not found" };
+    }
+
+    // Prepare fee items
+    const feeItems = payment.feeStructure.items.map((item) => ({
+      name: item.feeType.name,
+      amount: item.amount,
+    }));
+
+    // Prepare receipt data
+    const receiptData = {
+      receiptNumber: payment.receiptNumber,
+      paymentDate: payment.paymentDate,
+      student: {
+        name: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+        email: payment.student.user.email,
+        class: payment.student.enrollments[0]?.class.name || "N/A",
+        section: payment.student.enrollments[0]?.section.name || "N/A",
+        admissionId: payment.student.admissionId,
+      },
+      payment: {
+        amount: payment.amount,
+        paidAmount: payment.paidAmount,
+        balance: payment.balance,
+        paymentMethod: payment.paymentMethod,
+        transactionId: payment.transactionId,
+        status: payment.status,
+      },
+      feeStructure: {
+        name: payment.feeStructure.name,
+        academicYear: payment.feeStructure.academicYear.name,
+      },
+      feeItems,
+    };
+
+    // Generate the HTML receipt
+    const html = getReceiptHTML(receiptData);
+
+    return { success: true, data: { html, receiptData } };
+  } catch (error) {
+    console.error("Error generating receipt HTML:", error);
+    return { success: false, error: "Failed to generate receipt" };
+  }
+}
 
 // Send fee reminders for due and overdue payments
 // Requirements: 7.1, 7.2, 7.4, 7.5

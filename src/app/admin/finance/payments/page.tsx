@@ -60,6 +60,7 @@ import {
   getStudentsForPayment,
   getFeeStructuresForStudent,
   generateReceiptNumber,
+  getPaymentReceiptHTML,
 } from "@/lib/actions/feePaymentActions";
 
 // Import validation schema
@@ -318,6 +319,34 @@ export default function PaymentsPage() {
       );
       form.setValue("amount", totalAmount);
       form.setValue("paidAmount", totalAmount);
+    }
+  }
+
+  // Handle download receipt
+  async function handleDownloadReceipt(paymentId: string) {
+    try {
+      const result = await getPaymentReceiptHTML(paymentId);
+
+      if (result.success && result.data?.html) {
+        // Open a new window with the receipt HTML for printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(result.data.html);
+          printWindow.document.close();
+          // Trigger print dialog after a short delay to ensure content is loaded
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          toast.error("Please allow popups to download receipt");
+        }
+        toast.success("Receipt generated successfully");
+      } else {
+        toast.error(result.error || "Failed to generate receipt");
+      }
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
     }
   }
 
@@ -822,7 +851,10 @@ export default function PaymentsPage() {
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
               Close
             </Button>
-            <Button>
+            <Button
+              onClick={() => selectedPayment && handleDownloadReceipt(selectedPayment.id)}
+              disabled={!selectedPayment?.id || selectedPayment?.status !== "COMPLETED"}
+            >
               <Download className="mr-2 h-4 w-4" />
               Download Receipt
             </Button>
