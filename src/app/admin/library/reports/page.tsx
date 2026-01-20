@@ -13,6 +13,92 @@ export const metadata = {
   description: "View library statistics and reports",
 };
 
+export default function LibraryReportsPage() {
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Link href="/admin/library">
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Library
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Library Reports</h1>
+            <p className="text-muted-foreground mt-1">
+              View library statistics and reports
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Suspense fallback={<SummarySkeleton />}>
+        <ReportSummary />
+      </Suspense>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Most Borrowed Books
+            </CardTitle>
+            <CardDescription>
+              View the most popular books in your library
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/admin/library/reports/most-borrowed">
+                View Report
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Overdue Books
+            </CardTitle>
+            <CardDescription>
+              Track overdue books and calculate fines
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/admin/library/reports/overdue">
+                View Report
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Fine Collections
+            </CardTitle>
+            <CardDescription>
+              View all fines collected from overdue returns
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/admin/library/reports/fines">
+                View Report
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 async function ReportSummary() {
   const result = await getLibraryReportSummary();
 
@@ -132,64 +218,5 @@ function SummarySkeleton() {
         </Card>
       ))}
     </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Most Borrowed Books
-            </CardTitle>
-            <CardDescription>
-              View the most popular books in your library
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/admin/library/reports/most-borrowed">
-                View Report
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Overdue Books
-            </CardTitle>
-            <CardDescription>
-              Track overdue books and calculate fines
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/admin/library/reports/overdue">
-                View Report
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Fine Collections
-            </CardTitle>
-            <CardDescription>
-              View all fines collected from overdue returns
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href="/admin/library/reports/fines">
-                View Report
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div >
   );
 }

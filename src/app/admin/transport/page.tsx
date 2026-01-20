@@ -31,6 +31,21 @@ export default async function TransportPage() {
   const boardingPercentage = totalStudentsOnRoutes > 0
     ? Math.round((totalBoardingPresent / totalStudentsOnRoutes) * 100)
     : 0;
+  const alightingPercentage = totalStudentsOnRoutes > 0
+    ? Math.round((totalAlightingPresent / totalStudentsOnRoutes) * 100)
+    : 0;
+
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Transport Management</h1>
+        <p className="text-muted-foreground mt-2">
+          Overview of fleet, routes, and transport operations
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
             <Bus className="h-4 w-4 text-muted-foreground" />
@@ -41,7 +56,7 @@ export default async function TransportPage() {
               {vehicleStats.active} active, {vehicleStats.maintenance} in maintenance
             </p>
           </CardContent>
-        </Card >
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -81,10 +96,10 @@ export default async function TransportPage() {
             </p>
           </CardContent>
         </Card>
-      </div >
+      </div>
 
-    {/* Today's Attendance Summary */ }
-    < Card >
+      {/* Today's Attendance Summary */}
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -154,11 +169,11 @@ export default async function TransportPage() {
                 <h3 className="text-sm font-medium">Route-wise Attendance</h3>
                 <div className="space-y-2">
                   {todayAttendance.map((route) => {
-                    const boardingPerc = route.totalStudents > 0 
-                      ? Math.round((route.boardingPresent / route.totalStudents) * 100) 
+                    const boardingPerc = route.totalStudents > 0
+                      ? Math.round((route.boardingPresent / route.totalStudents) * 100)
                       : 0;
-                    const alightingPerc = route.totalStudents > 0 
-                      ? Math.round((route.alightingPresent / route.totalStudents) * 100) 
+                    const alightingPerc = route.totalStudents > 0
+                      ? Math.round((route.alightingPresent / route.totalStudents) * 100)
                       : 0;
 
                     return (
@@ -184,7 +199,7 @@ export default async function TransportPage() {
                               <span className="font-medium">
                                 {route.boardingPresent}/{route.totalStudents}
                               </span>
-                              <Badge 
+                              <Badge
                                 variant={boardingPerc >= 80 ? "default" : boardingPerc >= 50 ? "secondary" : "destructive"}
                                 className="text-xs"
                               >
@@ -198,7 +213,7 @@ export default async function TransportPage() {
                               <span className="font-medium">
                                 {route.alightingPresent}/{route.totalStudents}
                               </span>
-                              <Badge 
+                              <Badge
                                 variant={alightingPerc >= 80 ? "default" : alightingPerc >= 50 ? "secondary" : "destructive"}
                                 className="text-xs"
                               >
@@ -215,10 +230,10 @@ export default async function TransportPage() {
             </>
           )}
         </CardContent>
-      </Card >
+      </Card>
 
-    {/* Quick Actions */ }
-    < div className = "grid gap-6 md:grid-cols-2 lg:grid-cols-3" >
+      {/* Quick Actions */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -333,7 +348,7 @@ export default async function TransportPage() {
             </Link>
           </CardContent>
         </Card>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }

@@ -14,11 +14,50 @@ export const metadata = {
   description: "Manage school transport routes",
 };
 
+export default async function RoutesPage() {
+  return (
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Link href="/admin/transport">
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Transport
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Traffic Routes</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage school transport routes and schedules
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/admin/transport/routes/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Route
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <Suspense fallback={<StatsSkeleton />}>
+        <RouteStats />
+      </Suspense>
+
+      <Suspense fallback={<RouteListSkeleton />}>
+        <RouteList />
+      </Suspense>
+    </div>
+  );
+}
+
 async function RouteStats() {
   const stats = await getRouteStats();
 
   return (
-    <div className="grid gap-4 md:grid-cols-4 mb-6">
+    <div className="grid gap-4 md:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Routes</CardTitle>
@@ -86,7 +125,7 @@ async function RouteList() {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {routes.map((route) => (
         <Link key={route.id} href={`/admin/transport/routes/${route.id}`}>
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -149,6 +188,23 @@ async function RouteList() {
   );
 }
 
+function StatsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i}>
+          <CardHeader>
+            <Skeleton className="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-16" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function RouteListSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -168,25 +224,5 @@ function RouteListSkeleton() {
         </Card>
       ))}
     </div>
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16" />
-                </CardContent>
-              </Card>
-  ))
-}
-          </div >
-        }
-      >
-  <RouteStats />
-      </Suspense >
-
-  <Suspense fallback={<RouteListSkeleton />}>
-    <RouteList />
-  </Suspense>
-    </div >
   );
 }

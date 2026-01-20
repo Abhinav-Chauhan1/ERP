@@ -7,6 +7,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata = {
   title: "Library Management | Admin Dashboard",
+  description: "Library management dashboard",
+};
+
+export default async function LibraryPage() {
+  return (
+    <div className="container mx-auto py-6 space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Library Management</h1>
+        <p className="text-muted-foreground mt-2">
+          Overview of library operations and statistics
+        </p>
+      </div>
+
+      <Suspense fallback={<LibraryDashboardSkeleton />}>
+        <LibraryDashboardContent />
+      </Suspense>
+    </div>
   );
 }
 
