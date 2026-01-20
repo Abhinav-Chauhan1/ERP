@@ -5,6 +5,7 @@ import {
     GraduationCap,
 } from "lucide-react";
 import { RouteItem, SidebarConfig, HeaderConfig } from "./types";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 
 export const studentRoutes: RouteItem[] = [
     {
@@ -21,7 +22,8 @@ export const studentRoutes: RouteItem[] = [
             { label: "Subjects", href: "/student/academics/subjects" },
             { label: "Curriculum", href: "/student/academics/curriculum" },
             { label: "Learning Materials", href: "/student/academics/materials" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],
     },
     {
         label: "Courses",
@@ -37,7 +39,8 @@ export const studentRoutes: RouteItem[] = [
             { label: "Exam Results", href: "/student/assessments/results" },
             { label: "Assignments", href: "/student/assessments/assignments" },
             { label: "Report Cards", href: "/student/assessments/report-cards" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_EXAM, PERMISSIONS.READ_ASSIGNMENT],
     },
     {
         label: "Performance",
@@ -48,7 +51,8 @@ export const studentRoutes: RouteItem[] = [
             { label: "Subject Analysis", href: "/student/performance/subjects" },
             { label: "Progress Trends", href: "/student/performance/trends" },
             { label: "Class Rank", href: "/student/performance/rank" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_RESULT],
     },
     {
         label: "Attendance",
@@ -57,7 +61,8 @@ export const studentRoutes: RouteItem[] = [
         submenu: [
             { label: "My Attendance", href: "/student/attendance/report" },
             { label: "Leave Applications", href: "/student/attendance/leave" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_ATTENDANCE],
     },
     {
         label: "Fees",
@@ -68,7 +73,8 @@ export const studentRoutes: RouteItem[] = [
             { label: "Payment History", href: "/student/fees/payments" },
             { label: "Due Payments", href: "/student/fees/due" },
             { label: "Scholarships", href: "/student/fees/scholarships" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_FEE],
     },
     {
         label: "Communication",
@@ -78,12 +84,14 @@ export const studentRoutes: RouteItem[] = [
             { label: "Messages", href: "/student/communication/messages" },
             { label: "Announcements", href: "/student/communication/announcements" },
             { label: "Notifications", href: "/student/communication/notifications" },
-        ]
+        ],
+        permissions: [PERMISSIONS.READ_MESSAGE, PERMISSIONS.READ_ANNOUNCEMENT],
     },
     {
         label: "Documents",
         icon: FolderOpen,
         href: "/student/documents",
+        permissions: [PERMISSIONS.READ_DOCUMENT],
     },
     {
         label: "Achievements",
@@ -94,11 +102,13 @@ export const studentRoutes: RouteItem[] = [
         label: "Calendar",
         icon: CalendarDays,
         href: "/student/calendar",
+        permissions: [PERMISSIONS.READ_CALENDAR],
     },
     {
         label: "Events",
         icon: CalendarDays,
         href: "/student/events",
+        permissions: [PERMISSIONS.READ_EVENT],
     },
     {
         label: "Settings",

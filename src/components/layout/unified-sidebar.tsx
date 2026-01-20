@@ -11,12 +11,40 @@ import { RouteItem, SidebarConfig } from "./sidebar-routes";
 
 interface UnifiedSidebarProps {
     config: SidebarConfig;
+    userPermissions?: string[]; // permissions granted to the current user
 }
 
-export function UnifiedSidebar({ config }: UnifiedSidebarProps) {
+export function UnifiedSidebar({ config, userPermissions }: UnifiedSidebarProps) {
     const { routes, portalLabel, dashboardHref, accountLabel } = config;
     const pathname = usePathname();
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+    // Filter routes based on permissions
+    const filteredRoutes = routes.filter(route => {
+        // If route has no permission requirements, show it
+        if (!route.permissions || route.permissions.length === 0) return true;
+
+        // If user has no permissions but route requires them, hide it
+        if (!userPermissions) return false;
+
+        // Check if user has at least one of the required permissions
+        return route.permissions.some(permission => userPermissions.includes(permission));
+    }).map(route => {
+        // Also filter submenus if they exist
+        if (route.submenu) {
+            const filteredSubmenu = route.submenu.filter(item => {
+                if (!item.permissions || item.permissions.length === 0) return true;
+                if (!userPermissions) return false;
+                return item.permissions.some(permission => userPermissions.includes(permission));
+            });
+
+            // If all submenu items are filtered out, returns null (to be filtered out later)
+            if (filteredSubmenu.length === 0) return null;
+
+            return { ...route, submenu: filteredSubmenu };
+        }
+        return route;
+    }).filter(Boolean) as RouteItem[];
 
     // Initialize open sections based on current pathname
     const toggleSection = (label: string) => {
@@ -49,7 +77,7 @@ export function UnifiedSidebar({ config }: UnifiedSidebarProps) {
                 </Link>
             </div>
             <div className="flex flex-col w-full pb-4">
-                {routes.map((route) => {
+                {filteredRoutes.map((route) => {
                     const hasSubmenu = route.submenu && route.submenu.length > 0;
                     const isOpen = isSectionOpen(route);
 

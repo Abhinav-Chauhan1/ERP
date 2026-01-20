@@ -1,5 +1,8 @@
 import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
 import { logPermissionCheck, logPermissionDenial } from '@/lib/services/permission-audit';
+import { hasDefaultResourcePermission, getRoleDefaultPermissions, DEFAULT_PERMISSIONS } from './permission-defaults';
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 
 const prisma = new PrismaClient();
 
@@ -40,7 +43,7 @@ export async function hasPermission(
   auditContext?: { ipAddress?: string; userAgent?: string; metadata?: Record<string, any> }
 ): Promise<boolean> {
   let granted = false;
-  
+
   try {
     // Get user with role
     const user = await prisma.user.findUnique({
@@ -66,7 +69,26 @@ export async function hasPermission(
       return false;
     }
 
-    // Check if permission exists
+    // ADMIN users have all permissions by default (superuser bypass)
+    // This ensures admins can always access all features regardless of permission seeding status
+    if (user.role === 'ADMIN') {
+      await logPermissionCheck({
+        userId,
+        resource,
+        action,
+        granted: true,
+        ipAddress: auditContext?.ipAddress,
+        userAgent: auditContext?.userAgent,
+        metadata: {
+          ...auditContext?.metadata,
+          grantType: 'admin-bypass',
+          role: user.role,
+        },
+      });
+      return true;
+    }
+
+    // Check if permission exists in database
     const permission = await prisma.permission.findFirst({
       where: {
         resource,
@@ -75,22 +97,41 @@ export async function hasPermission(
       },
     });
 
+    // If permission not in DB, fall back to hardcoded defaults
+    // This supports "allow by default" mode - no seeding required
     if (!permission) {
-      granted = false;
-      // Log permission denial
-      await logPermissionDenial({
-        userId,
-        resource,
-        action,
-        granted: false,
-        ipAddress: auditContext?.ipAddress,
-        userAgent: auditContext?.userAgent,
-        metadata: {
-          ...auditContext?.metadata,
-          reason: 'Permission not found or inactive',
-        },
-      });
-      return false;
+      const hasDefault = hasDefaultResourcePermission(user.role, resource, action);
+
+      if (hasDefault) {
+        await logPermissionCheck({
+          userId,
+          resource,
+          action,
+          granted: true,
+          ipAddress: auditContext?.ipAddress,
+          userAgent: auditContext?.userAgent,
+          metadata: {
+            ...auditContext?.metadata,
+            grantType: 'default-fallback',
+            role: user.role,
+          },
+        });
+        return true;
+      } else {
+        await logPermissionDenial({
+          userId,
+          resource,
+          action,
+          granted: false,
+          ipAddress: auditContext?.ipAddress,
+          userAgent: auditContext?.userAgent,
+          metadata: {
+            ...auditContext?.metadata,
+            reason: 'No default permission for this role',
+          },
+        });
+        return false;
+      }
     }
 
     // Check role-based permission
@@ -135,7 +176,7 @@ export async function hasPermission(
     });
 
     granted = !!userPermission;
-    
+
     if (granted && userPermission) {
       // Log successful permission check
       await logPermissionCheck({
@@ -170,7 +211,7 @@ export async function hasPermission(
     return granted;
   } catch (error) {
     console.error('Error checking permission:', error);
-    
+
     // Log permission check error
     await logPermissionDenial({
       userId,
@@ -185,7 +226,7 @@ export async function hasPermission(
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     });
-    
+
     return false;
   }
 }
@@ -405,160 +446,131 @@ export const hasPermissionCached = cache ? cache(hasPermission) : hasPermission;
 export const getUserPermissionsCached = cache ? cache(getUserPermissions) : getUserPermissions;
 
 /**
+ * Get all effective permission names for a user
+ * Accounts for defaults and DB overrides
+ * 
+ * @param userId - The user ID
+ * @returns Promise<string[]> - Array of permission names
+ */
+export async function getUserPermissionNames(userId: string): Promise<string[]> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      return [];
+    }
+
+    // ADMIN Bypass - admins have all permissions
+    if (user.role === 'ADMIN') {
+      const allSystemPermissions = DEFAULT_PERMISSIONS.map(p => p.name);
+      // Also include any custom permissions from DB that might not be in defaults
+      const dbPermissions = await prisma.permission.findMany({ select: { name: true } });
+      const dbNames = dbPermissions.map(p => p.name);
+      return Array.from(new Set([...allSystemPermissions, ...dbNames]));
+    }
+
+    // 1. Get all permission definitions from DB to know what is "managed"
+    const dbPermissions = await prisma.permission.findMany({
+      select: { id: true, name: true, isActive: true }
+    });
+
+    // Set of permission names that exist in DB
+    const dbDefinedPermissionNames = new Set(dbPermissions.map(p => p.name));
+
+    // 2. Get permissions granted via DB (RoleBased + UserSpecific)
+
+    // Role permissions
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { role: user.role },
+      include: { permission: true },
+    });
+
+    // User specific permissions
+    const userPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      include: { permission: true },
+    });
+
+    // Set of granted permission names (from DB)
+    const grantedNames = new Set<string>();
+
+    rolePermissions.forEach(rp => {
+      if (rp.permission.isActive) grantedNames.add(rp.permission.name);
+    });
+
+    userPermissions.forEach(up => {
+      if (up.permission.isActive) grantedNames.add(up.permission.name);
+    });
+
+    // 3. Get Default permissions
+    const defaultNames = getRoleDefaultPermissions(user.role);
+
+    // 4. Merge: defaults are used ONLY if not defined in DB
+    const finalPermissions = new Set(grantedNames);
+
+    if (defaultNames.includes('*')) {
+      // If wildcard default (should satisfy admin above, but safe to keep)
+      DEFAULT_PERMISSIONS.forEach(def => {
+        if (!dbDefinedPermissionNames.has(def.name)) {
+          finalPermissions.add(def.name);
+        }
+      });
+    } else {
+      defaultNames.forEach(name => {
+        // Only add default if it's NOT defined in DB
+        // If it IS defined in DB, it must be in grantedNames to be included
+        if (!dbDefinedPermissionNames.has(name)) {
+          finalPermissions.add(name);
+        }
+      });
+    }
+
+    return Array.from(finalPermissions);
+  } catch (error) {
+    console.error('Error getting user permission names:', error);
+    return [];
+  }
+}
+
+/**
+ * Cached version of getUserPermissionNames for better performance
+ * Use this in Server Components
+ */
+export const getUserPermissionNamesCached = cache ? cache(getUserPermissionNames) : getUserPermissionNames;
+
+/**
+ * Server-side permission check that redirects if failed.
+ * Use this in Page components.
+ * 
+ * @param permission - Permission name to check
+ * @param redirectUrl - URL to redirect to if permission denied (default: /admin)
+ */
+export async function requirePermission(permission: string | string[], redirectUrl: string = "/admin") {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const userPermissions = await getUserPermissionNamesCached(session.user.id);
+
+  if (Array.isArray(permission)) {
+    const hasAny = permission.some(p => userPermissions.includes(p));
+    if (!hasAny) redirect(redirectUrl);
+  } else {
+    if (!userPermissions.includes(permission)) redirect(redirectUrl);
+  }
+}
+
+/**
  * Permission names enum for type safety
  */
-export const PERMISSIONS = {
-  // User Management
-  CREATE_USER: 'CREATE_USER',
-  READ_USER: 'READ_USER',
-  UPDATE_USER: 'UPDATE_USER',
-  DELETE_USER: 'DELETE_USER',
-  EXPORT_USER: 'EXPORT_USER',
-  IMPORT_USER: 'IMPORT_USER',
-
-  // Student Management
-  CREATE_STUDENT: 'CREATE_STUDENT',
-  READ_STUDENT: 'READ_STUDENT',
-  UPDATE_STUDENT: 'UPDATE_STUDENT',
-  DELETE_STUDENT: 'DELETE_STUDENT',
-  EXPORT_STUDENT: 'EXPORT_STUDENT',
-  IMPORT_STUDENT: 'IMPORT_STUDENT',
-
-  // Teacher Management
-  CREATE_TEACHER: 'CREATE_TEACHER',
-  READ_TEACHER: 'READ_TEACHER',
-  UPDATE_TEACHER: 'UPDATE_TEACHER',
-  DELETE_TEACHER: 'DELETE_TEACHER',
-  EXPORT_TEACHER: 'EXPORT_TEACHER',
-
-  // Parent Management
-  CREATE_PARENT: 'CREATE_PARENT',
-  READ_PARENT: 'READ_PARENT',
-  UPDATE_PARENT: 'UPDATE_PARENT',
-  DELETE_PARENT: 'DELETE_PARENT',
-
-  // Class Management
-  CREATE_CLASS: 'CREATE_CLASS',
-  READ_CLASS: 'READ_CLASS',
-  UPDATE_CLASS: 'UPDATE_CLASS',
-  DELETE_CLASS: 'DELETE_CLASS',
-
-  // Subject Management
-  CREATE_SUBJECT: 'CREATE_SUBJECT',
-  READ_SUBJECT: 'READ_SUBJECT',
-  UPDATE_SUBJECT: 'UPDATE_SUBJECT',
-  DELETE_SUBJECT: 'DELETE_SUBJECT',
-
-  // Exam Management
-  CREATE_EXAM: 'CREATE_EXAM',
-  READ_EXAM: 'READ_EXAM',
-  UPDATE_EXAM: 'UPDATE_EXAM',
-  DELETE_EXAM: 'DELETE_EXAM',
-  PUBLISH_EXAM: 'PUBLISH_EXAM',
-
-  // Assignment Management
-  CREATE_ASSIGNMENT: 'CREATE_ASSIGNMENT',
-  READ_ASSIGNMENT: 'READ_ASSIGNMENT',
-  UPDATE_ASSIGNMENT: 'UPDATE_ASSIGNMENT',
-  DELETE_ASSIGNMENT: 'DELETE_ASSIGNMENT',
-
-  // Attendance Management
-  CREATE_ATTENDANCE: 'CREATE_ATTENDANCE',
-  READ_ATTENDANCE: 'READ_ATTENDANCE',
-  UPDATE_ATTENDANCE: 'UPDATE_ATTENDANCE',
-  EXPORT_ATTENDANCE: 'EXPORT_ATTENDANCE',
-
-  // Fee Management
-  CREATE_FEE: 'CREATE_FEE',
-  READ_FEE: 'READ_FEE',
-  UPDATE_FEE: 'UPDATE_FEE',
-  DELETE_FEE: 'DELETE_FEE',
-
-  // Payment Management
-  CREATE_PAYMENT: 'CREATE_PAYMENT',
-  READ_PAYMENT: 'READ_PAYMENT',
-  UPDATE_PAYMENT: 'UPDATE_PAYMENT',
-  DELETE_PAYMENT: 'DELETE_PAYMENT',
-  APPROVE_PAYMENT: 'APPROVE_PAYMENT',
-  EXPORT_PAYMENT: 'EXPORT_PAYMENT',
-
-  // Communication
-  CREATE_ANNOUNCEMENT: 'CREATE_ANNOUNCEMENT',
-  READ_ANNOUNCEMENT: 'READ_ANNOUNCEMENT',
-  UPDATE_ANNOUNCEMENT: 'UPDATE_ANNOUNCEMENT',
-  DELETE_ANNOUNCEMENT: 'DELETE_ANNOUNCEMENT',
-  PUBLISH_ANNOUNCEMENT: 'PUBLISH_ANNOUNCEMENT',
-  CREATE_MESSAGE: 'CREATE_MESSAGE',
-  READ_MESSAGE: 'READ_MESSAGE',
-  DELETE_MESSAGE: 'DELETE_MESSAGE',
-
-  // Document Management
-  CREATE_DOCUMENT: 'CREATE_DOCUMENT',
-  READ_DOCUMENT: 'READ_DOCUMENT',
-  UPDATE_DOCUMENT: 'UPDATE_DOCUMENT',
-  DELETE_DOCUMENT: 'DELETE_DOCUMENT',
-
-  // Reports
-  CREATE_REPORT: 'CREATE_REPORT',
-  READ_REPORT: 'READ_REPORT',
-  EXPORT_REPORT: 'EXPORT_REPORT',
-
-  // Library Management
-  CREATE_BOOK: 'CREATE_BOOK',
-  READ_BOOK: 'READ_BOOK',
-  UPDATE_BOOK: 'UPDATE_BOOK',
-  DELETE_BOOK: 'DELETE_BOOK',
-
-  // Transport Management
-  CREATE_VEHICLE: 'CREATE_VEHICLE',
-  READ_VEHICLE: 'READ_VEHICLE',
-  UPDATE_VEHICLE: 'UPDATE_VEHICLE',
-  DELETE_VEHICLE: 'DELETE_VEHICLE',
-  CREATE_ROUTE: 'CREATE_ROUTE',
-  READ_ROUTE: 'READ_ROUTE',
-  UPDATE_ROUTE: 'UPDATE_ROUTE',
-  DELETE_ROUTE: 'DELETE_ROUTE',
-
-  // Admission Management
-  CREATE_APPLICATION: 'CREATE_APPLICATION',
-  READ_APPLICATION: 'READ_APPLICATION',
-  UPDATE_APPLICATION: 'UPDATE_APPLICATION',
-  DELETE_APPLICATION: 'DELETE_APPLICATION',
-  APPROVE_APPLICATION: 'APPROVE_APPLICATION',
-  REJECT_APPLICATION: 'REJECT_APPLICATION',
-
-  // Certificate Management
-  CREATE_CERTIFICATE: 'CREATE_CERTIFICATE',
-  READ_CERTIFICATE: 'READ_CERTIFICATE',
-  UPDATE_CERTIFICATE: 'UPDATE_CERTIFICATE',
-  DELETE_CERTIFICATE: 'DELETE_CERTIFICATE',
-
-  // Backup Management
-  CREATE_BACKUP: 'CREATE_BACKUP',
-  READ_BACKUP: 'READ_BACKUP',
-  DELETE_BACKUP: 'DELETE_BACKUP',
-
-  // System Settings
-  READ_SETTINGS: 'READ_SETTINGS',
-  UPDATE_SETTINGS: 'UPDATE_SETTINGS',
-
-  // Student Promotion Management
-  CREATE_PROMOTION: 'CREATE_PROMOTION',
-  READ_PROMOTION: 'READ_PROMOTION',
-  DELETE_PROMOTION: 'DELETE_PROMOTION',
-
-  // Graduation Ceremony Management
-  CREATE_GRADUATION: 'CREATE_GRADUATION',
-  READ_GRADUATION: 'READ_GRADUATION',
-
-  // Alumni Management (Admin)
-  CREATE_ALUMNI: 'CREATE_ALUMNI',
-  READ_ALUMNI: 'READ_ALUMNI',
-  UPDATE_ALUMNI: 'UPDATE_ALUMNI',
-  DELETE_ALUMNI: 'DELETE_ALUMNI',
-  EXPORT_ALUMNI: 'EXPORT_ALUMNI',
-
-  // Alumni Portal (for graduated students)
-  READ_ALUMNI_PORTAL: 'READ_ALUMNI_PORTAL',
-  UPDATE_ALUMNI_PORTAL: 'UPDATE_ALUMNI_PORTAL',
-} as const;
+export { PERMISSIONS } from '@/lib/constants/permissions';

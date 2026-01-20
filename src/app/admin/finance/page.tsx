@@ -16,7 +16,10 @@ import { getExpenseStats } from "@/lib/actions/expenseActions";
 import { getBudgetStats } from "@/lib/actions/budgetActions";
 import { getVerificationStats } from "@/lib/actions/receiptVerificationActions";
 
+
 export default function FinancePage() {
+
+
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>({
     payments: null,

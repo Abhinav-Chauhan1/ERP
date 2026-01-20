@@ -2,7 +2,27 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { PermissionAction } from "@prisma/client";
+import { hasPermission } from "@/lib/utils/permissions";
 import { SectionFormValues, SectionUpdateFormValues } from "../schemaValidation/sectionsSchemaValidation";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Get all sections with related info
 export async function getSections(classFilter?: string) {
@@ -293,6 +313,9 @@ export async function getClassRoomsForDropdown() {
 // Create a new section
 export async function createSection(data: SectionFormValues) {
   try {
+    // Permission check: require SECTION:CREATE
+    await checkPermission('SECTION', 'CREATE', 'You do not have permission to create sections');
+
     // Check if section name already exists for this class
     const existingSection = await db.classSection.findFirst({
       where: {
@@ -367,6 +390,9 @@ export async function createSection(data: SectionFormValues) {
 // Update an existing section
 export async function updateSection(data: SectionUpdateFormValues) {
   try {
+    // Permission check: require SECTION:UPDATE
+    await checkPermission('SECTION', 'UPDATE', 'You do not have permission to update sections');
+
     // Check if section name already exists for this class (excluding current section)
     const existingSection = await db.classSection.findFirst({
       where: {

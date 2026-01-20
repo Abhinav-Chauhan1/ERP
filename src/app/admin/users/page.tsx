@@ -8,7 +8,10 @@ import { getFilterOptions } from "@/lib/actions/students-filters";
 import { BulkImportDialog } from "@/components/admin/bulk-import-dialog";
 import { RecentUsersTable } from "@/components/users/recent-users-table";
 
+import { requirePermission, PERMISSIONS } from "@/lib/utils/permissions";
+
 export default async function UsersPage() {
+  await requirePermission(PERMISSIONS.READ_USER);
   const [overviewResult, recentUsersResult, filterOptions] = await Promise.all([
     getUsersOverview(),
     getRecentUsers(10),

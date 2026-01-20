@@ -1,34 +1,48 @@
-"use client";
-
 import { UnifiedSidebar } from "@/components/layout/unified-sidebar";
 import { UnifiedHeader } from "@/components/layout/unified-header";
 import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
 import { studentSidebarConfig, studentHeaderConfig } from "@/components/layout/sidebar-routes";
+import { getUserPermissionNamesCached } from "@/lib/utils/permissions";
+import { PermissionsProvider } from "@/context/permissions-context";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { ReactNode } from "react";
 
-export default function StudentLayout({
+export default async function StudentLayout({
   children
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  // Get effective permissions including role defaults and DB overrides
+  const permissions = await getUserPermissionNamesCached(session.user.id);
+
   return (
-    <UserThemeWrapper userRole="student">
-      <nav
-        className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
-        aria-label="Student navigation"
-      >
-        <UnifiedSidebar config={studentSidebarConfig} />
-      </nav>
-      <div className="md:pl-72 h-full">
-        <UnifiedHeader headerConfig={studentHeaderConfig} sidebarConfig={studentSidebarConfig} />
-        <main
-          id="main-content"
-          className="h-[calc(100%-4rem)] overflow-y-auto bg-background p-4 md:p-6"
-          tabIndex={-1}
-          aria-label="Main content"
+    <PermissionsProvider permissions={permissions}>
+      <UserThemeWrapper userRole="student">
+        <nav
+          className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
+          aria-label="Student navigation"
         >
-          {children}
-        </main>
-      </div>
-    </UserThemeWrapper>
+          <UnifiedSidebar config={studentSidebarConfig} />
+        </nav>
+        <div className="md:pl-72 h-full">
+          <UnifiedHeader headerConfig={studentHeaderConfig} sidebarConfig={studentSidebarConfig} />
+          <main
+            id="main-content"
+            className="h-[calc(100%-4rem)] overflow-y-auto bg-background p-4 md:p-6"
+            tabIndex={-1}
+            aria-label="Student content"
+          >
+            {children}
+          </main>
+        </div>
+      </UserThemeWrapper>
+    </PermissionsProvider>
   );
 }

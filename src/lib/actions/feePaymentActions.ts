@@ -2,8 +2,27 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { PaymentStatus, PaymentMethod } from "@prisma/client";
+import { PaymentStatus, PaymentMethod, PermissionAction } from "@prisma/client";
+import { auth } from "@/auth";
+import { hasPermission } from "@/lib/utils/permissions";
 import { sendFeeReminder } from "@/lib/services/communication-service";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Get all fee payments with filters
 export async function getFeePayments(filters?: {
@@ -133,6 +152,9 @@ export async function getFeePaymentById(id: string) {
 // Record new payment
 export async function recordPayment(data: any) {
   try {
+    // Permission check: require PAYMENT:CREATE
+    await checkPermission('PAYMENT', 'CREATE', 'You do not have permission to record payments');
+
     const payment = await db.feePayment.create({
       data: {
         studentId: data.studentId,
@@ -203,6 +225,9 @@ export async function recordPayment(data: any) {
 // Update existing payment
 export async function updatePayment(id: string, data: any) {
   try {
+    // Permission check: require PAYMENT:UPDATE
+    await checkPermission('PAYMENT', 'UPDATE', 'You do not have permission to update payments');
+
     const payment = await db.feePayment.update({
       where: { id },
       data: {
@@ -237,6 +262,9 @@ export async function updatePayment(id: string, data: any) {
 // Delete payment
 export async function deletePayment(id: string) {
   try {
+    // Permission check: require PAYMENT:DELETE
+    await checkPermission('PAYMENT', 'DELETE', 'You do not have permission to delete payments');
+
     await db.feePayment.delete({
       where: { id },
     });

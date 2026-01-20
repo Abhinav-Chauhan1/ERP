@@ -8,6 +8,9 @@ import {
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { PermissionAction } from "@prisma/client";
+import { hasPermission } from "@/lib/utils/permissions";
 import {
   ClassFormValues,
   ClassUpdateFormValues,
@@ -18,6 +21,23 @@ import {
   StudentEnrollmentFormValues,
   StudentEnrollmentUpdateFormValues
 } from "../schemaValidation/classesSchemaValidation";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Get all classes with basic info
 export async function getClasses(academicYearFilter?: string) {
@@ -304,6 +324,9 @@ export async function getClassById(id: string) {
 // Create a new class
 export async function createClass(data: ClassFormValues) {
   try {
+    // Permission check: require CLASS:CREATE
+    await checkPermission('CLASS', 'CREATE', 'You do not have permission to create classes');
+
     // Ensure academic year exists
     const academicYear = await db.academicYear.findUnique({
       where: { id: data.academicYearId }
@@ -334,6 +357,9 @@ export async function createClass(data: ClassFormValues) {
 // Update an existing class
 export async function updateClass(data: ClassUpdateFormValues) {
   try {
+    // Permission check: require CLASS:UPDATE
+    await checkPermission('CLASS', 'UPDATE', 'You do not have permission to update classes');
+
     // Ensure class exists
     const existingClass = await db.class.findUnique({
       where: { id: data.id }
@@ -375,6 +401,9 @@ export async function updateClass(data: ClassUpdateFormValues) {
 // Delete a class
 export async function deleteClass(id: string) {
   try {
+    // Permission check: require CLASS:DELETE
+    await checkPermission('CLASS', 'DELETE', 'You do not have permission to delete classes');
+
     // Check if class has any enrollments, timetable slots, etc.
     const enrollments = await db.classEnrollment.findFirst({ where: { classId: id } });
     const timetableSlots = await db.timetableSlot.findFirst({ where: { classId: id } });

@@ -26,49 +26,22 @@ interface PermissionGuardProps {
  *   <CreateUserButton />
  * </PermissionGuard>
  */
+import { useUserPermissions } from '@/context/permissions-context';
+
 export function PermissionGuard({
   children,
   resource,
   action,
   fallback = null,
-  userId,
+  userId, // kept for backward compatibility but unused
 }: PermissionGuardProps) {
-  const [hasPermission, setHasPermission] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const permissions = useUserPermissions();
+  // Safe default: requires exact match.
+  // Assumption: permissions in context are fully resolved names like 'READ_USER'
+  const permissionName = `${action}_${resource}`;
+  const hasAccess = permissions.includes(permissionName);
 
-  useEffect(() => {
-    async function checkPermission() {
-      try {
-        const response = await fetch('/api/permissions/check', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            resource,
-            action,
-          }),
-        });
-
-        const data = await response.json();
-        setHasPermission(data.hasPermission || false);
-      } catch (error) {
-        console.error('Error checking permission:', error);
-        setHasPermission(false);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    checkPermission();
-  }, [userId, resource, action]);
-
-  if (loading) {
-    return null; // Or a loading skeleton
-  }
-
-  if (!hasPermission) {
+  if (!hasAccess) {
     return <>{fallback}</>;
   }
 

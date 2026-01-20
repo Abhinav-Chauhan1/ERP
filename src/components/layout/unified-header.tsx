@@ -16,9 +16,10 @@ import { UnifiedSidebar } from "./unified-sidebar";
 interface UnifiedHeaderProps {
     headerConfig: HeaderConfig;
     sidebarConfig: SidebarConfig;
+    userPermissions?: string[];
 }
 
-export function UnifiedHeader({ headerConfig, sidebarConfig }: UnifiedHeaderProps) {
+export function UnifiedHeader({ headerConfig, sidebarConfig, userPermissions }: UnifiedHeaderProps) {
     const { dashboardHref, pageTitleMappings } = headerConfig;
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
@@ -72,7 +73,7 @@ export function UnifiedHeader({ headerConfig, sidebarConfig }: UnifiedHeaderProp
                             <SheetTitle>Navigation Menu</SheetTitle>
                         </VisuallyHidden>
                         <div className="pt-14 h-full">
-                            <UnifiedSidebar config={sidebarConfig} />
+                            <UnifiedSidebar config={sidebarConfig} userPermissions={userPermissions} />
                         </div>
                     </SheetContent>
                 </Sheet>

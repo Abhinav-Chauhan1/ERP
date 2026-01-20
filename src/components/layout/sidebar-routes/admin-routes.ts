@@ -20,6 +20,7 @@ import {
     History,
 } from "lucide-react";
 import { RouteItem, SidebarConfig, HeaderConfig } from "./types";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 
 export const adminRoutes: RouteItem[] = [
     {
@@ -31,12 +32,13 @@ export const adminRoutes: RouteItem[] = [
         label: "Users",
         icon: Users,
         submenu: [
-            { label: "Overview", href: "/admin/users" },
-            { label: "Administrators", href: "/admin/users/administrators" },
-            { label: "Teachers", href: "/admin/users/teachers" },
-            { label: "Students", href: "/admin/users/students" },
-            { label: "Parents", href: "/admin/users/parents" },
+            { label: "Overview", href: "/admin/users", permissions: [PERMISSIONS.READ_USER] },
+            { label: "Administrators", href: "/admin/users/administrators", permissions: [PERMISSIONS.READ_USER] },
+            { label: "Teachers", href: "/admin/users/teachers", permissions: [PERMISSIONS.READ_TEACHER] },
+            { label: "Students", href: "/admin/users/students", permissions: [PERMISSIONS.READ_STUDENT] },
+            { label: "Parents", href: "/admin/users/parents", permissions: [PERMISSIONS.READ_PARENT] },
         ],
+        permissions: [PERMISSIONS.READ_USER, PERMISSIONS.READ_STUDENT, PERMISSIONS.READ_TEACHER, PERMISSIONS.READ_PARENT],
     },
     {
         label: "Academic",
@@ -51,6 +53,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Syllabus", href: "/admin/academic/syllabus" },
             { label: "Promotion", href: "/admin/academic/promotion" },
         ],
+        permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],
     },
     {
         label: "Classes",
@@ -60,6 +63,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Sections", href: "/admin/classes/sections" },
             { label: "Rooms", href: "/admin/classes/rooms" },
         ],
+        permissions: [PERMISSIONS.READ_CLASS],
     },
     {
         label: "Teaching",
@@ -70,23 +74,25 @@ export const adminRoutes: RouteItem[] = [
             { label: "Lessons", href: "/admin/teaching/lessons" },
             { label: "Timetable", href: "/admin/teaching/timetable" },
         ],
+        permissions: [PERMISSIONS.READ_SUBJECT, PERMISSIONS.READ_CLASS],
     },
     {
         label: "Assessment",
         icon: BookOpen,
         submenu: [
-            { label: "Overview", href: "/admin/assessment" },
-            { label: "Exam Types", href: "/admin/assessment/exam-types" },
-            { label: "Exams", href: "/admin/assessment/exams" },
-            { label: "Marks Entry", href: "/admin/assessment/marks-entry" },
-            { label: "Marks Audit", href: "/admin/assessment/marks-audit" },
-            { label: "Mark Sheet", href: "/admin/assessment/consolidated-mark-sheet" },
-            { label: "Subject Performance", href: "/admin/assessment/subject-performance" },
-            { label: "Co-Scholastic", href: "/admin/assessment/co-scholastic" },
-            { label: "Assignments", href: "/admin/assessment/assignments" },
-            { label: "Results", href: "/admin/assessment/results" },
-            { label: "Report Cards", href: "/admin/assessment/report-cards" },
+            { label: "Overview", href: "/admin/assessment", permissions: [PERMISSIONS.READ_EXAM] },
+            { label: "Exam Types", href: "/admin/assessment/exam-types", permissions: [PERMISSIONS.READ_EXAM] },
+            { label: "Exams", href: "/admin/assessment/exams", permissions: [PERMISSIONS.READ_EXAM] },
+            { label: "Marks Entry", href: "/admin/assessment/marks-entry", permissions: [PERMISSIONS.CREATE_MARKS] },
+            { label: "Marks Audit", href: "/admin/assessment/marks-audit", permissions: [PERMISSIONS.READ_MARKS] },
+            { label: "Mark Sheet", href: "/admin/assessment/consolidated-mark-sheet", permissions: [PERMISSIONS.READ_RESULT] },
+            { label: "Subject Performance", href: "/admin/assessment/subject-performance", permissions: [PERMISSIONS.READ_RESULT] },
+            { label: "Co-Scholastic", href: "/admin/assessment/co-scholastic", permissions: [PERMISSIONS.READ_MARKS] },
+            { label: "Assignments", href: "/admin/assessment/assignments", permissions: [PERMISSIONS.READ_ASSIGNMENT] },
+            { label: "Results", href: "/admin/assessment/results", permissions: [PERMISSIONS.READ_RESULT] },
+            { label: "Report Cards", href: "/admin/assessment/report-cards", permissions: [PERMISSIONS.READ_RESULT] },
         ],
+        permissions: [PERMISSIONS.READ_EXAM, PERMISSIONS.READ_ASSIGNMENT],
     },
     {
         label: "Attendance",
@@ -97,21 +103,23 @@ export const adminRoutes: RouteItem[] = [
             { label: "Teacher Attendance", href: "/admin/attendance/teachers" },
             { label: "Reports", href: "/admin/attendance/reports" },
         ],
+        permissions: [PERMISSIONS.READ_ATTENDANCE],
     },
     {
         label: "Finance",
         icon: CreditCard,
         submenu: [
-            { label: "Overview", href: "/admin/finance" },
-            { label: "Fee Structure", href: "/admin/finance/fee-structure" },
-            { label: "Payments", href: "/admin/finance/payments" },
-            { label: "Receipt Verification", href: "/admin/finance/receipt-verification" },
-            { label: "Analytics", href: "/admin/finance/analytics" },
-            { label: "Scholarships", href: "/admin/finance/scholarships" },
-            { label: "Payroll", href: "/admin/finance/payroll" },
-            { label: "Expenses", href: "/admin/finance/expenses" },
-            { label: "Budget", href: "/admin/finance/budget" },
+            { label: "Overview", href: "/admin/finance", permissions: [PERMISSIONS.READ_FEE, PERMISSIONS.READ_PAYMENT] },
+            { label: "Fee Structure", href: "/admin/finance/fee-structure", permissions: [PERMISSIONS.READ_FEE] },
+            { label: "Payments", href: "/admin/finance/payments", permissions: [PERMISSIONS.READ_PAYMENT] },
+            { label: "Receipt Verification", href: "/admin/finance/receipt-verification", permissions: [PERMISSIONS.APPROVE_PAYMENT] },
+            { label: "Analytics", href: "/admin/finance/analytics", permissions: [PERMISSIONS.READ_PAYMENT] },
+            { label: "Scholarships", href: "/admin/finance/scholarships", permissions: [PERMISSIONS.READ_SCHOLARSHIP] },
+            { label: "Payroll", href: "/admin/finance/payroll", permissions: [PERMISSIONS.READ_PAYROLL] },
+            { label: "Expenses", href: "/admin/finance/expenses", permissions: [PERMISSIONS.READ_EXPENSE] },
+            { label: "Budget", href: "/admin/finance/budget", permissions: [PERMISSIONS.READ_BUDGET] },
         ],
+        permissions: [PERMISSIONS.READ_FEE, PERMISSIONS.READ_PAYMENT],
     },
     {
         label: "Communication",
@@ -126,6 +134,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Parent Meetings", href: "/admin/communication/parent-meetings" },
             { label: "WhatsApp Profile", href: "/admin/communication/whatsapp-profile" },
         ],
+        permissions: [PERMISSIONS.READ_MESSAGE, PERMISSIONS.READ_ANNOUNCEMENT],
     },
     {
         label: "Library",
@@ -135,6 +144,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Books", href: "/admin/library/books" },
             { label: "Reports", href: "/admin/library/reports" },
         ],
+        permissions: [PERMISSIONS.READ_BOOK],
     },
     {
         label: "Transport",
@@ -145,6 +155,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Routes", href: "/admin/transport/routes" },
             { label: "Attendance", href: "/admin/transport/attendance" },
         ],
+        permissions: [PERMISSIONS.READ_VEHICLE, PERMISSIONS.READ_ROUTE],
     },
     {
         label: "Hostel",
@@ -161,6 +172,7 @@ export const adminRoutes: RouteItem[] = [
         label: "Admissions",
         icon: GraduationCap,
         href: "/admin/admissions",
+        permissions: [PERMISSIONS.READ_APPLICATION],
     },
     {
         label: "Alumni",
@@ -170,6 +182,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Communication", href: "/admin/alumni/communication" },
             { label: "Statistics", href: "/admin/alumni/statistics" },
         ],
+        permissions: [PERMISSIONS.READ_ALUMNI],
     },
     {
         label: "Calendar",
@@ -189,6 +202,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "ID Cards", href: "/admin/id-cards" },
             { label: "Certificates", href: "/admin/certificates" },
         ],
+        permissions: [PERMISSIONS.READ_DOCUMENT, PERMISSIONS.READ_CERTIFICATE],
     },
     {
         label: "Reports",
@@ -203,11 +217,13 @@ export const adminRoutes: RouteItem[] = [
             { label: "Scheduled Reports", href: "/admin/reports/scheduled" },
             { label: "Comparative", href: "/admin/reports/comparative" },
         ],
+        permissions: [PERMISSIONS.READ_REPORT],
     },
     {
         label: "Audit Logs",
         icon: History,
         href: "/admin/audit-logs",
+        permissions: [PERMISSIONS.READ_SETTINGS],
     },
     {
         label: "Settings",
@@ -222,6 +238,7 @@ export const adminRoutes: RouteItem[] = [
             { label: "Sessions", href: "/admin/settings/sessions" },
             { label: "Backups", href: "/admin/settings/backups" },
         ],
+        permissions: [PERMISSIONS.READ_SETTINGS, PERMISSIONS.UPDATE_SETTINGS],
     },
 ];
 

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
+import { hasPermission } from "@/lib/utils/permissions";
 
 // Get student with detailed information
 export async function getStudentWithDetails(studentId: string) {
@@ -15,6 +16,18 @@ export async function getStudentWithDetails(studentId: string) {
   }
 
   try {
+    // Permission check: require STUDENT:READ
+    const session = await auth();
+    const userId = session?.user?.id;
+
+    if (userId) {
+      const canRead = await hasPermission(userId, 'STUDENT', 'READ');
+      if (!canRead) {
+        console.error('User does not have permission to read student details');
+        return null;
+      }
+    }
+
     console.log(`Fetching student details for ID: ${studentId}`);
 
     const student = await db.student.findUnique({
@@ -78,8 +91,7 @@ export async function getStudentWithDetails(studentId: string) {
 }
 
 /**
- * Upload student profile photo (Admin only)
- * Following best practices from teacher/parent avatar upload
+ * Upload student profile photo (requires STUDENT:UPDATE permission)
  */
 export async function uploadStudentAvatar(formData: FormData) {
   try {
@@ -93,15 +105,12 @@ export async function uploadStudentAvatar(formData: FormData) {
       };
     }
 
-    // Verify current user is an admin
-    const currentUser = await db.user.findUnique({
-      where: { id: currentUserId },
-    });
-
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    // Permission check: require STUDENT:UPDATE
+    const canUpdate = await hasPermission(currentUserId, 'STUDENT', 'UPDATE');
+    if (!canUpdate) {
       return {
         success: false,
-        message: "Only administrators can update student photos",
+        message: "You do not have permission to update student photos",
       };
     }
 
@@ -136,7 +145,7 @@ export async function uploadStudentAvatar(formData: FormData) {
     }
 
     // Rate limiting for file uploads
-    const rateLimitKey = `file-upload:${currentUser.id}`;
+    const rateLimitKey = `file-upload:${currentUserId}`;
     const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.FILE_UPLOAD);
     if (!rateLimitResult) {
       return {
@@ -191,7 +200,7 @@ export async function uploadStudentAvatar(formData: FormData) {
 }
 
 /**
- * Remove student profile photo (Admin only)
+ * Remove student profile photo (requires STUDENT:UPDATE permission)
  */
 export async function removeStudentAvatar(studentId: string) {
   try {
@@ -205,15 +214,12 @@ export async function removeStudentAvatar(studentId: string) {
       };
     }
 
-    // Verify current user is an admin
-    const currentUser = await db.user.findUnique({
-      where: { id: currentUserId },
-    });
-
-    if (!currentUser || currentUser.role !== "ADMIN") {
+    // Permission check: require STUDENT:UPDATE
+    const canUpdate = await hasPermission(currentUserId, 'STUDENT', 'UPDATE');
+    if (!canUpdate) {
       return {
         success: false,
-        message: "Only administrators can update student photos",
+        message: "You do not have permission to update student photos",
       };
     }
 

@@ -2,8 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
+import { PermissionAction } from "@prisma/client";
+import { hasPermission } from "@/lib/utils/permissions";
 import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/subjectsSchemaValidation";
 import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Get all subjects with their relationships
 export async function getSubjects() {
@@ -245,6 +265,9 @@ export async function getClasses() {
 // Create a new subject
 export async function createSubject(data: SubjectFormValues) {
   try {
+    // Permission check: require SUBJECT:CREATE
+    await checkPermission('SUBJECT', 'CREATE', 'You do not have permission to create subjects');
+
     // Check if subject code already exists
     const existingSubject = await db.subject.findFirst({
       where: {
@@ -288,6 +311,9 @@ export async function createSubject(data: SubjectFormValues) {
 // Update an existing subject
 export async function updateSubject(data: SubjectUpdateFormValues) {
   try {
+    // Permission check: require SUBJECT:UPDATE
+    await checkPermission('SUBJECT', 'UPDATE', 'You do not have permission to update subjects');
+
     // Check if subject code already exists for another subject
     const existingSubject = await db.subject.findFirst({
       where: {

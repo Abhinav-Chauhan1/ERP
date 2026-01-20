@@ -2,6 +2,9 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
+import { PermissionAction } from "@prisma/client";
+import { hasPermission } from "@/lib/utils/permissions";
 import {
   feeStructureService,
   type CreateFeeStructureInput,
@@ -16,6 +19,23 @@ import {
   type AnalyticsFilters,
 } from "@/lib/services/fee-structure-analytics-service";
 import { STANDARD_FEE_TYPES } from "@/lib/constants/fee-standards";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Get all fee structures with related data
 export async function getFeeStructures(filters?: FeeStructureFilters) {
@@ -54,6 +74,9 @@ export async function getFeeStructuresForClass(classId: string, academicYearId?:
 // Create new fee structure
 export async function createFeeStructure(data: CreateFeeStructureInput) {
   try {
+    // Permission check: require FEE:CREATE
+    await checkPermission('FEE', 'CREATE', 'You do not have permission to create fee structures');
+
     const feeStructure = await feeStructureService.createFeeStructure(data);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
@@ -66,6 +89,9 @@ export async function createFeeStructure(data: CreateFeeStructureInput) {
 // Update existing fee structure
 export async function updateFeeStructure(id: string, data: UpdateFeeStructureInput) {
   try {
+    // Permission check: require FEE:UPDATE
+    await checkPermission('FEE', 'UPDATE', 'You do not have permission to update fee structures');
+
     const feeStructure = await feeStructureService.updateFeeStructure(id, data);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
@@ -78,6 +104,9 @@ export async function updateFeeStructure(id: string, data: UpdateFeeStructureInp
 // Delete fee structure
 export async function deleteFeeStructure(id: string) {
   try {
+    // Permission check: require FEE:DELETE
+    await checkPermission('FEE', 'DELETE', 'You do not have permission to delete fee structures');
+
     await feeStructureService.deleteFeeStructure(id);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true };

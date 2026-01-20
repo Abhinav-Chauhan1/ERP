@@ -12,6 +12,7 @@ import {
     CalendarDays,
 } from "lucide-react";
 import { RouteItem, SidebarConfig, HeaderConfig } from "./types";
+import { PERMISSIONS } from "@/lib/constants/permissions";
 
 export const teacherRoutes: RouteItem[] = [
     {
@@ -29,11 +30,13 @@ export const teacherRoutes: RouteItem[] = [
             { label: "Timetable", href: "/teacher/teaching/timetable" },
             { label: "Syllabus", href: "/teacher/teaching/syllabus" },
         ],
+        permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],
     },
     {
         label: "Courses",
         icon: Video,
         href: "/teacher/courses",
+        // Optional: PERMISSIONS.READ_SUBJECT
     },
     {
         label: "Assessments",
@@ -45,6 +48,7 @@ export const teacherRoutes: RouteItem[] = [
             { label: "Question Bank", href: "/teacher/assessments/question-bank" },
             { label: "Results", href: "/teacher/assessments/results" },
         ],
+        permissions: [PERMISSIONS.READ_EXAM, PERMISSIONS.READ_ASSIGNMENT],
     },
     {
         label: "Attendance",
@@ -54,6 +58,7 @@ export const teacherRoutes: RouteItem[] = [
             { label: "Mark Attendance", href: "/teacher/attendance/mark" },
             { label: "Reports", href: "/teacher/attendance/reports" },
         ],
+        permissions: [PERMISSIONS.READ_ATTENDANCE],
     },
     {
         label: "Students",
@@ -62,16 +67,19 @@ export const teacherRoutes: RouteItem[] = [
             { label: "Student List", href: "/teacher/students" },
             { label: "Performance", href: "/teacher/students/performance" },
         ],
+        permissions: [PERMISSIONS.READ_STUDENT],
     },
     {
         label: "Documents",
         icon: FolderOpen,
         href: "/teacher/documents",
+        permissions: [PERMISSIONS.READ_DOCUMENT],
     },
     {
         label: "Calendar",
         icon: CalendarDays,
         href: "/teacher/calendar",
+        permissions: [PERMISSIONS.READ_CALENDAR],
     },
     {
         label: "Achievements",
@@ -85,6 +93,7 @@ export const teacherRoutes: RouteItem[] = [
             { label: "Messages", href: "/teacher/communication/messages" },
             { label: "Announcements", href: "/teacher/communication/announcements" },
         ],
+        permissions: [PERMISSIONS.READ_MESSAGE, PERMISSIONS.READ_ANNOUNCEMENT],
     },
     {
         label: "Settings",

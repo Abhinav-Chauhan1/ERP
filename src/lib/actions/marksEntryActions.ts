@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { PermissionAction } from "@prisma/client";
+import { hasPermission } from "@/lib/utils/permissions";
 import { calculatePercentage, calculateGradeFromScale } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
 import { logUpdate, logCreate } from "@/lib/utils/audit-log";
@@ -189,6 +191,15 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
       return createErrorResponse(
         "Unauthorized access",
         "UNAUTHORIZED"
+      );
+    }
+
+    // Permission check: require MARKS:CREATE
+    const canCreateMarks = await hasPermission(userId, 'MARKS', 'CREATE');
+    if (!canCreateMarks) {
+      return createErrorResponse(
+        "You do not have permission to enter marks",
+        "PERMISSION_DENIED"
       );
     }
 

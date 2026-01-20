@@ -1,8 +1,27 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { AttendanceStatus } from "@prisma/client";
+import { AttendanceStatus, PermissionAction } from "@prisma/client";
+import { auth } from "@/auth";
+import { hasPermission } from "@/lib/utils/permissions";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 export async function getAttendanceOverview() {
   try {
@@ -358,7 +377,7 @@ export async function getStudentAttendanceByDate(date: Date, sectionId?: string)
     // Combine enrollment data with attendance data
     const studentsWithAttendance = enrollments.map((enrollment) => {
       const attendance = attendanceMap.get(enrollment.studentId);
-      
+
       return {
         id: enrollment.studentId,
         studentId: enrollment.studentId,
@@ -394,6 +413,9 @@ export async function markStudentAttendance(data: {
   markedBy?: string;
 }) {
   try {
+    // Permission check: require ATTENDANCE:CREATE
+    await checkPermission('ATTENDANCE', 'CREATE', 'You do not have permission to mark attendance');
+
     const startOfDay = new Date(data.date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(data.date);
@@ -466,8 +488,8 @@ export async function markStudentAttendance(data: {
             },
           });
 
-          const attendancePercentage = totalAttendance > 0 
-            ? (presentCount / totalAttendance) * 100 
+          const attendancePercentage = totalAttendance > 0
+            ? (presentCount / totalAttendance) * 100
             : 100;
 
           // Send notification to all parents
@@ -541,6 +563,9 @@ export async function markBulkStudentAttendance(data: {
 
 export async function deleteStudentAttendance(id: string) {
   try {
+    // Permission check: require ATTENDANCE:DELETE
+    await checkPermission('ATTENDANCE', 'DELETE', 'You do not have permission to delete attendance records');
+
     await db.studentAttendance.delete({
       where: { id },
     });

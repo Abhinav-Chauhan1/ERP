@@ -3,6 +3,7 @@ import { LucideIcon } from "lucide-react";
 export interface SubMenuItem {
     label: string;
     href: string;
+    permissions?: string[]; // Required permissions (OR logic: user needs at least one)
 }
 
 export interface RouteItem {
@@ -10,6 +11,7 @@ export interface RouteItem {
     icon: LucideIcon;
     href?: string;
     submenu?: SubMenuItem[];
+    permissions?: string[]; // Required permissions (OR logic)
 }
 
 export interface SidebarConfig {

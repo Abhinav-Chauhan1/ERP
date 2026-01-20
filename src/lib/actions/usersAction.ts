@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { UserRole, PermissionAction } from "@prisma/client";
 import {
   CreateAdministratorFormData,
   CreateTeacherFormData,
@@ -13,6 +13,24 @@ import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/input-sanitization";
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
+import { hasPermission } from "@/lib/utils/permissions";
+
+// Helper to check permission and throw if denied
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('Unauthorized: You must be logged in');
+  }
+
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) {
+    throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
+  }
+
+  return userId;
+}
 
 // Helper function to create base user
 const createBaseUser = async (userData: {
@@ -49,6 +67,9 @@ const createBaseUser = async (userData: {
 // Create Administrator
 export async function createAdministrator(data: CreateAdministratorFormData) {
   try {
+    // Permission check: require USER:CREATE
+    await checkPermission('USER', 'CREATE', 'You do not have permission to create administrators');
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
@@ -97,6 +118,9 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
 // Create Teacher
 export async function createTeacher(data: CreateTeacherFormData) {
   try {
+    // Permission check: require TEACHER:CREATE
+    await checkPermission('TEACHER', 'CREATE', 'You do not have permission to create teachers');
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
@@ -147,6 +171,9 @@ export async function createTeacher(data: CreateTeacherFormData) {
 // Create Student
 export async function createStudent(data: CreateStudentFormData) {
   try {
+    // Permission check: require STUDENT:CREATE
+    await checkPermission('STUDENT', 'CREATE', 'You do not have permission to create students');
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
@@ -237,6 +264,9 @@ export async function createStudent(data: CreateStudentFormData) {
 // Create Parent
 export async function createParent(data: CreateParentFormData) {
   try {
+    // Permission check: require PARENT:CREATE
+    await checkPermission('PARENT', 'CREATE', 'You do not have permission to create parents');
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
@@ -312,6 +342,9 @@ export async function updateUserDetails(userId: string, userData: {
   active?: boolean;
 }) {
   try {
+    // Permission check: require USER:UPDATE
+    await checkPermission('USER', 'UPDATE', 'You do not have permission to update users');
+
     const user = await db.user.findUnique({
       where: { id: userId }
     });
@@ -606,12 +639,8 @@ export async function syncClerkUser(clerkId: string, userData: {
 // Delete user
 export async function deleteUser(userId: string) {
   try {
-    const session = await auth();
-    const currentUserId = session?.user?.id;
-
-    if (!currentUserId) {
-      throw new Error('Unauthorized');
-    }
+    // Permission check: require USER:DELETE
+    const currentUserId = await checkPermission('USER', 'DELETE', 'You do not have permission to delete users');
 
     const user = await db.user.findUnique({
       where: { id: userId }
