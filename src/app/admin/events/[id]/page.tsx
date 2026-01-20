@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast"; // Replace useToast with react-hot-toast
 import {
-  ChevronLeft, Calendar, Clock, MapPin, Users, User,
+  ArrowLeft, Calendar, Clock, MapPin, Users, User,
   Edit, Trash2, Share2, Download, Tag, Globe, Lock,
   CheckCircle2, XCircle, Clock4, AlertCircle, MoreVertical,
   Plus, UserPlus, Mail, MessageSquare
@@ -447,7 +447,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
         <p className="text-muted-foreground mb-4">The event you're looking for doesn't exist or has been removed.</p>
         <Link href="/admin/events">
           <Button>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Events
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Events
           </Button>
         </Link>
       </div>
@@ -470,11 +470,11 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/events">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -485,7 +485,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
           </Badge>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">

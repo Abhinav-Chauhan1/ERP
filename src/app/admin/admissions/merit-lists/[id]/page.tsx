@@ -113,11 +113,11 @@ export default function MeritListDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/admissions/merit-lists">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -129,7 +129,7 @@ export default function MeritListDetailPage() {
             </p>
           </div>
         </div>
-        <Button onClick={handleExport}>
+        <Button onClick={handleExport} className="w-full sm:w-auto">
           <Download className="h-4 w-4 mr-2" />
           Export to CSV
         </Button>

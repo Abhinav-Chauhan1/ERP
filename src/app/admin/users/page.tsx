@@ -56,12 +56,19 @@ export default async function UsersPage() {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-          <BulkImportDialog
-            classes={filterOptions.classes}
-            sections={filterOptions.sections}
-          />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground mt-1">
+              Overview of all users across the system
+            </p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <BulkImportDialog
+              classes={filterOptions.classes}
+              sections={filterOptions.sections}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

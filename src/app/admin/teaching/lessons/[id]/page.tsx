@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ChevronLeft, Edit, Trash2, BookOpen, Clock,
+  ArrowLeft, Edit, Trash2, BookOpen, Clock,
   FileText, CalendarDays, Bookmark, ExternalLink,
   AlertCircle, Loader2
 } from "lucide-react";
@@ -96,7 +96,7 @@ export default function LessonDetailsPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/teaching/lessons')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Lessons
         </Button>
       </div>
@@ -112,7 +112,7 @@ export default function LessonDetailsPage() {
           <AlertDescription>Lesson not found</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/teaching/lessons')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Lessons
         </Button>
       </div>
@@ -126,23 +126,23 @@ export default function LessonDetailsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/teaching/lessons">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Lessons
             </Button>
           </Link>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/admin/teaching/lessons/${lesson.id}/edit`}>
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href={`/admin/teaching/lessons/${lesson.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Edit className="h-4 w-4 mr-2" />
               Edit Lesson
             </Button>
           </Link>
-          <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+          <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} className="w-full sm:w-auto">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </Button>

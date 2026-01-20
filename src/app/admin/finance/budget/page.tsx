@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  ChevronLeft, PlusCircle, Search, Filter,
+  ArrowLeft, PlusCircle, Search, Filter,
   Building, Wallet, ArrowUp, ArrowDown,
   Edit, Trash2, Eye, DollarSign,
   BarChart4, Download, Printer, AlertCircle
@@ -296,11 +296,11 @@ export default function BudgetPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -573,7 +573,7 @@ export default function BudgetPage() {
                     />
                   </div>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -586,7 +586,7 @@ export default function BudgetPage() {
                     </SelectContent>
                   </Select>
                   <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Academic Year" />
                     </SelectTrigger>
                     <SelectContent>

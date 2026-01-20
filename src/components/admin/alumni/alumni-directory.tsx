@@ -125,22 +125,22 @@ export function AlumniDirectory({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Alumni Directory</h1>
           <p className="text-muted-foreground">
             Browse and manage alumni profiles
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/admin/alumni/communication">
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/admin/alumni/communication" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <MessageSquare className="mr-2 h-4 w-4" />
               Send Message
             </Button>
           </Link>
           {onExport && (
-            <Button onClick={onExport} variant="outline">
+            <Button onClick={onExport} variant="outline" className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" />
               Export Directory
             </Button>

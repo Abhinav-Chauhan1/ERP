@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ChevronLeft, Edit, BookOpen, Users,
+  ArrowLeft, Edit, BookOpen, Users,
   GraduationCap, Clock, FileText, Plus,
   BookMarked, Download, PenTool, AlertCircle,
   Loader2
@@ -70,7 +70,7 @@ export default function SubjectDetailsPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/teaching/subjects')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Subjects
         </Button>
       </div>
@@ -86,7 +86,7 @@ export default function SubjectDetailsPage() {
           <AlertDescription>Subject not found</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/teaching/subjects')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Subjects
         </Button>
       </div>
@@ -95,24 +95,24 @@ export default function SubjectDetailsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/teaching/subjects">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Subjects
             </Button>
           </Link>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/admin/teaching/subjects/${subject.id}/edit`}>
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href={`/admin/teaching/subjects/${subject.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Edit className="h-4 w-4 mr-2" />
               Edit Subject
             </Button>
           </Link>
-          <Link href={`/admin/teaching/subjects/${subject.id}/assign-teacher`}>
-            <Button variant="outline">
+          <Link href={`/admin/teaching/subjects/${subject.id}/assign-teacher`} className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Users className="h-4 w-4 mr-2" />
               Manage Teachers
             </Button>

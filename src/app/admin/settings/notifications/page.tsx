@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -107,20 +107,27 @@ export default function NotificationPreferencesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
           <Link href="/admin/settings">
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Settings
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Notification Preferences</h1>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Notification Preferences</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage your notification preferences
+            </p>
+          </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="mr-2 h-4 w-4" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4">

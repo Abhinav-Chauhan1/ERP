@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronLeft,
+  ArrowLeft,
   Edit,
   Download,
   Plus,
@@ -208,7 +208,10 @@ export default function ExamDetailsPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" asChild>
-          <Link href="/admin/assessment/exams">Back to Exams</Link>
+          <Link href="/admin/assessment/exams">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Exams
+          </Link>
         </Button>
       </div>
     );
@@ -223,7 +226,10 @@ export default function ExamDetailsPage() {
           <AlertDescription>The requested exam could not be found</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" asChild>
-          <Link href="/admin/assessment/exams">Back to Exams</Link>
+          <Link href="/admin/assessment/exams">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Exams
+          </Link>
         </Button>
       </div>
     );
@@ -240,24 +246,24 @@ export default function ExamDetailsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment/exams">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">{exam.title}</h1>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/admin/assessment/exams/${exam.id}/edit`}>
-            <Button variant="outline" size="sm">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href={`/admin/assessment/exams/${exam.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" size="sm" className="w-full sm:w-auto">
               <Edit className="h-4 w-4 mr-2" />
               Edit Exam
             </Button>
           </Link>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export Results
           </Button>

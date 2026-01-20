@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, PlusCircle,
+  ArrowLeft, PlusCircle,
   Clock, AlertCircle, Loader2
 } from "lucide-react";
 import { TermsTable } from "@/components/admin/terms-table";
@@ -193,11 +193,11 @@ function TermsContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -205,7 +205,7 @@ function TermsContent() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
+            <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Term
             </Button>
           </DialogTrigger>

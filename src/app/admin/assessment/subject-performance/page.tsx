@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Download, BarChart3, TrendingUp,
+  ArrowLeft, Download, BarChart3, TrendingUp,
   TrendingDown, Loader2, AlertCircle, FileSpreadsheet
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -203,21 +203,22 @@ export default function SubjectPerformancePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Subject-wise Performance Reports</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleExportPDF}
             disabled={exporting || performanceData.length === 0}
+            className="w-full sm:w-auto"
           >
             {exporting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -230,6 +231,7 @@ export default function SubjectPerformancePage() {
             variant="outline"
             onClick={handleExportExcel}
             disabled={exporting || performanceData.length === 0}
+            className="w-full sm:w-auto"
           >
             {exporting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

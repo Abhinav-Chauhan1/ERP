@@ -87,10 +87,10 @@ export default function NewMeritListConfigPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Link href="/admin/admissions/merit-lists/configs">
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
         </Link>
@@ -203,26 +203,25 @@ export default function NewMeritListConfigPage() {
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <span className="font-medium">Total Weight:</span>
                 <span
-                  className={`font-bold ${
-                    Math.abs(totalWeight - 100) < 0.01
+                  className={`font-bold ${Math.abs(totalWeight - 100) < 0.01
                       ? "text-green-600"
                       : "text-destructive"
-                  }`}
+                    }`}
                 >
                   {totalWeight}%
                 </span>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" disabled={loading || Math.abs(totalWeight - 100) > 0.01}>
-                {loading ? "Creating..." : "Create Configuration"}
-              </Button>
-              <Link href="/admin/admissions/merit-lists/configs">
-                <Button type="button" variant="outline" disabled={loading}>
+            <div className="flex flex-col-reverse sm:flex-row gap-4">
+              <Link href="/admin/admissions/merit-lists/configs" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" disabled={loading} className="w-full sm:w-auto">
                   Cancel
                 </Button>
               </Link>
+              <Button type="submit" disabled={loading || Math.abs(totalWeight - 100) > 0.01} className="w-full sm:w-auto">
+                {loading ? "Creating..." : "Create Configuration"}
+              </Button>
             </div>
           </CardContent>
         </Card>

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Search, Download, FileText,
+  ArrowLeft, Search, Download, FileText,
   Printer, Mail, Eye, Filter, Loader2,
   AlertCircle, CheckCircle, Settings
 } from "lucide-react";
@@ -241,28 +241,28 @@ export default function ReportCardsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Report Cards</h1>
         </div>
-        <div className="flex gap-2">
-          <Link href="/admin/assessment/report-cards/templates">
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/admin/assessment/report-cards/templates" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Settings className="mr-2 h-4 w-4" /> Manage Templates
             </Button>
           </Link>
-          <Link href="/admin/assessment/report-cards/generate">
-            <Button variant="outline">
+          <Link href="/admin/assessment/report-cards/generate" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <FileText className="mr-2 h-4 w-4" /> Generate Report Card
             </Button>
           </Link>
-          <Button variant="outline" onClick={handleCalculateRanks}>
+          <Button variant="outline" onClick={handleCalculateRanks} className="w-full sm:w-auto">
             Calculate Ranks
           </Button>
         </div>
@@ -280,23 +280,23 @@ export default function ReportCardsPage() {
       <Card className="mb-4">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <label htmlFor="search" className="text-sm font-medium block mb-1">Search</label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
                   placeholder="Search by student name or ID..."
-                  className="pl-9"
+                  className="pl-9 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
-            <div>
+            <div className="w-full md:w-auto">
               <label htmlFor="term-filter" className="text-sm font-medium block mb-1">Term</label>
               <Select value={termFilter} onValueChange={setTermFilter}>
-                <SelectTrigger className="w-[180px]" id="term-filter">
+                <SelectTrigger className="w-full md:w-[180px]" id="term-filter">
                   <SelectValue placeholder="Filter by term" />
                 </SelectTrigger>
                 <SelectContent>
@@ -309,10 +309,10 @@ export default function ReportCardsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="w-full md:w-auto">
               <label htmlFor="class-filter" className="text-sm font-medium block mb-1">Class</label>
               <Select value={classFilter} onValueChange={setClassFilter}>
-                <SelectTrigger className="w-[180px]" id="class-filter">
+                <SelectTrigger className="w-full md:w-[180px]" id="class-filter">
                   <SelectValue placeholder="Filter by class" />
                 </SelectTrigger>
                 <SelectContent>
@@ -325,7 +325,7 @@ export default function ReportCardsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="secondary" className="flex gap-2 items-center" onClick={fetchReportCards}>
+            <Button variant="secondary" className="flex gap-2 items-center w-full md:w-auto" onClick={fetchReportCards}>
               <Filter className="h-4 w-4" />
               Apply Filters
             </Button>

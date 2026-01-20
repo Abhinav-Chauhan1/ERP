@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, PlusCircle, Search, Edit, Eye,
+  ArrowLeft, PlusCircle, Search, Edit, Eye,
   Trash2, DollarSign, CheckCircle, AlertCircle, Loader2, Copy, TrendingUp, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -504,12 +504,12 @@ export default function FeeStructurePage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Finance
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Fee Structure Management</h1>
@@ -560,30 +560,30 @@ export default function FeeStructurePage() {
         <TabsContent value="structures" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <CardTitle>Fee Structures</CardTitle>
                   <CardDescription>
                     Manage fee structures for different academic years and classes
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Link href="/admin/finance/analytics">
-                    <Button variant="outline">
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                  <Link href="/admin/finance/analytics" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto">
                       <TrendingUp className="mr-2 h-4 w-4" />
                       View Analytics
                     </Button>
                   </Link>
-                  <Link href="/admin/finance/bulk-operations">
-                    <Button variant="outline">
+                  <Link href="/admin/finance/bulk-operations" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto">
                       Bulk Operations
                     </Button>
                   </Link>
-                  <Button variant="outline" onClick={() => setQuickCreateDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => setQuickCreateDialogOpen(true)} className="w-full sm:w-auto">
                     <Sparkles className="mr-2 h-4 w-4" />
                     Quick Create by Class
                   </Button>
-                  <Button onClick={handleCreateStructure}>
+                  <Button onClick={handleCreateStructure} className="w-full sm:w-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Fee Structure
                   </Button>
@@ -772,12 +772,12 @@ export default function FeeStructurePage() {
                     Manage different types of fees that can be included in fee structures
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleAutoGenerate}>
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                  <Button variant="outline" onClick={handleAutoGenerate} className="w-full sm:w-auto">
                     <Sparkles className="mr-2 h-4 w-4" />
                     Auto-Generate
                   </Button>
-                  <Button onClick={handleCreateFeeType}>
+                  <Button onClick={handleCreateFeeType} className="w-full sm:w-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Fee Type
                   </Button>

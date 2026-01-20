@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Search, Calendar, Clock, BookOpen, User,
   MoreVertical, Download, CheckCircle, AlertCircle,
   FileUp, Eye, BookmarkCheck, Loader2, Upload
@@ -412,17 +412,17 @@ export default function AssignmentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Assignment Management</h1>
         </div>
-        <Button onClick={handleCreateAssignment}>
+        <Button onClick={handleCreateAssignment} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" /> Create Assignment
         </Button>
         <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
@@ -704,7 +704,7 @@ export default function AssignmentsPage() {
 
       {/* Search and filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <div className="md:w-1/2">
+        <div className="w-full md:w-1/2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -717,9 +717,9 @@ export default function AssignmentsPage() {
             />
           </div>
         </div>
-        <div className="md:w-1/2 flex flex-wrap gap-2">
+        <div className="w-full md:w-1/2 flex flex-col sm:flex-row gap-2">
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>
@@ -732,7 +732,7 @@ export default function AssignmentsPage() {
             </SelectContent>
           </Select>
           <Select value={classFilter} onValueChange={setClassFilter}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue placeholder="Grade" />
             </SelectTrigger>
             <SelectContent>
@@ -745,7 +745,7 @@ export default function AssignmentsPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-full sm:w-[130px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -755,7 +755,7 @@ export default function AssignmentsPage() {
               <SelectItem value="graded">Graded</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="secondary" onClick={fetchAssignments}>
+          <Button variant="secondary" onClick={fetchAssignments} className="w-full sm:w-auto">
             Apply Filters
           </Button>
         </div>

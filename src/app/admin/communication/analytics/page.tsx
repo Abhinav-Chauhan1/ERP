@@ -14,6 +14,9 @@
 import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import MessageAnalyticsDashboard from '@/components/admin/communication/message-analytics-dashboard';
 
 export const metadata = {
@@ -24,11 +27,21 @@ export const metadata = {
 export default function MessageAnalyticsPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Message Analytics</h1>
-        <p className="text-muted-foreground mt-2">
-          Track message delivery, costs, and performance across all communication channels
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/communication">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Message Analytics</h1>
+            <p className="text-muted-foreground">
+              Track message delivery, costs, and performance across all communication channels
+            </p>
+          </div>
+        </div>
       </div>
 
       <Suspense fallback={<AnalyticsLoadingSkeleton />}>

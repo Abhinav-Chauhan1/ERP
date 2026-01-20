@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 
 export default async function SessionManagementPage() {
   const session = await auth()
-  
+
   if (!session?.user) {
     redirect("/login")
   }
-  
+
   if (session.user.role !== UserRole.ADMIN) {
     redirect("/login")
   }
@@ -23,11 +23,13 @@ export default async function SessionManagementPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Session Management</h1>
-        <p className="text-sm md:text-base text-muted-foreground mt-1">
-          View and manage your active login sessions across devices
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Session Management</h1>
+          <p className="text-muted-foreground mt-1">
+            View and manage your active login sessions across devices
+          </p>
+        </div>
       </div>
 
       <SessionManagement />

@@ -17,7 +17,7 @@ import {
   FileText,
   Clock,
   TrendingUp,
-  ChevronRight,
+  ArrowLeft,
   Download,
   BarChart3,
   History,
@@ -250,37 +250,36 @@ export default function ReceiptVerificationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Link href="/admin/finance" className="hover:text-gray-900">
-          Finance
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">Receipt Verification</span>
-      </div>
-
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Receipt Verification</h1>
-          <p className="text-muted-foreground">
-            Review and verify offline payment receipts submitted by students
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/finance">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Receipt Verification</h1>
+            <p className="text-muted-foreground">
+              Review and verify offline payment receipts submitted by students
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/admin/finance/receipt-reports">
               <FileText className="mr-2 h-4 w-4" />
               Reports
             </Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/admin/finance/receipt-audit-logs">
               <History className="mr-2 h-4 w-4" />
               Audit Logs
             </Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/admin/finance/receipt-analytics">
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics

@@ -171,14 +171,14 @@ export default function CommunicationsPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Communications Hub</h1>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin/communication/messages">
-            <Button variant="outline" size="default">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/admin/communication/messages" className="w-full sm:w-auto">
+            <Button variant="outline" size="default" className="w-full sm:w-auto">
               <MessageSquare className="mr-2 h-4 w-4" /> Compose Message
             </Button>
           </Link>
-          <Link href="/admin/communication/announcements">
-            <Button size="default">
+          <Link href="/admin/communication/announcements" className="w-full sm:w-auto">
+            <Button size="default" className="w-full sm:w-auto">
               <Megaphone className="mr-2 h-4 w-4" /> Create Announcement
             </Button>
           </Link>

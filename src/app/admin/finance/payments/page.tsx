@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Search, DollarSign, PlusCircle,
+  ArrowLeft, Search, DollarSign, PlusCircle,
   CheckCircle, XCircle, Clock, Eye, Edit, Download, Loader2, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -391,17 +391,17 @@ export default function PaymentsPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Finance
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Payment Management</h1>
         </div>
-        <Button onClick={handleCreatePayment}>
+        <Button onClick={handleCreatePayment} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Record Payment
         </Button>
@@ -474,7 +474,7 @@ export default function PaymentsPage() {
         <TabsContent value="payments" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                   <CardTitle>Payment History</CardTitle>
                   <CardDescription>

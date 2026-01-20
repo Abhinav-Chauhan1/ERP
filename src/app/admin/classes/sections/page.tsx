@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, Edit, Trash2, PlusCircle, 
+import {
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Users, Layers, School, MoreVertical,
   Search, Loader2, AlertCircle, Building
 } from "lucide-react";
@@ -48,10 +48,10 @@ import toast from "react-hot-toast";
 
 // Import schema validation and server actions
 import { sectionSchema, SectionFormValues } from "@/lib/schemaValidation/sectionsSchemaValidation";
-import { 
-  getSections, 
-  getClassesForDropdown, 
-  getTeachersForDropdown, 
+import {
+  getSections,
+  getClassesForDropdown,
+  getTeachersForDropdown,
   getClassRoomsForDropdown,
   createSection,
   updateSection,
@@ -63,15 +63,15 @@ export default function SectionsPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [classrooms, setClassrooms] = useState<any[]>([]);
-  
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<any>(null);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState<string>("all");
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,10 +97,10 @@ export default function SectionsPage() {
   async function fetchSections() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getSections();
-      
+
       if (result.success) {
         setSections(result.data || []);
       } else {
@@ -119,7 +119,7 @@ export default function SectionsPage() {
   async function fetchClasses() {
     try {
       const result = await getClassesForDropdown();
-      
+
       if (result.success) {
         setClasses(result.data || []);
       } else {
@@ -134,7 +134,7 @@ export default function SectionsPage() {
   async function fetchTeachers() {
     try {
       const result = await getTeachersForDropdown();
-      
+
       if (result.success) {
         setTeachers(result.data || []);
       } else {
@@ -149,7 +149,7 @@ export default function SectionsPage() {
   async function fetchClassrooms() {
     try {
       const result = await getClassRoomsForDropdown();
-      
+
       if (result.success) {
         setClassrooms(result.data || []);
       } else {
@@ -167,9 +167,9 @@ export default function SectionsPage() {
       if (values.teacherId === "none") {
         values.teacherId = undefined;
       }
-      
+
       let result;
-      
+
       if (selectedSectionId) {
         // Update existing section
         result = await updateSection({ ...values, id: selectedSectionId });
@@ -177,7 +177,7 @@ export default function SectionsPage() {
         // Create new section
         result = await createSection(values);
       }
-      
+
       if (result.success) {
         toast.success(`Section ${selectedSectionId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -197,7 +197,7 @@ export default function SectionsPage() {
   function handleEditSection(section: any) {
     setSelectedSection(section);
     setSelectedSectionId(section.id);
-    
+
     form.reset({
       name: section.name,
       capacity: section.capacity || 40,
@@ -205,7 +205,7 @@ export default function SectionsPage() {
       teacherId: section.teacherId,
       isClassHead: true, // If teacher is assigned, they're the class head
     });
-    
+
     setDialogOpen(true);
   }
 
@@ -233,7 +233,7 @@ export default function SectionsPage() {
     if (selectedSectionId) {
       try {
         const result = await deleteSection(selectedSectionId);
-        
+
         if (result.success) {
           toast.success("Section deleted successfully");
           setDeleteDialogOpen(false);
@@ -252,39 +252,39 @@ export default function SectionsPage() {
 
   // Filter sections based on search term and class filter
   const filteredSections = sections.filter(section => {
-    const matchesSearch = 
+    const matchesSearch =
       section.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.room.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesClass = classFilter === "all" || section.classId === classFilter;
-    
+
     return matchesSearch && matchesClass;
   });
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/classes">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Classes
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Section Management</h1>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <Button onClick={handleAddSection}>
+          <Button onClick={handleAddSection} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" /> Create Section
           </Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{selectedSectionId ? "Edit Section" : "Create New Section"}</DialogTitle>
               <DialogDescription>
-                {selectedSectionId 
-                  ? "Update the details of the existing section." 
+                {selectedSectionId
+                  ? "Update the details of the existing section."
                   : "Define a new section for a class."}
               </DialogDescription>
             </DialogHeader>
@@ -335,11 +335,11 @@ export default function SectionsPage() {
                     <FormItem>
                       <FormLabel>Capacity (Optional)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min={1} 
-                          max={100} 
-                          {...field} 
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100}
+                          {...field}
                           onChange={e => field.onChange(parseInt(e.target.value))}
                         />
                       </FormControl>
@@ -353,8 +353,8 @@ export default function SectionsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Class Teacher (Optional)</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -445,7 +445,7 @@ export default function SectionsPage() {
               </Select>
             </div>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -477,7 +477,7 @@ export default function SectionsPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-red-600"
                             onClick={() => handleDeleteSection(section)}
                           >
@@ -524,7 +524,7 @@ export default function SectionsPage() {
               ))}
             </div>
           )}
-          
+
           {!loading && filteredSections.length === 0 && (
             <div className="text-center py-10">
               <Layers className="h-10 w-10 text-gray-300 mx-auto mb-3" />

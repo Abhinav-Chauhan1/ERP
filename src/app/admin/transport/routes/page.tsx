@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus, Bus, MapPin, Users } from "lucide-react";
+import { Plus, Bus, MapPin, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -168,29 +168,6 @@ function RouteListSkeleton() {
         </Card>
       ))}
     </div>
-  );
-}
-
-export default function RoutesPage() {
-  return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Routes</h1>
-          <p className="text-muted-foreground">Manage school transport routes</p>
-        </div>
-        <Link href="/admin/transport/routes/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Route
-          </Button>
-        </Link>
-      </div>
-
-      <Suspense
-        fallback={
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
                 <CardHeader>
                   <Skeleton className="h-4 w-24" />
@@ -199,16 +176,17 @@ export default function RoutesPage() {
                   <Skeleton className="h-8 w-16" />
                 </CardContent>
               </Card>
-            ))}
-          </div>
+  ))
+}
+          </div >
         }
       >
-        <RouteStats />
-      </Suspense>
+  <RouteStats />
+      </Suspense >
 
-      <Suspense fallback={<RouteListSkeleton />}>
-        <RouteList />
-      </Suspense>
-    </div>
+  <Suspense fallback={<RouteListSkeleton />}>
+    <RouteList />
+  </Suspense>
+    </div >
   );
 }

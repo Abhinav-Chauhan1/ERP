@@ -308,11 +308,11 @@ export default function EventsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Event Management</h1>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Event
             </Button>
           </DialogTrigger>
@@ -706,7 +706,7 @@ export default function EventsPage() {
                   value={typeFilter || "ALL"}
                   onValueChange={(value) => setTypeFilter(value === "ALL" ? undefined : value)}
                 >
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-full sm:w-[130px]">
                     <SelectValue placeholder="Event Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -723,7 +723,7 @@ export default function EventsPage() {
                   value={statusFilter || "ALL"}
                   onValueChange={(value) => setStatusFilter(value === "ALL" ? undefined : value)}
                 >
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-full sm:w-[130px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -735,7 +735,7 @@ export default function EventsPage() {
                     <SelectItem value="POSTPONED">Postponed</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="icon" onClick={handleSearch}>
+                <Button variant="outline" size="icon" onClick={handleSearch} className="shrink-0">
                   <Filter className="h-4 w-4" />
                 </Button>
               </div>

@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   BookOpen, BookText, FolderPlus, Search,
   AlertCircle, Loader2, ChevronRight
 } from "lucide-react";
@@ -232,11 +232,11 @@ export default function CurriculumPage() {
         <span className="font-medium text-foreground">Curriculum Management</span>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -244,7 +244,7 @@ export default function CurriculumPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
+            <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
             </Button>
           </DialogTrigger>

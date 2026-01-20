@@ -28,25 +28,9 @@ export default async function TransportPage() {
   const totalStudentsOnRoutes = todayAttendance.reduce((sum, route) => sum + route.totalStudents, 0);
   const totalBoardingPresent = todayAttendance.reduce((sum, route) => sum + route.boardingPresent, 0);
   const totalAlightingPresent = todayAttendance.reduce((sum, route) => sum + route.alightingPresent, 0);
-  const boardingPercentage = totalStudentsOnRoutes > 0 
-    ? Math.round((totalBoardingPresent / totalStudentsOnRoutes) * 100) 
+  const boardingPercentage = totalStudentsOnRoutes > 0
+    ? Math.round((totalBoardingPresent / totalStudentsOnRoutes) * 100)
     : 0;
-  const alightingPercentage = totalStudentsOnRoutes > 0 
-    ? Math.round((totalAlightingPresent / totalStudentsOnRoutes) * 100) 
-    : 0;
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Transport Management</h1>
-        <p className="text-muted-foreground">
-          Manage vehicles, drivers, routes, and student transportation
-        </p>
-      </div>
-
-      {/* Transport Statistics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
             <Bus className="h-4 w-4 text-muted-foreground" />
@@ -57,7 +41,7 @@ export default async function TransportPage() {
               {vehicleStats.active} active, {vehicleStats.maintenance} in maintenance
             </p>
           </CardContent>
-        </Card>
+        </Card >
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -97,10 +81,10 @@ export default async function TransportPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </div >
 
-      {/* Today's Attendance Summary */}
-      <Card>
+    {/* Today's Attendance Summary */ }
+    < Card >
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -231,10 +215,10 @@ export default async function TransportPage() {
             </>
           )}
         </CardContent>
-      </Card>
+      </Card >
 
-      {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {/* Quick Actions */ }
+    < div className = "grid gap-6 md:grid-cols-2 lg:grid-cols-3" >
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -349,7 +333,7 @@ export default async function TransportPage() {
             </Link>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ChevronLeft, Printer, Download, Mail,
+  ArrowLeft, Printer, Download, Mail,
   Calendar, FileText, User, CheckCircle,
   Loader2, AlertCircle, Share2
 } from "lucide-react";
@@ -114,7 +114,10 @@ export default function ReportCardDetailPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" asChild>
-          <Link href="/admin/assessment/report-cards">Back to Report Cards</Link>
+          <Link href="/admin/assessment/report-cards">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Report Cards
+          </Link>
         </Button>
       </div>
     );
@@ -129,7 +132,10 @@ export default function ReportCardDetailPage() {
           <AlertDescription>The requested report card could not be found</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" asChild>
-          <Link href="/admin/assessment/report-cards">Back to Report Cards</Link>
+          <Link href="/admin/assessment/report-cards">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Report Cards
+          </Link>
         </Button>
       </div>
     );
@@ -137,33 +143,33 @@ export default function ReportCardDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment/report-cards">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Report Card</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePrint}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto">
             <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Download PDF
           </Button>
           {!reportCard.isPublished && (
-            <Button onClick={() => setPublishDialogOpen(true)}>
+            <Button onClick={() => setPublishDialogOpen(true)} className="w-full sm:w-auto">
               <CheckCircle className="h-4 w-4 mr-2" />
               Publish
             </Button>
           )}
           {reportCard.isPublished && (
-            <Button variant="outline" onClick={handleSendEmail}>
+            <Button variant="outline" onClick={handleSendEmail} className="w-full sm:w-auto">
               <Mail className="h-4 w-4 mr-2" />
               Send to Parent
             </Button>

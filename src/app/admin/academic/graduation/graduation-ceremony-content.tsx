@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { ChevronLeft, Loader2, GraduationCap, Calendar, MapPin, User, FileText, Send, Award } from "lucide-react";
+import { ChevronLeft, Loader2, GraduationCap, Calendar, MapPin, User, FileText, Send, Award, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
@@ -66,22 +66,22 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data for dropdowns
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  
+
   // Selection state
   const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
-  
+
   // Students data
   const [students, setStudents] = useState<StudentForGraduation[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  
+
   // Ceremony details
   const [graduationDate, setGraduationDate] = useState<Date>(new Date());
   const [venue, setVenue] = useState("");
@@ -90,7 +90,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
   const [notes, setNotes] = useState("");
   const [generateCertificates, setGenerateCertificates] = useState(true);
   const [sendNotifications, setSendNotifications] = useState(true);
-  
+
   // Execution state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showResultsDialog, setShowResultsDialog] = useState(false);
@@ -105,7 +105,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
   async function loadInitialData() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const [yearsResult, classesResult] = await Promise.all([
         getAcademicYears(),
@@ -141,14 +141,14 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
 
     setLoadingStudents(true);
     setError(null);
-    
+
     try {
       const result = await getStudentsForGraduation(
         selectedClassId,
         selectedSectionId || undefined,
         selectedAcademicYearId
       );
-      
+
       if (result.success && result.data) {
         setStudents(result.data.students);
         // Auto-select eligible students (not already graduated)
@@ -200,7 +200,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
     setExecuting(true);
     setShowConfirmDialog(false);
     setError(null);
-    
+
     try {
       const ceremonyDetails: GraduationCeremonyDetails = {
         ceremonyDate: graduationDate,
@@ -217,17 +217,17 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
         generateCertificates,
         sendNotifications,
       });
-      
+
       if (result.success && result.data) {
         setExecutionResults(result.data);
         setShowResultsDialog(true);
-        
+
         if (result.data.failures.length === 0) {
           toast.success(`Successfully graduated ${result.data.graduatedCount} students`);
         } else {
           toast.error(`Graduation completed with ${result.data.failures.length} failures`);
         }
-        
+
         // Reload students to reflect changes
         await loadStudents();
       } else {
@@ -252,7 +252,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
     setExecuting(true);
     setShowConfirmDialog(false);
     setError(null);
-    
+
     try {
       const ceremonyDetails: GraduationCeremonyDetails = {
         ceremonyDate: graduationDate,
@@ -271,17 +271,17 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
         generateCertificates,
         sendNotifications,
       });
-      
+
       if (result.success && result.data) {
         setExecutionResults(result.data);
         setShowResultsDialog(true);
-        
+
         if (result.data.failures.length === 0) {
           toast.success(`Successfully graduated ${result.data.graduatedCount} students`);
         } else {
           toast.error(`Graduation completed with ${result.data.failures.length} failures`);
         }
-        
+
         // Reload students to reflect changes
         await loadStudents();
       } else {
@@ -303,7 +303,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
   }
 
   const eligibleStudents = students.filter((s) => !s.alreadyGraduated);
-  const allEligibleSelected = eligibleStudents.length > 0 && 
+  const allEligibleSelected = eligibleStudents.length > 0 &&
     eligibleStudents.every((s) => selectedStudentIds.includes(s.id));
 
   if (loading) {
@@ -321,8 +321,8 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
       <div className="flex items-center gap-2">
         <Link href="/admin/academic">
           <Button variant="ghost" size="sm">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Academic
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
           </Button>
         </Link>
         <span className="text-muted-foreground">/</span>

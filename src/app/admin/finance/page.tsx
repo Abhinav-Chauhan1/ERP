@@ -200,16 +200,16 @@ export default function FinancePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Finance Management</h1>
-        <div className="flex gap-2">
-          <Link href="/admin/finance/payments">
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/admin/finance/payments" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Record Payment
             </Button>
           </Link>
-          <Link href="/admin/finance/expenses">
-            <Button>
+          <Link href="/admin/finance/expenses" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
             </Button>
           </Link>

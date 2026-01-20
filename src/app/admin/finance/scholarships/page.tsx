@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  ChevronLeft, PlusCircle, Search, Filter,
+  ArrowLeft, PlusCircle, Search, Filter,
   BadgeDollarSign, User, CheckCircle, XCircle,
   Edit, Eye, Download, Trash2, BarChart4,
   UserCheck, ArrowUp, Calendar, Clock, DollarSign,
@@ -367,20 +367,20 @@ export default function ScholarshipsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Scholarship Management</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={addRecipientDialog} onOpenChange={setAddRecipientDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline" onClick={() => handleAddRecipient()}>
+              <Button variant="outline" onClick={() => handleAddRecipient()} className="w-full sm:w-auto">
                 <UserCheck className="mr-2 h-4 w-4" /> Award Scholarship
               </Button>
             </DialogTrigger>
@@ -525,7 +525,7 @@ export default function ScholarshipsPage() {
 
           <Dialog open={createProgramDialog} onOpenChange={setCreateProgramDialog}>
             <DialogTrigger asChild>
-              <Button onClick={handleCreateProgram}>
+              <Button onClick={handleCreateProgram} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Program
               </Button>
             </DialogTrigger>

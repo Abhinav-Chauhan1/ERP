@@ -25,7 +25,7 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -159,21 +159,22 @@ export default function ReceiptReportsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Link href="/admin/finance" className="hover:text-gray-900">
-          Finance
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">Receipt Reports</span>
-      </div>
-
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Receipt Reports</h1>
-        <p className="text-muted-foreground mt-2">
-          Generate and send automated reports for receipt verification activities
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/finance/receipt-verification">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Receipt Reports</h1>
+            <p className="text-muted-foreground">
+              Generate and send automated reports for receipt verification activities
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Report Generation */}
@@ -378,23 +379,21 @@ export default function ReceiptReportsPage() {
                       </p>
                     </div>
                     <div
-                      className={`p-3 rounded-lg ${
-                        reportData.stats.rejectionRate > 30
-                          ? "bg-red-50 dark:bg-red-950/20"
-                          : reportData.stats.rejectionRate > 15
+                      className={`p-3 rounded-lg ${reportData.stats.rejectionRate > 30
+                        ? "bg-red-50 dark:bg-red-950/20"
+                        : reportData.stats.rejectionRate > 15
                           ? "bg-amber-50 dark:bg-amber-950/20"
                           : "bg-green-50 dark:bg-green-950/20"
-                      }`}
+                        }`}
                     >
                       <p className="text-xs text-muted-foreground">Rejection Rate</p>
                       <p
-                        className={`text-xl font-bold ${
-                          reportData.stats.rejectionRate > 30
-                            ? "text-red-600"
-                            : reportData.stats.rejectionRate > 15
+                        className={`text-xl font-bold ${reportData.stats.rejectionRate > 30
+                          ? "text-red-600"
+                          : reportData.stats.rejectionRate > 15
                             ? "text-amber-600"
                             : "text-green-600"
-                        }`}
+                          }`}
                       >
                         {reportData.stats.rejectionRate.toFixed(1)}%
                       </p>

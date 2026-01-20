@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 
 export default async function TwoFactorPage() {
   const session = await auth()
-  
+
   if (!session?.user) {
     redirect("/login")
   }
-  
+
   if (session.user.role !== UserRole.ADMIN) {
     redirect("/login")
   }
@@ -23,11 +23,13 @@ export default async function TwoFactorPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Two-Factor Authentication</h1>
-        <p className="text-sm md:text-base text-muted-foreground mt-1">
-          Add an extra layer of security to your account
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Two-Factor Authentication</h1>
+          <p className="text-muted-foreground mt-1">
+            Add an extra layer of security to your account
+          </p>
+        </div>
       </div>
 
       <TwoFactorManagement />

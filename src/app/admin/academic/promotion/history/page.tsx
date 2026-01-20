@@ -321,7 +321,7 @@ export default function PromotionHistoryPage() {
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <History className="h-8 w-8" />
@@ -331,10 +331,11 @@ export default function PromotionHistoryPage() {
             View and track all student promotion operations
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
+            className="w-full sm:w-auto"
           >
             <Filter className="mr-2 h-4 w-4" />
             {showFilters ? "Hide Filters" : "Show Filters"}
@@ -343,11 +344,12 @@ export default function PromotionHistoryPage() {
             variant="outline"
             onClick={handleExport}
             disabled={history.length === 0}
+            className="w-full sm:w-auto"
           >
             <Download className="mr-2 h-4 w-4" />
             Export to CSV
           </Button>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/admin/academic/promotion">
               <TrendingUp className="mr-2 h-4 w-4" />
               New Promotion
@@ -808,8 +810,8 @@ export default function PromotionHistoryPage() {
                                 student.status === "PROMOTED"
                                   ? "default"
                                   : student.status === "EXCLUDED"
-                                  ? "secondary"
-                                  : "destructive"
+                                    ? "secondary"
+                                    : "destructive"
                               }
                               className={
                                 student.status === "PROMOTED"

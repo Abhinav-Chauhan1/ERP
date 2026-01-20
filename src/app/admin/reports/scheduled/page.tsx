@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ScheduledReportsList } from "@/components/admin/reports/scheduled-reports-list";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,19 +11,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ScheduledReportsPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Scheduled Reports</h1>
-          <p className="text-muted-foreground mt-1">
-            Automate report generation and delivery
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Link href="/admin/reports">
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Reports
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Scheduled Reports</h1>
+            <p className="text-muted-foreground mt-1">
+              Automate report generation and delivery
+            </p>
+          </div>
         </div>
-        <Link href="/admin/reports/scheduled/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Scheduled Report
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/admin/reports/scheduled/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Scheduled Report
+            </Link>
           </Button>
-        </Link>
+        </div>
       </div>
 
       <Card>

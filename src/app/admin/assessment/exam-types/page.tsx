@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  ChevronLeft, PlusCircle, Edit, Trash2, 
-  MoreVertical, ClipboardList, BarChart, 
+import {
+  ArrowLeft, PlusCircle, Edit, Trash2,
+  MoreVertical, ClipboardList, BarChart,
   AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,10 +45,10 @@ import toast from "react-hot-toast";
 
 // Import schema validation and server actions
 import { examTypeSchema, ExamTypeFormValues, examTypeUpdateSchema, ExamTypeUpdateFormValues } from "@/lib/schemaValidation/examTypesSchemaValidation";
-import { 
-  getExamTypes, 
-  createExamType, 
-  updateExamType, 
+import {
+  getExamTypes,
+  createExamType,
+  updateExamType,
   deleteExamType,
   getExamStatsByType
 } from "@/lib/actions/examTypesActions";
@@ -86,10 +86,10 @@ export default function ExamTypesPage() {
   async function fetchExamTypes() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getExamTypes();
-      
+
       if (result.success) {
         setExamTypes(result.data || []);
       } else {
@@ -107,10 +107,10 @@ export default function ExamTypesPage() {
 
   async function fetchGrades() {
     setGradesLoading(true);
-    
+
     try {
       const result = await getGrades();
-      
+
       if (result.success) {
         // Sort grades by minMarks in descending order (highest first)
         const sortedGrades = [...(result.data || [])].sort((a, b) => b.minMarks - a.minMarks);
@@ -129,7 +129,7 @@ export default function ExamTypesPage() {
   async function onSubmit(values: ExamTypeFormValues) {
     try {
       let result;
-      
+
       if (editingExamType) {
         // Update existing exam type
         const updateData: ExamTypeUpdateFormValues = { ...values, id: editingExamType.id };
@@ -138,7 +138,7 @@ export default function ExamTypesPage() {
         // Create new exam type
         result = await createExamType(values);
       }
-      
+
       if (result.success) {
         toast.success(`Exam type ${editingExamType ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -187,10 +187,10 @@ export default function ExamTypesPage() {
 
   async function confirmDeleteExamType() {
     if (!examTypeToDelete) return;
-    
+
     try {
       const result = await deleteExamType(examTypeToDelete);
-      
+
       if (result.success) {
         toast.success("Exam type deleted successfully");
         setDeleteDialogOpen(false);
@@ -208,8 +208,8 @@ export default function ExamTypesPage() {
   // Function to get grade color class
   const getGradeColorClass = (grade: string) => {
     const firstChar = grade.charAt(0).toUpperCase();
-    
-    switch(firstChar) {
+
+    switch (firstChar) {
       case 'A': return { bg: 'bg-green-50', text: 'text-green-600' };
       case 'B': return { bg: 'bg-primary/10', text: 'text-primary' };
       case 'C': return { bg: 'bg-yellow-50', text: 'text-yellow-600' };
@@ -220,11 +220,11 @@ export default function ExamTypesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -232,7 +232,7 @@ export default function ExamTypesPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreateExamType}>
+            <Button onClick={handleCreateExamType} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type
             </Button>
           </DialogTrigger>
@@ -240,8 +240,8 @@ export default function ExamTypesPage() {
             <DialogHeader>
               <DialogTitle>{editingExamType ? "Edit Exam Type" : "Create Exam Type"}</DialogTitle>
               <DialogDescription>
-                {editingExamType 
-                  ? "Update the details of an existing exam type" 
+                {editingExamType
+                  ? "Update the details of an existing exam type"
                   : "Add a new type of examination to the system"
                 }
               </DialogDescription>
@@ -261,7 +261,7 @@ export default function ExamTypesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="description"
@@ -269,9 +269,9 @@ export default function ExamTypesPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Brief description of this exam type" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Brief description of this exam type"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -287,11 +287,11 @@ export default function ExamTypesPage() {
                     <FormItem>
                       <FormLabel>Weight (% of total grade)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          max="100" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          {...field}
                           value={field.value ?? ""}
                           onChange={e => {
                             const value = e.target.value === "" ? 0 : parseFloat(e.target.value);
@@ -303,7 +303,7 @@ export default function ExamTypesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="isActive"
@@ -324,7 +324,7 @@ export default function ExamTypesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="canRetest"
@@ -345,7 +345,7 @@ export default function ExamTypesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="includeInGradeCard"
@@ -366,7 +366,7 @@ export default function ExamTypesPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <DialogFooter>
                   <Button type="submit">
                     {editingExamType ? "Save Changes" : "Create Exam Type"}
@@ -433,7 +433,7 @@ export default function ExamTypesPage() {
                           View Stats
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-red-600"
                           onClick={() => handleDeleteExamType(examType.id)}
                         >
@@ -456,7 +456,7 @@ export default function ExamTypesPage() {
                         <p className="text-lg font-semibold">{examType.examsCount}</p>
                       </div>
                     </div>
-                    
+
                     <div className="border rounded-lg p-3">
                       <p className="text-xs text-muted-foreground mb-2">Features</p>
                       <div className="flex flex-wrap gap-2">
@@ -472,21 +472,21 @@ export default function ExamTypesPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="border rounded-lg p-3">
                       <p className="text-xs text-muted-foreground mb-2">Grade Thresholds</p>
                       <div className="grid grid-cols-5 gap-1 text-center">
                         {examType.gradeThresholds?.map((threshold: any) => (
-                          <div 
-                            key={threshold.grade} 
+                          <div
+                            key={threshold.grade}
                             className="border rounded p-1 text-xs"
                             style={{
-                              backgroundColor: 
-                                threshold.grade === 'A' ? '#ecfdf5' : 
-                                threshold.grade === 'B' ? '#e0f2fe' : 
-                                threshold.grade === 'C' ? '#fef9c3' : 
-                                threshold.grade === 'D' ? '#ffedd5' : 
-                                '#fee2e2'
+                              backgroundColor:
+                                threshold.grade === 'A' ? '#ecfdf5' :
+                                  threshold.grade === 'B' ? '#e0f2fe' :
+                                    threshold.grade === 'C' ? '#fef9c3' :
+                                      threshold.grade === 'D' ? '#ffedd5' :
+                                        '#fee2e2'
                             }}
                           >
                             <div className="font-medium mb-1">{threshold.grade}</div>
@@ -580,10 +580,10 @@ export default function ExamTypesPage() {
                           {grade.minMarks.toFixed(1)}% - {grade.maxMarks.toFixed(1)}%
                         </p>
                         <p className={`text-center text-xs font-medium ${colors.text} mt-1`}>
-                          {grade.description || (grade.grade === "F" ? "Fail" : 
+                          {grade.description || (grade.grade === "F" ? "Fail" :
                             grade.grade === "D" ? "Satisfactory" :
-                            grade.grade === "C" ? "Good" :
-                            grade.grade === "B" ? "Very Good" : "Excellent")}
+                              grade.grade === "C" ? "Good" :
+                                grade.grade === "B" ? "Very Good" : "Excellent")}
                         </p>
                       </div>
                     );

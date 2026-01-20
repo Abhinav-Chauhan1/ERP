@@ -28,10 +28,11 @@ export default async function EditVehiclePage({ params }: PageProps) {
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/transport/vehicles">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <div>
@@ -77,11 +78,10 @@ export default async function EditVehiclePage({ params }: PageProps) {
                     </div>
                     <div className="text-sm">
                       <span
-                        className={`px-2 py-1 rounded-full ${
-                          route.status === "ACTIVE"
+                        className={`px-2 py-1 rounded-full ${route.status === "ACTIVE"
                             ? "bg-green-100 text-green-800"
                             : "bg-gray-100 text-gray-800"
-                        }`}
+                          }`}
                       >
                         {route.status}
                       </span>

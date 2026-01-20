@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  PlusCircle, BookOpen, ClipboardList, Clock, Search, Filter, 
+import {
+  PlusCircle, BookOpen, ClipboardList, Clock, Search, Filter,
   GraduationCap, FileText, Calendar, LayoutGrid, ArrowRight, Edit,
   Users, School, Layers, CheckCircle, Loader2
 } from "lucide-react";
@@ -45,11 +45,11 @@ import { formatDistanceToNow } from "date-fns";
 
 // Import schema validation and server actions
 import { subjectFormSchema, SubjectFormValues } from "@/lib/schemaValidation/teachingSchemaValidation";
-import { 
-  getTeachingStats, 
-  getAllSubjects, 
-  getSubjectsByDepartment, 
-  getDepartments, 
+import {
+  getTeachingStats,
+  getAllSubjects,
+  getSubjectsByDepartment,
+  getDepartments,
   getClasses,
   createSubject,
   getRecentTeachingActivities
@@ -107,11 +107,11 @@ export default function TeachingPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
-  
+
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
-  
+
   const [stats, setStats] = useState<any>({});
   const [subjects, setSubjects] = useState<any[]>([]);
   const [departmentsWithSubjects, setDepartmentsWithSubjects] = useState<any[]>([]);
@@ -150,7 +150,7 @@ export default function TeachingPage() {
       } else {
         toast.error(result.error || "Failed to fetch subjects");
       }
-      
+
       const subjectsResult = await getAllSubjects();
       if (subjectsResult.success && subjectsResult.data) {
         setSubjects(subjectsResult.data);
@@ -162,7 +162,7 @@ export default function TeachingPage() {
       setLoading(false);
     }
   }
-  
+
   // Fetch teaching stats
   async function fetchStats() {
     setStatsLoading(true);
@@ -179,7 +179,7 @@ export default function TeachingPage() {
       setStatsLoading(false);
     }
   }
-  
+
   // Fetch recent activities
   async function fetchActivities() {
     setActivitiesLoading(true);
@@ -231,12 +231,12 @@ export default function TeachingPage() {
   async function onSubmit(values: SubjectFormValues) {
     try {
       const result = await createSubject(values);
-      
+
       if (result.success) {
         toast.success("Subject created successfully");
         setDialogOpen(false);
         form.reset();
-        
+
         // Refresh data
         fetchData();
         fetchStats();
@@ -250,26 +250,26 @@ export default function TeachingPage() {
   }
 
   // Filter subjects based on search term and department filter
-  const filteredDepartments = departmentsWithSubjects.filter(dept => 
+  const filteredDepartments = departmentsWithSubjects.filter(dept =>
     departmentFilter === "all" || dept.name === departmentFilter
   );
 
   // Get flattened list of subjects for the table
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         subject.code.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || 
-                             (subject.department && subject.department.name === departmentFilter);
+    const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      subject.code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = departmentFilter === "all" ||
+      (subject.department && subject.department.name === departmentFilter);
     return matchesSearch && matchesDepartment;
   });
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Teaching Management</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
             </Button>
           </DialogTrigger>
@@ -362,7 +362,7 @@ export default function TeachingPage() {
                             />
                             <label htmlFor={`class-${classItem.id}`} className="text-sm">
                               {classItem.name}
-                              {classItem.academicYear?.isCurrent && 
+                              {classItem.academicYear?.isCurrent &&
                                 <span className="ml-1 text-xs text-green-600">(Current)</span>
                               }
                             </label>
@@ -380,9 +380,9 @@ export default function TeachingPage() {
                     <FormItem>
                       <FormLabel>Description (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Brief description of the subject" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Brief description of the subject"
+                          {...field}
                           value={field.value || ""}
                         />
                       </FormControl>
@@ -534,7 +534,7 @@ export default function TeachingPage() {
                     ) : (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                          {searchTerm || departmentFilter !== "all" 
+                          {searchTerm || departmentFilter !== "all"
                             ? "No subjects match your search criteria"
                             : "No subjects found, add one to get started"
                           }
@@ -650,7 +650,7 @@ export default function TeachingPage() {
                   <div>
                     <p className="font-medium text-sm">
                       {activity.type === 'lesson' ? 'Lesson' : 'Syllabus'} {activity.action} {' '}
-                      <span className="text-primary">{activity.entityName}</span> 
+                      <span className="text-primary">{activity.entityName}</span>
                       {activity.subjectName && <span> for {activity.subjectName}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">

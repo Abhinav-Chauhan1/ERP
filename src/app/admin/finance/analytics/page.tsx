@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, Download } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeeStructureAnalyticsComponent } from "@/components/fees/fee-structure-analytics";
 import { getAcademicYears } from "@/lib/actions/academicyearsActions";
@@ -139,19 +139,23 @@ export default function AnalyticsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/finance">
-            <Button variant="ghost" size="icon">
-              <ChevronLeft className="h-5 w-5" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/finance/fee-structure">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Fee Structure Analytics</h1>
-            <p className="text-muted-foreground">
-              Comprehensive analytics and insights for fee structures
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Fee Analytics</h1>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => handleExport("csv")} className="w-full sm:w-auto">
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => handleExport("excel")} className="w-full sm:w-auto">
+            <Download className="mr-2 h-4 w-4" /> Export Excel
+          </Button>
         </div>
       </div>
 

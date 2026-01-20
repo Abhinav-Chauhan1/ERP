@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import toast from "react-hot-toast";
 import {
-  Calendar, Edit, Trash2, ChevronLeft,
+  Calendar, Edit, Trash2, ArrowLeft,
   AlertCircle, Clock, Users, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,7 @@ function AcademicYearDetailPageContent() {
         <div className="flex items-center gap-2">
           <Link href="/admin/academic/academic-years">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -103,7 +103,7 @@ function AcademicYearDetailPageContent() {
         <div className="flex items-center gap-2">
           <Link href="/admin/academic/academic-years">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -122,29 +122,31 @@ function AcademicYearDetailPageContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic/academic-years">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">{academicYear.name}</h1>
-          <Badge
-            variant={status === 'Current' ? 'default' : 'secondary'}
-            className={
-              status === 'Current' ? 'bg-green-600 hover:bg-green-700' :
-                status === 'Past' ? 'bg-gray-500 hover:bg-gray-600' :
-                  'bg-blue-600 hover:bg-blue-700'
-            }
-          >
-            {status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{academicYear.name}</h1>
+            <Badge
+              variant={status === 'Current' ? 'default' : 'secondary'}
+              className={
+                status === 'Current' ? 'bg-green-600 hover:bg-green-700' :
+                  status === 'Past' ? 'bg-gray-500 hover:bg-gray-600' :
+                    'bg-blue-600 hover:bg-blue-700'
+              }
+            >
+              {status}
+            </Badge>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/admin/academic/academic-years`}>
-            <Button variant="outline" disabled={deleting}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href={`/admin/academic/academic-years`} className="w-full sm:w-auto">
+            <Button variant="outline" disabled={deleting} className="w-full sm:w-auto">
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
           </Link>
@@ -152,6 +154,7 @@ function AcademicYearDetailPageContent() {
             variant="destructive"
             onClick={() => setDeleteDialogOpen(true)}
             disabled={deleting}
+            className="w-full sm:w-auto"
           >
             <Trash2 className="mr-2 h-4 w-4" /> {deleting ? "Deleting..." : "Delete"}
           </Button>

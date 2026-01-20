@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ChevronLeft, PlusCircle, Search, Filter, Calendar,
+  ArrowLeft, PlusCircle, Search, Filter, Calendar,
   Clock, Users, User, ArrowRight, CheckCircle, XCircle,
   CalendarDays, CalendarClock, RefreshCw, MoreVertical,
   Trash2, Mail, Phone, MessageSquare, FileText, Send, Edit
@@ -293,11 +293,11 @@ export default function ParentMeetingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Link href="/admin/communications">
+          <Link href="/admin/communication">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -305,7 +305,7 @@ export default function ParentMeetingsPage() {
         </div>
         <Dialog open={scheduleMeetingDialog} onOpenChange={setScheduleMeetingDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Schedule Meeting
             </Button>
           </DialogTrigger>

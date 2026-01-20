@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   GraduationCap, Award, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -191,21 +191,22 @@ export default function GradesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Grading System</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleAutoGenerate}
             disabled={autoGenerating}
+            className="w-full sm:w-auto"
           >
             {autoGenerating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -216,7 +217,7 @@ export default function GradesPage() {
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleAddNew}>
+              <Button onClick={handleAddNew} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Grade
               </Button>
             </DialogTrigger>

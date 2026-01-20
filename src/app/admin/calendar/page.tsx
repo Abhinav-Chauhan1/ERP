@@ -264,6 +264,7 @@ export default function AdminCalendarPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Academic Calendar</h1>
@@ -272,11 +273,11 @@ export default function AdminCalendarPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={() => setIsImportExportModalOpen(true)}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <Upload className="h-4 w-4" />
             Import/Export
@@ -284,12 +285,12 @@ export default function AdminCalendarPage() {
           <Button
             variant="outline"
             onClick={() => setIsCategoryModalOpen(true)}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             <Settings className="h-4 w-4" />
             Manage Categories
           </Button>
-          <Button onClick={handleCreateEvent} className="gap-2">
+          <Button onClick={handleCreateEvent} className="gap-2 w-full sm:w-auto">
             <Plus className="h-4 w-4" />
             Create Event
           </Button>

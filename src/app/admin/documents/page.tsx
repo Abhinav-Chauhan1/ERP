@@ -322,12 +322,12 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Document Management</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <FolderOpen className="mr-2 h-4 w-4" /> Add Document Type
               </Button>
             </DialogTrigger>
@@ -380,7 +380,7 @@ export default function DocumentsPage() {
 
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleOpenUploadDialog}>
+              <Button onClick={handleOpenUploadDialog} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> Upload Document
               </Button>
             </DialogTrigger>
@@ -737,7 +737,7 @@ export default function DocumentsPage() {
                 Browse, search and manage all documents
               </CardDescription>
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -756,7 +756,7 @@ export default function DocumentsPage() {
                   fetchDocuments();
                 }}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Document Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -768,7 +768,7 @@ export default function DocumentsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={handleSearch}>
+              <Button variant="outline" size="icon" onClick={handleSearch} className="shrink-0">
                 <Filter className="h-4 w-4" />
               </Button>
             </div>

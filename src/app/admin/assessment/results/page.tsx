@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { OptimizedImage } from "@/components/shared/optimized-image";
 import {
-  ChevronLeft, Search, Download, FileText,
+  ArrowLeft, Search, Download, FileText,
   Filter, Calendar, BookOpen, GraduationCap,
   BarChart, ArrowUpDown, Eye, Printer, CheckCircle,
   AlertCircle, HelpCircle, Loader2, User
@@ -267,23 +267,25 @@ export default function ResultsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Examination Results</h1>
         </div>
-        <div className="flex gap-2">
-          <RankCalculationDialog />
-          <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-auto">
+            <RankCalculationDialog />
+          </div>
+          <Button variant="outline" className="w-full sm:w-auto">
             <BarChart className="h-4 w-4 mr-2" />
             Analytics
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -308,7 +310,7 @@ export default function ResultsPage() {
         <TabsContent value="exams">
           {/* Search and filters */}
           <div className="flex flex-col md:flex-row gap-4 mt-4 mb-6">
-            <div className="md:w-1/2">
+            <div className="w-full md:w-1/2">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -321,12 +323,12 @@ export default function ResultsPage() {
                 />
               </div>
             </div>
-            <div className="md:w-1/2 flex flex-wrap gap-2">
+            <div className="w-full md:w-1/2 flex flex-col sm:flex-row gap-2">
               <Select value={subjectFilter} onValueChange={(value) => {
                 setSubjectFilter(value);
                 fetchExamResults();
               }}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Subject" />
                 </SelectTrigger>
                 <SelectContent>
@@ -343,7 +345,7 @@ export default function ResultsPage() {
                 setExamTypeFilter(value);
                 fetchExamResults();
               }}>
-                <SelectTrigger className="w-[130px]">
+                <SelectTrigger className="w-full sm:w-[130px]">
                   <SelectValue placeholder="Exam Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -360,7 +362,7 @@ export default function ResultsPage() {
                 setTermFilter(value);
                 fetchExamResults();
               }}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Term" />
                 </SelectTrigger>
                 <SelectContent>

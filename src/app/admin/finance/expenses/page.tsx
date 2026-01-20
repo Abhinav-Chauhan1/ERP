@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  ChevronLeft, PlusCircle, Search, Filter, Calendar, Download,
+  ArrowLeft, PlusCircle, Search, Filter, Calendar, Download,
   Receipt, DollarSign, ArrowUp, ArrowDown, Printer, Tag, Edit, Trash2, Eye, Clock,
   CheckCircle
 } from "lucide-react";
@@ -322,11 +322,11 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/finance">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -617,7 +617,7 @@ export default function ExpensesPage() {
                     />
                   </div>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -630,7 +630,7 @@ export default function ExpensesPage() {
                     </SelectContent>
                   </Select>
                   <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-full sm:w-[150px]">
                       <SelectValue placeholder="Date range" />
                     </SelectTrigger>
                     <SelectContent>

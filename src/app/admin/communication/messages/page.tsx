@@ -8,7 +8,7 @@ import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, PlusCircle, Search, Inbox, Send, Archive,
+  ArrowLeft, PlusCircle, Search, Inbox, Send, Archive,
   Trash2, Reply, Forward, Loader2, Mail, MailOpen, Paperclip, X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -401,17 +401,17 @@ export default function MessagesPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/communication">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Communication
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
         </div>
-        <Button onClick={handleComposeMessage}>
+        <Button onClick={handleComposeMessage} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Compose Message
         </Button>

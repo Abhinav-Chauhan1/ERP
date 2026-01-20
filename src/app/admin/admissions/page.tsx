@@ -28,7 +28,7 @@ export default function AdmissionsListPage() {
   const [loading, setLoading] = useState(true);
   const [statistics, setStatistics] = useState<any>(null);
   const [classes, setClasses] = useState<any[]>([]);
-  
+
   // Filters
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [classFilter, setClassFilter] = useState("all");
@@ -121,7 +121,7 @@ export default function AdmissionsListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Admission Applications</h1>
       </div>
 
@@ -193,10 +193,10 @@ export default function AdmissionsListPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle>All Applications</CardTitle>
-            <Link href="/admin/admissions/create">
-              <Button>
+            <Link href="/admin/admissions/create" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 New Admission
               </Button>
@@ -208,13 +208,13 @@ export default function AdmissionsListPage() {
               placeholder="Search by student name, parent name, or application number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-md"
+              className="max-w-md w-full"
             />
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,7 +228,7 @@ export default function AdmissionsListPage() {
               </Select>
 
               <Select value={classFilter} onValueChange={setClassFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by class" />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,7 +243,7 @@ export default function AdmissionsListPage() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[180px] justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full sm:w-[180px] justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {startDate ? format(startDate, "PPP") : "Start date"}
                   </Button>
@@ -260,7 +260,7 @@ export default function AdmissionsListPage() {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[180px] justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full sm:w-[180px] justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? format(endDate, "PPP") : "End date"}
                   </Button>
@@ -275,7 +275,7 @@ export default function AdmissionsListPage() {
                 </PopoverContent>
               </Popover>
 
-              <Button variant="ghost" onClick={clearFilters}>
+              <Button variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
                 Clear Filters
               </Button>
             </div>

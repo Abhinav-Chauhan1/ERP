@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, PlusCircle, Search, Bell, BellOff,
+  ArrowLeft, PlusCircle, Search, Bell, BellOff,
   Info, AlertTriangle, AlertCircle, CheckCircle,
   Users, Clock, Calendar, RefreshCw, Filter, MoreVertical,
   Trash2, Send, Eye
@@ -231,11 +231,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div className="flex items-center gap-2">
-          <Link href="/admin/communications">
+          <Link href="/admin/communication">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -243,7 +243,7 @@ export default function NotificationsPage() {
         </div>
         <Dialog open={createNotificationDialog} onOpenChange={setCreateNotificationDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Notification
             </Button>
           </DialogTrigger>

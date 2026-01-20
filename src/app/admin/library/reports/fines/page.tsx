@@ -52,21 +52,23 @@ function LoadingSkeleton() {
 export default function FineCollectionsPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Fine Collections Report
-          </h1>
-          <p className="text-muted-foreground">
-            Track all fines collected from overdue book returns
-          </p>
-        </div>
-        <Button variant="outline" asChild>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
           <Link href="/admin/library/reports">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Reports
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
           </Link>
-        </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Fine Collections Report
+            </h1>
+            <p className="text-muted-foreground">
+              Track all fines collected from overdue book returns
+            </p>
+          </div>
+        </div>
       </div>
 
       <Suspense fallback={<LoadingSkeleton />}>

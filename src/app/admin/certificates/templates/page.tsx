@@ -171,22 +171,23 @@ export default function CertificateTemplatesPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Breadcrumb */}
-      <Link
-        href="/admin/certificates"
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Certificates
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link href="/admin/certificates">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to Certificates
+          </Button>
+        </Link>
+      </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Certificate Templates</h1>
           <p className="text-gray-500 mt-1">
             Create and manage certificate templates for generating certificates and ID cards
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/admin/certificates/templates/new">
             <Plus className="mr-2 h-4 w-4" />
             New Template

@@ -30,35 +30,36 @@ export default async function RouteDetailPage({
 
   return (
     <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <Link href="/admin/transport/routes">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Routes
-          </Button>
-        </Link>
-      </div>
-
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">{route.name}</h1>
-            <Badge variant={route.status === "ACTIVE" ? "default" : "secondary"}>
-              {route.status}
-            </Badge>
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-6">
+        <div className="flex items-start gap-4">
+          <Link href="/admin/transport/routes" className="mt-1">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+              <h1 className="text-3xl font-bold">{route.name}</h1>
+              <Badge variant={route.status === "ACTIVE" ? "default" : "secondary"}>
+                {route.status}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground">
+              {route.vehicle.registrationNo} - {route.vehicle.vehicleType}
+            </p>
           </div>
-          <p className="text-muted-foreground">
-            {route.vehicle.registrationNo} - {route.vehicle.vehicleType}
-          </p>
         </div>
-        <div className="flex gap-2">
-          <Link href={`/admin/transport/routes/${route.id}/edit`}>
-            <Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto pl-16 sm:pl-0">
+          <Link href={`/admin/transport/routes/${route.id}/edit`} className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <Edit className="mr-2 h-4 w-4" />
               Edit Route
             </Button>
           </Link>
-          <DeleteRouteButton routeId={route.id} routeName={route.name} />
+          <div className="w-full sm:w-auto">
+            <DeleteRouteButton routeId={route.id} routeName={route.name} />
+          </div>
         </div>
       </div>
 

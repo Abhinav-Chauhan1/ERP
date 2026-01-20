@@ -12,6 +12,8 @@ import { queryAuditLogs, getAuditStats } from '@/lib/utils/audit-log';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuditAction } from '@prisma/client';
 import { AuditLogsTable } from '@/components/admin/audit-logs-table';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 interface PageProps {
   searchParams: Promise<{
@@ -44,11 +46,13 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Audit Logs</h1>
-        <p className="text-muted-foreground">
-          View and monitor all system activity
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
+          <p className="text-muted-foreground mt-1">
+            View and monitor all system activity
+          </p>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -114,27 +118,37 @@ export default async function AuditLogsPage({ searchParams }: PageProps) {
 
           {/* Pagination */}
           {result.total > limit && (
-            <div className="flex justify-between items-center mt-4">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+              <div className="text-sm text-muted-foreground order-2 sm:order-1">
                 Page {page} of {Math.ceil(result.total / limit)}
               </div>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <a
-                    href={`?page=${page - 1}`}
-                    className="px-4 py-2 border rounded hover:bg-muted"
-                  >
-                    Previous
-                  </a>
-                )}
-                {page < Math.ceil(result.total / limit) && (
-                  <a
-                    href={`?page=${page + 1}`}
-                    className="px-4 py-2 border rounded hover:bg-muted"
-                  >
-                    Next
-                  </a>
-                )}
+              <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  asChild={page > 1}
+                  className="flex-1 sm:flex-none"
+                >
+                  {page > 1 ? (
+                    <Link href={`?page=${page - 1}`}>Previous</Link>
+                  ) : (
+                    <span>Previous</span>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= Math.ceil(result.total / limit)}
+                  asChild={page < Math.ceil(result.total / limit)}
+                  className="flex-1 sm:flex-none"
+                >
+                  {page < Math.ceil(result.total / limit) ? (
+                    <Link href={`?page=${page + 1}`}>Next</Link>
+                  ) : (
+                    <span>Next</span>
+                  )}
+                </Button>
               </div>
             </div>
           )}

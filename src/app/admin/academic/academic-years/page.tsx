@@ -5,9 +5,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { 
-  Calendar, Edit, Trash2, PlusCircle, 
-  ChevronLeft, Eye, AlertCircle, ChevronRight 
+import {
+  Calendar, Edit, Trash2, PlusCircle,
+  ArrowLeft, Eye, AlertCircle, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,10 +74,10 @@ function AcademicYearsPageContent() {
   async function fetchAcademicYears() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await getAcademicYears();
-      
+
       if (result.success) {
         setAcademicYears(result.data || []);
       } else {
@@ -96,10 +96,10 @@ function AcademicYearsPageContent() {
   async function onSubmit(values: AcademicYearFormValues) {
     setSubmitting(true);
     try {
-      const result = selectedYearId 
+      const result = selectedYearId
         ? await updateAcademicYear({ ...values, id: selectedYearId })
         : await createAcademicYear(values);
-      
+
       if (result.success) {
         toast.success(`Academic year ${selectedYearId ? "updated" : "created"} successfully`);
         setDialogOpen(false);
@@ -149,7 +149,7 @@ function AcademicYearsPageContent() {
       setDeleting(true);
       try {
         const result = await deleteAcademicYear(selectedYearId);
-        
+
         if (result.success) {
           toast.success("Academic year deleted successfully");
           setDeleteDialogOpen(false);
@@ -171,11 +171,11 @@ function AcademicYearsPageContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -183,7 +183,7 @@ function AcademicYearsPageContent() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreate}>
+            <Button onClick={handleCreate} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Academic Year
             </Button>
           </DialogTrigger>
@@ -191,8 +191,8 @@ function AcademicYearsPageContent() {
             <DialogHeader>
               <DialogTitle>{selectedYearId ? "Edit Academic Year" : "Add New Academic Year"}</DialogTitle>
               <DialogDescription>
-                {selectedYearId 
-                  ? "Update the details of the academic year" 
+                {selectedYearId
+                  ? "Update the details of the academic year"
                   : "Create a new academic year for your institution"}
               </DialogDescription>
             </DialogHeader>
@@ -332,15 +332,14 @@ function AcademicYearsPageContent() {
                         <td className="py-3 px-4 align-middle">{format(new Date(year.startDate), 'MMM d, yyyy')}</td>
                         <td className="py-3 px-4 align-middle">{format(new Date(year.endDate), 'MMM d, yyyy')}</td>
                         <td className="py-3 px-4 align-middle">
-                          <span 
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                              year.isCurrent ? 'bg-green-100 text-green-800' : 
-                              new Date(year.startDate) > new Date() ? 'bg-primary/10 text-primary' : 
-                              'bg-muted text-gray-800'
-                            }`}
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${year.isCurrent ? 'bg-green-100 text-green-800' :
+                                new Date(year.startDate) > new Date() ? 'bg-primary/10 text-primary' :
+                                  'bg-muted text-gray-800'
+                              }`}
                           >
-                            {year.isCurrent ? 'Current' : 
-                             new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}
+                            {year.isCurrent ? 'Current' :
+                              new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}
                           </span>
                         </td>
                         <td className="py-3 px-4 align-middle">{year._count?.terms || 0}</td>
@@ -351,18 +350,18 @@ function AcademicYearsPageContent() {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-8 w-8 p-0"
                             onClick={() => handleEdit(year.id)}
                             disabled={submitting || deleting}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-8 w-8 p-0 text-red-500"
                             onClick={() => handleDelete(year.id)}
                             disabled={submitting || deleting}
@@ -390,15 +389,15 @@ function AcademicYearsPageContent() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={deleting}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={confirmDelete}
               disabled={deleting}
             >

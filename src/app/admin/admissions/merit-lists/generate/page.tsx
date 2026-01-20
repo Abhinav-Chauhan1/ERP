@@ -80,10 +80,10 @@ export default function GenerateMeritListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Link href="/admin/admissions/merit-lists">
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
         </Link>
@@ -179,15 +179,15 @@ export default function GenerateMeritListPage() {
               </div>
             )}
 
-            <div className="flex gap-4">
-              <Button type="submit" disabled={loading || !configId}>
-                {loading ? "Generating..." : "Generate Merit List"}
-              </Button>
-              <Link href="/admin/admissions/merit-lists">
-                <Button type="button" variant="outline" disabled={loading}>
+            <div className="flex flex-col-reverse sm:flex-row gap-4">
+              <Link href="/admin/admissions/merit-lists" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" disabled={loading} className="w-full sm:w-auto">
                   Cancel
                 </Button>
               </Link>
+              <Button type="submit" disabled={loading || !configId} className="w-full sm:w-auto">
+                {loading ? "Generating..." : "Generate Merit List"}
+              </Button>
             </div>
           </CardContent>
         </Card>

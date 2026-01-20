@@ -21,7 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download, Filter, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, Download, Filter, RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { AuditAction } from "@prisma/client";
 
@@ -178,11 +179,21 @@ export default function ReceiptAuditLogsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Receipt Audit Logs</h1>
-        <p className="text-muted-foreground mt-2">
-          Track all receipt-related actions for compliance and debugging
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/finance/receipt-verification">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Receipt Audit Logs</h1>
+            <p className="text-muted-foreground">
+              Track all receipt-related actions for compliance and debugging
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

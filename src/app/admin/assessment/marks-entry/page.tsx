@@ -18,15 +18,15 @@ export default async function MarksEntryPage() {
         <span className="font-medium text-foreground">Marks Entry</span>
       </div>
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Marks Entry</h1>
           <p className="text-muted-foreground mt-1">
             Enter marks for offline exams in bulk
           </p>
         </div>
-        <Link href="/admin/assessment/marks-audit">
-          <Button variant="outline">
+        <Link href="/admin/assessment/marks-audit" className="w-full sm:w-auto">
+          <Button variant="outline" className="w-full sm:w-auto">
             <History className="mr-2 h-4 w-4" />
             View Audit Logs
           </Button>

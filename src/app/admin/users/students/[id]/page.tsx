@@ -518,13 +518,13 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full flex justify-start overflow-x-auto h-auto py-1 no-scrollbar">
-          <TabsTrigger value="overview" className="whitespace-nowrap">Overview</TabsTrigger>
-          <TabsTrigger value="personal" className="whitespace-nowrap">Personal Details</TabsTrigger>
-          <TabsTrigger value="family" className="whitespace-nowrap">Family Details</TabsTrigger>
-          <TabsTrigger value="academic" className="whitespace-nowrap">Academic</TabsTrigger>
-          <TabsTrigger value="fees" className="whitespace-nowrap">Fees</TabsTrigger>
-          <TabsTrigger value="health" className="whitespace-nowrap">Health</TabsTrigger>
+        <TabsList className="w-full flex justify-start overflow-x-auto h-auto py-1 gap-2 no-scrollbar">
+          <TabsTrigger value="overview" className="whitespace-nowrap shrink-0">Overview</TabsTrigger>
+          <TabsTrigger value="personal" className="whitespace-nowrap shrink-0">Personal Details</TabsTrigger>
+          <TabsTrigger value="family" className="whitespace-nowrap shrink-0">Family Details</TabsTrigger>
+          <TabsTrigger value="academic" className="whitespace-nowrap shrink-0">Academic</TabsTrigger>
+          <TabsTrigger value="fees" className="whitespace-nowrap shrink-0">Fees</TabsTrigger>
+          <TabsTrigger value="health" className="whitespace-nowrap shrink-0">Health</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}

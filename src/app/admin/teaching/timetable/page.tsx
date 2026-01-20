@@ -631,21 +631,21 @@ export default function TimetablePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/teaching">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Timetable Management</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <TimetableConfigDialog onConfigChanged={handleConfigChanged} />
           <Dialog open={timetableDialogOpen} onOpenChange={setTimetableDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleAddTimetable}>
+              <Button onClick={handleAddTimetable} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> New Timetable
               </Button>
             </DialogTrigger>

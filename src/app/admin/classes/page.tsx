@@ -176,10 +176,10 @@ export default function ClassesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Class Management</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <Button onClick={handleCreateClass}>
+          <Button onClick={handleCreateClass} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" /> Create Class
           </Button>
           <DialogContent className="sm:max-w-[425px]">

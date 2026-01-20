@@ -112,29 +112,30 @@ export default function CertificatesPage() {
     return (
         <div className="container mx-auto py-6 space-y-6">
             {/* Breadcrumb */}
-            <Link
-                href="/admin/documents"
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Documents
-            </Link>
+            <div className="flex items-center gap-2">
+                <Link href="/admin/documents">
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        Back to Documents
+                    </Button>
+                </Link>
+            </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Certificates</h1>
                     <p className="text-muted-foreground mt-1">
                         Generate and manage student certificates
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button asChild variant="outline">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
                         <Link href="/admin/certificates/templates">
                             <FileText className="mr-2 h-4 w-4" />
                             Templates
                         </Link>
                     </Button>
-                    <Button asChild>
+                    <Button asChild className="w-full sm:w-auto">
                         <Link href="/admin/certificates/generate">
                             <Plus className="mr-2 h-4 w-4" />
                             Generate Certificate

@@ -16,25 +16,28 @@ export default async function CoScholasticActivitiesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
-        <Link href="/admin/assessment">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/assessment">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight">Co-Scholastic Activities</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage non-academic assessments like sports, art, music, and discipline
-          </p>
         </div>
-        <CoScholasticActivityDialog>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Activity
-          </Button>
-        </CoScholasticActivityDialog>
+        <div className="w-full sm:w-auto">
+          <CoScholasticActivityDialog>
+            <Button className="w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Activity
+            </Button>
+          </CoScholasticActivityDialog>
+        </div>
       </div>
+      <p className="text-muted-foreground -mt-2 ml-1">
+        Manage non-academic assessments like sports, art, music, and discipline
+      </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Link href="/admin/assessment/co-scholastic/grades">

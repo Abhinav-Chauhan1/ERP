@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   BookOpen, FileText, Layers, GripVertical,
   ChevronDown, BookText, Upload, Plus,
   AlertCircle, Loader2, Copy
@@ -584,17 +584,17 @@ function SyllabusContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/academic">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Syllabus Management</h1>
         </div>
-        <Button onClick={handleCreateSyllabus}>
+        <Button onClick={handleCreateSyllabus} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" /> Create Syllabus
         </Button>
       </div>

@@ -68,15 +68,15 @@ async function AcademicPageContent() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Academic Management</h1>
           <p className="text-muted-foreground mt-1">
             Manage academic structure and curriculum
           </p>
         </div>
-        <Link href="/admin/academic/academic-years">
-          <Button>
+        <Link href="/admin/academic/academic-years" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" /> Create Academic Year
           </Button>
         </Link>
@@ -164,12 +164,12 @@ async function AcademicPageContent() {
                         <td className="py-3 px-4 align-middle">{formatDate(year.startDate)}</td>
                         <td className="py-3 px-4 align-middle">{formatDate(year.endDate)}</td>
                         <td className="py-3 px-4 align-middle">
-                          <Badge 
+                          <Badge
                             variant={year.isCurrent ? 'default' : 'secondary'}
                             className={
                               year.isCurrent ? 'bg-green-600 hover:bg-green-700' :
-                              new Date(year.endDate) < new Date() ? 'bg-gray-500 hover:bg-gray-600' :
-                              'bg-blue-600 hover:bg-blue-700'
+                                new Date(year.endDate) < new Date() ? 'bg-gray-500 hover:bg-gray-600' :
+                                  'bg-blue-600 hover:bg-blue-700'
                             }
                           >
                             {year.isCurrent ? 'Current' : new Date(year.startDate) > new Date() ? 'Planned' : 'Past'}

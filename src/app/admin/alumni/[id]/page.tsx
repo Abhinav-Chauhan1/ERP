@@ -24,9 +24,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { 
-  ArrowLeft, 
-  Loader2, 
+import {
+  ArrowLeft,
+  Loader2,
   AlertCircle,
   RefreshCw,
   Home,
@@ -313,16 +313,17 @@ export default function AlumniProfilePage() {
       </Breadcrumb>
 
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      {/* Header with Back Button */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/alumni">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back to Alumni Directory
             </Button>
           </Link>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAlumniProfile}>
+        <Button variant="outline" size="sm" onClick={fetchAlumniProfile} className="w-full sm:w-auto">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -360,7 +361,7 @@ export default function AlumniProfilePage() {
         {/* Academic History Tab */}
         <TabsContent value="academic" className="space-y-6 mt-6">
           <AlumniAcademicHistory data={academicHistoryData} />
-          
+
           {/* Note about data preservation */}
           <Alert>
             <AlertCircle className="h-4 w-4" />

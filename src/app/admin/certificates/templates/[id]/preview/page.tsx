@@ -38,35 +38,29 @@ export default async function CertificateTemplatePreviewPage({ params }: PagePro
     return (
         <div className="container mx-auto py-6 space-y-6">
             {/* Breadcrumb */}
-            <Link
-                href={`/admin/certificates/templates/${id}`}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-                <ArrowLeft className="h-4 w-4" />
-                Back to {template.name}
-            </Link>
+            <div className="flex items-center gap-2">
+                <Link href={`/admin/certificates/templates/${id}`}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="h-4 w-4 mr-1" />
+                        Back to Template
+                    </Button>
+                </Link>
+            </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button asChild variant="ghost" size="icon">
-                        <Link href={`/admin/certificates/templates/${id}`}>
-                            <ArrowLeft className="h-4 w-4" />
-                        </Link>
-                    </Button>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Preview: {template.name}</h1>
-                        <p className="text-gray-500 mt-1">Preview with sample data</p>
-                    </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-3xl font-bold tracking-tight">Preview: {template.name}</h1>
+                    <p className="text-gray-500 mt-1">Preview with sample data</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button asChild variant="outline">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
                         <Link href={`/admin/certificates/templates/${id}/edit`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Template
                         </Link>
                     </Button>
-                    <Button variant="outline" onClick={() => window.print()}>
+                    <Button variant="outline" onClick={() => window.print()} className="w-full sm:w-auto">
                         <Printer className="mr-2 h-4 w-4" />
                         Print
                     </Button>

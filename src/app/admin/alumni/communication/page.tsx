@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft,
+  ArrowLeft,
   Send,
   Loader2,
   Mail,
@@ -301,11 +301,12 @@ export default function AlumniCommunicationPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Link href="/admin/alumni">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back to Alumni
             </Button>
           </Link>
@@ -467,11 +468,10 @@ export default function AlumniCommunicationPage() {
                   filteredAlumni.map((alumnus) => (
                     <div
                       key={alumnus.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
-                        selectedAlumniIds.has(alumnus.id)
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${selectedAlumniIds.has(alumnus.id)
                           ? "bg-primary/10 border-primary/30"
                           : ""
-                      }`}
+                        }`}
                       onClick={() => handleSelectAlumni(alumnus.id)}
                     >
                       <Checkbox
@@ -554,11 +554,10 @@ export default function AlumniCommunicationPage() {
                 <Label>Communication Channels *</Label>
                 <div className="space-y-2">
                   <div
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
-                      selectedChannels.has("email")
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${selectedChannels.has("email")
                         ? "bg-primary/10 border-primary/30"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => handleChannelToggle("email")}
                   >
                     <Checkbox
@@ -576,11 +575,10 @@ export default function AlumniCommunicationPage() {
                   </div>
 
                   <div
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
-                      selectedChannels.has("sms")
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${selectedChannels.has("sms")
                         ? "bg-primary/10 border-primary/30"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => handleChannelToggle("sms")}
                   >
                     <Checkbox
@@ -598,11 +596,10 @@ export default function AlumniCommunicationPage() {
                   </div>
 
                   <div
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${
-                      selectedChannels.has("whatsapp")
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors ${selectedChannels.has("whatsapp")
                         ? "bg-primary/10 border-primary/30"
                         : ""
-                    }`}
+                      }`}
                     onClick={() => handleChannelToggle("whatsapp")}
                   >
                     <Checkbox
@@ -796,11 +793,10 @@ export default function AlumniCommunicationPage() {
               {deliveryResults.map((result) => (
                 <div
                   key={result.alumniId}
-                  className={`flex items-start gap-3 p-3 rounded-lg border ${
-                    result.success
+                  className={`flex items-start gap-3 p-3 rounded-lg border ${result.success
                       ? "bg-green-50 border-green-200"
                       : "bg-red-50 border-red-200"
-                  }`}
+                    }`}
                 >
                   {result.success ? (
                     <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />

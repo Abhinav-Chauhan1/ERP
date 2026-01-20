@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Building, Users, Activity,
   Search, SlidersHorizontal,
   MoreVertical, Check, MapPin, X, Loader2, AlertCircle,
@@ -418,11 +418,11 @@ export default function ClassroomsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/classes">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Classes
             </Button>
           </Link>
@@ -442,7 +442,7 @@ export default function ClassroomsPage() {
               });
               setSelectedRoomId(null);
               setDialogOpen(true);
-            }}>
+            }} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Classroom
             </Button>
           </DialogTrigger>

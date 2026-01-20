@@ -4,27 +4,27 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { OptimizedImage } from "@/components/shared/optimized-image";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle, 
-  CardFooter 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  ChevronLeft, 
-  Download, 
-  FileText, 
-  Clock, 
-  User as UserIcon, 
-  Tag, 
-  Lock, 
-  Globe, 
-  Trash2, 
-  Edit, 
-  FolderOpen, 
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Clock,
+  User as UserIcon,
+  Tag,
+  Lock,
+  Globe,
+  Trash2,
+  Edit,
+  FolderOpen,
   Share2,
   FileBox,
   FileImage,
@@ -67,12 +67,12 @@ const formatFileSize = (bytes?: number) => {
 // Get file icon based on MIME type
 const getFileIcon = (fileType?: string, size = 24) => {
   if (!fileType) return <FileBox size={size} />;
-  
+
   if (fileType.startsWith('image/')) return <FileImage size={size} />;
   else if (fileType === 'application/pdf') return <FileText size={size} />;
   else if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet size={size} />;
   else if (fileType.includes('document') || fileType.includes('word')) return <FileTextIcon size={size} />;
-  
+
   return <FileBox size={size} />;
 };
 
@@ -87,11 +87,11 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
   // Fetch document data
   useEffect(() => {
     if (!documentId) return;
-    
+
     const fetchDocument = async () => {
       setLoading(true);
       const result = await getDocument(documentId);
-      
+
       if (result.success && result.data) {
         setDocument(result.data);
       } else {
@@ -107,7 +107,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
   // Handle document deletion
   const handleDeleteDocument = async () => {
     const result = await deleteDocument(documentId);
-    
+
     if (result.success) {
       toast.success("Document deleted successfully");
       router.push("/admin/documents");
@@ -151,7 +151,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
         <p className="text-gray-500 mb-4">The document you're looking for doesn't exist or has been removed.</p>
         <Link href="/admin/documents">
           <Button>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Documents
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Documents
           </Button>
         </Link>
       </div>
@@ -160,11 +160,11 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/documents">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -173,13 +173,13 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
             {document.isPublic ? 'Public' : 'Private'}
           </Badge>
         </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleShareDocument}>
+
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleShareDocument} className="w-full sm:w-auto">
             <Share2 className="mr-2 h-4 w-4" /> Share
           </Button>
-          <Link href={document.fileUrl} download>
-            <Button>
+          <Link href={document.fileUrl} download className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" /> Download
             </Button>
           </Link>
@@ -197,12 +197,12 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
           <CardContent>
             <div className="rounded-lg border bg-gray-50 p-8 flex items-center justify-center min-h-[400px]">
               {document.fileType?.startsWith('image/') ? (
-                <OptimizedImage 
-                  src={document.fileUrl} 
-                  alt={document.title} 
+                <OptimizedImage
+                  src={document.fileUrl}
+                  alt={document.title}
                   width={800}
                   height={400}
-                  className="max-w-full max-h-[400px] object-contain" 
+                  className="max-w-full max-h-[400px] object-contain"
                   qualityPreset="high"
                 />
               ) : (
@@ -234,7 +234,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
                 {document.description || "No description provided"}
               </p>
             </div>
-            
+
             {/* Uploaded By */}
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-blue-50 text-blue-600">
@@ -248,7 +248,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
                 </p>
               </div>
             </div>
-            
+
             {/* Upload Date */}
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-green-50 text-green-600">
@@ -259,7 +259,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
                 <p className="text-sm text-gray-600">{formatDate(document.createdAt)}</p>
               </div>
             </div>
-            
+
             {/* Document Type */}
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-purple-50 text-purple-600">
@@ -272,7 +272,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
                 </p>
               </div>
             </div>
-            
+
             {/* Tags */}
             {document.tags && (
               <div className="flex items-start gap-3">
@@ -291,7 +291,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
                 </div>
               </div>
             )}
-            
+
             {/* Visibility */}
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-full bg-gray-50 text-gray-600">
@@ -304,17 +304,17 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
               <div>
                 <h3 className="text-sm font-medium">Visibility</h3>
                 <p className="text-sm text-gray-600">
-                  {document.isPublic 
-                    ? "Public - Accessible to all users" 
+                  {document.isPublic
+                    ? "Public - Accessible to all users"
                     : "Private - Restricted access"}
                 </p>
               </div>
             </div>
           </CardContent>
           <CardFooter className="border-t flex justify-between">
-            <Button 
-              variant="outline" 
-              className="text-red-600" 
+            <Button
+              variant="outline"
+              className="text-red-600"
               onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -346,14 +346,14 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteDocument}
             >
               Delete

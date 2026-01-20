@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, ArrowLeft, CreditCard, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getPaymentConfig } from "@/lib/actions/paymentConfigActions";
@@ -59,28 +59,21 @@ export default function PaymentConfigurationPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Link href="/admin/settings" className="hover:text-gray-900">
-          Settings
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">Payment Configuration</span>
-      </div>
+
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Link href="/admin/settings">
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Settings
+            </Button>
+          </Link>
           <div className="flex items-center gap-2">
-            <Link href="/admin/settings">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
+            <CreditCard className="h-6 w-6" />
             <div>
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-6 w-6" />
-                <h1 className="text-2xl font-bold tracking-tight">Payment Configuration</h1>
-              </div>
+              <h1 className="text-2xl font-bold tracking-tight">Payment Configuration</h1>
               <p className="text-muted-foreground mt-1">
                 Configure payment methods and receipt verification settings
               </p>

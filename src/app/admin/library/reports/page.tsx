@@ -132,31 +132,6 @@ function SummarySkeleton() {
         </Card>
       ))}
     </div>
-  );
-}
-
-export default function LibraryReportsPage() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Library Reports</h1>
-          <p className="text-muted-foreground">
-            View comprehensive library statistics and reports
-          </p>
-        </div>
-        <Button variant="outline" asChild>
-          <Link href="/admin/library">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Library
-          </Link>
-        </Button>
-      </div>
-
-      <Suspense fallback={<SummarySkeleton />}>
-        <ReportSummary />
-      </Suspense>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -215,6 +190,6 @@ export default function LibraryReportsPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </div >
   );
 }

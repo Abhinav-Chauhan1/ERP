@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Users, BookOpen, Clock, Calendar,
   GraduationCap, Building, Search, Download,
   UploadCloud, Check, X, ExternalLink,
@@ -390,7 +390,7 @@ export default function ClassDetailsPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/classes')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Classes
         </Button>
       </div>
@@ -406,7 +406,7 @@ export default function ClassDetailsPage() {
           <AlertDescription>Class not found</AlertDescription>
         </Alert>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/admin/classes')}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Classes
         </Button>
       </div>
@@ -415,23 +415,23 @@ export default function ClassDetailsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/classes">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Classes
             </Button>
           </Link>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/admin/classes/${classDetails.id}/edit`}>
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href={`/admin/classes/${classDetails.id}/edit`} className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
           </Link>
-          <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+          <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} className="w-full sm:w-auto">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </Button>

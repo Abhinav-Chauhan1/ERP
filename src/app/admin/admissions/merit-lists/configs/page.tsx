@@ -83,18 +83,18 @@ export default function MeritListConfigsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/admissions/merit-lists">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-3xl font-bold">Merit List Configurations</h1>
         </div>
-        <Link href="/admin/admissions/merit-lists/configs/new">
-          <Button>
+        <Link href="/admin/admissions/merit-lists/configs/new" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             New Configuration
           </Button>
@@ -106,7 +106,7 @@ export default function MeritListConfigsPage() {
           <CardTitle>All Configurations</CardTitle>
           <div className="mt-4">
             <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filter by class" />
               </SelectTrigger>
               <SelectContent>

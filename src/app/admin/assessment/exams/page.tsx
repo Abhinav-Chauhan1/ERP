@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Search, Calendar, Clock, BookOpen,
   MoreVertical, Download, Printer, FileText,
   CheckCircle2, School, Loader2, AlertCircle
@@ -324,11 +324,11 @@ export default function ExamsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -336,7 +336,7 @@ export default function ExamsPage() {
         </div>
         <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleCreateExam}>
+            <Button onClick={handleCreateExam} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
             </Button>
           </DialogTrigger>
@@ -589,7 +589,7 @@ export default function ExamsPage() {
 
       {/* Search and filters */}
       <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-1/2">
+        <div className="w-full md:w-1/2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -601,9 +601,9 @@ export default function ExamsPage() {
             />
           </div>
         </div>
-        <div className="md:w-1/2 flex flex-wrap gap-2">
+        <div className="w-full md:w-1/2 flex flex-col sm:flex-row gap-2">
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>
@@ -616,7 +616,7 @@ export default function ExamsPage() {
             </SelectContent>
           </Select>
           <Select value={termFilter} onValueChange={setTermFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Term" />
             </SelectTrigger>
             <SelectContent>

@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  getAdmissionApplicationById, 
+import {
+  getAdmissionApplicationById,
   updateApplicationStatus,
-  updateApplicationRemarks 
+  updateApplicationRemarks
 } from "@/lib/actions/admissionActions";
 import { format } from "date-fns";
 import { ArrowLeft, CheckCircle, XCircle, Clock, FileText, Download } from "lucide-react";
@@ -170,11 +170,11 @@ export default function ApplicationDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/admissions">
             <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
@@ -350,11 +350,12 @@ export default function ApplicationDetailPage() {
           <CardTitle>Application Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
             <Button
               onClick={() => handleStatusUpdate("UNDER_REVIEW")}
               disabled={updatingStatus || application.status === "UNDER_REVIEW"}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <Clock className="h-4 w-4 mr-2" />
               Mark Under Review
@@ -362,7 +363,7 @@ export default function ApplicationDetailPage() {
             <Button
               onClick={() => handleStatusUpdate("ACCEPTED")}
               disabled={updatingStatus || application.status === "ACCEPTED"}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Accept Application
@@ -371,6 +372,7 @@ export default function ApplicationDetailPage() {
               onClick={() => handleStatusUpdate("WAITLISTED")}
               disabled={updatingStatus || application.status === "WAITLISTED"}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <Clock className="h-4 w-4 mr-2" />
               Add to Waitlist
@@ -379,6 +381,7 @@ export default function ApplicationDetailPage() {
               onClick={() => handleStatusUpdate("REJECTED")}
               disabled={updatingStatus || application.status === "REJECTED"}
               variant="destructive"
+              className="w-full sm:w-auto"
             >
               <XCircle className="h-4 w-4 mr-2" />
               Reject Application

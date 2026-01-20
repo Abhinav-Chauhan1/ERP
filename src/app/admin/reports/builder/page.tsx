@@ -107,11 +107,12 @@ export default function ReportBuilderPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
           <Link href="/admin/reports">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <div>
@@ -121,8 +122,8 @@ export default function ReportBuilderPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSaveReport} disabled={isSaving}>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleSaveReport} disabled={isSaving} className="w-full sm:w-auto">
             {isSaving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -130,7 +131,7 @@ export default function ReportBuilderPage() {
             )}
             Save Report
           </Button>
-          <Button onClick={handleGenerateReport} disabled={isGenerating}>
+          <Button onClick={handleGenerateReport} disabled={isGenerating} className="w-full sm:w-auto">
             {isGenerating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

@@ -35,24 +35,27 @@ export default async function CertificateTemplateDetailPage({ params }: PageProp
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
           <Link href="/admin/certificates/templates">
-            <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Templates
+            </Button>
           </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{template.name}</h1>
-          <p className="text-gray-500 mt-1">{template.description || 'No description'}</p>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{template.name}</h1>
+            <p className="text-gray-500 mt-1">{template.description || 'No description'}</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href={`/admin/certificates/templates/${id}/preview`}>
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href={`/admin/certificates/templates/${id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               Edit

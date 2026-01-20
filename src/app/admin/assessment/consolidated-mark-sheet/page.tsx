@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Download, FileSpreadsheet,
+  ArrowLeft, Download, FileSpreadsheet,
   Printer, AlertCircle, Loader2, Filter, FileText
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -324,21 +324,22 @@ export default function ConsolidatedMarkSheetPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center print:hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center print:hidden gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/assessment">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Consolidated Mark Sheet</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={handleExportExcel}
             disabled={!markSheetData || loading}
+            className="w-full sm:w-auto"
           >
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Export Excel
@@ -347,6 +348,7 @@ export default function ConsolidatedMarkSheetPage() {
             variant="outline"
             onClick={handleExportCSV}
             disabled={!markSheetData || loading}
+            className="w-full sm:w-auto"
           >
             <Download className="mr-2 h-4 w-4" />
             Export CSV
@@ -355,6 +357,7 @@ export default function ConsolidatedMarkSheetPage() {
             variant="outline"
             onClick={handleExportPDF}
             disabled={!markSheetData || loading}
+            className="w-full sm:w-auto"
           >
             <FileText className="mr-2 h-4 w-4" />
             Export PDF
@@ -363,6 +366,7 @@ export default function ConsolidatedMarkSheetPage() {
             variant="outline"
             onClick={handlePrint}
             disabled={!markSheetData || loading}
+            className="w-full sm:w-auto"
           >
             <Printer className="mr-2 h-4 w-4" />
             Print

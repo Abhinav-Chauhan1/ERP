@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   getScheduledBackupStatusAction,
   startScheduledBackupsAction,
   stopScheduledBackupsAction,
@@ -26,11 +26,13 @@ import { BackupList } from '@/components/admin/settings/backup-list';
 export default async function BackupsPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Backup Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage database backups and configure scheduled backups
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Backup Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage database backups and configure scheduled backups
+          </p>
+        </div>
       </div>
 
       <Suspense fallback={<ScheduledBackupSkeleton />}>
@@ -46,7 +48,7 @@ export default async function BackupsPage() {
 
 async function ScheduledBackupSection() {
   const statusResult = await getScheduledBackupStatusAction();
-  
+
   return (
     <Card>
       <CardHeader>
@@ -56,7 +58,7 @@ async function ScheduledBackupSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ScheduledBackupControls 
+        <ScheduledBackupControls
           initialStatus={statusResult.data}
         />
       </CardContent>
@@ -66,7 +68,7 @@ async function ScheduledBackupSection() {
 
 async function BackupListSection() {
   const backupsResult = await listBackupsAction();
-  
+
   return (
     <Card>
       <CardHeader>
@@ -76,7 +78,7 @@ async function BackupListSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <BackupList 
+        <BackupList
           backups={backupsResult.data || []}
         />
       </CardContent>

@@ -1,66 +1,15 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from "react";
-import { getVehicles, getVehicleStats } from "@/lib/actions/vehicleActions";
-import { VehicleList } from "@/components/admin/transport/vehicle-list";
-import { VehicleListSkeleton } from "@/components/admin/transport/vehicle-list-skeleton";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bus, AlertTriangle, Wrench } from "lucide-react";
-
-export const metadata = {
-  title: "Vehicles | Transport Management",
-  description: "Manage school transport vehicles",
-};
-
-interface PageProps {
-  searchParams: Promise<{
-    page?: string;
-    search?: string;
-    status?: string;
-    vehicleType?: string;
-  }>;
-}
-
-export default async function VehiclesPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const page = Number(params.page) || 1;
-  const search = params.search || "";
-  const status = params.status || "";
-  const vehicleType = params.vehicleType || "";
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Vehicles</h1>
-          <p className="text-muted-foreground">
-            Manage your school transport fleet
-          </p>
-        </div>
-        <Link href="/admin/transport/vehicles/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Vehicle
-          </Button>
-        </Link>
-      </div>
-
-      <Suspense fallback={<StatsCardsSkeleton />}>
-        <StatsCards />
-      </Suspense>
-
-      <Suspense fallback={<VehicleListSkeleton />}>
-        <VehicleListContent
-          page={page}
-          search={search}
-          status={status}
-          vehicleType={vehicleType}
-        />
-      </Suspense>
-    </div>
+<Suspense fallback={<VehicleListSkeleton />}>
+  <VehicleListContent
+    page={page}
+    search={search}
+    status={status}
+    vehicleType={vehicleType}
+  />
+</Suspense>
+    </div >
   );
 }
 

@@ -227,11 +227,11 @@ export default function WhatsAppBusinessProfilePage() {
   if (!configured) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <Link href="/admin/communication">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Communications
+              Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">WhatsApp Business Profile</h1>
@@ -257,12 +257,12 @@ export default function WhatsAppBusinessProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/admin/communication">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Communications
+              Back
             </Button>
           </Link>
           <div>

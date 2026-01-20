@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, PlusCircle, Search, Megaphone,
+  ArrowLeft, PlusCircle, Search, Megaphone,
   Eye, Edit, Trash2, CheckCircle, XCircle, Loader2, AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -247,17 +247,17 @@ export default function AnnouncementsPage() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/communication">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Communication
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Announcements</h1>
         </div>
-        <Button onClick={handleCreateAnnouncement}>
+        <Button onClick={handleCreateAnnouncement} className="w-full sm:w-auto">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Announcement
         </Button>

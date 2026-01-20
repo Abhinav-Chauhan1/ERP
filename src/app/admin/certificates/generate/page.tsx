@@ -122,13 +122,14 @@ export default function CertificateGeneratePage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Breadcrumb */}
-      <Link
-        href="/admin/certificates"
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Certificates
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link href="/admin/certificates">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to Certificates
+          </Button>
+        </Link>
+      </div>
 
       <div>
         <h1 className="text-3xl font-bold">Generate Certificates</h1>

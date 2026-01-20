@@ -7,23 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata = {
   title: "Library Management | Admin Dashboard",
-  description: "Manage library books, issues, and reservations",
-};
-
-export default function LibraryPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Library Management</h1>
-        <p className="text-muted-foreground">
-          Manage your school library books, issues, and reservations
-        </p>
-      </div>
-
-      <Suspense fallback={<LibraryDashboardSkeleton />}>
-        <LibraryDashboardContent />
-      </Suspense>
-    </div>
   );
 }
 
@@ -32,7 +15,7 @@ async function LibraryDashboardContent() {
     getLibraryStats(),
     getRecentLibraryActivity(5),
   ]);
-  
+
   return <LibraryDashboard stats={stats} recentActivity={recentActivity} />;
 }
 

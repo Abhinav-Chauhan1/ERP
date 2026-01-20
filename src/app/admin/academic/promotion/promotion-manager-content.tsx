@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -35,20 +35,20 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data for dropdowns
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  
+
   // Students data
   const [students, setStudents] = useState<StudentForPromotion[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  
+
   // Preview data
   const [previewData, setPreviewData] = useState<any>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  
+
   // Execution state
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showProgressDialog, setShowProgressDialog] = useState(false);
@@ -64,7 +64,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   async function loadInitialData() {
     setLoading(true);
     setError(null);
-    
+
     try {
       const [yearsResult, classesResult] = await Promise.all([
         getAcademicYears(),
@@ -95,13 +95,13 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   async function loadStudents(classId: string, sectionId?: string) {
     setLoadingStudents(true);
     setError(null);
-    
+
     try {
       const result = await getStudentsForPromotion({
         classId,
         sectionId,
       });
-      
+
       if (result.success && result.data) {
         // Transform the data to match StudentForPromotion interface
         const transformedStudents: StudentForPromotion[] = result.data.students.map((s: any) => ({
@@ -114,7 +114,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
           hasWarnings: s.warnings && s.warnings.length > 0,
           warnings: s.warnings,
         }));
-        
+
         setStudents(transformedStudents);
       } else {
         throw new Error(result.error || "Failed to load students");
@@ -133,7 +133,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
   async function loadPreview(data: PromotionWizardData) {
     setLoadingPreview(true);
     setError(null);
-    
+
     try {
       const result = await previewPromotion({
         sourceClassId: data.sourceClassId,
@@ -143,7 +143,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
         targetSectionId: data.targetSectionId,
         studentIds: data.selectedStudentIds,
       });
-      
+
       if (result.success && result.data) {
         setPreviewData(result.data);
       } else {
@@ -168,7 +168,7 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
     setExecuting(true);
     setShowProgressDialog(true);
     setError(null);
-    
+
     try {
       const result = await executeBulkPromotion({
         sourceClassId: data.sourceClassId,
@@ -182,12 +182,12 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
         rollNumberMapping: data.rollNumberMapping,
         sendNotifications: data.sendNotifications,
       });
-      
+
       if (result.success && result.data) {
         setExecutionResults(result.data);
         setShowProgressDialog(false);
         setShowResultsDialog(true);
-        
+
         if (result.data.summary.failed === 0) {
           toast.success(`Successfully promoted ${result.data.summary.promoted} students`);
         } else {
@@ -238,8 +238,8 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
       <div className="flex items-center gap-2">
         <Link href="/admin/academic">
           <Button variant="ghost" size="sm">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Academic
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
           </Button>
         </Link>
         <span className="text-muted-foreground">/</span>
@@ -279,199 +279,199 @@ export function PromotionManagerContent({ userId }: PromotionManagerContentProps
             <>
               {/* Step 1: Select Students */}
               {currentStep === 0 && (
-              <div className="space-y-4">
-                {/* Source and Target Selection */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Promotion Configuration</CardTitle>
-                    <CardDescription>
-                      Select source class and target academic year/class
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Source Class */}
-                      <div className="space-y-2">
-                        <Label>Source Class</Label>
-                        <Select
-                          value={data.sourceClassId}
-                          onValueChange={(value) => {
-                            const selectedClass = classes.find((c) => c.id === value);
-                            updateData({
-                              sourceClassId: value,
-                              sourceClassName: selectedClass?.name,
-                              sourceSectionId: undefined,
-                              sourceSectionName: undefined,
-                              selectedStudentIds: [],
-                            });
-                            setSections(selectedClass?.sections || []);
-                            setStudents([]);
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select source class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {classes.map((cls) => (
-                              <SelectItem key={cls.id} value={cls.id}>
-                                {cls.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Source Section (Optional) */}
-                      {sections.length > 0 && (
+                <div className="space-y-4">
+                  {/* Source and Target Selection */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Promotion Configuration</CardTitle>
+                      <CardDescription>
+                        Select source class and target academic year/class
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Source Class */}
                         <div className="space-y-2">
-                          <Label>Source Section (Optional)</Label>
+                          <Label>Source Class</Label>
                           <Select
-                            value={data.sourceSectionId || "all"}
+                            value={data.sourceClassId}
                             onValueChange={(value) => {
-                              const selectedSection = sections.find((s) => s.id === value);
+                              const selectedClass = classes.find((c) => c.id === value);
                               updateData({
-                                sourceSectionId: value === "all" ? undefined : value,
-                                sourceSectionName: value === "all" ? undefined : selectedSection?.name,
+                                sourceClassId: value,
+                                sourceClassName: selectedClass?.name,
+                                sourceSectionId: undefined,
+                                sourceSectionName: undefined,
                                 selectedStudentIds: [],
                               });
+                              setSections(selectedClass?.sections || []);
                               setStudents([]);
                             }}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="All sections" />
+                              <SelectValue placeholder="Select source class" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">All Sections</SelectItem>
-                              {sections.map((section) => (
-                                <SelectItem key={section.id} value={section.id}>
-                                  {section.name}
+                              {classes.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                      )}
 
-                      {/* Target Academic Year */}
-                      <div className="space-y-2">
-                        <Label>Target Academic Year</Label>
-                        <Select
-                          value={data.targetAcademicYearId}
-                          onValueChange={(value) => {
-                            const selectedYear = academicYears.find((y) => y.id === value);
-                            updateData({
-                              targetAcademicYearId: value,
-                              targetAcademicYearName: selectedYear?.name,
-                            });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select target year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {academicYears.map((year) => (
-                              <SelectItem key={year.id} value={year.id}>
-                                {year.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Target Class */}
-                      <div className="space-y-2">
-                        <Label>Target Class</Label>
-                        <Select
-                          value={data.targetClassId}
-                          onValueChange={(value) => {
-                            const selectedClass = classes.find((c) => c.id === value);
-                            updateData({
-                              targetClassId: value,
-                              targetClassName: selectedClass?.name,
-                              targetSectionId: undefined,
-                              targetSectionName: undefined,
-                            });
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select target class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {classes.map((cls) => (
-                              <SelectItem key={cls.id} value={cls.id}>
-                                {cls.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Load Students Button */}
-                    {data.sourceClassId && data.targetAcademicYearId && data.targetClassId && (
-                      <Button
-                        onClick={() => loadStudents(data.sourceClassId, data.sourceSectionId)}
-                        disabled={loadingStudents}
-                      >
-                        {loadingStudents ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading Students...
-                          </>
-                        ) : (
-                          "Load Students"
+                        {/* Source Section (Optional) */}
+                        {sections.length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Source Section (Optional)</Label>
+                            <Select
+                              value={data.sourceSectionId || "all"}
+                              onValueChange={(value) => {
+                                const selectedSection = sections.find((s) => s.id === value);
+                                updateData({
+                                  sourceSectionId: value === "all" ? undefined : value,
+                                  sourceSectionName: value === "all" ? undefined : selectedSection?.name,
+                                  selectedStudentIds: [],
+                                });
+                                setStudents([]);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="All sections" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Sections</SelectItem>
+                                {sections.map((section) => (
+                                  <SelectItem key={section.id} value={section.id}>
+                                    {section.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
 
-                {/* Student Selection Table */}
-                {students.length > 0 && (
-                  <StudentSelectionTable
-                    students={students}
-                    selectedStudentIds={data.selectedStudentIds}
-                    onSelectionChange={(ids) => updateData({ selectedStudentIds: ids })}
-                    isLoading={loadingStudents}
-                  />
-                )}
-              </div>
-            )}
+                        {/* Target Academic Year */}
+                        <div className="space-y-2">
+                          <Label>Target Academic Year</Label>
+                          <Select
+                            value={data.targetAcademicYearId}
+                            onValueChange={(value) => {
+                              const selectedYear = academicYears.find((y) => y.id === value);
+                              updateData({
+                                targetAcademicYearId: value,
+                                targetAcademicYearName: selectedYear?.name,
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select target year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {academicYears.map((year) => (
+                                <SelectItem key={year.id} value={year.id}>
+                                  {year.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-            {/* Step 2: Preview */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                {loadingPreview || !previewData ? (
-                  <Card>
-                    <CardContent className="py-12">
-                      <div className="flex flex-col items-center justify-center gap-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-muted-foreground">Loading preview...</p>
+                        {/* Target Class */}
+                        <div className="space-y-2">
+                          <Label>Target Class</Label>
+                          <Select
+                            value={data.targetClassId}
+                            onValueChange={(value) => {
+                              const selectedClass = classes.find((c) => c.id === value);
+                              updateData({
+                                targetClassId: value,
+                                targetClassName: selectedClass?.name,
+                                targetSectionId: undefined,
+                                targetSectionName: undefined,
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select target class" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {classes.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
+
+                      {/* Load Students Button */}
+                      {data.sourceClassId && data.targetAcademicYearId && data.targetClassId && (
+                        <Button
+                          onClick={() => loadStudents(data.sourceClassId, data.sourceSectionId)}
+                          disabled={loadingStudents}
+                        >
+                          {loadingStudents ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Loading Students...
+                            </>
+                          ) : (
+                            "Load Students"
+                          )}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
-                ) : (
-                  <PromotionPreview
-                    data={previewData}
-                  />
-                )}
-              </div>
-            )}
 
-            {/* Step 3: Execute (handled by dialogs) */}
-            {currentStep === 2 && (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center justify-center gap-4">
-                    <p className="text-muted-foreground">
-                      Click "Review & Execute" to proceed with promotion
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        );
+                  {/* Student Selection Table */}
+                  {students.length > 0 && (
+                    <StudentSelectionTable
+                      students={students}
+                      selectedStudentIds={data.selectedStudentIds}
+                      onSelectionChange={(ids) => updateData({ selectedStudentIds: ids })}
+                      isLoading={loadingStudents}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Step 2: Preview */}
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  {loadingPreview || !previewData ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="flex flex-col items-center justify-center gap-4">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <p className="text-muted-foreground">Loading preview...</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <PromotionPreview
+                      data={previewData}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Execute (handled by dialogs) */}
+              {currentStep === 2 && (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <p className="text-muted-foreground">
+                        Click "Review & Execute" to proceed with promotion
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          );
         }}
       </PromotionWizard>
 

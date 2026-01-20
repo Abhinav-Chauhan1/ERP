@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ChevronLeft, Download, FileText, TrendingUp, Target,
+  ArrowLeft, Download, FileText, TrendingUp, Target,
   Award, BarChart3, Activity, Zap, Loader2
 } from "lucide-react";
 import {
@@ -144,11 +144,11 @@ export default function PerformanceAnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
           <Link href="/admin/reports">
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back to Reports
             </Button>
           </Link>
@@ -252,9 +252,9 @@ export default function PerformanceAnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1" 
+                  <Button
+                    size="sm"
+                    className="flex-1"
                     onClick={() => generateReport(reportKey)}
                     disabled={loading}
                   >
@@ -309,7 +309,7 @@ export default function PerformanceAnalyticsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "teacher" && (
                 <div>
                   <h3 className="font-semibold mb-2">Subject-wise Performance</h3>
@@ -326,7 +326,7 @@ export default function PerformanceAnalyticsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "progress" && (
                 <div>
                   <h3 className="font-semibold mb-2">Student Progress Tracking</h3>
@@ -358,7 +358,7 @@ export default function PerformanceAnalyticsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "comparative" && (
                 <div>
                   <h3 className="font-semibold mb-2">Class Rankings</h3>
@@ -378,7 +378,7 @@ export default function PerformanceAnalyticsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "outcomes" && (
                 <div>
                   <h3 className="font-semibold mb-2">Grade Distribution</h3>
@@ -393,7 +393,7 @@ export default function PerformanceAnalyticsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "trends" && (
                 <div>
                   <h3 className="font-semibold mb-2">Performance Trends</h3>

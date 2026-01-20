@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-  ChevronLeft, Edit, Trash2, PlusCircle,
+  ArrowLeft, Edit, Trash2, PlusCircle,
   Search, ClipboardList, BookOpen, Clock,
   CalendarDays, FileText, FolderOpen, Filter,
   ChevronDown, MoreVertical, AlertCircle, Loader2
@@ -279,11 +279,11 @@ export default function LessonsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href="/admin/teaching">
             <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
@@ -291,7 +291,7 @@ export default function LessonsPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddNew}>
+            <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Lesson
             </Button>
           </DialogTrigger>
@@ -470,7 +470,7 @@ export default function LessonsPage() {
       )}
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="md:w-2/3">
+        <div className="w-full md:w-2/3">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -482,7 +482,7 @@ export default function LessonsPage() {
             />
           </div>
         </div>
-        <div className="md:w-1/3">
+        <div className="w-full md:w-1/3">
           <Select value={filterSubject} onValueChange={setFilterSubject}>
             <SelectTrigger>
               <SelectValue placeholder="Filter by subject" />

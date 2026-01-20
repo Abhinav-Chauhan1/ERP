@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ChevronLeft, Download, FileText, DollarSign, TrendingDown,
+  ArrowLeft, Download, FileText, DollarSign, TrendingDown,
   CreditCard, PieChart, Receipt, Wallet, Loader2
 } from "lucide-react";
 import {
@@ -150,11 +150,11 @@ export default function FinancialReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
           <Link href="/admin/reports">
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="h-4 w-4 mr-1" />
+            <Button variant="ghost" size="sm" className="pl-0 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
               Back to Reports
             </Button>
           </Link>
@@ -246,9 +246,9 @@ export default function FinancialReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1" 
+                  <Button
+                    size="sm"
+                    className="flex-1"
                     onClick={() => generateReport(reportKey)}
                     disabled={loading}
                   >
@@ -303,7 +303,7 @@ export default function FinancialReportsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "expenses" && (
                 <div>
                   <h3 className="font-semibold mb-2">Expense Analysis</h3>
@@ -335,7 +335,7 @@ export default function FinancialReportsPage() {
                   </div>
                 </div>
               )}
-              
+
               {reportData.type === "outstanding" && (
                 <div>
                   <h3 className="font-semibold mb-2">Outstanding Payments</h3>

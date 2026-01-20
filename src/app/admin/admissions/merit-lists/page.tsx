@@ -85,16 +85,16 @@ export default function MeritListsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Merit Lists</h1>
-        <div className="flex gap-2">
-          <Link href="/admin/admissions/merit-lists/configs">
-            <Button variant="outline">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link href="/admin/admissions/merit-lists/configs" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               Manage Configurations
             </Button>
           </Link>
-          <Link href="/admin/admissions/merit-lists/generate">
-            <Button>
+          <Link href="/admin/admissions/merit-lists/generate" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Generate Merit List
             </Button>
@@ -107,7 +107,7 @@ export default function MeritListsPage() {
           <CardTitle>All Merit Lists</CardTitle>
           <div className="mt-4">
             <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filter by class" />
               </SelectTrigger>
               <SelectContent>

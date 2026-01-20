@@ -2,17 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  ArrowLeft,
   Clock,
   TrendingUp,
-  TrendingDown,
+  RoundingDown,
+  Calendar,
+  BarChart3,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Calendar,
-  ChevronRight,
-  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
@@ -75,26 +76,21 @@ export default function ReceiptAnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Link href="/admin/finance" className="hover:text-gray-900">
-          Finance
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link href="/admin/finance/receipt-verification" className="hover:text-gray-900">
-          Receipt Verification
-        </Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-gray-900 font-medium">Analytics</span>
-      </div>
-
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Receipt Analytics</h1>
-          <p className="text-muted-foreground">
-            Insights and metrics for receipt verification process
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/admin/finance/receipt-verification">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Receipt Analytics</h1>
+            <p className="text-muted-foreground">
+              Insights and metrics for receipt verification process
+            </p>
+          </div>
         </div>
       </div>
 
