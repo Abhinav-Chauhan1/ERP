@@ -4,12 +4,60 @@ import { auth } from "@/auth";
 import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { hasPermission } from '@/lib/utils/permissions';
+import { DEFAULT_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '@/lib/utils/permission-defaults';
 
 const prisma = new PrismaClient();
 
 /**
  * Server actions for permission management
+ * Includes auto-seeding capability
  */
+
+// Internal helper to seed permissions if missing
+async function ensurePermissionsSeeded() {
+  const count = await prisma.permission.count();
+  if (count > 0) return; // Already seeded
+
+  console.log('Autoseeding permissions...');
+
+  // Create permissions
+  const createdPermissions = new Map<string, string>();
+  for (const permission of DEFAULT_PERMISSIONS) {
+    const created = await prisma.permission.create({
+      data: {
+        name: permission.name,
+        resource: permission.resource,
+        action: permission.action,
+        category: permission.category,
+        description: permission.description,
+        isActive: true, // Default to active
+      },
+    });
+    createdPermissions.set(permission.name, created.id);
+  }
+
+  // Assign defaults to roles
+  for (const [role, permissionNames] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+    if (permissionNames.includes('*')) {
+      // For Admin wildcard, assign all for UI consistency
+      for (const [permName, permId] of createdPermissions.entries()) {
+        await prisma.rolePermission.create({
+          data: { role: role as UserRole, permissionId: permId, isDefault: true },
+        });
+      }
+      continue;
+    }
+
+    for (const permissionName of permissionNames) {
+      const permissionId = createdPermissions.get(permissionName);
+      if (permissionId) {
+        await prisma.rolePermission.create({
+          data: { role: role as UserRole, permissionId, isDefault: true },
+        });
+      }
+    }
+  }
+}
 
 // Get all permissions
 export async function getAllPermissions() {
@@ -56,6 +104,9 @@ export async function getPermissionsByCategory() {
     if (!canRead) {
       return { success: false, error: 'You do not have permission to view permissions' };
     }
+
+    // Ensure permissions exist in DB (lazy seeding)
+    await ensurePermissionsSeeded();
 
     const permissions = await prisma.permission.findMany({
       where: { isActive: true },
