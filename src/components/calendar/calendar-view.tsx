@@ -83,6 +83,19 @@ export function CalendarView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week" | "day" | "agenda">(defaultView);
 
+  // Normalize events to ensure dates are Date objects (handling server serialization)
+  const normalizedEvents = useMemo(() => {
+    return events.map(event => ({
+      ...event,
+      startDate: new Date(event.startDate),
+      endDate: new Date(event.endDate),
+      createdAt: new Date(event.createdAt),
+      updatedAt: new Date(event.updatedAt),
+      // Handle exceptionDates if they exist and are possibly strings
+      exceptionDates: event.exceptionDates?.map(d => new Date(d)) || []
+    }));
+  }, [events]);
+
   // High contrast mode support
   const {
     isHighContrast,
@@ -160,7 +173,7 @@ export function CalendarView({
 
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
-    return events.filter((event) => {
+    return normalizedEvents.filter((event) => {
       const eventStart = startOfDay(event.startDate);
       const eventEnd = endOfDay(event.endDate);
       const checkDate = startOfDay(date);
@@ -365,8 +378,8 @@ export function CalendarView({
                           ? getHighContrastStyles(event.category.color)
                           : `${event.category.color}20`,
                         borderLeft: `${getHighContrastBorderWidth(3)}px solid ${isHighContrast
-                            ? getHighContrastStyles(event.category.color)
-                            : event.category.color
+                          ? getHighContrastStyles(event.category.color)
+                          : event.category.color
                           }`,
                         minHeight: "44px", // Minimum touch target size
                         display: "flex",
@@ -454,7 +467,7 @@ export function CalendarView({
   // Render agenda view
   const renderAgendaView = () => {
     // Sort events chronologically
-    const sortedEvents = [...events].sort(
+    const sortedEvents = [...normalizedEvents].sort(
       (a, b) => a.startDate.getTime() - b.startDate.getTime()
     );
 
