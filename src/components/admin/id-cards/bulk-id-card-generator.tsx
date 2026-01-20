@@ -27,6 +27,7 @@ import {
   getClassesForIDCardGeneration,
   getCurrentAcademicYear,
   getClassIDCardPreview,
+  type ClassData,
 } from '@/lib/actions/idCardGenerationActions';
 import { CreditCard, CheckCircle, XCircle, AlertCircle, Download, Loader2, Eye, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -40,12 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import Image from "next/image";
 
-interface ClassData {
-  id: string;
-  name: string;
-  sections: { id: string; name: string }[];
-  studentCount: number;
-}
+
 
 export function BulkIDCardGenerator() {
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -220,202 +216,201 @@ export function BulkIDCardGenerator() {
           <Label>Academic Year</Label>
           <Badge variant="secondary">{academicYear}</Badge>
         </div>
-      </div>
 
-      {/* Template Selection */}
-      <div className="space-y-2">
-        <Label htmlFor="template-select">ID Card Template</Label>
-        <Select value={templateId} onValueChange={setTemplateId}>
-          <SelectTrigger id="template-select">
-            <SelectValue placeholder="Select template" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="STANDARD">Standard Template</SelectItem>
-            <SelectItem value="CBSE">CBSE / Board Template</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Student Count */}
-      {selectedClass && (
-        <div className="rounded-lg border bg-muted/50 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Students to process:</span>
-            <Badge variant="outline">{studentCount}</Badge>
-          </div>
+        {/* Template Selection */}
+        <div className="space-y-2">
+          <Label htmlFor="template-select">ID Card Template</Label>
+          <Select value={templateId} onValueChange={setTemplateId}>
+            <SelectTrigger id="template-select">
+              <SelectValue placeholder="Select template" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="STANDARD">Standard Template</SelectItem>
+              <SelectItem value="CBSE">CBSE / Board Template</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="flex gap-4">
-        <Button
-          onClick={handleGenerate}
-          disabled={!selectedClass || isGenerating}
-          className="flex-1"
-          size="lg"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Generate ID Cards
-            </>
-          )}
-        </Button>
+        {/* Student Count */}
+        {selectedClass && (
+          <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Students to process:</span>
+              <Badge variant="outline">{studentCount}</Badge>
+            </div>
+          </div>
+        )}
 
-        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="lg"
-              disabled={!selectedClass}
-              onClick={async () => {
-                if (!selectedClass) return;
+        {/* Actions */}
+        <div className="flex gap-4">
+          <Button
+            onClick={handleGenerate}
+            disabled={!selectedClass || isGenerating}
+            className="flex-1"
+            size="lg"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Generate ID Cards
+              </>
+            )}
+          </Button>
 
-                if (!academicYear) {
-                  toast.error("Academic year not available");
-                  return;
-                }
+          <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!selectedClass}
+                onClick={async () => {
+                  if (!selectedClass) return;
 
-                setIsPreviewLoading(true);
-                try {
-                  const result = await getClassIDCardPreview(selectedClass, academicYear, templateId);
-
-                  if (result.success && result.previewUrl) {
-                    setPreviewUrl(result.previewUrl);
-                  } else {
-                    toast.error(result.error || "Failed to generate preview");
+                  if (!academicYear) {
+                    toast.error("Academic year not available");
+                    return;
                   }
-                } catch (error) {
-                  toast.error("An error occurred generating preview");
-                } finally {
-                  setIsPreviewLoading(false);
-                }
-              }}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>ID Card Preview</DialogTitle>
-              <DialogDescription>
-                Preview of using {templateId} template.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-center p-4 bg-gray-100 rounded-md">
-              {previewUrl ? (
-                <img src={previewUrl} alt="ID Card Preview" className="max-w-full shadow-lg" />
+
+                  setIsPreviewLoading(true);
+                  try {
+                    const result = await getClassIDCardPreview(selectedClass, academicYear, templateId);
+
+                    if (result.success) {
+                      setPreviewUrl(result.previewUrl);
+                    } else {
+                      toast.error(result.error);
+                    }
+                  } catch (error) {
+                    toast.error("An error occurred generating preview");
+                  } finally {
+                    setIsPreviewLoading(false);
+                  }
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>ID Card Preview</DialogTitle>
+                <DialogDescription>
+                  Preview of using {templateId} template.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-center p-4 bg-gray-100 rounded-md">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="ID Card Preview" className="max-w-full shadow-lg" />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Preview functionality requires selecting a specific student.
+                    (Coming soon)
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Progress Bar */}
+        {isGenerating && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Progress</span>
+              <span className="font-medium">{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        )}
+
+        {/* Results */}
+        {results && (
+          <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Generation Results</h3>
+              {results.success ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Preview functionality requires selecting a specific student.
-                  (Coming soon)
-                </div>
+                <XCircle className="h-5 w-5 text-red-600" />
               )}
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
-      {/* Progress Bar */}
-      {isGenerating && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-      )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total Requested</p>
+                <p className="text-2xl font-bold">{results.totalRequested}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Successfully Generated</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {results.totalGenerated}
+                </p>
+              </div>
+            </div>
 
-      {/* Results */}
-      {results && (
-        <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Generation Results</h3>
-            {results.success ? (
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            ) : (
-              <XCircle className="h-5 w-5 text-red-600" />
+            {results.errors && results.errors.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Errors ({results.errors.length})</span>
+                </div>
+                <div className="max-h-40 space-y-1 overflow-y-auto rounded-md bg-amber-50 p-3">
+                  {results.errors.map((error: string, index: number) => (
+                    <p key={index} className="text-xs text-amber-800">
+                      {error}
+                    </p>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Total Requested</p>
-              <p className="text-2xl font-bold">{results.totalRequested}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Successfully Generated</p>
-              <p className="text-2xl font-bold text-green-600">
-                {results.totalGenerated}
-              </p>
-            </div>
-          </div>
-
-          {results.errors && results.errors.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-amber-600">
-                <AlertCircle className="h-4 w-4" />
-                <span>Errors ({results.errors.length})</span>
-              </div>
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-md bg-amber-50 p-3">
-                {results.errors.map((error: string, index: number) => (
-                  <p key={index} className="text-xs text-amber-800">
-                    {error}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {results.success && results.totalGenerated > 0 && (
-            <div className="rounded-md bg-green-50 p-3 flex flex-col gap-2">
-              <p className="text-sm text-green-800">
-                ✓ ID cards have been generated successfully.
-              </p>
-              <div className="flex gap-2">
-                {results.idCards && results.idCards.length > 0 && results.idCards[0].pdfUrl && (
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <a href={results.idCards[0].pdfUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download All (Zip/PDF)
-                      {/* Note: logic for zip/combined PDF is not yet in service, 
+            {results.success && results.totalGenerated > 0 && (
+              <div className="rounded-md bg-green-50 p-3 flex flex-col gap-2">
+                <p className="text-sm text-green-800">
+                  ✓ ID cards have been generated successfully.
+                </p>
+                <div className="flex gap-2">
+                  {results.idCards && results.idCards.length > 0 && results.idCards[0].pdfUrl && (
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <a href={results.idCards[0].pdfUrl} target="_blank" rel="noopener noreferrer">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download All (Zip/PDF)
+                        {/* Note: logic for zip/combined PDF is not yet in service, 
                               currently it returns individual URLs. 
                               We'd need a bulk download endpoint. 
                               For now let's just show Success. 
                           */}
-                    </a>
-                  </Button>
-                )}
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {/* Info Box */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <div className="flex gap-3">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 text-blue-600" />
-          <div className="space-y-1 text-sm text-blue-900">
-            <p className="font-medium">ID Card Features:</p>
-            <ul className="list-inside list-disc space-y-1 text-blue-800">
-              <li>Student photo (if available)</li>
-              <li>QR code for digital verification</li>
-              <li>Barcode with admission ID</li>
-              <li>Print-ready PDF format (standard ID card size)</li>
-              <li>Valid for the current academic year</li>
-            </ul>
+        {/* Info Box */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-blue-600" />
+            <div className="space-y-1 text-sm text-blue-900">
+              <p className="font-medium">ID Card Features:</p>
+              <ul className="list-inside list-disc space-y-1 text-blue-800">
+                <li>Student photo (if available)</li>
+                <li>QR code for digital verification</li>
+                <li>Barcode with admission ID</li>
+                <li>Print-ready PDF format (standard ID card size)</li>
+                <li>Valid for the current academic year</li>
+              </ul>
+            </div>
           </div>
         </div>
-      </div>
-    </CardContent>
+      </CardContent>
     </Card >
   );
 }

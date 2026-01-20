@@ -21,10 +21,25 @@ import {
 } from '@/lib/services/idCardGenerationService';
 import { db } from '@/lib/db';
 
+export interface ClassData {
+  id: string;
+  name: string;
+  sections: { id: string; name: string }[];
+  studentCount: number;
+}
+
+export type ActionResponse<T = any> =
+  | { success: true; data: T; error?: never }
+  | { success: false; error: string; data?: never };
+
+export type PreviewResponse =
+  | { success: true; previewUrl: string; error?: never }
+  | { success: false; error: string; previewUrl?: never };
+
 /**
  * Generate ID card for a single student
  */
-export async function generateStudentIDCard(studentId: string, academicYear: string, templateId: string = 'STANDARD') {
+export async function generateStudentIDCard(studentId: string, academicYear: string, templateId: string = 'STANDARD'): Promise<IDCardGenerationResult | { success: false; error: string }> {
   try {
     const user = await currentUser();
 
@@ -74,7 +89,7 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
 /**
  * Get ID card preview (Base64)
  */
-export async function getStudentIDCardPreview(studentId: string, academicYear: string, templateId: string = 'STANDARD') {
+export async function getStudentIDCardPreview(studentId: string, academicYear: string, templateId: string = 'STANDARD'): Promise<PreviewResponse> {
   try {
     const user = await currentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
@@ -254,7 +269,7 @@ export async function getClassIDCardPreview(
   classId: string,
   academicYear: string,
   templateId: string = 'STANDARD'
-) {
+): Promise<PreviewResponse> {
   try {
     const user = await currentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
@@ -287,7 +302,7 @@ export async function getClassIDCardPreview(
 /**
  * Get list of classes for ID card generation
  */
-export async function getClassesForIDCardGeneration() {
+export async function getClassesForIDCardGeneration(): Promise<ActionResponse<ClassData[]>> {
   try {
     const user = await currentUser();
 
@@ -295,7 +310,6 @@ export async function getClassesForIDCardGeneration() {
       return {
         success: false,
         error: 'Unauthorized',
-        data: [],
       };
     }
 
@@ -336,7 +350,6 @@ export async function getClassesForIDCardGeneration() {
     return {
       success: false,
       error: error.message || 'Failed to fetch classes',
-      data: [],
     };
   }
 }
@@ -344,7 +357,7 @@ export async function getClassesForIDCardGeneration() {
 /**
  * Get current academic year
  */
-export async function getCurrentAcademicYear() {
+export async function getCurrentAcademicYear(): Promise<ActionResponse<{ id: string; name?: string; year?: string }>> {
   try {
     const academicYear = await db.academicYear.findFirst({
       where: {
@@ -379,7 +392,7 @@ export async function getCurrentAcademicYear() {
     console.error('Error in getCurrentAcademicYear:', error);
     const currentYear = new Date().getFullYear();
     return {
-      success: true,
+      success: true, // Keep it true as it's a fallback
       data: {
         id: 'current',
         year: `${currentYear}-${currentYear + 1}`,
