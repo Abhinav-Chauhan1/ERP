@@ -1,16 +1,16 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { 
+import {
   eventSchemaWithRefinement,
   eventParticipantSchema,
   eventFilterSchema,
-  type EventFormDataWithRefinement, 
+  type EventFormDataWithRefinement,
   type EventParticipantData,
-  type EventFilterData 
+  type EventFilterData
 } from "@/lib/schemaValidation/eventSchemaValidation";
 import { revalidatePath } from "next/cache";
-import { EventStatus } from "@prisma/client";
+import { EventStatus, EventCategory } from "@prisma/client";
 
 export async function getEvents(filter?: EventFilterData) {
   try {
@@ -123,6 +123,7 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
         location: validatedData.location,
         organizer: validatedData.organizer,
         type: validatedData.type,
+        category: getCategoryFromType(validatedData.type),
         status: validatedData.status as EventStatus,
         maxParticipants: validatedData.maxParticipants,
         registrationDeadline: validatedData.registrationDeadline,
@@ -132,6 +133,9 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
     });
 
     revalidatePath("/admin/events");
+    revalidatePath("/student/events");
+    revalidatePath("/parent/events");
+    revalidatePath("/teacher/events");
     return { success: true, data: event };
   } catch (error) {
     console.error("Failed to create event:", error);
@@ -139,6 +143,23 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
       return { success: false, error: error.message, data: null };
     }
     return { success: false, error: "Failed to create event", data: null };
+  }
+}
+
+function getCategoryFromType(type: string | undefined | null): EventCategory {
+  if (!type) return EventCategory.OTHER;
+
+  switch (type) {
+    case 'ACADEMIC':
+    case 'CULTURAL':
+    case 'SPORTS':
+      return EventCategory.SCHOOL_EVENT;
+    case 'ADMINISTRATIVE':
+      return EventCategory.TEACHER_MEETING; // Assumption
+    case 'HOLIDAY':
+      return EventCategory.HOLIDAY;
+    default:
+      return EventCategory.OTHER;
   }
 }
 
@@ -167,6 +188,7 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
         location: validatedData.location,
         organizer: validatedData.organizer,
         type: validatedData.type,
+        category: getCategoryFromType(validatedData.type),
         status: validatedData.status as EventStatus,
         maxParticipants: validatedData.maxParticipants,
         registrationDeadline: validatedData.registrationDeadline,
@@ -176,6 +198,9 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
     });
 
     revalidatePath("/admin/events");
+    revalidatePath("/student/events");
+    revalidatePath("/parent/events");
+    revalidatePath("/teacher/events");
     revalidatePath(`/admin/events/${id}`);
     return { success: true, data: updatedEvent };
   } catch (error) {
@@ -204,6 +229,9 @@ export async function deleteEvent(id: string) {
     });
 
     revalidatePath("/admin/events");
+    revalidatePath("/student/events");
+    revalidatePath("/parent/events");
+    revalidatePath("/teacher/events");
     return { success: true, data: null };
   } catch (error) {
     console.error(`Failed to delete event with ID ${id}:`, error);
@@ -229,6 +257,9 @@ export async function updateEventStatus(id: string, status: EventStatus) {
     });
 
     revalidatePath("/admin/events");
+    revalidatePath("/student/events");
+    revalidatePath("/parent/events");
+    revalidatePath("/teacher/events");
     revalidatePath(`/admin/events/${id}`);
     return { success: true, data: updatedEvent };
   } catch (error) {
@@ -372,7 +403,7 @@ export async function markAttendance(eventId: string, userId: string, attended: 
 export async function getUpcomingEvents(limit: number = 5) {
   try {
     const now = new Date();
-    
+
     // Get upcoming events
     const events = await db.event.findMany({
       where: {
