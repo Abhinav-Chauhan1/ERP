@@ -10,8 +10,14 @@ import {
   type EventFilterData
 } from "@/lib/schemaValidation/eventSchemaValidation";
 import { revalidatePath } from "next/cache";
-import { EventStatus, EventCategory } from "@prisma/client";
+import { EventStatus, EventCategory, EventSourceType } from "@prisma/client";
 import { createNotification } from "@/lib/actions/notificationActions";
+import {
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  CreateCalendarEventInput
+} from "@/lib/services/calendar-service";
 
 export async function getEvents(filter?: EventFilterData) {
   try {
@@ -109,6 +115,64 @@ export async function getEvent(id: string) {
   }
 }
 
+// Helper to get or create Calendar Category ID based on Event Type
+async function getCalendarCategoryId(eventType: string | undefined | null): Promise<string> {
+  const defaultCategoryName = "School Event";
+  let searchName = defaultCategoryName;
+  let color = '#10b981'; // Green for School Event
+  let icon = 'Star';
+  let description = 'School-wide events and activities';
+
+  if (eventType === 'HOLIDAY') {
+    searchName = "Holiday";
+    color = '#ef4444'; // Red
+    icon = 'Calendar';
+    description = 'School holidays and breaks';
+  } else if (eventType === 'ADMINISTRATIVE') {
+    searchName = "Meeting";
+    color = '#3b82f6'; // Blue
+    icon = 'Users';
+    description = 'Meetings';
+  } else if (eventType === 'SPORTS') {
+    searchName = "Sports Event";
+    color = '#f97316'; // Orange
+    icon = 'Trophy';
+    description = 'Sports competitions';
+  }
+
+  // Try to find existing category
+  let category = await db.calendarEventCategory.findFirst({
+    where: {
+      name: {
+        equals: searchName,
+        mode: 'insensitive'
+      }
+    }
+  });
+
+  if (category) return category.id;
+
+  // If not found, create it
+  try {
+    category = await db.calendarEventCategory.create({
+      data: {
+        name: searchName,
+        description,
+        color,
+        icon,
+        isActive: true,
+        order: 10 // Default order
+      }
+    });
+    return category.id;
+  } catch (error) {
+    console.error(`Failed to create calendar category ${searchName}:`, error);
+    // Fallback to any existing category if creation fails (e.g. race condition)
+    const anyCategory = await db.calendarEventCategory.findFirst();
+    return anyCategory?.id || "";
+  }
+}
+
 export async function createEvent(formData: EventFormDataWithRefinement) {
   try {
     // Validate the data
@@ -132,6 +196,36 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
         thumbnail: validatedData.thumbnail,
       },
     });
+
+    // --- SYNC WITH CALENDAR ---
+    try {
+      const calendarCategoryId = await getCalendarCategoryId(validatedData.type);
+      if (calendarCategoryId) {
+        // Determine visibility based on isPublic
+        // If public, visible to all roles. If not, maybe restrict (but current logic assumes public = all)
+        const visibleToRoles = validatedData.isPublic
+          ? ["ADMIN", "TEACHER", "STUDENT", "PARENT"]
+          : ["ADMIN", "TEACHER"]; // Default private to staff only? Or keep same.
+
+        await createCalendarEvent({
+          title: validatedData.title,
+          description: validatedData.description || "",
+          categoryId: calendarCategoryId,
+          startDate: validatedData.startDate,
+          endDate: validatedData.endDate,
+          location: validatedData.location || undefined,
+          isAllDay: false, // Default logic, could be improved
+          visibleToRoles: visibleToRoles,
+          sourceType: EventSourceType.SCHOOL_EVENT,
+          sourceId: event.id,
+          createdBy: "SYSTEM", // Or the actual creator if we had it in context
+        });
+      }
+    } catch (calendarError) {
+      console.error("Failed to sync event to calendar:", calendarError);
+      // We don't block the main event creation on calendar sync failure, but we log it.
+    }
+    // --------------------------
 
     // Create notifications for all user types
     const notificationData = {
@@ -165,6 +259,7 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
     revalidatePath("/student/events");
     revalidatePath("/parent/events");
     revalidatePath("/teacher/events");
+    revalidatePath("/admin/calendar"); // Revalidate calendar
     return { success: true, data: event };
   } catch (error) {
     console.error("Failed to create event:", error);
@@ -226,11 +321,40 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
       },
     });
 
+    // --- SYNC WITH CALENDAR ---
+    try {
+      // Find the associated calendar event
+      const calendarEvent = await db.calendarEvent.findFirst({
+        where: {
+          sourceType: EventSourceType.SCHOOL_EVENT,
+          sourceId: id
+        }
+      });
+
+      if (calendarEvent) {
+        const calendarCategoryId = await getCalendarCategoryId(validatedData.type);
+
+        await updateCalendarEvent(calendarEvent.id, {
+          title: validatedData.title,
+          description: validatedData.description || "",
+          categoryId: calendarCategoryId ? calendarCategoryId : undefined,
+          startDate: validatedData.startDate,
+          endDate: validatedData.endDate,
+          location: validatedData.location || undefined,
+          // Update visibility if needed
+        });
+      }
+    } catch (calendarError) {
+      console.error("Failed to sync event update to calendar:", calendarError);
+    }
+    // --------------------------
+
     revalidatePath("/admin/events");
     revalidatePath("/student/events");
     revalidatePath("/parent/events");
     revalidatePath("/teacher/events");
     revalidatePath(`/admin/events/${id}`);
+    revalidatePath("/admin/calendar");
     return { success: true, data: updatedEvent };
   } catch (error) {
     console.error(`Failed to update event with ID ${id}:`, error);
@@ -257,10 +381,28 @@ export async function deleteEvent(id: string) {
       where: { id },
     });
 
+    // --- SYNC WITH CALENDAR ---
+    try {
+      const calendarEvent = await db.calendarEvent.findFirst({
+        where: {
+          sourceType: EventSourceType.SCHOOL_EVENT,
+          sourceId: id
+        }
+      });
+
+      if (calendarEvent) {
+        await deleteCalendarEvent(calendarEvent.id);
+      }
+    } catch (calendarError) {
+      console.error("Failed to sync event deletion to calendar:", calendarError);
+    }
+    // --------------------------
+
     revalidatePath("/admin/events");
     revalidatePath("/student/events");
     revalidatePath("/parent/events");
     revalidatePath("/teacher/events");
+    revalidatePath("/admin/calendar");
     return { success: true, data: null };
   } catch (error) {
     console.error(`Failed to delete event with ID ${id}:`, error);

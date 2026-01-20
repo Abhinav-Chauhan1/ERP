@@ -1039,7 +1039,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  // Open dialog to message participant
+                                  router.push(`/admin/communication/messages?recipientId=${participant.userId}`);
                                 }}
                               >
                                 <Mail className="h-4 w-4" />

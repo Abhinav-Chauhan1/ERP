@@ -1,14 +1,15 @@
 "use client";
 
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, PlusCircle, Search, Inbox, Send, Archive,
-  Trash2, Reply, Forward, Loader2, Mail, MailOpen
+  Trash2, Reply, Forward, Loader2, Mail, MailOpen, Paperclip, X
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,8 +44,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { useRef } from "react";
-import { Paperclip, X } from "lucide-react";
 
 // Import server actions
 import {
@@ -65,6 +64,7 @@ import {
 } from "@/lib/schemaValidation/messageSchemaValidation";
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
   // State management
   const [messages, setMessages] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -84,6 +84,7 @@ export default function MessagesPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialLoadRef = useRef(false);
 
   // Initialize form
   const form = useForm<MessageFormValues>({
@@ -132,6 +133,19 @@ export default function MessagesPage() {
   useEffect(() => {
     fetchAllData();
   }, [activeFolder, fetchAllData]);
+
+  // Handle URL parameters for pre-selecting recipient
+  useEffect(() => {
+    const recipientId = searchParams.get("recipientId");
+    if (recipientId && contacts.length > 0 && !initialLoadRef.current) {
+      const contact = contacts.find(c => c.id === recipientId);
+      if (contact) {
+        setComposeDialogOpen(true);
+        form.setValue("recipientId", recipientId);
+        initialLoadRef.current = true; // Prevent re-opening
+      }
+    }
+  }, [contacts, searchParams, form]);
 
   // Filter messages
   const filteredMessages = messages.filter((message) => {
