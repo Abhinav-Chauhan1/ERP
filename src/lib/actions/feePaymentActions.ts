@@ -760,24 +760,32 @@ export async function getConsolidatedReceiptHTML(
 
     // Combine all fee items from all payments
     const feeItems: Array<{ name: string; amount: number }> = [];
-    let totalAmount = 0;
     let totalPaid = 0;
     const feeStructureNames: string[] = [];
+    const processedFeeStructures = new Set<string>();
 
     for (const payment of payments) {
-      // Add fee structure items
-      for (const item of payment.feeStructure.items) {
-        feeItems.push({
-          name: `${payment.feeStructure.name} - ${item.feeType?.name || "Fee"}`,
-          amount: item.amount,
-        });
+      // Add fee structure items ONLY if this structure hasn't been added yet
+      if (!processedFeeStructures.has(payment.feeStructureId)) {
+        for (const item of payment.feeStructure.items) {
+          feeItems.push({
+            name: `${payment.feeStructure.name} - ${item.feeType?.name || "Fee"}`,
+            amount: item.amount,
+          });
+        }
+        processedFeeStructures.add(payment.feeStructureId);
+
+        if (!feeStructureNames.includes(payment.feeStructure.name)) {
+          feeStructureNames.push(payment.feeStructure.name);
+        }
       }
-      totalAmount += payment.amount;
+
+      // Always sum the actual paid amounts
       totalPaid += payment.paidAmount;
-      if (!feeStructureNames.includes(payment.feeStructure.name)) {
-        feeStructureNames.push(payment.feeStructure.name);
-      }
     }
+
+    // Calculate total amount from the unique items (Gross Fee)
+    const totalAmount = feeItems.reduce((sum, item) => sum + item.amount, 0);
 
     // Create consolidated receipt data
     const receiptData = {
