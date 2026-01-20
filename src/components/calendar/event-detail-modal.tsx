@@ -273,9 +273,9 @@ export function EventDetailModal({
           {/* Metadata */}
           <Separator />
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>Created: {format(event.createdAt, "PPp")}</p>
-            {event.updatedAt.getTime() !== event.createdAt.getTime() && (
-              <p>Last updated: {format(event.updatedAt, "PPp")}</p>
+            <p>Created: {format(new Date(event.createdAt), "PPp")}</p>
+            {new Date(event.updatedAt).getTime() !== new Date(event.createdAt).getTime() && (
+              <p>Last updated: {format(new Date(event.updatedAt), "PPp")}</p>
             )}
           </div>
         </div>
