@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 import { sendFeeReminder } from "@/lib/services/communication-service";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
+import { format } from "date-fns";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -694,6 +695,146 @@ export async function getPaymentReceiptHTML(paymentId: string) {
     return { success: false, error: "Failed to generate receipt" };
   }
 }
+
+/**
+ * Generate consolidated receipt HTML for all payments made by a student on the same date
+ * Groups multiple fee payments into a single receipt
+ */
+export async function getConsolidatedReceiptHTML(
+  studentId: string,
+  paymentDate: Date
+) {
+  try {
+    // Get start and end of the day for date comparison
+    const startOfDay = new Date(paymentDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(paymentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Fetch all completed payments for this student on this date
+    const payments = await db.feePayment.findMany({
+      where: {
+        studentId,
+        status: "COMPLETED",
+        paymentDate: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: true,
+                section: true,
+              },
+              take: 1,
+            },
+          },
+        },
+        feeStructure: {
+          include: {
+            academicYear: true,
+            items: {
+              include: {
+                feeType: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (payments.length === 0) {
+      return { success: false, error: "No payments found for this date" };
+    }
+
+    // Use first payment for student info
+    const firstPayment = payments[0];
+    const student = firstPayment.student;
+    const enrollment = student.enrollments[0];
+
+    // Combine all fee items from all payments
+    const feeItems: Array<{ name: string; amount: number }> = [];
+    let totalAmount = 0;
+    let totalPaid = 0;
+    const feeStructureNames: string[] = [];
+
+    for (const payment of payments) {
+      // Add fee structure items
+      for (const item of payment.feeStructure.items) {
+        feeItems.push({
+          name: `${payment.feeStructure.name} - ${item.feeType?.name || "Fee"}`,
+          amount: item.amount,
+        });
+      }
+      totalAmount += payment.amount;
+      totalPaid += payment.paidAmount;
+      if (!feeStructureNames.includes(payment.feeStructure.name)) {
+        feeStructureNames.push(payment.feeStructure.name);
+      }
+    }
+
+    // Create consolidated receipt data
+    const receiptData = {
+      receiptNumber: `CONS-${format(new Date(paymentDate), "yyyyMMdd")}-${student.admissionId}`,
+      paymentDate: firstPayment.paymentDate,
+      student: {
+        name: student.user.name || `${student.user.firstName} ${student.user.lastName}`,
+        email: student.user.email || "",
+        class: enrollment?.class?.name || "N/A",
+        section: enrollment?.section?.name || "N/A",
+        admissionId: student.admissionId,
+      },
+      payment: {
+        amount: totalAmount,
+        paidAmount: totalPaid,
+        balance: totalAmount - totalPaid,
+        paymentMethod: firstPayment.paymentMethod,
+        transactionId: firstPayment.transactionId || payments.map(p => p.transactionId).filter(Boolean).join(", "),
+        status: firstPayment.status,
+      },
+      feeStructure: {
+        name: feeStructureNames.join(" + "),
+        academicYear: firstPayment.feeStructure.academicYear.name,
+      },
+      feeItems,
+    };
+
+    // Fetch school info from SystemSettings
+    const systemSettings = await db.systemSettings.findFirst();
+    if (systemSettings) {
+      (receiptData as any).school = {
+        name: systemSettings.schoolName,
+        address: systemSettings.schoolAddress,
+        phone: systemSettings.schoolPhone,
+        email: systemSettings.schoolEmail,
+        website: systemSettings.schoolWebsite,
+        logo: systemSettings.schoolLogo
+      };
+    }
+
+    // Generate the HTML receipt
+    const html = getReceiptHTML(receiptData);
+
+    return {
+      success: true,
+      data: {
+        html,
+        receiptData,
+        paymentCount: payments.length,
+      }
+    };
+  } catch (error) {
+    console.error("Error generating consolidated receipt:", error);
+    return { success: false, error: "Failed to generate consolidated receipt" };
+  }
+}
+
 
 // Send fee reminders for due and overdue payments
 // Requirements: 7.1, 7.2, 7.4, 7.5

@@ -458,6 +458,7 @@ function generateReceiptHTML(data: ReceiptData): string {
   const schoolAddress = school?.address || '';
   const schoolPhone = school?.phone || '';
   const schoolEmail = school?.email || '';
+  const schoolLogo = school?.logo || '';
 
   const totalAmount = feeItems.reduce((sum, item) => sum + item.amount, 0);
   const amountInWords = numberToIndianWords(Math.floor(payment.paidAmount)) + ' Rupees Only';
@@ -547,9 +548,14 @@ function generateReceiptHTML(data: ReceiptData): string {
           
           <!-- Header -->
           <div class="header">
-            <div class="school-name">${schoolName}</div>
-            ${schoolAddress ? `<div class="school-address">${schoolAddress}</div>` : ''}
-            ${contactLine ? `<div class="school-contact">${contactLine}</div>` : ''}
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 4px;">
+              ${schoolLogo ? `<img src="${schoolLogo}" alt="School Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px;" />` : ''}
+              <div>
+                <div class="school-name">${schoolName}</div>
+                ${schoolAddress ? `<div class="school-address">${schoolAddress}</div>` : ''}
+                ${contactLine ? `<div class="school-contact">${contactLine}</div>` : ''}
+              </div>
+            </div>
             <div class="receipt-title-box">
               <div class="receipt-title">FEE RECEIPT / फीस रसीद</div>
             </div>

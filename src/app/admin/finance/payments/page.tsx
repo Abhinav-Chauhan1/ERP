@@ -61,6 +61,7 @@ import {
   getFeeStructuresForStudent,
   generateReceiptNumber,
   getPaymentReceiptHTML,
+  getConsolidatedReceiptHTML,
 } from "@/lib/actions/feePaymentActions";
 
 // Import validation schema
@@ -347,6 +348,34 @@ export default function PaymentsPage() {
     } catch (error) {
       console.error("Error downloading receipt:", error);
       toast.error("Failed to download receipt");
+    }
+  }
+
+  // Handle consolidated receipt for all payments on a date
+  async function handleConsolidatedReceipt(studentId: string, paymentDate: Date) {
+    try {
+      const result = await getConsolidatedReceiptHTML(studentId, paymentDate);
+
+      if (result.success && result.data?.html) {
+        // Open a new window with the receipt HTML for printing
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(result.data.html);
+          printWindow.document.close();
+          // Trigger print dialog after a short delay
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        } else {
+          toast.error("Please allow popups to download receipt");
+        }
+        toast.success(`Consolidated receipt generated (${result.data.paymentCount} payments)`);
+      } else {
+        toast.error(result.error || "Failed to generate consolidated receipt");
+      }
+    } catch (error) {
+      console.error("Error generating consolidated receipt:", error);
+      toast.error("Failed to generate consolidated receipt");
     }
   }
 
@@ -852,11 +881,22 @@ export default function PaymentsPage() {
               Close
             </Button>
             <Button
+              variant="secondary"
+              onClick={() => selectedPayment && handleConsolidatedReceipt(
+                selectedPayment.studentId,
+                new Date(selectedPayment.paymentDate)
+              )}
+              disabled={!selectedPayment?.id || selectedPayment?.status !== "COMPLETED"}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              All Day Receipts
+            </Button>
+            <Button
               onClick={() => selectedPayment && handleDownloadReceipt(selectedPayment.id)}
               disabled={!selectedPayment?.id || selectedPayment?.status !== "COMPLETED"}
             >
               <Download className="mr-2 h-4 w-4" />
-              Download Receipt
+              This Receipt
             </Button>
           </DialogFooter>
         </DialogContent>
