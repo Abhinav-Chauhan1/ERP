@@ -455,6 +455,10 @@ model Class {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // CBSE Enhancement
+  reportCardTemplate   ReportCardTemplate? @relation(fields: [reportCardTemplateId], references: [id])
+  reportCardTemplateId String?
+
   // Relationships
   sections              ClassSection[]
   teachers              ClassTeacher[]
@@ -470,6 +474,7 @@ model Class {
   feeStructures         FeeStructureClass[] // Fee structures for this class
   feeTypeAmounts        FeeTypeClassAmount[] // Class-specific fee amounts
   syllabi               Syllabus[]
+  assessmentRules       AssessmentRule[]
 }
 
 model ClassSection {
@@ -546,6 +551,15 @@ enum EnrollmentStatus {
   GRADUATED
 }
 
+enum SubjectType {
+  CORE
+  LANGUAGE
+  ELECTIVE
+  ADDITIONAL
+  VOCATIONAL
+  SKILL_BASED
+}
+
 // Subjects and Teaching
 model Subject {
   id           String      @id @default(cuid())
@@ -554,6 +568,13 @@ model Subject {
   description  String?
   department   Department? @relation(fields: [departmentId], references: [id])
   departmentId String?
+  
+  // CBSE Enhancement fields
+  type         SubjectType @default(CORE)
+  isCompulsory Boolean     @default(false)
+  hasTheory    Boolean     @default(true)
+  hasPractical Boolean     @default(false)
+
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -568,6 +589,44 @@ model Subject {
   onlineExams       OnlineExam[] // Online exams for this subject
   courses           Course[] // LMS courses for this subject
   subjectMarkConfig SubjectMarkConfig[]
+  variants          SubjectVariant[]
+  groupMappings     SubjectGroupMapping[]
+}
+
+model SubjectVariant {
+  id           String   @id @default(cuid())
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId    String
+  variantType  String   // "STANDARD", "BASIC", "ADVANCED"
+  description  String?
+  prerequisite String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([subjectId, variantType])
+}
+
+model SubjectGroup {
+  id                String                @id @default(cuid())
+  name              String                // "Science Stream", "Commerce Stream"
+  code              String                @unique
+  description       String?
+  boardType         String                @default("CBSE")
+  applicableClasses String[]
+  subjects          SubjectGroupMapping[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+}
+
+model SubjectGroupMapping {
+  id           String       @id @default(cuid())
+  subjectGroup SubjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId      String
+  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId    String
+  isCompulsory Boolean      @default(false)
+
+  @@unique([groupId, subjectId])
 }
 
 model SubjectTeacher {
@@ -853,6 +912,13 @@ enum CurriculumType {
   SPECIAL_NEEDS
 }
 
+enum AssessmentRuleType {
+  BEST_OF
+  AVERAGE
+  WEIGHTED_AVERAGE
+  SUM
+}
+
 enum DifficultyLevel {
   BEGINNER
   INTERMEDIATE
@@ -930,13 +996,32 @@ model ExamResult {
 
 model GradeScale {
   id          String   @id @default(cuid())
+  boardType   String   @default("CBSE")
   grade       String // e.g., "A", "B+", "C"
   minMarks    Float
   maxMarks    Float
-  gpa         Float?
+  gradePoint  Float?   // Renamed from gpa (legacy field kept for internal logic if needed)
+  gpa         Float?   // Keeping as alias to avoid breaking everything immediately
   description String?
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([boardType, grade])
+}
+
+model AssessmentRule {
+  id          String             @id @default(cuid())
+  name        String             // e.g., "Class 10 Internal Assessment (Best of 2)"
+  class       Class?             @relation(fields: [classId], references: [id])
+  classId     String?
+  subjectId   String?            // Optional: apply to specific subject or all
+  ruleType    AssessmentRuleType
+  examTypes   String[]           // Array of exam type IDs that this rule applies to
+  count       Int?               // e.g., 2 for BEST_OF 2
+  weight      Float              @default(1.0) // Weight in final calculation (0-1.0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 }
 
 model Assignment {
@@ -3229,6 +3314,7 @@ model ReportCardTemplate {
 
   // Relationships
   reportCards ReportCard[]
+  classes     Class[]
 
   @@index([type, isActive])
   @@index([isDefault])

@@ -6,6 +6,7 @@ export const classSchema = z.object({
     required_error: "Please select an academic year",
   }),
   description: z.string().optional(),
+  reportCardTemplateId: z.string().optional().nullable(),
 });
 
 export const classUpdateSchema = classSchema.extend({

@@ -5,7 +5,8 @@ export interface GradeScaleEntry {
   grade: string;
   minMarks: number;
   maxMarks: number;
-  gpa?: number | null;
+  gradePoint?: number | null; // Renamed from gpa
+  gpa?: number | null; // Kept for backward compatibility
   description?: string | null;
 }
 
@@ -34,7 +35,7 @@ export function calculateGradeFromScale(
   const matchingGrade = gradeScale.find(
     (scale) => percentage >= scale.minMarks && percentage <= scale.maxMarks
   );
-  
+
   return matchingGrade ? matchingGrade.grade : null;
 }
 
@@ -44,27 +45,48 @@ export function calculateGradeFromScale(
  * This is a fallback when no grade scale is provided
  */
 export function calculateGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C+";
-  if (percentage >= 40) return "C";
+  if (percentage >= 91) return "A1";
+  if (percentage >= 81) return "A2";
+  if (percentage >= 71) return "B1";
+  if (percentage >= 61) return "B2";
+  if (percentage >= 51) return "C1";
+  if (percentage >= 41) return "C2";
   if (percentage >= 33) return "D";
-  return "F";
+  return "E"; // Essential Repeat
 }
 
 /**
  * Calculate GPA based on percentage
  */
+export function calculateGradePoint(percentage: number): number {
+  if (percentage >= 91) return 10.0;
+  if (percentage >= 81) return 9.0;
+  if (percentage >= 71) return 8.0;
+  if (percentage >= 61) return 7.0;
+  if (percentage >= 51) return 6.0;
+  if (percentage >= 41) return 5.0;
+  if (percentage >= 33) return 4.0;
+  return 0.0;
+}
+
+/**
+ * Calculate CGPA (Cumulative Grade Point Average)
+ * Formula: Sum of Grade Points / Number of Subjects
+ */
+export function calculateCGPA(gradePoints: number[]): number {
+  if (gradePoints.length === 0) return 0;
+  const sum = gradePoints.reduce((acc, gp) => acc + gp, 0);
+  return Math.round((sum / gradePoints.length) * 10) / 10; // Round to 1 decimal place
+}
+
+/**
+ * Calculate GPA based on percentage (Legacy/International)
+ */
 export function calculateGPA(percentage: number): number {
   if (percentage >= 90) return 4.0;
-  if (percentage >= 80) return 3.7;
-  if (percentage >= 70) return 3.3;
-  if (percentage >= 60) return 3.0;
-  if (percentage >= 50) return 2.7;
-  if (percentage >= 40) return 2.3;
-  if (percentage >= 33) return 2.0;
+  if (percentage >= 80) return 3.0;
+  if (percentage >= 70) return 2.0;
+  if (percentage >= 60) return 1.0;
   return 0.0;
 }
 
@@ -92,14 +114,14 @@ export function calculateAverage(marks: number[]): number {
  */
 export function calculateMedian(marks: number[]): number {
   if (marks.length === 0) return 0;
-  
+
   const sorted = [...marks].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
-  
+
   if (sorted.length % 2 === 0) {
     return (sorted[middle - 1] + sorted[middle]) / 2;
   }
-  
+
   return sorted[middle];
 }
 
@@ -111,7 +133,7 @@ export function calculatePercentile(
   allMarks: number[]
 ): number {
   if (allMarks.length === 0) return 0;
-  
+
   const belowCount = allMarks.filter(mark => mark < studentMarks).length;
   return Math.round((belowCount / allMarks.length) * 100);
 }
@@ -136,22 +158,22 @@ export function calculateTrend(
   percentages: number[]
 ): "improving" | "declining" | "stable" {
   if (percentages.length < 2) return "stable";
-  
+
   // Calculate linear regression slope
   const n = percentages.length;
   const xMean = (n - 1) / 2;
   const yMean = calculateAverage(percentages);
-  
+
   let numerator = 0;
   let denominator = 0;
-  
+
   for (let i = 0; i < n; i++) {
     numerator += (i - xMean) * (percentages[i] - yMean);
     denominator += Math.pow(i - xMean, 2);
   }
-  
+
   const slope = denominator === 0 ? 0 : numerator / denominator;
-  
+
   // Threshold for considering trend significant (2% change per exam)
   if (slope > 2) return "improving";
   if (slope < -2) return "declining";
@@ -176,11 +198,11 @@ export function identifyStrongSubjects(
   subjectPerformances: Array<{ name: string; percentage: number }>
 ): string[] {
   if (subjectPerformances.length === 0) return [];
-  
+
   const averagePercentage = calculateAverage(
     subjectPerformances.map(s => s.percentage)
   );
-  
+
   return subjectPerformances
     .filter(s => s.percentage >= averagePercentage + 10) // 10% above average
     .map(s => s.name);
@@ -193,11 +215,11 @@ export function identifyWeakSubjects(
   subjectPerformances: Array<{ name: string; percentage: number }>
 ): string[] {
   if (subjectPerformances.length === 0) return [];
-  
+
   const averagePercentage = calculateAverage(
     subjectPerformances.map(s => s.percentage)
   );
-  
+
   return subjectPerformances
     .filter(s => s.percentage < averagePercentage - 10) // 10% below average
     .map(s => s.name);
@@ -211,10 +233,10 @@ export function calculateOverallGrade(
 ): { percentage: number; grade: string; totalMarks: number; obtainedMarks: number } {
   const totalMarks = subjectGrades.reduce((sum, sg) => sum + sg.totalMarks, 0);
   const obtainedMarks = subjectGrades.reduce((sum, sg) => sum + sg.marks, 0);
-  
+
   const percentage = calculatePercentage(obtainedMarks, totalMarks);
   const grade = calculateGrade(percentage);
-  
+
   return {
     percentage,
     grade,
@@ -239,18 +261,18 @@ export function calculateRank(
  */
 export function getGradeColor(grade: string): string {
   switch (grade) {
-    case "A+":
-    case "A":
+    case "A1":
+    case "A2":
       return "text-green-600";
-    case "B+":
-    case "B":
+    case "B1":
+    case "B2":
       return "text-blue-600";
-    case "C+":
-    case "C":
+    case "C1":
+    case "C2":
       return "text-yellow-600";
     case "D":
       return "text-orange-600";
-    case "F":
+    case "E":
       return "text-red-600";
     default:
       return "text-gray-600";
@@ -324,14 +346,14 @@ export function calculateAttendanceImpact(
       message: "Excellent attendance is contributing to strong academic performance.",
     };
   }
-  
+
   if (attendancePercentage < 75 && performancePercentage < 60) {
     return {
       correlation: "negative",
       message: "Low attendance may be affecting academic performance. Regular attendance is crucial.",
     };
   }
-  
+
   return {
     correlation: "neutral",
     message: "Maintain regular attendance to support academic success.",

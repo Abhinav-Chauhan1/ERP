@@ -53,6 +53,7 @@ export default function ClassesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [reportCardTemplates, setReportCardTemplates] = useState<any[]>([]);
 
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classSchema),
@@ -60,6 +61,7 @@ export default function ClassesPage() {
       name: "",
       academicYearId: "",
       description: "",
+      reportCardTemplateId: null,
     },
   });
 
@@ -107,10 +109,22 @@ export default function ClassesPage() {
     }
   }, [form]);
 
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const result = await (await import("@/lib/actions/reportCardTemplateActions")).getReportCardTemplates();
+      if (result.success) {
+        setReportCardTemplates(result.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch templates:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchClasses();
     fetchAcademicYears();
-  }, [fetchClasses, fetchAcademicYears]);
+    fetchTemplates();
+  }, [fetchClasses, fetchAcademicYears, fetchTemplates]);
 
   function handleEditClass(id: string) {
     const classToEdit = classes.find(cls => cls.id === id);
@@ -121,6 +135,7 @@ export default function ClassesPage() {
         name: classToEdit.name,
         academicYearId: classToEdit.academicYearId,
         description: classToEdit.description || "",
+        reportCardTemplateId: classToEdit.reportCardTemplateId || null,
       });
 
       setSelectedClassId(id);
@@ -162,6 +177,7 @@ export default function ClassesPage() {
       name: "",
       academicYearId: currentYear ? currentYear.id : "",
       description: "",
+      reportCardTemplateId: null,
     });
     setSelectedClassId(null);
     setDialogOpen(true);
@@ -245,6 +261,38 @@ export default function ClassesPage() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="reportCardTemplateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Report Card Template</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value || "none"}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select template (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None (Use Default)</SelectItem>
+                          {reportCardTemplates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name} ({template.type})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs text-muted-foreground">
+                        Default template for all report cards in this class.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

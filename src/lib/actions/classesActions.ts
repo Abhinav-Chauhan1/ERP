@@ -137,6 +137,7 @@ export async function getClassById(id: string) {
       where: { id },
       include: {
         academicYear: true,
+        reportCardTemplate: true,
         sections: {
           include: {
             _count: {
@@ -240,6 +241,8 @@ export async function getClassById(id: string) {
       name: classDetails.name,
       year: classDetails.academicYear.name,
       yearId: classDetails.academicYearId,
+      reportCardTemplateId: classDetails.reportCardTemplateId,
+      reportCardTemplate: classDetails.reportCardTemplate,
       isCurrent: classDetails.academicYear.isCurrent,
       sections: classDetails.sections.map(section => ({
         id: section.id,
@@ -340,6 +343,7 @@ export async function createClass(data: ClassFormValues) {
       data: {
         name: data.name,
         academicYearId: data.academicYearId,
+        reportCardTemplateId: data.reportCardTemplateId,
       }
     });
 
@@ -383,6 +387,7 @@ export async function updateClass(data: ClassUpdateFormValues) {
       data: {
         name: data.name,
         academicYearId: data.academicYearId,
+        reportCardTemplateId: data.reportCardTemplateId,
       }
     });
 

@@ -14,6 +14,8 @@
 
 import { db } from "@/lib/db";
 import { calculateAttendanceForTerm, type AttendanceData } from "@/lib/utils/attendance-calculator";
+import { calculateGrade, calculateGradePoint, calculateCGPA } from "@/lib/utils/grade-calculator";
+import { aggregateMarksByRule } from "@/lib/utils/assessment-logic";
 
 /**
  * Interface for student information in report card
@@ -47,6 +49,7 @@ export interface SubjectResult {
   subjectId: string;
   subjectName: string;
   subjectCode: string;
+  subjectType: string;
   theoryMarks: number | null;
   theoryMaxMarks: number | null;
   practicalMarks: number | null;
@@ -57,6 +60,7 @@ export interface SubjectResult {
   maxMarks: number;
   percentage: number;
   grade: string | null;
+  gradePoint: number | null;
   isAbsent: boolean;
 }
 
@@ -82,6 +86,7 @@ export interface OverallPerformance {
   obtainedMarks: number;
   percentage: number;
   grade: string | null;
+  cgpa: number | null;
   rank: number | null;
 }
 
@@ -227,6 +232,7 @@ async function fetchStudentInformation(studentId: string): Promise<StudentInfo> 
     class: currentEnrollment.class.name,
     section: currentEnrollment.section.name,
     avatar: student.user.avatar,
+    reportCardTemplateId: currentEnrollment.class.reportCardTemplateId,
   };
 }
 
@@ -282,11 +288,13 @@ async function fetchExamResults(
     select: {
       id: true,
       totalMarks: true,
+      examTypeId: true,
       subject: {
         select: {
           id: true,
           name: true,
           code: true,
+          type: true,
         },
       },
       results: {
@@ -315,86 +323,107 @@ async function fetchExamResults(
     },
   });
 
-  // Group results by subject and aggregate marks
-  const subjectMap = new Map<string, SubjectResult>();
-
-  for (const exam of exams) {
-    const result = exam.results[0]; // Should be only one result per student per exam
-    const config = exam.subjectMarkConfig[0]; // Should be only one config per exam per subject
-
-    if (!result) continue;
-
-    const subjectId = exam.subject.id;
-
-    if (!subjectMap.has(subjectId)) {
-      // Initialize subject result
-      subjectMap.set(subjectId, {
-        subjectId: exam.subject.id,
-        subjectName: exam.subject.name,
-        subjectCode: exam.subject.code,
-        theoryMarks: null,
-        theoryMaxMarks: null,
-        practicalMarks: null,
-        practicalMaxMarks: null,
-        internalMarks: null,
-        internalMaxMarks: null,
-        totalMarks: 0,
-        maxMarks: 0,
-        percentage: 0,
-        grade: null,
-        isAbsent: result.isAbsent,
-      });
-    }
-
-    const subjectResult = subjectMap.get(subjectId)!;
-
-    // Aggregate marks (sum across all exams for the subject)
-    if (!result.isAbsent) {
-      // Add theory marks
-      if (result.theoryMarks !== null && config?.theoryMaxMarks !== null) {
-        subjectResult.theoryMarks = (subjectResult.theoryMarks || 0) + result.theoryMarks;
-        subjectResult.theoryMaxMarks = (subjectResult.theoryMaxMarks || 0) + config.theoryMaxMarks;
-      }
-
-      // Add practical marks
-      if (result.practicalMarks !== null && config?.practicalMaxMarks !== null) {
-        subjectResult.practicalMarks = (subjectResult.practicalMarks || 0) + result.practicalMarks;
-        subjectResult.practicalMaxMarks = (subjectResult.practicalMaxMarks || 0) + config.practicalMaxMarks;
-      }
-
-      // Add internal marks
-      if (result.internalMarks !== null && config?.internalMaxMarks !== null) {
-        subjectResult.internalMarks = (subjectResult.internalMarks || 0) + result.internalMarks;
-        subjectResult.internalMaxMarks = (subjectResult.internalMaxMarks || 0) + config.internalMaxMarks;
-      }
-
-      // Add total marks
-      const examTotalMarks = result.totalMarks || result.marks;
-      subjectResult.totalMarks += examTotalMarks;
-      subjectResult.maxMarks += config?.totalMarks || exam.totalMarks;
-
-      // Store the most recent grade (could be improved with better logic)
-      if (result.grade) {
-        subjectResult.grade = result.grade;
-      }
-    }
-  }
-
-  // Calculate percentages and finalize grades
-  const subjectResults = Array.from(subjectMap.values()).map((subject) => {
-    if (subject.maxMarks > 0 && !subject.isAbsent) {
-      subject.percentage = (subject.totalMarks / subject.maxMarks) * 100;
-
-      // Calculate grade if not already set
-      if (!subject.grade) {
-        subject.grade = calculateGrade(subject.percentage);
-      }
-    }
-
-    return subject;
+  // Fetch student's class to get assessment rules
+  const student = await db.student.findUnique({
+    where: { id: studentId },
+    select: {
+      enrollments: {
+        where: { status: "ACTIVE" },
+        select: { classId: true },
+        take: 1,
+      },
+    },
   });
 
-  return subjectResults;
+  const classId = student?.enrollments[0]?.classId;
+  const assessmentRules = classId
+    ? await db.assessmentRule.findMany({ where: { classId } })
+    : [];
+
+  // Group results by subject
+  const subjectMap = new Map<string, any[]>();
+
+  for (const exam of exams) {
+    const subjectId = exam.subject.id;
+    if (!subjectMap.has(subjectId)) {
+      subjectMap.set(subjectId, []);
+    }
+    subjectMap.get(subjectId)!.push(exam);
+  }
+
+  const finalizedResults: SubjectResult[] = [];
+
+  for (const [subjectId, subjectExams] of subjectMap.entries()) {
+    const firstExam = subjectExams[0];
+
+    // marks to be aggregated
+    let aggregatedObtained = 0;
+    let aggregatedTotal = 0;
+
+    // apply rules if they exist
+    if (assessmentRules.length > 0) {
+      // Group exams by rule
+      const ruleExamsMap = new Map<string, any[]>();
+      const unruledExams: any[] = [];
+
+      for (const exam of subjectExams) {
+        const rule = assessmentRules.find(r => r.examTypes.includes(exam.examTypeId));
+        if (rule) {
+          if (!ruleExamsMap.has(rule.id)) ruleExamsMap.set(rule.id, []);
+          ruleExamsMap.get(rule.id)!.push(exam);
+        } else {
+          unruledExams.push(exam);
+        }
+      }
+
+      // Aggregate ruled exams
+      for (const [ruleId, examsForRule] of ruleExamsMap.entries()) {
+        const rule = assessmentRules.find(r => r.id === ruleId)!;
+        const marks = examsForRule.map(e => ({
+          obtained: e.results[0]?.totalMarks || e.results[0]?.marks || 0,
+          total: e.subjectMarkConfig[0]?.totalMarks || e.totalMarks || 100
+        }));
+        const aggregated = aggregateMarksByRule(marks, rule as any);
+        aggregatedObtained += aggregated.obtained;
+        aggregatedTotal += aggregated.total;
+      }
+
+      // Add unruled exams as a simple sum
+      for (const exam of unruledExams) {
+        aggregatedObtained += exam.results[0]?.totalMarks || exam.results[0]?.marks || 0;
+        aggregatedTotal += exam.subjectMarkConfig[0]?.totalMarks || exam.totalMarks || 100;
+      }
+    } else {
+      // Simple sum (Legacy logic)
+      for (const exam of subjectExams) {
+        aggregatedObtained += exam.results[0]?.totalMarks || exam.results[0]?.marks || 0;
+        aggregatedTotal += exam.subjectMarkConfig[0]?.totalMarks || exam.totalMarks || 100;
+      }
+    }
+
+    const percentage = aggregatedTotal > 0 ? (aggregatedObtained / aggregatedTotal) * 100 : 0;
+
+    finalizedResults.push({
+      subjectId,
+      subjectName: firstExam.subject.name,
+      subjectCode: firstExam.subject.code,
+      subjectType: firstExam.subject.type,
+      theoryMarks: null, // Component-wise aggregation is complex with rules, keeping simple for now
+      theoryMaxMarks: null,
+      practicalMarks: null,
+      practicalMaxMarks: null,
+      internalMarks: null,
+      internalMaxMarks: null,
+      totalMarks: aggregatedObtained,
+      maxMarks: aggregatedTotal,
+      percentage,
+      grade: calculateGrade(percentage),
+      gradePoint: calculateGradePoint(percentage),
+      isAbsent: subjectExams.every(e => e.results[0]?.isAbsent),
+    });
+  }
+
+  return finalizedResults;
 }
 
 /**
@@ -489,12 +518,19 @@ function calculateOverallPerformance(
   // Calculate overall grade
   const grade = calculateGrade(percentage);
 
+  // Calculate CGPA
+  const gradePoints = presentSubjects
+    .filter(s => s.gradePoint !== null)
+    .map(s => s.gradePoint!);
+  const cgpa = calculateCGPA(gradePoints);
+
   return {
     totalMarks,
     maxMarks,
     obtainedMarks: totalMarks,
     percentage: Math.round(percentage * 100) / 100, // Round to 2 decimal places
     grade,
+    cgpa,
     rank: reportCard?.rank || null,
   };
 }

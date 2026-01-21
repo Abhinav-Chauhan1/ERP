@@ -341,6 +341,7 @@ export async function generateReportCard(studentId: string, termId: string) {
 
     // Extract values from aggregated data
     const { overallPerformance, attendance, coScholastic } = reportCardData;
+    const presentSubjectsCount = reportCardData.subjects.filter(s => !s.isAbsent).length;
 
     // Format co-scholastic data for JSON storage
     const coScholasticData = coScholastic.length > 0 ? coScholastic : null;
@@ -352,11 +353,12 @@ export async function generateReportCard(studentId: string, termId: string) {
         where: { id: existingReportCard.id },
         data: {
           totalMarks: overallPerformance.totalMarks,
-          averageMarks: overallPerformance.obtainedMarks / reportCardData.subjects.filter(s => !s.isAbsent).length || 0,
+          averageMarks: overallPerformance.obtainedMarks / presentSubjectsCount || 0,
           percentage: overallPerformance.percentage,
           grade: overallPerformance.grade,
           attendance: attendance.percentage,
           coScholasticData: coScholasticData as any,
+          templateId: (reportCardData.student as any).reportCardTemplateId || existingReportCard.templateId,
         }
       });
     } else {
@@ -366,11 +368,12 @@ export async function generateReportCard(studentId: string, termId: string) {
           studentId,
           termId,
           totalMarks: overallPerformance.totalMarks,
-          averageMarks: overallPerformance.obtainedMarks / reportCardData.subjects.filter(s => !s.isAbsent).length || 0,
+          averageMarks: overallPerformance.obtainedMarks / presentSubjectsCount || 0,
           percentage: overallPerformance.percentage,
           grade: overallPerformance.grade,
           attendance: attendance.percentage,
           coScholasticData: coScholasticData as any,
+          templateId: (reportCardData.student as any).reportCardTemplateId,
         }
       });
     }

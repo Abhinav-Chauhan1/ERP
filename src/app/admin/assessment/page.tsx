@@ -118,6 +118,13 @@ export default async function AssessmentPage() {
       count: overview.reportCards
     },
     {
+      title: "Assessment Rules",
+      icon: <Settings className="h-5 w-5 text-indigo-700" />,
+      description: "Configure Best of X & Aggregation",
+      href: "/admin/assessment/assessment-rules",
+      count: 0
+    },
+    {
       title: "Question Bank",
       icon: <FileQuestion className="h-5 w-5 text-red-600" />,
       description: "Question repository",
