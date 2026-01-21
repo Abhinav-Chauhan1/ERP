@@ -6,7 +6,7 @@ export type AssessmentRuleType = "BEST_OF" | "AVERAGE" | "WEIGHTED_AVERAGE" | "S
 
 export interface AssessmentRule {
     ruleType: AssessmentRuleType;
-    count?: number; // For BEST_OF
+    count?: number | null; // For BEST_OF
     weight: number; // For WEIGHTED_AVERAGE (0-1.0)
 }
 

@@ -43,6 +43,7 @@ export interface StudentInfo {
   class: string;
   section: string;
   avatar: string | null;
+  reportCardTemplateId?: string | null;
 }
 
 /**
@@ -214,6 +215,7 @@ async function fetchStudentInformation(studentId: string): Promise<StudentInfo> 
           class: {
             select: {
               name: true,
+              reportCardTemplateId: true,
             },
           },
           section: {
@@ -520,6 +522,7 @@ function calculateOverallPerformance(
       obtainedMarks: 0,
       percentage: 0,
       grade: null,
+      cgpa: null,
       rank: reportCard?.rank || null,
     };
   }

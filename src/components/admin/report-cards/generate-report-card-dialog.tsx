@@ -34,6 +34,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, FileText, Download, Eye } from 'lucide-react';
 import {
+  generateSingleReportCard,
+  getReportCardTemplates,
   previewReportCard,
 } from '@/lib/actions/report-card-generation';
 import { getPerformanceColor } from '@/lib/utils/grade-calculator';

@@ -1,6 +1,6 @@
 "use strict";
 
-import { prisma } from "@/lib/prisma";
+import { db as prisma } from "@/lib/db";
 import { CBSE_SUBJECTS } from "@/lib/constants/cbse-subjects";
 import { revalidatePath } from "next/cache";
 
@@ -56,11 +56,22 @@ export async function seedCBSESubjects() {
     const departments = Array.from(new Set(CBSE_SUBJECTS.map(s => s.department)));
 
     for (const deptName of departments) {
-        await prisma.department.upsert({
-            where: { name: deptName }, // Assuming name is unique or using name as identifier
-            update: {},
-            create: { name: deptName },
+        const existingDept = await prisma.department.findFirst({
+            where: { name: deptName }
         });
+
+        if (existingDept) {
+            // Update department if needed (currently no-op)
+            await prisma.department.update({
+                where: { id: existingDept.id },
+                data: { updatedAt: new Date() }
+            });
+        } else {
+            // Create new department
+            await prisma.department.create({
+                data: { name: deptName }
+            });
+        }
     }
 
     // 2. Create subjects

@@ -15,12 +15,12 @@ async function verifyCBSE() {
     const bestOf2 = aggregateMarksByRule(periodicTests, {
         ruleType: "BEST_OF",
         count: 2,
-        examTypes: ["pt1", "pt2", "pt3"],
         weight: 1.0
     });
 
     // Best of 2: 15 + 18 = 33 / (20 + 20) = 33/40
-    console.log(`Best of 2 Result: ${bestOf2.obtained} / ${bestOf2.total} (${bestOf2.percentage}%)`);
+    const bestOf2Percentage = bestOf2.total > 0 ? ((bestOf2.obtained / bestOf2.total) * 100).toFixed(1) : 0;
+    console.log(`Best of 2 Result: ${bestOf2.obtained} / ${bestOf2.total} (${bestOf2Percentage}%)`);
     if (bestOf2.obtained === 33) console.log("✅ Best of 2 logic correct.");
     else console.error("❌ Best of 2 logic failed.");
 
