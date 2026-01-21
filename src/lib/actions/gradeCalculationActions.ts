@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { calculatePercentage, calculateGradeFromScale } from "@/lib/utils/grade-calculator";
+import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 
 export interface ActionResult<T = any> {
   success: boolean;
@@ -59,10 +59,10 @@ export async function calculateGradeForMarks(
 
     // Fetch grade scale
     const gradeScaleResult = await getGradeScale();
-    
+
     if (!gradeScaleResult.success || !gradeScaleResult.data) {
       // Fallback to default grade calculation if no scale configured
-      const defaultGrade = calculateDefaultGrade(percentage);
+      const defaultGrade = calculateGrade(percentage);
       return {
         success: true,
         data: {
@@ -106,7 +106,7 @@ export async function recalculateGradesForTerm(termId: string): Promise<ActionRe
   try {
     // Fetch grade scale
     const gradeScaleResult = await getGradeScale();
-    
+
     if (!gradeScaleResult.success || !gradeScaleResult.data) {
       return {
         success: false,
@@ -195,7 +195,7 @@ export async function recalculateGradesForExam(examId: string): Promise<ActionRe
   try {
     // Fetch grade scale
     const gradeScaleResult = await getGradeScale();
-    
+
     if (!gradeScaleResult.success || !gradeScaleResult.data) {
       return {
         success: false,
@@ -280,16 +280,3 @@ export async function recalculateGradesForExam(examId: string): Promise<ActionRe
   }
 }
 
-/**
- * Fallback default grade calculation when no grade scale is configured
- */
-function calculateDefaultGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C+";
-  if (percentage >= 40) return "C";
-  if (percentage >= 33) return "D";
-  return "F";
-}

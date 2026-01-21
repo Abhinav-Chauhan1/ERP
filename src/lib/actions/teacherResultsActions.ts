@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { calculateGrade } from "@/lib/utils/grade-calculator";
 
 /**
  * Get all results for a teacher (exams and assignments)
@@ -11,7 +12,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -57,7 +58,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     });
 
     // Extract class IDs
-    const classIds = subjects.flatMap(subject => 
+    const classIds = subjects.flatMap(subject =>
       subject.classes.map(sc => sc.classId)
     );
 
@@ -164,13 +165,13 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
       const passedCount = exam.results.filter(r => r.marks >= exam.passingMarks).length;
       const failedCount = submittedCount - passedCount;
       const absentCount = totalStudents - submittedCount;
-      
+
       const totalMarks = exam.results.reduce((sum, result) => sum + (result.isAbsent ? 0 : result.marks), 0);
       const avgMarks = submittedCount > 0 ? totalMarks / submittedCount : 0;
       const highestMarks = Math.max(...exam.results.map(r => r.isAbsent ? 0 : r.marks));
-      
+
       // Class names where this exam was conducted
-      const classNames = Array.from(new Set(exam.results.flatMap(r => 
+      const classNames = Array.from(new Set(exam.results.flatMap(r =>
         r.student.enrollments.map(e => `${e.class.name}-${e.section.name}`)
       ))).join(", ");
 
@@ -200,8 +201,8 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
       const submittedCount = assignment.submissions.filter(s => s.status !== "PENDING").length;
       const gradedCount = assignment.submissions.filter(s => s.status === "GRADED").length;
       const pendingCount = totalStudents - submittedCount;
-      
-      const totalMarks = assignment.submissions.reduce((sum, submission) => 
+
+      const totalMarks = assignment.submissions.reduce((sum, submission) =>
         sum + (submission.marks || 0), 0);
       const avgMarks = gradedCount > 0 ? totalMarks / gradedCount : 0;
 
@@ -225,7 +226,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
       };
     });
 
-    return { 
+    return {
       exams: formattedExams,
       assignments: formattedAssignments,
       subjects: subjectTeachers.map(st => ({
@@ -250,7 +251,7 @@ export async function getExamResultDetails(examId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -313,7 +314,7 @@ export async function getExamResultDetails(examId: string) {
     const students = exam.results.map(result => {
       // Get the most relevant enrollment (current class of student)
       const enrollment = result.student.enrollments[0];
-      
+
       return {
         id: result.student.id,
         name: `${result.student.user.firstName} ${result.student.user.lastName}`,
@@ -338,21 +339,14 @@ export async function getExamResultDetails(examId: string) {
     const passCount = students.filter(s => !s.isAbsent && s.marks >= exam.passingMarks).length;
     const passPercentage = presentCount > 0 ? (passCount / presentCount) * 100 : 0;
 
-    // Calculate grade distribution
+    // Calculate grade distribution using standardized utility
     const gradeDistribution: Record<string, number> = {};
     students.forEach(student => {
       if (student.isAbsent) return;
-      
+
       const percentage = (student.marks / exam.totalMarks) * 100;
-      let grade = '';
-      
-      if (percentage >= 90) grade = 'A+';
-      else if (percentage >= 80) grade = 'A';
-      else if (percentage >= 70) grade = 'B';
-      else if (percentage >= 60) grade = 'C';
-      else if (percentage >= 50) grade = 'D';
-      else grade = 'F';
-      
+      const grade = calculateGrade(percentage);
+
       if (!gradeDistribution[grade]) gradeDistribution[grade] = 0;
       gradeDistribution[grade]++;
     });
@@ -393,7 +387,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -459,7 +453,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     const submissions = assignment.submissions.map(submission => {
       // Get the most relevant enrollment (current class of student)
       const enrollment = submission.student.enrollments[0];
-      
+
       return {
         id: submission.id,
         studentId: submission.student.id,
@@ -481,29 +475,22 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     const gradedCount = submissions.filter(s => s.status === "GRADED").length;
     const pendingCount = totalSubmissions - submittedCount;
     const lateCount = submissions.filter(s => s.status === "LATE").length;
-    
+
     const totalMarks = submissions.reduce((sum, s) => sum + (s.marks || 0), 0);
     const avgMarks = gradedCount > 0 ? totalMarks / gradedCount : 0;
     const highestMark = gradedCount > 0 ? Math.max(...submissions.filter(s => s.marks !== null && s.marks !== undefined).map(s => s.marks || 0)) : 0;
     const lowestMark = gradedCount > 0 ? Math.min(...submissions.filter(s => s.marks !== null && s.marks !== undefined).map(s => s.marks || 0)) : 0;
 
-    // Calculate marks distribution
+    // Calculate marks distribution (Grade-based) using standardized utility
     const marksDistribution: Record<string, number> = {};
     submissions.forEach(submission => {
       if (submission.status !== "GRADED" || submission.marks === null || submission.marks === undefined) return;
-      
-      const percentage = Math.floor((submission.marks / assignment.totalMarks) * 100);
-      
-      let range;
-      if (percentage >= 90) range = '90-100%';
-      else if (percentage >= 80) range = '80-89%';
-      else if (percentage >= 70) range = '70-79%';
-      else if (percentage >= 60) range = '60-69%';
-      else if (percentage >= 50) range = '50-59%';
-      else range = 'Below 50%';
-      
-      if (!marksDistribution[range]) marksDistribution[range] = 0;
-      marksDistribution[range]++;
+
+      const percentage = (submission.marks / assignment.totalMarks) * 100;
+      const grade = calculateGrade(percentage);
+
+      if (!marksDistribution[grade]) marksDistribution[grade] = 0;
+      marksDistribution[grade]++;
     });
 
     return {
@@ -543,7 +530,7 @@ export async function updateExamResults(examId: string, results: any[]) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -599,7 +586,7 @@ export async function updateExamResults(examId: string, results: any[]) {
 
     revalidatePath(`/teacher/assessments/results/exams/${examId}`);
     revalidatePath('/teacher/assessments/results');
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update exam results:", error);
@@ -614,7 +601,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -715,7 +702,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     // Format exam results for chart
     const formattedExamResults = examResults.map(result => {
       const percentage = result.isAbsent ? 0 : (result.marks / result.exam.totalMarks) * 100;
-      
+
       return {
         id: result.id,
         title: result.exam.title,
@@ -734,7 +721,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
       .filter(submission => submission.status === "GRADED" && submission.marks !== null)
       .map(submission => {
         const percentage = (submission.marks || 0) / submission.assignment.totalMarks * 100;
-        
+
         return {
           id: submission.id,
           title: submission.assignment.title,
@@ -753,18 +740,18 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
       const subjectAssignments = assignmentSubmissions.filter(
         s => s.assignment.subjectId === st.subjectId && s.status === "GRADED" && s.marks !== null
       );
-      
+
       const totalExamMarks = subjectExams.reduce((sum, r) => sum + r.marks, 0);
       const totalExamMaxMarks = subjectExams.reduce((sum, r) => sum + r.exam.totalMarks, 0);
-      
+
       const totalAssignmentMarks = subjectAssignments.reduce((sum, s) => sum + (s.marks || 0), 0);
       const totalAssignmentMaxMarks = subjectAssignments.reduce((sum, s) => sum + s.assignment.totalMarks, 0);
-      
+
       const totalMarks = totalExamMarks + totalAssignmentMarks;
       const totalMaxMarks = totalExamMaxMarks + totalAssignmentMaxMarks;
-      
+
       const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
-      
+
       return {
         subjectId: st.subjectId,
         subjectName: st.subject.name,
@@ -805,7 +792,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -852,6 +839,22 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
         subject: true,
       },
     });
+
+    if (subjectClasses.length === 0) {
+      // Return empty stats if no subjects are taught by this teacher in this class
+      return {
+        class: {
+          id: classData.id,
+          name: classData.name,
+          sections: classData.sections.map(s => s.name),
+          studentCount: 0,
+        },
+        studentPerformance: [],
+        subjectPerformance: [],
+        sectionPerformance: [],
+        subjects: [],
+      };
+    }
 
     const subjectIds = subjectClasses.map(sc => sc.subjectId);
 
@@ -952,18 +955,18 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
       const studentAssignments = assignmentSubmissions.filter(
         s => s.studentId === enrollment.studentId && s.status === "GRADED" && s.marks !== null
       );
-      
+
       const totalExamMarks = studentExamResults.reduce((sum, r) => sum + r.marks, 0);
       const totalExamMaxMarks = studentExamResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
-      
+
       const totalAssignmentMarks = studentAssignments.reduce((sum, s) => sum + (s.marks || 0), 0);
       const totalAssignmentMaxMarks = studentAssignments.reduce((sum, s) => sum + s.assignment.totalMarks, 0);
-      
+
       const totalMarks = totalExamMarks + totalAssignmentMarks;
       const totalMaxMarks = totalExamMaxMarks + totalAssignmentMaxMarks;
-      
+
       const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
-      
+
       return {
         studentId: enrollment.studentId,
         studentName: `${enrollment.student.user.firstName} ${enrollment.student.user.lastName}`,
@@ -983,27 +986,27 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
       const subjectAssignments = assignmentSubmissions.filter(
         s => s.assignment.subjectId === sc.subjectId && s.status === "GRADED" && s.marks !== null
       );
-      
+
       const totalExamMarks = subjectExams.reduce((sum, r) => sum + r.marks, 0);
       const totalExamMaxMarks = subjectExams.reduce((sum, r) => sum + r.exam.totalMarks, 0);
       const examAverage = subjectExams.length > 0 ? totalExamMarks / subjectExams.length : 0;
-      
+
       const totalAssignmentMarks = subjectAssignments.reduce((sum, s) => sum + (s.marks || 0), 0);
       const totalAssignmentMaxMarks = subjectAssignments.reduce((sum, s) => sum + s.assignment.totalMarks, 0);
       const assignmentAverage = subjectAssignments.length > 0 ? totalAssignmentMarks / subjectAssignments.length : 0;
-      
-      const overallPercentage = (totalExamMaxMarks + totalAssignmentMaxMarks) > 0 
-        ? ((totalExamMarks + totalAssignmentMarks) / (totalExamMaxMarks + totalAssignmentMaxMarks)) * 100 
+
+      const overallPercentage = (totalExamMaxMarks + totalAssignmentMaxMarks) > 0
+        ? ((totalExamMarks + totalAssignmentMarks) / (totalExamMaxMarks + totalAssignmentMaxMarks)) * 100
         : 0;
-      
+
       return {
         subjectId: sc.subjectId,
         subjectName: sc.subject.name,
         examAverage: examAverage.toFixed(1),
         assignmentAverage: assignmentAverage.toFixed(1),
         overallPercentage: overallPercentage.toFixed(1),
-        examCount: subjectExams.length / students.length, // Average exams per student
-        assignmentCount: subjectAssignments.length / students.length, // Average assignments per student
+        examCount: students.length > 0 ? subjectExams.length / students.length : 0, // Average exams per student
+        assignmentCount: students.length > 0 ? subjectAssignments.length / students.length : 0, // Average assignments per student
       };
     });
 
@@ -1012,7 +1015,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
       const sectionStudents = studentPerformance.filter(s => s.section === section.name);
       const totalPercentage = sectionStudents.reduce((sum, s) => sum + parseFloat(s.percentage), 0);
       const averagePercentage = sectionStudents.length > 0 ? totalPercentage / sectionStudents.length : 0;
-      
+
       return {
         sectionId: section.id,
         sectionName: section.name,

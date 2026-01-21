@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 import { getReportCardById, publishReportCard } from "@/lib/actions/reportCardsActions";
 
@@ -251,11 +252,15 @@ export default function ReportCardDetailPage() {
                   <p className="text-sm text-gray-500 mb-1">Overall Percentage</p>
                   <div className="flex items-center">
                     <p className="text-2xl font-bold">{reportCard.percentage?.toFixed(1) || "0"}%</p>
-                    <Badge className="ml-3" variant={
-                      reportCard.percentage >= 90 ? "secondary" :
-                        reportCard.percentage >= 75 ? "default" :
-                          reportCard.percentage >= 50 ? "outline" : "destructive"
-                    }>
+                    <Badge
+                      className="ml-3"
+                      variant="outline"
+                      style={{
+                        backgroundColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}20` : "transparent",
+                        color: reportCard.percentage ? getPerformanceColor(reportCard.percentage) : "inherit",
+                        borderColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}40` : "inherit"
+                      }}
+                    >
                       {reportCard.overallGrade || "-"}
                     </Badge>
                   </div>
@@ -303,12 +308,14 @@ export default function ReportCardDetailPage() {
                               {subject.obtainedMarks.toFixed(1)} / {subject.totalMarks.toFixed(1)} marks
                             </p>
                           </div>
-                          <Badge className={
-                            subject.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                              subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                                subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
-                          }>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              backgroundColor: `${getPerformanceColor(subject.percentage)}20`,
+                              color: getPerformanceColor(subject.percentage),
+                              borderColor: `${getPerformanceColor(subject.percentage)}40`
+                            }}
+                          >
                             {subject.grade}
                           </Badge>
                         </div>
@@ -360,12 +367,14 @@ export default function ReportCardDetailPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <Badge className={
-                              subject.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                                subject.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                                  subject.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                    "bg-red-100 text-red-800"
-                            }>
+                            <Badge
+                              variant="outline"
+                              style={{
+                                backgroundColor: `${getPerformanceColor(subject.percentage)}20`,
+                                color: getPerformanceColor(subject.percentage),
+                                borderColor: `${getPerformanceColor(subject.percentage)}40`
+                              }}
+                            >
                               {subject.grade}
                             </Badge>
                           </td>
@@ -379,12 +388,14 @@ export default function ReportCardDetailPage() {
                         <td className="py-3 px-4"></td>
                         <td className="py-3 px-4 font-medium">{reportCard.percentage?.toFixed(1) || "0"}%</td>
                         <td className="py-3 px-4">
-                          <Badge className={
-                            reportCard.overallGrade?.startsWith('A') ? "bg-green-100 text-green-800" :
-                              reportCard.overallGrade?.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                                reportCard.overallGrade?.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
-                          }>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              backgroundColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}20` : "transparent",
+                              color: reportCard.percentage ? getPerformanceColor(reportCard.percentage) : "inherit",
+                              borderColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}40` : "inherit"
+                            }}
+                          >
                             {reportCard.overallGrade || "-"}
                           </Badge>
                         </td>
@@ -436,12 +447,14 @@ export default function ReportCardDetailPage() {
                                 </td>
                                 <td className="py-2 px-4">
                                   {exam.isAbsent ? '-' : (
-                                    <Badge className={
-                                      exam.grade.startsWith('A') ? "bg-green-100 text-green-800" :
-                                        exam.grade.startsWith('B') ? "bg-blue-100 text-blue-800" :
-                                          exam.grade.startsWith('C') ? "bg-yellow-100 text-yellow-800" :
-                                            "bg-red-100 text-red-800"
-                                    }>
+                                    <Badge
+                                      variant="outline"
+                                      style={{
+                                        backgroundColor: `${getPerformanceColor(exam.percentage)}20`,
+                                        color: getPerformanceColor(exam.percentage),
+                                        borderColor: `${getPerformanceColor(exam.percentage)}40`
+                                      }}
+                                    >
                                       {exam.grade}
                                     </Badge>
                                   )}

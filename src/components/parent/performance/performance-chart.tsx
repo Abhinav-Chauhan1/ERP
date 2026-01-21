@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { GradeTrendData } from "@/types/performance";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 interface PerformanceChartProps {
   subjectTrends: GradeTrendData[];
@@ -75,7 +76,23 @@ export function PerformanceChart({ subjectTrends, studentName }: PerformanceChar
         {currentSubjectData && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <div className="bg-blue-50 p-3 rounded-lg"><p className="text-xs text-blue-600 mb-1">Average</p><p className="text-lg font-bold text-blue-700">{currentSubjectData.averagePercentage.toFixed(1)}%</p></div>
+              <div
+                className="p-3 rounded-lg"
+                style={{ backgroundColor: `${getPerformanceColor(currentSubjectData.averagePercentage)}15` }}
+              >
+                <p
+                  className="text-xs mb-1"
+                  style={{ color: getPerformanceColor(currentSubjectData.averagePercentage) }}
+                >
+                  Average
+                </p>
+                <p
+                  className="text-lg font-bold"
+                  style={{ color: getPerformanceColor(currentSubjectData.averagePercentage) }}
+                >
+                  {currentSubjectData.averagePercentage.toFixed(1)}%
+                </p>
+              </div>
               <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-600 mb-1">Total Exams</p><p className="text-lg font-bold text-gray-700">{currentSubjectData.dataPoints.length}</p></div>
               <div className={`p-3 rounded-lg ${currentSubjectData.improvementRate >= 0 ? "bg-green-50" : "bg-red-50"}`}><p className={`text-xs mb-1 ${currentSubjectData.improvementRate >= 0 ? "text-green-600" : "text-red-600"}`}>Improvement</p><p className={`text-lg font-bold ${currentSubjectData.improvementRate >= 0 ? "text-green-700" : "text-red-700"}`}>{currentSubjectData.improvementRate > 0 ? "+" : ""}{currentSubjectData.improvementRate.toFixed(1)}%</p></div>
               <div className="bg-purple-50 p-3 rounded-lg"><p className="text-xs text-purple-600 mb-1">Trend</p><p className="text-sm font-medium text-purple-700 capitalize">{currentSubjectData.overallTrend}</p></div>

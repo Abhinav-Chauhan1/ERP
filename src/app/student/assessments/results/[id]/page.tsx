@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getExamDetails } from "@/lib/actions/student-assessment-actions";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 export const metadata: Metadata = {
   title: "Exam Result Details | Student Portal",
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ExamResultPage(
-  props: { 
-    params: Promise<{ id: string }> 
+  props: {
+    params: Promise<{ id: string }>
   }
 ) {
   const params = await props.params;
@@ -32,7 +33,7 @@ export default async function ExamResultPage(
             Back to Results
           </Button>
         </Link>
-        
+
         <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-gray-300" />
           <h3 className="mt-4 text-lg font-medium">No Result Available</h3>
@@ -56,7 +57,7 @@ export default async function ExamResultPage(
           Back to Results
         </Button>
       </Link>
-      
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{examDetails.title}</h1>
         <div className="flex items-center mt-1">
@@ -65,7 +66,7 @@ export default async function ExamResultPage(
           <Badge variant="outline">{examDetails.examType.name}</Badge>
         </div>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="md:col-span-2">
           <CardHeader>
@@ -80,19 +81,19 @@ export default async function ExamResultPage(
                   <div className="text-gray-500">out of {examDetails.totalMarks}</div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="text-sm font-medium text-gray-500">Percentage</div>
                 <div className="flex items-center gap-2">
-                  <div className={`text-3xl font-bold ${
-                    percentage >= 90 ? 'text-green-600' :
-                    percentage >= 75 ? 'text-blue-600' :
-                    percentage >= 60 ? 'text-amber-600' :
-                    'text-red-600'
-                  }`}>{percentage}%</div>
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getPerformanceColor(percentage) }}
+                  >
+                    {percentage}%
+                  </div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="text-sm font-medium text-gray-500">Result</div>
                 <div className="mt-1">
@@ -104,29 +105,29 @@ export default async function ExamResultPage(
                 </div>
               </div>
             </div>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
                 <div className="text-sm font-medium text-gray-500">Exam Date</div>
                 <div>{format(new Date(examDetails.examDate), "MMMM d, yyyy")}</div>
               </div>
-              
+
               <div className="space-y-1">
                 <div className="text-sm font-medium text-gray-500">Passing Marks</div>
                 <div>{examDetails.passingMarks} ({Math.round((examDetails.passingMarks / examDetails.totalMarks) * 100)}%)</div>
               </div>
-              
+
               <div className="space-y-1">
                 <div className="text-sm font-medium text-gray-500">Grade</div>
                 <div className="font-medium">{examDetails.result.grade || "-"}</div>
               </div>
-              
+
               <div className="space-y-1">
                 <div className="text-sm font-medium text-gray-500">Status</div>
                 <div>{examDetails.result.isAbsent ? "Absent" : isPassing ? "Passed" : "Failed"}</div>
               </div>
             </div>
-            
+
             {examDetails.result.remarks && (
               <div>
                 <div className="text-sm font-medium text-gray-500 mb-1">Remarks</div>
@@ -137,7 +138,7 @@ export default async function ExamResultPage(
             )}
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Exam Information</CardTitle>
@@ -153,19 +154,19 @@ export default async function ExamResultPage(
                 Code: {examDetails.subject.code}
               </div>
             </div>
-            
+
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">Exam Type</div>
               <Badge variant="secondary">{examDetails.examType.name}</Badge>
             </div>
-            
+
             <div>
               <div className="text-sm font-medium text-gray-500 mb-1">Timing</div>
               <div className="text-sm">
                 {format(new Date(examDetails.startTime), "h:mm a")} - {format(new Date(examDetails.endTime), "h:mm a")}
               </div>
             </div>
-            
+
             {examDetails.creator && (
               <div>
                 <div className="text-sm font-medium text-gray-500 mb-1">Examiner</div>

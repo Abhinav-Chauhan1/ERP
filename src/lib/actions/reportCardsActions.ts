@@ -13,6 +13,7 @@ import {
   formatAttendanceForDisplay,
   type AttendanceData
 } from "../utils/attendance-calculator";
+import { calculateGrade } from "../utils/grade-calculator";
 
 // Get all report cards with optional filtering
 export async function getReportCards(filters?: {
@@ -213,19 +214,10 @@ export async function getReportCardById(id: string) {
       }
     });
 
-    // Calculate percentages and grades for each subject
     Object.values(subjectResults).forEach((subject: any) => {
       if (subject.totalMarks > 0) {
         subject.percentage = (subject.obtainedMarks / subject.totalMarks) * 100;
-        // Simplified grade assignment - could be more complex based on your grading system
-        if (subject.percentage >= 90) subject.grade = "A+";
-        else if (subject.percentage >= 80) subject.grade = "A";
-        else if (subject.percentage >= 70) subject.grade = "B+";
-        else if (subject.percentage >= 60) subject.grade = "B";
-        else if (subject.percentage >= 50) subject.grade = "C+";
-        else if (subject.percentage >= 40) subject.grade = "C";
-        else if (subject.percentage >= 33) subject.grade = "D";
-        else subject.grade = "F";
+        subject.grade = calculateGrade(subject.percentage);
       }
     });
 

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { calculateGrade } from "@/lib/utils/grade-calculator";
 
 // Instead of exporting the schema directly, create it as a constant
 const assignmentSubmissionSchema = z.object({
@@ -166,9 +167,9 @@ export async function getExamDetails(examId: string) {
     result: exam.results[0] || null,
     creator: exam.creator
       ? {
-          id: exam.creator.id,
-          name: `${exam.creator.user.firstName} ${exam.creator.user.lastName}`,
-        }
+        id: exam.creator.id,
+        name: `${exam.creator.user.firstName} ${exam.creator.user.lastName}`,
+      }
       : null,
   };
 }
@@ -306,21 +307,21 @@ export async function getAssignments() {
         ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`
         : "Unknown",
     })),
-    
+
     pending: assignments.filter(
       (a) => a.submissions.length === 0 && a.dueDate >= currentDate
     ),
-    
+
     submitted: assignments.filter(
       (a) =>
         a.submissions.length > 0 && a.submissions[0].status !== "GRADED"
     ),
-    
+
     graded: assignments.filter(
       (a) =>
         a.submissions.length > 0 && a.submissions[0].status === "GRADED"
     ),
-    
+
     overdue: assignments.filter(
       (a) => a.submissions.length === 0 && a.dueDate < currentDate
     ),
@@ -377,9 +378,9 @@ export async function getAssignmentDetails(assignmentId: string) {
       assignment.submissions.length === 0 && assignment.dueDate < currentDate,
     teacher: assignment.creator
       ? {
-          id: assignment.creator.id,
-          name: `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`,
-        }
+        id: assignment.creator.id,
+        name: `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}`,
+      }
       : null,
   };
 }
@@ -539,11 +540,11 @@ export async function getReportCardDetails(reportCardId: string) {
   const subjects = Object.keys(subjectResults).map((subjectId) => {
     const results = subjectResults[subjectId];
     const subject = results[0].exam.subject;
-    
+
     const totalMarks = results.reduce((sum, result) => sum + result.marks, 0);
     const totalPossibleMarks = results.reduce((sum, result) => sum + result.exam.totalMarks, 0);
     const percentage = Math.round((totalMarks / totalPossibleMarks) * 100);
-    
+
     return {
       id: subject.id,
       name: subject.name,
@@ -582,16 +583,3 @@ export async function getReportCardDetails(reportCardId: string) {
   };
 }
 
-/**
- * Helper function to calculate grade based on percentage
- */
-function calculateGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C+";
-  if (percentage >= 40) return "C";
-  if (percentage >= 35) return "D";
-  return "F";
-}

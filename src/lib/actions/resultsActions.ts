@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { calculateGrade } from "@/lib/utils/grade-calculator";
 import { ResultFilterValues, PublishResultsValues, GenerateReportCardValues } from "../schemaValidation/resultsSchemaValidation";
 
 // Get all exam results with optional filtering
@@ -9,35 +10,35 @@ export async function getExamResults(filters?: ResultFilterValues) {
   try {
     // Build the query
     const where: any = {};
-    
+
     // Add filters if provided
     if (filters) {
       if (filters.subjectId) {
         where.subjectId = filters.subjectId;
       }
-      
+
       if (filters.examTypeId) {
         where.examTypeId = filters.examTypeId;
       }
-      
+
       if (filters.termId) {
         where.termId = filters.termId;
       }
-      
+
       if (filters.dateFrom) {
         where.examDate = {
           ...(where.examDate || {}),
           gte: filters.dateFrom
         };
       }
-      
+
       if (filters.dateTo) {
         where.examDate = {
           ...(where.examDate || {}),
           lte: filters.dateTo
         };
       }
-      
+
       // Search term can match title or description
       if (filters.searchTerm) {
         where.OR = [
@@ -45,7 +46,7 @@ export async function getExamResults(filters?: ResultFilterValues) {
         ];
       }
     }
-    
+
     // Fetch all exams with their results
     const exams = await db.exam.findMany({
       where,
@@ -78,19 +79,19 @@ export async function getExamResults(filters?: ResultFilterValues) {
         examDate: 'desc',
       }
     });
-    
+
     // Process and calculate statistics for each exam
     const examResults = exams.map(exam => {
       const totalStudents = exam.results.length;
       const absentStudents = exam.results.filter(r => r.isAbsent).length;
       const presentStudents = totalStudents - absentStudents;
-      
+
       // Calculate statistics only if there are present students
       let highestScore = 0;
       let lowestScore = exam.totalMarks;
       let totalScore = 0;
       let passedStudents = 0;
-      
+
       if (presentStudents > 0) {
         const presentResults = exam.results.filter(r => !r.isAbsent);
         highestScore = Math.max(...presentResults.map(r => r.marks));
@@ -98,10 +99,10 @@ export async function getExamResults(filters?: ResultFilterValues) {
         totalScore = presentResults.reduce((sum, r) => sum + r.marks, 0);
         passedStudents = presentResults.filter(r => r.marks >= exam.passingMarks).length;
       }
-      
+
       const averageScore = presentStudents > 0 ? totalScore / presentStudents : 0;
       const passPercentage = presentStudents > 0 ? (passedStudents / presentStudents) * 100 : 0;
-      
+
       // Count grades (A, B, C, etc.) - this uses a simplified grading scale
       const gradeDistribution: Record<string, number> = {};
       exam.results.forEach(result => {
@@ -109,7 +110,7 @@ export async function getExamResults(filters?: ResultFilterValues) {
           gradeDistribution[result.grade] = (gradeDistribution[result.grade] || 0) + 1;
         }
       });
-      
+
       return {
         id: exam.id,
         examName: exam.title,
@@ -132,13 +133,13 @@ export async function getExamResults(filters?: ResultFilterValues) {
         createdBy: exam.creator ? `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : "System"
       };
     });
-    
+
     return { success: true, data: examResults };
   } catch (error) {
     console.error("Error fetching exam results:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch exam results" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch exam results"
     };
   }
 }
@@ -178,21 +179,21 @@ export async function getExamResultById(examId: string) {
         }
       }
     });
-    
+
     if (!exam) {
       return { success: false, error: "Exam not found" };
     }
-    
+
     // Calculate exam statistics
     const totalStudents = exam.results.length;
     const absentStudents = exam.results.filter(r => r.isAbsent).length;
     const presentStudents = totalStudents - absentStudents;
-    
+
     let highestScore = 0;
     let lowestScore = exam.totalMarks;
     let totalScore = 0;
     let passedStudents = 0;
-    
+
     if (presentStudents > 0) {
       const presentResults = exam.results.filter(r => !r.isAbsent);
       highestScore = Math.max(...presentResults.map(r => r.marks));
@@ -200,10 +201,10 @@ export async function getExamResultById(examId: string) {
       totalScore = presentResults.reduce((sum, r) => sum + r.marks, 0);
       passedStudents = presentResults.filter(r => r.marks >= exam.passingMarks).length;
     }
-    
+
     const averageScore = presentStudents > 0 ? totalScore / presentStudents : 0;
     const passPercentage = presentStudents > 0 ? (passedStudents / presentStudents) * 100 : 0;
-    
+
     // Count grades (A, B, C, etc.)
     const gradeDistribution: Record<string, number> = {};
     exam.results.forEach(result => {
@@ -211,7 +212,7 @@ export async function getExamResultById(examId: string) {
         gradeDistribution[result.grade] = (gradeDistribution[result.grade] || 0) + 1;
       }
     });
-    
+
     const resultDetails = {
       id: exam.id,
       title: exam.title,
@@ -253,13 +254,13 @@ export async function getExamResultById(examId: string) {
         isPass: !result.isAbsent && result.marks >= exam.passingMarks,
       }))
     };
-    
+
     return { success: true, data: resultDetails };
   } catch (error) {
     console.error("Error fetching exam result:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch exam result" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch exam result"
     };
   }
 }
@@ -271,13 +272,13 @@ export async function getStudentResults(studentId: string, termId?: string) {
     const where: any = {
       studentId
     };
-    
+
     if (termId) {
       where.exam = {
         termId
       };
     }
-    
+
     // Get all results for this student
     const results = await db.examResult.findMany({
       where,
@@ -312,7 +313,7 @@ export async function getStudentResults(studentId: string, termId?: string) {
         { exam: { examDate: 'desc' } }
       ]
     });
-    
+
     if (results.length === 0) {
       // Get basic student info even if no results
       const student = await db.student.findUnique({
@@ -328,13 +329,13 @@ export async function getStudentResults(studentId: string, termId?: string) {
           }
         }
       });
-      
+
       if (!student) {
         return { success: false, error: "Student not found" };
       }
-      
+
       const currentEnrollment = student.enrollments[0];
-      
+
       return {
         success: true,
         data: {
@@ -360,20 +361,20 @@ export async function getStudentResults(studentId: string, termId?: string) {
         }
       };
     }
-    
+
     // Get basic student details from the first result
     const student = results[0].student;
     const currentEnrollment = student.enrollments[0];
-    
+
     // Organize results by subject
     const examsBySubject: Record<string, any[]> = {};
-    
+
     results.forEach(result => {
       const subject = result.exam.subject.name;
       if (!examsBySubject[subject]) {
         examsBySubject[subject] = [];
       }
-      
+
       examsBySubject[subject].push({
         id: result.exam.id,
         examName: result.exam.title,
@@ -388,31 +389,23 @@ export async function getStudentResults(studentId: string, termId?: string) {
         date: result.exam.examDate,
       });
     });
-    
+
     // Calculate summary statistics
     const presentResults = results.filter(r => !r.isAbsent);
     const totalExams = results.length;
     const totalMarks = presentResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
     const obtainedMarks = presentResults.reduce((sum, r) => sum + r.marks, 0);
     const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-    
-    // Generate a grade based on percentage (simplified grading scale)
-    let grade = "";
-    if (percentage >= 90) grade = "A+";
-    else if (percentage >= 80) grade = "A";
-    else if (percentage >= 70) grade = "B+";
-    else if (percentage >= 60) grade = "B";
-    else if (percentage >= 50) grade = "C+";
-    else if (percentage >= 40) grade = "C";
-    else if (percentage >= 33) grade = "D";
-    else grade = "F";
-    
+
+    // Generate a grade based on percentage using standardized utility
+    const grade = calculateGrade(percentage);
+
     // Convert subject-based results to a flat list for the response
     const exams = Object.values(examsBySubject).flat();
-    
+
     // Get attendance data (mock for now)
     const attendance = 92.5; // Would be calculated from attendance records
-    
+
     return {
       success: true,
       data: {
@@ -441,9 +434,9 @@ export async function getStudentResults(studentId: string, termId?: string) {
     };
   } catch (error) {
     console.error("Error fetching student results:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch student results" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch student results"
     };
   }
 }
@@ -453,20 +446,20 @@ export async function publishExamResults(data: PublishResultsValues) {
   try {
     // In a real implementation, this might update a 'isPublished' field on the exam
     // or create notifications for students
-    
+
     // For now, we'll just revalidate the paths
     revalidatePath("/admin/assessment/results");
     revalidatePath(`/admin/assessment/exams/${data.examId}`);
-    
-    return { 
+
+    return {
       success: true,
-      message: "Exam results published successfully" 
+      message: "Exam results published successfully"
     };
   } catch (error) {
     console.error("Error publishing exam results:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to publish exam results" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to publish exam results"
     };
   }
 }
@@ -481,7 +474,7 @@ export async function generateReportCard(data: GenerateReportCardValues) {
         termId: data.termId
       }
     });
-    
+
     // Get all exam results for the student in the selected term
     const results = await db.examResult.findMany({
       where: {
@@ -494,31 +487,23 @@ export async function generateReportCard(data: GenerateReportCardValues) {
         exam: true
       }
     });
-    
+
     // Calculate overall statistics
     const totalResults = results.length;
     const presentResults = results.filter(r => !r.isAbsent);
     const totalMarks = presentResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
     const obtainedMarks = presentResults.reduce((sum, r) => sum + r.marks, 0);
     const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-    
-    // Calculate grade based on percentage
-    let grade = "";
-    if (percentage >= 90) grade = "A+";
-    else if (percentage >= 80) grade = "A";
-    else if (percentage >= 70) grade = "B+";
-    else if (percentage >= 60) grade = "B";
-    else if (percentage >= 50) grade = "C+";
-    else if (percentage >= 40) grade = "C";
-    else if (percentage >= 33) grade = "D";
-    else grade = "F";
-    
+
+    // Calculate grade based on percentage using standardized utility
+    const grade = calculateGrade(percentage);
+
     // Calculate attendance (mock for now)
     const attendance = 92.5;
-    
+
     // Create or update the report card
     let reportCard;
-    
+
     if (existingReportCard) {
       reportCard = await db.reportCard.update({
         where: { id: existingReportCard.id },
@@ -551,20 +536,20 @@ export async function generateReportCard(data: GenerateReportCardValues) {
         }
       });
     }
-    
+
     revalidatePath("/admin/assessment/results");
     revalidatePath(`/admin/assessment/report-cards/${reportCard.id}`);
-    
-    return { 
+
+    return {
       success: true,
       data: reportCard,
-      message: "Report card generated successfully" 
+      message: "Report card generated successfully"
     };
   } catch (error) {
     console.error("Error generating report card:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to generate report card" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate report card"
     };
   }
 }
@@ -586,13 +571,13 @@ export async function getResultFilters() {
         }
       })
     ]);
-    
+
     // For grades/classes, get distinct class names
     const classes = await db.class.findMany({
       orderBy: { name: 'asc' },
       distinct: ['name'],
     });
-    
+
     return {
       success: true,
       data: {
@@ -604,9 +589,9 @@ export async function getResultFilters() {
     };
   } catch (error) {
     console.error("Error fetching result filters:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch filters" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch filters"
     };
   }
 }

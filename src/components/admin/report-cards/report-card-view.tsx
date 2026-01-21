@@ -7,6 +7,7 @@ import { Loader2, Download, Eye } from "lucide-react";
 import { AttendanceDisplay } from "./attendance-display";
 import { getAttendanceForReportCard } from "@/lib/actions/reportCardsActions";
 import { useToast } from "@/hooks/use-toast";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 interface ReportCardViewProps {
   reportCardId: string;
@@ -116,7 +117,10 @@ export function ReportCardView({
             <CardTitle className="text-sm font-medium">Percentage</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
+            <p
+              className="text-3xl font-bold"
+              style={{ color: percentage ? getPerformanceColor(percentage) : undefined }}
+            >
               {percentage ? `${percentage.toFixed(2)}%` : "N/A"}
             </p>
           </CardContent>
@@ -127,7 +131,12 @@ export function ReportCardView({
             <CardTitle className="text-sm font-medium">Grade</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{grade || "N/A"}</p>
+            <p
+              className="text-3xl font-bold"
+              style={{ color: percentage ? getPerformanceColor(percentage) : undefined }}
+            >
+              {grade || "N/A"}
+            </p>
           </CardContent>
         </Card>
       </div>

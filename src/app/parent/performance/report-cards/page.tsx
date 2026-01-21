@@ -18,6 +18,7 @@ import {
 } from "@/lib/actions/report-card-actions";
 import { useSession } from "next-auth/react";
 import { ReportCardErrorBoundary } from "@/components/shared/report-card-error-boundary";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 interface ChildInfo {
   id: string;
@@ -361,15 +362,28 @@ function ReportCardsGrid({ reportCards, childName, onDownload, onViewDetails }: 
             <div className="space-y-2">
               {reportCard.percentage !== null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Percentage</span>
-                  <span className="text-lg font-bold">{reportCard.percentage.toFixed(2)}%</span>
+                  <span className="text-sm text-muted-foreground font-medium">Percentage</span>
+                  <span
+                    className="text-lg font-bold"
+                    style={{ color: getPerformanceColor(reportCard.percentage) }}
+                  >
+                    {reportCard.percentage.toFixed(2)}%
+                  </span>
                 </div>
               )}
 
               {reportCard.grade && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Grade</span>
-                  <Badge variant="outline" className="text-base">
+                  <span className="text-sm text-muted-foreground font-medium">Grade</span>
+                  <Badge
+                    variant="outline"
+                    className="text-base font-bold"
+                    style={{
+                      backgroundColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}20` : undefined,
+                      color: reportCard.percentage ? getPerformanceColor(reportCard.percentage) : undefined,
+                      borderColor: reportCard.percentage ? `${getPerformanceColor(reportCard.percentage)}40` : undefined,
+                    }}
+                  >
                     <Award className="h-3 w-3 mr-1" />
                     {reportCard.grade}
                   </Badge>

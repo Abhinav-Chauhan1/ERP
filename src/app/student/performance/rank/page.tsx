@@ -2,16 +2,17 @@ export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { BadgeIcon, Crown, Medal, Trophy, Users } from "lucide-react";
 import { getClassRankAnalysis } from "@/lib/actions/student-performance-actions";
 import { Badge } from "@/components/ui/badge";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 export const metadata: Metadata = {
   title: "Class Rank | Student Portal",
@@ -21,27 +22,27 @@ export const metadata: Metadata = {
 export default async function ClassRankPage() {
   // Fetch required data
   const { rankData, currentRank, classSize } = await getClassRankAnalysis();
-  
+
   // Helper function to get rank medal
   const getRankMedal = (rank: number | null) => {
     if (!rank) return null;
-    
+
     if (rank === 1) return <Crown className="h-6 w-6 text-amber-500" />;
     if (rank === 2) return <Trophy className="h-6 w-6 text-slate-400" />;
     if (rank === 3) return <Medal className="h-6 w-6 text-amber-700" />;
     return null;
   };
-  
-  // Helper to calculate percentile rank text
+
+  // Helper to calculate percentile rank text - synchronized with standardized zones
   const getPercentileText = (percentile: number | null) => {
-    if (!percentile) return "";
-    
+    if (percentile === null) return "";
+
     if (percentile >= 90) return "Top 10%";
     if (percentile >= 75) return "Top 25%";
     if (percentile >= 50) return "Top 50%";
     return "Bottom 50%";
   };
-  
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
@@ -51,7 +52,7 @@ export default async function ClassRankPage() {
           View your position and ranking in class
         </p>
       </div>
-      
+
       {/* Stats Cards Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="overflow-hidden">
@@ -81,7 +82,7 @@ export default async function ClassRankPage() {
             </CardContent>
           </div>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Percentile</CardTitle>
@@ -98,8 +99,8 @@ export default async function ClassRankPage() {
                   <span className="text-sm text-muted-foreground">Top</span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-3">
-                  <div 
-                    className="bg-primary h-3 rounded-full transition-all" 
+                  <div
+                    className="bg-primary h-3 rounded-full transition-all"
                     style={{ width: `${Math.round(((classSize - currentRank) / classSize) * 100)}%` }}
                   ></div>
                 </div>
@@ -114,7 +115,7 @@ export default async function ClassRankPage() {
             )}
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Class Size</CardTitle>
@@ -129,7 +130,7 @@ export default async function ClassRankPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Rank Progression Card */}
       <Card>
         <CardHeader>
@@ -152,7 +153,7 @@ export default async function ClassRankPage() {
                     <span>{Math.ceil(classSize * 3 / 4)}</span>
                     <span className="text-red-600">{classSize}</span>
                   </div>
-                  
+
                   {/* Chart area */}
                   <div className="ml-12 mr-4 h-full pb-8 relative">
                     {/* Horizontal grid lines */}
@@ -161,14 +162,14 @@ export default async function ClassRankPage() {
                         <div key={value} className="w-full border-t border-gray-200"></div>
                       ))}
                     </div>
-                    
+
                     {/* Rank zones (top 10%, top 25%, etc.) */}
                     <div className="absolute inset-0">
                       <div className="absolute top-0 w-full h-[10%] bg-green-50 opacity-30"></div>
                       <div className="absolute top-[10%] w-full h-[15%] bg-blue-50 opacity-30"></div>
                       <div className="absolute top-[25%] w-full h-[25%] bg-yellow-50 opacity-30"></div>
                     </div>
-                    
+
                     {/* Chart content */}
                     <div className="relative h-full pt-2 pb-2">
                       <svg className="w-full h-full" preserveAspectRatio="none">
@@ -183,14 +184,14 @@ export default async function ClassRankPage() {
                             <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
                           </linearGradient>
                         </defs>
-                        
+
                         {/* Area under rank line */}
                         {rankData.length > 1 && rankData.some(data => data.rank) && (
                           <polygon
                             points={`
                               ${rankData
                                 .filter(data => data.rank !== null)
-                                .map((data, i) => 
+                                .map((data, i) =>
                                   `${(i / (rankData.length - 1)) * 100},${(data.rank! / classSize) * 100}`
                                 ).join(' ')}
                               ${100},${100}
@@ -199,13 +200,13 @@ export default async function ClassRankPage() {
                             fill="url(#rankAreaGradient)"
                           />
                         )}
-                        
+
                         {/* Rank progression line */}
                         {rankData.length > 1 && rankData.some(data => data.rank) && (
                           <polyline
                             points={rankData
                               .filter(data => data.rank !== null)
-                              .map((data, i) => 
+                              .map((data, i) =>
                                 `${(i / (rankData.length - 1)) * 100},${(data.rank! / classSize) * 100}`
                               ).join(' ')}
                             fill="none"
@@ -215,13 +216,13 @@ export default async function ClassRankPage() {
                             strokeLinejoin="round"
                           />
                         )}
-                        
+
                         {/* Data points with medals for top ranks */}
                         {rankData.map((data, i) => {
                           if (!data.rank) return null;
                           const yPos = (data.rank / classSize) * 100;
                           const xPos = rankData.length > 1 ? (i / (rankData.length - 1)) * 100 : 50;
-                          
+
                           return (
                             <g key={i}>
                               {/* Outer glow circle */}
@@ -245,17 +246,17 @@ export default async function ClassRankPage() {
                           );
                         })}
                       </svg>
-                      
+
                       {/* Hover tooltips */}
                       <div className="absolute inset-0 flex justify-between items-start">
                         {rankData.map((data, i) => (
-                          <div 
-                            key={i} 
+                          <div
+                            key={i}
                             className="group relative flex-1 h-full cursor-pointer"
                           >
                             {/* Tooltip */}
                             {data.rank && (
-                              <div 
+                              <div
                                 className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
                                 style={{ top: `${(data.rank / classSize) * 100}%` }}
                               >
@@ -281,7 +282,7 @@ export default async function ClassRankPage() {
                         ))}
                       </div>
                     </div>
-                    
+
                     {/* X-axis labels */}
                     <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs font-medium text-gray-600 pt-2">
                       {rankData.map((data, i) => (
@@ -292,7 +293,7 @@ export default async function ClassRankPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Legend and info */}
                 <div className="mt-4 flex items-center justify-between text-sm">
                   <div className="flex items-center gap-4">
@@ -305,7 +306,7 @@ export default async function ClassRankPage() {
                     <span>Hover over points for details</span>
                   </div>
                 </div>
-                
+
                 {/* Performance zones legend */}
                 <div className="mt-3 flex gap-4 text-xs">
                   <div className="flex items-center gap-1">
@@ -322,7 +323,7 @@ export default async function ClassRankPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-8">
                 <h3 className="font-medium mb-4">Rank History</h3>
                 <div className="rounded-md border overflow-hidden">
@@ -361,13 +362,13 @@ export default async function ClassRankPage() {
                             )}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <Badge 
-                              className={`
-                                ${term.percentage && term.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                                  term.percentage && term.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                                  term.percentage && term.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                                  'bg-red-100 text-red-800'}
-                              `}
+                            <Badge
+                              variant="outline"
+                              style={{
+                                backgroundColor: term.percentage ? `${getPerformanceColor(term.percentage)}20` : 'transparent',
+                                color: term.percentage ? getPerformanceColor(term.percentage) : 'inherit',
+                                borderColor: term.percentage ? `${getPerformanceColor(term.percentage)}40` : 'inherit'
+                              }}
                             >
                               {term.percentage ?? '-'}%
                             </Badge>

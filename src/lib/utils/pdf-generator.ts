@@ -141,25 +141,14 @@ function generateReportCardHTML(data: ProgressReportData): string {
           background-color: #f9fafb;
         }
         
-        .grade-excellent {
-          color: #059669;
-          font-weight: bold;
-        }
-        
-        .grade-good {
-          color: #2563eb;
-          font-weight: bold;
-        }
-        
-        .grade-average {
-          color: #d97706;
-          font-weight: bold;
-        }
-        
-        .grade-poor {
-          color: #dc2626;
-          font-weight: bold;
-        }
+        .grade-a1 { color: #10b981; font-weight: bold; }
+        .grade-a2 { color: #059669; font-weight: bold; }
+        .grade-b1 { color: #3b82f6; font-weight: bold; }
+        .grade-b2 { color: #2563eb; font-weight: bold; }
+        .grade-c1 { color: #f59e0b; font-weight: bold; }
+        .grade-c2 { color: #d97706; font-weight: bold; }
+        .grade-d { color: #f97316; font-weight: bold; }
+        .grade-e { color: #ef4444; font-weight: bold; }
         
         .remarks-section {
           margin-bottom: 20px;
@@ -305,9 +294,13 @@ function generateReportCardHTML(data: ProgressReportData): string {
         <tbody>
           ${academicPerformance.subjectResults.map(result => {
     const gradeClass =
-      result.percentage >= 80 ? "grade-excellent" :
-        result.percentage >= 60 ? "grade-good" :
-          result.percentage >= 40 ? "grade-average" : "grade-poor";
+      result.percentage >= 91 ? "grade-a1" :
+        result.percentage >= 81 ? "grade-a2" :
+          result.percentage >= 71 ? "grade-b1" :
+            result.percentage >= 61 ? "grade-b2" :
+              result.percentage >= 51 ? "grade-c1" :
+                result.percentage >= 41 ? "grade-c2" :
+                  result.percentage >= 33 ? "grade-d" : "grade-e";
 
     return `
               <tr>

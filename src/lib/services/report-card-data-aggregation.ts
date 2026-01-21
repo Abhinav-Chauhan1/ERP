@@ -15,7 +15,21 @@
 import { db } from "@/lib/db";
 import { calculateAttendanceForTerm, type AttendanceData } from "@/lib/utils/attendance-calculator";
 import { calculateGrade, calculateGradePoint, calculateCGPA } from "@/lib/utils/grade-calculator";
-import { aggregateMarksByRule } from "@/lib/utils/assessment-logic";
+import { aggregateMarksByRule, type AssessmentRule as AssessmentRuleBase } from "@/lib/utils/assessment-logic";
+
+// Extended AssessmentRule interface for database rules
+interface AssessmentRuleWithExamTypes extends AssessmentRuleBase {
+  id: string;
+  examTypes: string[];
+}
+
+// Type for exam data with results
+interface ExamWithResults {
+  examTypeId: string;
+  results: Array<{ totalMarks?: number; marks?: number }>;
+  subjectMarkConfig: Array<{ totalMarks?: number }>;
+  totalMarks: number;
+}
 
 /**
  * Interface for student information in report card
@@ -363,11 +377,11 @@ async function fetchExamResults(
     // apply rules if they exist
     if (assessmentRules.length > 0) {
       // Group exams by rule
-      const ruleExamsMap = new Map<string, any[]>();
-      const unruledExams: any[] = [];
+      const ruleExamsMap = new Map<string, ExamWithResults[]>();
+      const unruledExams: ExamWithResults[] = [];
 
       for (const exam of subjectExams) {
-        const rule = assessmentRules.find(r => r.examTypes.includes(exam.examTypeId));
+        const rule = assessmentRules.find((r: AssessmentRuleWithExamTypes) => r.examTypes.includes(exam.examTypeId));
         if (rule) {
           if (!ruleExamsMap.has(rule.id)) ruleExamsMap.set(rule.id, []);
           ruleExamsMap.get(rule.id)!.push(exam);
@@ -378,12 +392,12 @@ async function fetchExamResults(
 
       // Aggregate ruled exams
       for (const [ruleId, examsForRule] of ruleExamsMap.entries()) {
-        const rule = assessmentRules.find(r => r.id === ruleId)!;
-        const marks = examsForRule.map(e => ({
+        const rule = assessmentRules.find((r: AssessmentRuleWithExamTypes) => r.id === ruleId)!;
+        const marks = examsForRule.map((e: ExamWithResults) => ({
           obtained: e.results[0]?.totalMarks || e.results[0]?.marks || 0,
           total: e.subjectMarkConfig[0]?.totalMarks || e.totalMarks || 100
         }));
-        const aggregated = aggregateMarksByRule(marks, rule as any);
+        const aggregated = aggregateMarksByRule(marks, rule);
         aggregatedObtained += aggregated.obtained;
         aggregatedTotal += aggregated.total;
       }
@@ -535,20 +549,6 @@ function calculateOverallPerformance(
   };
 }
 
-/**
- * Calculate grade based on percentage
- * This is a simplified grading system - should be configurable based on school's grade scale
- */
-function calculateGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C+";
-  if (percentage >= 40) return "C";
-  if (percentage >= 33) return "D";
-  return "F";
-}
 
 /**
  * Batch aggregate report card data for multiple students

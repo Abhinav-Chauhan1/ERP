@@ -3,16 +3,17 @@ export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { format } from "date-fns";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { getPerformanceTrends } from "@/lib/actions/student-performance-actions";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 export const metadata: Metadata = {
   title: "Performance Trends | Student Portal",
@@ -22,13 +23,13 @@ export const metadata: Metadata = {
 export default async function PerformanceTrendsPage() {
   // Fetch required data
   const { termPerformance, subjectTrends, examPerformance } = await getPerformanceTrends();
-  
+
   // Format exam dates
   const formattedExamPerformance = examPerformance.map(exam => ({
     ...exam,
     formattedDate: format(new Date(exam.date), "MMM d, yyyy")
   }));
-  
+
   // Create a lookup function to get colors from subject names
   const subjectColors: Record<string, string> = {
     "Mathematics": "#3b82f6", // blue
@@ -40,20 +41,12 @@ export default async function PerformanceTrendsPage() {
     "Chemistry": "#14b8a6",   // teal
     "Biology": "#f43f5e",     // rose
   };
-  
+
   // Default color for subjects not in the mapping
   const getSubjectColor = (subjectName: string) => {
     return subjectColors[subjectName] || "#6b7280"; // gray-500 as default
   };
-  
-  // Function to get color based on percentage
-  const getColorByPercentage = (percentage: number) => {
-    if (percentage >= 90) return "#22c55e"; // green
-    if (percentage >= 75) return "#3b82f6"; // blue
-    if (percentage >= 60) return "#f59e0b"; // amber
-    return "#ef4444"; // red
-  };
-  
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
@@ -63,7 +56,7 @@ export default async function PerformanceTrendsPage() {
           Analyze your academic performance trends over time
         </p>
       </div>
-      
+
       {/* Tabbed Content */}
       <Tabs defaultValue="progress" className="w-full">
         <TabsList className="grid grid-cols-3 w-full max-w-md">
@@ -71,7 +64,7 @@ export default async function PerformanceTrendsPage() {
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="exams">Exams</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="progress" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
@@ -83,8 +76,8 @@ export default async function PerformanceTrendsPage() {
             <CardContent>
               <div className="space-y-4">
                 {termPerformance.map((term, index) => (
-                  <div 
-                    key={term.id} 
+                  <div
+                    key={term.id}
                     className="flex items-center p-4 rounded-lg border"
                   >
                     <div className="flex-grow">
@@ -100,19 +93,17 @@ export default async function PerformanceTrendsPage() {
                           <Badge variant="outline">{term.grade}</Badge>
                         </div>
                       </div>
-                      
+
                       <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div 
-                          className="rounded-full h-1.5" 
-                          style={{ 
+                        <div
+                          className="rounded-full h-1.5"
+                          style={{
                             width: `${term.percentage}%`,
-                            backgroundColor: term.percentage >= 90 ? "#22c55e" : 
-                                          term.percentage >= 75 ? "#3b82f6" : 
-                                          term.percentage >= 60 ? "#f59e0b" : "#ef4444"
+                            backgroundColor: getPerformanceColor(term.percentage)
                           }}
                         ></div>
                       </div>
-                      
+
                       <div className="flex justify-between mt-2 text-xs text-gray-500">
                         {term.rank && <span>Rank: {term.rank}</span>}
                         {term.attendance && <span>Attendance: {term.attendance}%</span>}
@@ -121,7 +112,7 @@ export default async function PerformanceTrendsPage() {
                   </div>
                 ))}
               </div>
-              
+
               {/* Improved chart visualization */}
               {termPerformance.length > 0 && (
                 <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-white border rounded-lg shadow-sm">
@@ -135,7 +126,7 @@ export default async function PerformanceTrendsPage() {
                       <span>25%</span>
                       <span>0%</span>
                     </div>
-                    
+
                     {/* Chart area */}
                     <div className="ml-12 mr-4 h-full pb-8 relative">
                       {/* Horizontal grid lines */}
@@ -144,51 +135,51 @@ export default async function PerformanceTrendsPage() {
                           <div key={value} className="w-full border-t border-gray-200"></div>
                         ))}
                       </div>
-                      
+
                       {/* Chart content */}
                       <div className="relative h-full pt-2 pb-2">
                         <svg className="w-full h-full" preserveAspectRatio="none">
                           {/* Gradient definition */}
                           <defs>
-                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <linearGradient id="lineStatusGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                               <stop offset="0%" stopColor="#3b82f6" />
                               <stop offset="100%" stopColor="#8b5cf6" />
                             </linearGradient>
-                            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <linearGradient id="areaStatusGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                               <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
                               <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
                             </linearGradient>
                           </defs>
-                          
+
                           {/* Area under the line */}
                           {termPerformance.length > 1 && (
                             <polygon
                               points={`
-                                ${termPerformance.map((term, i) => 
-                                  `${(i / (termPerformance.length - 1)) * 100},${100 - term.percentage}`
-                                ).join(' ')}
+                                ${termPerformance.map((term, i) =>
+                                `${(i / (termPerformance.length - 1)) * 100},${100 - term.percentage}`
+                              ).join(' ')}
                                 ${100},${100}
                                 ${0},${100}
                               `}
-                              fill="url(#areaGradient)"
+                              fill="url(#areaStatusGradient)"
                             />
                           )}
-                          
+
                           {/* Performance line */}
                           {termPerformance.length > 1 && (
                             <polyline
-                              points={termPerformance.map((term, i) => 
+                              points={termPerformance.map((term, i) =>
                                 `${(i / (termPerformance.length - 1)) * 100},${100 - term.percentage}`
                               ).join(' ')}
                               fill="none"
-                              stroke="url(#lineGradient)"
+                              stroke="url(#lineStatusGradient)"
                               strokeWidth="3"
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             />
                           )}
-                          
-                          {/* Data points */}
+
+                          {/* Data points with standardized colors */}
                           {termPerformance.map((term, i) => (
                             <g key={term.id}>
                               <circle
@@ -196,20 +187,20 @@ export default async function PerformanceTrendsPage() {
                                 cy={100 - term.percentage}
                                 r="1.5"
                                 fill="white"
-                                stroke="#3b82f6"
+                                stroke={getPerformanceColor(term.percentage)}
                                 strokeWidth="2.5"
                               />
                             </g>
                           ))}
                         </svg>
-                        
+
                         {/* Hover tooltips */}
                         <div className="absolute inset-0 flex justify-between items-end">
                           {termPerformance.map((term, i) => (
-                            <div 
-                              key={term.id} 
+                            <div
+                              key={term.id}
                               className="group relative flex-1 h-full cursor-pointer"
-                              style={{ 
+                              style={{
                                 bottom: `${term.percentage}%`,
                               }}
                             >
@@ -228,7 +219,7 @@ export default async function PerformanceTrendsPage() {
                           ))}
                         </div>
                       </div>
-                      
+
                       {/* X-axis labels */}
                       <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs font-medium text-gray-600 pt-2">
                         {termPerformance.map(term => (
@@ -239,7 +230,7 @@ export default async function PerformanceTrendsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Legend and stats */}
                   <div className="mt-4 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-4">
@@ -257,7 +248,7 @@ export default async function PerformanceTrendsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="subjects" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
@@ -272,8 +263,8 @@ export default async function PerformanceTrendsPage() {
                 {subjectTrends.map(subject => (
                   <div key={subject.id} className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
+                      <div
+                        className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: getSubjectColor(subject.name) }}
                       ></div>
                       <h4 className="font-medium">{subject.name}</h4>
@@ -287,9 +278,9 @@ export default async function PerformanceTrendsPage() {
                           </div>
                           {termData.percentage !== null && (
                             <div className="w-full bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className="rounded-full h-1.5" 
-                                style={{ 
+                              <div
+                                className="rounded-full h-1.5"
+                                style={{
                                   width: `${termData.percentage}%`,
                                   backgroundColor: getSubjectColor(subject.name)
                                 }}
@@ -305,7 +296,7 @@ export default async function PerformanceTrendsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="exams" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
@@ -319,9 +310,9 @@ export default async function PerformanceTrendsPage() {
               <div className="relative border-l border-gray-200 ml-4 pl-4 py-4 space-y-8">
                 {formattedExamPerformance.slice(-10).map((exam, index) => (
                   <div key={exam.id} className="relative">
-                    <div 
+                    <div
                       className="absolute -left-8 w-4 h-4 rounded-full"
-                      style={{ backgroundColor: getColorByPercentage(exam.percentage) }}
+                      style={{ backgroundColor: getPerformanceColor(exam.percentage) }}
                     ></div>
                     <div className="border rounded-lg p-4 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
@@ -331,24 +322,23 @@ export default async function PerformanceTrendsPage() {
                             {exam.subject} • {exam.formattedDate}
                           </p>
                         </div>
-                        <Badge 
-                          className={`
-                            ${exam.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                              exam.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                              exam.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'}
-                          `}
+                        <Badge
+                          style={{
+                            backgroundColor: `${getPerformanceColor(exam.percentage)}20`,
+                            color: getPerformanceColor(exam.percentage),
+                            borderColor: `${getPerformanceColor(exam.percentage)}40`
+                          }}
                         >
                           {exam.percentage}%
                         </Badge>
                       </div>
                       <div className="text-sm">Score: {exam.marks}/{exam.totalMarks}</div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                        <div 
-                          className="rounded-full h-1.5" 
-                          style={{ 
+                        <div
+                          className="rounded-full h-1.5"
+                          style={{
                             width: `${exam.percentage}%`,
-                            backgroundColor: getColorByPercentage(exam.percentage)
+                            backgroundColor: getPerformanceColor(exam.percentage)
                           }}
                         ></div>
                       </div>
@@ -356,7 +346,7 @@ export default async function PerformanceTrendsPage() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="mt-8 space-y-2">
                 <h3 className="font-medium">Recent Exam Results</h3>
                 <div className="rounded-md border overflow-hidden">
@@ -378,13 +368,13 @@ export default async function PerformanceTrendsPage() {
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-center">{exam.formattedDate}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-center">{exam.marks}/{exam.totalMarks}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
-                            <Badge 
-                              className={`
-                                ${exam.percentage >= 90 ? 'bg-green-100 text-green-800' :
-                                  exam.percentage >= 75 ? 'bg-blue-100 text-blue-800' :
-                                  exam.percentage >= 60 ? 'bg-amber-100 text-amber-800' :
-                                  'bg-red-100 text-red-800'}
-                              `}
+                            <Badge
+                              variant="outline"
+                              style={{
+                                backgroundColor: `${getPerformanceColor(exam.percentage)}20`,
+                                color: getPerformanceColor(exam.percentage),
+                                borderColor: `${getPerformanceColor(exam.percentage)}40`
+                              }}
                             >
                               {exam.percentage}%
                             </Badge>

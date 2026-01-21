@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
+import { calculateGrade } from "@/lib/utils/grade-calculator";
 
 /**
  * Get the current student details based on authenticated user
@@ -141,7 +142,7 @@ export async function getPerformanceSummary() {
     grade = gradeScale.grade;
   } else {
     // Fallback to calculation
-    grade = getGradeFromPercentage(overallPercentage);
+    grade = calculateGrade(overallPercentage);
   }
 
   return {
@@ -226,7 +227,7 @@ export async function getSubjectPerformance() {
       lastScore: lastExam ? lastExam.marks : null,
       lastScoreTotal: lastExam ? lastExam.exam.totalMarks : null,
       lastExamDate: lastExam ? lastExam.exam.examDate : null,
-      grade: getGradeFromPercentage(subjectPercentage)
+      grade: calculateGrade(subjectPercentage)
     };
   });
 
@@ -321,7 +322,7 @@ export async function getPerformanceTrends() {
       percentage: termPercentage,
       averageMarks: reportCard?.averageMarks || null,
       rank: reportCard?.rank || null,
-      grade: reportCard?.grade || getGradeFromPercentage(termPercentage),
+      grade: reportCard?.grade || calculateGrade(termPercentage),
       attendance: reportCard?.attendance || null
     };
   });
@@ -535,20 +536,3 @@ export async function getClassRankAnalysis() {
   };
 }
 
-/**
- * Helper function to get grade from percentage
- */
-function getGradeFromPercentage(percentage: number): string {
-  if (percentage >= 90) return 'A+';
-  if (percentage >= 85) return 'A';
-  if (percentage >= 80) return 'A-';
-  if (percentage >= 75) return 'B+';
-  if (percentage >= 70) return 'B';
-  if (percentage >= 65) return 'B-';
-  if (percentage >= 60) return 'C+';
-  if (percentage >= 55) return 'C';
-  if (percentage >= 50) return 'C-';
-  if (percentage >= 45) return 'D+';
-  if (percentage >= 40) return 'D';
-  return 'F';
-}

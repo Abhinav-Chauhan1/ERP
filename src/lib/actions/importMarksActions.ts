@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { AuditAction } from "@prisma/client";
-import { calculatePercentage, calculateGradeFromScale } from "@/lib/utils/grade-calculator";
+import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
 import {
   validateMarkEntry,
@@ -54,28 +54,15 @@ async function calculateGradeForPercentage(percentage: number): Promise<string> 
 
   if (!gradeScaleResult.success || !gradeScaleResult.data) {
     // Fallback to default grade calculation
-    return calculateDefaultGrade(percentage);
+    return calculateGrade(percentage);
   }
 
   const grade = calculateGradeFromScale(percentage, gradeScaleResult.data);
 
   // If no grade found in scale, use default
-  return grade || calculateDefaultGrade(percentage);
+  return grade || calculateGrade(percentage);
 }
 
-/**
- * Fallback default grade calculation
- */
-function calculateDefaultGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C+";
-  if (percentage >= 40) return "C";
-  if (percentage >= 33) return "D";
-  return "F";
-}
 
 /**
  * Import marks from file data with comprehensive validation

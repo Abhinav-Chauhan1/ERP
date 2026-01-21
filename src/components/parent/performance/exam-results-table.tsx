@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import type { ExamResultData } from "@/types/performance";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 interface ExamResultsTableProps {
   results: ExamResultData[];
@@ -60,12 +61,14 @@ export function ExamResultsTable({ results, studentName }: ExamResultsTableProps
     });
   }, [results, sortField, sortOrder]);
 
-  const getGradeBadgeVariant = (grade: string | null) => {
-    if (!grade) return "outline";
-    if (["A+", "A"].includes(grade)) return "default";
-    if (["B+", "B"].includes(grade)) return "secondary";
-    if (["C"].includes(grade)) return "outline";
-    return "destructive";
+  const getGradeStyle = (percentage: number) => {
+    const color = getPerformanceColor(percentage);
+    return {
+      backgroundColor: `${color}20`,
+      color: color,
+      borderColor: `${color}40`,
+      fontWeight: "bold" as const
+    };
   };
 
   const getPerformanceIndicator = (studentPercentage: number, classAverage?: number) => {
@@ -168,10 +171,12 @@ export function ExamResultsTable({ results, studentName }: ExamResultsTableProps
                 const isBelowAverage = result.classAverage && result.percentage < result.classAverage;
                 const isTopPerformer = result.rank && result.rank <= 3;
 
+                const performanceColor = getPerformanceColor(result.percentage);
+
                 return (
                   <TableRow
                     key={result.id}
-                    className={isBelowAverage ? "bg-red-50/50" : ""}
+                    style={isBelowAverage ? { backgroundColor: `${performanceColor}05` } : {}}
                   >
                     <TableCell className="font-medium">
                       <div>
@@ -196,12 +201,17 @@ export function ExamResultsTable({ results, studentName }: ExamResultsTableProps
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <span className="font-medium">{result.percentage.toFixed(1)}%</span>
+                        <span className="font-bold" style={{ color: performanceColor }}>
+                          {result.percentage.toFixed(1)}%
+                        </span>
                         {getPerformanceIndicator(result.percentage, result.classAverage)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getGradeBadgeVariant(result.grade)}>
+                      <Badge
+                        variant="outline"
+                        style={getGradeStyle(result.percentage)}
+                      >
                         {result.grade || "N/A"}
                       </Badge>
                     </TableCell>

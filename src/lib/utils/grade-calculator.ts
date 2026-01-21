@@ -280,42 +280,70 @@ export function getGradeColor(grade: string): string {
 }
 
 /**
- * Get performance status message
+ * Get color based on percentage (Standardized)
+ */
+export function getPerformanceColor(percentage: number): string {
+  if (percentage >= 91) return "#22c55e"; // Excellent (A1)
+  if (percentage >= 81) return "#16a34a"; // Very Good (A2)
+  if (percentage >= 71) return "#3b82f6"; // Good (B1)
+  if (percentage >= 61) return "#2563eb"; // Above Average (B2)
+  if (percentage >= 51) return "#f59e0b"; // Average (C1)
+  if (percentage >= 41) return "#d97706"; // Satisfactory (C2)
+  if (percentage >= 33) return "#ea580c"; // Needs Improvement (D)
+  return "#ef4444"; // Poor (E)
+}
+
+/**
+ * Get performance status message synchronized with CBSE boundaries
  */
 export function getPerformanceStatus(percentage: number): {
   status: string;
   message: string;
   color: string;
 } {
-  if (percentage >= 90) {
+  if (percentage >= 91) {
     return {
       status: "Excellent",
       message: "Outstanding performance! Keep up the excellent work.",
       color: "text-green-600",
     };
   }
-  if (percentage >= 75) {
+  if (percentage >= 81) {
     return {
       status: "Very Good",
       message: "Great job! You're doing very well.",
-      color: "text-blue-600",
+      color: "text-green-700",
     };
   }
-  if (percentage >= 60) {
+  if (percentage >= 71) {
     return {
       status: "Good",
       message: "Good performance. Keep working hard.",
-      color: "text-teal-600",
+      color: "text-blue-600",
     };
   }
-  if (percentage >= 50) {
+  if (percentage >= 61) {
+    return {
+      status: "Above Average",
+      message: "Directly above average. You have great potential.",
+      color: "text-blue-700",
+    };
+  }
+  if (percentage >= 51) {
+    return {
+      status: "Average",
+      message: "Average performance. There's room for improvement.",
+      color: "text-amber-600",
+    };
+  }
+  if (percentage >= 41) {
     return {
       status: "Satisfactory",
-      message: "Satisfactory performance. There's room for improvement.",
-      color: "text-yellow-600",
+      message: "Satisfactory but needs more focus on core subjects.",
+      color: "text-amber-700",
     };
   }
-  if (percentage >= 40) {
+  if (percentage >= 33) {
     return {
       status: "Needs Improvement",
       message: "More effort needed. Focus on weak areas.",

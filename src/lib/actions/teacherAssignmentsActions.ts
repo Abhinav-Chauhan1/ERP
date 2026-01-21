@@ -8,6 +8,7 @@ import {
   updateCalendarEventFromAssignment,
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
+import { calculateGrade } from "../utils/grade-calculator";
 
 /**
  * Get all assignments for a teacher
@@ -699,27 +700,19 @@ function getAssignmentStatus(dueDate: Date) {
   }
 }
 
-// Helper function to calculate assignment statistics
+// Helper function to calculate assignment statistics using standardized grading
 function calculateAssignmentStatistics(assignment: any, submissions: any[]) {
   const submittedCount = submissions.length;
   const gradedCount = submissions.filter(s => s.status === 'GRADED').length;
   const lateCount = submissions.filter(s => s.status === 'LATE').length;
 
-  // Calculate marks distribution
+  // Calculate grade distribution using standardized utility
   const marksDistribution: Record<string, number> = {};
   submissions
     .filter(s => s.status === 'GRADED' && s.marks !== null)
     .forEach(submission => {
-      const percentage = Math.floor((submission.marks / assignment.totalMarks) * 100);
-
-      let grade;
-      if (percentage >= 90) grade = '90-100%';
-      else if (percentage >= 80) grade = '80-89%';
-      else if (percentage >= 70) grade = '70-79%';
-      else if (percentage >= 60) grade = '60-69%';
-      else if (percentage >= 50) grade = '50-59%';
-      else grade = 'Below 50%';
-
+      const percentage = (submission.marks / assignment.totalMarks) * 100;
+      const grade = calculateGrade(percentage);
       marksDistribution[grade] = (marksDistribution[grade] || 0) + 1;
     });
 

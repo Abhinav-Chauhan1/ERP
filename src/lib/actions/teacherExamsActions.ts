@@ -9,6 +9,7 @@ import {
   updateCalendarEventFromExam,
   deleteCalendarEventFromExam
 } from "../services/exam-calendar-integration";
+import { calculateGrade } from "../utils/grade-calculator";
 
 /**
  * Get all exams for a teacher
@@ -230,20 +231,12 @@ export async function getTeacherExam(examId: string) {
     const totalMarks = results.reduce((sum, r) => sum + (r.isAbsent ? 0 : r.marks), 0);
     const averageMark = presentCount > 0 ? totalMarks / presentCount : 0;
 
-    // Create grade distribution
+    // Create grade distribution using standardized logic
     const gradeDistribution = results.reduce((acc, r) => {
       if (r.isAbsent) return acc;
 
-      // Simple grading logic - can be customized
       const percentage = (r.marks / exam.totalMarks) * 100;
-      let grade = '';
-
-      if (percentage >= 90) grade = 'A';
-      else if (percentage >= 80) grade = 'B';
-      else if (percentage >= 70) grade = 'C';
-      else if (percentage >= 60) grade = 'D';
-      else if (percentage >= 50) grade = 'E';
-      else grade = 'F';
+      const grade = calculateGrade(percentage);
 
       if (!acc[grade]) acc[grade] = 0;
       acc[grade]++;

@@ -7,6 +7,7 @@ import { Download, Award, Calendar, TrendingUp, Clock, User } from "lucide-react
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import type { ReportCardData } from "@/lib/services/report-card-data-aggregation";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 interface ReportCardDetailViewProps {
   reportCard: ReportCardData;
@@ -104,15 +105,36 @@ export function ReportCardDetailView({ reportCard, onDownload }: ReportCardDetai
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Percentage</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{overallPerformance.percentage.toFixed(2)}%</p>
+                <p
+                  className="text-2xl font-bold"
+                  style={{ color: getPerformanceColor(overallPerformance.percentage) }}
+                >
+                  {overallPerformance.percentage.toFixed(2)}%
+                </p>
               </div>
-              <Progress value={overallPerformance.percentage} className="h-2" />
+              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                <div
+                  className="h-full transition-all"
+                  style={{
+                    width: `${overallPerformance.percentage}%`,
+                    backgroundColor: getPerformanceColor(overallPerformance.percentage)
+                  }}
+                ></div>
+              </div>
             </div>
 
             {overallPerformance.grade && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Grade</p>
-                <Badge variant="outline" className="text-xl px-4 py-2">
+                <Badge
+                  variant="outline"
+                  className="text-xl px-4 py-2"
+                  style={{
+                    backgroundColor: `${getPerformanceColor(overallPerformance.percentage)}20`,
+                    color: getPerformanceColor(overallPerformance.percentage),
+                    borderColor: `${getPerformanceColor(overallPerformance.percentage)}40`
+                  }}
+                >
                   <Award className="h-4 w-4 mr-2" />
                   {overallPerformance.grade}
                 </Badge>
@@ -209,14 +231,28 @@ export function ReportCardDetailView({ reportCard, onDownload }: ReportCardDetai
                       {subject.isAbsent ? (
                         <span className="text-muted-foreground">-</span>
                       ) : (
-                        <span>{subject.percentage.toFixed(2)}%</span>
+                        <span
+                          className="font-bold"
+                          style={{ color: getPerformanceColor(subject.percentage) }}
+                        >
+                          {subject.percentage.toFixed(2)}%
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
                       {subject.isAbsent ? (
                         <span className="text-muted-foreground">-</span>
                       ) : subject.grade ? (
-                        <Badge variant="outline">{subject.grade}</Badge>
+                        <Badge
+                          variant="outline"
+                          style={{
+                            backgroundColor: `${getPerformanceColor(subject.percentage)}20`,
+                            color: getPerformanceColor(subject.percentage),
+                            borderColor: `${getPerformanceColor(subject.percentage)}40`
+                          }}
+                        >
+                          {subject.grade}
+                        </Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -277,7 +313,15 @@ export function ReportCardDetailView({ reportCard, onDownload }: ReportCardDetai
               </div>
               <p className="text-2xl font-bold">{attendance.percentage?.toFixed(2) || "N/A"}%</p>
               {attendance.percentage !== null && (
-                <Progress value={attendance.percentage} className="h-2" />
+                <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${attendance.percentage >= 90 ? 'bg-green-600' :
+                        attendance.percentage >= 75 ? 'bg-warning' :
+                          'bg-destructive'
+                      }`}
+                    style={{ width: `${attendance.percentage}%` }}
+                  ></div>
+                </div>
               )}
             </div>
 

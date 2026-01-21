@@ -34,10 +34,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, FileText, Download, Eye } from 'lucide-react';
 import {
-  generateSingleReportCard,
-  getReportCardTemplates,
   previewReportCard,
 } from '@/lib/actions/report-card-generation';
+import { getPerformanceColor } from '@/lib/utils/grade-calculator';
 
 interface GenerateReportCardDialogProps {
   studentId: string;
@@ -66,7 +65,7 @@ export function GenerateReportCardDialog({
   // Load templates when dialog opens
   const handleOpenChange = async (isOpen: boolean) => {
     setOpen(isOpen);
-    
+
     if (isOpen && templates.length === 0) {
       const result = await getReportCardTemplates();
       if (result.success && result.data) {
@@ -93,7 +92,7 @@ export function GenerateReportCardDialog({
     setPreviewing(true);
     try {
       const result = await previewReportCard(studentId, termId);
-      
+
       if (result.success) {
         setPreviewData(result.data);
         toast({
@@ -220,12 +219,22 @@ export function GenerateReportCardDialog({
                   {previewData.subjects?.length || 0}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Overall Grade:</span>{' '}
-                  {previewData.overallPerformance?.grade || 'N/A'}
+                  <span className="text-muted-foreground font-medium">Overall Grade:</span>{' '}
+                  <span
+                    className="font-bold"
+                    style={{ color: previewData.overallPerformance?.percentage ? getPerformanceColor(previewData.overallPerformance.percentage) : undefined }}
+                  >
+                    {previewData.overallPerformance?.grade || 'N/A'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Percentage:</span>{' '}
-                  {previewData.overallPerformance?.percentage?.toFixed(2) || 0}%
+                  <span className="text-muted-foreground font-medium">Percentage:</span>{' '}
+                  <span
+                    className="font-bold"
+                    style={{ color: previewData.overallPerformance?.percentage ? getPerformanceColor(previewData.overallPerformance.percentage) : undefined }}
+                  >
+                    {previewData.overallPerformance?.percentage?.toFixed(2) || 0}%
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Attendance:</span>{' '}

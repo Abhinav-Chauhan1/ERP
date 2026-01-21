@@ -1,4 +1,3 @@
-
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -9,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, TrendingUp, BookOpen, Award, Target } from "lucide-react";
 import Link from "next/link";
+import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 export const dynamic = 'force-dynamic';
 
@@ -192,7 +192,10 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
                 <TrendingUp className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <div className="text-3xl font-bold">
+                <div
+                  className="text-3xl font-bold"
+                  style={{ color: getPerformanceColor(overallPercentage) }}
+                >
                   {overallPercentage.toFixed(1)}%
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -240,7 +243,10 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
                     : "N/A"
                   }
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p
+                  className="text-xs font-bold"
+                  style={{ color: subjects.length > 0 ? getPerformanceColor(subjects.sort((a: any, b: any) => b.percentage - a.percentage)[0].percentage) : "inherit" }}
+                >
                   {subjects.length > 0
                     ? `${subjects.sort((a: any, b: any) => b.percentage - a.percentage)[0].percentage.toFixed(1)}%`
                     : ""
@@ -269,7 +275,10 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
                     : "N/A"
                   }
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p
+                  className="text-xs font-bold"
+                  style={{ color: subjects.length > 0 ? getPerformanceColor(subjects.sort((a: any, b: any) => a.percentage - b.percentage)[0].percentage) : "inherit" }}
+                >
                   {subjects.length > 0
                     ? `${subjects.sort((a: any, b: any) => a.percentage - b.percentage)[0].percentage.toFixed(1)}%`
                     : ""
@@ -300,21 +309,45 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold">
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: getPerformanceColor(subject.percentage) }}
+                      >
                         {subject.percentage.toFixed(1)}%
                       </p>
-                      <Badge variant={
-                        subject.percentage >= 90 ? "default" :
-                          subject.percentage >= 75 ? "secondary" :
-                            subject.percentage >= 60 ? "outline" : "destructive"
-                      }>
-                        {subject.percentage >= 90 ? "Excellent" :
-                          subject.percentage >= 75 ? "Good" :
-                            subject.percentage >= 60 ? "Average" : "Needs Improvement"}
+                      <Badge
+                        variant="outline"
+                        style={{
+                          backgroundColor: `${getPerformanceColor(subject.percentage)}20`,
+                          color: getPerformanceColor(subject.percentage),
+                          borderColor: `${getPerformanceColor(subject.percentage)}30`
+                        }}
+                      >
+                        {subject.percentage >= 91 ? "Excellent" :
+                          subject.percentage >= 81 ? "Very Good" :
+                            subject.percentage >= 71 ? "Good" :
+                              subject.percentage >= 61 ? "Above Average" :
+                                subject.percentage >= 51 ? "Average" :
+                                  subject.percentage >= 41 ? "Satisfactory" :
+                                    subject.percentage >= 33 ? "Needs Improvement" : "Poor"}
                       </Badge>
                     </div>
                   </div>
-                  <Progress value={subject.percentage} className="h-2" />
+                  <Progress
+                    value={subject.percentage}
+                    className="h-2"
+                    style={{ backgroundColor: `${getPerformanceColor(subject.percentage)}20` }}
+                  // Note: Progress bar color customization might need additional CSS or a custom component 
+                  // but we'll stick to standard usage here.
+                  />
+                  <div
+                    className="h-1 rounded-full transition-all"
+                    style={{
+                      width: `${subject.percentage}%`,
+                      backgroundColor: getPerformanceColor(subject.percentage),
+                      marginTop: "-10px" // Hack to show color on progress
+                    }}
+                  ></div>
                 </div>
               ))}
             </div>
@@ -349,10 +382,10 @@ export default async function ParentChildrenProgressPage({ searchParams: searchP
                       <p className="text-xl font-bold">
                         {result.marks}/{result.exam.totalMarks}
                       </p>
-                      <p className={`text-sm font-medium ${percentage >= 90 ? "text-green-600" :
-                        percentage >= 75 ? "text-blue-600" :
-                          percentage >= 60 ? "text-amber-600" : "text-red-600"
-                        }`}>
+                      <p
+                        className="text-sm font-bold"
+                        style={{ color: getPerformanceColor(percentage) }}
+                      >
                         {percentage.toFixed(1)}%
                       </p>
                     </div>

@@ -15,6 +15,7 @@ import {
   type DownloadReportCardInput,
   type GetClassComparisonInput,
 } from "@/lib/schemaValidation/parent-performance-schemas";
+import { calculateGrade } from "@/lib/utils/grade-calculator";
 import type {
   ExamResultData,
   ProgressReportData,
@@ -29,25 +30,25 @@ import type {
  */
 async function getCurrentParent() {
   const clerkUser = await currentUser();
-  
+
   if (!clerkUser) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: { id: clerkUser.id }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
     return null;
   }
-  
+
   const parent = await db.parent.findUnique({
     where: {
       userId: dbUser.id
     }
   });
-  
+
   return parent;
 }
 
@@ -64,18 +65,6 @@ async function verifyParentChildRelationship(
   return !!relationship;
 }
 
-/**
- * Helper function to calculate grade based on percentage
- */
-function calculateGrade(percentage: number): string {
-  if (percentage >= 90) return "A+";
-  if (percentage >= 80) return "A";
-  if (percentage >= 70) return "B+";
-  if (percentage >= 60) return "B";
-  if (percentage >= 50) return "C";
-  if (percentage >= 40) return "D";
-  return "F";
-}
 
 /**
  * Helper function to determine performance category
@@ -85,7 +74,7 @@ function getPerformanceCategory(
   classAverage: number
 ): "excellent" | "above_average" | "average" | "below_average" | "needs_improvement" {
   const difference = studentPercentage - classAverage;
-  
+
   if (studentPercentage >= 90) return "excellent";
   if (difference >= 10) return "above_average";
   if (difference >= -5) return "average";
@@ -98,15 +87,15 @@ function getPerformanceCategory(
  */
 function calculateTrend(dataPoints: number[]): "improving" | "declining" | "stable" {
   if (dataPoints.length < 2) return "stable";
-  
+
   const firstHalf = dataPoints.slice(0, Math.floor(dataPoints.length / 2));
   const secondHalf = dataPoints.slice(Math.floor(dataPoints.length / 2));
-  
+
   const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
   const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-  
+
   const difference = secondAvg - firstAvg;
-  
+
   if (difference > 5) return "improving";
   if (difference < -5) return "declining";
   return "stable";
@@ -120,43 +109,43 @@ export async function getExamResults(input: GetExamResultsInput) {
   try {
     // Validate input
     const validated = getExamResultsSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Build where clause
     const where: any = {
       studentId: validated.childId
     };
-    
+
     if (!validated.includeAbsent) {
       where.isAbsent = false;
     }
-    
+
     // Build exam filters
     const examWhere: any = {};
-    
+
     if (validated.termId) {
       examWhere.termId = validated.termId;
     }
-    
+
     if (validated.subjectId) {
       examWhere.subjectId = validated.subjectId;
     }
-    
+
     if (validated.examTypeId) {
       examWhere.examTypeId = validated.examTypeId;
     }
-    
+
     if (validated.startDate || validated.endDate) {
       examWhere.examDate = {};
       if (validated.startDate) {
@@ -166,14 +155,14 @@ export async function getExamResults(input: GetExamResultsInput) {
         examWhere.examDate.lte = validated.endDate;
       }
     }
-    
+
     if (Object.keys(examWhere).length > 0) {
       where.exam = examWhere;
     }
-    
+
     // Get total count
     const totalCount = await db.examResult.count({ where });
-    
+
     // Get paginated results
     const skip = (validated.page - 1) * validated.limit;
     const results = await db.examResult.findMany({
@@ -212,11 +201,11 @@ export async function getExamResults(input: GetExamResultsInput) {
         marks: true
       }
     });
-    
+
     const averageMap = new Map(
       classAverages.map(avg => [avg.examId, avg._avg.marks || 0])
     );
-    
+
     // Calculate ranks for each exam
     const rankPromises = results.map(async (result) => {
       const higherScores = await db.examResult.count({
@@ -228,15 +217,15 @@ export async function getExamResults(input: GetExamResultsInput) {
       });
       return { examId: result.examId, rank: higherScores + 1 };
     });
-    
+
     const ranks = await Promise.all(rankPromises);
     const rankMap = new Map(ranks.map(r => [r.examId, r.rank]));
-    
+
     // Format results
     const formattedResults: ExamResultData[] = results.map(result => {
       const percentage = (result.marks / result.exam.totalMarks) * 100;
       const grade = result.grade || calculateGrade(percentage);
-      
+
       return {
         id: result.id,
         examId: result.examId,
@@ -260,7 +249,7 @@ export async function getExamResults(input: GetExamResultsInput) {
         isPassed: result.marks >= result.exam.passingMarks
       };
     });
-    
+
     return {
       success: true,
       data: {
@@ -287,19 +276,19 @@ export async function getProgressReports(input: GetProgressReportsInput) {
   try {
     // Validate input
     const validated = getProgressReportsSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student with enrollment info
     const student = await db.student.findUnique({
       where: { id: validated.childId },
@@ -326,32 +315,32 @@ export async function getProgressReports(input: GetProgressReportsInput) {
         }
       }
     });
-    
+
     if (!student || !student.enrollments[0]) {
       return { success: false, message: "Student enrollment not found" };
     }
-    
+
     const currentEnrollment = student.enrollments[0];
-    
+
     // Build where clause for report cards
     const where: any = {
       studentId: validated.childId
     };
-    
+
     if (validated.termId) {
       where.termId = validated.termId;
     }
-    
+
     if (validated.academicYearId) {
       where.term = {
         academicYearId: validated.academicYearId
       };
     }
-    
+
     if (!validated.includeUnpublished) {
       where.isPublished = true;
     }
-    
+
     // Get report cards
     const reportCards = await db.reportCard.findMany({
       where,
@@ -389,7 +378,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
             }
           }
         });
-        
+
         // Group results by subject
         const subjectResultsMap = new Map<string, any[]>();
         examResults.forEach(result => {
@@ -399,13 +388,13 @@ export async function getProgressReports(input: GetProgressReportsInput) {
           }
           subjectResultsMap.get(subjectName)!.push(result);
         });
-        
+
         // Calculate subject-wise performance
         const subjectResults = Array.from(subjectResultsMap.entries()).map(([subject, results]) => {
           const totalMarks = results.reduce((sum, r) => sum + r.exam.totalMarks, 0);
           const obtainedMarks = results.reduce((sum, r) => sum + r.marks, 0);
           const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-          
+
           return {
             subject,
             marks: obtainedMarks,
@@ -414,7 +403,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
             grade: calculateGrade(percentage)
           };
         });
-        
+
         // Get attendance for this term
         const attendanceRecords = await db.studentAttendance.findMany({
           where: {
@@ -425,18 +414,18 @@ export async function getProgressReports(input: GetProgressReportsInput) {
             }
           }
         });
-        
+
         const totalDays = attendanceRecords.length;
         const presentDays = attendanceRecords.filter(a => a.status === "PRESENT").length;
         const absentDays = attendanceRecords.filter(a => a.status === "ABSENT").length;
         const lateDays = attendanceRecords.filter(a => a.status === "LATE").length;
         const attendancePercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-        
+
         // Identify strengths and areas for improvement
         const sortedSubjects = [...subjectResults].sort((a, b) => b.percentage - a.percentage);
         const strengths = sortedSubjects.slice(0, 3).map(s => s.subject);
         const areasForImprovement = sortedSubjects.slice(-3).filter(s => s.percentage < 60).map(s => s.subject);
-        
+
         return {
           id: reportCard.id,
           student: {
@@ -486,7 +475,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
         };
       })
     );
-    
+
     return {
       success: true,
       data: {
@@ -507,19 +496,19 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
   try {
     // Validate input
     const validated = getPerformanceAnalyticsSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student with enrollment info
     const student = await db.student.findUnique({
       where: { id: validated.childId },
@@ -545,13 +534,13 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
         }
       }
     });
-    
+
     if (!student || !student.enrollments[0]) {
       return { success: false, message: "Student enrollment not found" };
     }
-    
+
     const currentEnrollment = student.enrollments[0];
-    
+
     // Get all exam results for the student
     const allResults = await db.examResult.findMany({
       where: {
@@ -576,49 +565,49 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
         }
       }
     });
-    
+
     // Calculate overall performance
     const totalExams = allResults.length;
     const totalPercentage = allResults.reduce((sum, r) => {
       return sum + (r.marks / r.exam.totalMarks) * 100;
     }, 0);
     const averagePercentage = totalExams > 0 ? totalPercentage / totalExams : 0;
-    
+
     // Group by subject to find strong and weak subjects
     const subjectPerformanceMap = new Map<string, number[]>();
     allResults.forEach(result => {
       const subjectName = result.exam.subject.name;
       const percentage = (result.marks / result.exam.totalMarks) * 100;
-      
+
       if (!subjectPerformanceMap.has(subjectName)) {
         subjectPerformanceMap.set(subjectName, []);
       }
       subjectPerformanceMap.get(subjectName)!.push(percentage);
     });
-    
+
     const subjectAverages = Array.from(subjectPerformanceMap.entries()).map(([subject, percentages]) => ({
       subject,
       average: percentages.reduce((a, b) => a + b, 0) / percentages.length
     }));
-    
+
     subjectAverages.sort((a, b) => b.average - a.average);
     const strongSubjects = subjectAverages.slice(0, 3).map(s => s.subject);
     const weakSubjects = subjectAverages.slice(-3).filter(s => s.average < 60).map(s => s.subject);
-    
+
     // Get attendance percentage
     const attendanceRecords = await db.studentAttendance.findMany({
       where: {
         studentId: validated.childId
       }
     });
-    
+
     const totalAttendanceDays = attendanceRecords.length;
     const presentDays = attendanceRecords.filter(a => a.status === "PRESENT").length;
     const attendancePercentage = totalAttendanceDays > 0 ? (presentDays / totalAttendanceDays) * 100 : 0;
 
     // Get current term performance
     let currentTermPerformance: TermPerformance | null = null;
-    
+
     const currentTerm = await db.term.findFirst({
       where: {
         academicYearId: currentEnrollment.class.academicYearId,
@@ -626,10 +615,10 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
         endDate: { gte: new Date() }
       }
     });
-    
+
     if (currentTerm) {
       const termResults = allResults.filter(r => r.exam.termId === currentTerm.id);
-      
+
       if (termResults.length > 0) {
         const termSubjectMap = new Map<string, any[]>();
         termResults.forEach(result => {
@@ -639,16 +628,16 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
           }
           termSubjectMap.get(subjectId)!.push(result);
         });
-        
+
         const subjects: SubjectPerformance[] = Array.from(termSubjectMap.entries()).map(([subjectId, results]) => {
           const subject = results[0].exam.subject;
           const totalMarks = results.reduce((sum, r) => sum + r.exam.totalMarks, 0);
           const obtainedMarks = results.reduce((sum, r) => sum + r.marks, 0);
           const averagePercentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-          
+
           const percentages = results.map(r => (r.marks / r.exam.totalMarks) * 100);
           const trend = calculateTrend(percentages);
-          
+
           return {
             subjectId: subject.id,
             subjectName: subject.name,
@@ -681,11 +670,11 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
             }))
           };
         });
-        
+
         const termTotalMarks = termResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
         const termObtainedMarks = termResults.reduce((sum, r) => sum + r.marks, 0);
         const termPercentage = termTotalMarks > 0 ? (termObtainedMarks / termTotalMarks) * 100 : 0;
-        
+
         currentTermPerformance = {
           termId: currentTerm.id,
           termName: currentTerm.name,
@@ -699,10 +688,10 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
         };
       }
     }
-    
+
     // Get term history if requested
     let termHistory: TermPerformance[] = [];
-    
+
     if (validated.includeTermHistory) {
       const allTerms = await db.term.findMany({
         where: {
@@ -712,15 +701,15 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
           startDate: 'asc'
         }
       });
-      
+
       const termHistoryWithNulls = await Promise.all(
         allTerms.map(async (term) => {
           const termResults = allResults.filter(r => r.exam.termId === term.id);
-          
+
           if (termResults.length === 0) {
             return null;
           }
-          
+
           const termSubjectMap = new Map<string, any[]>();
           termResults.forEach(result => {
             const subjectId = result.exam.subject.id;
@@ -729,16 +718,16 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
             }
             termSubjectMap.get(subjectId)!.push(result);
           });
-          
+
           const subjects: SubjectPerformance[] = Array.from(termSubjectMap.entries()).map(([subjectId, results]) => {
             const subject = results[0].exam.subject;
             const totalMarks = results.reduce((sum, r) => sum + r.exam.totalMarks, 0);
             const obtainedMarks = results.reduce((sum, r) => sum + r.marks, 0);
             const averagePercentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-            
+
             const percentages = results.map(r => (r.marks / r.exam.totalMarks) * 100);
             const trend = calculateTrend(percentages);
-            
+
             return {
               subjectId: subject.id,
               subjectName: subject.name,
@@ -752,11 +741,11 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
               exams: []
             };
           });
-          
+
           const termTotalMarks = termResults.reduce((sum, r) => sum + r.exam.totalMarks, 0);
           const termObtainedMarks = termResults.reduce((sum, r) => sum + r.marks, 0);
           const termPercentage = termTotalMarks > 0 ? (termObtainedMarks / termTotalMarks) * 100 : 0;
-          
+
           return {
             termId: term.id,
             termName: term.name,
@@ -782,31 +771,31 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
         date: Date;
       }>;
     }> = [];
-    
+
     if (validated.includeSubjectTrends) {
       const subjectTrendMap = new Map<string, any[]>();
-      
+
       allResults.forEach(result => {
         const subjectName = result.exam.subject.name;
         const percentage = (result.marks / result.exam.totalMarks) * 100;
-        
+
         if (!subjectTrendMap.has(subjectName)) {
           subjectTrendMap.set(subjectName, []);
         }
-        
+
         subjectTrendMap.get(subjectName)!.push({
           term: result.exam.term.name,
           percentage,
           date: result.exam.examDate
         });
       });
-      
+
       subjectTrends = Array.from(subjectTrendMap.entries()).map(([subjectName, data]) => ({
         subjectName,
         data: data.sort((a, b) => a.date.getTime() - b.date.getTime())
       }));
     }
-    
+
     const analytics: PerformanceAnalytics = {
       student: {
         id: student.id,
@@ -826,7 +815,7 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
       termHistory,
       subjectTrends
     };
-    
+
     return {
       success: true,
       data: analytics
@@ -845,19 +834,19 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
   try {
     // Validate input
     const validated = downloadReportCardSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get report card with all details
     const reportCard = await db.reportCard.findUnique({
       where: {
@@ -894,15 +883,15 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
         }
       }
     });
-    
+
     if (!reportCard) {
       return { success: false, message: "Report card not found" };
     }
-    
+
     if (!reportCard.isPublished) {
       return { success: false, message: "Report card is not yet published" };
     }
-    
+
     // Get exam results for this term
     const examResults = await db.examResult.findMany({
       where: {
@@ -927,7 +916,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
         }
       }
     });
-    
+
     // Group results by subject
     const subjectResultsMap = new Map<string, any[]>();
     examResults.forEach(result => {
@@ -937,13 +926,13 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
       }
       subjectResultsMap.get(subjectName)!.push(result);
     });
-    
+
     // Calculate subject-wise performance
     const subjectResults = Array.from(subjectResultsMap.entries()).map(([subject, results]) => {
       const totalMarks = results.reduce((sum, r) => sum + r.exam.totalMarks, 0);
       const obtainedMarks = results.reduce((sum, r) => sum + r.marks, 0);
       const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-      
+
       return {
         subject,
         marks: obtainedMarks,
@@ -958,7 +947,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
         }))
       };
     });
-    
+
     // Get attendance for this term
     const attendanceRecords = await db.studentAttendance.findMany({
       where: {
@@ -969,12 +958,12 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
         }
       }
     });
-    
+
     const totalDays = attendanceRecords.length;
     const presentDays = attendanceRecords.filter(a => a.status === "PRESENT").length;
     const absentDays = attendanceRecords.filter(a => a.status === "ABSENT").length;
     const lateDays = attendanceRecords.filter(a => a.status === "LATE").length;
-    
+
     // Prepare report card data for PDF generation
     const reportCardData = {
       student: {
@@ -1013,7 +1002,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
       },
       publishDate: reportCard.publishDate
     };
-    
+
     // Note: Actual PDF generation would be done by a PDF utility
     // For now, return the report card data
     return {
@@ -1035,19 +1024,19 @@ export async function getClassComparison(input: GetClassComparisonInput) {
   try {
     // Validate input
     const validated = getClassComparisonSchema.parse(input);
-    
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     // Verify parent-child relationship
     const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
-    
+
     // Get student's exam result
     const studentResult = await db.examResult.findUnique({
       where: {
@@ -1064,11 +1053,11 @@ export async function getClassComparison(input: GetClassComparisonInput) {
         }
       }
     });
-    
+
     if (!studentResult) {
       return { success: false, message: "Exam result not found" };
     }
-    
+
     // Get all results for this exam (excluding absent students)
     const allResults = await db.examResult.findMany({
       where: {
@@ -1079,11 +1068,11 @@ export async function getClassComparison(input: GetClassComparisonInput) {
         marks: true
       }
     });
-    
+
     if (allResults.length === 0) {
       return { success: false, message: "No class data available" };
     }
-    
+
     // Calculate class statistics
     const marks = allResults.map(r => r.marks);
     const totalStudents = marks.length;
@@ -1091,32 +1080,32 @@ export async function getClassComparison(input: GetClassComparisonInput) {
     const average = sum / totalStudents;
     const highest = Math.max(...marks);
     const lowest = Math.min(...marks);
-    
+
     // Calculate median
     const sortedMarks = [...marks].sort((a, b) => a - b);
     const median = totalStudents % 2 === 0
       ? (sortedMarks[totalStudents / 2 - 1] + sortedMarks[totalStudents / 2]) / 2
       : sortedMarks[Math.floor(totalStudents / 2)];
-    
+
     // Calculate pass/fail counts
     const passedStudents = marks.filter(m => m >= studentResult.exam.passingMarks).length;
     const failedStudents = totalStudents - passedStudents;
-    
+
     // Calculate student's rank
     const higherScores = marks.filter(m => m > studentResult.marks).length;
     const studentRank = higherScores + 1;
-    
+
     // Calculate percentile
     const lowerScores = marks.filter(m => m < studentResult.marks).length;
     const percentile = (lowerScores / totalStudents) * 100;
-    
+
     // Calculate student's percentage
     const studentPercentage = (studentResult.marks / studentResult.exam.totalMarks) * 100;
     const classAveragePercentage = (average / studentResult.exam.totalMarks) * 100;
-    
+
     // Determine performance category
     const performanceCategory = getPerformanceCategory(studentPercentage, classAveragePercentage);
-    
+
     const comparisonData: ClassComparisonData = {
       examId: studentResult.examId,
       examTitle: studentResult.exam.title,
@@ -1137,7 +1126,7 @@ export async function getClassComparison(input: GetClassComparisonInput) {
       percentile,
       performanceCategory
     };
-    
+
     return {
       success: true,
       data: comparisonData

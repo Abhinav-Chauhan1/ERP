@@ -285,7 +285,22 @@ export async function getClassById(id: string) {
         status: enrollment.status
       })),
       // Group timetable by day
-      timetable: Object.values(classDetails.timetableSlots.reduce((acc: any, slot) => {
+      timetable: Object.values(classDetails.timetableSlots.reduce<Record<string, {
+        day: string; periods: Array<{
+          id: string;
+          time: string;
+          startTime: Date;
+          endTime: Date;
+          subject: string;
+          subjectId: string;
+          teacher: string;
+          teacherId: string;
+          room: string;
+          roomId: string | null;
+          section: string | undefined;
+          sectionId: string | null;
+        }>
+      }>>((acc, slot) => {
         if (!acc[slot.day]) {
           acc[slot.day] = {
             day: slot.day,
