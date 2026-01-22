@@ -12,8 +12,9 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { UserRole, EnrollmentStatus } from "@prisma/client";
+import { UserRole, EnrollmentStatus, CertificateType } from "@prisma/client";
 import { PromotionService } from "@/lib/services/promotionService";
+import { generateBulkCertificates, CertificateGenerationData } from "@/lib/services/certificateGenerationService";
 
 // ============================================================================
 // Types
@@ -189,21 +190,136 @@ async function sendGraduationNotifications(
  */
 async function generateGraduationCertificates(
   studentIds: string[],
-  graduationDate: Date
+  graduationDate: Date,
+  issuedBy: string
 ): Promise<number> {
   try {
-    // This is a placeholder for certificate generation
-    // In a real implementation, this would integrate with a certificate generation service
-    // For now, we'll just log the request
-    console.log(`Certificate generation requested for ${studentIds.length} students`);
+    // 1. Fetch student details needed for certificates
+    const students = await db.student.findMany({
+      where: {
+        id: { in: studentIds },
+      },
+      include: {
+        user: true,
+        enrollments: {
+          // We assume the student is being graduated, so we might check for GRADUATED status
+          // or the latest enrollment. Since they might have just been marked GRADUATED,
+          // we should look for that.
+          orderBy: {
+            updatedAt: 'desc'
+          },
+          take: 1,
+          include: {
+            class: {
+              include: {
+                academicYear: true,
+              },
+            },
+            section: true,
+          },
+        },
+      },
+    });
+
+    if (students.length === 0) {
+      console.log("No students found for certificate generation");
+      return 0;
+    }
+
+    // 2. Find or create a suitable certificate template
+    let template = await db.certificateTemplate.findFirst({
+      where: {
+        OR: [
+          { name: "Graduation Certificate" },
+          { type: CertificateType.COMPLETION, isActive: true },
+        ],
+      },
+      orderBy: {
+        createdAt: 'desc' // Prefer most recently created if multiple match
+      }
+    });
+
+    if (!template) {
+      // Create a default template if none exists
+      template = await db.certificateTemplate.create({
+        data: {
+          name: "Graduation Certificate",
+          description: "Default graduation certificate template",
+          type: CertificateType.COMPLETION,
+          category: "Academic",
+          layout: JSON.stringify({
+            headerHeight: 40,
+            headerWidth: 80,
+            contentStartY: 70,
+            contentStartX: 20,
+            footerHeight: 20,
+            footerWidth: 100,
+          }),
+          styling: JSON.stringify({
+            fontSize: 14,
+            textColor: "#000000",
+            textAlign: "center",
+            fontFamily: "helvetica",
+          }),
+          content: "This is to certify that {{studentName}} (Admission No: {{admissionId}}) has successfully completed their studies in Class {{className}} Section {{sectionName}} for the academic year {{academicYear}}.\n\nGraduation Date: {{graduationDate}}\n\nWe wish them all the best for their future endeavors.",
+          mergeFields: JSON.stringify([
+            "studentName",
+            "admissionId",
+            "className",
+            "sectionName",
+            "academicYear",
+            "graduationDate",
+          ]),
+          pageSize: "A4",
+          orientation: "LANDSCAPE",
+          isActive: true,
+          createdBy: issuedBy,
+        },
+      });
+    }
+
+    // 3. Prepare data for bulk generation
+    const certificateData: CertificateGenerationData[] = students.map((student) => {
+      const enrollment = student.enrollments[0];
+      const studentName = `${student.user.firstName} ${student.user.lastName}`;
+
+      return {
+        studentId: student.id,
+        studentName: studentName,
+        data: {
+          studentName: studentName,
+          admissionId: student.admissionId,
+          className: enrollment?.class?.name || "Unknown Class",
+          sectionName: enrollment?.section?.name || "",
+          academicYear: enrollment?.class?.academicYear?.name || "Unknown Year",
+          graduationDate: graduationDate.toLocaleDateString(),
+          // Add any other fields that might be useful in custom templates
+          rollNumber: enrollment?.rollNumber || "",
+          fatherName: student.fatherName || "",
+          motherName: student.motherName || "",
+        },
+      };
+    });
+
+    // 4. Generate certificates
+    const result = await generateBulkCertificates({
+      templateId: template.id,
+      students: certificateData,
+      issuedBy: issuedBy,
+    });
+
+    if (!result.success && result.totalGenerated === 0) {
+      console.error("Certificate generation failed:", result.errors);
+      return 0;
+    }
     
-    // TODO: Integrate with certificate generation service
-    // - Fetch certificate template
-    // - Generate PDF certificates
-    // - Store certificate URLs in database
-    // - Return count of successfully generated certificates
-    
-    return studentIds.length;
+    // Log partial failures if any
+    if (result.errors.length > 0) {
+      console.warn("Some certificates failed to generate:", result.errors);
+    }
+
+    return result.totalGenerated;
+
   } catch (error) {
     console.error("Error generating certificates:", error);
     return 0;
@@ -363,7 +479,8 @@ export async function markStudentsAsGraduated(
       );
       certificatesGenerated = await generateGraduationCertificates(
         successfulStudentIds,
-        graduationDate
+        graduationDate,
+        authCheck.userId! // Pass the authorized user ID
       );
     }
 
