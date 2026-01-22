@@ -11,91 +11,107 @@ export async function getTeacherSubjects() {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
 
-    // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
-      where: {
-        user: { id: userId },
-      },
-      select: {
-        id: true,
-      },
+      where: { user: { id: userId } },
+      select: { id: true },
     });
 
     if (!teacher) {
       throw new Error("Teacher not found");
     }
 
-    // Get all subjects taught by this teacher
     const subjectTeachers = await db.subjectTeacher.findMany({
-      where: {
-        teacherId: teacher.id,
-      },
+      where: { teacherId: teacher.id },
       include: {
         subject: {
           include: {
             syllabus: {
+              where: { status: "PUBLISHED", isActive: true },
               include: {
-                units: true,
+                modules: {
+                  orderBy: { order: 'asc' },
+                  include: {
+                    subModules: {
+                      include: {
+                        progress: {
+                          where: { teacherId: teacher.id }
+                        }
+                      }
+                    }
+                  }
+                },
               },
             },
             classes: {
-              include: {
-                class: true,
-              },
+              include: { class: true },
             },
           },
         },
       },
     });
 
-    // Transform data for the frontend
     const subjects = subjectTeachers.map((st) => {
-      // Calculate progress based on syllabus units
-      const allUnits = st.subject.syllabus.flatMap(s => s.units) || [];
-      const totalTopics = allUnits.length;
-      const completedTopics = 0; // In a real app, track this in the database
+      // Use the most recent published syllabus or the first one
+      const activeSyllabus = st.subject.syllabus[0];
+
+      const allModules = activeSyllabus?.modules || [];
+      const allSubModules = allModules.flatMap(m => m.subModules);
+
+      const totalTopics = allSubModules.length;
+      const completedTopics = allSubModules.filter(sm => sm.progress.some(p => p.completed)).length;
       const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
-      // Get classes where this subject is taught
       const classes = st.subject.classes.map(sc => ({
         id: sc.class.id,
         name: sc.class.name,
-        section: "", // This would come from class sections in a real implementation
+        section: "",
       }));
 
-      // Count total students (simplified - would need a more complex query in reality)
-      const totalStudents = classes.length * 20; // Assuming average 20 students per class
+      const totalStudents = classes.length * 20;
 
       return {
         id: st.subject.id,
         name: st.subject.name,
         code: st.subject.code,
         grade: classes.map(c => c.name).join(", "),
-        sections: ["A", "B"], // This would come from class sections in a real implementation
+        sections: ["A", "B"],
         totalStudents,
         totalClasses: classes.length,
-        completedClasses: Math.floor(classes.length * 0.6), // Simplified calculation
+        completedClasses: 0,
         totalTopics,
         completedTopics,
         progress,
-        syllabus: st.subject.syllabus.map(s => ({
-          id: s.id,
-          title: s.title,
-          units: s.units.map(u => ({
-            id: u.id,
-            title: u.title,
-            order: u.order,
-            totalTopics: 8, // Simplified - would be tracked in the database
-            completedTopics: Math.floor(Math.random() * 8), // Simplified - would be tracked in the database
-            status: Math.random() > 0.7 ? "completed" : Math.random() > 0.3 ? "in-progress" : "not-started",
-            lastUpdated: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
-          })),
-        })),
+        syllabus: activeSyllabus ? [{
+          id: activeSyllabus.id,
+          title: activeSyllabus.title,
+          modules: activeSyllabus.modules.map(m => {
+            const moduleSubModules = m.subModules;
+            const moduleTotal = moduleSubModules.length;
+            const moduleCompleted = moduleSubModules.filter(sm => sm.progress.some(p => p.completed)).length;
+
+            return {
+              id: m.id,
+              title: m.title,
+              order: m.order,
+              chapterNumber: m.chapterNumber,
+              term: m.term,
+              totalTopics: moduleTotal,
+              completedTopics: moduleCompleted,
+              subModules: m.subModules.map(sm => ({
+                id: sm.id,
+                title: sm.title,
+                isCompleted: sm.progress.some(p => p.completed)
+              })),
+              status: moduleCompleted === moduleTotal && moduleTotal > 0 ? "completed" : moduleCompleted > 0 ? "in-progress" : "not-started",
+              lastUpdated: new Date().toISOString(), // In real app, check progress updatedAt
+            };
+          }),
+        }] : [],
         classes: classes,
       };
     });
@@ -114,7 +130,7 @@ export async function getTeacherSubjectDetails(subjectId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
@@ -270,21 +286,56 @@ export async function getTeacherSubjectDetails(subjectId: string) {
 /**
  * Update syllabus unit progress
  */
-export async function updateSyllabusUnitProgress(unitId: string, completedTopics: number) {
+// Update syllabus sub-module progress
+export async function updateSubModuleProgress(subModuleId: string, completed: boolean) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }
 
-    // In a real app, you would update a progress tracking table
-    // For now, we'll just return success
-    
+    const teacher = await db.teacher.findFirst({
+      where: { user: { id: userId } },
+    });
+
+    if (!teacher) {
+      throw new Error("Teacher not found");
+    }
+
+    // Toggle or set progress
+    if (completed) {
+      await db.subModuleProgress.upsert({
+        where: {
+          subModuleId_teacherId: {
+            subModuleId,
+            teacherId: teacher.id
+          }
+        },
+        create: {
+          subModuleId,
+          teacherId: teacher.id,
+          completed: true,
+          completedAt: new Date(),
+        },
+        update: {
+          completed: true,
+          completedAt: new Date(),
+        }
+      });
+    } else {
+      await db.subModuleProgress.deleteMany({
+        where: {
+          subModuleId,
+          teacherId: teacher.id
+        }
+      });
+    }
+
     revalidatePath('/teacher/teaching/subjects');
     revalidatePath('/teacher/teaching/syllabus');
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update syllabus progress:", error);
@@ -299,7 +350,7 @@ export async function getSubjectSyllabusUnits(subjectId: string) {
   try {
     const session = await auth();
     const userId = session?.user?.id;
-    
+
     if (!userId) {
       throw new Error("Unauthorized");
     }

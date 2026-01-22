@@ -28,6 +28,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 
 export default function ReceiptReportsPage() {
@@ -209,10 +210,10 @@ export default function ReceiptReportsPage() {
             {/* Report Date */}
             <div className="space-y-2">
               <Label>Report Date</Label>
-              <Input
-                type="date"
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
+              <DatePicker
+                date={reportDate ? new Date(reportDate) : undefined}
+                onSelect={(date) => setReportDate(date ? date.toISOString().split("T")[0] : "")}
+                placeholder="Select date"
               />
               <p className="text-xs text-muted-foreground">
                 {reportType === "daily" && "Report for this specific day"}

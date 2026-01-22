@@ -6,11 +6,11 @@ import * as z from "zod";
 export const moduleSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
-  chapterNumber: z.coerce.number().min(1, "Chapter number must be at least 1"),
-  order: z.coerce.number().min(1, "Order must be at least 1"),
-  syllabusId: z.string({
-    required_error: "Syllabus ID is required",
-  }),
+  chapterNumber: z.coerce.number().int().positive("Chapter number must be positive"),
+  order: z.coerce.number().int().min(1, "Order must be at least 1"),
+  syllabusId: z.string().min(1, "Syllabus ID is required"),
+  term: z.string().optional(),
+  weightage: z.coerce.number().optional(),
 });
 
 /**

@@ -293,7 +293,7 @@ export async function getModulesByCourse(courseId: string) {
 
     const { student } = studentData;
 
-    // Get enrollment to check access
+    // Get enrollment and Course Details to check for syllabus
     const enrollment = await db.courseEnrollment.findFirst({
       where: {
         studentId: student.id,
@@ -306,7 +306,66 @@ export async function getModulesByCourse(courseId: string) {
       return { success: false, message: "Not enrolled in this course" };
     }
 
-    // Fetch modules with lessons and progress
+    const course = await db.course.findUnique({
+      where: { id: validatedCourseId },
+      select: { subjectId: true }
+    });
+
+    // Check if there is a linked syllabus
+    let syllabus = null;
+    if (course?.subjectId) {
+      syllabus = await db.syllabus.findFirst({
+        where: { subjectId: course.subjectId },
+        include: {
+          modules: {
+            include: {
+              subModules: {
+                include: {
+                  studentProgress: {
+                    where: { enrollmentId: enrollment.id }
+                  }
+                },
+                orderBy: { order: 'asc' }
+              }
+            },
+            orderBy: { order: 'asc' }
+          }
+        }
+      });
+    }
+
+    if (syllabus && syllabus.modules.length > 0) {
+      // Transform Syllabus Modules to Course Modules format
+      const transformedModules = syllabus.modules.map(module => ({
+        id: module.id,
+        title: module.title,
+        description: module.description,
+        sequence: module.order,
+        lessons: module.subModules.map(subModule => {
+          const progress = subModule.studentProgress[0] || { status: 'NOT_STARTED', progress: 0 };
+          return {
+            id: subModule.id,
+            title: subModule.title,
+            description: subModule.description,
+            sequence: subModule.order,
+            duration: 0, // Duration not currently in SubModule, default to 0
+            isCompleted: progress.status === 'COMPLETED', // Helper for frontend
+            progress: {
+              status: progress.status,
+              progress: progress.progress,
+              completedAt: progress.completedAt
+            }
+          };
+        })
+      }));
+
+      return {
+        success: true,
+        data: transformedModules
+      };
+    }
+
+    // Fallback to legacy CourseModule approach if no syllabus or modules found
     const modules = await db.courseModule.findMany({
       where: { courseId: validatedCourseId },
       include: {
@@ -344,6 +403,10 @@ export async function getModulesByCourse(courseId: string) {
  * Get lesson by ID with progress
  * Requirements: AC2
  */
+/**
+ * Get lesson by ID with progress
+ * Requirements: AC2
+ */
 export async function getLessonById(lessonId: string, courseId: string) {
   try {
     // Validate input
@@ -371,7 +434,132 @@ export async function getLessonById(lessonId: string, courseId: string) {
       return { success: false, message: "Not enrolled in this course" };
     }
 
-    // Fetch lesson with content and progress
+    // Try finding as SubModule first (Unified System)
+    const subModule = await db.subModule.findUnique({
+      where: { id: validatedLessonId },
+      include: {
+        module: {
+          include: {
+            subModules: {
+              orderBy: { order: 'asc' },
+              select: { id: true, title: true, order: true }
+            },
+            syllabus: {
+              select: { title: true } // Assuming Syllabus title is proxy for Course title in breadcrumb
+            }
+          }
+        },
+        documents: true,
+        studentProgress: {
+          where: { enrollmentId: enrollment.id }
+        }
+      }
+    });
+
+    if (subModule) {
+      // Construct response in the shape expected by frontend, but using SubModule data
+      const lessonProgress = subModule.studentProgress[0] || {
+        status: LessonProgressStatus.NOT_STARTED,
+        progress: 0,
+        timeSpent: 0,
+        completedAt: null
+      };
+
+      const moduleSubModules = subModule.module.subModules;
+      const currentIndex = moduleSubModules.findIndex(sm => sm.id === validatedLessonId);
+      const previousLesson = currentIndex > 0 ? moduleSubModules[currentIndex - 1] : null;
+      const nextLesson = currentIndex < moduleSubModules.length - 1 ? moduleSubModules[currentIndex + 1] : null;
+
+      // Update last accessed time
+      await db.courseEnrollment.update({
+        where: { id: enrollment.id },
+        data: { lastAccessedAt: new Date() }
+      });
+
+      if (subModule.studentProgress[0]) {
+        await db.lessonProgress.update({
+          where: { id: subModule.studentProgress[0].id },
+          data: { lastAccessedAt: new Date() }
+        });
+      }
+
+      // Map SubModule to "Lesson" shape
+      const contents = [];
+
+      // Add description as TEXT content if available
+      if (subModule.description) {
+        contents.push({
+          id: `desc-${subModule.id}`,
+          contentType: "TEXT",
+          title: "Overview",
+          url: null,
+          content: subModule.description,
+          duration: 0,
+          sequence: 0,
+          isDownloadable: false
+        });
+      }
+
+      // Map documents to contents
+      if (subModule.documents && subModule.documents.length > 0) {
+        subModule.documents.forEach((doc, index) => {
+          // Simple mapping of MIME types or extensions if 'type' is not strict enum
+          // Assuming 'doc.type' is somewhat reliable, else default to DOCUMENT
+          let type = "DOCUMENT";
+          const lowerType = doc.type.toLowerCase();
+          if (lowerType.includes("video")) type = "VIDEO";
+          else if (lowerType.includes("image")) type = "IMAGE";
+          else if (lowerType.includes("pdf")) type = "PDF";
+          else if (lowerType.includes("text")) type = "TEXT";
+
+          contents.push({
+            id: doc.id,
+            contentType: type,
+            title: doc.title,
+            url: doc.url,
+            content: null,
+            duration: 0,
+            sequence: index + 1,
+            isDownloadable: true // Default to true for documents
+          });
+        });
+      }
+
+      return {
+        success: true,
+        data: {
+          lesson: {
+            id: subModule.id,
+            title: subModule.title,
+            description: subModule.description,
+            lessonType: "TEXT", // Default for SubModule
+            content: subModule.description, // Fallback for content
+            resources: "", // Not direct mapping
+            duration: 0,
+            sequence: subModule.order,
+            module: {
+              course: {
+                id: validatedCourseId, // Maintain context
+                title: subModule.module.syllabus.title
+              },
+              lessons: moduleSubModules.map(sm => ({
+                id: sm.id,
+                title: sm.title,
+                sequence: sm.order
+              }))
+            },
+            contents: contents
+          },
+          progress: lessonProgress,
+          navigation: {
+            previousLesson,
+            nextLesson
+          }
+        }
+      };
+    }
+
+    // FALLBACK: Legacy CourseLesson Logic
     const lesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
       include: {
@@ -406,7 +594,6 @@ export async function getLessonById(lessonId: string, courseId: string) {
       return { success: false, message: "Lesson not found" };
     }
 
-    // Get lesson progress or create default
     const lessonProgress = lesson.progress[0] || {
       status: LessonProgressStatus.NOT_STARTED,
       progress: 0,
@@ -414,7 +601,6 @@ export async function getLessonById(lessonId: string, courseId: string) {
       completedAt: null
     };
 
-    // Find previous and next lessons
     const currentSequence = lesson.sequence;
     const moduleLessons = lesson.module.lessons;
 
@@ -422,13 +608,11 @@ export async function getLessonById(lessonId: string, courseId: string) {
     const previousLesson = currentIndex > 0 ? moduleLessons[currentIndex - 1] : null;
     const nextLesson = currentIndex < moduleLessons.length - 1 ? moduleLessons[currentIndex + 1] : null;
 
-    // Update last accessed time
     await db.courseEnrollment.update({
       where: { id: enrollment.id },
       data: { lastAccessedAt: new Date() }
     });
 
-    // Update lesson progress last accessed time
     if (lesson.progress[0]) {
       await db.lessonProgress.update({
         where: { id: lesson.progress[0].id },
@@ -441,6 +625,7 @@ export async function getLessonById(lessonId: string, courseId: string) {
       data: {
         lesson: {
           ...lesson,
+          lessonType: "TEXT", // Default for legacy if not present in schema, or map if it is
           progress: undefined
         },
         progress: lessonProgress,
@@ -477,41 +662,28 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
 
     const { student } = studentData;
 
-    // Verify enrollment belongs to student
-    const enrollment = await db.courseEnrollment.findUnique({
-      where: { id: validatedEnrollmentId },
-      include: {
-        course: {
-          include: {
-            modules: {
-              include: {
-                lessons: {
-                  select: { id: true }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    if (!enrollment || enrollment.studentId !== student.id) {
-      return { success: false, message: "Unauthorized" };
-    }
+    // Check if what kind of ID this is (SubModule or Lesson)
+    // We can infer by checking which table it exists in
+    const isSubModule = await db.subModule.findUnique({ where: { id: validatedLessonId } });
 
     // Find or create lesson progress
+    // Need to handle both cases dynamically
+    const query = {
+      enrollmentId: validatedEnrollmentId,
+      ...(isSubModule ? { subModuleId: validatedLessonId } : { lessonId: validatedLessonId })
+    };
+
     let lessonProgress = await db.lessonProgress.findFirst({
-      where: {
-        enrollmentId: validatedEnrollmentId,
-        lessonId: validatedLessonId
-      }
+      where: query
     });
 
     if (!lessonProgress) {
       lessonProgress = await db.lessonProgress.create({
         data: {
           enrollmentId: validatedEnrollmentId,
-          lessonId: validatedLessonId,
+          // Conditionally set the ID field
+          lessonId: isSubModule ? undefined : validatedLessonId,
+          subModuleId: isSubModule ? validatedLessonId : undefined,
           status: LessonProgressStatus.COMPLETED,
           progress: 100,
           timeSpent: 0,
@@ -531,10 +703,41 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
     }
 
     // Recalculate course progress
-    const totalLessons = enrollment.course.modules.reduce(
-      (sum, module) => sum + module.lessons.length,
-      0
-    );
+    // This is complex because we need to know the total items.
+    // Simplifying: If we are in Unified mode, we should really count SubModules in the Syllabus.
+    // If we are in Legacy mode, we count CourseLessons.
+
+    // Fetch Enrollment to get CourseId
+    const enrollment = await db.courseEnrollment.findUnique({
+      where: { id: validatedEnrollmentId },
+      include: { course: true }
+    });
+
+    if (!enrollment) return { success: false, message: "Enrollment not found" };
+
+    let totalItems = 0;
+
+    // Determine system type based on Course having a subjectId (Unified) or not (Legacy primarily)
+    if (enrollment.course.subjectId) {
+      // Unified: Count SubModules
+      const syllabus = await db.syllabus.findFirst({
+        where: { subjectId: enrollment.course.subjectId },
+        include: { modules: { include: { subModules: true } } }
+      });
+
+      if (syllabus) {
+        totalItems = syllabus.modules.reduce((sum, m) => sum + m.subModules.length, 0);
+      }
+    }
+
+    if (totalItems === 0) {
+      // Fallback to legacy
+      const course = await db.course.findUnique({
+        where: { id: enrollment.courseId },
+        include: { modules: { include: { lessons: true } } }
+      });
+      totalItems = course?.modules.reduce((sum, m) => sum + m.lessons.length, 0) || 0;
+    }
 
     const completedLessons = await db.lessonProgress.count({
       where: {
@@ -543,15 +746,15 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
       }
     });
 
-    const courseProgress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+    const courseProgress = totalItems > 0 ? (completedLessons / totalItems) * 100 : 0;
 
     // Update enrollment progress
     await db.courseEnrollment.update({
       where: { id: validatedEnrollmentId },
       data: {
         progress: courseProgress,
-        completedAt: courseProgress === 100 ? new Date() : null,
-        status: courseProgress === 100 ? 'COMPLETED' : 'ACTIVE'
+        completedAt: courseProgress >= 100 ? new Date() : null,
+        status: courseProgress >= 100 ? 'COMPLETED' : 'ACTIVE'
       }
     });
 
@@ -607,12 +810,15 @@ export async function updateLessonProgress(
       return { success: false, message: "Unauthorized" };
     }
 
+    const isSubModule = await db.subModule.findUnique({ where: { id: validatedLessonId } });
+    const query = {
+      enrollmentId: validatedEnrollmentId,
+      ...(isSubModule ? { subModuleId: validatedLessonId } : { lessonId: validatedLessonId })
+    };
+
     // Find or create lesson progress
     let lessonProgress = await db.lessonProgress.findFirst({
-      where: {
-        enrollmentId: validatedEnrollmentId,
-        lessonId: validatedLessonId
-      }
+      where: query
     });
 
     const now = new Date();
@@ -626,7 +832,8 @@ export async function updateLessonProgress(
       lessonProgress = await db.lessonProgress.create({
         data: {
           enrollmentId: validatedEnrollmentId,
-          lessonId: validatedLessonId,
+          lessonId: isSubModule ? undefined : validatedLessonId,
+          subModuleId: isSubModule ? validatedLessonId : undefined,
           status,
           progress: validatedProgress,
           timeSpent: 0,
@@ -777,6 +984,7 @@ export async function getNextLesson(currentLessonId: string, courseId: string) {
     }
 
     // Get current lesson
+    // Try to find as CourseLesson first (legacy), then SubModule
     const currentLesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
       include: {
@@ -795,53 +1003,81 @@ export async function getNextLesson(currentLessonId: string, courseId: string) {
       }
     });
 
-    if (!currentLesson) {
+    if (currentLesson) {
+      // Legacy Logic
+      const moduleLessons = currentLesson.module.lessons;
+      const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
+
+      if (currentIndex < moduleLessons.length - 1) {
+        return { success: true, data: moduleLessons[currentIndex + 1] };
+      }
+      // Check next module
+      const nextModule = await db.courseModule.findFirst({
+        where: {
+          courseId: validatedCourseId,
+          sequence: { gt: currentLesson.module.sequence }
+        },
+        orderBy: { sequence: 'asc' },
+        include: {
+          lessons: {
+            orderBy: { sequence: 'asc' },
+            take: 1
+          }
+        }
+      });
+
+      if (nextModule && nextModule.lessons.length > 0) {
+        return { success: true, data: nextModule.lessons[0] };
+      }
+      return { success: true, data: null };
+    }
+
+    // New SubModule Logic
+    const subModule = await db.subModule.findUnique({
+      where: { id: validatedLessonId },
+      include: {
+        module: {
+          include: {
+            subModules: {
+              orderBy: { order: 'asc' },
+              select: { id: true, title: true, order: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!subModule) {
       return { success: false, message: "Lesson not found" };
     }
 
-    // Find next lesson in same module
-    const moduleLessons = currentLesson.module.lessons;
-    const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
+    const moduleSubModules = subModule.module.subModules;
+    const currentIndex = moduleSubModules.findIndex(sm => sm.id === validatedLessonId);
 
-    if (currentIndex < moduleLessons.length - 1) {
-      return {
-        success: true,
-        data: moduleLessons[currentIndex + 1]
-      };
+    if (currentIndex < moduleSubModules.length - 1) {
+      return { success: true, data: moduleSubModules[currentIndex + 1] };
     }
 
-    // If no next lesson in current module, find first lesson of next module
-    const nextModule = await db.courseModule.findFirst({
+    // Check next module
+    const nextModule = await db.module.findFirst({
       where: {
-        courseId: validatedCourseId,
-        sequence: { gt: currentLesson.module.sequence }
+        syllabusId: subModule.module.syllabusId,
+        order: { gt: subModule.module.order }
       },
+      orderBy: { order: 'asc' },
       include: {
-        lessons: {
-          select: {
-            id: true,
-            title: true,
-            sequence: true
-          },
-          orderBy: { sequence: 'asc' },
+        subModules: {
+          orderBy: { order: 'asc' },
           take: 1
         }
-      },
-      orderBy: { sequence: 'asc' }
+      }
     });
 
-    if (nextModule && nextModule.lessons.length > 0) {
-      return {
-        success: true,
-        data: nextModule.lessons[0]
-      };
+    if (nextModule && nextModule.subModules.length > 0) {
+      return { success: true, data: nextModule.subModules[0] };
     }
 
-    return {
-      success: true,
-      data: null,
-      message: "No next lesson available"
-    };
+    return { success: true, data: null };
   } catch (error) {
     console.error("Error fetching next lesson:", error);
     if (error instanceof z.ZodError) {
@@ -867,7 +1103,7 @@ export async function getPreviousLesson(currentLessonId: string, courseId: strin
       return { success: false, message: "Unauthorized" };
     }
 
-    // Get current lesson
+    // Attempt to find as CourseLesson (Legacy)
     const currentLesson = await db.courseLesson.findUnique({
       where: { id: validatedLessonId },
       include: {
@@ -886,46 +1122,84 @@ export async function getPreviousLesson(currentLessonId: string, courseId: strin
       }
     });
 
-    if (!currentLesson) {
+    if (currentLesson) {
+      // Legacy Logic
+      const moduleLessons = currentLesson.module.lessons;
+      const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
+
+      if (currentIndex > 0) {
+        return { success: true, data: moduleLessons[currentIndex - 1] };
+      }
+
+      // If no previous lesson in current module, find last lesson of previous module
+      const previousModule = await db.courseModule.findFirst({
+        where: {
+          courseId: validatedCourseId,
+          sequence: { lt: currentLesson.module.sequence }
+        },
+        include: {
+          lessons: {
+            select: {
+              id: true,
+              title: true,
+              sequence: true
+            },
+            orderBy: { sequence: 'desc' },
+            take: 1
+          }
+        },
+        orderBy: { sequence: 'desc' }
+      });
+
+      if (previousModule && previousModule.lessons.length > 0) {
+        return { success: true, data: previousModule.lessons[0] };
+      }
+      return { success: true, data: null };
+    }
+
+    // Unified SubModule Logic
+    const subModule = await db.subModule.findUnique({
+      where: { id: validatedLessonId },
+      include: {
+        module: {
+          include: {
+            subModules: {
+              orderBy: { order: 'asc' },
+              select: { id: true, title: true, order: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!subModule) {
       return { success: false, message: "Lesson not found" };
     }
 
-    // Find previous lesson in same module
-    const moduleLessons = currentLesson.module.lessons;
-    const currentIndex = moduleLessons.findIndex(l => l.id === validatedLessonId);
+    const moduleSubModules = subModule.module.subModules;
+    const currentIndex = moduleSubModules.findIndex(sm => sm.id === validatedLessonId);
 
     if (currentIndex > 0) {
-      return {
-        success: true,
-        data: moduleLessons[currentIndex - 1]
-      };
+      return { success: true, data: moduleSubModules[currentIndex - 1] };
     }
 
-    // If no previous lesson in current module, find last lesson of previous module
-    const previousModule = await db.courseModule.findFirst({
+    // Check previous module
+    const previousModule = await db.module.findFirst({
       where: {
-        courseId: validatedCourseId,
-        sequence: { lt: currentLesson.module.sequence }
+        syllabusId: subModule.module.syllabusId,
+        order: { lt: subModule.module.order }
       },
+      orderBy: { order: 'desc' },
       include: {
-        lessons: {
-          select: {
-            id: true,
-            title: true,
-            sequence: true
-          },
-          orderBy: { sequence: 'desc' },
+        subModules: {
+          orderBy: { order: 'desc' },
           take: 1
         }
-      },
-      orderBy: { sequence: 'desc' }
+      }
     });
 
-    if (previousModule && previousModule.lessons.length > 0) {
-      return {
-        success: true,
-        data: previousModule.lessons[0]
-      };
+    if (previousModule && previousModule.subModules.length > 0) {
+      return { success: true, data: previousModule.subModules[0] };
     }
 
     return {

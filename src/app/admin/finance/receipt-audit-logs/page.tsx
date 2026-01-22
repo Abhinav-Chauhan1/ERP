@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Filter, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { AuditAction } from "@prisma/client";
 
@@ -235,20 +236,20 @@ export default function ReceiptAuditLogsPage() {
             {/* Start Date */}
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <DatePicker
+                date={startDate ? new Date(startDate) : undefined}
+                onSelect={(date) => setStartDate(date ? date.toISOString().split("T")[0] : "")}
+                placeholder="Start Date"
               />
             </div>
 
             {/* End Date */}
             <div className="space-y-2">
               <Label>End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+              <DatePicker
+                date={endDate ? new Date(endDate) : undefined}
+                onSelect={(date) => setEndDate(date ? date.toISOString().split("T")[0] : "")}
+                placeholder="End Date"
               />
             </div>
 

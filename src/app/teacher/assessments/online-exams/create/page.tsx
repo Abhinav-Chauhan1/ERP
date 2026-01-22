@@ -42,8 +42,8 @@ import {
   createOnlineExam,
   selectRandomQuestions,
 } from "@/lib/actions/onlineExamActions";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 
 interface Question {
   id: string;
@@ -416,36 +416,19 @@ export default function CreateOnlineExamPage() {
                 <div className="space-y-2">
                   <Label>Start Date & Time</Label>
                   <div className="flex gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="flex-1 justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {startDate ? (
-                            format(startDate, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <div className="flex-1">
+                      <DatePicker
+                        date={startDate}
+                        onSelect={setStartDate}
+                        placeholder="Pick a date"
+                      />
+                    </div>
                     <div className="flex items-center w-32">
-                      <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                      <Input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        required
+                      <TimePicker
+                        date={startTime ? new Date(`2000-01-01T${startTime}:00`) : undefined}
+                        setDate={(date) => {
+                          setStartTime(date ? format(date, "HH:mm") : "");
+                        }}
                       />
                     </div>
                   </div>
@@ -454,36 +437,19 @@ export default function CreateOnlineExamPage() {
                 <div className="space-y-2">
                   <Label>End Date & Time</Label>
                   <div className="flex gap-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="flex-1 justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? (
-                            format(endDate, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <div className="flex-1">
+                      <DatePicker
+                        date={endDate}
+                        onSelect={setEndDate}
+                        placeholder="Pick a date"
+                      />
+                    </div>
                     <div className="flex items-center w-32">
-                      <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                      <Input
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        required
+                      <TimePicker
+                        date={endTime ? new Date(`2000-01-01T${endTime}:00`) : undefined}
+                        setDate={(date) => {
+                          setEndTime(date ? format(date, "HH:mm") : "");
+                        }}
                       />
                     </div>
                   </div>

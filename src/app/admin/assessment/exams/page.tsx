@@ -53,6 +53,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import { format, parseISO } from "date-fns";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 
 // Import schema validation and server actions
 import { examSchema, ExamFormValues } from "@/lib/schemaValidation/examsSchemaValidation";
@@ -466,16 +467,9 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>Start Time</FormLabel>
                         <FormControl>
-                          <Input
-                            type="time"
-                            onChange={(e) => {
-                              const [hours, minutes] = e.target.value.split(":");
-                              const now = new Date();
-                              now.setHours(parseInt(hours, 10));
-                              now.setMinutes(parseInt(minutes, 10));
-                              field.onChange(now);
-                            }}
-                            value={field.value ? format(field.value, "HH:mm") : ""}
+                          <TimePicker
+                            date={field.value}
+                            setDate={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />
@@ -490,16 +484,9 @@ export default function ExamsPage() {
                       <FormItem>
                         <FormLabel>End Time</FormLabel>
                         <FormControl>
-                          <Input
-                            type="time"
-                            onChange={(e) => {
-                              const [hours, minutes] = e.target.value.split(":");
-                              const now = new Date();
-                              now.setHours(parseInt(hours, 10));
-                              now.setMinutes(parseInt(minutes, 10));
-                              field.onChange(now);
-                            }}
-                            value={field.value ? format(field.value, "HH:mm") : ""}
+                          <TimePicker
+                            date={field.value}
+                            setDate={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />

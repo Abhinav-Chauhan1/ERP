@@ -19,6 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { format } from "date-fns";
+import { TimePicker } from "@/components/ui/time-picker";
 import { createScheduledReport, updateScheduledReport, ScheduledReportInput } from "@/lib/actions/scheduledReportActions";
 
 const scheduledReportSchema = z.object({
@@ -161,7 +163,7 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Basic Information</h3>
-        
+
         <div>
           <Label htmlFor="name">Report Name *</Label>
           <Input
@@ -188,7 +190,7 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
       {/* Data Configuration */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Data Configuration</h3>
-        
+
         <div>
           <Label htmlFor="dataSource">Data Source *</Label>
           <Select
@@ -241,7 +243,7 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
       {/* Schedule Configuration */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Schedule Configuration</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="frequency">Frequency *</Label>
@@ -259,11 +261,11 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
 
           <div>
             <Label htmlFor="scheduleTime">Time *</Label>
-            <Input
-              id="scheduleTime"
-              type="time"
-              {...register("scheduleTime")}
+            <TimePicker
+              date={watch("scheduleTime") ? new Date(`2000-01-01T${watch("scheduleTime")}:00`) : undefined}
+              setDate={(date) => setValue("scheduleTime", date ? format(date, "HH:mm") : "")}
             />
+            <input type="hidden" {...register("scheduleTime")} />
             {errors.scheduleTime && (
               <p className="text-sm text-destructive mt-1">{errors.scheduleTime.message}</p>
             )}
@@ -311,7 +313,7 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
       {/* Recipients */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Recipients</h3>
-        
+
         <div>
           <Label htmlFor="recipientInput">Email Addresses *</Label>
           <div className="flex gap-2">
@@ -350,7 +352,7 @@ export function ScheduledReportForm({ initialData, reportId }: ScheduledReportFo
       {/* Export Format */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Export Format</h3>
-        
+
         <div>
           <Label htmlFor="exportFormat">Format *</Label>
           <Select {...register("exportFormat")} onValueChange={(value) => setValue("exportFormat", value as any)}>

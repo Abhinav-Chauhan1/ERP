@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { DocumentGrid } from "@/components/parent/documents/document-grid";
 import {
   getDocuments,
@@ -55,8 +56,8 @@ export function DocumentsPageClient({
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   // Preview modal
   const [previewDocumentId, setPreviewDocumentId] = useState<string | null>(null);
@@ -83,11 +84,11 @@ export function DocumentsPageClient({
       }
 
       if (startDate) {
-        filters.startDate = new Date(startDate);
+        filters.startDate = startDate;
       }
 
       if (endDate) {
-        filters.endDate = new Date(endDate);
+        filters.endDate = endDate;
       }
 
       if (searchTerm) {
@@ -158,8 +159,8 @@ export function DocumentsPageClient({
   const handleClearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("all");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(undefined);
+    setEndDate(undefined);
   };
 
   return (
@@ -251,20 +252,18 @@ export function DocumentsPageClient({
             {/* Start Date */}
             <div className="space-y-2">
               <Label>From Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <DatePicker
+                date={startDate}
+                onSelect={setStartDate}
               />
             </div>
 
             {/* End Date */}
             <div className="space-y-2">
               <Label>To Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+              <DatePicker
+                date={endDate}
+                onSelect={setEndDate}
               />
             </div>
           </div>

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Form,
   FormControl,
@@ -63,19 +65,19 @@ export function RouteForm({ vehicles, initialData }: RouteFormProps) {
     resolver: zodResolver(routeSchema),
     defaultValues: initialData
       ? {
-          name: initialData.name,
-          vehicleId: initialData.vehicleId,
-          fee: initialData.fee,
-          status: initialData.status as "ACTIVE" | "INACTIVE",
-          stops: initialData.stops,
-        }
+        name: initialData.name,
+        vehicleId: initialData.vehicleId,
+        fee: initialData.fee,
+        status: initialData.status as "ACTIVE" | "INACTIVE",
+        stops: initialData.stops,
+      }
       : {
-          name: "",
-          vehicleId: "",
-          fee: 0,
-          status: "ACTIVE",
-          stops: [{ stopName: "", arrivalTime: "", sequence: 1 }],
-        },
+        name: "",
+        vehicleId: "",
+        fee: 0,
+        status: "ACTIVE",
+        stops: [{ stopName: "", arrivalTime: "", sequence: 1 }],
+      },
   });
 
   const { fields, append, remove, move } = useFieldArray({
@@ -266,10 +268,9 @@ export function RouteForm({ vehicles, initialData }: RouteFormProps) {
                         <FormItem>
                           <FormLabel>Arrival Time</FormLabel>
                           <FormControl>
-                            <Input
-                              type="time"
-                              placeholder="HH:mm"
-                              {...field}
+                            <TimePicker
+                              date={field.value ? new Date(`2000-01-01T${field.value}:00`) : undefined}
+                              setDate={(date) => field.onChange(date ? format(date, "HH:mm") : "")}
                             />
                           </FormControl>
                           <FormMessage />

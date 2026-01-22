@@ -47,6 +47,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
 
 // Import server actions
@@ -696,13 +697,10 @@ export default function PaymentsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Date</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={format(field.value, "yyyy-MM-dd")}
-                          onChange={(e) => field.onChange(new Date(e.target.value))}
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value}
+                        onSelect={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

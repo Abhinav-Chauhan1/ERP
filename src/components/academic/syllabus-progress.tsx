@@ -1,12 +1,12 @@
 "use client";
 
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, Download } from "lucide-react";
@@ -23,6 +23,7 @@ interface SyllabusUnit {
   order: number;
   totalTopics: number;
   completedTopics: number;
+  subModules: { id: string; title: string; isCompleted: boolean }[];
   status: "not-started" | "in-progress" | "completed";
   lastUpdated: string;
 }
@@ -55,7 +56,7 @@ export function SyllabusProgress({
 
   const handleUpdate = async () => {
     if (!subjectId) return;
-    
+
     try {
       setIsUpdating(true);
       await updateSyllabusUnitProgress(units[0]?.id || "", units[0]?.completedTopics || 0);
@@ -92,8 +93,8 @@ export function SyllabusProgress({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => toast.success("Report generated successfully")}
             >
@@ -102,7 +103,7 @@ export function SyllabusProgress({
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <div className="mb-6">
           <div className="flex justify-between mb-2">
@@ -110,8 +111,8 @@ export function SyllabusProgress({
             <span className="text-sm font-medium">{overallProgress}% Complete</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-emerald-500 h-2.5 rounded-full" 
+            <div
+              className="bg-emerald-500 h-2.5 rounded-full"
               style={{ width: `${overallProgress}%` }}
             ></div>
           </div>
@@ -122,16 +123,15 @@ export function SyllabusProgress({
             </span>
           </div>
         </div>
-        
+
         <div className="space-y-4">
           {units.map((unit) => (
-            <div 
-              key={unit.id} 
-              className={`p-4 rounded-lg border ${
-                unit.status === "completed" ? "bg-green-50 border-green-100" :
-                unit.status === "in-progress" ? "bg-amber-50 border-amber-100" :
-                "bg-gray-50 border-gray-100"
-              }`}
+            <div
+              key={unit.id}
+              className={`p-4 rounded-lg border ${unit.status === "completed" ? "bg-green-50 border-green-100" :
+                  unit.status === "in-progress" ? "bg-amber-50 border-amber-100" :
+                    "bg-gray-50 border-gray-100"
+                }`}
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -147,21 +147,20 @@ export function SyllabusProgress({
                   <p className="text-xs text-gray-500">Topics covered</p>
                 </div>
               </div>
-              
+
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full ${
-                    unit.status === "completed" ? "bg-green-500" :
-                    unit.status === "in-progress" ? "bg-amber-500" :
-                    "bg-gray-400"
-                  }`}
+                <div
+                  className={`h-2 rounded-full ${unit.status === "completed" ? "bg-green-500" :
+                      unit.status === "in-progress" ? "bg-amber-500" :
+                        "bg-gray-400"
+                    }`}
                   style={{ width: `${(unit.completedTopics / unit.totalTopics) * 100}%` }}
                 ></div>
               </div>
 
               {subjectId && (
                 <div className="flex justify-end mt-3">
-                  <SyllabusUpdateDialog 
+                  <SyllabusUpdateDialog
                     unit={unit}
                     subjectId={subjectId}
                     onSuccess={refreshData}
@@ -172,13 +171,13 @@ export function SyllabusProgress({
           ))}
         </div>
       </CardContent>
-      
+
       <CardFooter className="flex justify-between border-t pt-6">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <CheckCircle className="h-4 w-4 text-green-500" />
           <span>{units.filter(unit => unit.status === "completed").length}/{units.length} Units Completed</span>
         </div>
-        
+
         <Button>Generate Report</Button>
       </CardFooter>
     </Card>

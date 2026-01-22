@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import toast from "react-hot-toast";
 
 // Import schema validation and server actions
@@ -1383,16 +1384,9 @@ export default function TimetablePage() {
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
-                        <Input
-                          type="time"
-                          {...field}
-                          value={field.value instanceof Date ? formatTimeForDisplay(field.value).replace(/\s/g, '') : ''}
-                          onChange={(e) => {
-                            const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const date = new Date();
-                            date.setHours(hours, minutes, 0, 0);
-                            field.onChange(date);
-                          }}
+                        <TimePicker
+                          date={field.value}
+                          setDate={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1406,16 +1400,9 @@ export default function TimetablePage() {
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
                       <FormControl>
-                        <Input
-                          type="time"
-                          {...field}
-                          value={field.value instanceof Date ? formatTimeForDisplay(field.value).replace(/\s/g, '') : ''}
-                          onChange={(e) => {
-                            const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const date = new Date();
-                            date.setHours(hours, minutes, 0, 0);
-                            field.onChange(date);
-                          }}
+                        <TimePicker
+                          date={field.value}
+                          setDate={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />

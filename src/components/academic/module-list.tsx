@@ -47,6 +47,8 @@ interface Module {
   chapterNumber: number;
   order: number;
   syllabusId: string;
+  term?: string | null;
+  weightage?: number | null;
   subModules?: any[];
   documents?: any[];
 }
@@ -218,9 +220,21 @@ function DraggableModule({
             <>
               <AccordionTrigger className="flex-1 hover:no-underline py-0" aria-label={`Expand module ${module.chapterNumber}: ${module.title}`}>
                 <div className="text-left flex-1">
-                  <h3 className="text-sm md:text-base font-medium">{module.title}</h3>
+                  <h3 className="text-lg font-semibold flex items-center">
+                    Chapter {module.chapterNumber}: {module.title}
+                    {module.term && (
+                      <Badge variant="outline" className="ml-2">
+                        {module.term}
+                      </Badge>
+                    )}
+                    {module.weightage !== null && module.weightage !== undefined && (
+                      <Badge variant="secondary" className="ml-2">
+                        {module.weightage} Marks
+                      </Badge>
+                    )}
+                  </h3>
                   {module.description && (
-                    <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-2 md:line-clamp-none">
+                    <p className="text-sm text-gray-500 mt-1">
                       {module.description}
                     </p>
                   )}

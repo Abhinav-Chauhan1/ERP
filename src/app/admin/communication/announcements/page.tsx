@@ -10,6 +10,7 @@ import {
   Eye, Edit, Trash2, CheckCircle, XCircle, Loader2, AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -552,13 +553,10 @@ export default function AnnouncementsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={format(field.value, "yyyy-MM-dd")}
-                          onChange={(e) => field.onChange(new Date(e.target.value))}
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value}
+                        onSelect={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -569,15 +567,10 @@ export default function AnnouncementsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>End Date (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? new Date(e.target.value) : null)
-                          }
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value || undefined}
+                        onSelect={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

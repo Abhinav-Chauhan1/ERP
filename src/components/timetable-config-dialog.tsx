@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Dialog,
   DialogContent,
@@ -291,10 +293,11 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                         <FormItem className="flex-1 w-full sm:w-auto">
                           <FormLabel className="text-xs">Start Time</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              type="time"
-                              placeholder="09:00"
+                            <TimePicker
+                              date={field.value ? new Date(`2000-01-01T${field.value}:00`) : undefined}
+                              setDate={(date) => {
+                                field.onChange(date ? format(date, "HH:mm") : "");
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -309,10 +312,11 @@ export function TimetableConfigDialog({ onConfigChanged }: { onConfigChanged?: (
                         <FormItem className="flex-1 w-full sm:w-auto">
                           <FormLabel className="text-xs">End Time</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              type="time"
-                              placeholder="09:45"
+                            <TimePicker
+                              date={field.value ? new Date(`2000-01-01T${field.value}:00`) : undefined}
+                              setDate={(date) => {
+                                field.onChange(date ? format(date, "HH:mm") : "");
+                              }}
                             />
                           </FormControl>
                           <FormMessage />

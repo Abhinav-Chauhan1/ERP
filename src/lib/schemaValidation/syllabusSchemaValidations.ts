@@ -10,6 +10,11 @@ export const SyllabusStatusEnum = z.enum([
   "DEPRECATED",
 ]);
 
+export const AssessmentTypeEnum = z.enum([
+  "GRADED",
+  "CO_SCHOLASTIC",
+]);
+
 export const CurriculumTypeEnum = z.enum([
   "GENERAL",
   "ADVANCED",
@@ -41,24 +46,25 @@ const baseSyllabusSchema = z.object({
     required_error: "Please select a subject",
   }),
   document: z.string().optional(),
-  
+
   // Scope selection
   scopeType: ScopeTypeEnum.default("SUBJECT_WIDE"),
   academicYearId: z.string().optional(),
   classId: z.string().optional(),
   sectionId: z.string().optional(),
-  
+
   // Curriculum details
   curriculumType: CurriculumTypeEnum.default("GENERAL"),
   boardType: z.string().optional(),
-  
+  assessmentType: AssessmentTypeEnum.default("GRADED"),
+
   // Metadata
   version: z.string().default("1.0"),
   difficultyLevel: DifficultyLevelEnum.default("INTERMEDIATE"),
   estimatedHours: z.coerce.number().int().positive().optional(),
   tags: z.array(z.string()).default([]),
   prerequisites: z.string().optional(),
-  
+
   // Scheduling
   effectiveFrom: z.coerce.date().optional(),
   effectiveTo: z.coerce.date().optional(),
@@ -169,3 +175,31 @@ export type SyllabusUnitFormValues = z.infer<typeof syllabusUnitSchema>;
 export type SyllabusUnitUpdateFormValues = z.infer<typeof syllabusUnitUpdateSchema>;
 export type LessonFormValues = z.infer<typeof lessonSchema>;
 export type LessonUpdateFormValues = z.infer<typeof lessonUpdateSchema>;
+
+// Enhanced Syllabus Schemas
+
+export const subModuleSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().optional(),
+  order: z.coerce.number().int().min(1),
+  moduleId: z.string().optional(), // Optional for creation if nested
+});
+
+export const moduleSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().optional(),
+  chapterNumber: z.coerce.number().int().positive(),
+  order: z.coerce.number().int().min(1),
+  term: z.string().optional(),
+  weightage: z.coerce.number().min(0).optional(),
+  syllabusId: z.string().optional(), // Optional for creation if nested
+  subModules: z.array(subModuleSchema).optional(),
+});
+
+export const moduleUpdateSchema = moduleSchema.extend({
+  id: z.string().min(1, "Module ID is required"),
+});
+
+export type ModuleFormValues = z.infer<typeof moduleSchema>;
+export type ModuleUpdateFormValues = z.infer<typeof moduleUpdateSchema>;
+export type SubModuleFormValues = z.infer<typeof subModuleSchema>;

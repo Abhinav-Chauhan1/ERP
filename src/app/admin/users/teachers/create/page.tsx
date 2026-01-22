@@ -14,10 +14,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Loader2 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -54,7 +52,7 @@ export default function CreateTeacherPage() {
       router.push("/admin/users/teachers");
     } catch (error: any) {
       console.error("Error creating teacher:", error);
-      
+
       let errorMessage = "Failed to create teacher. Please try again.";
 
       if (error instanceof Error) {
@@ -192,32 +190,11 @@ export default function CreateTeacherPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Join Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date > new Date()}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        <DatePicker
+                          date={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date()}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -229,9 +206,9 @@ export default function CreateTeacherPage() {
                       <FormItem>
                         <FormLabel>Salary</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Salary" 
+                          <Input
+                            type="number"
+                            placeholder="Salary"
                             {...field}
                             onChange={(e) => {
                               const value = e.target.value;

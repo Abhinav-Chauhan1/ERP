@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AnimatedDatePicker } from "@/components/ui/animated-date-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -231,7 +231,7 @@ export default function CreateStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Admission Date</FormLabel>
-                        <AnimatedDatePicker
+                        <DatePicker
                           date={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date()}
@@ -248,7 +248,7 @@ export default function CreateStudentPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Date of Birth</FormLabel>
-                        <AnimatedDatePicker
+                        <DatePicker
                           date={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date()}

@@ -4,20 +4,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import {
   Calendar as CalendarIcon,
   Clock,
   ArrowLeft,
@@ -41,7 +41,7 @@ export default function CreateExamPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Form state
   const [title, setTitle] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -54,7 +54,7 @@ export default function CreateExamPage() {
   const [totalMarks, setTotalMarks] = useState("100");
   const [passingMarks, setPassingMarks] = useState("35");
   const [instructions, setInstructions] = useState("");
-  
+
   // Options for selects
   const [subjects, setSubjects] = useState<any[]>([]);
   const [examTypes, setExamTypes] = useState<any[]>([]);
@@ -69,29 +69,29 @@ export default function CreateExamPage() {
         // Fetch subjects
         const { subjects } = await getTeacherSubjects();
         setSubjects(subjects);
-        
+
         // Fetch exam types
         const { examTypes } = await getExamTypes();
         setExamTypes(examTypes);
-        
+
         // Fetch terms
         const { terms } = await getActiveTerms();
         setTerms(terms);
-        
+
         // Set default values
         if (subjects.length > 0) {
           setSelectedSubject(subjects[0].id);
           fetchUnitsForSubject(subjects[0].id);
         }
-        
+
         if (examTypes.length > 0) {
           setSelectedExamType(examTypes[0].id);
         }
-        
+
         if (terms.length > 0) {
           setSelectedTerm(terms[0].id);
         }
-        
+
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast.error("Failed to load required data");
@@ -99,15 +99,15 @@ export default function CreateExamPage() {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
-    
+
     // Set default times
     const now = new Date();
     setStartTime(`${String(now.getHours()).padStart(2, '0')}:00`);
     setEndTime(`${String(now.getHours() + 2).padStart(2, '0')}:00`);
   }, []);
-  
+
   // Fetch units when subject changes
   const fetchUnitsForSubject = async (subjectId: string) => {
     try {
@@ -123,33 +123,33 @@ export default function CreateExamPage() {
       toast.error("Failed to load syllabus units");
     }
   };
-  
+
   const handleSubjectChange = (value: string) => {
     setSelectedSubject(value);
     fetchUnitsForSubject(value);
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!examDate) {
       toast.error("Please select an exam date");
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Create start and end datetime objects
       const [startHour, startMinute] = startTime.split(':').map(Number);
       const [endHour, endMinute] = endTime.split(':').map(Number);
-      
+
       const startDateTime = new Date(examDate);
       startDateTime.setHours(startHour, startMinute);
-      
+
       const endDateTime = new Date(examDate);
       endDateTime.setHours(endHour, endMinute);
-      
+
       const formData = new FormData();
       formData.append("title", title);
       formData.append("subjectId", selectedSubject);
@@ -161,9 +161,9 @@ export default function CreateExamPage() {
       formData.append("totalMarks", totalMarks);
       formData.append("passingMarks", passingMarks);
       formData.append("instructions", instructions);
-      
+
       const result = await createExam(formData);
-      
+
       if (result.success) {
         toast.success("Exam created successfully");
         router.push(`/teacher/assessments/exams/${result.examId}`);
@@ -177,7 +177,7 @@ export default function CreateExamPage() {
       setIsSubmitting(false);
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -198,7 +198,7 @@ export default function CreateExamPage() {
           <h1 className="text-2xl font-bold tracking-tight">Create New Exam</h1>
         </div>
       </div>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -217,7 +217,7 @@ export default function CreateExamPage() {
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Select
@@ -236,7 +236,7 @@ export default function CreateExamPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="unit">Syllabus Unit (Optional)</Label>
                 <Select
@@ -261,7 +261,7 @@ export default function CreateExamPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="exam-type">Exam Type</Label>
                 <Select
@@ -280,7 +280,7 @@ export default function CreateExamPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="term">Academic Term</Label>
                 <Select
@@ -301,7 +301,7 @@ export default function CreateExamPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Schedule & Grading</CardTitle>
@@ -310,57 +310,39 @@ export default function CreateExamPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Exam Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {examDate ? format(examDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={examDate}
-                      onSelect={setExamDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <DatePicker
+                  date={examDate}
+                  onSelect={setExamDate}
+                  placeholder="Pick a date"
+                />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="start-time">Start Time</Label>
                   <div className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                    <Input
-                      id="start-time"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      required
+                    <TimePicker
+                      date={startTime ? new Date(`2000-01-01T${startTime}:00`) : undefined}
+                      setDate={(date) => {
+                        setStartTime(date ? format(date, "HH:mm") : "");
+                      }}
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="end-time">End Time</Label>
                   <div className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4 text-gray-500" />
-                    <Input
-                      id="end-time"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      required
+                    <TimePicker
+                      date={endTime ? new Date(`2000-01-01T${endTime}:00`) : undefined}
+                      setDate={(date) => {
+                        setEndTime(date ? format(date, "HH:mm") : "");
+                      }}
                     />
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="total-marks">Total Marks</Label>
@@ -373,7 +355,7 @@ export default function CreateExamPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="passing-marks">Passing Marks</Label>
                   <Input
@@ -387,7 +369,7 @@ export default function CreateExamPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="instructions">Instructions (Optional)</Label>
                 <Textarea
@@ -401,7 +383,7 @@ export default function CreateExamPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         <div className="flex justify-end gap-2 mt-6">
           <Button
             type="button"

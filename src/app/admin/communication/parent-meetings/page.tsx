@@ -47,6 +47,9 @@ import {
 } from "@/components/ui/tabs";
 import { ParentMeetingsTable } from "@/components/admin/parent-meetings-table";
 import toast from "react-hot-toast";
+import { format } from "date-fns";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   getParentMeetings,
   scheduleMeeting,
@@ -368,18 +371,17 @@ export default function ParentMeetingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Date</label>
-                  <Input
-                    type="date"
-                    value={formData.scheduledDate}
-                    onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                  <DatePicker
+                    date={formData.scheduledDate ? new Date(formData.scheduledDate) : undefined}
+                    onSelect={(date) => setFormData({ ...formData, scheduledDate: date ? format(date, "yyyy-MM-dd") : "" })}
+                    placeholder="Select date"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Time</label>
-                  <Input
-                    type="time"
-                    value={formData.scheduledTime}
-                    onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
+                  <TimePicker
+                    date={formData.scheduledTime ? new Date(`2000-01-01T${formData.scheduledTime}:00`) : undefined}
+                    setDate={(date) => setFormData({ ...formData, scheduledTime: date ? format(date, "HH:mm") : "" })}
                   />
                 </div>
               </div>

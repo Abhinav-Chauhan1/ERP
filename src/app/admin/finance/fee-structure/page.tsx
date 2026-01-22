@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -918,14 +919,10 @@ export default function FeeStructurePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Valid From</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                          onChange={(e) => field.onChange(new Date(e.target.value))}
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value}
+                        onSelect={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -937,14 +934,10 @@ export default function FeeStructurePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Valid To (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                        />
-                      </FormControl>
+                      <DatePicker
+                        date={field.value || undefined}
+                        onSelect={field.onChange}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1036,15 +1029,14 @@ export default function FeeStructurePage() {
                                   field.onChange(newItems);
                                 }}
                               />
-                              <Input
-                                type="date"
-                                placeholder="Due Date"
-                                value={item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''}
-                                onChange={(e) => {
+                              <DatePicker
+                                date={item.dueDate ? new Date(item.dueDate) : undefined}
+                                onSelect={(date) => {
                                   const newItems = [...field.value];
-                                  newItems[index].dueDate = e.target.value ? new Date(e.target.value) : undefined;
+                                  newItems[index].dueDate = date;
                                   field.onChange(newItems);
                                 }}
+                                placeholder="Due Date"
                               />
                             </div>
                             <Button

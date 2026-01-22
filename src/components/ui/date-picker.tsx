@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import ReactDOM from "react-dom";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/datepicker.css";
@@ -16,12 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DatePickerProps {
   date: Date | undefined;
   onSelect: (date: Date | undefined) => void;
   onDateChange?: (date: Date | undefined) => void;
-  disabled?: (date: Date) => boolean;
+  disabled?: boolean | ((date: Date) => boolean);
   placeholder?: string;
   className?: string;
   startYear?: number;
@@ -38,26 +42,8 @@ export function DatePicker({
   startYear = 1900,
   endYear = new Date().getFullYear() + 100,
 }: DatePickerProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
   const [currentMonth, setCurrentMonth] = React.useState(date || new Date());
-  const buttonRef = React.useRef<HTMLButtonElement>(null);
-  const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
-
-  React.useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-
-      // If not enough space below (need ~400px for calendar), show above
-      const showAbove = spaceBelow < 400 && spaceAbove > spaceBelow;
-
-      setPosition({
-        top: showAbove ? rect.top - 400 : rect.bottom + 8,
-        left: rect.left,
-      });
-    }
-  }, [isOpen]);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   const handleChange = (selectedDate: Date | null) => {
     const dateValue = selectedDate || undefined;
@@ -65,10 +51,13 @@ export function DatePicker({
     if (onDateChange) {
       onDateChange(dateValue);
     }
-    setIsOpen(false);
+    setIsPopoverOpen(false);
   };
 
-  const filterDate = disabled ? (date: Date) => !disabled(date) : undefined;
+  const isInputDisabled = typeof disabled === 'boolean' ? disabled : false;
+  const isDateDisabled = typeof disabled === 'function' ? disabled : undefined;
+
+  const filterDate = isDateDisabled ? (date: Date) => !isDateDisabled(date) : undefined;
 
   const years = React.useMemo(() => {
     const arr = [];
@@ -108,106 +97,94 @@ export function DatePicker({
   };
 
   return (
-    <>
-      <Button
-        ref={buttonRef}
-        type="button"
-        variant="outline"
-        className={cn(
-          "w-full justify-start text-left font-normal",
-          !date && "text-muted-foreground",
-          className
-        )}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <CalendarIcon className="mr-2 h-4 w-4" />
-        {date ? format(date, "PPP") : <span>{placeholder}</span>}
-      </Button>
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isInputDisabled}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !date && "text-muted-foreground",
+            className
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 border-0 bg-transparent shadow-none" align="start">
+        <div className="rounded-md border border-border bg-background shadow-lg overflow-hidden">
+          {/* Custom Header */}
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 bg-background sticky top-0 z-10">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-accent"
+              onClick={goToPreviousMonth}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
 
-      {isOpen && position && typeof document !== 'undefined' && ReactDOM.createPortal(
-        <>
-          <div className="fixed inset-0 z-[9999]" onClick={() => setIsOpen(false)} />
-          <div
-            className="fixed z-[10000] rounded-md border border-border bg-background shadow-lg"
-            style={{
-              top: `${position.top}px`,
-              left: `${position.left}px`,
-              maxHeight: '400px',
-              overflow: 'auto'
-            }}
-          >
-            {/* Custom Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 bg-background sticky top-0 z-10">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:bg-accent"
-                onClick={goToPreviousMonth}
+            <div className="flex items-center gap-2">
+              <Select
+                value={currentMonth.getMonth().toString()}
+                onValueChange={handleMonthChange}
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
+                <SelectTrigger className="h-8 w-[120px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {months.map((month, index) => (
+                    <SelectItem key={index} value={index.toString()}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <div className="flex items-center gap-2">
-                <Select
-                  value={currentMonth.getMonth().toString()}
-                  onValueChange={handleMonthChange}
-                >
-                  <SelectTrigger className="h-8 w-[120px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {months.map((month, index) => (
-                      <SelectItem key={index} value={index.toString()}>
-                        {month}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={currentMonth.getFullYear().toString()}
-                  onValueChange={handleYearChange}
-                >
-                  <SelectTrigger className="h-8 w-[90px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:bg-accent"
-                onClick={goToNextMonth}
+              <Select
+                value={currentMonth.getFullYear().toString()}
+                onValueChange={handleYearChange}
               >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+                <SelectTrigger className="h-8 w-[90px] border-0 bg-transparent hover:bg-accent focus:ring-0 focus:ring-offset-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {years.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Calendar */}
-            <ReactDatePicker
-              selected={date}
-              onChange={handleChange}
-              filterDate={filterDate}
-              inline
-              openToDate={currentMonth}
-              onMonthChange={setCurrentMonth}
-              renderCustomHeader={() => <></>}
-              calendarClassName="!border-0"
-            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-accent"
+              onClick={goToNextMonth}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        </>,
-        document.body
-      )}
-    </>
+
+          {/* Calendar */}
+          <ReactDatePicker
+            selected={date}
+            onChange={handleChange}
+            filterDate={filterDate}
+            inline
+            openToDate={currentMonth}
+            onMonthChange={setCurrentMonth}
+            renderCustomHeader={() => <></>}
+            calendarClassName="!border-0 !m-0"
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

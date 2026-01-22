@@ -37,6 +37,9 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
+import { format } from "date-fns";
 
 // Form validation schema
 const eventFormSchema = z.object({
@@ -359,12 +362,12 @@ export function EventFormModal({
                   <FormItem>
                     <FormLabel htmlFor="start-date">Start Date *</FormLabel>
                     <FormControl>
-                      <Input
-                        id="start-date"
-                        type="date"
-                        {...field}
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                        }}
                         disabled={isSubmitting}
-                        aria-required="true"
                       />
                     </FormControl>
                     <FormMessage role="alert" />
@@ -380,12 +383,12 @@ export function EventFormModal({
                     <FormItem>
                       <FormLabel htmlFor="start-time">Start Time *</FormLabel>
                       <FormControl>
-                        <Input
-                          id="start-time"
-                          type="time"
-                          {...field}
+                        <TimePicker
+                          date={field.value ? new Date(`2000-01-01T${field.value}:00`) : undefined}
+                          setDate={(date) => {
+                            field.onChange(date ? format(date, "HH:mm") : "");
+                          }}
                           disabled={isSubmitting}
-                          aria-required="true"
                         />
                       </FormControl>
                       <FormMessage role="alert" />
@@ -403,12 +406,12 @@ export function EventFormModal({
                   <FormItem>
                     <FormLabel htmlFor="end-date">End Date *</FormLabel>
                     <FormControl>
-                      <Input
-                        id="end-date"
-                        type="date"
-                        {...field}
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                        }}
                         disabled={isSubmitting}
-                        aria-required="true"
                       />
                     </FormControl>
                     <FormMessage role="alert" />
@@ -424,12 +427,12 @@ export function EventFormModal({
                     <FormItem>
                       <FormLabel htmlFor="end-time">End Time *</FormLabel>
                       <FormControl>
-                        <Input
-                          id="end-time"
-                          type="time"
-                          {...field}
+                        <TimePicker
+                          date={field.value ? new Date(`2000-01-01T${field.value}:00`) : undefined}
+                          setDate={(date) => {
+                            field.onChange(date ? format(date, "HH:mm") : "");
+                          }}
                           disabled={isSubmitting}
-                          aria-required="true"
                         />
                       </FormControl>
                       <FormMessage role="alert" />
@@ -490,10 +493,10 @@ export function EventFormModal({
                                     return checked
                                       ? field.onChange([...field.value, role.value])
                                       : field.onChange(
-                                          field.value?.filter(
-                                            (value) => value !== role.value
-                                          )
-                                        );
+                                        field.value?.filter(
+                                          (value) => value !== role.value
+                                        )
+                                      );
                                   }}
                                   disabled={isSubmitting}
                                 />

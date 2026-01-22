@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ interface SyllabusUnit {
   order: number;
   totalTopics: number;
   completedTopics: number;
+  subModules: { id: string; title: string; isCompleted: boolean }[];
   status: "not-started" | "in-progress" | "completed";
   lastUpdated: string;
 }
@@ -35,46 +36,58 @@ interface SyllabusUpdateDialogProps {
 
 export function SyllabusUpdateDialog({ unit, subjectId, onSuccess }: SyllabusUpdateDialogProps) {
   const [open, setOpen] = useState(false);
-  const [completedTopics, setCompletedTopics] = useState(unit.completedTopics);
+  const [updates, setUpdates] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize updates state from props
+  const [pendingSubModules, setPendingSubModules] = useState(unit.subModules);
+
+  const handleToggle = (subModuleId: string, currentStatus: boolean) => {
+    setUpdates(prev => ({
+      ...prev,
+      [subModuleId]: !currentStatus
+    }));
+
+    // Optimistic update for UI
+    setPendingSubModules(prev => prev.map(m =>
+      m.id === subModuleId ? { ...m, isCompleted: !currentStatus } : m
+    ));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (completedTopics > unit.totalTopics) {
-      toast.error("Completed topics cannot exceed total topics");
-      return;
-    }
-    
+
     try {
       setIsSubmitting(true);
-      await updateSyllabusUnitProgress(unit.id, completedTopics);
-      toast.success("Syllabus progress updated successfully");
+
+      // Process all updates
+      // Import the new action (we initially imported the old one)
+      // We will need to dynamic import or assume it's available in the file scope if we update imports
+      const { updateSubModuleProgress } = await import("@/lib/actions/teacherSubjectsActions");
+
+      const updatePromises = Object.entries(updates).map(([id, status]) =>
+        updateSubModuleProgress(id, status)
+      );
+
+      await Promise.all(updatePromises);
+
+      toast.success("Progress updated successfully");
       setOpen(false);
-      
+      setUpdates({});
+
       if (onSuccess) {
         await onSuccess();
       }
     } catch (error) {
-      console.error("Failed to update syllabus progress:", error);
-      toast.error("Failed to update syllabus progress");
+      console.error("Failed to update progress:", error);
+      toast.error("Failed to update progress");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "not-started":
-        return <Badge variant="outline">Not Started</Badge>;
-      case "in-progress":
-        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">In Progress</Badge>;
-      case "completed":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
-  };
+  const completedCount = pendingSubModules.filter(m => m.isCompleted).length;
+  const progressPercent = unit.totalTopics > 0 ? (completedCount / unit.totalTopics) * 100 : 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -83,55 +96,59 @@ export function SyllabusUpdateDialog({ unit, subjectId, onSuccess }: SyllabusUpd
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Update Syllabus Progress</DialogTitle>
+          <DialogTitle>Update Module Progress</DialogTitle>
           <DialogDescription>
-            Track your progress through the syllabus unit
+            Mark topics as completed
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-medium">Unit {unit.order}: {unit.title}</h3>
-                <div className="flex gap-1 items-center mt-1">
-                  {getStatusBadge(unit.status)}
-                </div>
+                <h3 className="font-medium">{unit.title}</h3>
+                <p className="text-xs text-gray-500">Module {unit.order}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-500">Total Topics</p>
-                <p className="font-medium">{unit.totalTopics}</p>
+                <span className="font-medium text-sm">{completedCount}/{unit.totalTopics} Topics</span>
               </div>
             </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="completedTopics">Completed Topics</Label>
-              <Input
-                id="completedTopics"
-                type="number"
-                min={0}
-                max={unit.totalTopics}
-                value={completedTopics}
-                onChange={(e) => setCompletedTopics(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div 
-                className={`h-2.5 rounded-full ${
-                  completedTopics === unit.totalTopics ? "bg-green-500" :
-                  completedTopics > 0 ? "bg-amber-500" :
-                  "bg-gray-400"
-                }`}
-                style={{ width: `${(completedTopics / unit.totalTopics) * 100}%` }}
+
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+              <div
+                className={`h-2.5 rounded-full ${completedCount === unit.totalTopics ? "bg-green-500" :
+                    completedCount > 0 ? "bg-amber-500" :
+                      "bg-gray-400"
+                  }`}
+                style={{ width: `${progressPercent}%` }}
               ></div>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto space-y-2 border rounded-md p-2">
+              {pendingSubModules.map((subModule) => (
+                <div key={subModule.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+                  <input
+                    type="checkbox"
+                    id={subModule.id}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    checked={subModule.isCompleted}
+                    onChange={() => handleToggle(subModule.id, subModule.isCompleted)}
+                  />
+                  <Label htmlFor={subModule.id} className="flex-1 cursor-pointer font-normal">
+                    {subModule.title}
+                  </Label>
+                </div>
+              ))}
+              {pendingSubModules.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">No topics in this module</p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Updating..." : "Save Progress"}
+            <Button type="submit" disabled={isSubmitting || Object.keys(updates).length === 0}>
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>

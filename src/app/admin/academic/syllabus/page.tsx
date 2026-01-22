@@ -52,29 +52,18 @@ import toast from "react-hot-toast";
 import { useEnhancedSyllabusClient } from "@/lib/utils/feature-flags";
 
 // Import schema validation and server actions
+// Import schema validation and server actions
 import {
   syllabusSchema,
-  syllabusUnitSchema,
-  lessonSchema,
   SyllabusFormValues,
-  SyllabusUnitFormValues,
-  LessonFormValues
 } from "@/lib/schemaValidation/syllabusSchemaValidations";
 
 import {
   getSubjectsForDropdown,
-  getSyllabusBySubject,
   getSyllabusByScope,
   createSyllabus,
   updateSyllabus,
   deleteSyllabus,
-  createSyllabusUnit,
-  updateSyllabusUnit,
-  deleteSyllabusUnit,
-  createLesson,
-  updateLesson,
-  deleteLesson,
-  getMaxUnitOrder,
   getAcademicYearsForDropdown,
   getClassesForDropdown,
   getSectionsForDropdown
@@ -100,8 +89,6 @@ function SyllabusContent() {
   const [syllabiList, setSyllabiList] = useState<any[]>([]);
 
   const [syllabusDialogOpen, setSyllabusDialogOpen] = useState(false);
-  const [unitDialogOpen, setUnitDialogOpen] = useState(false);
-  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
 
@@ -154,26 +141,6 @@ function SyllabusContent() {
       prerequisites: "",
       effectiveFrom: undefined,
       effectiveTo: undefined,
-    },
-  });
-
-  const unitForm = useForm<SyllabusUnitFormValues>({
-    resolver: zodResolver(syllabusUnitSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      order: 1,
-      syllabusId: "",
-    },
-  });
-
-  const lessonForm = useForm<LessonFormValues>({
-    resolver: zodResolver(lessonSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      subjectId: "",
-      syllabusUnitId: "",
     },
   });
 
@@ -361,60 +328,6 @@ function SyllabusContent() {
     }
   }
 
-  async function onUnitSubmit(values: SyllabusUnitFormValues) {
-    try {
-      let result;
-
-      if (editingItemId) {
-        // Update existing unit
-        result = await updateSyllabusUnit({ ...values, id: editingItemId });
-      } else {
-        // Create new unit
-        result = await createSyllabusUnit(values);
-      }
-
-      if (result.success) {
-        toast.success(`Unit ${editingItemId ? "updated" : "created"} successfully`);
-        setUnitDialogOpen(false);
-        unitForm.reset();
-        setEditingItemId(null);
-        fetchSyllabi();
-      } else {
-        toast.error(result.error || "An error occurred");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
-  async function onLessonSubmit(values: LessonFormValues) {
-    try {
-      let result;
-
-      if (editingItemId) {
-        // Update existing lesson
-        result = await updateLesson({ ...values, id: editingItemId });
-      } else {
-        // Create new lesson
-        result = await createLesson(values);
-      }
-
-      if (result.success) {
-        toast.success(`Lesson ${editingItemId ? "updated" : "created"} successfully`);
-        setLessonDialogOpen(false);
-        lessonForm.reset();
-        setEditingItemId(null);
-        fetchSyllabi();
-      } else {
-        toast.error(result.error || "An error occurred");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
   async function confirmDelete() {
     if (!deleteItemInfo) return;
 
@@ -424,10 +337,6 @@ function SyllabusContent() {
 
       if (type === 'syllabus') {
         result = await deleteSyllabus(id);
-      } else if (type === 'unit') {
-        result = await deleteSyllabusUnit(id);
-      } else if (type === 'lesson') {
-        result = await deleteLesson(id);
       }
 
       if (result && result.success) {
@@ -473,79 +382,6 @@ function SyllabusContent() {
     setUploadedFile(null);
     setEditingItemId(syllabus.id);
     setSyllabusDialogOpen(true);
-  }
-
-  async function handleAddUnit(syllabusId: string) {
-    try {
-      const orderResult = await getMaxUnitOrder(syllabusId);
-      const nextOrder = orderResult.success && orderResult.data !== undefined ? orderResult.data + 1 : 1;
-
-      unitForm.reset({
-        title: "",
-        description: "",
-        order: nextOrder,
-        syllabusId: syllabusId,
-      });
-      setEditingItemId(null);
-      setUnitDialogOpen(true);
-    } catch (err) {
-      console.error(err);
-      toast.error("An unexpected error occurred");
-    }
-  }
-
-  function handleEditUnit(unitId: string, syllabusId: string) {
-    const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
-    if (!syllabus) return;
-
-    const unitToEdit = syllabus.units.find((unit: any) => unit.id === unitId);
-    if (unitToEdit) {
-      unitForm.reset({
-        title: unitToEdit.title,
-        description: unitToEdit.description || "",
-        order: unitToEdit.order,
-        syllabusId: syllabusId,
-      });
-      setEditingItemId(unitId);
-      setUnitDialogOpen(true);
-    }
-  }
-
-  function handleAddLesson(unitId: string, syllabusId: string) {
-    const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
-    if (!syllabus) return;
-
-    lessonForm.reset({
-      title: "",
-      description: "",
-      subjectId: syllabus.subjectId,
-      syllabusUnitId: unitId,
-    });
-    setEditingItemId(null);
-    setLessonDialogOpen(true);
-  }
-
-  function handleEditLesson(lessonId: string, unitId: string, syllabusId: string) {
-    const syllabus = syllabiList.find((s: any) => s.id === syllabusId);
-    if (!syllabus) return;
-
-    const unit = syllabus.units.find((u: any) => u.id === unitId);
-    if (!unit) return;
-
-    const lessonToEdit = unit.lessons.find((lesson: any) => lesson.id === lessonId);
-    if (lessonToEdit) {
-      lessonForm.reset({
-        title: lessonToEdit.title,
-        description: lessonToEdit.description || "",
-        subjectId: syllabus.subjectId,
-        syllabusUnitId: unitId,
-        content: lessonToEdit.content || "",
-        resources: lessonToEdit.resources || "",
-        duration: lessonToEdit.duration || undefined,
-      });
-      setEditingItemId(lessonId);
-      setLessonDialogOpen(true);
-    }
   }
 
   function handleCreateSyllabus() {
@@ -899,116 +735,27 @@ function SyllabusContent() {
                       </a>
                     )}
                   </div>
-                  <Button size="sm" onClick={() => handleAddUnit(syllabus.id)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Unit
-                  </Button>
                 </div>
 
-                {syllabus.units?.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground border rounded-md">
-                    <Layers className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                    <p>No units have been added to this syllabus yet.</p>
+                <div className="flex justify-between items-center mt-6 p-4 bg-muted/30 rounded-lg border border-dashed">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md mt-0.5">
+                      <Layers className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Course Content</h4>
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        Manage modules, sub-modules, and learning materials in the enhanced syllabus editor.
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <Accordion type="multiple" className="w-full">
-                    {syllabus.units?.sort((a: any, b: any) => a.order - b.order).map((unit: any) => (
-                      <AccordionItem key={unit.id} value={unit.id} className="border rounded-md px-4 mb-3">
-                        <div className="flex items-center justify-between py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary">
-                              <span className="text-sm font-medium">{unit.order}</span>
-                            </div>
-                            <AccordionTrigger className="hover:no-underline">
-                              <div className="text-left">
-                                <h3 className="text-base font-medium">{unit.title}</h3>
-                                {unit.description && <p className="text-sm text-muted-foreground">{unit.description}</p>}
-                              </div>
-                            </AccordionTrigger>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditUnit(unit.id, syllabus.id);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteItem(unit.id, 'unit');
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <AccordionContent>
-                          <div className="py-2">
-                            <div className="flex justify-between items-center mb-3">
-                              <h4 className="text-sm font-medium">Lessons</h4>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleAddLesson(unit.id, syllabus.id)}
-                              >
-                                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                Add Lesson
-                              </Button>
-                            </div>
-                            {unit.lessons.length === 0 ? (
-                              <div className="text-center py-4 text-muted-foreground border rounded-md">
-                                <p className="text-sm">No lessons have been added to this unit yet.</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {unit.lessons.map((lesson: any, index: number) => (
-                                  <div key={lesson.id} className="flex justify-between items-center p-3 border rounded-md bg-accent">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-gray-700">{index + 1}.</span>
-                                        <h5 className="text-sm font-medium">{lesson.title}</h5>
-                                      </div>
-                                      {lesson.description && (
-                                        <p className="text-xs text-muted-foreground mt-1 ml-6">{lesson.description}</p>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 w-7 p-0"
-                                        onClick={() => handleEditLesson(lesson.id, unit.id, syllabus.id)}
-                                      >
-                                        <Edit className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 w-7 p-0 text-red-500"
-                                        onClick={() => handleDeleteItem(lesson.id, 'lesson')}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                )}
+                  <Link href={`/admin/academic/syllabus/modules?syllabusId=${syllabus.id}&subject=${syllabus.subjectId}`}>
+                    <Button>
+                      Manage Content
+                      <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -1334,188 +1081,15 @@ function SyllabusContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Unit Dialog */}
-      <Dialog open={unitDialogOpen} onOpenChange={setUnitDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingItemId ? "Edit Unit" : "Add New Unit"}</DialogTitle>
-            <DialogDescription>
-              {editingItemId
-                ? "Update the details of this unit"
-                : "Add a new unit to the syllabus"}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...unitForm}>
-            <form onSubmit={unitForm.handleSubmit(onUnitSubmit)} className="space-y-4">
-              <FormField
-                control={unitForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Algebra" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={unitForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Brief description of the unit"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={unitForm.control}
-                name="order"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Order</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="1" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">
-                  {editingItemId ? "Update" : "Add"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Lesson Dialog */}
-      <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingItemId ? "Edit Lesson" : "Add New Lesson"}</DialogTitle>
-            <DialogDescription>
-              {editingItemId
-                ? "Update the details of this lesson"
-                : "Add a new lesson to the unit"}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...lessonForm}>
-            <form onSubmit={lessonForm.handleSubmit(onLessonSubmit)} className="space-y-4">
-              <FormField
-                control={lessonForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lesson Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Linear Equations" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={lessonForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Brief description of the lesson"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={lessonForm.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Lesson content or URL to content"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={lessonForm.control}
-                name="resources"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Resources (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="URLs to resources, separated by commas"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={lessonForm.control}
-                name="duration"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration in Minutes (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        placeholder="e.g. 45"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="submit">
-                  {editingItemId ? "Update" : "Add"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Delete {deleteItemInfo?.type === 'syllabus' ? 'Syllabus' :
-                deleteItemInfo?.type === 'unit' ? 'Unit' : 'Lesson'}
+              Delete Syllabus
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this {deleteItemInfo?.type}? This action cannot be undone.
+              Are you sure you want to delete this syllabus? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

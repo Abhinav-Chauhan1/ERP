@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Search, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,8 +54,8 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementData | null>(null);
   const [pagination, setPagination] = useState({
@@ -68,8 +69,8 @@ export default function AnnouncementsPage() {
   const loadAnnouncements = useCallback(async (
     page: number = 1,
     search: string = "",
-    dateStart?: string,
-    dateEnd?: string
+    dateStart?: Date,
+    dateEnd?: Date
   ) => {
     setIsLoading(true);
     try {
@@ -84,11 +85,11 @@ export default function AnnouncementsPage() {
       }
 
       if (dateStart) {
-        filters.startDate = new Date(dateStart);
+        filters.startDate = dateStart;
       }
 
       if (dateEnd) {
-        filters.endDate = new Date(dateEnd);
+        filters.endDate = dateEnd;
       }
 
       const result = await getAnnouncements(filters);
@@ -125,8 +126,8 @@ export default function AnnouncementsPage() {
 
   const handleClearFilters = () => {
     setSearchQuery("");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(undefined);
+    setEndDate(undefined);
     setPagination((prev) => ({ ...prev, page: 1 }));
     loadAnnouncements(1);
     setIsFilterOpen(false);
@@ -198,22 +199,18 @@ export default function AnnouncementsPage() {
                       <Label htmlFor="startDate" className="text-sm text-muted-foreground">
                         From
                       </Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                      <DatePicker
+                        date={startDate}
+                        onSelect={setStartDate}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="endDate" className="text-sm text-muted-foreground">
                         To
                       </Label>
-                      <Input
-                        id="endDate"
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                      <DatePicker
+                        date={endDate}
+                        onSelect={setEndDate}
                       />
                     </div>
                   </div>

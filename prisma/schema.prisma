@@ -678,6 +678,7 @@ model Syllabus {
   // Curriculum classification
   curriculumType CurriculumType @default(GENERAL)
   boardType      String?
+  assessmentType AssessmentType @default(GRADED)
 
   // Lifecycle management
   status        SyllabusStatus @default(DRAFT)
@@ -755,6 +756,8 @@ model Module {
   title         String
   description   String?
   chapterNumber Int
+  term          String?  // Term 1, Term 2, etc.
+  weightage     Float?   // Marks weightage for blueprint
   order         Int
   syllabusId    String
   syllabus      Syllabus           @relation("SyllabusModules", fields: [syllabusId], references: [id], onDelete: Cascade)
@@ -777,6 +780,7 @@ model SubModule {
   module         Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   documents      SyllabusDocument[]
   progress       SubModuleProgress[]
+  studentProgress LessonProgress[] // Student progress tracking
   timetableSlots TimetableSlot[] // Timetable slots assigned to this topic
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -924,6 +928,11 @@ enum DifficultyLevel {
   INTERMEDIATE
   ADVANCED
   EXPERT
+}
+
+enum AssessmentType {
+  GRADED
+  CO_SCHOLASTIC
 }
 
 // Assessment models
@@ -3119,8 +3128,10 @@ model LessonProgress {
   id             String               @id @default(cuid())
   enrollmentId   String
   enrollment     CourseEnrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  lessonId       String
-  lesson         CourseLesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId       String?
+  lesson         CourseLesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  subModuleId    String?
+  subModule      SubModule?           @relation(fields: [subModuleId], references: [id], onDelete: Cascade)
   status         LessonProgressStatus @default(NOT_STARTED)
   progress       Float                @default(0) // Percentage (0-100)
   timeSpent      Int                  @default(0) // Time spent in seconds
@@ -3131,8 +3142,10 @@ model LessonProgress {
   updatedAt      DateTime             @updatedAt
 
   @@unique([enrollmentId, lessonId])
+  @@unique([enrollmentId, subModuleId])
   @@index([enrollmentId, status])
   @@index([lessonId])
+  @@index([subModuleId])
   @@map("lesson_progress")
 }
 

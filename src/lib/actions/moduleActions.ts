@@ -100,6 +100,8 @@ export async function createModule(
         chapterNumber: validatedData.chapterNumber,
         order: validatedData.order,
         syllabusId: validatedData.syllabusId,
+        term: validatedData.term,
+        weightage: validatedData.weightage,
       },
       include: {
         subModules: true,
@@ -211,6 +213,8 @@ export async function updateModule(
         chapterNumber: validatedData.chapterNumber,
         order: validatedData.order,
         syllabusId: validatedData.syllabusId,
+        term: validatedData.term,
+        weightage: validatedData.weightage,
       },
       include: {
         subModules: true,
