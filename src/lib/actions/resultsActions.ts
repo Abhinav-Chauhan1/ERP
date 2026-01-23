@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { calculateGrade } from "@/lib/utils/grade-calculator";
 import { ResultFilterValues, PublishResultsValues, GenerateReportCardValues } from "../schemaValidation/resultsSchemaValidation";
+import { auth } from "@/auth";
 
 // Get all exam results with optional filtering
 export async function getExamResults(filters?: ResultFilterValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Build the query
     const where: any = {};
 
@@ -147,6 +150,8 @@ export async function getExamResults(filters?: ResultFilterValues) {
 // Get results for a specific exam
 export async function getExamResultById(examId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const exam = await db.exam.findUnique({
       where: { id: examId },
       include: {
@@ -268,6 +273,8 @@ export async function getExamResultById(examId: string) {
 // Get student results (across exams)
 export async function getStudentResults(studentId: string, termId?: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Build the query
     const where: any = {
       studentId
@@ -444,6 +451,8 @@ export async function getStudentResults(studentId: string, termId?: string) {
 // Publish exam results
 export async function publishExamResults(data: PublishResultsValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // In a real implementation, this might update a 'isPublished' field on the exam
     // or create notifications for students
 
@@ -467,6 +476,8 @@ export async function publishExamResults(data: PublishResultsValues) {
 // Generate report card
 export async function generateReportCard(data: GenerateReportCardValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Check if report card already exists
     const existingReportCard = await db.reportCard.findFirst({
       where: {
@@ -557,6 +568,8 @@ export async function generateReportCard(data: GenerateReportCardValues) {
 // Get available exam filters (subjects, grades, exam types)
 export async function getResultFilters() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const [subjects, examTypes, terms] = await Promise.all([
       db.subject.findMany({
         orderBy: { name: 'asc' }

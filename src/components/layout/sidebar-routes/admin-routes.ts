@@ -10,7 +10,6 @@ import {
     BarChart3,
     Settings,
     School,
-    PenTool,
     PartyPopper,
     Library,
     Building2,
@@ -47,10 +46,12 @@ export const adminRoutes: RouteItem[] = [
             { label: "Overview", href: "/admin/academic" },
             { label: "Academic Years", href: "/admin/academic/academic-years" },
             { label: "Terms", href: "/admin/academic/terms" },
-            { label: "Departments", href: "/admin/academic/departments" },
+
             { label: "Grades", href: "/admin/academic/grades" },
-            { label: "Curriculum", href: "/admin/academic/curriculum" },
+            { label: "Subjects", href: "/admin/teaching/subjects" },
             { label: "Syllabus", href: "/admin/academic/syllabus" },
+            { label: "Lessons", href: "/admin/teaching/lessons" },
+            { label: "Timetable", href: "/admin/teaching/timetable" },
             { label: "Promotion", href: "/admin/academic/promotion" },
         ],
         permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],
@@ -65,17 +66,7 @@ export const adminRoutes: RouteItem[] = [
         ],
         permissions: [PERMISSIONS.READ_CLASS],
     },
-    {
-        label: "Teaching",
-        icon: PenTool,
-        submenu: [
-            { label: "Overview", href: "/admin/teaching" },
-            { label: "Subjects", href: "/admin/teaching/subjects" },
-            { label: "Lessons", href: "/admin/teaching/lessons" },
-            { label: "Timetable", href: "/admin/teaching/timetable" },
-        ],
-        permissions: [PERMISSIONS.READ_SUBJECT, PERMISSIONS.READ_CLASS],
-    },
+
     {
         label: "Assessment",
         icon: BookOpen,

@@ -20,7 +20,6 @@ export const studentRoutes: RouteItem[] = [
         submenu: [
             { label: "Class Schedule", href: "/student/academics/schedule" },
             { label: "Subjects", href: "/student/academics/subjects" },
-            { label: "Curriculum", href: "/student/academics/curriculum" },
             { label: "Learning Materials", href: "/student/academics/materials" },
         ],
         permissions: [PERMISSIONS.READ_CLASS, PERMISSIONS.READ_SUBJECT],

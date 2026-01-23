@@ -608,7 +608,19 @@ export async function getSyllabusByScope(filters: SyllabusScopeFilterValues) {
             lessons: true
           }
         },
-        modules: true,
+        modules: {
+          orderBy: {
+            order: 'asc'
+          },
+          include: {
+            subModules: {
+              orderBy: {
+                order: 'asc'
+              }
+            },
+            documents: true
+          }
+        },
       },
       orderBy: [
         { createdAt: 'desc' }

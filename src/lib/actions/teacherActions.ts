@@ -1,9 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 
 // Get teacher with detailed information
 export async function getTeacherWithDetails(teacherId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return null;
   if (!teacherId) {
     console.error('Invalid teacher ID provided:', teacherId);
     return null;
@@ -77,6 +80,8 @@ export async function getTeacherWithDetails(teacherId: string) {
 // Get available subjects that can be assigned to a teacher
 export async function getAvailableSubjectsForTeacher(teacherId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Get subjects already assigned to this teacher
     const assignedSubjects = await db.subjectTeacher.findMany({
       where: { teacherId },
@@ -121,6 +126,8 @@ export async function getAvailableSubjectsForTeacher(teacherId: string) {
 // Get available classes that can be assigned to a teacher
 export async function getAvailableClassesForTeacher(teacherId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Get classes already assigned to this teacher
     const assignedClasses = await db.classTeacher.findMany({
       where: { teacherId },

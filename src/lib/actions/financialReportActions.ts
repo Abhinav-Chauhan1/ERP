@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 
 // Get fee collection report
 export async function getFeeCollectionReport(filters?: {
@@ -9,9 +10,11 @@ export async function getFeeCollectionReport(filters?: {
   endDate?: Date;
   status?: string;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const where: any = {};
-    
+
     if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
     if (filters?.status) where.status = filters.status;
     if (filters?.startDate || filters?.endDate) {
@@ -81,9 +84,11 @@ export async function getExpenseAnalysis(filters?: {
   endDate?: Date;
   category?: string;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const where: any = {};
-    
+
     if (filters?.category) where.category = filters.category;
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -141,11 +146,13 @@ export async function getOutstandingPayments(filters?: {
   academicYearId?: string;
   classId?: string;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const where: any = {
       status: "PENDING",
     };
-    
+
     if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
 
     const outstandingPayments = await db.feePayment.findMany({
@@ -204,6 +211,8 @@ export async function getOutstandingPayments(filters?: {
 export async function getBudgetVsActualReport(filters?: {
   academicYearId?: string;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const where: any = {};
     if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
@@ -258,9 +267,11 @@ export async function getIncomeStatement(filters?: {
   startDate?: Date;
   endDate?: Date;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const where: any = {};
-    
+
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
       if (filters.startDate) where.date.gte = filters.startDate;

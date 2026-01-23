@@ -88,7 +88,7 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
         data: {
           userId: user.id,
           position: data.position,
-          department: data.department,
+
         }
       });
 
@@ -102,7 +102,6 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
           firstName: data.firstName,
           lastName: data.lastName,
           position: data.position,
-          department: data.department,
         }
       );
 
@@ -397,7 +396,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
         where: { id: administratorId },
         data: {
           position: data.position,
-          department: data.department,
+
         }
       });
 

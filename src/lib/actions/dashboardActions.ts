@@ -1,8 +1,11 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 
 export async function getDashboardStats() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get counts
     const [
@@ -35,6 +38,8 @@ export async function getDashboardStats() {
 // New functions for Phase 10
 
 export async function getTotalStudents() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalStudents = await db.student.count({
       where: {
@@ -55,6 +60,8 @@ export async function getTotalStudents() {
 }
 
 export async function getTotalTeachers() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalTeachers = await db.teacher.count({
       where: {
@@ -75,6 +82,8 @@ export async function getTotalTeachers() {
 }
 
 export async function getPendingFeePayments() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const pendingPayments = await db.feePayment.aggregate({
       where: {
@@ -104,6 +113,8 @@ export async function getPendingFeePayments() {
 }
 
 export async function getTodaysAttendance() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -185,6 +196,8 @@ export async function getTodaysAttendance() {
 }
 
 export async function getUpcomingEventsCount() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -212,6 +225,8 @@ export async function getUpcomingEventsCount() {
 }
 
 export async function getRecentAnnouncementsCount() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -236,6 +251,8 @@ export async function getRecentAnnouncementsCount() {
 }
 
 export async function getStudentAttendanceData() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get attendance data for the last 12 months
     const now = new Date();
@@ -283,6 +300,8 @@ export async function getStudentAttendanceData() {
 }
 
 export async function getExamResultsData() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get average exam results by subject
     const subjects = await db.subject.findMany({
@@ -326,6 +345,8 @@ export async function getExamResultsData() {
 }
 
 export async function getEnrollmentDistribution() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const classes = await db.class.findMany({
       select: {
@@ -360,6 +381,8 @@ export async function getEnrollmentDistribution() {
 }
 
 export async function getRecentActivities() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get recent activities from various sources with timeout protection
     const [recentExams, recentAssignments, recentAnnouncements] = await Promise.all([
@@ -468,6 +491,8 @@ export async function getRecentActivities() {
 }
 
 export async function getUpcomingEvents() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -503,6 +528,8 @@ export async function getUpcomingEvents() {
 }
 
 export async function getNotifications() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get high absence rate classes
     const sevenDaysAgo = new Date();

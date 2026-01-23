@@ -8,13 +8,13 @@ export async function getAcademicOverview() {
     const [
       academicYearsCount,
       termsCount,
-      departmentsCount,
+
       gradeScalesCount,
       syllabusCount,
     ] = await Promise.all([
       db.academicYear.count(),
       db.term.count(),
-      db.department.count(),
+
       db.gradeScale.count(),
       db.syllabus.count(),
     ]);
@@ -24,9 +24,9 @@ export async function getAcademicOverview() {
       data: {
         academicYears: academicYearsCount,
         terms: termsCount,
-        departments: departmentsCount,
+
         grades: gradeScalesCount,
-        curriculum: 0, // Placeholder - no curriculum table in schema
+
         syllabus: syllabusCount,
       },
     };

@@ -36,13 +36,7 @@ async function AcademicPageContent() {
       href: "/admin/academic/terms",
       count: overview?.terms ?? 0
     },
-    {
-      title: "Departments",
-      icon: <Building2 className="h-5 w-5" />,
-      description: "Manage academic departments",
-      href: "/admin/academic/departments",
-      count: overview?.departments ?? 0
-    },
+
     {
       title: "Grades",
       icon: <GraduationCap className="h-5 w-5" />,
@@ -50,13 +44,7 @@ async function AcademicPageContent() {
       href: "/admin/academic/grades",
       count: overview?.grades ?? 0
     },
-    {
-      title: "Curriculum",
-      icon: <BookOpen className="h-5 w-5" />,
-      description: "Manage curriculum structure",
-      href: "/admin/academic/curriculum",
-      count: overview?.curriculum ?? 0
-    },
+
     {
       title: "Syllabus",
       icon: <FileText className="h-5 w-5" />,

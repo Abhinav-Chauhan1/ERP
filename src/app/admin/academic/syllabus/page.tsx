@@ -77,6 +77,7 @@ import { CloneSyllabusDialog } from "@/components/admin/syllabus/clone-syllabus-
 import { StatusBadge } from "@/components/admin/syllabus/status-badge";
 import { StatusChangeDropdown } from "@/components/admin/syllabus/status-change-dropdown";
 import { useSession } from "next-auth/react";
+import { ModuleList } from "@/components/academic/module-list";
 
 function SyllabusContent() {
   const searchParams = useSearchParams();
@@ -435,24 +436,8 @@ function SyllabusContent() {
         </Button>
       </div>
 
-      {/* Enhanced Syllabus Banner */}
-      {useEnhancedSyllabus && (
-        <Alert className="bg-primary/5 border-primary/20">
-          <BookOpen className="h-4 w-4 text-primary" />
-          <AlertTitle className="text-primary">Enhanced Syllabus System Available</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>
-              The new module-based syllabus system is now available with better organization,
-              multiple document support, and progress tracking.
-            </span>
-            <Link href="/admin/academic/syllabus/modules">
-              <Button size="sm" className="ml-4">
-                Try New System
-              </Button>
-            </Link>
-          </AlertDescription>
-        </Alert>
-      )}
+
+
 
       {/* Filters Section */}
       <Card>
@@ -737,24 +722,16 @@ function SyllabusContent() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-6 p-4 bg-muted/30 rounded-lg border border-dashed">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-primary/10 rounded-md mt-0.5">
-                      <Layers className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-1">Course Content</h4>
-                      <p className="text-sm text-muted-foreground max-w-md">
-                        Manage modules, sub-modules, and learning materials in the enhanced syllabus editor.
-                      </p>
-                    </div>
+                <div className="mt-6 border-t pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Layers className="h-5 w-5 text-primary" />
+                    <h4 className="font-medium text-lg">Course Content</h4>
                   </div>
-                  <Link href={`/admin/academic/syllabus/modules?syllabusId=${syllabus.id}&subject=${syllabus.subjectId}`}>
-                    <Button>
-                      Manage Content
-                      <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
-                    </Button>
-                  </Link>
+                  <ModuleList
+                    modules={syllabus.modules || []}
+                    syllabusId={syllabus.id}
+                    onRefresh={fetchSyllabi}
+                  />
                 </div>
               </CardContent>
             </Card>

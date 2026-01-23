@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { hashPassword, validatePasswordStrength } from "@/lib/password"
 import { sendEmail } from "@/lib/utils/email-service"
+import { getVerificationEmailHtml } from "@/lib/utils/email-templates"
 import { UserRole } from "@prisma/client"
 import crypto from "crypto"
 
@@ -98,82 +99,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Send verification email (Requirement 3.5)
+    // Updated to use centralized template
     const verificationUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background-color: #3b82f6;
-              color: white;
-              padding: 20px;
-              text-align: center;
-              border-radius: 5px 5px 0 0;
-            }
-            .content {
-              background-color: #f9fafb;
-              padding: 20px;
-              border: 1px solid #e5e7eb;
-              border-top: none;
-              border-radius: 0 0 5px 5px;
-            }
-            .button {
-              display: inline-block;
-              padding: 12px 24px;
-              background-color: #3b82f6;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-              margin: 20px 0;
-            }
-            .footer {
-              margin-top: 20px;
-              padding-top: 20px;
-              border-top: 1px solid #e5e7eb;
-              font-size: 12px;
-              color: #6b7280;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Welcome to SikshaMitra!</h1>
-          </div>
-          <div class="content">
-            <p>Hello ${firstName},</p>
-            <p>Thank you for registering with SikshaMitra. To complete your registration, please verify your email address by clicking the button below:</p>
-            
-            <div style="text-align: center;">
-              <a href="${verificationUrl}" class="button">Verify Email Address</a>
-            </div>
-            
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #3b82f6;">${verificationUrl}</p>
-            
-            <p><strong>This link will expire in 24 hours.</strong></p>
-            
-            <p>If you didn't create an account with SikshaMitra, please ignore this email.</p>
-            
-            <p>Best regards,<br>SikshaMitra Team</p>
-          </div>
-          <div class="footer">
-            <p>This is an automated email from SikshaMitra.</p>
-          </div>
-        </body>
-      </html>
-    `
+    const emailHtml = getVerificationEmailHtml({
+      userName: firstName,
+      verificationUrl
+    })
 
     const emailResult = await sendEmail({
       to: [email.toLowerCase()],

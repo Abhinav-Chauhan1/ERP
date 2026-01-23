@@ -370,71 +370,22 @@ export async function updateApplicationStatus(
       const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
 
       if (isEmailConfigured()) {
-        if (status === "ACCEPTED") {
-          await sendEmail({
-            to: application.parentEmail,
-            subject: `Admission Application Accepted - ${application.studentName}`,
-            html: `
-              <h1>Congratulations!</h1>
-              <p>Dear ${application.parentName},</p>
-              <p>We are pleased to inform you that the admission application for <strong>${application.studentName}</strong> 
-              for Class <strong>${application.appliedClass.name}</strong> has been <span style="color: green;"><strong>ACCEPTED</strong></span>.</p>
-              
-              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
-              
-              <h2>Next Steps</h2>
-              <ul>
-                <li>Please visit the school administration office to complete the enrollment process</li>
-                <li>Bring all original documents for verification</li>
-                <li>Complete the fee payment as per the schedule provided</li>
-              </ul>
-              
-              ${remarks ? `<p><strong>Remarks:</strong> ${remarks}</p>` : ''}
-              
-              <p>We look forward to welcoming ${application.studentName} to our school!</p>
-              <br>
-              <p>Best regards,<br>School Administration</p>
-            `
+        const { getAdmissionStatusEmailHtml } = await import('@/lib/utils/email-templates');
+
+        if (status === "ACCEPTED" || status === "REJECTED" || status === "WAITLISTED") {
+          const emailData = getAdmissionStatusEmailHtml({
+            parentName: application.parentName,
+            studentName: application.studentName,
+            applicationNumber: application.applicationNumber,
+            appliedClass: application.appliedClass.name,
+            status,
+            remarks
           });
-        } else if (status === "REJECTED") {
+
           await sendEmail({
-            to: application.parentEmail,
-            subject: `Admission Application Update - ${application.studentName}`,
-            html: `
-              <h1>Admission Application Update</h1>
-              <p>Dear ${application.parentName},</p>
-              <p>We regret to inform you that the admission application for <strong>${application.studentName}</strong> 
-              for Class <strong>${application.appliedClass.name}</strong> could not be accepted at this time.</p>
-              
-              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
-              
-              ${remarks ? `<p><strong>Reason:</strong> ${remarks}</p>` : ''}
-              
-              <p>We appreciate your interest in our school and wish ${application.studentName} all the best for the future.</p>
-              <br>
-              <p>Best regards,<br>School Administration</p>
-            `
-          });
-        } else if (status === "WAITLISTED") {
-          await sendEmail({
-            to: application.parentEmail,
-            subject: `Admission Application Waitlisted - ${application.studentName}`,
-            html: `
-              <h1>Application Waitlisted</h1>
-              <p>Dear ${application.parentName},</p>
-              <p>The admission application for <strong>${application.studentName}</strong> 
-              for Class <strong>${application.appliedClass.name}</strong> has been <strong>WAITLISTED</strong>.</p>
-              
-              <p>Application Number: <strong>${application.applicationNumber}</strong></p>
-              
-              <p>This means your application is on hold and will be considered if seats become available.</p>
-              <p>We will notify you of any updates regarding your application status.</p>
-              
-              ${remarks ? `<p><strong>Remarks:</strong> ${remarks}</p>` : ''}
-              
-              <br>
-              <p>Best regards,<br>School Administration</p>
-            `
+            to: [application.parentEmail],
+            subject: emailData.subject,
+            html: emailData.html
           });
         }
       }

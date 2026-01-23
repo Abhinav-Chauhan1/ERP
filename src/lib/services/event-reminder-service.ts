@@ -9,7 +9,8 @@
 
 import { EventReminder, ReminderType, CalendarEvent } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { sendEmail, isEmailConfigured } from './email-service';
+import { sendEmail, isEmailConfigured } from "@/lib/utils/email-service";
+import { getEventReminderEmailHtml } from "@/lib/utils/email-templates";
 import { createReminderNotification } from './notification-service';
 import { db } from '@/lib/db';
 
@@ -187,14 +188,7 @@ export async function sendReminderNotification(
         const emailResult = await sendEmail({
           to: userEmail,
           subject: `Reminder: ${notificationData.eventTitle}`,
-          html: `
-            <h2>Event Reminder</h2>
-            <p><strong>Event:</strong> ${notificationData.eventTitle}</p>
-            <p><strong>Date:</strong> ${notificationData.eventDate.toLocaleDateString()}</p>
-            <p><strong>Time:</strong> ${notificationData.eventTime}</p>
-            ${notificationData.location ? `<p><strong>Location:</strong> ${notificationData.location}</p>` : ''}
-            ${notificationData.description ? `<p><strong>Description:</strong> ${notificationData.description}</p>` : ''}
-          `,
+          html: getEventReminderEmailHtml(notificationData),
           text: `
 Event Reminder
 

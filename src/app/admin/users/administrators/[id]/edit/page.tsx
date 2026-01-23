@@ -29,7 +29,7 @@ const editAdministratorSchema = z.object({
   role: z.literal(UserRole.ADMIN),
   active: z.boolean(),
   position: z.string().optional(),
-  department: z.string().optional(),
+
 });
 
 type EditAdministratorFormData = z.infer<typeof editAdministratorSchema>;
@@ -56,7 +56,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
       role: UserRole.ADMIN,
       active: true,
       position: "",
-      department: "",
+
     },
   });
 
@@ -80,7 +80,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
           role: UserRole.ADMIN,
           active: administrator.user.active,
           position: administrator.position || "",
-          department: administrator.department || "",
+
         });
       } catch (error) {
         console.error("Error fetching administrator:", error);
@@ -249,22 +249,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Department" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          The department they oversee
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
                 </div>
               </div>
 

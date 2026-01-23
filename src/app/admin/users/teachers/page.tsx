@@ -60,7 +60,7 @@ export default async function TeachersPage() {
           <TeachersWithFilters
             initialTeachers={teachers}
             subjects={filterOptions.subjects}
-            departments={filterOptions.departments}
+
           />
         </CardContent>
       </Card>

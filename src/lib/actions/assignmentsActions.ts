@@ -14,10 +14,13 @@ import {
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
 import { uploadBufferToCloudinary } from "@/lib/cloudinary-server";
+import { auth } from "@/auth";
 
 // Get all assignments with optional filtering
 export async function getAssignments(filters?: AssignmentFilterValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const where: any = {};
 
     // Add filters
@@ -152,6 +155,8 @@ export async function getAssignments(filters?: AssignmentFilterValues) {
 // Get a single assignment by ID
 export async function getAssignmentById(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const assignment = await db.assignment.findUnique({
       where: { id },
       include: {
@@ -279,6 +284,8 @@ export async function getAssignmentById(id: string) {
 // Create a new assignment
 export async function createAssignment(data: AssignmentFormValues, creatorId: string | null = null, files?: File[]) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Handle file uploads if provided
     const attachments: string[] = [];
     if (files && files.length > 0) {
@@ -365,6 +372,8 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
 // Update an existing assignment
 export async function updateAssignment(data: AssignmentUpdateValues, files?: File[]) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Check if assignment exists
     const existingAssignment = await db.assignment.findUnique({
       where: { id: data.id },
@@ -469,6 +478,8 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
 // Delete an assignment
 export async function deleteAssignment(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Check if assignment has submissions
     const submissions = await db.assignmentSubmission.findMany({
       where: { assignmentId: id }
@@ -508,6 +519,8 @@ export async function deleteAssignment(id: string) {
 // Get all submissions for an assignment
 export async function getSubmissionsByAssignment(assignmentId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const assignment = await db.assignment.findUnique({
       where: { id: assignmentId },
       select: { dueDate: true }
@@ -569,6 +582,8 @@ export async function getSubmissionsByAssignment(assignmentId: string) {
 // Grade a submission
 export async function gradeSubmission(data: SubmissionGradeValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const submission = await db.assignmentSubmission.findUnique({
       where: { id: data.submissionId },
       include: {
@@ -612,6 +627,8 @@ export async function gradeSubmission(data: SubmissionGradeValues) {
 // Get subjects for assignment dropdown
 export async function getSubjectsForAssignments() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const subjects = await db.subject.findMany({
       orderBy: {
         name: 'asc',
@@ -636,6 +653,8 @@ export async function getSubjectsForAssignments() {
 // Get classes for assignment dropdown
 export async function getClassesForAssignments() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const classes = await db.class.findMany({
       orderBy: [
         {

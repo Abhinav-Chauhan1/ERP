@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
+import { hasPermission } from "@/lib/utils/permissions";
+import { PermissionAction } from "@prisma/client";
 
 // Get all notifications with filters
 export async function getNotifications(filters?: {
@@ -11,6 +13,16 @@ export async function getNotifications(filters?: {
   limit?: number;
 }) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     const where: any = {};
 
     if (filters?.type) {
@@ -48,6 +60,11 @@ export async function getNotifications(filters?: {
 // Get single notification by ID
 export async function getNotificationById(id: string) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const notification = await db.notification.findUnique({
       where: { id },
       include: {
@@ -65,6 +82,14 @@ export async function getNotificationById(id: string) {
       return { success: false, error: "Notification not found" };
     }
 
+    // Allow if user owns the notification OR has admin read permissions
+    if (notification.userId !== user.id) {
+      const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+      if (!hasPerm) {
+        return { success: false, error: "Unauthorized" };
+      }
+    }
+
     return { success: true, data: notification };
   } catch (error) {
     console.error("Error fetching notification:", error);
@@ -78,6 +103,11 @@ export async function createNotification(data: any) {
     const user = await currentUser();
     if (!user) {
       return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.CREATE);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
     }
 
     const dbUser = await db.user.findUnique({
@@ -137,6 +167,16 @@ export async function createNotification(data: any) {
 // Update notification
 export async function updateNotification(id: string, data: any) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.UPDATE);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     const notification = await db.notification.update({
       where: { id },
       data: {
@@ -167,6 +207,16 @@ export async function updateNotification(id: string, data: any) {
 // Delete notification
 export async function deleteNotification(id: string) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.DELETE);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     await db.notification.delete({
       where: { id },
     });
@@ -229,6 +279,7 @@ export async function markNotificationAsRead(notificationId: string) {
     }
 
     // Verify the notification belongs to the user
+    // No need for strict permission check here beyond ownership
     const notification = await db.notification.findFirst({
       where: {
         id: notificationId,
@@ -299,6 +350,11 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
       return { success: false, error: "Unauthorized" };
     }
 
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.CREATE);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
     });
@@ -331,6 +387,16 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
 // Get notification statistics
 export async function getNotificationStats() {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     const [totalNotifications, infoCount, warningCount, alertCount, successCount] =
       await Promise.all([
         db.notification.count(),
@@ -367,6 +433,16 @@ export async function getNotificationStats() {
 // Get users for bulk notification targeting
 export async function getUsersForNotifications(role?: string) {
   try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const hasPerm = await hasPermission(user.id, "COMMUNICATION", PermissionAction.READ);
+    if (!hasPerm) {
+      return { success: false, error: "Insufficient permissions" };
+    }
+
     const where: any = {};
 
     if (role && role !== "ALL") {

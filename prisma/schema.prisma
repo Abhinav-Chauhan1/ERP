@@ -110,7 +110,7 @@ model Administrator {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String   @unique
   position   String?
-  department String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -143,6 +143,7 @@ model Teacher {
   onlineExams       OnlineExam[] // Online exams created
   courses           Course[] // LMS courses created
   achievements      Achievement[] // Teacher achievements
+  salaryStructure   SalaryStructure? // Added Phase 2 relation
 }
 
 model TeacherSettings {
@@ -1495,16 +1496,55 @@ model Budget {
   expenses Expense[]
 }
 
+
+
+model SalaryStructure {
+  id              String   @id @default(cuid())
+  teacher         Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId       String   @unique
+  
+  // Earnings
+  basic           Float    @default(0)
+  hra             Float    @default(0)
+  da              Float    @default(0)
+  travelAllowance Float    @default(0)
+  otherAllowances Json?    // Array of { name: string, amount: number }
+  
+  // Deductions
+  providentFund   Float    @default(0)
+  professionalTax Float    @default(0)
+  tds             Float    @default(0) // Tax Deducted at Source
+  otherDeductions Json?    // Array of { name: string, amount: number }
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([teacherId])
+}
+
 model Payroll {
   id            String        @id @default(cuid())
   teacher       Teacher       @relation(fields: [teacherId], references: [id])
   teacherId     String
   month         Int
   year          Int
+  
+  // Salary Snapshot (Stored for historical accuracy)
   basicSalary   Float
-  allowances    Float         @default(0)
-  deductions    Float         @default(0)
+  hra           Float         @default(0)
+  da            Float         @default(0)
+  travelAllowance Float       @default(0)
+  otherAllowances Json?       // Snapshot of allowances
+  
+  providentFund Float         @default(0)
+  professionalTax Float       @default(0)
+  tds           Float         @default(0)
+  otherDeductions Json?       // Snapshot of deductions
+  
+  allowances    Float         @default(0) // Total Allowances
+  deductions    Float         @default(0) // Total Deductions
   netSalary     Float
+  
   paymentDate   DateTime?
   paymentMethod PaymentMethod @default(BANK_TRANSFER)
   transactionId String?
@@ -3317,6 +3357,11 @@ model ReportCardTemplate {
   headerImage String?
   footerImage String?
   schoolLogo  String?
+
+  // Phase 2: Indian Features
+  signatures    Json? // Array of signatory config { label, image, position }
+  disclaimer    String? @db.Text // Board affiliation text
+  gradingConfig Json? // { system: "5_POINT" | "7_POINT" | "MARKS", showMarks: boolean }
 
   isActive  Boolean @default(true)
   isDefault Boolean @default(false)

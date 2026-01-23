@@ -11,13 +11,13 @@ import { Loader2 } from "lucide-react";
 interface TeachersWithFiltersProps {
   initialTeachers: any[];
   subjects: { id: string; name: string }[];
-  departments: { id: string; name: string }[];
+
 }
 
 export function TeachersWithFilters({
   initialTeachers,
   subjects,
-  departments,
+
 }: TeachersWithFiltersProps) {
   const [teachers, setTeachers] = useState(initialTeachers);
   const [filters, setFilters] = useState<FilterValue>({});
@@ -38,16 +38,7 @@ export function TeachersWithFilters({
         ...subjects.map((s) => ({ value: s.id, label: s.name })),
       ],
     },
-    {
-      id: "department",
-      label: "Department",
-      type: "select",
-      placeholder: "All Departments",
-      options: [
-        { value: "all", label: "All Departments" },
-        ...departments.map((d) => ({ value: d.id, label: d.name })),
-      ],
-    },
+
     {
       id: "joiningDate",
       label: "Joining Date Range",
@@ -69,7 +60,7 @@ export function TeachersWithFilters({
 
         const result = await getFilteredTeachers({
           subjectId: filters.subjectId as string,
-          department: filters.department as string,
+
           joiningDateFrom: dateRange?.from,
           joiningDateTo: dateRange?.to,
           search: filters.search as string,

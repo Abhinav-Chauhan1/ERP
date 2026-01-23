@@ -6,14 +6,16 @@
  */
 
 import { db } from "@/lib/db";
-import { sendEmail, isEmailConfigured } from "./email-service";
+import { sendEmail, isEmailConfigured } from "@/lib/utils/email-service";
 import {
-  getVerificationSuccessEmailTemplate,
-  getRejectionEmailTemplate,
-  getVerificationSuccessNotification,
-  getRejectionNotification,
+  getReceiptVerificationSuccessEmailHtml,
+  getReceiptRejectionEmailHtml,
   ReceiptVerificationData,
   ReceiptRejectionData,
+} from "@/lib/utils/email-templates";
+import {
+  getVerificationSuccessNotification,
+  getRejectionNotification,
 } from "../templates/receipt-notification-templates";
 
 /**
@@ -77,12 +79,11 @@ export async function sendVerificationSuccessNotification(
     if (emailEnabled && isEmailConfigured()) {
       results.email.attempted = true;
       try {
-        const emailTemplate = getVerificationSuccessEmailTemplate(data);
+        const emailTemplate = getReceiptVerificationSuccessEmailHtml(data);
         const emailResult = await sendEmail({
-          to: userEmail,
+          to: [userEmail],
           subject: emailTemplate.subject,
           html: emailTemplate.html,
-          text: emailTemplate.text,
         });
         results.email.success = emailResult.success;
 
@@ -172,12 +173,11 @@ export async function sendRejectionNotification(
     if (emailEnabled && isEmailConfigured()) {
       results.email.attempted = true;
       try {
-        const emailTemplate = getRejectionEmailTemplate(data);
+        const emailTemplate = getReceiptRejectionEmailHtml(data);
         const emailResult = await sendEmail({
-          to: userEmail,
+          to: [userEmail],
           subject: emailTemplate.subject,
           html: emailTemplate.html,
-          text: emailTemplate.text,
         });
         results.email.success = emailResult.success;
 

@@ -77,10 +77,44 @@ export function LoginForm() {
 
   const { update } = useSession()
 
+  const [resendLoading, setResendLoading] = useState(false)
+  const [showResendButton, setShowResendButton] = useState(false)
+
+  const handleResendVerification = async () => {
+    setResendLoading(true)
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: formData.email }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setServerError("")
+        setShowResendButton(false)
+        setErrors({})
+        // Show success alert? We can reuse the "registered" param or just verify alert
+        alert("Verification email resent successfully. Please check your inbox.")
+      } else {
+        setServerError(data.error || "Failed to resend verification email")
+      }
+    } catch (error) {
+      console.error("Resend error:", error)
+      setServerError("An error occurred. Please try again.")
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setServerError("")
     setRetryAfter(undefined)
+    setShowResendButton(false)
 
     // Validate form
     if (!validateForm()) {
@@ -111,6 +145,9 @@ export function LoginForm() {
           setServerError(getErrorMessage(result.code as AuthErrorCode, result.error))
         } else {
           setServerError(result.error || "An error occurred during login")
+          if (result.error && result.error.includes("verify your email")) {
+            setShowResendButton(true)
+          }
         }
 
         setIsLoading(false)
@@ -339,7 +376,24 @@ export function LoginForm() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-2">
+      <CardFooter className="flex flex-col space-y-4">
+        {showResendButton && (
+          <Button
+            variant="outline"
+            onClick={handleResendVerification}
+            disabled={resendLoading || isLoading}
+            className="w-full"
+          >
+            {resendLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Resending...
+              </>
+            ) : (
+              "Resend Verification Email"
+            )}
+          </Button>
+        )}
         <div className="text-sm text-center text-gray-600">
           Don't have an account?{" "}
           <Link href="/register" className="text-blue-600 hover:underline font-medium">

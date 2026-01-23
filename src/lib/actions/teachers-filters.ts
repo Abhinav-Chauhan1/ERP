@@ -5,7 +5,7 @@ import { Prisma } from "@prisma/client";
 
 export interface TeacherFilters {
   subjectId?: string;
-  department?: string;
+
   joiningDateFrom?: Date;
   joiningDateTo?: Date;
   search?: string;
@@ -43,14 +43,7 @@ export async function getFilteredTeachers(filters: TeacherFilters) {
       ];
     }
 
-    // Department filter
-    if (filters.department && filters.department !== "all") {
-      where.departments = {
-        some: {
-          id: filters.department,
-        },
-      };
-    }
+
 
     // Joining date range filter
     if (filters.joiningDateFrom || filters.joiningDateTo) {
@@ -102,38 +95,25 @@ export async function getFilteredTeachers(filters: TeacherFilters) {
 
 export async function getTeacherFilterOptions() {
   try {
-    const [subjects, departments] = await Promise.all([
-      db.subject.findMany({
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      }),
-      db.department.findMany({
-        select: {
-          id: true,
-          name: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      }),
-    ]);
+    const subjects = await db.subject.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
 
     return {
       success: true,
       subjects,
-      departments,
     };
   } catch (error) {
     console.error("Error fetching teacher filter options:", error);
     return {
       success: false,
       subjects: [],
-      departments: [],
     };
   }
 }

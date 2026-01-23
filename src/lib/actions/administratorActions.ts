@@ -1,9 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 
 // Get administrator with detailed information
 export async function getAdministratorWithDetails(administratorId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return null;
   if (!administratorId) {
     console.error('Invalid administrator ID provided:', administratorId);
     return null;
@@ -11,7 +14,7 @@ export async function getAdministratorWithDetails(administratorId: string) {
 
   try {
     console.log(`Fetching administrator details for ID: ${administratorId}`);
-    
+
     const administrator = await db.administrator.findUnique({
       where: { id: administratorId },
       include: {

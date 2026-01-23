@@ -30,7 +30,7 @@ export async function getSubjects() {
   try {
     const subjects = await db.subject.findMany({
       include: {
-        department: true,
+
         classes: {
           include: {
             class: {
@@ -64,8 +64,7 @@ export async function getSubjects() {
       id: subject.id,
       code: subject.code,
       name: subject.name,
-      department: subject.department?.name || "Uncategorized",
-      departmentId: subject.departmentId,
+
       description: subject.description || "",
       hasLabs: subject.description?.toLowerCase().includes("lab") || false,
       grades: subject.classes.map(sc => sc.class.name),
@@ -91,7 +90,7 @@ export async function getSubjectById(id: string) {
     const subject = await db.subject.findUnique({
       where: { id },
       include: {
-        department: true,
+
         classes: {
           include: {
             class: {
@@ -198,8 +197,7 @@ export async function getSubjectById(id: string) {
       id: subject.id,
       code: subject.code,
       name: subject.name,
-      department: subject.department?.name || "Uncategorized",
-      departmentId: subject.departmentId,
+
       description: subject.description || "",
       hasLabs: subject.description?.toLowerCase().includes("lab") || false,
       grades: subject.classes.map(sc => sc.class.name),
@@ -221,23 +219,7 @@ export async function getSubjectById(id: string) {
 }
 
 // Get all departments for the dropdown
-export async function getDepartments() {
-  try {
-    const departments = await db.department.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-    });
 
-    return { success: true, data: departments };
-  } catch (error) {
-    console.error("Error fetching departments:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to fetch departments"
-    };
-  }
-}
 
 // Get all classes for the dropdown
 export async function getClasses() {
@@ -288,7 +270,7 @@ export async function createSubject(data: SubjectFormValues) {
         name: data.name,
         code: data.code,
         description: data.description,
-        departmentId: data.departmentId,
+
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } }
@@ -341,7 +323,7 @@ export async function updateSubject(data: SubjectUpdateFormValues) {
         name: data.name,
         code: data.code,
         description: data.description,
-        departmentId: data.departmentId,
+
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } }
@@ -427,11 +409,7 @@ export async function autoGenerateSubjects(selectedCodes?: string[]) {
     });
     const existingCodes = new Set(existingSubjects.map(s => s.code.toUpperCase()));
 
-    // Get existing departments for mapping
-    const departments = await db.department.findMany({
-      select: { id: true, name: true }
-    });
-    const departmentMap = new Map(departments.map(d => [d.name.toLowerCase(), d.id]));
+
 
     // Filter out subjects that already exist
     let subjectsToCreate = STANDARD_SUBJECTS
@@ -458,7 +436,7 @@ export async function autoGenerateSubjects(selectedCodes?: string[]) {
         name: s.name,
         code: s.code,
         description: s.description,
-        departmentId: departmentMap.get(s.department.toLowerCase()) || null,
+
       })),
       skipDuplicates: true,
     });

@@ -2,12 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { 
-  BookOpen, 
-  Calendar, 
-  BookMarked, 
-  Presentation, 
-  ChevronRight 
+import {
+  BookOpen,
+  Calendar,
+  BookMarked,
+  Presentation,
+  ChevronRight
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default async function AcademicsPage() {
   const { student, currentEnrollment } = await getStudentAcademicDetails();
-  
+
   const academicFeatures = [
     {
       title: "Class Schedule",
@@ -36,13 +36,7 @@ export default async function AcademicsPage() {
       href: "/student/academics/subjects",
       color: "bg-green-50 text-green-600",
     },
-    {
-      title: "Curriculum",
-      description: "Access your course curriculum and syllabi",
-      icon: BookMarked,
-      href: "/student/academics/curriculum",
-      color: "bg-amber-50 text-amber-600",
-    },
+
     {
       title: "Learning Materials",
       description: "Find and download all your learning resources",

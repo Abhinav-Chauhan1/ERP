@@ -17,10 +17,14 @@ export interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions) {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not configured");
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.error("RESEND_API_KEY is not configured in process.env");
       return { success: false, error: "Email service not configured" };
     }
+
+    console.log("Attempting to send email with Resend. Key prefix:", apiKey.substring(0, 5));
+    console.log("Email options:", { to: options.to, subject: options.subject, from: process.env.EMAIL_FROM });
 
     const from = process.env.EMAIL_FROM || "SikshaMitra <noreply@sikshamitra.com>";
 
@@ -31,6 +35,12 @@ export async function sendEmail(options: EmailOptions) {
       html: options.html,
       attachments: options.attachments,
     });
+
+    console.log("Resend API response:", result);
+
+    if (result.error) {
+      console.error("Resend returned error:", result.error);
+    }
 
     return {
       success: true,
@@ -43,9 +53,11 @@ export async function sendEmail(options: EmailOptions) {
   }
 }
 
-/**
- * Send admission confirmation email
- */
+import {
+  getAdmissionConfirmationEmailHtml,
+  getScheduledReportEmailHtml
+} from "./email-templates";
+
 export async function sendAdmissionConfirmationEmail(
   parentEmail: string,
   parentName: string,
@@ -54,78 +66,12 @@ export async function sendAdmissionConfirmationEmail(
   appliedClass: string
 ) {
   try {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background-color: #3b82f6;
-              color: white;
-              padding: 20px;
-              text-align: center;
-              border-radius: 5px 5px 0 0;
-            }
-            .content {
-              background-color: #f9fafb;
-              padding: 20px;
-              border: 1px solid #e5e7eb;
-              border-top: none;
-              border-radius: 0 0 5px 5px;
-            }
-            .info-box {
-              background-color: white;
-              padding: 15px;
-              border-left: 4px solid #3b82f6;
-              margin: 15px 0;
-            }
-            .footer {
-              margin-top: 20px;
-              padding-top: 20px;
-              border-top: 1px solid #e5e7eb;
-              font-size: 12px;
-              color: #6b7280;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Application Received</h1>
-          </div>
-          <div class="content">
-            <p>Dear ${parentName},</p>
-            <p>Thank you for submitting an admission application for <strong>${studentName}</strong>.</p>
-            
-            <div class="info-box">
-              <p><strong>Application Number:</strong> ${applicationNumber}</p>
-              <p><strong>Student Name:</strong> ${studentName}</p>
-              <p><strong>Applied Class:</strong> ${appliedClass}</p>
-            </div>
-            
-            <p>We have received your application and will review it shortly. You will be notified about the status of your application via email.</p>
-            
-            <p>Please keep your application number for future reference.</p>
-            
-            <p>If you have any questions, please feel free to contact us.</p>
-            
-            <p>Best regards,<br>School Administration</p>
-          </div>
-          <div class="footer">
-            <p>This is an automated email from SikshaMitra.</p>
-          </div>
-        </body>
-      </html>
-    `;
+    const html = getAdmissionConfirmationEmailHtml({
+      parentName,
+      studentName,
+      applicationNumber,
+      appliedClass
+    });
 
     const result = await sendEmail({
       to: [parentEmail],
@@ -148,68 +94,9 @@ export function generateReportEmailTemplate(
   reportDescription: string | undefined,
   generatedAt: Date
 ): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-          }
-          .header {
-            background-color: #3b82f6;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-          }
-          .content {
-            background-color: #f9fafb;
-            padding: 20px;
-            border: 1px solid #e5e7eb;
-            border-top: none;
-            border-radius: 0 0 5px 5px;
-          }
-          .footer {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 12px;
-            color: #6b7280;
-            text-align: center;
-          }
-          .button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #3b82f6;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Scheduled Report</h1>
-        </div>
-        <div class="content">
-          <h2>${reportName}</h2>
-          ${reportDescription ? `<p>${reportDescription}</p>` : ""}
-          <p><strong>Generated at:</strong> ${generatedAt.toLocaleString()}</p>
-          <p>Please find the attached report file.</p>
-        </div>
-        <div class="footer">
-          <p>This is an automated email from SikshaMitra.</p>
-          <p>If you wish to stop receiving these reports, please contact your administrator.</p>
-        </div>
-      </body>
-    </html>
-  `;
+  return getScheduledReportEmailHtml({
+    reportName,
+    reportDescription,
+    generatedAt
+  });
 }

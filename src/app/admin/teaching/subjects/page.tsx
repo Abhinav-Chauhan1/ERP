@@ -48,7 +48,6 @@ import toast from "react-hot-toast";
 import { subjectSchema, SubjectFormValues } from "@/lib/schemaValidation/subjectsSchemaValidation";
 import {
   getSubjects,
-  getDepartments,
   getClasses,
   createSubject,
   updateSubject,
@@ -60,13 +59,13 @@ import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+
   const [classes, setClasses] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
+
   const [loading, setLoading] = useState(true);
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,14 +82,14 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
-      departmentId: "",
+
       classIds: [],
     },
   });
 
   useEffect(() => {
     fetchSubjects();
-    fetchDepartments();
+
     fetchClasses();
   }, []);
 
@@ -116,20 +115,7 @@ export default function SubjectsPage() {
     }
   }
 
-  async function fetchDepartments() {
-    try {
-      const result = await getDepartments();
 
-      if (result.success) {
-        setDepartments(result.data || []);
-      } else {
-        toast.error(result.error || "Failed to fetch departments");
-      }
-    } catch (err) {
-      toast.error("An unexpected error occurred");
-      console.error(err);
-    }
-  }
 
   async function fetchClasses() {
     try {
@@ -179,7 +165,7 @@ export default function SubjectsPage() {
       form.reset({
         code: subjectToEdit.code,
         name: subjectToEdit.name,
-        departmentId: subjectToEdit.departmentId,
+
         description: subjectToEdit.description,
         classIds: subjectToEdit.classIds,
       });
@@ -219,7 +205,7 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
-      departmentId: "",
+
       classIds: []
     });
     setSelectedSubjectId(null);
@@ -285,9 +271,8 @@ export default function SubjectsPage() {
       subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesDepartment = departmentFilter === "all" || subject.department === departmentFilter;
 
-    return matchesSearch && matchesDepartment;
+    return matchesSearch;
   });
 
   return (
@@ -361,33 +346,7 @@ export default function SubjectsPage() {
                       )}
                     />
                   </div>
-                  <FormField
-                    control={form.control}
-                    name="departmentId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select department" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {departments.filter(d => d.id && d.name).map(department => (
-                              <SelectItem key={department.id} value={department.id}>
-                                {department.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
                   <FormField
                     control={form.control}
                     name="description"
@@ -463,132 +422,117 @@ export default function SubjectsPage() {
         </Alert>
       )}
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="w-full md:w-2/3">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search subjects..."
-              className="pl-9"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="w-full md:w-1/3">
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.filter(d => d.id && d.name).map(department => (
-                <SelectItem key={department.id} value={department.name}>
-                  {department.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="w-full">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search subjects..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {filteredSubjects.map(subject => (
-            <Card key={subject.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-primary/10 rounded-md text-primary">
-                      <BookOpen className="h-5 w-5" />
+      {
+        loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {filteredSubjects.map(subject => (
+              <Card key={subject.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-primary/10 rounded-md text-primary">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{subject.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">{subject.code}</p>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">{subject.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground">{subject.code}</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-accent text-gray-800 hover:bg-accent">
-                    {subject.department}
-                  </Badge>
-                </div>
-                <CardDescription className="mt-2 line-clamp-2">{subject.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {subject.grades.slice(0, 5).map((grade: string) => (
-                      <Badge key={grade} variant="outline" className="text-xs">
-                        {grade}
-                      </Badge>
-                    ))}
-                    {subject.grades.length > 5 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{subject.grades.length - 5} more
-                      </Badge>
-                    )}
-                  </div>
 
-                  <div className="flex gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span>{subject.teachers} Teachers</span>
+                  </div>
+                  <CardDescription className="mt-2 line-clamp-2">{subject.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {subject.grades.slice(0, 5).map((grade: string) => (
+                        <Badge key={grade} variant="outline" className="text-xs">
+                          {grade}
+                        </Badge>
+                      ))}
+                      {subject.grades.length > 5 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{subject.grades.length - 5} more
+                        </Badge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      <span>{subject.classes} Classes</span>
+
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{subject.teachers} Teachers</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                        <span>{subject.classes} Classes</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 border-t mt-3">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(subject.id)}
+                        >
+                          <Edit className="h-3.5 w-3.5 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-500"
+                          onClick={() => handleDelete(subject.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                      <Link href={`/admin/teaching/subjects/${subject.id}`}>
+                        <Button variant="ghost" size="sm">View</Button>
+                      </Link>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      }
 
-                  <div className="flex justify-between items-center pt-3 border-t mt-3">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(subject.id)}
-                      >
-                        <Edit className="h-3.5 w-3.5 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-500"
-                        onClick={() => handleDelete(subject.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                    <Link href={`/admin/teaching/subjects/${subject.id}`}>
-                      <Button variant="ghost" size="sm">View</Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {!loading && filteredSubjects.length === 0 && (
-        <div className="text-center py-10">
-          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <h3 className="text-lg font-medium mb-1">No subjects found</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            {searchTerm || departmentFilter !== "all"
-              ? "Try adjusting your filters or search terms"
-              : "No subjects have been added yet"}
-          </p>
-          <Button onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
-          </Button>
-        </div>
-      )}
+      {
+        !loading && filteredSubjects.length === 0 && (
+          <div className="text-center py-10">
+            <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <h3 className="text-lg font-medium mb-1">No subjects found</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {searchTerm
+                ? "Try adjusting your filters or search terms"
+                : "No subjects have been added yet"}
+            </p>
+            <Button onClick={handleAddNew}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Subject
+            </Button>
+          </div>
+        )
+      }
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -658,7 +602,7 @@ export default function SubjectsPage() {
                           <Badge variant="outline" className="text-xs">{subject.code}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground">{subject.description}</p>
-                        <p className="text-xs text-primary/70 mt-0.5">Department: {subject.department}</p>
+
                       </div>
                     </div>
                   ))}
@@ -685,6 +629,6 @@ export default function SubjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

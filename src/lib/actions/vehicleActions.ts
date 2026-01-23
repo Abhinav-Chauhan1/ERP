@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { vehicleSchema, vehicleUpdateSchema, type VehicleFormValues, type VehicleUpdateFormValues } from "@/lib/schemas/vehicle-schemas";
+import { auth } from "@/auth";
+import { hasPermission } from "@/lib/utils/permissions";
 
 // Get all vehicles with pagination and filters
 export async function getVehicles(params?: {
@@ -12,6 +14,8 @@ export async function getVehicles(params?: {
   status?: string;
   vehicleType?: string;
 }) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
   try {
     const page = params?.page || 1;
     const limit = params?.limit || 50;
@@ -75,6 +79,8 @@ export async function getVehicles(params?: {
 
 // Get a single vehicle by ID
 export async function getVehicleById(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
   try {
     const vehicle = await db.vehicle.findUnique({
       where: { id },
@@ -119,6 +125,11 @@ export async function getVehicleById(id: string) {
 // Create a new vehicle
 export async function createVehicle(data: VehicleFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "CREATE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Validate input
     const validated = vehicleSchema.parse(data);
 
@@ -159,6 +170,11 @@ export async function createVehicle(data: VehicleFormValues) {
 // Update a vehicle
 export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "UPDATE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Validate input
     const validated = vehicleUpdateSchema.parse(data);
 
@@ -212,6 +228,11 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
 // Delete a vehicle
 export async function deleteVehicle(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "DELETE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
       where: { id },
@@ -251,6 +272,11 @@ export async function deleteVehicle(id: string) {
 // Assign driver to vehicle
 export async function assignDriverToVehicle(vehicleId: string, driverId: string | null) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "UPDATE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
       where: { id: vehicleId },
@@ -294,6 +320,8 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
 
 // Get vehicle statistics
 export async function getVehicleStats() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
   try {
     const [total, active, inactive, maintenance] = await Promise.all([
       db.vehicle.count(),

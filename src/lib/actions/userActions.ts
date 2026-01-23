@@ -3,9 +3,14 @@
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
+import { hasPermission } from "@/lib/utils/permissions";
 
 export async function getUsersOverview() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
     const [admins, teachers, students, parents] = await Promise.all([
       db.user.count({ where: { role: UserRole.ADMIN, active: true } }),
       db.user.count({ where: { role: UserRole.TEACHER, active: true } }),
@@ -30,6 +35,9 @@ export async function getUsersOverview() {
 
 export async function getRecentUsers(limit: number = 10) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
     const users = await db.user.findMany({
       take: limit,
       orderBy: { createdAt: "desc" },
@@ -63,6 +71,9 @@ export async function getRecentUsers(limit: number = 10) {
 
 export async function getAllUsers(role?: UserRole) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
     const users = await db.user.findMany({
       where: role ? { role } : undefined,
       orderBy: { createdAt: "desc" },
@@ -88,6 +99,9 @@ export async function getAllUsers(role?: UserRole) {
 
 export async function getUserById(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
     const user = await db.user.findUnique({
       where: { id },
       include: {
@@ -141,6 +155,12 @@ export async function getUserById(id: string) {
 
 export async function updateUserStatus(id: string, active: boolean) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
     const user = await db.user.update({
       where: { id },
       data: { active },
@@ -156,6 +176,12 @@ export async function updateUserStatus(id: string, active: boolean) {
 
 export async function updateUserRole(id: string, role: UserRole) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
     const user = await db.user.update({
       where: { id },
       data: { role },
@@ -171,6 +197,12 @@ export async function updateUserRole(id: string, role: UserRole) {
 
 export async function deleteUser(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const hasPerm = await hasPermission(session.user.id, "USER", "DELETE");
+    if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
     await db.user.delete({
       where: { id },
     });

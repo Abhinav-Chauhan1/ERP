@@ -29,7 +29,7 @@ export const passwordSchema = z.object({
 // Administrator-specific schema
 export const administratorSchema = z.object({
   position: z.string().optional(),
-  department: z.string().optional(),
+
 });
 
 // Teacher-specific schema

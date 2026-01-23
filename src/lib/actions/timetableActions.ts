@@ -10,10 +10,13 @@ import {
 } from "../schemaValidation/timetableSchemaValidation";
 import { formatISO, parseISO } from 'date-fns';
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
+import { auth } from "@/auth";
 
 // Get all timetables
 export async function getTimetables() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const timetables = await db.timetable.findMany({
       orderBy: {
         effectiveFrom: 'desc',
@@ -40,6 +43,8 @@ export async function getTimetables() {
 // Get a specific timetable by ID
 export async function getTimetableById(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const timetable = await db.timetable.findUnique({
       where: { id },
       include: {
@@ -119,6 +124,8 @@ export async function getTimetableById(id: string) {
 // Get timetable slots by class ID
 export async function getTimetableSlotsByClass(classId: string, activeTimetableOnly: boolean = true) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const whereClause: any = {
       classId,
     };
@@ -204,6 +211,8 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
 // Get timetable slots by teacher ID
 export async function getTimetableSlotsByTeacher(teacherId: string, activeTimetableOnly: boolean = true) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const whereClause: any = {
       subjectTeacher: {
         teacherId
@@ -287,6 +296,8 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
 // Get timetable slots by room ID
 export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnly: boolean = true) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const whereClause: any = {
       roomId
     };
@@ -367,6 +378,8 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
 // Create a new timetable
 export async function createTimetable(data: TimetableFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // If this is set as active, deactivate other active timetables
     if (data.isActive) {
       await db.timetable.updateMany({
@@ -399,6 +412,8 @@ export async function createTimetable(data: TimetableFormValues) {
 // Update an existing timetable
 export async function updateTimetable(data: TimetableUpdateFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Check if timetable exists
     const existingTimetable = await db.timetable.findUnique({
       where: { id: data.id }
@@ -445,6 +460,8 @@ export async function updateTimetable(data: TimetableUpdateFormValues) {
 // Delete a timetable
 export async function deleteTimetable(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Check if timetable has any slots
     const slotsCount = await db.timetableSlot.count({
       where: { timetableId: id }
@@ -475,6 +492,8 @@ export async function deleteTimetable(id: string) {
 // Create a new timetable slot
 export async function createTimetableSlot(data: TimetableSlotFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Process optional fields 
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
@@ -550,6 +569,8 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
 // Update an existing timetable slot
 export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Process optional fields 
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
@@ -638,6 +659,8 @@ export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
 // Delete a timetable slot
 export async function deleteTimetableSlot(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     // Get timetable ID for revalidation
     const slot = await db.timetableSlot.findUnique({
       where: { id },
@@ -669,6 +692,8 @@ export async function deleteTimetableSlot(id: string) {
 // Get all classes for dropdown
 export async function getClassesForTimetable() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const classes = await db.class.findMany({
       where: {
         academicYear: {
@@ -697,6 +722,8 @@ export async function getClassesForTimetable() {
 // Get all rooms for dropdown
 export async function getRoomsForTimetable() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const rooms = await db.classRoom.findMany({
       orderBy: {
         name: 'asc'
@@ -716,6 +743,8 @@ export async function getRoomsForTimetable() {
 // Get all subject-teacher combinations for dropdown
 export async function getSubjectTeachersForTimetable() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const subjectTeachers = await db.subjectTeacher.findMany({
       include: {
         subject: true,

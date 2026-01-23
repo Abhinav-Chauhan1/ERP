@@ -36,6 +36,8 @@ async function checkPermission(resource: string, action: PermissionAction, error
 // Get upcoming exams
 export async function getUpcomingExams() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const currentDate = new Date();
 
     const exams = await db.exam.findMany({
@@ -86,6 +88,8 @@ export async function getUpcomingExams() {
 // Get past exams
 export async function getPastExams() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const currentDate = new Date();
 
     const exams = await db.exam.findMany({
@@ -139,6 +143,8 @@ export async function getPastExams() {
 // Get exam by ID
 export async function getExamById(id: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const exam = await db.exam.findUnique({
       where: { id },
       include: {
@@ -193,6 +199,8 @@ export async function getExamById(id: string) {
 // Get exam types for dropdown
 export async function getExamTypes() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const examTypes = await db.examType.findMany({
       orderBy: {
         name: 'asc'
@@ -212,6 +220,8 @@ export async function getExamTypes() {
 // Get subjects for dropdown
 export async function getSubjects() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const subjects = await db.subject.findMany({
       orderBy: {
         name: 'asc'
@@ -231,6 +241,8 @@ export async function getSubjects() {
 // Get terms for dropdown
 export async function getTerms() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const terms = await db.term.findMany({
       where: {
         endDate: {
@@ -526,6 +538,8 @@ export async function deleteExamResult(id: string) {
 // Get exam statistics
 export async function getExamStatistics() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const currentDate = new Date();
 
     // Count upcoming exams

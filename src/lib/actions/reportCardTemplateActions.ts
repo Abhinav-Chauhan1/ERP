@@ -4,6 +4,19 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 
+export interface SignatoryConfig {
+  label: string;
+  image?: string;
+  position: 'left' | 'center' | 'right';
+  name?: string;
+}
+
+export interface GradingConfig {
+  system: '5_POINT' | '7_POINT' | 'MARKS_ONLY' | 'CGPA';
+  showMarks: boolean;
+  showGrade: boolean;
+}
+
 export interface ReportCardTemplateInput {
   name: string;
   description?: string;
@@ -15,6 +28,9 @@ export interface ReportCardTemplateInput {
   headerImage?: string;
   footerImage?: string;
   schoolLogo?: string;
+  signatures?: SignatoryConfig[];
+  disclaimer?: string;
+  gradingConfig?: GradingConfig;
   isActive?: boolean;
   isDefault?: boolean;
 }
@@ -166,6 +182,9 @@ export async function createReportCardTemplate(input: ReportCardTemplateInput): 
         headerImage: input.headerImage,
         footerImage: input.footerImage,
         schoolLogo: input.schoolLogo,
+        signatures: input.signatures ? (input.signatures as any) : undefined,
+        disclaimer: input.disclaimer,
+        gradingConfig: input.gradingConfig ? (input.gradingConfig as any) : undefined,
         isActive: input.isActive ?? true,
         isDefault: input.isDefault ?? false,
         createdBy: userId,
@@ -243,6 +262,9 @@ export async function updateReportCardTemplate(
     if (input.headerImage !== undefined) updateData.headerImage = input.headerImage;
     if (input.footerImage !== undefined) updateData.footerImage = input.footerImage;
     if (input.schoolLogo !== undefined) updateData.schoolLogo = input.schoolLogo;
+    if (input.signatures !== undefined) updateData.signatures = input.signatures;
+    if (input.disclaimer !== undefined) updateData.disclaimer = input.disclaimer;
+    if (input.gradingConfig !== undefined) updateData.gradingConfig = input.gradingConfig;
     if (input.isActive !== undefined) updateData.isActive = input.isActive;
     if (input.isDefault !== undefined) updateData.isDefault = input.isDefault;
 
@@ -440,6 +462,9 @@ export async function duplicateTemplate(id: string): Promise<ActionResult> {
         headerImage: template.headerImage,
         footerImage: template.footerImage,
         schoolLogo: template.schoolLogo,
+        signatures: template.signatures as any,
+        disclaimer: template.disclaimer,
+        gradingConfig: template.gradingConfig as any,
         isActive: false, // New duplicates start as inactive
         isDefault: false,
         createdBy: userId,

@@ -52,6 +52,19 @@ export interface TemplateStyles {
   studentInfoStyle?: 'list' | 'grid' | 'boxed';
 }
 
+export interface SignatoryConfig {
+  label: string;
+  image?: string;
+  position: 'left' | 'center' | 'right';
+  name?: string;
+}
+
+export interface GradingConfig {
+  system: '5_POINT' | '7_POINT' | 'MARKS_ONLY' | 'CGPA';
+  showMarks: boolean;
+  showGrade: boolean;
+}
+
 export interface ReportCardTemplate {
   id: string;
   name: string;
@@ -63,6 +76,9 @@ export interface ReportCardTemplate {
   headerImage?: string | null;
   footerImage?: string | null;
   schoolLogo?: string | null;
+  signatures?: SignatoryConfig[];
+  disclaimer?: string | null;
+  gradingConfig?: GradingConfig;
 }
 
 /**
@@ -190,6 +206,9 @@ async function fetchTemplate(templateId: string): Promise<ReportCardTemplate | n
       headerImage: true,
       footerImage: true,
       schoolLogo: true,
+      signatures: true,
+      disclaimer: true,
+      gradingConfig: true,
     },
   });
 
@@ -204,6 +223,8 @@ async function fetchTemplate(templateId: string): Promise<ReportCardTemplate | n
     orientation: template.orientation as 'PORTRAIT' | 'LANDSCAPE',
     sections: template.sections as unknown as TemplateSectionConfig[],
     styling: template.styling as unknown as TemplateStyles,
+    signatures: template.signatures as unknown as SignatoryConfig[],
+    gradingConfig: template.gradingConfig as unknown as GradingConfig,
   };
 }
 
@@ -279,6 +300,11 @@ async function renderReportCard(
   const remarksSection = template.sections.find(s => s.id === 'remarks');
   if (remarksSection?.enabled) {
     currentY = renderRemarks(doc, template, data, currentY, pageWidth, styling);
+  }
+
+  // Render disclaimer if present
+  if (template.disclaimer) {
+    currentY = renderDisclaimer(doc, template, currentY, pageWidth, styling);
   }
 
   // Render footer
@@ -915,6 +941,9 @@ function renderRemarks(
 /**
  * Render footer
  */
+/**
+ * Render footer
+ */
 function renderFooter(
   doc: jsPDF,
   template: ReportCardTemplate,
@@ -924,7 +953,64 @@ function renderFooter(
 ): void {
   const footerY = pageHeight - (styling.footerHeight || 20);
 
-  // Add footer image if provided
+  // Render Signatures
+  // If we have custom signature config, use it
+  if (template.signatures && template.signatures.length > 0) {
+    const signatureY = footerY - 25; // Position signatures above the footer image/text
+
+    // Calculate positions based on count
+    const count = template.signatures.length;
+    const spacing = pageWidth / (count + 1);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    template.signatures.forEach((sig, index) => {
+      let xPos = 0;
+
+      // Determine X position
+      if (sig.position === 'left') xPos = 30;
+      else if (sig.position === 'right') xPos = pageWidth - 50;
+      else if (sig.position === 'center') xPos = pageWidth / 2;
+      else xPos = spacing * (index + 1); // Fallback to even spacing
+
+      // Add image if present (simulated for now as we might not have actual image loading logic fully ready)
+      if (sig.image) {
+        // In a real app, this would load the image from URL/Base64
+        // doc.addImage(sig.image, 'PNG', xPos - 10, signatureY - 15, 20, 10);
+      }
+
+      // Draw line
+      doc.text('_________________', xPos, signatureY, { align: 'center' });
+
+      // Label (e.g. "Principal")
+      doc.text(sig.label, xPos, signatureY + 5, { align: 'center' });
+
+      // Name if present
+      if (sig.name) {
+        doc.setFontSize(8);
+        doc.text(`(${sig.name})`, xPos, signatureY + 9, { align: 'center' });
+        doc.setFontSize(9);
+      }
+    });
+
+  } else {
+    // Default footer with signatures
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    const signatureY = footerY - 10;
+    const leftSignature = 40;
+    const rightSignature = pageWidth - 40;
+
+    doc.text('_________________', leftSignature, signatureY, { align: 'center' });
+    doc.text('Class Teacher', leftSignature, signatureY + 5, { align: 'center' });
+
+    doc.text('_________________', rightSignature, signatureY, { align: 'center' });
+    doc.text('Principal', rightSignature, signatureY + 5, { align: 'center' });
+  }
+
+  // Add footer image/text
   if (template.footerImage) {
     try {
       const footerHeight = styling.footerHeight || 15;
@@ -939,21 +1025,33 @@ function renderFooter(
     } catch (error) {
       console.warn('Failed to add footer image:', error);
     }
-  } else {
-    // Default footer with signatures
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-
-    const signatureY = footerY + 10;
-    const leftSignature = 30;
-    const rightSignature = pageWidth - 50;
-
-    doc.text('_________________', leftSignature, signatureY);
-    doc.text('Class Teacher', leftSignature + 5, signatureY + 5);
-
-    doc.text('_________________', rightSignature, signatureY);
-    doc.text('Principal', rightSignature + 10, signatureY + 5);
   }
+}
+
+/**
+ * Render disclaimer
+ */
+function renderDisclaimer(
+  doc: jsPDF,
+  template: ReportCardTemplate,
+  startY: number,
+  pageWidth: number,
+  styling: TemplateStyles
+): number {
+  if (!template.disclaimer) return startY;
+
+  let currentY = startY + 5;
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100); // Gray text
+  doc.setFont('helvetica', 'italic');
+
+  const text = template.disclaimer || '';
+  const lines = doc.splitTextToSize(text, pageWidth - 24);
+
+  doc.text(lines, 12, currentY);
+
+  return currentY + (lines.length * 4) + 10;
 }
 
 

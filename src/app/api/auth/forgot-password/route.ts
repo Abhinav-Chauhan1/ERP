@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { sendEmail } from "@/lib/services/email-service"
+import { sendEmail } from "@/lib/utils/email-service"
+import { getPasswordResetEmailHtml } from "@/lib/utils/email-templates"
 import crypto from "crypto"
 
 /**
@@ -94,96 +95,10 @@ export async function POST(request: NextRequest) {
     // Send reset email with token link (Requirement 11.7)
     const resetUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`
 
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background-color: #3b82f6;
-              color: white;
-              padding: 20px;
-              text-align: center;
-              border-radius: 5px 5px 0 0;
-            }
-            .content {
-              background-color: #f9fafb;
-              padding: 20px;
-              border: 1px solid #e5e7eb;
-              border-top: none;
-              border-radius: 0 0 5px 5px;
-            }
-            .button {
-              display: inline-block;
-              padding: 12px 24px;
-              background-color: #3b82f6;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-              margin: 20px 0;
-            }
-            .warning {
-              background-color: #fef3c7;
-              border-left: 4px solid #f59e0b;
-              padding: 12px;
-              margin: 20px 0;
-            }
-            .footer {
-              margin-top: 20px;
-              padding-top: 20px;
-              border-top: 1px solid #e5e7eb;
-              font-size: 12px;
-              color: #6b7280;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Password Reset Request</h1>
-          </div>
-          <div class="content">
-            <p>Hello ${user.firstName},</p>
-            <p>We received a request to reset your password for your SikshaMitra account. Click the button below to reset your password:</p>
-            
-            <div style="text-align: center;">
-              <a href="${resetUrl}" class="button">Reset Password</a>
-            </div>
-            
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #3b82f6;">${resetUrl}</p>
-            
-            <div class="warning">
-              <strong>⚠️ Important:</strong> This link will expire in 1 hour for security reasons.
-            </div>
-            
-            <p>If you didn't request a password reset, please ignore this email. Your password will remain unchanged.</p>
-            
-            <p>For security reasons, we recommend:</p>
-            <ul>
-              <li>Never share your password with anyone</li>
-              <li>Use a strong, unique password</li>
-              <li>Enable two-factor authentication</li>
-            </ul>
-            
-            <p>Best regards,<br>SikshaMitra Team</p>
-          </div>
-          <div class="footer">
-            <p>This is an automated email from SikshaMitra.</p>
-            <p>If you have any questions, please contact your system administrator.</p>
-          </div>
-        </body>
-      </html>
-    `
+    const emailHtml = getPasswordResetEmailHtml({
+      userName: user.firstName,
+      resetUrl
+    })
 
     const emailResult = await sendEmail({
       to: email.toLowerCase(),

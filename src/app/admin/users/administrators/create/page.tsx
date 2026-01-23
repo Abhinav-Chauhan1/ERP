@@ -34,7 +34,7 @@ export default function CreateAdministratorPage() {
       role: UserRole.ADMIN,
       active: true,
       position: "",
-      department: "",
+
       password: "",
       confirmPassword: "",
     },
@@ -173,22 +173,7 @@ export default function CreateAdministratorPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Department" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          The department they oversee
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
                 </div>
 
                 <Separator className="my-4" />

@@ -25,6 +25,8 @@ async function checkPermission(resource: string, action: PermissionAction, error
 
 export async function getAttendanceOverview() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -80,6 +82,8 @@ export async function getAttendanceOverview() {
 
 export async function getWeeklyAttendanceTrend() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
@@ -133,6 +137,8 @@ export async function getWeeklyAttendanceTrend() {
 
 export async function getAttendanceByClass() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 30);
@@ -186,6 +192,8 @@ export async function getAttendanceByClass() {
 
 export async function getRecentAbsences(limit: number = 10) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     twoDaysAgo.setHours(0, 0, 0, 0);
@@ -241,6 +249,8 @@ export async function getRecentAbsences(limit: number = 10) {
 
 export async function getAttendanceStats() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -289,6 +299,8 @@ export async function getAttendanceStats() {
 
 export async function getClassSectionsForDropdown() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const classes = await db.class.findMany({
       include: {
         sections: {
@@ -318,6 +330,8 @@ export async function getClassSectionsForDropdown() {
 
 export async function getStudentAttendanceByDate(date: Date, sectionId?: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     if (!sectionId) {
       return { success: false, error: "Section ID is required" };
     }
@@ -531,6 +545,8 @@ export async function markBulkStudentAttendance(data: {
   markedBy?: string;
 }) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const results = await Promise.all(
       data.attendanceRecords.map((record) =>
         markStudentAttendance({
@@ -583,6 +599,8 @@ export async function getStudentAttendanceReport(
   endDate?: Date
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const whereClause: any = { studentId };
 
     if (startDate || endDate) {
@@ -637,6 +655,8 @@ export async function getStudentAttendanceReport(
 
 export async function getTeachersForDropdown() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const teachers = await db.teacher.findMany({
       where: {
         user: {
@@ -670,6 +690,8 @@ export async function getTeachersForDropdown() {
 
 export async function getStudentsForDropdown() {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const students = await db.student.findMany({
       where: {
         user: {
@@ -715,6 +737,8 @@ export async function getStudentsForDropdown() {
 
 export async function getTeacherAttendanceByDate(date: Date) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -769,6 +793,8 @@ export async function markTeacherAttendance(data: {
   markedBy?: string;
 }) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const startOfDay = new Date(data.date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(data.date);
