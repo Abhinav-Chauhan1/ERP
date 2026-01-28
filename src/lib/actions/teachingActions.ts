@@ -3,37 +3,44 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { SubjectFormValues, UpdateSubjectFormValues, LessonFormValues, UpdateLessonFormValues } from "../schemaValidation/teachingSchemaValidation";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 // Get teaching dashboard stats
-export async function getTeachingStats() {
+export const getTeachingStats = withSchoolAuthAction(async (schoolId) => {
   try {
-    const teacherCount = await db.teacher.count({ where: { user: { active: true } } });
-    const classCount = await db.class.count();
-    const subjectCount = await db.subject.count();
-    const lessonCount = await db.lesson.count();
-    
-    return { 
-      success: true, 
+    const teacherCount = await db.teacher.count({
+      where: {
+        schoolId,
+        user: { active: true }
+      }
+    });
+    const classCount = await db.class.count({ where: { schoolId } });
+    const subjectCount = await db.subject.count({ where: { schoolId } });
+    const lessonCount = await db.lesson.count({ where: { schoolId } });
+
+    return {
+      success: true,
       data: {
         activeTeachers: teacherCount,
         totalClasses: classCount,
         subjects: subjectCount,
         lessons: lessonCount
-      } 
+      }
     };
   } catch (error) {
     console.error("Error fetching teaching stats:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch teaching stats" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch teaching stats"
     };
   }
-}
+});
 
 // Get all subjects with counts
-export async function getAllSubjects() {
+export const getAllSubjects = withSchoolAuthAction(async (schoolId) => {
   try {
     const subjects = await db.subject.findMany({
+      where: { schoolId },
       include: {
         department: true,
         _count: {
@@ -51,17 +58,18 @@ export async function getAllSubjects() {
     return { success: true, data: subjects };
   } catch (error) {
     console.error("Error fetching subjects:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subjects" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
-}
+});
 
 // Get subjects grouped by department
-export async function getSubjectsByDepartment() {
+export const getSubjectsByDepartment = withSchoolAuthAction(async (schoolId) => {
   try {
     const departments = await db.department.findMany({
+      where: { schoolId },
       include: {
         subjects: {
           include: {
@@ -82,17 +90,18 @@ export async function getSubjectsByDepartment() {
     return { success: true, data: departments };
   } catch (error) {
     console.error("Error fetching subjects by department:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subjects by department" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subjects by department"
     };
   }
-}
+});
 
 // Get all departments
-export async function getDepartments() {
+export const getDepartments = withSchoolAuthAction(async (schoolId) => {
   try {
     const departments = await db.department.findMany({
+      where: { schoolId },
       orderBy: {
         name: 'asc'
       }
@@ -101,17 +110,18 @@ export async function getDepartments() {
     return { success: true, data: departments };
   } catch (error) {
     console.error("Error fetching departments:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch departments" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch departments"
     };
   }
-}
+});
 
 // Get all classes
-export async function getClasses() {
+export const getClasses = withSchoolAuthAction(async (schoolId) => {
   try {
     const classes = await db.class.findMany({
+      where: { schoolId },
       include: {
         academicYear: {
           select: {
@@ -135,19 +145,20 @@ export async function getClasses() {
     return { success: true, data: classes };
   } catch (error) {
     console.error("Error fetching classes:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch classes" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
-}
+});
 
 // Create a new subject
-export async function createSubject(data: SubjectFormValues) {
+export const createSubject = withSchoolAuthAction(async (schoolId, userId, userRole, data: SubjectFormValues) => {
   try {
     // Check if subject code already exists
     const existingSubject = await db.subject.findFirst({
       where: {
+        schoolId,
         code: {
           equals: data.code,
           mode: 'insensitive'
@@ -162,6 +173,7 @@ export async function createSubject(data: SubjectFormValues) {
     // Create the subject with class associations
     const subject = await db.subject.create({
       data: {
+        schoolId,
         name: data.name,
         code: data.code,
         description: data.description,
@@ -179,38 +191,40 @@ export async function createSubject(data: SubjectFormValues) {
     return { success: true, data: subject };
   } catch (error) {
     console.error("Error creating subject:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create subject" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create subject"
     };
   }
-}
+});
 
 // Get recent teaching activities
-export async function getRecentTeachingActivities(limit = 5) {
+export const getRecentTeachingActivities = withSchoolAuthAction(async (schoolId, userId, userRole, limit = 5) => {
   try {
-    // This is a placeholder for a real implementation
-    // In a real app, you'd have an activities or audit log table
-    // For now, we'll combine recent changes from various tables
-    
     // Get recent lessons
     const recentLessons = await db.lesson.findMany({
+      where: { schoolId },
       take: limit,
       orderBy: { updatedAt: 'desc' },
       include: {
         subject: true
       }
     });
-    
+
     // Get recent syllabi
     const recentSyllabi = await db.syllabus.findMany({
+      where: {
+        subject: {
+          schoolId
+        }
+      },
       take: limit,
       orderBy: { updatedAt: 'desc' },
       include: {
         subject: true
       }
     });
-    
+
     // Combine and sort activities
     const activities = [
       ...recentLessons.map(lesson => ({
@@ -230,15 +244,15 @@ export async function getRecentTeachingActivities(limit = 5) {
         timestamp: syllabus.updatedAt
       }))
     ]
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    .slice(0, limit);
-    
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, limit);
+
     return { success: true, data: activities };
   } catch (error) {
     console.error("Error fetching recent activities:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch recent activities" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch recent activities"
     };
   }
-}
+});

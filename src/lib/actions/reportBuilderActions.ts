@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess, withSchoolId } from "@/lib/auth/tenant";
 
 export interface ReportConfig {
   name: string;
@@ -73,6 +74,8 @@ export interface ComparisonResult {
  */
 export async function generateReport(config: ReportConfig) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -89,25 +92,25 @@ export async function generateReport(config: ReportConfig) {
 
     switch (config.dataSource) {
       case "students":
-        data = await queryStudents(config);
+        data = await queryStudents(config, schoolId);
         break;
       case "teachers":
-        data = await queryTeachers(config);
+        data = await queryTeachers(config, schoolId);
         break;
       case "attendance":
-        data = await queryAttendance(config);
+        data = await queryAttendance(config, schoolId);
         break;
       case "fees":
-        data = await queryFees(config);
+        data = await queryFees(config, schoolId);
         break;
       case "exams":
-        data = await queryExams(config);
+        data = await queryExams(config, schoolId);
         break;
       case "classes":
-        data = await queryClasses(config);
+        data = await queryClasses(config, schoolId);
         break;
       case "assignments":
-        data = await queryAssignments(config);
+        data = await queryAssignments(config, schoolId);
         break;
       default:
         return { success: false, error: "Invalid data source" };
@@ -123,8 +126,8 @@ export async function generateReport(config: ReportConfig) {
 /**
  * Query students based on configuration
  */
-async function queryStudents(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryStudents(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const students = await prisma.student.findMany({
@@ -162,8 +165,8 @@ async function queryStudents(config: ReportConfig) {
 /**
  * Query teachers based on configuration
  */
-async function queryTeachers(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryTeachers(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const teachers = await prisma.teacher.findMany({
@@ -194,8 +197,8 @@ async function queryTeachers(config: ReportConfig) {
 /**
  * Query attendance based on configuration
  */
-async function queryAttendance(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryAttendance(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const attendance = await prisma.studentAttendance.findMany({
@@ -235,8 +238,8 @@ async function queryAttendance(config: ReportConfig) {
 /**
  * Query fee payments based on configuration
  */
-async function queryFees(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryFees(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const payments = await prisma.feePayment.findMany({
@@ -275,8 +278,8 @@ async function queryFees(config: ReportConfig) {
 /**
  * Query exam results based on configuration
  */
-async function queryExams(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryExams(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const results = await prisma.examResult.findMany({
@@ -316,8 +319,8 @@ async function queryExams(config: ReportConfig) {
 /**
  * Query classes based on configuration
  */
-async function queryClasses(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryClasses(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const classes = await prisma.class.findMany({
@@ -357,8 +360,8 @@ async function queryClasses(config: ReportConfig) {
 /**
  * Query assignments based on configuration
  */
-async function queryAssignments(config: ReportConfig) {
-  const where = buildWhereClause(config.filters);
+async function queryAssignments(config: ReportConfig, schoolId: string) {
+  const where = { ...buildWhereClause(config.filters), schoolId };
   const orderBy = buildOrderByClause(config.sorting);
 
   const assignments = await prisma.assignment.findMany({
@@ -456,6 +459,8 @@ function parseValue(value: string): any {
  */
 export async function saveReportConfig(config: ReportConfig) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -463,7 +468,7 @@ export async function saveReportConfig(config: ReportConfig) {
     }
 
     await prisma.savedReportConfig.create({
-      data: {
+      data: withSchoolId({
         name: config.name,
         dataSource: config.dataSource,
         selectedFields: config.selectedFields,
@@ -471,7 +476,7 @@ export async function saveReportConfig(config: ReportConfig) {
         sorting: JSON.parse(JSON.stringify(config.sorting)),
         chartConfig: config.chartConfig ? JSON.parse(JSON.stringify(config.chartConfig)) : undefined,
         userId: userId,
-      },
+      }, schoolId),
     });
 
     revalidatePath("/admin/reports");
@@ -552,6 +557,8 @@ export async function exportReportData(
   format: 'pdf' | 'excel' | 'csv'
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -590,6 +597,8 @@ export async function generateYearOverYearComparison(
   config: ComparativeAnalysisConfig
 ): Promise<{ success: boolean; data?: ComparisonResult; error?: string }> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -597,8 +606,8 @@ export async function generateYearOverYearComparison(
     }
 
     // Get current academic year
-    const currentYear = await prisma.academicYear.findUnique({
-      where: { id: config.currentPeriodId },
+    const currentYear = await prisma.academicYear.findFirst({
+      where: { id: config.currentPeriodId, schoolId },
     });
 
     if (!currentYear) {
@@ -608,14 +617,15 @@ export async function generateYearOverYearComparison(
     // Get previous academic year (either specified or auto-detect)
     let previousYear;
     if (config.previousPeriodId) {
-      previousYear = await prisma.academicYear.findUnique({
-        where: { id: config.previousPeriodId },
+      previousYear = await prisma.academicYear.findFirst({
+        where: { id: config.previousPeriodId, schoolId },
       });
     } else {
       // Auto-detect previous year by finding the year that ended before current year started
       previousYear = await prisma.academicYear.findFirst({
         where: {
           endDate: { lt: currentYear.startDate },
+          schoolId,
         },
         orderBy: { endDate: "desc" },
       });
@@ -631,7 +641,8 @@ export async function generateYearOverYearComparison(
       config.metric,
       currentYear.startDate,
       currentYear.endDate,
-      config.filters || []
+      config.filters || [],
+      schoolId
     );
 
     const previousData = await fetchPeriodData(
@@ -639,7 +650,8 @@ export async function generateYearOverYearComparison(
       config.metric,
       previousYear.startDate,
       previousYear.endDate,
-      config.filters || []
+      config.filters || [],
+      schoolId
     );
 
     // Calculate aggregated values
@@ -697,6 +709,8 @@ export async function generateTermOverTermComparison(
   config: ComparativeAnalysisConfig
 ): Promise<{ success: boolean; data?: ComparisonResult; error?: string }> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -704,10 +718,23 @@ export async function generateTermOverTermComparison(
     }
 
     // Get current term
+    if (!config.currentPeriodId) return { success: false, error: "Current period required" };
+
+    // We need to fetch the term and verify it belongs to an academic year, 
+    // but the Term model itself might not have schoolId? 
+    // Usually Term belongs to AcademicYear which has schoolId.
+    // Let's check if Term has schoolId or we need to check via AcademicYear.
+    // Based on standard schema, Term is child of AcademicYear. 
+    // We should verify the academic year belongs to the school.
+
     const currentTerm = await prisma.term.findUnique({
       where: { id: config.currentPeriodId },
       include: { academicYear: true },
     });
+
+    if (currentTerm?.academicYear.schoolId !== schoolId) {
+      return { success: false, error: "Current term not found in school" };
+    }
 
     if (!currentTerm) {
       return { success: false, error: "Current term not found" };
@@ -761,7 +788,8 @@ export async function generateTermOverTermComparison(
       config.metric,
       currentTerm.startDate,
       currentTerm.endDate,
-      config.filters || []
+      config.filters || [],
+      schoolId
     );
 
     const previousData = await fetchPeriodData(
@@ -769,7 +797,8 @@ export async function generateTermOverTermComparison(
       config.metric,
       previousTerm.startDate,
       previousTerm.endDate,
-      config.filters || []
+      config.filters || [],
+      schoolId
     );
 
     // Calculate aggregated values
@@ -828,14 +857,15 @@ async function fetchPeriodData(
   metric: string,
   startDate: Date,
   endDate: Date,
-  filters: ReportFilter[]
+  filters: ReportFilter[],
+  schoolId: string
 ): Promise<any[]> {
   const dateFilter = {
     gte: startDate,
     lte: endDate,
   };
 
-  const where = buildWhereClause(filters);
+  const where = { ...buildWhereClause(filters), schoolId };
 
   switch (dataSource) {
     case "attendance":

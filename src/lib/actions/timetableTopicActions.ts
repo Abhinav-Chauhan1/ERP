@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
 import { DayOfWeek } from "@prisma/client";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 /**
  * Timetable-Topic Integration Actions
@@ -42,22 +42,19 @@ interface TodayTopicSlot {
 /**
  * Assign a topic (sub-module) to a timetable slot
  */
-export async function assignTopicToSlot(
-    slotId: string,
-    topicId: string
-): Promise<ActionResponse> {
+export const assignTopicToSlot = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string, topicId: string): Promise<ActionResponse> => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Authentication required" };
-        }
-
         // Verify the slot exists
-        const slot = await db.timetableSlot.findUnique({
-            where: { id: slotId },
+        const slot = await db.timetableSlot.findFirst({
+            where: { id: slotId, schoolId },
             include: {
                 subjectTeacher: {
-                    include: { subject: true }
+                    where: { schoolId },
+                    include: {
+                        subject: {
+                            where: { schoolId }
+                        }
+                    }
                 }
             }
         });
@@ -67,12 +64,15 @@ export async function assignTopicToSlot(
         }
 
         // Verify the topic exists and belongs to the same subject
-        const topic = await db.subModule.findUnique({
-            where: { id: topicId },
+        const topic = await db.subModule.findFirst({
+            where: { id: topicId, schoolId },
             include: {
                 module: {
+                    where: { schoolId },
                     include: {
-                        syllabus: true
+                        syllabus: {
+                            where: { schoolId }
+                        }
                     }
                 }
             }
@@ -92,7 +92,7 @@ export async function assignTopicToSlot(
 
         // Update the slot with the topic
         await db.timetableSlot.update({
-            where: { id: slotId },
+            where: { id: slotId, schoolId },
             data: { topicId }
         });
 
@@ -107,22 +107,15 @@ export async function assignTopicToSlot(
             error: error instanceof Error ? error.message : "Failed to assign topic"
         };
     }
-}
+});
 
 /**
  * Remove topic assignment from a timetable slot
  */
-export async function removeTopicFromSlot(
-    slotId: string
-): Promise<ActionResponse> {
+export const removeTopicFromSlot = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string): Promise<ActionResponse> => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Authentication required" };
-        }
-
         await db.timetableSlot.update({
-            where: { id: slotId },
+            where: { id: slotId, schoolId },
             data: { topicId: null }
         });
 
@@ -137,25 +130,18 @@ export async function removeTopicFromSlot(
             error: error instanceof Error ? error.message : "Failed to remove topic"
         };
     }
-}
+});
 
 /**
  * Get all topics scheduled for today for a teacher
  */
-export async function getTodaysTopics(
-    teacherId?: string
-): Promise<ActionResponse<TodayTopicSlot[]>> {
+export const getTodaysTopics = withSchoolAuthAction(async (schoolId, userId, userRole, teacherId?: string): Promise<ActionResponse<TodayTopicSlot[]>> => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Authentication required" };
-        }
-
         // Get teacher ID - either from param or from session
         let actualTeacherId = teacherId;
         if (!actualTeacherId) {
-            const teacher = await db.teacher.findUnique({
-                where: { userId: session.user.id }
+            const teacher = await db.teacher.findFirst({
+                where: { userId: userId, schoolId }
             });
             if (!teacher) {
                 return { success: false, error: "Teacher profile not found" };
@@ -175,12 +161,15 @@ export async function getTodaysTopics(
         const slots = await db.timetableSlot.findMany({
             where: {
                 subjectTeacher: {
-                    teacherId: actualTeacherId
+                    teacherId: actualTeacherId,
+                    schoolId
                 },
                 day: todayDay,
+                schoolId,
                 timetable: {
                     isActive: true,
                     effectiveFrom: { lte: today },
+                    schoolId,
                     OR: [
                         { effectiveTo: null },
                         { effectiveTo: { gte: today } }
@@ -188,17 +177,33 @@ export async function getTodaysTopics(
                 }
             },
             include: {
-                class: true,
-                section: true,
-                room: true,
+                class: {
+                    where: { schoolId }
+                },
+                section: {
+                    where: { schoolId }
+                },
+                room: {
+                    where: { schoolId }
+                },
                 subjectTeacher: {
-                    include: { subject: true }
+                    where: { schoolId },
+                    include: {
+                        subject: {
+                            where: { schoolId }
+                        }
+                    }
                 },
                 topic: {
                     include: {
-                        module: true,
+                        module: {
+                            where: { schoolId }
+                        },
                         progress: {
-                            where: { teacherId: actualTeacherId }
+                            where: {
+                                teacherId: actualTeacherId,
+                                schoolId
+                            }
                         }
                     }
                 }
@@ -239,24 +244,16 @@ export async function getTodaysTopics(
             error: error instanceof Error ? error.message : "Failed to fetch today's topics"
         };
     }
-}
+});
 
 /**
  * Mark a scheduled topic as completed via the timetable
  */
-export async function markSlotTopicComplete(
-    slotId: string,
-    teacherId: string
-): Promise<ActionResponse> {
+export const markSlotTopicComplete = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string, teacherId: string): Promise<ActionResponse> => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Authentication required" };
-        }
-
         // Get the slot with topic
-        const slot = await db.timetableSlot.findUnique({
-            where: { id: slotId },
+        const slot = await db.timetableSlot.findFirst({
+            where: { id: slotId, schoolId },
             select: { topicId: true }
         });
 
@@ -284,7 +281,8 @@ export async function markSlotTopicComplete(
                 subModuleId: slot.topicId,
                 teacherId,
                 completed: true,
-                completedAt: new Date()
+                completedAt: new Date(),
+                schoolId
             }
         });
 
@@ -299,28 +297,23 @@ export async function markSlotTopicComplete(
             error: error instanceof Error ? error.message : "Failed to mark topic complete"
         };
     }
-}
+});
 
 /**
  * Get available topics for a subject (for assigning to timetable slots)
  */
-export async function getTopicsForSubject(
-    subjectId: string
-): Promise<ActionResponse<{ id: string; title: string; chapterNumber: number; moduleTitle: string }[]>> {
+export const getTopicsForSubject = withSchoolAuthAction(async (schoolId, userId, userRole, subjectId: string): Promise<ActionResponse<{ id: string; title: string; chapterNumber: number; moduleTitle: string }[]>> => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return { success: false, error: "Authentication required" };
-        }
-
         // Get all syllabi for this subject
         const syllabi = await db.syllabus.findMany({
-            where: { subjectId },
+            where: { subjectId, schoolId },
             include: {
                 modules: {
+                    where: { schoolId },
                     orderBy: { chapterNumber: "asc" },
                     include: {
                         subModules: {
+                            where: { schoolId },
                             orderBy: { order: "asc" }
                         }
                     }
@@ -348,4 +341,4 @@ export async function getTopicsForSubject(
             error: error instanceof Error ? error.message : "Failed to fetch topics"
         };
     }
-}
+});

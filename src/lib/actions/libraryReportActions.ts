@@ -1,7 +1,6 @@
-"use server";
-
 import { db } from "@/lib/db";
 import { IssueStatus } from "@prisma/client";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 
 // ============================================================================
 // LIBRARY REPORTS
@@ -11,14 +10,19 @@ import { IssueStatus } from "@prisma/client";
  * Get most borrowed books report
  * Returns books sorted by the number of times they have been issued
  */
-export async function getMostBorrowedBooksReport(params?: {
-  limit?: number;
-  startDate?: Date;
-  endDate?: Date;
-}) {
+export const getMostBorrowedBooksReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  params?: {
+    limit?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) => {
   try {
     const limit = params?.limit || 20;
-    const where: any = {};
+    const where: any = { schoolId };
 
     // Date range filter
     if (params?.startDate || params?.endDate) {
@@ -49,8 +53,11 @@ export async function getMostBorrowedBooksReport(params?: {
     // Get book details for each book
     const booksWithCounts = await Promise.all(
       bookIssues.map(async (issue) => {
-        const book = await db.book.findUnique({
-          where: { id: issue.bookId },
+        const book = await db.book.findFirst({
+          where: {
+            id: issue.bookId,
+            schoolId // Critical
+          },
         });
 
         return {
@@ -71,16 +78,21 @@ export async function getMostBorrowedBooksReport(params?: {
       error: "Failed to generate most borrowed books report",
     };
   }
-}
+});
 
 /**
  * Get overdue books report
  * Returns all books that are currently overdue
  */
-export async function getOverdueBooksReport(params?: {
-  page?: number;
-  limit?: number;
-}) {
+export const getOverdueBooksReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  params?: {
+    page?: number;
+    limit?: number;
+  }
+) => {
   try {
     const page = params?.page || 1;
     const limit = params?.limit || 50;
@@ -90,6 +102,7 @@ export async function getOverdueBooksReport(params?: {
     today.setHours(23, 59, 59, 999);
 
     const where = {
+      schoolId, // Mandatory
       OR: [
         { status: "ISSUED" as IssueStatus },
         { status: "OVERDUE" as IssueStatus },
@@ -113,6 +126,7 @@ export async function getOverdueBooksReport(params?: {
               enrollments: {
                 where: {
                   status: "ACTIVE",
+                  schoolId // critical nested scope
                 },
                 include: {
                   class: true,
@@ -158,24 +172,30 @@ export async function getOverdueBooksReport(params?: {
       error: "Failed to generate overdue books report",
     };
   }
-}
+});
 
 /**
  * Get fine collections report
  * Returns all fines collected from returned books
  */
-export async function getFineCollectionsReport(params?: {
-  page?: number;
-  limit?: number;
-  startDate?: Date;
-  endDate?: Date;
-}) {
+export const getFineCollectionsReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  params?: {
+    page?: number;
+    limit?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }
+) => {
   try {
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
     const where: any = {
+      schoolId, // Mandatory
       status: "RETURNED",
       fine: {
         gt: 0,
@@ -219,6 +239,7 @@ export async function getFineCollectionsReport(params?: {
               enrollments: {
                 where: {
                   status: "ACTIVE",
+                  schoolId
                 },
                 include: {
                   class: {
@@ -251,9 +272,9 @@ export async function getFineCollectionsReport(params?: {
     const finesWithDetails = fineIssues.map((issue) => {
       const daysOverdue = issue.returnDate && issue.dueDate
         ? Math.floor(
-            (issue.returnDate.getTime() - issue.dueDate.getTime()) /
-              (1000 * 60 * 60 * 24)
-          )
+          (issue.returnDate.getTime() - issue.dueDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+        )
         : 0;
 
       return {
@@ -280,17 +301,22 @@ export async function getFineCollectionsReport(params?: {
       error: "Failed to generate fine collections report",
     };
   }
-}
+});
 
 /**
  * Get library summary statistics for reports
  */
-export async function getLibraryReportSummary(params?: {
-  startDate?: Date;
-  endDate?: Date;
-}) {
+export const getLibraryReportSummary = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  params?: {
+    startDate?: Date;
+    endDate?: Date;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     // Date range filter
     if (params?.startDate || params?.endDate) {
@@ -320,6 +346,7 @@ export async function getLibraryReportSummary(params?: {
       }),
       db.bookIssue.count({
         where: {
+          schoolId,
           status: { in: ["ISSUED", "OVERDUE"] },
           dueDate: {
             lt: new Date(),
@@ -328,17 +355,18 @@ export async function getLibraryReportSummary(params?: {
       }),
       db.bookIssue.aggregate({
         where: {
+          schoolId,
           status: "RETURNED",
           fine: {
             gt: 0,
           },
           ...(params?.startDate || params?.endDate
             ? {
-                returnDate: {
-                  ...(params.startDate ? { gte: params.startDate } : {}),
-                  ...(params.endDate ? { lte: params.endDate } : {}),
-                },
-              }
+              returnDate: {
+                ...(params.startDate ? { gte: params.startDate } : {}),
+                ...(params.endDate ? { lte: params.endDate } : {}),
+              },
+            }
             : {}),
         },
         _sum: {
@@ -379,4 +407,4 @@ export async function getLibraryReportSummary(params?: {
       error: "Failed to generate library report summary",
     };
   }
-}
+});

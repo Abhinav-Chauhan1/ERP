@@ -1,0 +1,188 @@
+// Configuration System Models for Super-Admin SaaS Completion
+// These models extend the existing SystemSettings with comprehensive configuration management
+
+// Enhanced system configuration with feature flags and environment support
+model SystemConfiguration {
+  id                    String   @id @default(cuid())
+  key                   String   @unique
+  value                 Json
+  description           String?
+  category              String   // GLOBAL, FEATURE_FLAG, EMAIL_TEMPLATE, INTEGRATION, USAGE_LIMIT
+  environment           String   @default("production") // production, staging, development
+  isActive              Boolean  @default(true)
+  requiresRestart       Boolean  @default(false)
+  validationSchema      Json?    // JSON schema for value validation
+  metadata              Json?    // Additional configuration metadata
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  creator               User     @relation("ConfigurationCreator", fields: [createdBy], references: [id])
+  updater               User?    @relation("ConfigurationUpdater", fields: [updatedBy], references: [id])
+  
+  @@index([category, environment])
+  @@index([key, environment])
+  @@map("system_configurations")
+}
+
+// Feature flag management with gradual rollout support
+model FeatureFlag {
+  id                    String   @id @default(cuid())
+  name                  String   @unique
+  description           String?
+  isEnabled             Boolean  @default(false)
+  rolloutPercentage     Int      @default(0) // 0-100
+  rolloutStrategy       String   @default("PERCENTAGE") // PERCENTAGE, USER_LIST, SCHOOL_LIST
+  targetUsers           String[] // User IDs for USER_LIST strategy
+  targetSchools         String[] // School IDs for SCHOOL_LIST strategy
+  conditions            Json?    // Additional rollout conditions
+  environment           String   @default("production")
+  startDate             DateTime?
+  endDate               DateTime?
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  creator               User     @relation("FeatureFlagCreator", fields: [createdBy], references: [id])
+  updater               User?    @relation("FeatureFlagUpdater", fields: [updatedBy], references: [id])
+  
+  @@index([name, environment])
+  @@index([isEnabled, rolloutPercentage])
+  @@map("feature_flags")
+}
+
+// Email template management with versioning and preview support
+model EmailTemplate {
+  id                    String   @id @default(cuid())
+  name                  String
+  category              String   // BILLING, NOTIFICATION, SYSTEM, MARKETING
+  subject               String
+  htmlContent           String
+  textContent           String?
+  variables             Json     // Available template variables
+  isActive              Boolean  @default(true)
+  version               String   @default("1.0")
+  parentTemplateId      String?
+  previewData           Json?    // Sample data for preview
+  metadata              Json?
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  creator               User     @relation("EmailTemplateCreator", fields: [createdBy], references: [id])
+  updater               User?    @relation("EmailTemplateUpdater", fields: [updatedBy], references: [id])
+  parentTemplate        EmailTemplate? @relation("EmailTemplateVersions", fields: [parentTemplateId], references: [id])
+  childVersions         EmailTemplate[] @relation("EmailTemplateVersions")
+  
+  @@unique([name, category, version])
+  @@index([category, isActive])
+  @@map("email_templates")
+}
+
+// Third-party service integration configuration
+model IntegrationConfiguration {
+  id                    String   @id @default(cuid())
+  serviceName           String   // STRIPE, RAZORPAY, TWILIO, MSG91, CLOUDINARY, etc.
+  environment           String   @default("production")
+  isActive              Boolean  @default(true)
+  configuration         String   // Encrypted configuration JSON
+  testConfiguration     String?  // Encrypted test/sandbox configuration
+  webhookUrl            String?
+  webhookSecret         String?  // Encrypted webhook secret
+  rateLimits            Json?    // Service-specific rate limits
+  healthCheckUrl        String?
+  lastHealthCheck       DateTime?
+  healthStatus          String   @default("UNKNOWN") // HEALTHY, UNHEALTHY, UNKNOWN
+  metadata              Json?
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  creator               User     @relation("IntegrationCreator", fields: [createdBy], references: [id])
+  updater               User?    @relation("IntegrationUpdater", fields: [updatedBy], references: [id])
+  
+  @@unique([serviceName, environment])
+  @@index([serviceName, isActive])
+  @@map("integration_configurations")
+}
+
+// Global and per-school usage limits
+model UsageLimit {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  resourceType          String   // SMS, WHATSAPP, STORAGE, API_CALLS, USERS
+  limitType             String   // GLOBAL, PER_SCHOOL, PER_USER
+  schoolId              String?  // null for global limits
+  limitValue            Int
+  currentUsage          Int      @default(0)
+  resetPeriod           String   // DAILY, WEEKLY, MONTHLY, YEARLY
+  resetDay              Int?     // Day of week/month for reset
+  isActive              Boolean  @default(true)
+  alertThreshold        Int?     // Percentage threshold for alerts (0-100)
+  hardLimit             Boolean  @default(false) // Whether to enforce hard limits
+  metadata              Json?
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  lastResetAt           DateTime?
+  
+  creator               User     @relation("UsageLimitCreator", fields: [createdBy], references: [id])
+  updater               User?    @relation("UsageLimitUpdater", fields: [updatedBy], references: [id])
+  school                School?  @relation(fields: [schoolId], references: [id])
+  
+  @@unique([name, schoolId])
+  @@index([resourceType, limitType])
+  @@index([schoolId, resourceType])
+  @@map("usage_limits")
+}
+
+// Configuration change history for audit and rollback
+model ConfigurationHistory {
+  id                    String   @id @default(cuid())
+  configurationId       String
+  configurationType     String   // SYSTEM_CONFIG, FEATURE_FLAG, EMAIL_TEMPLATE, INTEGRATION, USAGE_LIMIT
+  changeType            String   // CREATE, UPDATE, DELETE, ACTIVATE, DEACTIVATE
+  previousValue         Json?
+  newValue              Json?
+  reason                String?
+  changedBy             String
+  changedAt             DateTime @default(now())
+  
+  changer               User     @relation(fields: [changedBy], references: [id])
+  
+  @@index([configurationId, configurationType])
+  @@index([changedBy, changedAt])
+  @@map("configuration_history")
+}
+
+// Add relations to existing User model
+model User {
+  // ... existing fields ...
+  
+  // Configuration system relations
+  createdConfigurations     SystemConfiguration[] @relation("ConfigurationCreator")
+  updatedConfigurations     SystemConfiguration[] @relation("ConfigurationUpdater")
+  createdFeatureFlags       FeatureFlag[]         @relation("FeatureFlagCreator")
+  updatedFeatureFlags       FeatureFlag[]         @relation("FeatureFlagUpdater")
+  createdEmailTemplates     EmailTemplate[]       @relation("EmailTemplateCreator")
+  updatedEmailTemplates     EmailTemplate[]       @relation("EmailTemplateUpdater")
+  createdIntegrations       IntegrationConfiguration[] @relation("IntegrationCreator")
+  updatedIntegrations       IntegrationConfiguration[] @relation("IntegrationUpdater")
+  createdUsageLimits        UsageLimit[]          @relation("UsageLimitCreator")
+  updatedUsageLimits        UsageLimit[]          @relation("UsageLimitUpdater")
+  configurationChanges      ConfigurationHistory[]
+}
+
+// Add relations to existing School model
+model School {
+  // ... existing fields ...
+  
+  // Configuration system relations
+  usageLimits               UsageLimit[]
+}

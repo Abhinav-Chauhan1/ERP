@@ -3,13 +3,15 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all scholarships
 export async function getScholarships(filters?: {
   limit?: number;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    const where: any = { schoolId };
 
     const scholarships = await db.scholarship.findMany({
       where,
@@ -54,8 +56,9 @@ export async function getScholarships(filters?: {
 // Get single scholarship by ID
 export async function getScholarshipById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const scholarship = await db.scholarship.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         recipients: {
           include: {
@@ -92,8 +95,10 @@ export async function getScholarshipById(id: string) {
 // Create new scholarship
 export async function createScholarship(data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const scholarship = await db.scholarship.create({
       data: {
+        schoolId,
         name: data.name,
         description: data.description || null,
         amount: parseFloat(data.amount),
@@ -115,8 +120,9 @@ export async function createScholarship(data: any) {
 // Update scholarship
 export async function updateScholarship(id: string, data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const scholarship = await db.scholarship.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         name: data.name,
         description: data.description || null,
@@ -148,14 +154,15 @@ export async function deleteScholarship(id: string) {
     });
 
     if (scholarship && scholarship.recipients.length > 0) {
-      return { 
-        success: false, 
-        error: "Cannot delete scholarship with active recipients. Remove recipients first." 
+      return {
+        success: false,
+        error: "Cannot delete scholarship with active recipients. Remove recipients first."
       };
     }
 
+    const { schoolId } = await requireSchoolAccess();
     await db.scholarship.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/finance/scholarships");
@@ -169,8 +176,9 @@ export async function deleteScholarship(id: string) {
 // Get scholarship recipients
 export async function getScholarshipRecipients(scholarshipId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const recipients = await db.scholarshipRecipient.findMany({
-      where: { scholarshipId },
+      where: { scholarshipId, scholarship: { schoolId } }, // Verify scholarship belongs to school
       include: {
         student: {
           include: {
@@ -203,12 +211,14 @@ export async function getScholarshipRecipients(scholarshipId: string) {
 // Award scholarship to student
 export async function awardScholarship(data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Check if student already has this scholarship
     const existing = await db.scholarshipRecipient.findFirst({
       where: {
         scholarshipId: data.scholarshipId,
         studentId: data.studentId,
         status: "Active",
+        scholarship: { schoolId }
       },
     });
 
@@ -216,10 +226,23 @@ export async function awardScholarship(data: any) {
       return { success: false, error: "Student already has this scholarship" };
     }
 
+    // Validate student exists
+    const student = await db.student.findUnique({
+      where: { id: data.studentId, schoolId },
+    });
+
+    if (!student) {
+      return { success: false, error: "Student not found or not in your school" };
+    }
+
     // Get scholarship details
     const scholarship = await db.scholarship.findUnique({
-      where: { id: data.scholarshipId },
+      where: { id: data.scholarshipId, schoolId },
     });
+
+    if (!scholarship) {
+      return { success: false, error: "Scholarship not found or not in your school" };
+    }
 
     const recipient = await db.scholarshipRecipient.create({
       data: {
@@ -251,8 +274,9 @@ export async function awardScholarship(data: any) {
 // Remove scholarship recipient
 export async function removeRecipient(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     await db.scholarshipRecipient.update({
-      where: { id },
+      where: { id, scholarship: { schoolId } },
       data: {
         status: "Expired",
       },
@@ -269,7 +293,9 @@ export async function removeRecipient(id: string) {
 // Get students for scholarship award
 export async function getStudentsForScholarship() {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const students = await db.student.findMany({
+      where: { schoolId },
       include: {
         user: {
           select: {
@@ -305,19 +331,19 @@ export async function getStudentsForScholarship() {
 // Get scholarship statistics
 export async function getScholarshipStats() {
   try {
-    const [
-      totalScholarships,
-      totalRecipients,
-      activeRecipients,
-      totalAmountAwarded,
-    ] = await Promise.all([
-      db.scholarship.count(),
-      db.scholarshipRecipient.count(),
+    const { schoolId } = await requireSchoolAccess();
+    const [totalScholarships, totalRecipients, activeRecipients, totalAmountDistributed] = await Promise.all([
+      db.scholarship.count({ where: { schoolId } }),
+      db.scholarshipRecipient.count({ where: { scholarship: { schoolId } } }),
       db.scholarshipRecipient.count({
-        where: { status: "Active" },
+        where: {
+          status: "Active",
+          scholarship: { schoolId },
+        },
       }),
       db.scholarshipRecipient.findMany({
-        where: { status: "Active" },
+        select: { amount: true },
+        where: { scholarship: { schoolId } },
       }).then((recipients) => {
         return recipients.reduce((sum, recipient) => {
           return sum + (recipient.amount || 0);

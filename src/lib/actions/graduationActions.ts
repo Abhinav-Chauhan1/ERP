@@ -14,6 +14,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { UserRole, EnrollmentStatus } from "@prisma/client";
 import { PromotionService } from "@/lib/services/promotionService";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // ============================================================================
 // Types
@@ -196,13 +197,13 @@ async function generateGraduationCertificates(
     // In a real implementation, this would integrate with a certificate generation service
     // For now, we'll just log the request
     console.log(`Certificate generation requested for ${studentIds.length} students`);
-    
+
     // TODO: Integrate with certificate generation service
     // - Fetch certificate template
     // - Generate PDF certificates
     // - Store certificate URLs in database
     // - Return count of successfully generated certificates
-    
+
     return studentIds.length;
   } catch (error) {
     console.error("Error generating certificates:", error);
@@ -238,6 +239,9 @@ export async function markStudentsAsGraduated(
     if (!authCheck.authorized) {
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
+
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const {
       studentIds,
@@ -277,7 +281,7 @@ export async function markStudentsAsGraduated(
         try {
           // Fetch student with active enrollment
           const student = await tx.student.findUnique({
-            where: { id: studentId },
+            where: { id: studentId, schoolId },
             include: {
               user: true,
               enrollments: {
@@ -332,6 +336,7 @@ export async function markStudentsAsGraduated(
             // Create alumni profile
             await tx.alumni.create({
               data: {
+                schoolId,
                 studentId,
                 graduationDate,
                 finalClass: activeEnrollment.class.name,
@@ -438,6 +443,9 @@ export async function bulkGraduateClass(
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const {
       classId,
       sectionId,
@@ -469,6 +477,7 @@ export async function bulkGraduateClass(
       status: EnrollmentStatus.ACTIVE,
       class: {
         academicYearId,
+        schoolId
       },
     };
 
@@ -553,12 +562,16 @@ export async function getStudentsForGraduation(
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Build enrollment filters
     const enrollmentFilters: any = {
       classId,
       status: EnrollmentStatus.ACTIVE,
       class: {
         academicYearId,
+        schoolId
       },
     };
 

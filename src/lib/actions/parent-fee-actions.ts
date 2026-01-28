@@ -21,6 +21,7 @@ import { verifyCsrfToken } from "@/lib/utils/csrf";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Helper function to get current parent and verify authentication
@@ -32,21 +33,26 @@ async function getCurrentParent() {
     return null;
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: clerkUser.id }
-  });
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return null;
 
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    return null;
-  }
-
-  const parent = await db.parent.findUnique({
+  const dbUser = await db.user.findFirst({
     where: {
-      userId: dbUser.id
+      id: clerkUser.id,
+      parent: {
+        schoolId
+      }
+    },
+    include: {
+      parent: true
     }
   });
 
-  return parent;
+  if (!dbUser || dbUser.role !== UserRole.PARENT || !dbUser.parent) {
+    return null;
+  }
+
+  return { ...dbUser.parent, schoolId };
 }
 
 /**
@@ -54,10 +60,15 @@ async function getCurrentParent() {
  */
 async function verifyParentChildRelationship(
   parentId: string,
-  childId: string
+  childId: string,
+  schoolId: string
 ): Promise<boolean> {
   const relationship = await db.studentParent.findFirst({
-    where: { parentId, studentId: childId }
+    where: {
+      parentId,
+      studentId: childId,
+      schoolId
+    }
   });
   return !!relationship;
 }
@@ -114,14 +125,17 @@ export async function getFeeOverview(input: FeeOverviewInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student with current enrollment
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: {
+        id: validated.childId,
+        schoolId: (parent as any).schoolId
+      },
       include: {
         user: {
           select: {
@@ -225,7 +239,8 @@ export async function getFeeOverview(input: FeeOverviewInput) {
     const payments = await db.feePayment.findMany({
       where: {
         studentId: validated.childId,
-        feeStructureId: feeStructure.id
+        feeStructureId: feeStructure.id,
+        schoolId: (parent as any).schoolId
       }
     });
 
@@ -330,14 +345,17 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student's class for class-specific amount calculations
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: {
+        id: validated.childId,
+        schoolId: (parent as any).schoolId
+      },
       include: {
         enrollments: {
           where: { status: "ACTIVE" },
@@ -354,7 +372,8 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
 
     // Build where clause
     const where: any = {
-      studentId: validated.childId
+      studentId: validated.childId,
+      schoolId: (parent as any).schoolId
     };
 
     if (validated.status) {
@@ -462,15 +481,18 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student's class for class-specific amount calculations
     // Requirements: 12.2, 12.3
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: {
+        id: validated.childId,
+        schoolId: (parent as any).schoolId
+      },
       include: {
         enrollments: {
           where: { status: "ACTIVE" },
@@ -536,7 +558,8 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
         status: validated.paymentMethod === PaymentMethod.ONLINE_PAYMENT
           ? PaymentStatus.PENDING
           : PaymentStatus.COMPLETED,
-        remarks: sanitizedRemarks
+        remarks: sanitizedRemarks,
+        schoolId: (parent as any).schoolId
       }
     });
 
@@ -589,7 +612,7 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
@@ -600,7 +623,8 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
     // Check if payment already exists with this transaction ID
     const existingPayment = await db.feePayment.findFirst({
       where: {
-        transactionId: validated.paymentId
+        transactionId: validated.paymentId,
+        schoolId: (parent as any).schoolId
       }
     });
 
@@ -662,7 +686,8 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         transactionId: sanitizedPaymentId,
         receiptNumber,
         status: PaymentStatus.COMPLETED,
-        remarks: `Online payment verified. Order ID: ${sanitizedOrderId}`
+        remarks: `Online payment verified. Order ID: ${sanitizedOrderId}`,
+        schoolId: (parent as any).schoolId
       }
     });
 
@@ -700,14 +725,17 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get payment details
-    const payment = await db.feePayment.findUnique({
-      where: { id: validated.paymentId },
+    const payment = await db.feePayment.findFirst({
+      where: {
+        id: validated.paymentId,
+        schoolId: (parent as any).schoolId
+      },
       include: {
         student: {
           include: {
@@ -793,7 +821,9 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.systemSettings.findFirst();
+    const systemSettings = await db.systemSettings.findFirst({
+      where: { schoolId: (parent as any).schoolId }
+    });
     if (systemSettings) {
       (receiptData as any).school = {
         name: systemSettings.schoolName,

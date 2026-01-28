@@ -5,6 +5,8 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { parse, isValid } from "date-fns";
 import { hashPassword } from "@/lib/password";
+import { UserRole } from "@prisma/client";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Helper to parse dates from various formats
@@ -158,14 +160,14 @@ export async function importStudents(
   defaultClassId?: string,
   defaultSectionId?: string
 ): Promise<ImportResult> {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const { schoolId, user } = await requireSchoolAccess();
+  const userId = user?.id;
 
-  if (!userId) {
+  if (!userId || !schoolId) {
     return {
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
-      errors: [{ row: 0, message: "Unauthorized" }],
+      errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
     };
   }
 
@@ -196,6 +198,7 @@ export async function importStudents(
       // Check if student already exists
       const existingStudent = await db.student.findFirst({
         where: {
+          schoolId,
           OR: [
             {
               user: {
@@ -303,7 +306,7 @@ export async function importStudents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              role: "STUDENT",
+              role: "STUDENT" as UserRole,
               password: hashedPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
@@ -316,6 +319,7 @@ export async function importStudents(
           bloodGroup: validated.bloodGroup,
           emergencyContact: validated.emergencyContact,
           rollNumber: validated.rollNumber,
+          schoolId,
         },
       });
 
@@ -328,6 +332,7 @@ export async function importStudents(
           rollNumber: validated.rollNumber,
           enrollDate: new Date(),
           status: "ACTIVE",
+          schoolId,
         },
       });
 
@@ -368,14 +373,14 @@ export async function importTeachers(
   data: TeacherImportData[],
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const { schoolId, user } = await requireSchoolAccess();
+  const userId = user?.id;
 
-  if (!userId) {
+  if (!userId || !schoolId) {
     return {
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
-      errors: [{ row: 0, message: "Unauthorized" }],
+      errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
     };
   }
 
@@ -401,6 +406,7 @@ export async function importTeachers(
       // Check if teacher already exists
       const existingTeacher = await db.teacher.findFirst({
         where: {
+          schoolId,
           OR: [
             {
               user: {
@@ -468,7 +474,7 @@ export async function importTeachers(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              role: "TEACHER",
+              role: "TEACHER" as UserRole,
               password: hashedTeacherPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
@@ -477,6 +483,7 @@ export async function importTeachers(
           qualification: validated.qualification,
           joinDate: parseImportDate(validated.joinDate),
           salary: validated.salary ? parseFloat(validated.salary) : undefined,
+          schoolId,
         },
       });
 
@@ -517,14 +524,14 @@ export async function importParents(
   data: ParentImportData[],
   duplicateHandling: DuplicateHandling = "skip"
 ): Promise<ImportResult> {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const { schoolId, user } = await requireSchoolAccess();
+  const userId = user?.id;
 
-  if (!userId) {
+  if (!userId || !schoolId) {
     return {
       success: false,
       summary: { total: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
-      errors: [{ row: 0, message: "Unauthorized" }],
+      errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
     };
   }
 
@@ -549,7 +556,7 @@ export async function importParents(
 
       // Find the student by admission ID
       const student = await db.student.findUnique({
-        where: { admissionId: validated.studentAdmissionId },
+        where: { admissionId: validated.studentAdmissionId, schoolId },
       });
 
       if (!student) {
@@ -565,6 +572,7 @@ export async function importParents(
       // Check if parent already exists
       const existingParent = await db.parent.findFirst({
         where: {
+          schoolId,
           user: {
             email: validated.email
           }
@@ -593,6 +601,7 @@ export async function importParents(
           // Create parent-student association if it doesn't exist
           const existingAssociation = await db.studentParent.findFirst({
             where: {
+              schoolId,
               parentId: existingParent.id,
               studentId: student.id,
             },
@@ -604,6 +613,7 @@ export async function importParents(
                 parentId: existingParent.id,
                 studentId: student.id,
                 isPrimary: false,
+                schoolId,
               },
             });
           }
@@ -626,12 +636,13 @@ export async function importParents(
               lastName: validated.lastName,
               email: validated.email,
               phone: validated.phone,
-              role: "PARENT",
+              role: "PARENT" as UserRole,
               password: hashedParentPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
           occupation: validated.occupation,
+          schoolId,
         },
       });
 
@@ -641,6 +652,7 @@ export async function importParents(
           parentId: newParent.id,
           studentId: student.id,
           isPrimary: false,
+          schoolId,
         },
       });
 

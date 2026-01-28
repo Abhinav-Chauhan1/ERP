@@ -39,6 +39,7 @@ export interface ImportError {
 
 export interface ExportOptions {
   format: 'ical' | 'csv' | 'json';
+  schoolId: string; // [Required for Multi-Tenancy]
   startDate?: Date;
   endDate?: Date;
   categoryIds?: string[];
@@ -89,13 +90,15 @@ export function validateImportFormat(content: string, format: ImportFormat): voi
 export async function isDuplicateEvent(
   title: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  schoolId: string
 ): Promise<boolean> {
   const existing = await prisma.calendarEvent.findFirst({
     where: {
       title: title,
       startDate: startDate,
-      endDate: endDate
+      endDate: endDate,
+      schoolId: schoolId
     }
   });
 
@@ -338,6 +341,7 @@ function parseJSONEvents(content: string): any[] {
 export async function importCalendarEvents(
   content: string,
   format: ImportFormat,
+  schoolId: string,
   createdBy: string
 ): Promise<ImportResult> {
   const result: ImportResult = {
@@ -393,7 +397,10 @@ export async function importCalendarEvents(
         // If categoryName is provided but not categoryId, try to find the category
         if (eventData.categoryName && !eventData.categoryId) {
           const category = await prisma.calendarEventCategory.findFirst({
-            where: { name: eventData.categoryName }
+            where: {
+              name: eventData.categoryName,
+              schoolId: schoolId
+            }
           });
           if (category) {
             eventData.categoryId = category.id;
@@ -413,11 +420,11 @@ export async function importCalendarEvents(
         const category = await prisma.calendarEventCategory.findUnique({
           where: { id: eventData.categoryId }
         });
-        if (!category) {
+        if (!category || category.schoolId !== schoolId) {
           result.errors.push({
             row,
             field: 'categoryId',
-            message: `Category with ID "${eventData.categoryId}" not found`,
+            message: `Category with ID "${eventData.categoryId}" not found or does not belong to this school`,
             data: eventData
           });
           result.failed++;
@@ -428,7 +435,8 @@ export async function importCalendarEvents(
         const isDuplicate = await isDuplicateEvent(
           eventData.title,
           new Date(eventData.startDate),
-          new Date(eventData.endDate)
+          new Date(eventData.endDate),
+          schoolId
         );
 
         if (isDuplicate) {
@@ -451,7 +459,9 @@ export async function importCalendarEvents(
           isRecurring: eventData.isRecurring ?? false,
           recurrenceRule: eventData.recurrenceRule,
           exceptionDates: eventData.exceptionDates,
+          exceptionDates: eventData.exceptionDates,
           attachments: eventData.attachments,
+          schoolId,
           createdBy
         };
 
@@ -645,7 +655,9 @@ export async function exportCalendarEvents(
   options: ExportOptions
 ): Promise<string> {
   // Build filter criteria
-  const filters: any = {};
+  const filters: any = {
+    schoolId: options.schoolId
+  };
 
   if (options.startDate || options.endDate) {
     filters.AND = [];

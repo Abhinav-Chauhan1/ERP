@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 
 // GET /api/parents - Get all parents
-export async function GET(request: NextRequest) {
+export const GET = withSchoolAuth(async (request, context) => {
     try {
         const session = await auth();
         if (!session?.user) {
@@ -53,4 +54,4 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

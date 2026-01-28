@@ -1,13 +1,14 @@
-"use strict";
+"use server";
 
 import { db as prisma } from "@/lib/db";
 import { CBSE_SUBJECTS } from "@/lib/constants/cbse-subjects";
 import { revalidatePath } from "next/cache";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 /**
- * Seeds the standard CBSE 9-point grading scale
+ * Seeds the standard CBSE 9-point grading scale for a specific school
  */
-export async function seedCBSEGradeScale() {
+export const seedCBSEGradeScale = withSchoolAuthAction(async (schoolId) => {
     const cbseGrades = [
         { grade: "A1", minMarks: 91, maxMarks: 100, gradePoint: 10.0, description: "Top 1/8th of passed candidates" },
         { grade: "A2", minMarks: 81, maxMarks: 90, gradePoint: 9.0, description: "Next 1/8th" },
@@ -22,7 +23,8 @@ export async function seedCBSEGradeScale() {
     for (const g of cbseGrades) {
         await prisma.gradeScale.upsert({
             where: {
-                boardType_grade: {
+                schoolId_boardType_grade: {
+                    schoolId,
                     boardType: "CBSE",
                     grade: g.grade,
                 },
@@ -34,6 +36,7 @@ export async function seedCBSEGradeScale() {
                 description: g.description,
             },
             create: {
+                schoolId,
                 boardType: "CBSE",
                 grade: g.grade,
                 minMarks: g.minMarks,
@@ -46,46 +49,58 @@ export async function seedCBSEGradeScale() {
 
     revalidatePath("/admin/academic/grades");
     return { success: true, message: "CBSE Grade Scale seeded successfully" };
-}
+});
 
 /**
- * Seeds CBSE Subjects and Departments
+ * Seeds CBSE Subjects and Departments for a specific school
  */
-export async function seedCBSESubjects() {
+export const seedCBSESubjects = withSchoolAuthAction(async (schoolId) => {
     // 1. Ensure departments exist
     const departments = Array.from(new Set(CBSE_SUBJECTS.map(s => s.department)));
 
     for (const deptName of departments) {
-        const existingDept = await prisma.department.findFirst({
-            where: { name: deptName }
+        await prisma.department.upsert({
+            where: {
+                schoolId_name: {
+                    schoolId,
+                    name: deptName
+                }
+            },
+            update: {
+                updatedAt: new Date()
+            },
+            create: {
+                schoolId,
+                name: deptName
+            }
         });
-
-        if (existingDept) {
-            // Update department if needed (currently no-op)
-            await prisma.department.update({
-                where: { id: existingDept.id },
-                data: { updatedAt: new Date() }
-            });
-        } else {
-            // Create new department
-            await prisma.department.create({
-                data: { name: deptName }
-            });
-        }
     }
 
     // 2. Create subjects
     for (const s of CBSE_SUBJECTS) {
-        const dept = await prisma.department.findFirst({ where: { name: s.department } });
+        const dept = await prisma.department.findUnique({
+            where: {
+                schoolId_name: {
+                    schoolId,
+                    name: s.department
+                }
+            }
+        });
 
         await prisma.subject.upsert({
-            where: { code: s.code },
+            where: {
+                schoolId_code: {
+                    schoolId,
+                    code: s.code
+                }
+            },
             update: {
                 name: s.name,
                 type: s.type as any,
                 departmentId: dept?.id,
             },
             create: {
+                schoolId,
                 name: s.name,
                 code: s.code,
                 type: s.type as any,
@@ -96,4 +111,4 @@ export async function seedCBSESubjects() {
 
     revalidatePath("/admin/academic/subjects");
     return { success: true, message: "CBSE Subjects and Departments seeded successfully" };
-}
+});

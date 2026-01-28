@@ -1,5 +1,6 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import {
@@ -17,12 +18,13 @@ function generateApplicationNumber(): string {
 }
 
 // Get all classes for the admission form dropdown
-export async function getAvailableClasses() {
+export const getAvailableClasses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const classes = await db.class.findMany({
       where: {
+        schoolId,
         academicYear: {
-          isCurrent: true,
+          isCurrent: true
         }
       },
       include: {
@@ -42,10 +44,10 @@ export async function getAvailableClasses() {
     console.error("Error fetching available classes:", error);
     throw new Error("Failed to fetch available classes");
   }
-}
+});
 
 // Upload document to Cloudinary
-export async function uploadAdmissionDocument(formData: FormData) {
+export const uploadAdmissionDocument = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, formData: FormData) => {
   try {
     const file = formData.get("file") as File;
     const type = formData.get("type") as string;
@@ -78,13 +80,13 @@ export async function uploadAdmissionDocument(formData: FormData) {
       error: "Failed to upload document. Please try again.",
     };
   }
-}
+});
 
 // Create admission application with documents
-export async function createAdmissionApplication(
+export const createAdmissionApplication = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   data: AdmissionApplicationFormValues,
   documents?: Array<{ type: string; url: string; filename: string }>
-) {
+) => {
   try {
     // Validate the input data
     const validatedData = admissionApplicationSchema.parse(data);
@@ -94,19 +96,26 @@ export async function createAdmissionApplication(
 
     // Ensure uniqueness
     let exists = await db.admissionApplication.findUnique({
-      where: { applicationNumber }
+      where: {
+        schoolId,
+        applicationNumber
+      }
     });
 
     while (exists) {
       applicationNumber = generateApplicationNumber();
       exists = await db.admissionApplication.findUnique({
-        where: { applicationNumber }
+        where: {
+          schoolId,
+          applicationNumber
+        }
       });
     }
 
     // Create the admission application with documents
     const application = await db.admissionApplication.create({
       data: {
+        schoolId, // Enable multi-tenancy
         applicationNumber,
         studentName: validatedData.studentName,
         dateOfBirth: validatedData.dateOfBirth,
@@ -153,6 +162,7 @@ export async function createAdmissionApplication(
         status: "SUBMITTED",
         documents: documents && documents.length > 0 ? {
           create: documents.map(doc => ({
+            schoolId, // Enable multi-tenancy for nested creates
             type: doc.type as any,
             url: doc.url,
             filename: doc.filename,
@@ -179,9 +189,7 @@ export async function createAdmissionApplication(
         application.appliedClass.name
       );
     } catch (emailError) {
-      // Log email error but don't fail the application submission
       console.error("Failed to send confirmation email:", emailError);
-      // Application was created successfully, so we still return success
     }
 
     return {
@@ -205,13 +213,16 @@ export async function createAdmissionApplication(
       error: "Failed to submit application. Please try again.",
     };
   }
-}
+});
 
 // Get admission application by application number (for verification)
-export async function getAdmissionApplicationByNumber(applicationNumber: string) {
+export const getAdmissionApplicationByNumber = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, applicationNumber: string) => {
   try {
     const application = await db.admissionApplication.findUnique({
-      where: { applicationNumber },
+      where: {
+        schoolId,
+        applicationNumber
+      },
       include: {
         appliedClass: {
           select: {
@@ -227,10 +238,10 @@ export async function getAdmissionApplicationByNumber(applicationNumber: string)
     console.error("Error fetching admission application:", error);
     throw new Error("Failed to fetch admission application");
   }
-}
+});
 
 // Admin: Get all admission applications with filters and pagination
-export async function getAdmissionApplications(options: {
+export const getAdmissionApplications = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, options: {
   page?: number;
   limit?: number;
   search?: string;
@@ -238,16 +249,14 @@ export async function getAdmissionApplications(options: {
   classId?: string;
   startDate?: Date;
   endDate?: Date;
-}) {
+}) => {
   try {
     const page = options.page || 1;
     const limit = options.limit || 50;
     const skip = (page - 1) * limit;
 
-    // Build where clause
-    const where: any = {};
+    const where: any = { schoolId }; // Ensure scoped
 
-    // Search by student name, parent name, or application number
     if (options.search) {
       where.OR = [
         { studentName: { contains: options.search, mode: 'insensitive' } },
@@ -256,17 +265,14 @@ export async function getAdmissionApplications(options: {
       ];
     }
 
-    // Filter by status
     if (options.status && options.status !== 'ALL') {
       where.status = options.status;
     }
 
-    // Filter by class
     if (options.classId) {
       where.appliedClassId = options.classId;
     }
 
-    // Filter by date range
     if (options.startDate || options.endDate) {
       where.submittedAt = {};
       if (options.startDate) {
@@ -277,10 +283,8 @@ export async function getAdmissionApplications(options: {
       }
     }
 
-    // Get total count
     const total = await db.admissionApplication.count({ where });
 
-    // Get applications
     const applications = await db.admissionApplication.findMany({
       where,
       include: {
@@ -311,13 +315,16 @@ export async function getAdmissionApplications(options: {
     console.error("Error fetching admission applications:", error);
     throw new Error("Failed to fetch admission applications");
   }
-}
+});
 
 // Admin: Get single admission application by ID
-export async function getAdmissionApplicationById(id: string) {
+export const getAdmissionApplicationById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const application = await db.admissionApplication.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       include: {
         appliedClass: {
           select: {
@@ -338,18 +345,21 @@ export async function getAdmissionApplicationById(id: string) {
     console.error("Error fetching admission application:", error);
     throw new Error("Failed to fetch admission application");
   }
-}
+});
 
-// Admin: Update application status (accept, reject, waitlist)
-export async function updateApplicationStatus(
+// Admin: Update application status
+export const updateApplicationStatus = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   applicationId: string,
   status: "ACCEPTED" | "REJECTED" | "WAITLISTED" | "UNDER_REVIEW",
   remarks?: string,
   reviewedBy?: string
-) {
+) => {
   try {
     const application = await db.admissionApplication.update({
-      where: { id: applicationId },
+      where: {
+        schoolId,
+        id: applicationId
+      },
       data: {
         status,
         remarks,
@@ -365,7 +375,7 @@ export async function updateApplicationStatus(
       }
     });
 
-    // Send notification email based on status
+    // Send notification email
     try {
       const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
 
@@ -391,7 +401,6 @@ export async function updateApplicationStatus(
       }
     } catch (emailError) {
       console.error("Failed to send status email:", emailError);
-      // Don't fail the status update if email fails
     }
 
     return {
@@ -406,16 +415,19 @@ export async function updateApplicationStatus(
       error: "Failed to update application status. Please try again.",
     };
   }
-}
+});
 
 // Admin: Add or update remarks
-export async function updateApplicationRemarks(
+export const updateApplicationRemarks = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   applicationId: string,
   remarks: string
-) {
+) => {
   try {
     const application = await db.admissionApplication.update({
-      where: { id: applicationId },
+      where: {
+        schoolId,
+        id: applicationId
+      },
       data: {
         remarks,
         updatedAt: new Date(),
@@ -434,10 +446,10 @@ export async function updateApplicationRemarks(
       error: "Failed to update remarks. Please try again.",
     };
   }
-}
+});
 
 // Admin: Get application statistics
-export async function getAdmissionStatistics() {
+export const getAdmissionStatistics = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const [
       total,
@@ -447,12 +459,12 @@ export async function getAdmissionStatistics() {
       rejected,
       waitlisted,
     ] = await Promise.all([
-      db.admissionApplication.count(),
-      db.admissionApplication.count({ where: { status: 'SUBMITTED' } }),
-      db.admissionApplication.count({ where: { status: 'UNDER_REVIEW' } }),
-      db.admissionApplication.count({ where: { status: 'ACCEPTED' } }),
-      db.admissionApplication.count({ where: { status: 'REJECTED' } }),
-      db.admissionApplication.count({ where: { status: 'WAITLISTED' } }),
+      db.admissionApplication.count({ where: { schoolId } }),
+      db.admissionApplication.count({ where: { schoolId, status: 'SUBMITTED' } }),
+      db.admissionApplication.count({ where: { schoolId, status: 'UNDER_REVIEW' } }),
+      db.admissionApplication.count({ where: { schoolId, status: 'ACCEPTED' } }),
+      db.admissionApplication.count({ where: { schoolId, status: 'REJECTED' } }),
+      db.admissionApplication.count({ where: { schoolId, status: 'WAITLISTED' } }),
     ]);
 
     return {
@@ -467,4 +479,4 @@ export async function getAdmissionStatistics() {
     console.error("Error fetching admission statistics:", error);
     throw new Error("Failed to fetch admission statistics");
   }
-}
+});

@@ -10,10 +10,10 @@ import { TimeTablePreview } from "@/components/student/timetable-preview";
 import { RecentAnnouncements } from "@/components/student/recent-announcements";
 import { DashboardStats } from "@/components/student/dashboard-stats";
 import { StudentCalendarWidgetSection } from "@/components/student/calendar-widget-section";
-import { 
-  getStudentDashboardData, 
-  getStudentSubjectPerformance, 
-  getStudentTodaySchedule 
+import {
+  getStudentDashboardData,
+  getStudentSubjectPerformance,
+  getStudentTodaySchedule
 } from "@/lib/actions/student-actions";
 
 export default function StudentDashboard() {
@@ -25,7 +25,7 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       try {
         const dashboardData = await getStudentDashboardData();
-        
+
         if (!dashboardData.student) {
           router.push("/login");
           return;
@@ -62,22 +62,28 @@ export default function StudentDashboard() {
 
   const { student, attendancePercentage, upcomingExams, pendingAssignments, recentAnnouncements, subjectPerformance, todaySchedule } = data;
   const currentEnrollment = student.enrollments[0];
-  
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       {/* Welcome Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back, {student.user.firstName}!
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Here's what's happening with your studies today
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black tracking-tighter text-foreground mb-2">
+            Hi, <span className="text-primary">{student.user.firstName}</span>! 👋
+          </h1>
+          <p className="text-muted-foreground font-medium text-lg max-w-2xl">
+            You're doing great! Here's a quick look at your academic progress and today's agenda.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Session Active</span>
+        </div>
       </div>
-      
+
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <DashboardStats 
+      <div className="dashboard-grid">
+        <DashboardStats
           attendancePercentage={attendancePercentage}
           upcomingExamsCount={upcomingExams.length}
           pendingAssignmentsCount={pendingAssignments.length}
@@ -86,16 +92,28 @@ export default function StudentDashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <UpcomingAssessments exams={upcomingExams} assignments={pendingAssignments} />
-          <SubjectPerformance data={subjectPerformance} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-10">
+          <div className="premium-card">
+            <UpcomingAssessments exams={upcomingExams} assignments={pendingAssignments} />
+          </div>
+          <div className="premium-card">
+            <SubjectPerformance data={subjectPerformance} />
+          </div>
         </div>
-        <div className="space-y-6">
-          <AttendanceOverview attendancePercentage={attendancePercentage} />
-          <TimeTablePreview schedule={todaySchedule} />
-          <StudentCalendarWidgetSection />
-          <RecentAnnouncements announcements={recentAnnouncements} />
+        <div className="space-y-10">
+          <div className="glass-card border-none">
+            <AttendanceOverview attendancePercentage={attendancePercentage} />
+          </div>
+          <div className="premium-card">
+            <TimeTablePreview schedule={todaySchedule} />
+          </div>
+          <div className="glass-card border-none overflow-hidden">
+            <StudentCalendarWidgetSection />
+          </div>
+          <div className="premium-card">
+            <RecentAnnouncements announcements={recentAnnouncements} />
+          </div>
         </div>
       </div>
     </div>

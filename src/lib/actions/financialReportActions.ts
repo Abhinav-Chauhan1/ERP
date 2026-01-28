@@ -1,19 +1,20 @@
-"use server";
-
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 
 // Get fee collection report
-export async function getFeeCollectionReport(filters?: {
-  academicYearId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  status?: string;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+export const getFeeCollectionReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
     if (filters?.status) where.status = filters.status;
@@ -35,6 +36,7 @@ export async function getFeeCollectionReport(filters?: {
               },
             },
             enrollments: {
+              where: { schoolId },
               include: {
                 class: true,
               },
@@ -76,18 +78,21 @@ export async function getFeeCollectionReport(filters?: {
     console.error("Error fetching fee collection report:", error);
     return { success: false, error: "Failed to fetch fee collection report" };
   }
-}
+});
 
 // Get expense analysis
-export async function getExpenseAnalysis(filters?: {
-  startDate?: Date;
-  endDate?: Date;
-  category?: string;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+export const getExpenseAnalysis = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    startDate?: Date;
+    endDate?: Date;
+    category?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (filters?.category) where.category = filters.category;
     if (filters?.startDate || filters?.endDate) {
@@ -139,17 +144,21 @@ export async function getExpenseAnalysis(filters?: {
     console.error("Error fetching expense analysis:", error);
     return { success: false, error: "Failed to fetch expense analysis" };
   }
-}
+});
 
 // Get outstanding payments
-export async function getOutstandingPayments(filters?: {
-  academicYearId?: string;
-  classId?: string;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+export const getOutstandingPayments = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+  }
+) => {
   try {
     const where: any = {
+      schoolId,
       status: "PENDING",
     };
 
@@ -168,7 +177,12 @@ export async function getOutstandingPayments(filters?: {
                 phone: true,
               },
             },
-            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
+            enrollments: {
+              where: { schoolId },
+              include: { class: true },
+              take: 1,
+              orderBy: { enrollDate: 'desc' }
+            },
           },
         },
         feeStructure: true,
@@ -205,22 +219,25 @@ export async function getOutstandingPayments(filters?: {
     console.error("Error fetching outstanding payments:", error);
     return { success: false, error: "Failed to fetch outstanding payments" };
   }
-}
+});
 
 // Get budget vs actual report
-export async function getBudgetVsActualReport(filters?: {
-  academicYearId?: string;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+export const getBudgetVsActualReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
     if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
 
     const budgets = await db.budget.findMany({
       where,
       include: {
-        expenses: true,
+        expenses: { where: { schoolId } },
       },
     });
 
@@ -260,17 +277,20 @@ export async function getBudgetVsActualReport(filters?: {
     console.error("Error fetching budget vs actual report:", error);
     return { success: false, error: "Failed to fetch budget vs actual report" };
   }
-}
+});
 
 // Get income statement
-export async function getIncomeStatement(filters?: {
-  startDate?: Date;
-  endDate?: Date;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+export const getIncomeStatement = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    startDate?: Date;
+    endDate?: Date;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -281,6 +301,7 @@ export async function getIncomeStatement(filters?: {
     // Get income (fee payments)
     const feePayments = await db.feePayment.findMany({
       where: {
+        schoolId, // Mandatory
         status: "COMPLETED",
         paymentDate: where.date,
       },
@@ -321,6 +342,6 @@ export async function getIncomeStatement(filters?: {
     console.error("Error fetching income statement:", error);
     return { success: false, error: "Failed to fetch income statement" };
   }
-}
+});
 
 

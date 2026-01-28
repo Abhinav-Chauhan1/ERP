@@ -10,14 +10,15 @@ import {
 } from "../schemaValidation/timetableSchemaValidation";
 import { formatISO, parseISO } from 'date-fns';
 import { formatTimeForDisplay, formatDayForDisplay } from "@/lib/utils/formatters";
-import { auth } from "@/auth";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all timetables
 export async function getTimetables() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const timetables = await db.timetable.findMany({
+      where: { schoolId },
       orderBy: {
         effectiveFrom: 'desc',
       },
@@ -43,10 +44,10 @@ export async function getTimetables() {
 // Get a specific timetable by ID
 export async function getTimetableById(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const timetable = await db.timetable.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         slots: {
           include: {
@@ -124,10 +125,11 @@ export async function getTimetableById(id: string) {
 // Get timetable slots by class ID
 export async function getTimetableSlotsByClass(classId: string, activeTimetableOnly: boolean = true) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const whereClause: any = {
       classId,
+      class: { schoolId } // Ensure class belongs to school
     };
 
     if (activeTimetableOnly) {
@@ -211,11 +213,12 @@ export async function getTimetableSlotsByClass(classId: string, activeTimetableO
 // Get timetable slots by teacher ID
 export async function getTimetableSlotsByTeacher(teacherId: string, activeTimetableOnly: boolean = true) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const whereClause: any = {
       subjectTeacher: {
-        teacherId
+        teacherId,
+        teacher: { schoolId } // Ensure teacher belongs to school
       }
     };
 
@@ -296,10 +299,11 @@ export async function getTimetableSlotsByTeacher(teacherId: string, activeTimeta
 // Get timetable slots by room ID
 export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnly: boolean = true) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const whereClause: any = {
-      roomId
+      roomId,
+      room: { schoolId } // Ensure room belongs to school
     };
 
     if (activeTimetableOnly) {
@@ -378,18 +382,19 @@ export async function getTimetableSlotsByRoom(roomId: string, activeTimetableOnl
 // Create a new timetable
 export async function createTimetable(data: TimetableFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // If this is set as active, deactivate other active timetables
     if (data.isActive) {
       await db.timetable.updateMany({
-        where: { isActive: true },
+        where: { isActive: true, schoolId },
         data: { isActive: false }
       });
     }
 
     const timetable = await db.timetable.create({
       data: {
+        schoolId,
         name: data.name,
         description: data.description || "",
         effectiveFrom: data.effectiveFrom,
@@ -412,11 +417,11 @@ export async function createTimetable(data: TimetableFormValues) {
 // Update an existing timetable
 export async function updateTimetable(data: TimetableUpdateFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Check if timetable exists
     const existingTimetable = await db.timetable.findUnique({
-      where: { id: data.id }
+      where: { id: data.id, schoolId }
     });
 
     if (!existingTimetable) {
@@ -428,6 +433,7 @@ export async function updateTimetable(data: TimetableUpdateFormValues) {
       await db.timetable.updateMany({
         where: {
           isActive: true,
+          schoolId,
           id: { not: data.id }
         },
         data: { isActive: false }
@@ -460,11 +466,11 @@ export async function updateTimetable(data: TimetableUpdateFormValues) {
 // Delete a timetable
 export async function deleteTimetable(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Check if timetable has any slots
     const slotsCount = await db.timetableSlot.count({
-      where: { timetableId: id }
+      where: { timetableId: id, timetable: { schoolId } }
     });
 
     if (slotsCount > 0) {
@@ -475,7 +481,7 @@ export async function deleteTimetable(id: string) {
     }
 
     await db.timetable.delete({
-      where: { id }
+      where: { id, schoolId }
     });
 
     revalidatePath("/admin/teaching/timetable");
@@ -492,8 +498,8 @@ export async function deleteTimetable(id: string) {
 // Create a new timetable slot
 export async function createTimetableSlot(data: TimetableSlotFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Process optional fields 
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
@@ -569,19 +575,20 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
 // Update an existing timetable slot
 export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Process optional fields 
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
 
     // Check if slot exists
     const existingSlot = await db.timetableSlot.findUnique({
-      where: { id: data.id }
+      where: { id: data.id },
+      include: { timetable: true }
     });
 
-    if (!existingSlot) {
-      return { success: false, error: "Timetable slot not found" };
+    if (!existingSlot || existingSlot.timetable.schoolId !== schoolId) {
+      return { success: false, error: "Timetable slot not found or access denied" };
     }
 
     // Check if a slot already exists for this class/section at this time (excluding current slot)
@@ -659,16 +666,16 @@ export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
 // Delete a timetable slot
 export async function deleteTimetableSlot(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Get timetable ID for revalidation
     const slot = await db.timetableSlot.findUnique({
       where: { id },
-      select: { timetableId: true }
+      include: { timetable: true }
     });
 
-    if (!slot) {
-      return { success: false, error: "Timetable slot not found" };
+    if (!slot || slot.timetable.schoolId !== schoolId) {
+      return { success: false, error: "Timetable slot not found or access denied" };
     }
 
     await db.timetableSlot.delete({
@@ -722,9 +729,10 @@ export async function getClassesForTimetable() {
 // Get all rooms for dropdown
 export async function getRoomsForTimetable() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const rooms = await db.classRoom.findMany({
+      where: { schoolId },
       orderBy: {
         name: 'asc'
       }

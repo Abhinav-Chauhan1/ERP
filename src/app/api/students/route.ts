@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 
-// GET /api/students - Get all students
-export async function GET(request: NextRequest) {
+// GET /api/students - Get all students for current school
+export const GET = withSchoolAuth(async (request: NextRequest, context) => {
     try {
-        const session = await auth();
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
         const students = await db.student.findMany({
+            where: {
+                schoolId: context.schoolId,
+            },
             include: {
                 user: {
                     select: {
@@ -49,4 +47,4 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});

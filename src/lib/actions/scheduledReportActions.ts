@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { ReportConfig } from "./reportBuilderActions";
+import { requireSchoolAccess, withSchoolId } from "@/lib/auth/tenant";
 
 export interface ScheduledReportInput {
   name: string;
@@ -31,10 +32,10 @@ function calculateNextRunTime(
 ): Date {
   const now = new Date();
   const [hours, minutes] = scheduleTime.split(":").map(Number);
-  
+
   let nextRun = new Date();
   nextRun.setHours(hours, minutes, 0, 0);
-  
+
   switch (frequency) {
     case "daily":
       // If time has passed today, schedule for tomorrow
@@ -42,32 +43,32 @@ function calculateNextRunTime(
         nextRun.setDate(nextRun.getDate() + 1);
       }
       break;
-      
+
     case "weekly":
       // Set to the specified day of week
       const currentDay = nextRun.getDay();
       const targetDay = dayOfWeek ?? 0;
       let daysUntilTarget = targetDay - currentDay;
-      
+
       if (daysUntilTarget < 0 || (daysUntilTarget === 0 && nextRun <= now)) {
         daysUntilTarget += 7;
       }
-      
+
       nextRun.setDate(nextRun.getDate() + daysUntilTarget);
       break;
-      
+
     case "monthly":
       // Set to the specified day of month
       const targetDate = dayOfMonth ?? 1;
       nextRun.setDate(targetDate);
-      
+
       // If date has passed this month, move to next month
       if (nextRun <= now) {
         nextRun.setMonth(nextRun.getMonth() + 1);
       }
       break;
   }
-  
+
   return nextRun;
 }
 
@@ -76,6 +77,8 @@ function calculateNextRunTime(
  */
 export async function createScheduledReport(input: ScheduledReportInput) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -108,7 +111,7 @@ export async function createScheduledReport(input: ScheduledReportInput) {
 
     // Create scheduled report
     const scheduledReport = await prisma.scheduledReport.create({
-      data: {
+      data: withSchoolId({
         name: input.name,
         description: input.description,
         dataSource: input.dataSource,
@@ -123,7 +126,7 @@ export async function createScheduledReport(input: ScheduledReportInput) {
         exportFormat: input.exportFormat,
         nextRunAt,
         createdBy: userId,
-      },
+      }, schoolId),
     });
 
     revalidatePath("/admin/reports");
@@ -139,6 +142,8 @@ export async function createScheduledReport(input: ScheduledReportInput) {
  */
 export async function getScheduledReports() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -146,6 +151,7 @@ export async function getScheduledReports() {
     }
 
     const reports = await prisma.scheduledReport.findMany({
+      where: { schoolId },
       orderBy: { createdAt: "desc" },
     });
 
@@ -170,14 +176,16 @@ export async function getScheduledReports() {
  */
 export async function getScheduledReport(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const report = await prisma.scheduledReport.findUnique({
-      where: { id },
+    const report = await prisma.scheduledReport.findFirst({
+      where: { id, schoolId },
     });
 
     if (!report) {
@@ -205,6 +213,8 @@ export async function getScheduledReport(id: string) {
  */
 export async function updateScheduledReport(id: string, input: ScheduledReportInput) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -227,6 +237,12 @@ export async function updateScheduledReport(id: string, input: ScheduledReportIn
       input.dayOfWeek,
       input.dayOfMonth
     );
+
+    // Verify ownership
+    const report = await prisma.scheduledReport.findFirst({
+      where: { id, schoolId },
+    });
+    if (!report) return { success: false, error: "Scheduled report not found" };
 
     // Update scheduled report
     const scheduledReport = await prisma.scheduledReport.update({
@@ -261,11 +277,18 @@ export async function updateScheduledReport(id: string, input: ScheduledReportIn
  */
 export async function deleteScheduledReport(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
+
+    const report = await prisma.scheduledReport.findFirst({
+      where: { id, schoolId },
+    });
+    if (!report) return { success: false, error: "Scheduled report not found" };
 
     await prisma.scheduledReport.delete({
       where: { id },
@@ -284,14 +307,16 @@ export async function deleteScheduledReport(id: string) {
  */
 export async function toggleScheduledReportStatus(id: string, active: boolean) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const report = await prisma.scheduledReport.findUnique({
-      where: { id },
+    const report = await prisma.scheduledReport.findFirst({
+      where: { id, schoolId },
     });
 
     if (!report) {

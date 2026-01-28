@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 export interface CoScholasticActivityInput {
   name: string;
@@ -30,8 +31,14 @@ export interface ActionResult<T = any> {
  */
 export async function getCoScholasticActivities(includeInactive = false): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const activities = await db.coScholasticActivity.findMany({
-      where: includeInactive ? {} : { isActive: true },
+      where: {
+        schoolId,
+        ...(includeInactive ? {} : { isActive: true })
+      },
       orderBy: {
         name: 'asc',
       },
@@ -59,8 +66,11 @@ export async function getCoScholasticActivities(includeInactive = false): Promis
  */
 export async function getCoScholasticActivity(id: string): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const activity = await db.coScholasticActivity.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         _count: {
           select: {
@@ -103,8 +113,12 @@ export async function createCoScholasticActivity(input: CoScholasticActivityInpu
     }
 
     // Check for duplicate name
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const existing = await db.coScholasticActivity.findFirst({
       where: {
+        schoolId,
         name: {
           equals: input.name.trim(),
           mode: 'insensitive',
@@ -118,6 +132,7 @@ export async function createCoScholasticActivity(input: CoScholasticActivityInpu
 
     const activity = await db.coScholasticActivity.create({
       data: {
+        schoolId,
         name: input.name.trim(),
         assessmentType: input.assessmentType,
         maxMarks: input.assessmentType === "MARKS" ? input.maxMarks : null,
@@ -156,8 +171,11 @@ export async function updateCoScholasticActivity(id: string, input: CoScholastic
     }
 
     // Check if activity exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const existing = await db.coScholasticActivity.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existing) {
@@ -167,6 +185,7 @@ export async function updateCoScholasticActivity(id: string, input: CoScholastic
     // Check for duplicate name (excluding current activity)
     const duplicate = await db.coScholasticActivity.findFirst({
       where: {
+        schoolId,
         name: {
           equals: input.name.trim(),
           mode: 'insensitive',
@@ -182,7 +201,7 @@ export async function updateCoScholasticActivity(id: string, input: CoScholastic
     }
 
     const activity = await db.coScholasticActivity.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         name: input.name.trim(),
         assessmentType: input.assessmentType,
@@ -208,9 +227,12 @@ export async function updateCoScholasticActivity(id: string, input: CoScholastic
  */
 export async function deleteCoScholasticActivity(id: string): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Check if activity has any grades
     const gradeCount = await db.coScholasticGrade.count({
-      where: { activityId: id },
+      where: { activityId: id }, // Grades inherit scope via activity/student usually
     });
 
     if (gradeCount > 0) {
@@ -221,7 +243,7 @@ export async function deleteCoScholasticActivity(id: string): Promise<ActionResu
     }
 
     await db.coScholasticActivity.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/assessment/co-scholastic");
@@ -241,8 +263,11 @@ export async function deleteCoScholasticActivity(id: string): Promise<ActionResu
  */
 export async function toggleCoScholasticActivityStatus(id: string): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const activity = await db.coScholasticActivity.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!activity) {
@@ -250,7 +275,7 @@ export async function toggleCoScholasticActivityStatus(id: string): Promise<Acti
     }
 
     const updated = await db.coScholasticActivity.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         isActive: !activity.isActive,
       },
@@ -308,12 +333,16 @@ export async function getCoScholasticGradesByClass(
   activityId?: string
 ): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Get all students in the class/section
     const enrollments = await db.classEnrollment.findMany({
       where: {
         classId,
         sectionId,
         status: 'ACTIVE',
+        schoolId, // redundant if class/section scoped, but safer
       },
       include: {
         student: {
@@ -334,7 +363,7 @@ export async function getCoScholasticGradesByClass(
 
     // Get grades for these students
     const studentIds = enrollments.map(e => e.studentId);
-    
+
     const grades = await db.coScholasticGrade.findMany({
       where: {
         studentId: { in: studentIds },
@@ -349,6 +378,7 @@ export async function getCoScholasticGradesByClass(
     // Get all activities
     const activities = await db.coScholasticActivity.findMany({
       where: {
+        schoolId,
         isActive: true,
         ...(activityId && { id: activityId }),
       },
@@ -385,8 +415,11 @@ export async function saveCoScholasticGrade(input: CoScholasticGradeInput): Prom
     }
 
     // Get activity to check assessment type
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const activity = await db.coScholasticActivity.findUnique({
-      where: { id: input.activityId },
+      where: { id: input.activityId, schoolId },
     });
 
     if (!activity) {
@@ -439,6 +472,7 @@ export async function saveCoScholasticGrade(input: CoScholasticGradeInput): Prom
       // Create new grade
       grade = await db.coScholasticGrade.create({
         data: {
+          schoolId,
           activityId: input.activityId,
           studentId: input.studentId,
           termId: input.termId,
@@ -513,8 +547,16 @@ export async function saveCoScholasticGradesBulk(grades: CoScholasticGradeInput[
  */
 export async function deleteCoScholasticGrade(id: string): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    // Usually grades are unique by ID but checking context implies fetching first or relying on DB RLS concepts.
+    // For now we assume if user has access to school, they can del grade if ID exists.
+    // Ideally we check ownership or link. 
+    // But since no direct `schoolId` on `CoScholasticGrade` (wait, I added it in create above!), 
+    // IF `CoScholasticGrade` has `schoolId` (it should!), then we use it.
+    if (!schoolId) return { success: false, error: "School context required" };
+
     await db.coScholasticGrade.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/assessment/co-scholastic");
@@ -534,7 +576,11 @@ export async function deleteCoScholasticGrade(id: string): Promise<ActionResult>
  */
 export async function getTermsForCoScholastic(): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const terms = await db.term.findMany({
+      where: { schoolId },
       select: {
         id: true,
         name: true,
@@ -574,7 +620,11 @@ export async function getTermsForCoScholastic(): Promise<ActionResult> {
  */
 export async function getClassesForCoScholastic(): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const classes = await db.class.findMany({
+      where: { schoolId },
       select: {
         id: true,
         name: true,

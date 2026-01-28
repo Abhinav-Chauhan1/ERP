@@ -13,6 +13,7 @@ import {
   PaymentMethod,
   PaymentStatus,
 } from "@prisma/client";
+import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
 
 // ============================================
 // HOSTEL MANAGEMENT
@@ -28,14 +29,10 @@ export async function createHostel(data: {
   type: HostelType;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
 
     const hostel = await prisma.hostel.create({
-      data: {
+      data: withSchoolId({
         name: data.name,
         address: data.address,
         capacity: data.capacity,
@@ -43,7 +40,7 @@ export async function createHostel(data: {
         wardenName: data.wardenName,
         wardenPhone: data.wardenPhone,
         type: data.type,
-      },
+      }, schoolId),
     });
 
     revalidatePath("/admin/hostel");
@@ -68,10 +65,15 @@ export async function updateHostel(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+
+    // Verify ownership
+    const existing = await prisma.hostel.findFirst({
+      where: { id, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Hostel not found" };
     }
 
     const hostel = await prisma.hostel.update({
@@ -89,7 +91,10 @@ export async function updateHostel(
 
 export async function getHostels() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+
     const hostels = await prisma.hostel.findMany({
+      where: { schoolId },
       include: {
         rooms: {
           select: {
@@ -118,8 +123,10 @@ export async function getHostels() {
 
 export async function getHostelById(id: string) {
   try {
-    const hostel = await prisma.hostel.findUnique({
-      where: { id },
+    const { schoolId } = await requireSchoolAccess();
+
+    const hostel = await prisma.hostel.findFirst({
+      where: { id, schoolId },
       include: {
         rooms: {
           include: {
@@ -163,10 +170,15 @@ export async function getHostelById(id: string) {
 
 export async function deleteHostel(id: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+
+    // Verify ownership
+    const existing = await prisma.hostel.findFirst({
+      where: { id, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Hostel not found" };
     }
 
     await prisma.hostel.delete({
@@ -195,14 +207,19 @@ export async function createHostelRoom(data: {
   monthlyFee: number;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+
+    // Verify hostel belongs to school
+    const hostel = await prisma.hostel.findFirst({
+      where: { id: data.hostelId, schoolId },
+    });
+
+    if (!hostel) {
+      return { success: false, error: "Hostel not found" };
     }
 
     const room = await prisma.hostelRoom.create({
-      data: {
+      data: withSchoolId({
         hostelId: data.hostelId,
         roomNumber: data.roomNumber,
         floor: data.floor,
@@ -210,7 +227,7 @@ export async function createHostelRoom(data: {
         capacity: data.capacity,
         amenities: data.amenities,
         monthlyFee: data.monthlyFee,
-      },
+      }, schoolId),
     });
 
     revalidatePath("/admin/hostel");
@@ -234,10 +251,15 @@ export async function updateHostelRoom(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+
+    // Verify room ownership via schoolId
+    const existing = await prisma.hostelRoom.findFirst({
+      where: { id, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Room not found" };
     }
 
     const room = await prisma.hostelRoom.update({
@@ -255,8 +277,13 @@ export async function updateHostelRoom(
 
 export async function getHostelRooms(hostelId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+
     const rooms = await prisma.hostelRoom.findMany({
-      where: { hostelId },
+      where: {
+        hostelId,
+        schoolId // Redundant if hostelId is checked but safe
+      },
       include: {
         allocations: {
           where: { status: AllocationStatus.ACTIVE },
@@ -286,10 +313,14 @@ export async function getHostelRooms(hostelId: string) {
 
 export async function deleteHostelRoom(id: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+
+    const existing = await prisma.hostelRoom.findFirst({
+      where: { id, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Room not found" };
     }
 
     await prisma.hostelRoom.delete({
@@ -315,11 +346,9 @@ export async function allocateRoom(data: {
   remarks?: string;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId, user } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const userId = user.id;
 
     // Check if room has capacity
     const room = await prisma.hostelRoom.findUnique({
@@ -352,6 +381,7 @@ export async function allocateRoom(data: {
     // Create allocation
     const allocation = await prisma.hostelRoomAllocation.create({
       data: {
+        schoolId,
         roomId: data.roomId,
         studentId: data.studentId,
         bedNumber: data.bedNumber,
@@ -378,11 +408,9 @@ export async function allocateRoom(data: {
 
 export async function vacateRoom(allocationId: string, remarks?: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId, user } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const userId = user.id;
 
     const allocation = await prisma.hostelRoomAllocation.findUnique({
       where: { id: allocationId },
@@ -487,14 +515,13 @@ export async function logVisitorEntry(data: {
   remarks?: string;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId, user } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const userId = user.id;
 
     const visitor = await prisma.hostelVisitor.create({
       data: {
+        schoolId,
         studentId: data.studentId,
         visitorName: data.visitorName,
         visitorPhone: data.visitorPhone,
@@ -517,14 +544,11 @@ export async function logVisitorEntry(data: {
 
 export async function logVisitorExit(visitorId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const visitor = await prisma.hostelVisitor.update({
-      where: { id: visitorId },
+      where: { id: visitorId, schoolId },
       data: {
         checkOutTime: new Date(),
       },
@@ -603,11 +627,14 @@ export async function generateHostelFee(data: {
   dueDate: Date;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify allocation belongs to school
+    const allocation = await prisma.hostelRoomAllocation.findFirst({
+      where: { id: data.allocationId, schoolId }
+    });
+    if (!allocation) return { success: false, error: "Allocation not found or access denied" };
 
     const totalAmount =
       data.roomFee + data.messFee + (data.otherCharges || 0);
@@ -646,15 +673,18 @@ export async function recordHostelFeePayment(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const fee = await prisma.hostelFeePayment.findUnique({
       where: { id: feeId },
+      include: { allocation: true }
     });
+
+    // Check school access via allocation
+    if (fee && fee.allocation.schoolId !== schoolId) {
+      return { success: false, error: "Access denied" };
+    }
 
     if (!fee) {
       return { success: false, error: "Fee record not found" };
@@ -666,8 +696,8 @@ export async function recordHostelFeePayment(
       newBalance <= 0
         ? PaymentStatus.COMPLETED
         : newPaidAmount > 0
-        ? PaymentStatus.PARTIAL
-        : PaymentStatus.PENDING;
+          ? PaymentStatus.PARTIAL
+          : PaymentStatus.PENDING;
 
     const updatedFee = await prisma.hostelFeePayment.update({
       where: { id: feeId },
@@ -693,7 +723,10 @@ export async function recordHostelFeePayment(
 
 export async function getHostelFees(allocationId?: string, status?: PaymentStatus) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    const where: any = {
+      allocation: { schoolId }
+    };
     if (allocationId) {
       where.allocationId = allocationId;
     }
@@ -748,14 +781,13 @@ export async function createHostelComplaint(data: {
   attachments?: string;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId, user } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const userId = user.id;
 
     const complaint = await prisma.hostelComplaint.create({
       data: {
+        schoolId,
         hostelId: data.hostelId,
         studentId: data.studentId,
         category: data.category,

@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { sendFeeReminder } from "@/lib/services/communication-service";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { format } from "date-fns";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -36,7 +37,14 @@ export async function getFeePayments(filters?: {
   offset?: number;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const where: any = {
+      student: {
+        schoolId
+      }
+    };
 
     if (filters?.studentId) {
       where.studentId = filters.studentId;
@@ -108,8 +116,16 @@ export async function getFeePayments(filters?: {
 // Get single payment by ID
 export async function getFeePaymentById(id: string) {
   try {
-    const payment = await db.feePayment.findUnique({
-      where: { id },
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const payment = await db.feePayment.findFirst({
+      where: {
+        id,
+        student: {
+          schoolId
+        }
+      },
       include: {
         student: {
           include: {
@@ -157,6 +173,15 @@ export async function recordPayment(data: any) {
     // Permission check: require PAYMENT:CREATE
     await checkPermission('PAYMENT', 'CREATE', 'You do not have permission to record payments');
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify student belongs to school
+    const student = await db.student.findFirst({
+      where: { id: data.studentId, schoolId }
+    });
+    if (!student) return { success: false, error: "Student not found in this school" };
+
     const payment = await db.feePayment.create({
       data: {
         studentId: data.studentId,
@@ -170,6 +195,7 @@ export async function recordPayment(data: any) {
         receiptNumber: data.receiptNumber || null,
         status: data.status as PaymentStatus,
         remarks: data.remarks || null,
+        schoolId, // Add schoolId
       },
       include: {
         student: {
@@ -230,6 +256,23 @@ export async function updatePayment(id: string, data: any) {
     // Permission check: require PAYMENT:UPDATE
     await checkPermission('PAYMENT', 'UPDATE', 'You do not have permission to update payments');
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify payment belongs to school
+    const existingPayment = await db.feePayment.findFirst({
+      where: {
+        id,
+        student: {
+          schoolId
+        }
+      }
+    });
+
+    if (!existingPayment) {
+      return { success: false, error: "Payment not found or access denied" };
+    }
+
     const payment = await db.feePayment.update({
       where: { id },
       data: {
@@ -267,6 +310,23 @@ export async function deletePayment(id: string) {
     // Permission check: require PAYMENT:DELETE
     await checkPermission('PAYMENT', 'DELETE', 'You do not have permission to delete payments');
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify payment belongs to school
+    const existingPayment = await db.feePayment.findFirst({
+      where: {
+        id,
+        student: {
+          schoolId
+        }
+      }
+    });
+
+    if (!existingPayment) {
+      return { success: false, error: "Payment not found or access denied" };
+    }
+
     await db.feePayment.delete({
       where: { id },
     });
@@ -286,8 +346,11 @@ export async function getPendingFees(filters?: {
   limit?: number;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Get all students with their enrollments and fee structures
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (filters?.studentId) {
       where.id = filters.studentId;
@@ -404,7 +467,14 @@ export async function getPaymentStats(filters?: {
   dateTo?: Date;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const where: any = {
+      student: {
+        schoolId
+      }
+    };
 
     if (filters?.dateFrom || filters?.dateTo) {
       where.paymentDate = {};
@@ -476,7 +546,11 @@ export async function getPaymentStats(filters?: {
 // Get students for dropdown (for payment form)
 export async function getStudentsForPayment() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const students = await db.student.findMany({
+      where: { schoolId },
       include: {
         user: {
           select: {
@@ -520,8 +594,11 @@ export async function getStudentsForPayment() {
 // Get fee structures for a student
 export async function getFeeStructuresForStudent(studentId: string) {
   try {
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
       include: {
         enrollments: {
           where: {
@@ -580,8 +657,14 @@ export async function generateReceiptNumber() {
     const startOfMonth = new Date(year, new Date().getMonth(), 1);
     const endOfMonth = new Date(year, new Date().getMonth() + 1, 0);
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const count = await db.feePayment.count({
       where: {
+        student: {
+          schoolId
+        },
         paymentDate: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -601,8 +684,16 @@ export async function generateReceiptNumber() {
 // Get payment receipt HTML for printing
 export async function getPaymentReceiptHTML(paymentId: string) {
   try {
-    const payment = await db.feePayment.findUnique({
-      where: { id: paymentId },
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const payment = await db.feePayment.findFirst({
+      where: {
+        id: paymentId,
+        student: {
+          schoolId
+        }
+      },
       include: {
         student: {
           include: {
@@ -711,10 +802,16 @@ export async function getConsolidatedReceiptHTML(
     const endOfDay = new Date(paymentDate);
     endOfDay.setHours(23, 59, 59, 999);
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Fetch all completed payments for this student on this date
     const payments = await db.feePayment.findMany({
       where: {
         studentId,
+        student: {
+          schoolId
+        },
         status: "COMPLETED",
         paymentDate: {
           gte: startOfDay,

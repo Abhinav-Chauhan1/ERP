@@ -7,6 +7,7 @@ import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath, unstable_cache, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/utils/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Schema for validating child detail requests
 const childDetailSchema = z.object({
@@ -38,9 +39,13 @@ async function getCurrentParent() {
     return null;
   }
 
-  const parent = await db.parent.findUnique({
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return null;
+
+  const parent = await db.parent.findFirst({
     where: {
-      userId: dbUser.id
+      userId: dbUser.id,
+      schoolId // Enforce tenant isolation
     }
   });
 
@@ -204,9 +209,12 @@ export async function getChildDetails(childId: string) {
   }
 
   // Get full student details
-  const student = await db.student.findUnique({
+  const { schoolId } = await requireSchoolAccess();
+
+  const student = await db.student.findFirst({
     where: {
-      id: childId
+      id: childId,
+      schoolId // Enforce tenant isolation
     },
     include: {
       user: true,

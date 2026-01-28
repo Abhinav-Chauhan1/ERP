@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { logAuditEvent } from "@/lib/services/audit-service"
 
 /**
  * Email Verification API Route
  * 
  * Handles email verification using tokens sent to users
- * Requirements: 12.3, 12.4, 12.5, 12.6
+ * Updated to integrate with unified authentication system
+ * Requirements: 12.3, 12.4, 12.5, 12.6, 15.1, 15.2
  */
 export async function POST(request: NextRequest) {
+  const ipAddress = request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown'
+  const userAgent = request.headers.get('user-agent') || 'Unknown'
+
   try {
     const body = await request.json()
     const { token } = body
@@ -29,6 +36,18 @@ export async function POST(request: NextRequest) {
     })
 
     if (!verificationToken) {
+      await logAuditEvent({
+        userId: null,
+        action: 'FAILED',
+        resource: 'email_verification',
+        changes: {
+          reason: 'INVALID_TOKEN',
+          token: token.substring(0, 8) + '...',
+          ipAddress,
+          userAgent
+        }
+      })
+
       return NextResponse.json(
         { 
           success: false, 
@@ -46,6 +65,19 @@ export async function POST(request: NextRequest) {
         where: { token }
       })
 
+      await logAuditEvent({
+        userId: null,
+        action: 'FAILED',
+        resource: 'email_verification',
+        changes: {
+          reason: 'TOKEN_EXPIRED',
+          expiredAt: verificationToken.expires,
+          identifier: verificationToken.identifier,
+          ipAddress,
+          userAgent
+        }
+      })
+
       return NextResponse.json(
         { 
           success: false, 
@@ -58,10 +90,28 @@ export async function POST(request: NextRequest) {
 
     // Find user by email identifier
     const user = await db.user.findUnique({
-      where: { email: verificationToken.identifier }
+      where: { email: verificationToken.identifier },
+      include: {
+        userSchools: {
+          where: { isActive: true },
+          include: { school: true }
+        }
+      }
     })
 
     if (!user) {
+      await logAuditEvent({
+        userId: null,
+        action: 'FAILED',
+        resource: 'email_verification',
+        changes: {
+          reason: 'USER_NOT_FOUND',
+          identifier: verificationToken.identifier,
+          ipAddress,
+          userAgent
+        }
+      })
+
       return NextResponse.json(
         { 
           success: false, 
@@ -76,6 +126,19 @@ export async function POST(request: NextRequest) {
       // Delete token since email is already verified
       await db.verificationToken.delete({
         where: { token }
+      })
+
+      await logAuditEvent({
+        userId: user.id,
+        action: 'INFO',
+        resource: 'email_verification',
+        changes: {
+          reason: 'ALREADY_VERIFIED',
+          email: user.email,
+          verifiedAt: user.emailVerified,
+          ipAddress,
+          userAgent
+        }
       })
 
       return NextResponse.json(
@@ -101,17 +164,17 @@ export async function POST(request: NextRequest) {
       where: { token }
     })
 
-    // Log verification event
-    await db.auditLog.create({
-      data: {
-        action: "VERIFY",
-        resource: "EMAIL",
-        resourceId: user.id,
-        userId: user.id,
-        changes: {
-          email: user.email,
-          verifiedAt: new Date()
-        }
+    // Log verification event using unified audit system
+    await logAuditEvent({
+      userId: user.id,
+      action: 'UPDATE',
+      resource: 'email_verification',
+      changes: {
+        email: user.email,
+        verifiedAt: new Date(),
+        previouslyVerified: false,
+        ipAddress,
+        userAgent
       }
     })
 
@@ -119,13 +182,27 @@ export async function POST(request: NextRequest) {
       { 
         success: true, 
         message: "Email verified successfully. You can now log in.",
-        email: user.email
+        email: user.email,
+        canLogin: true
       },
       { status: 200 }
     )
 
   } catch (error) {
     console.error("Email verification error:", error)
+    
+    // Log error using unified audit system
+    await logAuditEvent({
+      userId: null,
+      action: 'ERROR',
+      resource: 'email_verification',
+      changes: {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        ipAddress,
+        userAgent
+      }
+    })
+
     return NextResponse.json(
       { 
         success: false, 

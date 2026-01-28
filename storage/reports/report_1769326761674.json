@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "reportId": "report_1769326762564",
+    "templateName": "Test Report 1769326761666",
+    "generatedAt": "2026-01-25T07:39:22.564Z",
+    "timeRange": {
+      "startDate": "2025-12-30T07:39:21.666Z",
+      "endDate": "2026-01-25T07:39:21.666Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2025-12-30T07:39:21.666Z",
+        "endDate": "2026-01-25T07:39:21.666Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "revenue_overview",
+      "title": "Revenue Overview",
+      "type": "metrics",
+      "data": {
+        "totalRevenue": 0,
+        "monthlyRecurringRevenue": 5996,
+        "annualRecurringRevenue": 71952,
+        "averageRevenuePerUser": 139.4418604651163,
+        "revenueGrowthRate": 0
+      }
+    },
+    {
+      "id": "revenue_trends",
+      "title": "Revenue Trends",
+      "type": "chart",
+      "data": [
+        {
+          "period": "2025-12",
+          "revenue": 0,
+          "subscriptions": 0
+        }
+      ],
+      "visualization": {
+        "id": "revenue_chart",
+        "type": "chart",
+        "title": "Monthly Revenue Trends",
+        "config": {
+          "chartType": "line",
+          "xAxis": "period",
+          "yAxis": "revenue"
+        },
+        "position": {
+          "x": 0,
+          "y": 0,
+          "width": 12,
+          "height": 6
+        }
+      }
+    }
+  ],
+  "summary": {
+    "totalRevenue": 0,
+    "growthRate": 0
+  }
+}

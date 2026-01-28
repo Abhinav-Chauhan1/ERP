@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 import { getHomework } from "@/lib/actions/parent-academic-actions";
 
-export async function GET(request: NextRequest) {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     const childId = searchParams.get("childId");
@@ -16,11 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     const filters: any = {};
-    
+
     if (status && status !== "ALL") {
       filters.status = status;
     }
-    
+
     if (subjectId) {
       filters.subjectId = subjectId;
     }
@@ -39,4 +40,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -2,17 +2,31 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@/lib/auth-helpers";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
+import { hasPermission } from "@/lib/utils/permissions";
+import { PermissionAction } from "@prisma/client";
+import { auth } from "@/auth";
+
+// Helper to check permission
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error('Unauthorized');
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) throw new Error(errorMessage || 'Permission denied');
+  return userId;
+}
 
 // Get all expenses with filters
-export async function getExpenses(filters?: {
+// Get all expenses with filters
+export const getExpenses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: {
   category?: string;
   dateFrom?: Date;
   dateTo?: Date;
   limit?: number;
-}) {
+}) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (filters?.category) {
       where.category = filters.category;
@@ -41,13 +55,14 @@ export async function getExpenses(filters?: {
     console.error("Error fetching expenses:", error);
     return { success: false, error: "Failed to fetch expenses" };
   }
-}
+});
 
 // Get single expense by ID
-export async function getExpenseById(id: string) {
+// Get single expense by ID
+export const getExpenseById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    const expense = await db.expense.findUnique({
-      where: { id },
+    const expense = await db.expense.findFirst({
+      where: { id, schoolId },
     });
 
     if (!expense) {
@@ -59,13 +74,17 @@ export async function getExpenseById(id: string) {
     console.error("Error fetching expense:", error);
     return { success: false, error: "Failed to fetch expense" };
   }
-}
+});
 
 // Create new expense
-export async function createExpense(data: any) {
+// Create new expense
+export const createExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: any) => {
   try {
+    await checkPermission('EXPENSE', 'CREATE');
+
     const expense = await db.expense.create({
       data: {
+        schoolId,
         title: data.title,
         description: data.description || null,
         category: data.category,
@@ -74,7 +93,7 @@ export async function createExpense(data: any) {
         paymentMethod: data.paymentMethod || null,
         paidTo: data.vendor || null,
         receiptNumber: data.receiptNumber || null,
-        
+
       },
     });
 
@@ -84,11 +103,17 @@ export async function createExpense(data: any) {
     console.error("Error creating expense:", error);
     return { success: false, error: "Failed to create expense" };
   }
-}
+});
 
 // Update expense
-export async function updateExpense(id: string, data: any) {
+// Update expense
+export const updateExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: any) => {
   try {
+    await checkPermission('EXPENSE', 'UPDATE');
+
+    const existing = await db.expense.findFirst({ where: { id, schoolId } });
+    if (!existing) return { success: false, error: "Expense not found" };
+
     const expense = await db.expense.update({
       where: { id },
       data: {
@@ -100,7 +125,7 @@ export async function updateExpense(id: string, data: any) {
         paymentMethod: data.paymentMethod || null,
         paidTo: data.vendor || null,
         receiptNumber: data.receiptNumber || null,
-        
+
       },
     });
 
@@ -110,11 +135,17 @@ export async function updateExpense(id: string, data: any) {
     console.error("Error updating expense:", error);
     return { success: false, error: "Failed to update expense" };
   }
-}
+});
 
 // Delete expense
-export async function deleteExpense(id: string) {
+// Delete expense
+export const deleteExpense = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
+    await checkPermission('EXPENSE', 'DELETE');
+
+    const existing = await db.expense.findFirst({ where: { id, schoolId } });
+    if (!existing) return { success: false, error: "Expense not found" };
+
     await db.expense.delete({
       where: { id },
     });
@@ -125,12 +156,13 @@ export async function deleteExpense(id: string) {
     console.error("Error deleting expense:", error);
     return { success: false, error: "Failed to delete expense" };
   }
-}
+});
 
 // Get expense statistics
-export async function getExpenseStats(dateFrom?: Date, dateTo?: Date) {
+// Get expense statistics
+export const getExpenseStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, dateFrom?: Date, dateTo?: Date) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
 
     if (dateFrom || dateTo) {
       where.date = {};
@@ -174,12 +206,13 @@ export async function getExpenseStats(dateFrom?: Date, dateTo?: Date) {
     console.error("Error fetching expense stats:", error);
     return { success: false, error: "Failed to fetch statistics" };
   }
-}
+});
 
 // Get expenses by category
-export async function getExpensesByCategory(category: string, dateFrom?: Date, dateTo?: Date) {
+// Get expenses by category
+export const getExpensesByCategory = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, category: string, dateFrom?: Date, dateTo?: Date) => {
   try {
-    const where: any = { category };
+    const where: any = { category, schoolId };
 
     if (dateFrom || dateTo) {
       where.date = {};
@@ -212,13 +245,15 @@ export async function getExpensesByCategory(category: string, dateFrom?: Date, d
     console.error("Error fetching expenses by category:", error);
     return { success: false, error: "Failed to fetch expenses by category" };
   }
-}
+});
 
 // Get monthly expense summary
-export async function getMonthlyExpenseSummary(year: number) {
+// Get monthly expense summary
+export const getMonthlyExpenseSummary = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, year: number) => {
   try {
     const expenses = await db.expense.findMany({
       where: {
+        schoolId,
         date: {
           gte: new Date(year, 0, 1),
           lte: new Date(year, 11, 31),
@@ -244,6 +279,6 @@ export async function getMonthlyExpenseSummary(year: number) {
     console.error("Error fetching monthly expense summary:", error);
     return { success: false, error: "Failed to fetch monthly summary" };
   }
-}
+});
 
 

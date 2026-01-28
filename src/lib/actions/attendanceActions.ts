@@ -1,10 +1,12 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { AttendanceStatus, PermissionAction } from "@prisma/client";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 import { sendAttendanceAlert } from "@/lib/services/communication-service";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -25,8 +27,8 @@ async function checkPermission(resource: string, action: PermissionAction, error
 
 export async function getAttendanceOverview() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -37,21 +39,29 @@ export async function getAttendanceOverview() {
       teacherPresentToday,
     ] = await Promise.all([
       db.studentAttendance.count({
-        where: { date: { gte: today } },
+        where: {
+          date: { gte: today },
+          schoolId,
+        },
       }),
       db.teacherAttendance.count({
-        where: { date: { gte: today } },
+        where: {
+          date: { gte: today },
+          schoolId,
+        },
       }),
       db.studentAttendance.count({
         where: {
           date: { gte: today },
           status: AttendanceStatus.PRESENT,
+          schoolId,
         },
       }),
       db.teacherAttendance.count({
         where: {
           date: { gte: today },
           status: AttendanceStatus.PRESENT,
+          schoolId,
         },
       }),
     ]);
@@ -82,8 +92,8 @@ export async function getAttendanceOverview() {
 
 export async function getWeeklyAttendanceTrend() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
@@ -94,6 +104,7 @@ export async function getWeeklyAttendanceTrend() {
           gte: sevenDaysAgo,
           lte: today,
         },
+        schoolId,
       },
       select: {
         date: true,
@@ -137,13 +148,14 @@ export async function getWeeklyAttendanceTrend() {
 
 export async function getAttendanceByClass() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
     const classes = await db.class.findMany({
+      where: { schoolId },
       include: {
         sections: {
           include: {
@@ -192,8 +204,8 @@ export async function getAttendanceByClass() {
 
 export async function getRecentAbsences(limit: number = 10) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     twoDaysAgo.setHours(0, 0, 0, 0);
@@ -202,6 +214,7 @@ export async function getRecentAbsences(limit: number = 10) {
       where: {
         date: { gte: twoDaysAgo },
         status: AttendanceStatus.ABSENT,
+        schoolId,
       },
       include: {
         student: {
@@ -249,20 +262,26 @@ export async function getRecentAbsences(limit: number = 10) {
 
 export async function getAttendanceStats() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const [studentStats, teacherStats] = await Promise.all([
       db.studentAttendance.groupBy({
         by: ["status"],
-        where: { date: { gte: today } },
+        where: {
+          date: { gte: today },
+          schoolId,
+        },
         _count: true,
       }),
       db.teacherAttendance.groupBy({
         by: ["status"],
-        where: { date: { gte: today } },
+        where: {
+          date: { gte: today },
+          schoolId,
+        },
         _count: true,
       }),
     ]);
@@ -299,9 +318,10 @@ export async function getAttendanceStats() {
 
 export async function getClassSectionsForDropdown() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const classes = await db.class.findMany({
+      where: { schoolId },
       include: {
         sections: {
           orderBy: { name: "asc" },
@@ -330,8 +350,8 @@ export async function getClassSectionsForDropdown() {
 
 export async function getStudentAttendanceByDate(date: Date, sectionId?: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     if (!sectionId) {
       return { success: false, error: "Section ID is required" };
     }
@@ -346,6 +366,7 @@ export async function getStudentAttendanceByDate(date: Date, sectionId?: string)
       where: {
         sectionId: sectionId,
         status: "ACTIVE",
+        class: { schoolId },
       },
       include: {
         student: {
@@ -373,6 +394,7 @@ export async function getStudentAttendanceByDate(date: Date, sectionId?: string)
           gte: startOfDay,
           lte: endOfDay,
         },
+        schoolId,
       },
     });
 
@@ -427,8 +449,11 @@ export async function markStudentAttendance(data: {
   markedBy?: string;
 }) {
   try {
-    // Permission check: require ATTENDANCE:CREATE
-    await checkPermission('ATTENDANCE', 'CREATE', 'You do not have permission to mark attendance');
+    const { user, schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'CREATE');
+    if (!hasPerm) return { success: false, error: 'Permission denied: Cannot CREATE ATTENDANCE' };
 
     const startOfDay = new Date(data.date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -440,6 +465,7 @@ export async function markStudentAttendance(data: {
       where: {
         studentId: data.studentId,
         sectionId: data.sectionId,
+        schoolId,
         date: {
           gte: startOfDay,
           lte: endOfDay,
@@ -468,17 +494,17 @@ export async function markStudentAttendance(data: {
           status: data.status,
           reason: data.reason,
           markedBy: data.markedBy,
+          schoolId,
         },
       });
     }
 
     // Send notification for ABSENT or LATE status
-    // Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
     if (data.status === AttendanceStatus.ABSENT || data.status === AttendanceStatus.LATE) {
       try {
         // Get student details with parent information
         const student = await db.student.findUnique({
-          where: { id: data.studentId },
+          where: { id: data.studentId }, // studentId is unique
           include: {
             user: true,
             parents: {
@@ -516,13 +542,11 @@ export async function markStudentAttendance(data: {
               attendancePercentage,
               parentId: parentRelation.parentId,
             }).catch(error => {
-              // Log error but don't fail the attendance marking
               console.error('Failed to send attendance notification:', error);
             });
           }
         }
       } catch (notificationError) {
-        // Log error but don't fail the attendance marking
         console.error('Error sending attendance notification:', notificationError);
       }
     }
@@ -545,8 +569,8 @@ export async function markBulkStudentAttendance(data: {
   markedBy?: string;
 }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const results = await Promise.all(
       data.attendanceRecords.map((record) =>
         markStudentAttendance({
@@ -579,11 +603,14 @@ export async function markBulkStudentAttendance(data: {
 
 export async function deleteStudentAttendance(id: string) {
   try {
-    // Permission check: require ATTENDANCE:DELETE
-    await checkPermission('ATTENDANCE', 'DELETE', 'You do not have permission to delete attendance records');
+    const { user, schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'DELETE');
+    if (!hasPerm) return { success: false, error: 'Permission denied: Cannot DELETE ATTENDANCE' };
 
     await db.studentAttendance.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     return { success: true, message: "Attendance record deleted successfully" };
@@ -599,9 +626,12 @@ export async function getStudentAttendanceReport(
   endDate?: Date
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const whereClause: any = { studentId };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const whereClause: any = {
+      studentId,
+      schoolId,
+    };
 
     if (startDate || endDate) {
       whereClause.date = {};
@@ -655,10 +685,11 @@ export async function getStudentAttendanceReport(
 
 export async function getTeachersForDropdown() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const teachers = await db.teacher.findMany({
       where: {
+        schoolId,
         user: {
           active: true,
         },
@@ -690,10 +721,11 @@ export async function getTeachersForDropdown() {
 
 export async function getStudentsForDropdown() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const students = await db.student.findMany({
       where: {
+        schoolId,
         user: {
           active: true,
         },
@@ -705,8 +737,8 @@ export async function getStudentsForDropdown() {
           include: {
             class: true,
             section: true,
+            take: 1,
           },
-          take: 1,
         },
       },
       orderBy: {
@@ -737,8 +769,8 @@ export async function getStudentsForDropdown() {
 
 export async function getTeacherAttendanceByDate(date: Date) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -750,6 +782,7 @@ export async function getTeacherAttendanceByDate(date: Date) {
           gte: startOfDay,
           lte: endOfDay,
         },
+        schoolId,
       },
       include: {
         teacher: {
@@ -793,8 +826,7 @@ export async function markTeacherAttendance(data: {
   markedBy?: string;
 }) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
     const startOfDay = new Date(data.date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(data.date);
@@ -804,6 +836,7 @@ export async function markTeacherAttendance(data: {
     const existing = await db.teacherAttendance.findFirst({
       where: {
         teacherId: data.teacherId,
+        schoolId,
         date: {
           gte: startOfDay,
           lte: endOfDay,
@@ -831,6 +864,7 @@ export async function markTeacherAttendance(data: {
           status: data.status,
           reason: data.reason,
           markedBy: data.markedBy,
+          schoolId,
         },
       });
       return { success: true, data: created };

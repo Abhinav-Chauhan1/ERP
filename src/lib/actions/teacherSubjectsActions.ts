@@ -1,23 +1,19 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 /**
  * Get all subjects taught by the current teacher
  */
-export async function getTeacherSubjects() {
+export const getTeacherSubjects = withSchoolAuthAction(async (schoolId, userId) => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-
     const teacher = await db.teacher.findFirst({
-      where: { user: { id: userId } },
+      where: {
+        user: { id: userId },
+        schoolId
+      },
       select: { id: true },
     });
 
@@ -26,20 +22,32 @@ export async function getTeacherSubjects() {
     }
 
     const subjectTeachers = await db.subjectTeacher.findMany({
-      where: { teacherId: teacher.id },
+      where: {
+        teacherId: teacher.id,
+        schoolId
+      },
       include: {
         subject: {
           include: {
             syllabus: {
-              where: { status: "PUBLISHED", isActive: true },
+              where: {
+                status: "PUBLISHED",
+                isActive: true,
+                schoolId
+              },
               include: {
                 modules: {
+                  where: { schoolId },
                   orderBy: { order: 'asc' },
                   include: {
                     subModules: {
+                      where: { schoolId },
                       include: {
                         progress: {
-                          where: { teacherId: teacher.id }
+                          where: {
+                            teacherId: teacher.id,
+                            schoolId
+                          }
                         }
                       }
                     }
@@ -48,7 +56,12 @@ export async function getTeacherSubjects() {
               },
             },
             classes: {
-              include: { class: true },
+              where: { schoolId },
+              include: {
+                class: {
+                  where: { schoolId }
+                }
+              },
             },
           },
         },
@@ -121,24 +134,18 @@ export async function getTeacherSubjects() {
     console.error("Failed to fetch teacher subjects:", error);
     throw new Error("Failed to fetch subjects");
   }
-}
+});
 
 /**
  * Get subject details by ID
  */
-export async function getTeacherSubjectDetails(subjectId: string) {
+export const getTeacherSubjectDetails = withSchoolAuthAction(async (schoolId, userId, userRole, subjectId: string) => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
         user: { id: userId },
+        schoolId
       },
       select: {
         id: true,
@@ -154,6 +161,7 @@ export async function getTeacherSubjectDetails(subjectId: string) {
       where: {
         teacherId: teacher.id,
         subjectId,
+        schoolId
       },
     });
 
@@ -162,15 +170,20 @@ export async function getTeacherSubjectDetails(subjectId: string) {
     }
 
     // Get subject details
-    const subject = await db.subject.findUnique({
+    const subject = await db.subject.findFirst({
       where: {
         id: subjectId,
+        schoolId
       },
       include: {
-        department: true,
+        department: {
+          where: { schoolId }
+        },
         syllabus: {
+          where: { schoolId },
           include: {
             units: {
+              where: { schoolId },
               orderBy: {
                 order: 'asc',
               },
@@ -178,11 +191,15 @@ export async function getTeacherSubjectDetails(subjectId: string) {
           },
         },
         classes: {
+          where: { schoolId },
           include: {
-            class: true,
+            class: {
+              where: { schoolId }
+            },
           },
         },
         lessons: {
+          where: { schoolId },
           orderBy: {
             createdAt: 'desc',
           },
@@ -201,12 +218,14 @@ export async function getTeacherSubjectDetails(subjectId: string) {
         classId: {
           in: classIds,
         },
+        schoolId
       },
       select: {
         id: true,
         name: true,
         classId: true,
         enrollments: {
+          where: { schoolId },
           select: {
             id: true,
           },
@@ -281,23 +300,16 @@ export async function getTeacherSubjectDetails(subjectId: string) {
     console.error("Failed to fetch subject details:", error);
     throw new Error("Failed to fetch subject details");
   }
-}
+});
 
-/**
- * Update syllabus unit progress
- */
 // Update syllabus sub-module progress
-export async function updateSubModuleProgress(subModuleId: string, completed: boolean) {
+export const updateSubModuleProgress = withSchoolAuthAction(async (schoolId, userId, userRole, subModuleId: string, completed: boolean) => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-
     const teacher = await db.teacher.findFirst({
-      where: { user: { id: userId } },
+      where: {
+        user: { id: userId },
+        schoolId
+      },
     });
 
     if (!teacher) {
@@ -318,6 +330,7 @@ export async function updateSubModuleProgress(subModuleId: string, completed: bo
           teacherId: teacher.id,
           completed: true,
           completedAt: new Date(),
+          schoolId
         },
         update: {
           completed: true,
@@ -328,7 +341,8 @@ export async function updateSubModuleProgress(subModuleId: string, completed: bo
       await db.subModuleProgress.deleteMany({
         where: {
           subModuleId,
-          teacherId: teacher.id
+          teacherId: teacher.id,
+          schoolId
         }
       });
     }
@@ -341,24 +355,18 @@ export async function updateSubModuleProgress(subModuleId: string, completed: bo
     console.error("Failed to update syllabus progress:", error);
     throw new Error("Failed to update syllabus progress");
   }
-}
+});
 
 /**
  * Get syllabus units for a specific subject
  */
-export async function getSubjectSyllabusUnits(subjectId: string) {
+export const getSubjectSyllabusUnits = withSchoolAuthAction(async (schoolId, userId, userRole, subjectId: string) => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
-
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
         user: { id: userId },
+        schoolId
       },
     });
 
@@ -371,6 +379,7 @@ export async function getSubjectSyllabusUnits(subjectId: string) {
       where: {
         teacherId: teacher.id,
         subjectId,
+        schoolId
       },
     });
 
@@ -382,9 +391,11 @@ export async function getSubjectSyllabusUnits(subjectId: string) {
     const syllabus = await db.syllabus.findFirst({
       where: {
         subjectId,
+        schoolId
       },
       include: {
         units: {
+          where: { schoolId },
           orderBy: {
             order: 'asc',
           },
@@ -400,4 +411,4 @@ export async function getSubjectSyllabusUnits(subjectId: string) {
     console.error("Failed to fetch syllabus units:", error);
     throw new Error("Failed to fetch syllabus units");
   }
-}
+});

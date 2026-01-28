@@ -1,0 +1,42 @@
+// Required schema updates for billing service
+
+// Add to School model:
+model School {
+  // ... existing fields ...
+  stripeCustomerId        String?                   @unique
+  razorpayCustomerId      String?                   @unique  // Add this field
+  // ... rest of fields ...
+}
+
+// Add to SubscriptionPlan model:
+model SubscriptionPlan {
+  // ... existing fields ...
+  stripePriceId   String?                @unique
+  razorpayPlanId  String?                @unique  // Add this field
+  // ... rest of fields ...
+}
+
+// Add to EnhancedSubscription model:
+model EnhancedSubscription {
+  // ... existing fields ...
+  stripeSubscriptionId String?            @unique
+  razorpaySubscriptionId String?          @unique  // Add this field
+  // ... rest of fields ...
+}
+
+// Add to Payment model:
+model Payment {
+  // ... existing fields ...
+  stripePaymentId String?              @unique
+  razorpayPaymentId String?            @unique  // Add this field
+  razorpayOrderId   String?            @unique  // Add this field
+  // ... rest of fields ...
+}
+
+// Add to Invoice model:
+model Invoice {
+  // ... existing fields ...
+  stripeInvoiceId   String?              @unique
+  razorpayInvoiceId String?              @unique  // Add this field
+  // ... rest of fields ...
+}

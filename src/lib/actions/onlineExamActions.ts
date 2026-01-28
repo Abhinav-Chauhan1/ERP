@@ -1,23 +1,25 @@
-"use server";
-
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
 
 /**
  * Get teacher's subjects for online exam creation
  */
 export async function getTeacherSubjectsForExam() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
 
-    // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    // Get teacher record for current school
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        userId,
+        schoolId
+      },
       include: {
         subjects: {
           include: {
@@ -45,13 +47,11 @@ export async function getTeacherSubjectsForExam() {
  */
 export async function getClassesForExam() {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context missing");
 
     const classes = await prisma.class.findMany({
+      where: { schoolId },
       include: {
         academicYear: true,
       },
@@ -77,15 +77,11 @@ export async function getQuestionBanks(filters: {
   questionType?: string;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
 
-    const where: any = {
+    const where: any = withSchoolScope({
       subjectId: filters.subjectId,
-    };
+    }, schoolId);
 
     if (filters.topic) {
       where.topic = filters.topic;
@@ -126,19 +122,16 @@ export async function getQuestionBanks(filters: {
  */
 export async function getSubjectTopics(subjectId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
 
     const questions = await prisma.questionBank.findMany({
-      where: {
+      where: withSchoolScope({
         subjectId,
         topic: {
           not: null,
         },
-      },
+      }, schoolId),
       select: {
         topic: true,
       },
@@ -173,29 +166,28 @@ export async function createOnlineExam(data: {
   allowReview?: boolean;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
 
-    // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    // Get teacher record for current school
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
       return { success: false, error: "Teacher not found" };
     }
 
-    // Validate that questions exist and belong to the subject
+    // Validate that questions exist and belong to the subject and school
     const questions = await prisma.questionBank.findMany({
-      where: {
+      where: withSchoolScope({
         id: {
           in: data.questionIds,
         },
         subjectId: data.subjectId,
-      },
+      }, schoolId),
     });
 
     if (questions.length !== data.questionIds.length) {
@@ -212,8 +204,9 @@ export async function createOnlineExam(data: {
     );
 
     // Create the online exam
+    // Create the online exam
     const exam = await prisma.onlineExam.create({
-      data: {
+      data: withSchoolId({
         title: data.title,
         subjectId: data.subjectId,
         classId: data.classId,
@@ -226,7 +219,7 @@ export async function createOnlineExam(data: {
         randomizeQuestions: data.randomizeQuestions ?? true,
         allowReview: data.allowReview ?? true,
         createdBy: teacher.id,
-      },
+      }, schoolId),
       include: {
         subject: true,
         class: true,
@@ -266,14 +259,13 @@ export async function createOnlineExam(data: {
  */
 export async function getTeacherOnlineExams() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
 
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -281,9 +273,9 @@ export async function getTeacherOnlineExams() {
     }
 
     const exams = await prisma.onlineExam.findMany({
-      where: {
+      where: withSchoolScope({
         createdBy: teacher.id,
-      },
+      }, schoolId),
       include: {
         subject: true,
         class: true,
@@ -311,14 +303,15 @@ export async function getTeacherOnlineExams() {
  */
 export async function getOnlineExamById(examId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
 
-    const exam = await prisma.onlineExam.findUnique({
-      where: { id: examId },
+    // Note: We use findFirst with schoolId filter instead of findUnique to ensure isolation
+    const exam = await prisma.onlineExam.findFirst({
+      where: {
+        id: examId,
+        schoolId
+      },
       include: {
         subject: true,
         class: true,
@@ -344,13 +337,14 @@ export async function getOnlineExamById(examId: string) {
     }
 
     // Get full question details
+    // Get full question details
     const questionIds = exam.questions as string[];
     const questions = await prisma.questionBank.findMany({
-      where: {
+      where: withSchoolScope({
         id: {
           in: questionIds,
         },
-      },
+      }, schoolId),
       orderBy: {
         createdAt: "asc",
       },
@@ -374,15 +368,12 @@ export async function selectRandomQuestions(criteria: {
   questionType?: string;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
 
-    const where: any = {
+    const where: any = withSchoolScope({
       subjectId: criteria.subjectId,
-    };
+    }, schoolId);
 
     if (criteria.topic) {
       where.topic = criteria.topic;
@@ -427,15 +418,14 @@ export async function gradeEssayQuestions(
   questionScores: Record<string, number>
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
-    }
 
     // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -443,6 +433,9 @@ export async function gradeEssayQuestions(
     }
 
     // Get exam attempt
+    // Verify attempt belongs to school via exam -> subject -> etc OR explicitly check exam.schoolId
+    // Since we'll check exam ownership by teacher (who is school scoped), strict transitive check is good.
+    // But better to check exam.schoolId directly if possible.
     const attempt = await prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
@@ -452,6 +445,11 @@ export async function gradeEssayQuestions(
 
     if (!attempt) {
       return { success: false, error: "Exam attempt not found" };
+    }
+
+    // Verify school scope
+    if (attempt.exam.schoolId !== schoolId) {
+      return { success: false, error: "Unauthorized to access this exam attempt" };
     }
 
     // Verify teacher owns this exam
@@ -464,13 +462,14 @@ export async function gradeEssayQuestions(
     }
 
     // Get questions
+    // Get questions
     const questionIds = attempt.exam.questions as string[];
     const questions = await prisma.questionBank.findMany({
-      where: {
+      where: withSchoolScope({
         id: {
           in: questionIds,
         },
-      },
+      }, schoolId),
     });
 
     // Calculate total score including essay questions
@@ -486,7 +485,7 @@ export async function gradeEssayQuestions(
       } else if (question.questionType === "ESSAY") {
         // Manually graded questions
         const score = questionScores[question.id] || 0;
-        
+
         // Validate score doesn't exceed max marks
         if (score > question.marks) {
           return {
@@ -494,7 +493,7 @@ export async function gradeEssayQuestions(
             error: `Score for question ${question.id} exceeds maximum marks`,
           };
         }
-        
+
         totalScore += score;
       }
     }

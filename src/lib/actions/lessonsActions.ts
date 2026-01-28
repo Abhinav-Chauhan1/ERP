@@ -3,11 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { LessonFormValues, LessonUpdateFormValues } from "../schemaValidation/lessonsSchemaValidation";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all lessons with expanded relationships
 export async function getLessons() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const lessons = await db.lesson.findMany({
+      where: {
+        subject: {
+          schoolId
+        }
+      },
       include: {
         subject: {
           include: {
@@ -24,8 +33,8 @@ export async function getLessons() {
         createdAt: 'desc',
       },
     });
-    
-    // Transform data for the UI (optimized to prevent N+1 query)
+
+    // Transform data for the UI
     const formattedLessons = lessons.map((lesson) => {
       // Get classes associated with the subject from included data
       const grades = lesson.subject.classes.map(sc => sc.class.name);
@@ -48,13 +57,13 @@ export async function getLessons() {
         syllabusUnitId: lesson.syllabusUnitId || "",
       };
     });
-    
+
     return { success: true, data: formattedLessons };
   } catch (error) {
     console.error("Error fetching lessons:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch lessons" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch lessons"
     };
   }
 }
@@ -68,6 +77,9 @@ function countResources(resourcesStr: string): number {
 // Get a single lesson by ID
 export async function getLessonById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const lesson = await db.lesson.findUnique({
       where: { id },
       include: {
@@ -75,19 +87,24 @@ export async function getLessonById(id: string) {
         syllabusUnit: true,
       }
     });
-    
+
+    // Check school access via subject
+    if (lesson && lesson.subject.schoolId !== schoolId) {
+      return { success: false, error: "Access denied" };
+    }
+
     if (!lesson) {
       return { success: false, error: "Lesson not found" };
     }
-    
+
     // Get classes associated with the subject
     const subjectClasses = await db.subjectClass.findMany({
       where: { subjectId: lesson.subjectId },
       include: { class: true },
     });
-    
+
     const grades = subjectClasses.map(sc => sc.class.name);
-    
+
     const formattedLesson = {
       id: lesson.id,
       title: lesson.title,
@@ -107,13 +124,13 @@ export async function getLessonById(id: string) {
       createdAt: lesson.createdAt,
       updatedAt: lesson.updatedAt,
     };
-    
+
     return { success: true, data: formattedLesson };
   } catch (error) {
     console.error("Error fetching lesson:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch lesson" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch lesson"
     };
   }
 }
@@ -121,7 +138,11 @@ export async function getLessonById(id: string) {
 // Get all subjects for the dropdown
 export async function getSubjectsForLessons() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const subjects = await db.subject.findMany({
+      where: { schoolId },
       include: {
         syllabus: {
           include: {
@@ -137,13 +158,13 @@ export async function getSubjectsForLessons() {
         name: 'asc',
       },
     });
-    
+
     // Transform data for UI
     const formattedSubjects = subjects.map(subject => ({
       id: subject.id,
       name: subject.name,
       code: subject.code || "",
-      units: subject.syllabus.flatMap(syllabus => 
+      units: subject.syllabus.flatMap(syllabus =>
         syllabus.units.map(unit => ({
           id: unit.id,
           title: unit.title,
@@ -151,13 +172,13 @@ export async function getSubjectsForLessons() {
         }))
       ).sort((a, b) => a.order - b.order),
     }));
-    
+
     return { success: true, data: formattedSubjects };
   } catch (error) {
     console.error("Error fetching subjects for lessons:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch subjects" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
 }
@@ -165,6 +186,13 @@ export async function getSubjectsForLessons() {
 // Get syllabus units for a specific subject
 export async function getSyllabusUnitsBySubject(subjectId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
+    // Verify subject belongs to school
+    const subject = await db.subject.findUnique({ where: { id: subjectId, schoolId } });
+    if (!subject) return { success: false, error: "Subject not found or access denied" };
+
     const syllabusUnits = await db.syllabusUnit.findMany({
       where: {
         syllabus: {
@@ -175,13 +203,13 @@ export async function getSyllabusUnitsBySubject(subjectId: string) {
         order: 'asc',
       },
     });
-    
+
     return { success: true, data: syllabusUnits };
   } catch (error) {
     console.error("Error fetching syllabus units:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to fetch syllabus units" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch syllabus units"
     };
   }
 }
@@ -189,9 +217,12 @@ export async function getSyllabusUnitsBySubject(subjectId: string) {
 // Create a new lesson
 export async function createLesson(data: LessonFormValues) {
   try {
-    // Check if subject exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Check if subject exists and belongs to school
     const subject = await db.subject.findUnique({
-      where: { id: data.subjectId }
+      where: { id: data.subjectId, schoolId }
     });
 
     if (!subject) {
@@ -229,14 +260,14 @@ export async function createLesson(data: LessonFormValues) {
         duration: data.duration || 60,
       }
     });
-    
+
     revalidatePath("/admin/teaching/lessons");
     return { success: true, data: lesson };
   } catch (error) {
     console.error("Error creating lesson:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to create lesson" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create lesson"
     };
   }
 }
@@ -244,18 +275,22 @@ export async function createLesson(data: LessonFormValues) {
 // Update an existing lesson
 export async function updateLesson(data: LessonUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Validate lesson exists
     const existingLesson = await db.lesson.findUnique({
-      where: { id: data.id }
+      where: { id: data.id },
+      include: { subject: true }
     });
 
-    if (!existingLesson) {
-      return { success: false, error: "Lesson not found" };
+    if (!existingLesson || existingLesson.subject.schoolId !== schoolId) {
+      return { success: false, error: "Lesson not found or access denied" };
     }
 
-    // Validate if subject exists
+    // Validate if subject exists and belongs to school
     const subject = await db.subject.findUnique({
-      where: { id: data.subjectId }
+      where: { id: data.subjectId, schoolId }
     });
 
     if (!subject) {
@@ -294,15 +329,15 @@ export async function updateLesson(data: LessonUpdateFormValues) {
         duration: data.duration || 60,
       }
     });
-    
+
     revalidatePath("/admin/teaching/lessons");
     revalidatePath(`/admin/teaching/lessons/${data.id}`);
     return { success: true, data: updatedLesson };
   } catch (error) {
     console.error("Error updating lesson:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to update lesson" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update lesson"
     };
   }
 }
@@ -310,26 +345,30 @@ export async function updateLesson(data: LessonUpdateFormValues) {
 // Delete a lesson
 export async function deleteLesson(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Check if lesson exists
     const lesson = await db.lesson.findUnique({
-      where: { id }
+      where: { id },
+      include: { subject: true }
     });
 
-    if (!lesson) {
-      return { success: false, error: "Lesson not found" };
+    if (!lesson || lesson.subject.schoolId !== schoolId) {
+      return { success: false, error: "Lesson not found or access denied" };
     }
-    
+
     await db.lesson.delete({
       where: { id }
     });
-    
+
     revalidatePath("/admin/teaching/lessons");
     return { success: true };
   } catch (error) {
     console.error("Error deleting lesson:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete lesson" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete lesson"
     };
   }
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
@@ -34,7 +35,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
 }
 
 // Get upcoming exams
-export async function getUpcomingExams() {
+export const getUpcomingExams = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
@@ -42,6 +43,7 @@ export async function getUpcomingExams() {
 
     const exams = await db.exam.findMany({
       where: {
+        schoolId,
         examDate: {
           gte: currentDate
         }
@@ -83,10 +85,10 @@ export async function getUpcomingExams() {
       error: error instanceof Error ? error.message : "Failed to fetch upcoming exams"
     };
   }
-}
+});
 
 // Get past exams
-export async function getPastExams() {
+export const getPastExams = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
@@ -94,6 +96,7 @@ export async function getPastExams() {
 
     const exams = await db.exam.findMany({
       where: {
+        schoolId,
         examDate: {
           lt: currentDate
         }
@@ -138,15 +141,18 @@ export async function getPastExams() {
       error: error instanceof Error ? error.message : "Failed to fetch past exams"
     };
   }
-}
+});
 
 // Get exam by ID
-export async function getExamById(id: string) {
+export const getExamById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const exam = await db.exam.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       include: {
         examType: true,
         subject: true,
@@ -194,14 +200,15 @@ export async function getExamById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch exam"
     };
   }
-}
+});
 
 // Get exam types for dropdown
-export async function getExamTypes() {
+export const getExamTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const examTypes = await db.examType.findMany({
+      where: { schoolId }, // Ensure we filter by schoolId
       orderBy: {
         name: 'asc'
       }
@@ -215,14 +222,15 @@ export async function getExamTypes() {
       error: error instanceof Error ? error.message : "Failed to fetch exam types"
     };
   }
-}
+});
 
 // Get subjects for dropdown
-export async function getSubjects() {
+export const getSubjects = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const subjects = await db.subject.findMany({
+      where: { schoolId }, // Ensure filtered
       orderBy: {
         name: 'asc'
       }
@@ -236,15 +244,16 @@ export async function getSubjects() {
       error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
-}
+});
 
 // Get terms for dropdown
-export async function getTerms() {
+export const getTerms = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const terms = await db.term.findMany({
       where: {
+        schoolId,
         endDate: {
           gte: new Date()
         }
@@ -272,17 +281,20 @@ export async function getTerms() {
       error: error instanceof Error ? error.message : "Failed to fetch terms"
     };
   }
-}
+});
 
 // Create a new exam
-export async function createExam(data: ExamFormValues, creatorId?: string) {
+export const createExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ExamFormValues, creatorId?: string) => {
   try {
     // Permission check: require EXAM:CREATE
     await checkPermission('EXAM', 'CREATE', 'You do not have permission to create exams');
 
     // Validate exam date based on term dates
     const term = await db.term.findUnique({
-      where: { id: data.termId },
+      where: {
+        schoolId,
+        id: data.termId
+      },
       include: {
         academicYear: true
       }
@@ -302,6 +314,7 @@ export async function createExam(data: ExamFormValues, creatorId?: string) {
     // Create the exam
     const examData: any = {
       title: data.title,
+      schoolId, // Explicitly add schoolId
       examTypeId: data.examTypeId,
       subjectId: data.subjectId,
       termId: data.termId,
@@ -332,7 +345,6 @@ export async function createExam(data: ExamFormValues, creatorId?: string) {
     });
 
     // Create calendar event for the exam
-    // Requirement 10.1: Automatically generate a calendar event with exam details
     await createCalendarEventFromExam(exam as any, creatorId || 'system');
 
     revalidatePath("/admin/assessment/exams");
@@ -344,17 +356,20 @@ export async function createExam(data: ExamFormValues, creatorId?: string) {
       error: error instanceof Error ? error.message : "Failed to create exam"
     };
   }
-}
+});
 
 // Update an existing exam
-export async function updateExam(data: ExamUpdateFormValues) {
+export const updateExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ExamUpdateFormValues) => {
   try {
     // Permission check: require EXAM:UPDATE
     await checkPermission('EXAM', 'UPDATE', 'You do not have permission to update exams');
 
     // Validate exam date based on term dates
     const term = await db.term.findUnique({
-      where: { id: data.termId },
+      where: {
+        schoolId,
+        id: data.termId
+      },
       include: {
         academicYear: true
       }
@@ -373,7 +388,10 @@ export async function updateExam(data: ExamUpdateFormValues) {
 
     // Update the exam
     const exam = await db.exam.update({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       data: {
         title: data.title,
         examTypeId: data.examTypeId,
@@ -398,7 +416,6 @@ export async function updateExam(data: ExamUpdateFormValues) {
     });
 
     // Update calendar event for the exam
-    // Requirement 10.4: Synchronize changes to the corresponding calendar event
     await updateCalendarEventFromExam(exam as any);
 
     revalidatePath("/admin/assessment/exams");
@@ -411,17 +428,20 @@ export async function updateExam(data: ExamUpdateFormValues) {
       error: error instanceof Error ? error.message : "Failed to update exam"
     };
   }
-}
+});
 
 // Delete an exam
-export async function deleteExam(id: string) {
+export const deleteExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     // Permission check: require EXAM:DELETE
     await checkPermission('EXAM', 'DELETE', 'You do not have permission to delete exams');
 
     // Check if exam has any results
     const hasResults = await db.examResult.findFirst({
-      where: { examId: id }
+      where: {
+        schoolId,
+        examId: id
+      }
     });
 
     if (hasResults) {
@@ -432,11 +452,13 @@ export async function deleteExam(id: string) {
     }
 
     // Delete calendar event first
-    // Requirement 10.5: Remove the associated calendar event from all user calendars
     await deleteCalendarEventFromExam(id);
 
     await db.exam.delete({
-      where: { id }
+      where: {
+        schoolId,
+        id
+      }
     });
 
     revalidatePath("/admin/assessment/exams");
@@ -448,14 +470,17 @@ export async function deleteExam(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete exam"
     };
   }
-}
+});
 
 // Save exam result
-export async function saveExamResult(data: ExamResultFormValues) {
+export const saveExamResult = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ExamResultFormValues) => {
   try {
     // Check if exam exists
     const exam = await db.exam.findUnique({
-      where: { id: data.examId },
+      where: {
+        schoolId,
+        id: data.examId
+      },
       select: { totalMarks: true }
     });
 
@@ -474,6 +499,7 @@ export async function saveExamResult(data: ExamResultFormValues) {
     // Check if result already exists
     const existingResult = await db.examResult.findFirst({
       where: {
+        schoolId,
         examId: data.examId,
         studentId: data.studentId
       }
@@ -484,7 +510,10 @@ export async function saveExamResult(data: ExamResultFormValues) {
     if (existingResult) {
       // Update existing result
       result = await db.examResult.update({
-        where: { id: existingResult.id },
+        where: {
+          schoolId,
+          id: existingResult.id
+        },
         data: {
           marks: data.isAbsent ? 0 : data.marks,
           grade: data.grade,
@@ -496,6 +525,7 @@ export async function saveExamResult(data: ExamResultFormValues) {
       // Create new result
       result = await db.examResult.create({
         data: {
+          schoolId,
           examId: data.examId,
           studentId: data.studentId,
           marks: data.isAbsent ? 0 : data.marks,
@@ -515,13 +545,16 @@ export async function saveExamResult(data: ExamResultFormValues) {
       error: error instanceof Error ? error.message : "Failed to save exam result"
     };
   }
-}
+});
 
 // Delete exam result
-export async function deleteExamResult(id: string) {
+export const deleteExamResult = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const result = await db.examResult.delete({
-      where: { id }
+      where: {
+        schoolId,
+        id
+      }
     });
 
     revalidatePath(`/admin/assessment/exams/${result.examId}`);
@@ -533,10 +566,10 @@ export async function deleteExamResult(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete exam result"
     };
   }
-}
+});
 
 // Get exam statistics
-export async function getExamStatistics() {
+export const getExamStatistics = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
@@ -545,6 +578,7 @@ export async function getExamStatistics() {
     // Count upcoming exams
     const upcomingExamsCount = await db.exam.count({
       where: {
+        schoolId,
         examDate: {
           gte: currentDate
         }
@@ -554,6 +588,7 @@ export async function getExamStatistics() {
     // Count completed exams
     const completedExamsCount = await db.exam.count({
       where: {
+        schoolId,
         examDate: {
           lt: currentDate
         }
@@ -563,6 +598,7 @@ export async function getExamStatistics() {
     // Get next exam
     const nextExam = await db.exam.findFirst({
       where: {
+        schoolId,
         examDate: {
           gte: currentDate
         }
@@ -576,10 +612,9 @@ export async function getExamStatistics() {
     });
 
     // Get class with highest performance
-    // This is more complex and would require aggregation across results
-    // This is a simplified approach
     const examResults = await db.examResult.findMany({
       where: {
+        schoolId,
         exam: {
           examDate: {
             lt: currentDate
@@ -645,4 +680,4 @@ export async function getExamStatistics() {
       error: error instanceof Error ? error.message : "Failed to fetch exam statistics"
     };
   }
-}
+});

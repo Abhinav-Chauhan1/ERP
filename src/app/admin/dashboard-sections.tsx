@@ -54,30 +54,34 @@ export async function PrimaryStatsSection() {
     : { studentAttendance: { percentage: 0, present: 0, total: 0 }, teacherAttendance: { percentage: 0, present: 0, total: 0 } };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="dashboard-grid">
       <StatsCard
         title="Total Students"
         value={totalStudents.toLocaleString()}
-        icon={<Users className="h-5 w-5" />}
+        icon={<Users />}
         description="active students"
+        className="bg-blue-50/50 dark:bg-blue-900/10"
       />
       <StatsCard
         title="Total Teachers"
         value={totalTeachers.toLocaleString()}
-        icon={<GraduationCap className="h-5 w-5" />}
+        icon={<GraduationCap />}
         description="active teachers"
+        className="bg-emerald-50/50 dark:bg-emerald-900/10"
       />
       <StatsCard
-        title="Pending Fee Payments"
+        title="Pending Fees"
         value={`₹${pendingFeePayments.totalAmount.toLocaleString()}`}
-        icon={<CreditCard className="h-5 w-5" />}
-        description={`${pendingFeePayments.count} pending payments`}
+        icon={<CreditCard />}
+        description={`${pendingFeePayments.count} pending`}
+        className="bg-pink-50/50 dark:bg-pink-900/10"
       />
       <StatsCard
-        title="Today's Attendance"
+        title="Attendance"
         value={`${todaysAttendance.studentAttendance.percentage}%`}
-        icon={<UserCheck className="h-5 w-5" />}
-        description={`${todaysAttendance.studentAttendance.present}/${todaysAttendance.studentAttendance.total} students present`}
+        icon={<UserCheck />}
+        description={`${todaysAttendance.studentAttendance.present} students present`}
+        className="bg-amber-50/50 dark:bg-amber-900/10"
       />
     </div>
   );
@@ -111,30 +115,34 @@ export async function SecondaryStatsSection() {
     : 0;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="dashboard-grid">
       <StatsCard
         title="Classes"
         value={stats.totalClasses.toLocaleString()}
-        icon={<School className="h-5 w-5" />}
+        icon={<School />}
         description="total classes"
+        className="glass-card"
       />
       <StatsCard
         title="Subjects"
         value={stats.totalSubjects.toLocaleString()}
-        icon={<BookOpen className="h-5 w-5" />}
+        icon={<BookOpen />}
         description="in curriculum"
+        className="glass-card"
       />
       <StatsCard
         title="Upcoming Events"
         value={upcomingEventsCount.toLocaleString()}
-        icon={<Calendar className="h-5 w-5" />}
+        icon={<Calendar />}
         description="in next 30 days"
+        className="glass-card"
       />
       <StatsCard
-        title="Recent Announcements"
+        title="Announcements"
         value={recentAnnouncementsCount.toLocaleString()}
-        icon={<PenTool className="h-5 w-5" />}
+        icon={<PenTool />}
         description="in last 7 days"
+        className="glass-card"
       />
     </div>
   );
@@ -153,27 +161,31 @@ export async function ChartsSection() {
   const examResultsData = (examResultsResult.success && examResultsResult.data) ? examResultsResult.data : [];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Chart
-        title="Student Attendance Rate"
-        description="Monthly attendance percentage"
-        data={studentAttendanceData}
-        xKey="month"
-        yKey="present"
-        categories={["present"]}
-        colors={["#2563eb"]}
-        type="area"
-      />
-      <Chart
-        title="Average Exam Results"
-        description="By subject"
-        data={examResultsData}
-        xKey="subject"
-        yKey="average"
-        categories={["average"]}
-        colors={["#16a34a"]}
-        type="bar"
-      />
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="premium-card">
+        <Chart
+          title="Student Attendance Rate"
+          description="Monthly attendance percentage"
+          data={studentAttendanceData}
+          xKey="month"
+          yKey="present"
+          categories={["present"]}
+          colors={["var(--primary)"]}
+          type="area"
+        />
+      </div>
+      <div className="premium-card">
+        <Chart
+          title="Average Exam Results"
+          description="By subject"
+          data={examResultsData}
+          xKey="subject"
+          yKey="average"
+          categories={["average"]}
+          colors={["#10b981"]}
+          type="bar"
+        />
+      </div>
     </div>
   );
 }
@@ -205,13 +217,13 @@ export async function ActivitySection() {
     };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card className="md:col-span-2 lg:col-span-1">
-        <CardHeader>
-          <CardTitle className="text-base font-medium">Enrollment Distribution</CardTitle>
-          <CardDescription>Students per grade</CardDescription>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <Card className="md:col-span-2 lg:col-span-1 premium-card">
+        <CardHeader className="px-0 pt-0">
+          <CardTitle className="text-lg font-bold tracking-tight">Enrollment</CardTitle>
+          <CardDescription>By grade level</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0 pb-0">
           <Chart
             title=""
             data={enrollmentDistributionData}
@@ -219,14 +231,14 @@ export async function ActivitySection() {
             yKey="value"
             categories={["value"]}
             type="pie"
-            colors={["#2563eb", "#16a34a", "#db2777", "#ea580c", "#8b5cf6", "#0ea5e9"]}
+            colors={["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#8b5cf6", "#06b6d4"]}
           />
         </CardContent>
       </Card>
 
-      <ActivityFeed activities={recentActivities} className="lg:col-span-1" />
+      <ActivityFeed activities={recentActivities} className="lg:col-span-1 glass-card border-none" />
 
-      <CalendarWidget events={calendarEvents} userRole="ADMIN" className="lg:col-span-1" />
+      <CalendarWidget events={calendarEvents} userRole="ADMIN" className="lg:col-span-1 glass-card border-none" />
 
       <ReceiptVerificationWidget
         pendingCount={receiptWidgetData.pendingCount}
@@ -236,7 +248,7 @@ export async function ActivitySection() {
         averageVerificationTime={receiptWidgetData.averageVerificationTime}
         rejectionRate={receiptWidgetData.rejectionRate}
         trend={receiptWidgetData.trend}
-        className="lg:col-span-1"
+        className="lg:col-span-1 premium-card"
       />
     </div>
   );

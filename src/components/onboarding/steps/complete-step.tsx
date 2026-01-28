@@ -11,9 +11,11 @@ import { format } from "date-fns";
 
 interface CompleteStepProps {
     data: WizardData;
+    redirectUrl?: string;
+    schoolId?: string;
 }
 
-export function CompleteStep({ data }: CompleteStepProps) {
+export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
     const { toast } = useToast();
@@ -43,7 +45,7 @@ export function CompleteStep({ data }: CompleteStepProps) {
 
             // Redirect to admin dashboard after a short delay
             setTimeout(() => {
-                router.push("/admin");
+                router.push(redirectUrl || "/admin");
             }, 2000);
         } catch (error) {
             console.error("Setup error:", error);

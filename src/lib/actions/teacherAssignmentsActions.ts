@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   createCalendarEventFromAssignment,
   updateCalendarEventFromAssignment,
@@ -15,6 +16,8 @@ import { calculateGrade } from "../utils/grade-calculator";
  */
 export async function getTeacherAssignments(subjectId?: string, classId?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -28,6 +31,7 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -40,6 +44,7 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
       where: {
         teacherId: teacher.id,
         ...(subjectId ? { subjectId } : {}),
+        schoolId, // Injected
       },
       include: {
         subject: true,
@@ -133,6 +138,8 @@ export async function getTeacherAssignments(subjectId?: string, classId?: string
  */
 export async function getAssignmentDetails(assignmentId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -146,6 +153,7 @@ export async function getAssignmentDetails(assignmentId: string) {
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -241,6 +249,8 @@ export async function getAssignmentDetails(assignmentId: string) {
  */
 export async function createAssignment(formData: FormData) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -254,6 +264,7 @@ export async function createAssignment(formData: FormData) {
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -349,6 +360,8 @@ export async function createAssignment(formData: FormData) {
  */
 export async function updateAssignment(formData: FormData) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -362,6 +375,7 @@ export async function updateAssignment(formData: FormData) {
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -491,6 +505,8 @@ export async function updateAssignment(formData: FormData) {
  */
 export async function updateAssignmentGrades(assignmentId: string, grades: any[]) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -504,6 +520,7 @@ export async function updateAssignmentGrades(assignmentId: string, grades: any[]
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -564,6 +581,8 @@ export async function updateAssignmentGrades(assignmentId: string, grades: any[]
  */
 export async function getTeacherClasses() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -577,6 +596,7 @@ export async function getTeacherClasses() {
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 
@@ -588,6 +608,7 @@ export async function getTeacherClasses() {
     const classTeachers = await db.classTeacher.findMany({
       where: {
         teacherId: teacher.id,
+        schoolId,
       },
       include: {
         class: true,
@@ -611,6 +632,8 @@ export async function getTeacherClasses() {
  */
 export async function deleteAssignment(assignmentId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -624,6 +647,7 @@ export async function deleteAssignment(assignmentId: string) {
         user: {
           id: userId,
         },
+        schoolId,
       },
     });
 

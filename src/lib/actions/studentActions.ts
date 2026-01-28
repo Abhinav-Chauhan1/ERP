@@ -7,6 +7,7 @@ import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { hasPermission } from "@/lib/utils/permissions";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get student with detailed information
 export async function getStudentWithDetails(studentId: string) {
@@ -16,6 +17,9 @@ export async function getStudentWithDetails(studentId: string) {
   }
 
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Permission check: require STUDENT:READ
     const session = await auth();
     const userId = session?.user?.id;
@@ -30,8 +34,8 @@ export async function getStudentWithDetails(studentId: string) {
 
     console.log(`Fetching student details for ID: ${studentId}`);
 
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
       include: {
         user: true,
         parents: {
@@ -131,9 +135,12 @@ export async function uploadStudentAvatar(formData: FormData) {
       };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, message: "School context required" };
+
     // Get student and their user
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
       include: { user: true },
     });
 
@@ -230,9 +237,12 @@ export async function removeStudentAvatar(studentId: string) {
       };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, message: "School context required" };
+
     // Get student
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
       include: { user: true },
     });
 

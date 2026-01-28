@@ -4,12 +4,15 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { autoGradeExam, calculateFinalScore } from "@/lib/utils/auto-grading";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Get available online exams for a student
  */
 export async function getAvailableExamsForStudent() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -17,8 +20,8 @@ export async function getAvailableExamsForStudent() {
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
       include: {
         enrollments: {
           where: {
@@ -48,6 +51,7 @@ export async function getAvailableExamsForStudent() {
     const exams = await prisma.onlineExam.findMany({
       where: {
         classId,
+        schoolId, // Injected safety measure
         startTime: {
           lte: now,
         },
@@ -80,6 +84,8 @@ export async function getAvailableExamsForStudent() {
  */
 export async function startExamAttempt(examId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -87,17 +93,17 @@ export async function startExamAttempt(examId: string) {
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
       return { success: false, error: "Student not found" };
     }
 
-    // Check if exam exists and is active
-    const exam = await prisma.onlineExam.findUnique({
-      where: { id: examId },
+    // Check if exam exists and is active and belongs to school
+    const exam = await prisma.onlineExam.findFirst({
+      where: { id: examId, schoolId },
     });
 
     if (!exam) {
@@ -151,6 +157,8 @@ export async function startExamAttempt(examId: string) {
  */
 export async function getExamAttempt(examId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -158,8 +166,8 @@ export async function getExamAttempt(examId: string) {
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
@@ -237,6 +245,8 @@ export async function saveAnswer(
   answer: any
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -244,8 +254,8 @@ export async function saveAnswer(
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
@@ -298,6 +308,8 @@ export async function submitExamAttempt(
   answers: Record<string, any>
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -305,8 +317,8 @@ export async function submitExamAttempt(
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
@@ -380,6 +392,8 @@ export async function submitExamAttempt(
  */
 export async function getStudentExamResults() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -424,6 +438,8 @@ export async function getStudentExamResults() {
  */
 export async function getDetailedExamResult(examId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -431,8 +447,8 @@ export async function getDetailedExamResult(examId: string) {
     }
 
     // Get student record
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
@@ -484,8 +500,8 @@ export async function getDetailedExamResult(examId: string) {
     const gradingResult = autoGradeExam(questions, answers);
 
     // Calculate percentage
-    const percentage = gradingResult.maxScore > 0 
-      ? (gradingResult.totalScore / gradingResult.maxScore) * 100 
+    const percentage = gradingResult.maxScore > 0
+      ? (gradingResult.totalScore / gradingResult.maxScore) * 100
       : 0;
 
     return {

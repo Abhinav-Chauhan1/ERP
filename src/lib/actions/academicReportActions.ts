@@ -1,17 +1,21 @@
-"use server";
-
 import { db } from "@/lib/db";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 
 // Get student performance report
-export async function getStudentPerformanceReport(filters?: {
-  academicYearId?: string;
-  classId?: string;
-  studentId?: string;
-  termId?: string;
-}) {
+export const getStudentPerformanceReport = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+    studentId?: string;
+    termId?: string;
+  }
+) => {
   try {
-    const where: any = {};
-    
+    const where: any = { schoolId }; // Mandatory schoolId
+
     if (filters?.studentId) where.studentId = filters.studentId;
     if (filters?.termId) where.termId = filters.termId;
 
@@ -26,7 +30,12 @@ export async function getStudentPerformanceReport(filters?: {
                 lastName: true,
               },
             },
-            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
+            enrollments: {
+              where: { schoolId }, // Nested scope
+              include: { class: true },
+              take: 1,
+              orderBy: { enrollDate: 'desc' }
+            },
           },
         },
         exam: {
@@ -64,17 +73,22 @@ export async function getStudentPerformanceReport(filters?: {
     console.error("Error fetching student performance report:", error);
     return { success: false, error: "Failed to fetch student performance report" };
   }
-}
+});
 
 // Get grade distribution
-export async function getGradeDistribution(filters?: {
-  academicYearId?: string;
-  classId?: string;
-  subjectId?: string;
-  termId?: string;
-}) {
+export const getGradeDistribution = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+    subjectId?: string;
+    termId?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
     if (filters?.termId) where.termId = filters.termId;
 
     const results = await db.examResult.findMany({
@@ -115,16 +129,21 @@ export async function getGradeDistribution(filters?: {
     console.error("Error fetching grade distribution:", error);
     return { success: false, error: "Failed to fetch grade distribution" };
   }
-}
+});
 
 // Get subject-wise performance
-export async function getSubjectWisePerformance(filters?: {
-  academicYearId?: string;
-  classId?: string;
-  termId?: string;
-}) {
+export const getSubjectWisePerformance = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    academicYearId?: string;
+    classId?: string;
+    termId?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
     if (filters?.termId) where.termId = filters.termId;
 
     const results = await db.examResult.findMany({
@@ -170,15 +189,20 @@ export async function getSubjectWisePerformance(filters?: {
     console.error("Error fetching subject-wise performance:", error);
     return { success: false, error: "Failed to fetch subject-wise performance" };
   }
-}
+});
 
 // Get class rankings
-export async function getClassRankings(filters?: {
-  classId?: string;
-  termId?: string;
-}) {
+export const getClassRankings = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  filters?: {
+    classId?: string;
+    termId?: string;
+  }
+) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId };
     if (filters?.termId) where.termId = filters.termId;
 
     const results = await db.examResult.findMany({
@@ -192,7 +216,12 @@ export async function getClassRankings(filters?: {
                 lastName: true,
               },
             },
-            enrollments: { include: { class: true }, take: 1, orderBy: { enrollDate: 'desc' } },
+            enrollments: {
+              where: { schoolId },
+              include: { class: true },
+              take: 1,
+              orderBy: { enrollDate: 'desc' }
+            },
           },
         },
         exam: true,
@@ -236,13 +265,21 @@ export async function getClassRankings(filters?: {
     console.error("Error fetching class rankings:", error);
     return { success: false, error: "Failed to fetch class rankings" };
   }
-}
+});
 
 // Get progress tracking
-export async function getProgressTracking(studentId: string) {
+export const getProgressTracking = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
+  studentId: string
+) => {
   try {
     const results = await db.examResult.findMany({
-      where: { studentId },
+      where: {
+        studentId,
+        schoolId // Mandatory school scope
+      },
       include: {
         exam: {
           include: {
@@ -284,5 +321,5 @@ export async function getProgressTracking(studentId: string) {
     console.error("Error fetching progress tracking:", error);
     return { success: false, error: "Failed to fetch progress tracking" };
   }
-}
+});
 

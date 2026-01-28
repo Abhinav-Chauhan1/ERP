@@ -3,11 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { GradeFormValues, GradeUpdateFormValues } from "../schemaValidation/gradesSchemaValidation";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all grades
 export async function getGrades() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const grades = await db.gradeScale.findMany({
+      where: { schoolId },
       orderBy: [
         { maxMarks: 'desc' }
       ],
@@ -26,8 +31,11 @@ export async function getGrades() {
 // Get a single grade by ID
 export async function getGradeById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const grade = await db.gradeScale.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!grade) {
@@ -47,8 +55,11 @@ export async function getGradeById(id: string) {
 // Create a new grade
 export async function createGrade(data: GradeFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Check if grade overlaps with existing grades
-    const overlappingGrades = await checkGradeOverlap(data);
+    const overlappingGrades = await checkGradeOverlap(data, undefined, schoolId);
     if (overlappingGrades) {
       return { success: false, error: overlappingGrades };
     }
@@ -56,7 +67,8 @@ export async function createGrade(data: GradeFormValues) {
     // Check if grade letter already exists
     const existingGrade = await db.gradeScale.findFirst({
       where: {
-        grade: data.grade
+        grade: data.grade,
+        schoolId
       }
     });
 
@@ -66,6 +78,7 @@ export async function createGrade(data: GradeFormValues) {
 
     const grade = await db.gradeScale.create({
       data: {
+        schoolId,
         grade: data.grade,
         minMarks: data.minMarks,
         maxMarks: data.maxMarks,
@@ -88,8 +101,11 @@ export async function createGrade(data: GradeFormValues) {
 // Update an existing grade
 export async function updateGrade(data: GradeUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Check if grade overlaps with existing grades
-    const overlappingGrades = await checkGradeOverlap(data, data.id);
+    const overlappingGrades = await checkGradeOverlap(data, data.id, schoolId);
     if (overlappingGrades) {
       return { success: false, error: overlappingGrades };
     }
@@ -98,7 +114,8 @@ export async function updateGrade(data: GradeUpdateFormValues) {
     const existingGrade = await db.gradeScale.findFirst({
       where: {
         grade: data.grade,
-        id: { not: data.id }
+        id: { not: data.id },
+        schoolId
       }
     });
 
@@ -107,7 +124,7 @@ export async function updateGrade(data: GradeUpdateFormValues) {
     }
 
     const grade = await db.gradeScale.update({
-      where: { id: data.id },
+      where: { id: data.id, schoolId },
       data: {
         grade: data.grade,
         minMarks: data.minMarks,
@@ -131,12 +148,16 @@ export async function updateGrade(data: GradeUpdateFormValues) {
 // Delete a grade
 export async function deleteGrade(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // In a full application, we'd check if this grade is being used in exam results
     // before allowing deletion. For simplicity, we're skipping that check for now.
 
-    await db.gradeScale.delete({
-      where: { id }
+    const result = await db.gradeScale.deleteMany({
+      where: { id, schoolId }
     });
+    if (result.count === 0) return { success: false, error: "Grade not found or access denied" };
 
     revalidatePath("/admin/academic/grades");
     return { success: true };
@@ -150,9 +171,10 @@ export async function deleteGrade(id: string) {
 }
 
 // Helper function to check for overlapping grade ranges
-async function checkGradeOverlap(data: { minMarks: number, maxMarks: number }, excludeId?: string) {
+async function checkGradeOverlap(data: { minMarks: number, maxMarks: number }, excludeId?: string, schoolId?: string) {
   const overlappingGrade = await db.gradeScale.findFirst({
     where: {
+      schoolId,
       id: excludeId ? { not: excludeId } : undefined,
       OR: [
         // Check if new min marks falls within existing range
@@ -198,7 +220,11 @@ const STANDARD_GRADES = [
 export async function autoGenerateGrades() {
   try {
     // Get existing grades
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const existingGrades = await db.gradeScale.findMany({
+      where: { schoolId },
       select: { grade: true }
     });
     const existingGradeNames = new Set(existingGrades.map(g => g.grade));
@@ -215,7 +241,7 @@ export async function autoGenerateGrades() {
 
     // Create the new grades
     const result = await db.gradeScale.createMany({
-      data: gradesToCreate,
+      data: gradesToCreate.map(g => ({ ...g, schoolId })),
       skipDuplicates: true,
     });
 

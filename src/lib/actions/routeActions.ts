@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { routeSchema, routeUpdateSchema, studentRouteSchema, type RouteFormValues, type RouteUpdateFormValues, type StudentRouteFormValues } from "@/lib/schemas/route-schemas";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all routes with pagination and filters
 export async function getRoutes(params?: {
@@ -17,7 +18,12 @@ export async function getRoutes(params?: {
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    const page = params?.page || 1;
+    const limit = params?.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const where: any = { schoolId };
 
     // Search filter
     if (params?.search) {
@@ -78,8 +84,9 @@ export async function getRoutes(params?: {
 // Get a single route by ID
 export async function getRouteById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const route = await db.route.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         vehicle: {
           include: {
@@ -120,12 +127,13 @@ export async function getRouteById(id: string) {
 // Create a new route
 export async function createRoute(data: RouteFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Validate input
     const validated = routeSchema.parse(data);
 
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: validated.vehicleId },
+      where: { id: validated.vehicleId, schoolId },
     });
 
     if (!vehicle) {
@@ -142,6 +150,7 @@ export async function createRoute(data: RouteFormValues) {
     // Create route with stops
     const route = await db.route.create({
       data: {
+        schoolId,
         name: validated.name,
         vehicleId: validated.vehicleId,
         fee: validated.fee,
@@ -180,12 +189,13 @@ export async function createRoute(data: RouteFormValues) {
 // Update a route
 export async function updateRoute(id: string, data: RouteUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Validate input
     const validated = routeUpdateSchema.parse(data);
 
     // Check if route exists
     const existing = await db.route.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         stops: true,
       },
@@ -198,7 +208,7 @@ export async function updateRoute(id: string, data: RouteUpdateFormValues) {
     // If vehicle is being updated, check if it exists
     if (validated.vehicleId) {
       const vehicle = await db.vehicle.findUnique({
-        where: { id: validated.vehicleId },
+        where: { id: validated.vehicleId, schoolId },
       });
 
       if (!vehicle) {
@@ -263,8 +273,10 @@ export async function updateRoute(id: string, data: RouteUpdateFormValues) {
 export async function deleteRoute(id: string) {
   try {
     // Check if route exists
+    const { schoolId } = await requireSchoolAccess();
+    // Check if route exists
     const route = await db.route.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         students: true,
       },
@@ -283,7 +295,7 @@ export async function deleteRoute(id: string) {
 
     // Delete route (stops will be cascade deleted)
     await db.route.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/transport/routes");
@@ -300,11 +312,12 @@ export async function deleteRoute(id: string) {
 // Get route statistics
 export async function getRouteStats() {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const [total, active, inactive, totalStudents] = await Promise.all([
-      db.route.count(),
-      db.route.count({ where: { status: "ACTIVE" } }),
-      db.route.count({ where: { status: "INACTIVE" } }),
-      db.studentRoute.count(),
+      db.route.count({ where: { schoolId } }),
+      db.route.count({ where: { status: "ACTIVE", schoolId } }),
+      db.route.count({ where: { status: "INACTIVE", schoolId } }),
+      db.studentRoute.count({ where: { route: { schoolId } } }),
     ]);
 
     return {
@@ -322,8 +335,10 @@ export async function getRouteStats() {
 // Get available vehicles for route assignment (vehicles not assigned to active routes)
 export async function getAvailableVehicles() {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const vehicles = await db.vehicle.findMany({
       where: {
+        schoolId,
         status: "ACTIVE",
       },
       include: {
@@ -349,12 +364,13 @@ export async function getAvailableVehicles() {
 // Assign a student to a route
 export async function assignStudentToRoute(data: StudentRouteFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Validate input
     const validated = studentRouteSchema.parse(data);
 
-    // Check if route exists
+    // Check if route exists and belongs to school
     const route = await db.route.findUnique({
-      where: { id: validated.routeId },
+      where: { id: validated.routeId, schoolId },
       include: {
         vehicle: true,
         students: true,
@@ -366,9 +382,9 @@ export async function assignStudentToRoute(data: StudentRouteFormValues) {
       throw new Error("Route not found");
     }
 
-    // Check if student exists
+    // Check if student exists and belongs to school
     const student = await db.student.findUnique({
-      where: { id: validated.studentId },
+      where: { id: validated.studentId, schoolId },
       include: {
         user: true,
       },
@@ -445,10 +461,17 @@ export async function assignStudentToRoute(data: StudentRouteFormValues) {
 // Unassign a student from a route
 export async function unassignStudentFromRoute(studentRouteId: string) {
   try {
-    // Check if assignment exists
+    const { schoolId } = await requireSchoolAccess();
+    // Check if assignment exists and route belongs to school (indirect check via student or route)
+    // Best to fetch assignment then verify school
     const assignment = await db.studentRoute.findUnique({
       where: { id: studentRouteId },
+      include: { route: true }
     });
+
+    if (!assignment || assignment.route.schoolId !== schoolId) {
+      throw new Error("Student route assignment not found or access denied");
+    }
 
     if (!assignment) {
       throw new Error("Student route assignment not found");
@@ -477,6 +500,7 @@ export async function updateStudentRouteAssignment(
   data: { pickupStop?: string; dropStop?: string }
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Check if assignment exists
     const assignment = await db.studentRoute.findUnique({
       where: { id: studentRouteId },
@@ -488,6 +512,10 @@ export async function updateStudentRouteAssignment(
         },
       },
     });
+
+    if (!assignment || assignment.route.schoolId !== schoolId) {
+      throw new Error("Student route assignment not found or access denied");
+    }
 
     if (!assignment) {
       throw new Error("Student route assignment not found");
@@ -534,6 +562,11 @@ export async function updateStudentRouteAssignment(
 // Get students available for route assignment (not already assigned to this route)
 export async function getAvailableStudentsForRoute(routeId: string, search?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    // Check if route belongs to school
+    const route = await db.route.findUnique({ where: { id: routeId, schoolId } });
+    if (!route) throw new Error("Route not found or access denied");
+
     // Get students already assigned to this route
     const assignedStudents = await db.studentRoute.findMany({
       where: { routeId },
@@ -544,6 +577,7 @@ export async function getAvailableStudentsForRoute(routeId: string, search?: str
 
     // Build where clause
     const where: any = {
+      schoolId,
       id: {
         notIn: assignedStudentIds,
       },

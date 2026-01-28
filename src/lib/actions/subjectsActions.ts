@@ -7,31 +7,24 @@ import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
 import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/subjectsSchemaValidation";
 import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 // Helper to check permission and throw if denied
-async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
-  const session = await auth();
-  const userId = session?.user?.id;
-
-  if (!userId) {
-    throw new Error('Unauthorized: You must be logged in');
-  }
-
+async function checkPermission(userId: string, resource: string, action: PermissionAction, errorMessage?: string) {
   const allowed = await hasPermission(userId, resource, action);
   if (!allowed) {
     throw new Error(errorMessage || `Permission denied: Cannot ${action} ${resource}`);
   }
-
-  return userId;
 }
 
 // Get all subjects with their relationships
-export async function getSubjects() {
+export const getSubjects = withSchoolAuthAction(async (schoolId) => {
   try {
     const subjects = await db.subject.findMany({
+      where: { schoolId },
       include: {
-
         classes: {
+          where: { class: { schoolId } },
           include: {
             class: {
               include: {
@@ -50,6 +43,7 @@ export async function getSubjects() {
           }
         },
         syllabus: {
+          where: { schoolId },
           include: {
             units: true
           }
@@ -64,7 +58,6 @@ export async function getSubjects() {
       id: subject.id,
       code: subject.code,
       name: subject.name,
-
       description: subject.description || "",
       hasLabs: subject.description?.toLowerCase().includes("lab") || false,
       grades: subject.classes.map(sc => sc.class.name),
@@ -82,16 +75,16 @@ export async function getSubjects() {
       error: error instanceof Error ? error.message : "Failed to fetch subjects"
     };
   }
-}
+});
 
 // Get a single subject by ID with all related data
-export async function getSubjectById(id: string) {
+export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    const subject = await db.subject.findUnique({
-      where: { id },
+    const subject = await db.subject.findFirst({
+      where: { id, schoolId },
       include: {
-
         classes: {
+          where: { class: { schoolId } },
           include: {
             class: {
               include: {
@@ -115,6 +108,7 @@ export async function getSubjectById(id: string) {
           }
         },
         syllabus: {
+          where: { schoolId },
           include: {
             units: {
               include: {
@@ -151,7 +145,7 @@ export async function getSubjectById(id: string) {
       return {
         id: sc.classId,
         name: sc.class.name,
-        students: 0, // We'll need to get this from enrollments
+        students: 0,
         teacher: teacherForClass ?
           `${teacherForClass.teacher.user.firstName} ${teacherForClass.teacher.user.lastName}` :
           "Not assigned",
@@ -183,9 +177,6 @@ export async function getSubjectById(id: string) {
       };
     }
 
-    // Format resources
-    // In a real app, you'd have a resources table. 
-    // For now, we'll create some placeholder resources from the syllabus document
     const resourcesData = subject.syllabus.map(syl => ({
       id: syl.id,
       name: syl.title || "Subject Materials",
@@ -197,7 +188,6 @@ export async function getSubjectById(id: string) {
       id: subject.id,
       code: subject.code,
       name: subject.name,
-
       description: subject.description || "",
       hasLabs: subject.description?.toLowerCase().includes("lab") || false,
       grades: subject.classes.map(sc => sc.class.name),
@@ -216,15 +206,16 @@ export async function getSubjectById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch subject"
     };
   }
-}
+});
 
 // Get all departments for the dropdown
 
 
 // Get all classes for the dropdown
-export async function getClasses() {
+export const getClasses = withSchoolAuthAction(async (schoolId) => {
   try {
     const classes = await db.class.findMany({
+      where: { schoolId },
       include: {
         academicYear: true,
       },
@@ -242,20 +233,21 @@ export async function getClasses() {
       error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
-}
+});
 
 // Create a new subject
-export async function createSubject(data: SubjectFormValues) {
+export const createSubject = withSchoolAuthAction(async (schoolId, userId, userRole, data: SubjectFormValues) => {
   try {
     // Permission check: require SUBJECT:CREATE
-    await checkPermission('SUBJECT', 'CREATE', 'You do not have permission to create subjects');
+    await checkPermission(userId, 'SUBJECT', 'CREATE', 'You do not have permission to create subjects');
 
     // Check if subject code already exists
     const existingSubject = await db.subject.findFirst({
       where: {
+        schoolId,
         code: {
           equals: data.code,
-          mode: 'insensitive' // Case insensitive search
+          mode: 'insensitive'
         }
       }
     });
@@ -267,10 +259,10 @@ export async function createSubject(data: SubjectFormValues) {
     // Create the subject with class connections
     const subject = await db.subject.create({
       data: {
+        schoolId,
         name: data.name,
         code: data.code,
         description: data.description,
-
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } }
@@ -288,20 +280,21 @@ export async function createSubject(data: SubjectFormValues) {
       error: error instanceof Error ? error.message : "Failed to create subject"
     };
   }
-}
+});
 
 // Update an existing subject
-export async function updateSubject(data: SubjectUpdateFormValues) {
+export const updateSubject = withSchoolAuthAction(async (schoolId, userId, userRole, data: SubjectUpdateFormValues) => {
   try {
     // Permission check: require SUBJECT:UPDATE
-    await checkPermission('SUBJECT', 'UPDATE', 'You do not have permission to update subjects');
+    await checkPermission(userId, 'SUBJECT', 'UPDATE', 'You do not have permission to update subjects');
 
     // Check if subject code already exists for another subject
     const existingSubject = await db.subject.findFirst({
       where: {
+        schoolId,
         code: {
           equals: data.code,
-          mode: 'insensitive' // Case insensitive search
+          mode: 'insensitive'
         },
         id: { not: data.id }
       }
@@ -313,17 +306,19 @@ export async function updateSubject(data: SubjectUpdateFormValues) {
 
     // First, delete all existing class connections
     await db.subjectClass.deleteMany({
-      where: { subjectId: data.id }
+      where: {
+        subjectId: data.id,
+        subject: { schoolId }
+      }
     });
 
     // Update the subject with new class connections
     const subject = await db.subject.update({
-      where: { id: data.id },
+      where: { id: data.id, schoolId },
       data: {
         name: data.name,
         code: data.code,
         description: data.description,
-
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } }
@@ -342,16 +337,16 @@ export async function updateSubject(data: SubjectUpdateFormValues) {
       error: error instanceof Error ? error.message : "Failed to update subject"
     };
   }
-}
+});
 
 // Delete a subject
-export async function deleteSubject(id: string) {
+export const deleteSubject = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
     // Check for dependencies before deleting
-    const hasSyllabus = await db.syllabus.findFirst({ where: { subjectId: id } });
-    const hasTeachers = await db.subjectTeacher.findFirst({ where: { subjectId: id } });
-    const hasExams = await db.exam.findFirst({ where: { subjectId: id } });
-    const hasAssignments = await db.assignment.findFirst({ where: { subjectId: id } });
+    const hasSyllabus = await db.syllabus.findFirst({ where: { subjectId: id, schoolId } });
+    const hasTeachers = await db.subjectTeacher.findFirst({ where: { subjectId: id, subject: { schoolId } } });
+    const hasExams = await db.exam.findFirst({ where: { subjectId: id, schoolId } });
+    const hasAssignments = await db.assignment.findFirst({ where: { subjectId: id, schoolId } });
 
     if (hasSyllabus || hasTeachers || hasExams || hasAssignments) {
       return {
@@ -362,7 +357,7 @@ export async function deleteSubject(id: string) {
 
     // Delete the subject (this will cascade delete subject-class connections)
     await db.subject.delete({
-      where: { id }
+      where: { id, schoolId }
     });
 
     revalidatePath("/admin/teaching/subjects");
@@ -374,7 +369,7 @@ export async function deleteSubject(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete subject"
     };
   }
-}
+});
 
 
 
@@ -401,15 +396,14 @@ export async function getAvailableSubjectTemplates() {
 }
 
 // Auto-generate selected subjects
-export async function autoGenerateSubjects(selectedCodes?: string[]) {
+export const autoGenerateSubjects = withSchoolAuthAction(async (schoolId, userId, userRole, selectedCodes?: string[]) => {
   try {
     // Get existing subjects
     const existingSubjects = await db.subject.findMany({
+      where: { schoolId },
       select: { code: true }
     });
     const existingCodes = new Set(existingSubjects.map(s => s.code.toUpperCase()));
-
-
 
     // Filter out subjects that already exist
     let subjectsToCreate = STANDARD_SUBJECTS
@@ -433,10 +427,10 @@ export async function autoGenerateSubjects(selectedCodes?: string[]) {
     // Create the new subjects
     const result = await db.subject.createMany({
       data: subjectsToCreate.map(s => ({
+        schoolId,
         name: s.name,
         code: s.code,
         description: s.description,
-
       })),
       skipDuplicates: true,
     });
@@ -454,6 +448,6 @@ export async function autoGenerateSubjects(selectedCodes?: string[]) {
       error: error instanceof Error ? error.message : "Failed to auto-generate subjects"
     };
   }
-}
+});
 
 

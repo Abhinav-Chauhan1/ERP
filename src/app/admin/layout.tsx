@@ -17,6 +17,12 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  // Redirect Super Admin to their own dashboard if they hit the root /admin
+  // unless they are explicitly viewing a school context (which we'd handle differently later)
+  if (session.user.role === "SUPER_ADMIN" && !session.user.schoolId) {
+    redirect("/super-admin");
+  }
+
   // Get effective permissions including role defaults and DB overrides
   const permissions = await getUserPermissionNamesCached(session.user.id);
 

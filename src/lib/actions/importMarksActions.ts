@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { AuditAction } from "@prisma/client";
 import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   validateMarkEntry,
   createErrorResponse,
@@ -71,41 +72,27 @@ export async function importMarksFromFile(
   input: ImportMarksInput
 ): Promise<ImportResult> {
   try {
-    // Get current user
-    const session = await auth();
-    const userId = session?.user?.id;
+    // Get current user and school
+    const { schoolId, user } = await requireSchoolAccess();
 
-    if (!userId) {
+    if (!schoolId || !user) {
       return {
         success: false,
         totalRows: 0,
         successCount: 0,
         failedCount: 0,
         errors: [],
-        error: "Unauthorized",
+        error: "Unauthorized or School context missing",
       };
     }
+    const userId = user.id;
 
-    // Get the database user record
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
-
-    if (!user) {
-      return {
-        success: false,
-        totalRows: 0,
-        successCount: 0,
-        failedCount: 0,
-        errors: [],
-        error: "User not found",
-      };
-    }
+    // Valid user is returned by requireSchoolAccess, so we can skip the manual check
+    // or just keep using 'user' object from requireSchoolAccess
 
     // Get exam details
     const exam = await db.exam.findUnique({
-      where: { id: input.examId },
+      where: { id: input.examId, schoolId },
       include: {
         subject: true,
       },
@@ -158,13 +145,13 @@ export async function importMarksFromFile(
 
         if (entry.studentId) {
           student = await db.student.findUnique({
-            where: { id: entry.studentId },
+            where: { id: entry.studentId, schoolId },
           });
         }
 
         if (!student && entry.rollNumber) {
           student = await db.student.findFirst({
-            where: { rollNumber: entry.rollNumber },
+            where: { rollNumber: entry.rollNumber, schoolId },
           });
         }
 

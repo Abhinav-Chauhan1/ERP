@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { TermFormValues, TermUpdateFormValues } from "../schemaValidation/termsSchemaValidation";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 // Get all terms
-export async function getTerms() {
+export const getTerms = withSchoolAuthAction(async (schoolId) => {
   try {
     const terms = await db.term.findMany({
+      where: { schoolId },
       orderBy: {
         startDate: 'desc',
       },
@@ -30,13 +32,14 @@ export async function getTerms() {
       error: error instanceof Error ? error.message : "Failed to fetch terms"
     };
   }
-}
+});
 
 // Get terms by academic year ID
-export async function getTermsByAcademicYear(academicYearId: string) {
+export const getTermsByAcademicYear = withSchoolAuthAction(async (schoolId, userId, userRole, academicYearId: string) => {
   try {
     const terms = await db.term.findMany({
       where: {
+        schoolId,
         academicYearId: academicYearId
       },
       orderBy: {
@@ -60,16 +63,17 @@ export async function getTermsByAcademicYear(academicYearId: string) {
       error: error instanceof Error ? error.message : "Failed to fetch terms"
     };
   }
-}
+});
 
 // Get a single term by ID
-export async function getTermById(id: string) {
+export const getTermById = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    const term = await db.term.findUnique({
-      where: { id },
+    const term = await db.term.findFirst({
+      where: { id, schoolId },
       include: {
         academicYear: true,
         exams: {
+          where: { schoolId },
           include: {
             subject: true,
             examType: true,
@@ -95,14 +99,14 @@ export async function getTermById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch term"
     };
   }
-}
+});
 
 // Create a new term
-export async function createTerm(data: TermFormValues) {
+export const createTerm = withSchoolAuthAction(async (schoolId, userId, userRole, data: TermFormValues) => {
   try {
-    // First, check if the academic year exists
-    const academicYear = await db.academicYear.findUnique({
-      where: { id: data.academicYearId }
+    // First, check if the academic year exists and belongs to the school
+    const academicYear = await db.academicYear.findFirst({
+      where: { id: data.academicYearId, schoolId }
     });
 
     if (!academicYear) {
@@ -132,6 +136,7 @@ export async function createTerm(data: TermFormValues) {
     // Check for date conflicts with existing terms in the same academic year
     const overlappingTerms = await db.term.findFirst({
       where: {
+        schoolId,
         academicYearId: data.academicYearId,
         OR: [
           {
@@ -151,6 +156,7 @@ export async function createTerm(data: TermFormValues) {
 
     const term = await db.term.create({
       data: {
+        schoolId,
         name: data.name,
         academicYearId: data.academicYearId,
         startDate: data.startDate,
@@ -168,14 +174,14 @@ export async function createTerm(data: TermFormValues) {
       error: error instanceof Error ? error.message : "Failed to create term"
     };
   }
-}
+});
 
 // Update an existing term
-export async function updateTerm(data: TermUpdateFormValues) {
+export const updateTerm = withSchoolAuthAction(async (schoolId, userId, userRole, data: TermUpdateFormValues) => {
   try {
-    // First, check if the academic year exists
-    const academicYear = await db.academicYear.findUnique({
-      where: { id: data.academicYearId }
+    // First, check if the academic year exists and belongs to the school
+    const academicYear = await db.academicYear.findFirst({
+      where: { id: data.academicYearId, schoolId }
     });
 
     if (!academicYear) {
@@ -205,6 +211,7 @@ export async function updateTerm(data: TermUpdateFormValues) {
     // Check for date conflicts with existing terms in the same academic year
     const overlappingTerms = await db.term.findFirst({
       where: {
+        schoolId,
         academicYearId: data.academicYearId,
         id: { not: data.id },
         OR: [
@@ -224,7 +231,7 @@ export async function updateTerm(data: TermUpdateFormValues) {
     }
 
     const term = await db.term.update({
-      where: { id: data.id },
+      where: { id: data.id, schoolId },
       data: {
         name: data.name,
         academicYearId: data.academicYearId,
@@ -244,14 +251,14 @@ export async function updateTerm(data: TermUpdateFormValues) {
       error: error instanceof Error ? error.message : "Failed to update term"
     };
   }
-}
+});
 
 // Delete a term
-export async function deleteTerm(id: string) {
+export const deleteTerm = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
     // Check if term has any dependent records
-    const hasExams = await db.exam.findFirst({ where: { termId: id } });
-    const hasReportCards = await db.reportCard.findFirst({ where: { termId: id } });
+    const hasExams = await db.exam.findFirst({ where: { termId: id, schoolId } });
+    const hasReportCards = await db.reportCard.findFirst({ where: { termId: id, schoolId } });
 
     if (hasExams || hasReportCards) {
       return {
@@ -261,8 +268,8 @@ export async function deleteTerm(id: string) {
     }
 
     // Get the academic year ID for revalidation
-    const term = await db.term.findUnique({
-      where: { id },
+    const term = await db.term.findFirst({
+      where: { id, schoolId },
       select: { academicYearId: true }
     });
 
@@ -271,7 +278,7 @@ export async function deleteTerm(id: string) {
     }
 
     await db.term.delete({
-      where: { id }
+      where: { id, schoolId }
     });
 
     revalidatePath("/admin/academic/terms");
@@ -286,12 +293,13 @@ export async function deleteTerm(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete term"
     };
   }
-}
+});
 
 // Get all academic years for dropdown
-export async function getAcademicYearsForDropdown() {
+export const getAcademicYearsForDropdown = withSchoolAuthAction(async (schoolId) => {
   try {
     const academicYears = await db.academicYear.findMany({
+      where: { schoolId },
       orderBy: {
         startDate: 'desc',
       },
@@ -319,4 +327,4 @@ export async function getAcademicYearsForDropdown() {
       error: error instanceof Error ? error.message : "Failed to fetch academic years"
     };
   }
-}
+});

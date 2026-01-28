@@ -1,21 +1,66 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 
-export async function getUsersOverview() {
+export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
     const [admins, teachers, students, parents] = await Promise.all([
-      db.user.count({ where: { role: UserRole.ADMIN, active: true } }),
-      db.user.count({ where: { role: UserRole.TEACHER, active: true } }),
-      db.user.count({ where: { role: UserRole.STUDENT, active: true } }),
-      db.user.count({ where: { role: UserRole.PARENT, active: true } }),
+      db.user.count({
+        where: {
+          role: UserRole.ADMIN,
+          active: true,
+          userSchools: {
+            some: {
+              schoolId,
+              isActive: true
+            }
+          }
+        }
+      }),
+      db.user.count({
+        where: {
+          role: UserRole.TEACHER,
+          active: true,
+          userSchools: {
+            some: {
+              schoolId,
+              isActive: true
+            }
+          }
+        }
+      }),
+      db.user.count({
+        where: {
+          role: UserRole.STUDENT,
+          active: true,
+          userSchools: {
+            some: {
+              schoolId,
+              isActive: true
+            }
+          }
+        }
+      }),
+      db.user.count({
+        where: {
+          role: UserRole.PARENT,
+          active: true,
+          userSchools: {
+            some: {
+              schoolId,
+              isActive: true
+            }
+          }
+        }
+      }),
     ]);
 
     return {
@@ -31,15 +76,23 @@ export async function getUsersOverview() {
     console.error("Error fetching users overview:", error);
     return { success: false, error: "Failed to fetch users overview" };
   }
-}
+});
 
-export async function getRecentUsers(limit: number = 10) {
+export const getRecentUsers = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, limit: number = 10) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
     const users = await db.user.findMany({
       take: limit,
+      where: {
+        userSchools: {
+          some: {
+            schoolId,
+            isActive: true
+          }
+        }
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -67,15 +120,25 @@ export async function getRecentUsers(limit: number = 10) {
     console.error("Error fetching recent users:", error);
     return { success: false, error: "Failed to fetch recent users" };
   }
-}
+});
 
-export async function getAllUsers(role?: UserRole) {
+export const getAllUsers = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, role?: UserRole) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+    const where: any = {
+      userSchools: {
+        some: {
+          schoolId,
+          isActive: true
+        }
+      }
+    };
+    if (role) where.role = role;
+
     const users = await db.user.findMany({
-      where: role ? { role } : undefined,
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -95,15 +158,25 @@ export async function getAllUsers(role?: UserRole) {
     console.error("Error fetching users:", error);
     return { success: false, error: "Failed to fetch users" };
   }
-}
+});
 
-export async function getUserById(id: string) {
+export const getUserById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-    const user = await db.user.findUnique({
-      where: { id },
+    // Since findUnique can only use @unique fields (id), we can't filter by schoolId directly in where.
+    // We must use findFirst with schoolId filter, OR findUnique and verify school access in code.
+    // Using findFirst is safer for tenant isolation.
+    const user = await db.user.findFirst({
+      where: {
+        id,
+        userSchools: {
+          some: {
+            schoolId
+          }
+        }
+      },
       include: {
         teacher: true,
         student: {
@@ -151,15 +224,25 @@ export async function getUserById(id: string) {
     console.error("Error fetching user:", error);
     return { success: false, error: "Failed to fetch user" };
   }
-}
+});
 
-export async function updateUserStatus(id: string, active: boolean) {
+export const updateUserStatus = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, active: boolean) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
     const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
+    // Ensure user belongs to school before updating
+    const existingUser = await db.user.findFirst({
+      where: {
+        id,
+        userSchools: { some: { schoolId } }
+      }
+    });
+
+    if (!existingUser) return { success: false, error: "User not found" };
 
     const user = await db.user.update({
       where: { id },
@@ -172,15 +255,25 @@ export async function updateUserStatus(id: string, active: boolean) {
     console.error("Error updating user status:", error);
     return { success: false, error: "Failed to update user status" };
   }
-}
+});
 
-export async function updateUserRole(id: string, role: UserRole) {
+export const updateUserRole = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, role: UserRole) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
     const hasPerm = await hasPermission(session.user.id, "USER", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
+    // Ensure user belongs to school
+    const existingUser = await db.user.findFirst({
+      where: {
+        id,
+        userSchools: { some: { schoolId } }
+      }
+    });
+
+    if (!existingUser) return { success: false, error: "User not found" };
 
     const user = await db.user.update({
       where: { id },
@@ -193,15 +286,25 @@ export async function updateUserRole(id: string, role: UserRole) {
     console.error("Error updating user role:", error);
     return { success: false, error: "Failed to update user role" };
   }
-}
+});
 
-export async function deleteUser(id: string) {
+export const deleteUser = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
     const hasPerm = await hasPermission(session.user.id, "USER", "DELETE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+
+    // Ensure user belongs to school
+    const existingUser = await db.user.findFirst({
+      where: {
+        id,
+        userSchools: { some: { schoolId } }
+      }
+    });
+
+    if (!existingUser) return { success: false, error: "User not found" };
 
     await db.user.delete({
       where: { id },
@@ -213,12 +316,21 @@ export async function deleteUser(id: string) {
     console.error("Error deleting user:", error);
     return { success: false, error: "Failed to delete user" };
   }
-}
+});
 
-export async function getUsersForDropdown(role?: UserRole) {
+export const getUsersForDropdown = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, role?: UserRole) => {
   try {
     const users = await db.user.findMany({
-      where: role ? { role, active: true } : { active: true },
+      where: {
+        active: true,
+        ...(role ? { role } : {}),
+        userSchools: {
+          some: {
+            schoolId,
+            isActive: true
+          }
+        }
+      },
       orderBy: [
         { firstName: "asc" },
         { lastName: "asc" },
@@ -245,4 +357,4 @@ export async function getUsersForDropdown(role?: UserRole) {
     console.error("Error fetching users for dropdown:", error);
     return { success: false, error: "Failed to fetch users" };
   }
-}
+});

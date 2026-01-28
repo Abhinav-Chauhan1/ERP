@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
@@ -11,7 +12,7 @@ import { UserRole } from "@prisma/client";
  * 
  * Requirements: 4.2 - Provide child selector for multi-child filtering
  */
-export async function GET() {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -40,7 +41,10 @@ export async function GET() {
     // Get parent record
     const parent = await db.parent.findUnique({
       where: {
+        schoolId: context.schoolId,
+
         userId: user.id,
+
       },
     });
 
@@ -54,7 +58,10 @@ export async function GET() {
     // Get all children of this parent
     const parentChildren = await db.studentParent.findMany({
       where: {
+        schoolId: context.schoolId,
+
         parentId: parent.id,
+
       },
       include: {
         student: {
@@ -115,4 +122,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

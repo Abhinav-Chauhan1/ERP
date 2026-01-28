@@ -2,21 +2,17 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get teacher with detailed information
 export async function getTeacherWithDetails(teacherId: string) {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-  if (!teacherId) {
-    console.error('Invalid teacher ID provided:', teacherId);
-    return null;
-  }
-
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     console.log(`Fetching teacher details for ID: ${teacherId}`);
 
-    const teacher = await db.teacher.findUnique({
-      where: { id: teacherId },
+    const teacher = await db.teacher.findFirst({
+      where: { id: teacherId, schoolId },
       include: {
         user: true,
         // Include related data for teachers
@@ -80,8 +76,9 @@ export async function getTeacherWithDetails(teacherId: string) {
 // Get available subjects that can be assigned to a teacher
 export async function getAvailableSubjectsForTeacher(teacherId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Get subjects already assigned to this teacher
     const assignedSubjects = await db.subjectTeacher.findMany({
       where: { teacherId },
@@ -93,6 +90,7 @@ export async function getAvailableSubjectsForTeacher(teacherId: string) {
     // Get all active subjects not assigned to this teacher
     const availableSubjects = await db.subject.findMany({
       where: {
+        schoolId, // Injected
         id: {
           notIn: assignedSubjectIds
         }
@@ -126,8 +124,9 @@ export async function getAvailableSubjectsForTeacher(teacherId: string) {
 // Get available classes that can be assigned to a teacher
 export async function getAvailableClassesForTeacher(teacherId: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Get classes already assigned to this teacher
     const assignedClasses = await db.classTeacher.findMany({
       where: { teacherId },
@@ -139,6 +138,7 @@ export async function getAvailableClassesForTeacher(teacherId: string) {
     // Get all classes not assigned to this teacher, with their sections
     const availableClasses = await db.class.findMany({
       where: {
+        schoolId, // Injected
         id: {
           notIn: assignedClassIds
         }

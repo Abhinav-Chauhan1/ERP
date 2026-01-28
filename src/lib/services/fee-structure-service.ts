@@ -42,6 +42,7 @@ export interface FeeStructureFilters {
   isActive?: boolean;
   isTemplate?: boolean;
   searchTerm?: string;
+  schoolId?: string;
 }
 
 export interface DuplicateFeeStructureInput {
@@ -70,12 +71,21 @@ export class FeeStructureService {
    * Create a new fee structure with class associations
    * 
    * @param data - Fee structure creation data
+   * @param schoolId - School ID for validation
    * @returns Created fee structure with all relationships
    */
-  async createFeeStructure(data: CreateFeeStructureInput) {
+  async createFeeStructure(data: CreateFeeStructureInput, schoolId?: string) {
     // Validate that at least one class is selected
     if (!data.classIds || data.classIds.length === 0) {
       throw new Error("At least one class must be selected");
+    }
+
+    // Validate Academic Year belongs to school if schoolId provided
+    if (schoolId) {
+      const academicYear = await db.academicYear.findFirst({
+        where: { id: data.academicYearId, schoolId }
+      });
+      if (!academicYear) throw new Error("Invalid Academic Year for this school");
     }
 
     // Validate that all classes exist
@@ -139,14 +149,19 @@ export class FeeStructureService {
    * @param data - Update data
    * @returns Updated fee structure
    */
-  async updateFeeStructure(id: string, data: UpdateFeeStructureInput) {
+  async updateFeeStructure(id: string, data: UpdateFeeStructureInput, schoolId?: string) {
     // Validate that fee structure exists
     const existing = await db.feeStructure.findUnique({
       where: { id },
+      include: { academicYear: true }
     });
 
     if (!existing) {
       throw new Error("Fee structure not found");
+    }
+
+    if (schoolId && existing.academicYear.schoolId !== schoolId) {
+      throw new Error("Access denied: Fee structure belongs to another school");
     }
 
     // Validate classes if provided
@@ -247,6 +262,12 @@ export class FeeStructureService {
 
     if (filters.isActive !== undefined) {
       where.isActive = filters.isActive;
+    }
+
+    if (filters.schoolId) {
+      where.academicYear = {
+        schoolId: filters.schoolId
+      };
     }
 
     if (filters.isTemplate !== undefined) {
@@ -464,7 +485,7 @@ export class FeeStructureService {
    * @param id - Fee structure ID
    * @returns Fee structure with all relationships
    */
-  async getFeeStructureById(id: string) {
+  async getFeeStructureById(id: string, schoolId?: string) {
     const feeStructure = await db.feeStructure.findUnique({
       where: { id },
       include: {
@@ -486,6 +507,10 @@ export class FeeStructureService {
       throw new Error("Fee structure not found");
     }
 
+    if (schoolId && feeStructure.academicYear.schoolId !== schoolId) {
+      throw new Error("Access denied: Fee structure belongs to another school");
+    }
+
     return feeStructure;
   }
 
@@ -494,7 +519,18 @@ export class FeeStructureService {
    * 
    * @param id - Fee structure ID
    */
-  async deleteFeeStructure(id: string) {
+  async deleteFeeStructure(id: string, schoolId?: string) {
+    // Check ownership if schoolId provided
+    if (schoolId) {
+      const existing = await db.feeStructure.findUnique({
+        where: { id },
+        include: { academicYear: true }
+      });
+      if (existing && existing.academicYear.schoolId !== schoolId) {
+        throw new Error("Access denied");
+      }
+    }
+
     // Check if fee structure has any payments
     const paymentsCount = await db.feePayment.count({
       where: { feeStructureId: id },

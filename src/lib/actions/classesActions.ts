@@ -11,6 +11,8 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { PermissionAction } from "@prisma/client";
 import { hasPermission } from "@/lib/utils/permissions";
+import { withSchoolAuthAction, createSecureQuery } from "@/lib/auth/security-wrapper";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   ClassFormValues,
   ClassUpdateFormValues,
@@ -39,13 +41,16 @@ async function checkPermission(resource: string, action: PermissionAction, error
   return userId;
 }
 
-// Get all classes with basic info
-export async function getClasses(academicYearFilter?: string) {
+// Get all classes with basic info for current school
+export const getClasses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, academicYearFilter?: string) => {
   try {
     const where = academicYearFilter ? { academicYearId: academicYearFilter } : {};
 
     const classes = await db.class.findMany({
-      where,
+      where: {
+        schoolId,
+        ...where,
+      },
       include: {
         academicYear: {
           select: {
@@ -128,13 +133,18 @@ export async function getClasses(academicYearFilter?: string) {
       error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
-}
+});
 
 // Get a single class by ID with detailed information
 export async function getClassById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const classDetails = await db.class.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       include: {
         academicYear: true,
         reportCardTemplate: true,
@@ -340,14 +350,17 @@ export async function getClassById(id: string) {
 }
 
 // Create a new class
-export async function createClass(data: ClassFormValues) {
+export const createClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ClassFormValues) => {
   try {
     // Permission check: require CLASS:CREATE
     await checkPermission('CLASS', 'CREATE', 'You do not have permission to create classes');
 
     // Ensure academic year exists
     const academicYear = await db.academicYear.findUnique({
-      where: { id: data.academicYearId }
+      where: {
+        schoolId,
+        id: data.academicYearId
+      }
     });
 
     if (!academicYear) {
@@ -371,17 +384,20 @@ export async function createClass(data: ClassFormValues) {
       error: error instanceof Error ? error.message : "Failed to create class"
     };
   }
-}
+});
 
 // Update an existing class
-export async function updateClass(data: ClassUpdateFormValues) {
+export const updateClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ClassUpdateFormValues) => {
   try {
     // Permission check: require CLASS:UPDATE
     await checkPermission('CLASS', 'UPDATE', 'You do not have permission to update classes');
 
     // Ensure class exists
     const existingClass = await db.class.findUnique({
-      where: { id: data.id }
+      where: {
+        schoolId,
+        id: data.id
+      }
     });
 
     if (!existingClass) {
@@ -390,7 +406,10 @@ export async function updateClass(data: ClassUpdateFormValues) {
 
     // Ensure academic year exists
     const academicYear = await db.academicYear.findUnique({
-      where: { id: data.academicYearId }
+      where: {
+        schoolId,
+        id: data.academicYearId
+      }
     });
 
     if (!academicYear) {
@@ -398,7 +417,10 @@ export async function updateClass(data: ClassUpdateFormValues) {
     }
 
     const updatedClass = await db.class.update({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       data: {
         name: data.name,
         academicYearId: data.academicYearId,
@@ -416,17 +438,29 @@ export async function updateClass(data: ClassUpdateFormValues) {
       error: error instanceof Error ? error.message : "Failed to update class"
     };
   }
-}
+});
 
 // Delete a class
 export async function deleteClass(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Permission check: require CLASS:DELETE
     await checkPermission('CLASS', 'DELETE', 'You do not have permission to delete classes');
 
     // Check if class has any enrollments, timetable slots, etc.
-    const enrollments = await db.classEnrollment.findFirst({ where: { classId: id } });
-    const timetableSlots = await db.timetableSlot.findFirst({ where: { classId: id } });
+    const enrollments = await db.classEnrollment.findFirst({
+      where: {
+        schoolId,
+        classId: id
+      }
+    });
+    const timetableSlots = await db.timetableSlot.findFirst({
+      where: {
+        schoolId,
+        classId: id
+      }
+    });
 
     if (enrollments || timetableSlots) {
       return {
@@ -446,16 +480,36 @@ export async function deleteClass(id: string) {
     }
 
     // Delete class sections
-    await db.classSection.deleteMany({ where: { classId: id } });
+    await db.classSection.deleteMany({
+      where: {
+        schoolId,
+        classId: id
+      }
+    });
 
     // Delete class teacher assignments
-    await db.classTeacher.deleteMany({ where: { classId: id } });
+    await db.classTeacher.deleteMany({
+      where: {
+        schoolId,
+        classId: id
+      }
+    });
 
     // Delete subject-class relationships
-    await db.subjectClass.deleteMany({ where: { classId: id } });
+    await db.subjectClass.deleteMany({
+      where: {
+        schoolId,
+        classId: id
+      }
+    });
 
     // Delete the class (cascade will handle FeeStructureClass and FeeTypeClassAmount)
-    await db.class.delete({ where: { id } });
+    await db.class.delete({
+      where: {
+        schoolId,
+        id
+      }
+    });
 
     console.log(`[CASCADE DELETE] Successfully deleted class ${cascadeInfo.className} (${id}) and ${cascadeInfo.totalRecordsAffected} related fee records`);
 
@@ -473,9 +527,14 @@ export async function deleteClass(id: string) {
 // Create a new class section
 export async function createClassSection(data: ClassSectionFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Ensure class exists
     const existingClass = await db.class.findUnique({
-      where: { id: data.classId }
+      where: {
+        schoolId,
+        id: data.classId
+      }
     });
 
     if (!existingClass) {
@@ -485,8 +544,11 @@ export async function createClassSection(data: ClassSectionFormValues) {
     // Check if section name already exists for this class
     const existingSection = await db.classSection.findFirst({
       where: {
+        schoolId,
+
         classId: data.classId,
         name: data.name
+
       }
     });
 
@@ -517,9 +579,14 @@ export async function createClassSection(data: ClassSectionFormValues) {
 // Update an existing class section
 export async function updateClassSection(data: ClassSectionUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Ensure section exists
     const existingSection = await db.classSection.findUnique({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       include: { class: true }
     });
 
@@ -530,7 +597,11 @@ export async function updateClassSection(data: ClassSectionUpdateFormValues) {
     // Check if section name already exists for this class (except this section)
     const duplicateSection = await db.classSection.findFirst({
       where: {
-        id: { not: data.id },
+        schoolId,
+
+        id: {
+          not: data.id
+        },
         classId: data.classId,
         name: data.name
       }
@@ -541,7 +612,10 @@ export async function updateClassSection(data: ClassSectionUpdateFormValues) {
     }
 
     const updatedSection = await db.classSection.update({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       data: {
         name: data.name,
         capacity: data.capacity,
@@ -563,9 +637,14 @@ export async function updateClassSection(data: ClassSectionUpdateFormValues) {
 // Delete a class section
 export async function deleteClassSection(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Get section details to revalidate paths
     const section = await db.classSection.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       select: { classId: true }
     });
 
@@ -574,8 +653,18 @@ export async function deleteClassSection(id: string) {
     }
 
     // Check if section has any enrollments or timetable slots
-    const enrollments = await db.classEnrollment.findFirst({ where: { sectionId: id } });
-    const timetableSlots = await db.timetableSlot.findFirst({ where: { sectionId: id } });
+    const enrollments = await db.classEnrollment.findFirst({
+      where: {
+        schoolId,
+        sectionId: id
+      }
+    });
+    const timetableSlots = await db.timetableSlot.findFirst({
+      where: {
+        schoolId,
+        sectionId: id
+      }
+    });
 
     if (enrollments || timetableSlots) {
       return {
@@ -585,7 +674,12 @@ export async function deleteClassSection(id: string) {
     }
 
     // Delete the section
-    await db.classSection.delete({ where: { id } });
+    await db.classSection.delete({
+      where: {
+        schoolId,
+        id
+      }
+    });
 
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${section.classId}`);
@@ -602,12 +696,17 @@ export async function deleteClassSection(id: string) {
 // Assign teacher to class (optionally to a specific section)
 export async function assignTeacherToClass(data: ClassTeacherFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Check if this teacher is already assigned to this class/section combination
     const existingAssignment = await db.classTeacher.findFirst({
       where: {
+        schoolId,
+
         classId: data.classId,
         sectionId: data.sectionId || null,
         teacherId: data.teacherId
+
       }
     });
 
@@ -667,9 +766,14 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
 // Update teacher assignment
 export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Check if assignment exists
     const existingAssignment = await db.classTeacher.findUnique({
-      where: { id: data.id }
+      where: {
+        schoolId,
+        id: data.id
+      }
     });
 
     if (!existingAssignment) {
@@ -680,7 +784,10 @@ export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues
     if (data.isClassHead) {
       // Need to find out the sectionId of the current assignment to scope the check
       const currentAssignment = await db.classTeacher.findUnique({
-        where: { id: data.id },
+        where: {
+          schoolId,
+          id: data.id
+        },
         select: { sectionId: true, classId: true }
       });
 
@@ -707,7 +814,10 @@ export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues
     }
 
     const updatedAssignment = await db.classTeacher.update({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       data: {
         isClassHead: data.isClassHead
       }
@@ -728,9 +838,14 @@ export async function updateTeacherAssignment(data: ClassTeacherUpdateFormValues
 // Remove teacher from class
 export async function removeTeacherFromClass(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Get assignment details to revalidate paths
     const assignment = await db.classTeacher.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       select: { classId: true }
     });
 
@@ -738,7 +853,12 @@ export async function removeTeacherFromClass(id: string) {
       return { success: false, error: "Teacher assignment not found" };
     }
 
-    await db.classTeacher.delete({ where: { id } });
+    await db.classTeacher.delete({
+      where: {
+        schoolId,
+        id
+      }
+    });
 
     revalidatePath("/admin/classes");
     revalidatePath(`/admin/classes/${assignment.classId}`);
@@ -755,7 +875,11 @@ export async function removeTeacherFromClass(id: string) {
 // Get all academic years for dropdown
 export async function getAcademicYearsForDropdown() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const academicYears = await db.academicYear.findMany({
+      where: { schoolId },
       orderBy: {
         startDate: 'desc',
       },
@@ -786,7 +910,11 @@ export async function getAcademicYearsForDropdown() {
 // Get all teachers for dropdown
 export async function getTeachersForDropdown() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const teachers = await db.teacher.findMany({
+      where: { schoolId },
       include: {
         user: {
           select: {
@@ -826,9 +954,14 @@ export async function getTeachersForDropdown() {
 // Get available students for a class
 export async function getAvailableStudentsForClass(classId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // First, get the class to check academic year
     const classData = await db.class.findUnique({
-      where: { id: classId },
+      where: {
+        schoolId,
+        id: classId
+      },
       select: { academicYearId: true }
     });
 
@@ -838,7 +971,10 @@ export async function getAvailableStudentsForClass(classId: string) {
 
     // Get IDs of students already enrolled in this class
     const enrolledStudents = await db.classEnrollment.findMany({
-      where: { classId: classId },
+      where: {
+        schoolId,
+        classId: classId
+      },
       select: { studentId: true }
     });
 
@@ -847,7 +983,11 @@ export async function getAvailableStudentsForClass(classId: string) {
     // Get all active students not already enrolled in this class
     const availableStudents = await db.student.findMany({
       where: {
-        id: { notIn: enrolledStudentIds },
+        schoolId,
+
+        id: {
+          notIn: enrolledStudentIds
+        },
         user: { active: true },
       },
       select: {
@@ -883,21 +1023,27 @@ export async function getAvailableStudentsForClass(classId: string) {
 }
 
 // Get sections that need a head teacher
-export async function getSectionsWithoutHeadTeacher() {
+export const getSectionsWithoutHeadTeacher = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     // 1. Get all active classes and their sections
     const classes = await db.class.findMany({
       where: {
+        schoolId,
+
         academicYear: {
           isCurrent: true
+
         }
       },
       include: {
         // Get class-level head teacher (sectionId is null)
         teachers: {
           where: {
+            schoolId,
+
             isClassHead: true,
             sectionId: null
+
           }
         },
         sections: {
@@ -905,7 +1051,10 @@ export async function getSectionsWithoutHeadTeacher() {
             // Get section-level head teacher
             teachers: {
               where: {
+                schoolId,
+
                 isClassHead: true
+
               }
             }
           }
@@ -956,14 +1105,19 @@ export async function getSectionsWithoutHeadTeacher() {
       error: error instanceof Error ? error.message : "Failed to fetch pending assignments"
     };
   }
-}
+});
 
 // Enroll a student in a class
 export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Validate inputs
     const student = await db.student.findUnique({
-      where: { id: data.studentId }
+      where: {
+        schoolId,
+        id: data.studentId
+      }
     });
 
     if (!student) {
@@ -971,7 +1125,10 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
     }
 
     const classSection = await db.classSection.findUnique({
-      where: { id: data.sectionId },
+      where: {
+        schoolId,
+        id: data.sectionId
+      },
       include: {
         class: true,
         _count: { select: { enrollments: true } }
@@ -990,8 +1147,11 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
     // Check if student is already enrolled in the class
     const existingEnrollment = await db.classEnrollment.findFirst({
       where: {
+        schoolId,
+
         studentId: data.studentId,
         classId: data.classId,
+
       }
     });
 
@@ -1003,8 +1163,11 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
     if (data.rollNumber) {
       const existingRollNumber = await db.classEnrollment.findFirst({
         where: {
+          schoolId,
+
           sectionId: data.sectionId,
           rollNumber: data.rollNumber,
+
         }
       });
 
@@ -1039,9 +1202,14 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
 // Update student enrollment
 export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Validate enrollment exists
     const existingEnrollment = await db.classEnrollment.findUnique({
-      where: { id: data.id }
+      where: {
+        schoolId,
+        id: data.id
+      }
     });
 
     if (!existingEnrollment) {
@@ -1052,9 +1220,13 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
     if (data.rollNumber && data.rollNumber !== existingEnrollment.rollNumber) {
       const existingRollNumber = await db.classEnrollment.findFirst({
         where: {
+          schoolId,
+
           sectionId: data.sectionId,
           rollNumber: data.rollNumber,
-          id: { not: data.id }
+          id: {
+            not: data.id
+          }
         }
       });
 
@@ -1065,7 +1237,10 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
 
     // Update enrollment
     const enrollment = await db.classEnrollment.update({
-      where: { id: data.id },
+      where: {
+        schoolId,
+        id: data.id
+      },
       data: {
         sectionId: data.sectionId,
         rollNumber: data.rollNumber || null,
@@ -1087,9 +1262,14 @@ export async function updateStudentEnrollment(data: StudentEnrollmentUpdateFormV
 // Remove student from class
 export async function removeStudentFromClass(enrollmentId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     // Get the enrollment to revalidate path later
     const enrollment = await db.classEnrollment.findUnique({
-      where: { id: enrollmentId },
+      where: {
+        schoolId,
+        id: enrollmentId
+      },
       select: { classId: true }
     });
 
@@ -1099,7 +1279,10 @@ export async function removeStudentFromClass(enrollmentId: string) {
 
     // Delete the enrollment
     await db.classEnrollment.delete({
-      where: { id: enrollmentId }
+      where: {
+        schoolId,
+        id: enrollmentId
+      }
     });
 
     revalidatePath(`/admin/classes/${enrollment.classId}`);
@@ -1125,10 +1308,15 @@ function formatTime(date: Date) {
 // Get exams for a specific class
 export async function getExamsForClass(classId: string, academicYearId?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return []; // Returning empty array as safety for this helper
     // If academicYearId is not provided, fetch it from the class
     if (!academicYearId) {
       const classData = await db.class.findUnique({
-        where: { id: classId },
+        where: {
+          schoolId,
+          id: classId
+        },
         select: { academicYearId: true }
       });
       if (!classData) return [];
@@ -1137,7 +1325,10 @@ export async function getExamsForClass(classId: string, academicYearId?: string)
 
     // 1. Get subjects assigned to this class
     const subjectClasses = await db.subjectClass.findMany({
-      where: { classId },
+      where: {
+        schoolId,
+        classId
+      },
       select: { subjectId: true }
     });
 
@@ -1149,7 +1340,11 @@ export async function getExamsForClass(classId: string, academicYearId?: string)
     // We filter by terms belonging to the academic year
     const exams = await db.exam.findMany({
       where: {
-        subjectId: { in: subjectIds },
+        schoolId,
+
+        subjectId: {
+          in: subjectIds
+        },
         term: {
           academicYearId: academicYearId
         }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
@@ -27,7 +28,7 @@ interface GroupedResults {
  * 
  * Requirements: 23.1, 23.2, 23.3, 23.4, 23.5
  */
-export async function GET(request: NextRequest) {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     const session = await auth();
     const userId = session?.user?.id;
@@ -55,7 +56,9 @@ export async function GET(request: NextRequest) {
 
     // Get user role to determine access
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: {
+        id: userId
+      },
       select: { role: true },
     });
 
@@ -73,12 +76,20 @@ export async function GET(request: NextRequest) {
     };
 
     // Requirement 23.1: Search across students, teachers, parents, documents, and announcements
-    
+
     // Search Students
     const students = await prisma.student.findMany({
       where: {
+        schoolId: context.schoolId,
+
         OR: [
-          { user: { firstName: { contains: query, mode: "insensitive" } } },
+          {
+            user: {
+              firstName: {
+                contains: query, mode: "insensitive"
+              }
+            }
+          },
           { user: { lastName: { contains: query, mode: "insensitive" } } },
           { user: { email: { contains: query, mode: "insensitive" } } },
           { admissionId: { contains: query, mode: "insensitive" } },
@@ -95,7 +106,10 @@ export async function GET(request: NextRequest) {
           },
         },
         enrollments: {
-          where: { status: "ACTIVE" },
+          where: {
+            schoolId: context.schoolId,
+            status: "ACTIVE"
+          },
           include: {
             class: {
               select: { name: true },
@@ -124,8 +138,16 @@ export async function GET(request: NextRequest) {
     // Search Teachers
     const teachers = await prisma.teacher.findMany({
       where: {
+        schoolId: context.schoolId,
+
         OR: [
-          { user: { firstName: { contains: query, mode: "insensitive" } } },
+          {
+            user: {
+              firstName: {
+                contains: query, mode: "insensitive"
+              }
+            }
+          },
           { user: { lastName: { contains: query, mode: "insensitive" } } },
           { user: { email: { contains: query, mode: "insensitive" } } },
           { employeeId: { contains: query, mode: "insensitive" } },
@@ -166,8 +188,16 @@ export async function GET(request: NextRequest) {
     // Search Parents
     const parents = await prisma.parent.findMany({
       where: {
+        schoolId: context.schoolId,
+
         OR: [
-          { user: { firstName: { contains: query, mode: "insensitive" } } },
+          {
+            user: {
+              firstName: {
+                contains: query, mode: "insensitive"
+              }
+            }
+          },
           { user: { lastName: { contains: query, mode: "insensitive" } } },
           { user: { email: { contains: query, mode: "insensitive" } } },
         ],
@@ -214,8 +244,14 @@ export async function GET(request: NextRequest) {
     // Search Documents
     const documents = await prisma.document.findMany({
       where: {
+        schoolId: context.schoolId,
+
         OR: [
-          { title: { contains: query, mode: "insensitive" } },
+          {
+            title: {
+              contains: query, mode: "insensitive"
+            }
+          },
           { description: { contains: query, mode: "insensitive" } },
         ],
       },
@@ -241,8 +277,14 @@ export async function GET(request: NextRequest) {
     // Search Announcements
     const announcements = await prisma.announcement.findMany({
       where: {
+        schoolId: context.schoolId,
+
         OR: [
-          { title: { contains: query, mode: "insensitive" } },
+          {
+            title: {
+              contains: query, mode: "insensitive"
+            }
+          },
           { content: { contains: query, mode: "insensitive" } },
         ],
       },
@@ -298,4 +340,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

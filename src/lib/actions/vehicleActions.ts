@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { vehicleSchema, vehicleUpdateSchema, type VehicleFormValues, type VehicleUpdateFormValues } from "@/lib/schemas/vehicle-schemas";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all vehicles with pagination and filters
 export async function getVehicles(params?: {
@@ -14,14 +15,15 @@ export async function getVehicles(params?: {
   status?: string;
   vehicleType?: string;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  /* const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
+    const { schoolId } = await requireSchoolAccess();
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: any = { schoolId };
 
     // Search filter
     if (params?.search) {
@@ -79,11 +81,12 @@ export async function getVehicles(params?: {
 
 // Get a single vehicle by ID
 export async function getVehicleById(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  /* const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
+    const { schoolId } = await requireSchoolAccess();
     const vehicle = await db.vehicle.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         driver: true,
         routes: {
@@ -125,17 +128,18 @@ export async function getVehicleById(id: string) {
 // Create a new vehicle
 export async function createVehicle(data: VehicleFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId, user } = await requireSchoolAccess();
+    // const session = await auth();
+    // if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "CREATE");
+    const hasPerm = await hasPermission(user.id, "VEHICLE", "CREATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Validate input
     const validated = vehicleSchema.parse(data);
 
     // Check if registration number already exists
-    const existing = await db.vehicle.findUnique({
-      where: { registrationNo: validated.registrationNo },
+    const existing = await db.vehicle.findFirst({
+      where: { registrationNo: validated.registrationNo, schoolId },
     });
 
     if (existing) {
@@ -145,6 +149,7 @@ export async function createVehicle(data: VehicleFormValues) {
     // Create vehicle
     const vehicle = await db.vehicle.create({
       data: {
+        schoolId,
         registrationNo: validated.registrationNo,
         vehicleType: validated.vehicleType,
         capacity: validated.capacity,
@@ -170,17 +175,18 @@ export async function createVehicle(data: VehicleFormValues) {
 // Update a vehicle
 export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId, user } = await requireSchoolAccess();
+    /* const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
 
-    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "UPDATE");
+    const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Validate input
     const validated = vehicleUpdateSchema.parse(data);
 
     // Check if vehicle exists
     const existing = await db.vehicle.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existing) {
@@ -189,8 +195,8 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
 
     // If registration number is being updated, check for duplicates
     if (validated.registrationNo && validated.registrationNo !== existing.registrationNo) {
-      const duplicate = await db.vehicle.findUnique({
-        where: { registrationNo: validated.registrationNo },
+      const duplicate = await db.vehicle.findFirst({
+        where: { registrationNo: validated.registrationNo, schoolId },
       });
 
       if (duplicate) {
@@ -200,7 +206,7 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
 
     // Update vehicle
     const vehicle = await db.vehicle.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         ...(validated.registrationNo && { registrationNo: validated.registrationNo }),
         ...(validated.vehicleType && { vehicleType: validated.vehicleType }),
@@ -228,14 +234,15 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
 // Delete a vehicle
 export async function deleteVehicle(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId, user } = await requireSchoolAccess();
+    /* const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
 
-    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "DELETE");
+    const hasPerm = await hasPermission(user.id, "VEHICLE", "DELETE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         routes: true,
       },
@@ -255,7 +262,7 @@ export async function deleteVehicle(id: string) {
 
     // Delete vehicle
     await db.vehicle.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/transport/vehicles");
@@ -272,14 +279,15 @@ export async function deleteVehicle(id: string) {
 // Assign driver to vehicle
 export async function assignDriverToVehicle(vehicleId: string, driverId: string | null) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const { schoolId, user } = await requireSchoolAccess();
+    /* const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
 
-    const hasPerm = await hasPermission(session.user.id, "VEHICLE", "UPDATE");
+    const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
-      where: { id: vehicleId },
+      where: { id: vehicleId, schoolId },
     });
 
     if (!vehicle) {
@@ -289,7 +297,7 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
     // If assigning a driver, check if driver exists
     if (driverId) {
       const driver = await db.driver.findUnique({
-        where: { id: driverId },
+        where: { id: driverId, schoolId },
       });
 
       if (!driver) {
@@ -299,7 +307,7 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
 
     // Update vehicle with driver
     const updatedVehicle = await db.vehicle.update({
-      where: { id: vehicleId },
+      where: { id: vehicleId, schoolId },
       data: { driverId },
       include: {
         driver: true,
@@ -320,14 +328,15 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
 
 // Get vehicle statistics
 export async function getVehicleStats() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  /* const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
+    const { schoolId } = await requireSchoolAccess();
     const [total, active, inactive, maintenance] = await Promise.all([
-      db.vehicle.count(),
-      db.vehicle.count({ where: { status: "ACTIVE" } }),
-      db.vehicle.count({ where: { status: "INACTIVE" } }),
-      db.vehicle.count({ where: { status: "MAINTENANCE" } }),
+      db.vehicle.count({ where: { schoolId } }),
+      db.vehicle.count({ where: { status: "ACTIVE", schoolId } }),
+      db.vehicle.count({ where: { status: "INACTIVE", schoolId } }),
+      db.vehicle.count({ where: { status: "MAINTENANCE", schoolId } }),
     ]);
 
     return {

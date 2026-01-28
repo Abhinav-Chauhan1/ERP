@@ -1,9 +1,10 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 
 // Get parent with detailed information
-export async function getParentWithDetails(parentId: string) {
+export const getParentWithDetails = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, parentId: string) => {
   if (!parentId) {
     console.error('Invalid parent ID provided:', parentId);
     return null;
@@ -11,9 +12,12 @@ export async function getParentWithDetails(parentId: string) {
 
   try {
     console.log(`Fetching parent details for ID: ${parentId}`);
-    
-    const parent = await db.parent.findUnique({
-      where: { id: parentId },
+
+    const parent = await db.parent.findFirst({
+      where: {
+        id: parentId,
+        schoolId,
+      },
       include: {
         user: true,
         children: {
@@ -27,6 +31,7 @@ export async function getParentWithDetails(parentId: string) {
                     section: true,
                   },
                   where: {
+                    schoolId,
                     status: "ACTIVE"
                   },
                   take: 1
@@ -62,4 +67,4 @@ export async function getParentWithDetails(parentId: string) {
     console.error(`Error in getParentWithDetails for ID ${parentId}:`, error);
     throw error;
   }
-}
+});

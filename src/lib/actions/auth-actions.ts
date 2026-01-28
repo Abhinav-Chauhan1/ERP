@@ -130,6 +130,9 @@ export async function loginAction({
         case "PARENT":
           redirectUrl = "/parent";
           break;
+        case "SUPER_ADMIN":
+          redirectUrl = "/super-admin";
+          break;
       }
     }
 
@@ -243,7 +246,7 @@ async function clearLoginAttempts(key: string): Promise<void> {
 
 function cleanupLoginAttempts(): void {
   const now = Date.now();
-  for (const [key, attempt] of loginAttempts.entries()) {
+  for (const [key, attempt] of Array.from(loginAttempts.entries())) {
     if (now > attempt.resetTime) {
       loginAttempts.delete(key);
     }

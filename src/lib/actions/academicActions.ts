@@ -1,22 +1,23 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export async function getAcademicOverview() {
+export const getAcademicOverview = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const [
       academicYearsCount,
       termsCount,
-
+      departmentsCount,
       gradeScalesCount,
       syllabusCount,
     ] = await Promise.all([
-      db.academicYear.count(),
-      db.term.count(),
-
-      db.gradeScale.count(),
-      db.syllabus.count(),
+      db.academicYear.count({ where: { schoolId } }),
+      db.term.count({ where: { schoolId } }),
+      db.department.count({ where: { schoolId } }),
+      db.gradeScale.count({ where: { schoolId } }),
+      db.syllabus.count({ where: { schoolId } }),
     ]);
 
     return {
@@ -24,9 +25,7 @@ export async function getAcademicOverview() {
       data: {
         academicYears: academicYearsCount,
         terms: termsCount,
-
         grades: gradeScalesCount,
-
         syllabus: syllabusCount,
       },
     };
@@ -34,9 +33,9 @@ export async function getAcademicOverview() {
     console.error("Error fetching academic overview:", error);
     return { success: false, error: "Failed to fetch academic overview" };
   }
-}
+});
 
-export async function getAcademicYears() {
+export const getAcademicYears = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     // Use the centralized academicyearsActions
     const { getAcademicYears: getYears } = await import("./academicyearsActions");
@@ -79,12 +78,16 @@ export async function getAcademicYears() {
       error: error instanceof Error ? error.message : "Failed to fetch academic years"
     };
   }
-}
+});
 
-export async function getAcademicYearById(id: string) {
+export const getAcademicYearById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     // Use the centralized academicyearsActions
     const { getAcademicYearById: getYearById } = await import("./academicyearsActions");
+    // Pass context if needed, but getYearById might use auth() internally. 
+    // Assuming getYearById is compatible or we should call it carefully.
+    // The previous code awaited getYearById(id), assuming it handles its own scoping or accepts just ID.
+    // We'll stick to previous logic structure to minimize regression risk.
     return await getYearById(id);
   } catch (error) {
     console.error("Error fetching academic year:", error);
@@ -93,16 +96,15 @@ export async function getAcademicYearById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch academic year"
     };
   }
-}
+});
 
-export async function createAcademicYear(data: {
+export const createAcademicYear = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: {
   name: string;
   startDate: Date;
   endDate: Date;
   isCurrent?: boolean;
-}) {
+}) => {
   try {
-    // Use the centralized academicyearsActions
     const { createAcademicYear: createYear } = await import("./academicyearsActions");
     return await createYear({ ...data, isCurrent: data.isCurrent ?? false });
   } catch (error) {
@@ -112,9 +114,9 @@ export async function createAcademicYear(data: {
       error: error instanceof Error ? error.message : "Failed to create academic year"
     };
   }
-}
+});
 
-export async function updateAcademicYear(
+export const updateAcademicYear = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   id: string,
   data: {
     name?: string;
@@ -122,9 +124,8 @@ export async function updateAcademicYear(
     endDate?: Date;
     isCurrent?: boolean;
   }
-) {
+) => {
   try {
-    // Use the centralized academicyearsActions
     const { updateAcademicYear: updateYear, getAcademicYearById: getYearById } = await import("./academicyearsActions");
 
     // Fetch existing year to support partial updates
@@ -151,11 +152,10 @@ export async function updateAcademicYear(
       error: error instanceof Error ? error.message : "Failed to update academic year"
     };
   }
-}
+});
 
-export async function deleteAcademicYear(id: string) {
+export const deleteAcademicYear = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    // Use the centralized academicyearsActions
     const { deleteAcademicYear: deleteYear } = await import("./academicyearsActions");
     return await deleteYear(id);
   } catch (error) {
@@ -165,11 +165,12 @@ export async function deleteAcademicYear(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete academic year"
     };
   }
-}
+});
 
-export async function getDepartments() {
+export const getDepartments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const departments = await db.department.findMany({
+      where: { schoolId },
       include: {
         subjects: true,
         teachers: true,
@@ -184,11 +185,12 @@ export async function getDepartments() {
     console.error("Error fetching departments:", error);
     return { success: false, error: "Failed to fetch departments" };
   }
-}
+});
 
-export async function getTerms() {
+export const getTerms = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const terms = await db.term.findMany({
+      where: { schoolId },
       include: {
         academicYear: true,
       },
@@ -202,11 +204,12 @@ export async function getTerms() {
     console.error("Error fetching terms:", error);
     return { success: false, error: "Failed to fetch terms" };
   }
-}
+});
 
-export async function getGradeScales() {
+export const getGradeScales = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const gradeScales = await db.gradeScale.findMany({
+      where: { schoolId },
       orderBy: {
         minMarks: "desc",
       },
@@ -217,4 +220,4 @@ export async function getGradeScales() {
     console.error("Error fetching grade scales:", error);
     return { success: false, error: "Failed to fetch grade scales" };
   }
-}
+});

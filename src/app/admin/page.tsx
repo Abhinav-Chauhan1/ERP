@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { schoolContextService } from "@/lib/services/school-context-service";
 import {
   PrimaryStatsSection,
   SecondaryStatsSection,
@@ -26,10 +28,28 @@ export const dynamic = "force-dynamic";
 /**
  * Admin Dashboard with Suspense boundaries
  * Each section loads independently to prevent layout shifts
+ * 
+ * Requirements: 9.2 - Implements onboarding check for school admin dashboard
  */
 export default async function AdminDashboard() {
   const session = await auth();
   const firstName = session?.user?.name?.split(" ")[0] || "Admin";
+
+  // Requirement 9.2: Check if school admin needs onboarding
+  if (session?.user?.role === "ADMIN" && session?.user?.schoolId) {
+    try {
+      const onboardingStatus = await schoolContextService.getSchoolOnboardingStatus(session.user.schoolId);
+      
+      // If school is not onboarded, redirect to setup wizard
+      if (onboardingStatus && !onboardingStatus.isOnboarded) {
+        redirect("/setup");
+      }
+    } catch (error) {
+      console.error("Error checking onboarding status:", error);
+      // Continue to dashboard if there's an error checking onboarding status
+      // This prevents the dashboard from being completely inaccessible due to service errors
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">

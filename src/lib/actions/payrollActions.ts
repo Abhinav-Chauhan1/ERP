@@ -2,47 +2,43 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@/lib/auth-helpers";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
+import { auth } from "@/auth";
+
+// Helper to check permission
+async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error('Unauthorized');
+  const allowed = await hasPermission(userId, resource, action);
+  if (!allowed) throw new Error(errorMessage || 'Permission denied');
+  return userId;
+}
 
 // Get all payrolls with filters
-export async function getPayrolls(filters?: {
+// Get all payrolls with filters
+export const getPayrolls = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: {
   month?: number;
   year?: number;
   teacherId?: string;
   status?: string;
   limit?: number;
-}) {
+}) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const where: any = {};
+    const where: any = {
+      teacher: {
+        schoolId
+      }
+    };
 
     // Check permissions
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.READ);
+    await checkPermission('PAYROLL', 'READ');
 
-    if (!hasPerm) {
-      // If no global read permission, check if user is a teacher viewing their own records
-      const dbUser = await db.user.findUnique({
-        where: { id: user.id },
-        include: { teacher: true },
-      });
-
-      if (dbUser?.teacher) {
-        // Force filter to current teacher
-        where.teacherId = dbUser.teacher.id;
-      } else {
-        return { success: false, error: "Insufficient permissions" };
-      }
-    } else {
-      // Admin/Authorized user can filter by teacher ID
-      if (filters?.teacherId) {
-        where.teacherId = filters.teacherId;
-      }
+    if (filters?.teacherId) {
+      // Allow filtering by specific teacher, but still scoped to school
+      where.teacherId = filters.teacherId;
     }
 
     if (filters?.month) {
@@ -85,18 +81,19 @@ export async function getPayrolls(filters?: {
     console.error("Error fetching payrolls:", error);
     return { success: false, error: "Failed to fetch payrolls" };
   }
-}
+});
 
 // Get single payroll by ID
-export async function getPayrollById(id: string) {
+// Get single payroll by ID
+export const getPayrollById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const payroll = await db.payroll.findUnique({
-      where: { id },
+    const payroll = await db.payroll.findFirst({
+      where: {
+        id,
+        teacher: {
+          schoolId
+        }
+      },
       include: {
         teacher: {
           include: {
@@ -110,22 +107,12 @@ export async function getPayrollById(id: string) {
       return { success: false, error: "Payroll not found" };
     }
 
-    // Check permissions
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.READ);
-
-    if (!hasPerm) {
-      // Check if the payroll belongs to the current user (if teacher)
-      if (payroll.teacher.userId !== user.id) {
-        return { success: false, error: "Unauthorized" };
-      }
-    }
-
     return { success: true, data: payroll };
   } catch (error) {
     console.error("Error fetching payroll:", error);
     return { success: false, error: "Failed to fetch payroll" };
   }
-}
+});
 
 // Salary Structure Input Interface
 export interface SalaryStructureInput {
@@ -141,21 +128,21 @@ export interface SalaryStructureInput {
 }
 
 // Upsert Salary Structure
-export async function upsertSalaryStructure(teacherId: string, data: SalaryStructureInput) {
+// Upsert Salary Structure
+export const upsertSalaryStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, teacherId: string, data: SalaryStructureInput) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    await checkPermission('PAYROLL', 'UPDATE');
 
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.UPDATE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    // Verify teacher belongs to school
+    const teacher = await db.teacher.findFirst({
+      where: { id: teacherId, schoolId }
+    });
+    if (!teacher) return { success: false, error: "Teacher not found" };
 
     const structure = await db.salaryStructure.upsert({
       where: { teacherId },
       create: {
+        schoolId, // Ensure relation is set
         teacherId,
         basic: data.basic,
         hra: data.hra,
@@ -186,27 +173,17 @@ export async function upsertSalaryStructure(teacherId: string, data: SalaryStruc
     console.error("Error upserting salary structure:", error);
     return { success: false, error: "Failed to save salary structure" };
   }
-}
+});
 
 // Get Salary Structure
-export async function getSalaryStructure(teacherId: string) {
+// Get Salary Structure
+export const getSalaryStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, teacherId: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.READ);
-    if (!hasPerm) {
-      // Allow teachers to view their own structure
-      const dbUser = await db.user.findUnique({
-        where: { id: user.id },
-        include: { teacher: true },
-      });
-      if (dbUser?.teacher?.id !== teacherId) {
-        return { success: false, error: "Insufficient permissions" };
-      }
-    }
+    // Verify teacher belongs to school
+    const teacher = await db.teacher.findFirst({
+      where: { id: teacherId, schoolId }
+    });
+    if (!teacher) return { success: false, error: "Teacher not found" };
 
     const structure = await db.salaryStructure.findUnique({
       where: { teacherId },
@@ -217,20 +194,19 @@ export async function getSalaryStructure(teacherId: string) {
     console.error("Error fetching salary structure:", error);
     return { success: false, error: "Failed to fetch salary structure" };
   }
-}
+});
 
 // Generate payroll for a teacher
-export async function generatePayroll(data: any) {
+// Generate payroll for a teacher
+export const generatePayroll = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: any) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    await checkPermission('PAYROLL', 'CREATE');
 
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.CREATE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    // Verify teacher belongs to school
+    const teacher = await db.teacher.findFirst({
+      where: { id: data.teacherId, schoolId }
+    });
+    if (!teacher) return { success: false, error: "Teacher not found" };
 
     // Check if payroll already exists for this teacher, month, and year
     const existing = await db.payroll.findFirst({
@@ -308,20 +284,18 @@ export async function generatePayroll(data: any) {
     console.error("Error generating payroll:", error);
     return { success: false, error: "Failed to generate payroll" };
   }
-}
+});
 
 // Update payroll
-export async function updatePayroll(id: string, data: any) {
+// Update payroll
+export const updatePayroll = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: any) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    await checkPermission('PAYROLL', 'UPDATE');
 
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.UPDATE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    const existing = await db.payroll.findFirst({
+      where: { id, teacher: { schoolId } }
+    });
+    if (!existing) return { success: false, error: "Payroll not found" };
 
     // We only update the net totals or remarks usually, but let's allow updating components if passed
     // For simplicity in this edit, assuming we just recalculate if components are passed
@@ -352,20 +326,18 @@ export async function updatePayroll(id: string, data: any) {
     console.error("Error updating payroll:", error);
     return { success: false, error: "Failed to update payroll" };
   }
-}
+});
 
 // Process payment (mark as paid)
-export async function processPayment(id: string, paymentDate?: Date) {
+// Process payment (mark as paid)
+export const processPayment = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, paymentDate?: Date) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    await checkPermission('PAYROLL', 'APPROVE');
 
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.APPROVE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    const existing = await db.payroll.findFirst({
+      where: { id, teacher: { schoolId } }
+    });
+    if (!existing) return { success: false, error: "Payroll not found" };
 
     const payroll = await db.payroll.update({
       where: { id },
@@ -388,24 +360,17 @@ export async function processPayment(id: string, paymentDate?: Date) {
     console.error("Error processing payment:", error);
     return { success: false, error: "Failed to process payment" };
   }
-}
+});
 
 // Delete payroll
-export async function deletePayroll(id: string) {
+// Delete payroll
+export const deletePayroll = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.DELETE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission('PAYROLL', 'DELETE');
 
     // Check if payroll is already paid
-    const payroll = await db.payroll.findUnique({
-      where: { id },
+    const payroll = await db.payroll.findFirst({
+      where: { id, teacher: { schoolId } },
     });
 
     if (payroll?.status === "COMPLETED") {
@@ -422,22 +387,14 @@ export async function deletePayroll(id: string) {
     console.error("Error deleting payroll:", error);
     return { success: false, error: "Failed to delete payroll" };
   }
-}
+});
 
 // Get teachers for payroll dropdown
-export async function getTeachersForPayroll() {
+// Get teachers for payroll dropdown
+export const getTeachersForPayroll = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.READ);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
-
     const teachers = await db.teacher.findMany({
+      where: { schoolId },
       include: {
         user: {
           select: {
@@ -476,22 +433,17 @@ export async function getTeachersForPayroll() {
     console.error("Error fetching teachers:", error);
     return { success: false, error: "Failed to fetch teachers" };
   }
-}
+});
 
 // Get payroll statistics
-export async function getPayrollStats(month?: number, year?: number) {
+// Get payroll statistics
+export const getPayrollStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, month?: number, year?: number) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.READ);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
-
-    const where: any = {};
+    const where: any = {
+      teacher: {
+        schoolId
+      }
+    };
 
     if (month) where.month = month;
     if (year) where.year = year;
@@ -538,23 +490,17 @@ export async function getPayrollStats(month?: number, year?: number) {
     console.error("Error fetching payroll stats:", error);
     return { success: false, error: "Failed to fetch statistics" };
   }
-}
+});
 
 // Export payroll report
-export async function exportPayrollReport(month: number, year: number) {
+// Export payroll report
+export const exportPayrollReport = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, month: number, year: number) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.EXPORT);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission('PAYROLL', 'EXPORT');
 
     const payrolls = await db.payroll.findMany({
       where: {
+        teacher: { schoolId },
         month,
         year,
       },
@@ -581,22 +527,16 @@ export async function exportPayrollReport(month: number, year: number) {
     console.error("Error exporting payroll report:", error);
     return { success: false, error: "Failed to export report" };
   }
-}
+});
 
 // Bulk generate payrolls for all teachers
-export async function bulkGeneratePayrolls(month: number, year: number, defaultSalary: number) {
+// Bulk generate payrolls for all teachers
+export const bulkGeneratePayrolls = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, month: number, year: number, defaultSalary: number) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const hasPerm = await hasPermission(user.id, "PAYROLL", PermissionAction.CREATE);
-    if (!hasPerm) {
-      return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission('PAYROLL', 'CREATE');
 
     const teachers = await db.teacher.findMany({
+      where: { schoolId },
       include: {
         user: true,
       },
@@ -653,7 +593,7 @@ export async function bulkGeneratePayrolls(month: number, year: number, defaultS
     console.error("Error bulk generating payrolls:", error);
     return { success: false, error: "Failed to bulk generate payrolls" };
   }
-}
+});
 
 
 

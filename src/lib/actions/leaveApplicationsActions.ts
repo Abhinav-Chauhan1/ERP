@@ -11,26 +11,26 @@ import { sendLeaveNotification } from "@/lib/services/communication-service";
 import { currentUser } from "@/lib/auth-helpers";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
+import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 // Create a new leave application
-export async function createLeaveApplication(data: LeaveApplicationFormValues) {
+export const createLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, data: LeaveApplicationFormValues) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
     // Security check: Ensure user is applying for themselves OR has permission to apply for others
     let isAuthorized = false;
 
     // Check if applying for self
-    if (data.applicantType === "STUDENT" && user.role === "STUDENT") {
-      const student = await db.student.findUnique({ where: { userId: user.id } });
+    if (data.applicantType === "STUDENT" && userRole === "STUDENT") {
+      const student = await db.student.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (student && student.id === data.applicantId) {
         isAuthorized = true;
       }
-    } else if (data.applicantType === "TEACHER" && user.role === "TEACHER") {
-      const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+    } else if (data.applicantType === "TEACHER" && userRole === "TEACHER") {
+      const teacher = await db.teacher.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (teacher && teacher.id === data.applicantId) {
         isAuthorized = true;
       }
@@ -38,7 +38,7 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
 
     // If not self, check for admin permissions
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.UPDATE);
+      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
       if (hasPerm) {
         isAuthorized = true;
       }
@@ -53,8 +53,8 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
     let applicantUserId = '';
 
     if (data.applicantType === "STUDENT") {
-      const student = await db.student.findUnique({
-        where: { id: data.applicantId },
+      const student = await db.student.findFirst({
+        where: { id: data.applicantId, schoolId },
         include: { user: true },
       });
       if (!student) {
@@ -63,8 +63,8 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
       applicantName = `${student.user.firstName} ${student.user.lastName}`;
       applicantUserId = student.userId;
     } else if (data.applicantType === "TEACHER") {
-      const teacher = await db.teacher.findUnique({
-        where: { id: data.applicantId },
+      const teacher = await db.teacher.findFirst({
+        where: { id: data.applicantId, schoolId },
         include: { user: true },
       });
       if (!teacher) {
@@ -77,6 +77,7 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
     // Check for overlapping leave applications
     const overlappingLeave = await db.leaveApplication.findFirst({
       where: {
+        schoolId,
         applicantId: data.applicantId,
         status: { in: ["PENDING", "APPROVED"] },
         OR: [
@@ -97,6 +98,7 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
 
     const leaveApplication = await db.leaveApplication.create({
       data: {
+        schoolId,
         applicantId: data.applicantId,
         applicantType: data.applicantType,
         fromDate: data.fromDate,
@@ -124,7 +126,15 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
       // If teacher leave, notify administrators
       if (data.applicantType === 'TEACHER') {
         const admins = await db.user.findMany({
-          where: { role: 'ADMIN' },
+          where: {
+            role: 'ADMIN',
+            userSchools: {
+              some: {
+                schoolId,
+                isActive: true
+              }
+            }
+          },
         });
 
         for (const admin of admins) {
@@ -154,19 +164,14 @@ export async function createLeaveApplication(data: LeaveApplicationFormValues) {
       error: error instanceof Error ? error.message : "Failed to create leave application"
     };
   }
-}
+});
 
 // Update an existing leave application
-export async function updateLeaveApplication(data: LeaveApplicationUpdateFormValues) {
+export const updateLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, data: LeaveApplicationUpdateFormValues) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    // Check if the leave application exists
-    const existingApplication = await db.leaveApplication.findUnique({
-      where: { id: data.id }
+    // Check if the leave application exists and belongs to the school
+    const existingApplication = await db.leaveApplication.findFirst({
+      where: { id: data.id, schoolId }
     });
 
     if (!existingApplication) {
@@ -178,16 +183,20 @@ export async function updateLeaveApplication(data: LeaveApplicationUpdateFormVal
 
     // Check ownership
     if (existingApplication.applicantType === "STUDENT") {
-      const student = await db.student.findUnique({ where: { userId: user.id } });
+      const student = await db.student.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (student && student.id === existingApplication.applicantId) isAuthorized = true;
     } else if (existingApplication.applicantType === "TEACHER") {
-      const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+      const teacher = await db.teacher.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (teacher && teacher.id === existingApplication.applicantId) isAuthorized = true;
     }
 
     // If not owner, check permission
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.UPDATE);
+      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
       if (hasPerm) isAuthorized = true;
     }
 
@@ -199,6 +208,7 @@ export async function updateLeaveApplication(data: LeaveApplicationUpdateFormVal
     if (existingApplication.status === "PENDING" && data.status === "PENDING") {
       const overlappingLeave = await db.leaveApplication.findFirst({
         where: {
+          schoolId,
           applicantId: data.applicantId,
           id: { not: data.id },
           status: { in: ["PENDING", "APPROVED"] },
@@ -220,7 +230,7 @@ export async function updateLeaveApplication(data: LeaveApplicationUpdateFormVal
     }
 
     const leaveApplication = await db.leaveApplication.update({
-      where: { id: data.id },
+      where: { id: data.id, schoolId },
       data: {
         applicantId: data.applicantId,
         applicantType: data.applicantType,
@@ -241,25 +251,20 @@ export async function updateLeaveApplication(data: LeaveApplicationUpdateFormVal
       error: error instanceof Error ? error.message : "Failed to update leave application"
     };
   }
-}
+});
 
 // Approve or reject a leave application
-export async function processLeaveApplication(data: LeaveApprovalFormValues) {
+export const processLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, data: LeaveApprovalFormValues) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
     // Strict Permission Check: Only authorized roles can approve/reject
-    const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.UPDATE);
+    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.UPDATE);
     if (!hasPerm) {
       return { success: false, error: "Insufficient permissions to process leave applications" };
     }
 
-    // Check if the leave application exists
-    const existingApplication = await db.leaveApplication.findUnique({
-      where: { id: data.id }
+    // Check if the leave application exists and belongs to the school
+    const existingApplication = await db.leaveApplication.findFirst({
+      where: { id: data.id, schoolId }
     });
 
     if (!existingApplication) {
@@ -278,8 +283,8 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
     let applicantUserId = '';
 
     if (existingApplication.applicantType === "STUDENT") {
-      const student = await db.student.findUnique({
-        where: { id: existingApplication.applicantId },
+      const student = await db.student.findFirst({
+        where: { id: existingApplication.applicantId, schoolId },
         include: { user: true },
       });
       if (student) {
@@ -287,8 +292,8 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
         applicantUserId = student.userId;
       }
     } else if (existingApplication.applicantType === "TEACHER") {
-      const teacher = await db.teacher.findUnique({
-        where: { id: existingApplication.applicantId },
+      const teacher = await db.teacher.findFirst({
+        where: { id: existingApplication.applicantId, schoolId },
         include: { user: true },
       });
       if (teacher) {
@@ -299,8 +304,8 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
 
     // Get approver name
     let approverName = '';
-    // Use current user as approver if not provided, or validate provided match
-    const approverId = data.approvedById || user.id;
+    // Use current user as approver
+    const approverId = userId;
 
     const approver = await db.user.findUnique({
       where: { id: approverId },
@@ -310,7 +315,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
     }
 
     const leaveApplication = await db.leaveApplication.update({
-      where: { id: data.id },
+      where: { id: data.id, schoolId },
       data: {
         status: data.status,
         approvedById: approverId,
@@ -354,6 +359,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
       if (applicantType === "STUDENT") {
         const studentEnrollment = await db.classEnrollment.findFirst({
           where: {
+            schoolId,
             studentId: applicantId,
             status: "ACTIVE"
           }
@@ -363,6 +369,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
           for (const date of dates) {
             const existingAttendance = await db.studentAttendance.findFirst({
               where: {
+                schoolId,
                 studentId: applicantId,
                 date: date,
                 sectionId: studentEnrollment.sectionId
@@ -371,7 +378,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
 
             if (existingAttendance) {
               await db.studentAttendance.update({
-                where: { id: existingAttendance.id },
+                where: { id: existingAttendance.id, schoolId },
                 data: {
                   status: "LEAVE",
                   reason: existingApplication.reason,
@@ -381,6 +388,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
             } else {
               await db.studentAttendance.create({
                 data: {
+                  schoolId,
                   studentId: applicantId,
                   date: date,
                   sectionId: studentEnrollment.sectionId,
@@ -396,6 +404,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
         for (const date of dates) {
           const existingAttendance = await db.teacherAttendance.findFirst({
             where: {
+              schoolId,
               teacherId: applicantId,
               date: date
             }
@@ -403,7 +412,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
 
           if (existingAttendance) {
             await db.teacherAttendance.update({
-              where: { id: existingAttendance.id },
+              where: { id: existingAttendance.id, schoolId },
               data: {
                 status: "LEAVE",
                 reason: existingApplication.reason,
@@ -413,6 +422,7 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
           } else {
             await db.teacherAttendance.create({
               data: {
+                schoolId,
                 teacherId: applicantId,
                 date: date,
                 status: "LEAVE",
@@ -434,18 +444,13 @@ export async function processLeaveApplication(data: LeaveApprovalFormValues) {
       error: error instanceof Error ? error.message : "Failed to process leave application"
     };
   }
-}
+});
 
 // Delete a leave application
-export async function deleteLeaveApplication(id: string) {
+export const deleteLeaveApplication = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const existingApplication = await db.leaveApplication.findUnique({
-      where: { id }
+    const existingApplication = await db.leaveApplication.findFirst({
+      where: { id, schoolId }
     });
 
     if (!existingApplication) {
@@ -457,15 +462,19 @@ export async function deleteLeaveApplication(id: string) {
 
     // Check ownership
     if (existingApplication.applicantType === "STUDENT") {
-      const student = await db.student.findUnique({ where: { userId: user.id } });
+      const student = await db.student.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (student && student.id === existingApplication.applicantId) isAuthorized = true;
     } else if (existingApplication.applicantType === "TEACHER") {
-      const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+      const teacher = await db.teacher.findUnique({
+        where: { userId: userId, schoolId }
+      });
       if (teacher && teacher.id === existingApplication.applicantId) isAuthorized = true;
     }
 
     if (!isAuthorized) {
-      const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.DELETE);
+      const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.DELETE);
       if (hasPerm) isAuthorized = true;
     }
 
@@ -482,7 +491,7 @@ export async function deleteLeaveApplication(id: string) {
     }
 
     await db.leaveApplication.delete({
-      where: { id }
+      where: { id, schoolId }
     });
 
     revalidatePath("/admin/attendance/leave-applications");
@@ -494,29 +503,29 @@ export async function deleteLeaveApplication(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete leave application"
     };
   }
-}
+});
 
 // Get all leave applications
-export async function getLeaveApplications(
+export const getLeaveApplications = withSchoolAuthAction(async (
+  schoolId, userId, userRole,
   status?: string,
   applicantType?: string,
   startDate?: Date,
   endDate?: Date
-) {
+) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const where: any = { schoolId };
 
-    const where: any = {};
-
-    const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
 
     if (!hasPerm) {
       // Limit to own applications
-      const student = await db.student.findUnique({ where: { userId: user.id } });
-      const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+      const student = await db.student.findUnique({
+        where: { userId: userId, schoolId }
+      });
+      const teacher = await db.teacher.findUnique({
+        where: { userId: userId, schoolId }
+      });
 
       if (student) {
         where.applicantType = "STUDENT";
@@ -585,7 +594,7 @@ export async function getLeaveApplications(
     // Batch fetch all students and teachers
     const [students, teachers] = await Promise.all([
       studentIds.length > 0 ? db.student.findMany({
-        where: { id: { in: studentIds } },
+        where: { id: { in: studentIds }, schoolId },
         include: {
           user: {
             select: {
@@ -595,7 +604,7 @@ export async function getLeaveApplications(
             }
           },
           enrollments: {
-            where: { status: "ACTIVE" },
+            where: { status: "ACTIVE", schoolId },
             include: {
               class: true,
               section: true
@@ -604,7 +613,7 @@ export async function getLeaveApplications(
         }
       }) : Promise.resolve([]),
       teacherIds.length > 0 ? db.teacher.findMany({
-        where: { id: { in: teacherIds } },
+        where: { id: { in: teacherIds }, schoolId },
         include: {
           user: {
             select: {
@@ -662,18 +671,13 @@ export async function getLeaveApplications(
       error: error instanceof Error ? error.message : "Failed to fetch leave applications"
     };
   }
-}
+});
 
 // Get a single leave application by ID
-export async function getLeaveApplicationById(id: string) {
+export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const leaveApplication = await db.leaveApplication.findUnique({
-      where: { id }
+    const leaveApplication = await db.leaveApplication.findFirst({
+      where: { id, schoolId }
     });
 
     if (!leaveApplication) {
@@ -684,16 +688,20 @@ export async function getLeaveApplicationById(id: string) {
     let isAuthorized = false;
 
     // Check permission
-    const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
     if (hasPerm) isAuthorized = true;
 
     // Check ownership if not admin
     if (!isAuthorized) {
       if (leaveApplication.applicantType === "STUDENT") {
-        const student = await db.student.findUnique({ where: { userId: user.id } });
+        const student = await db.student.findUnique({
+          where: { userId: userId, schoolId }
+        });
         if (student && student.id === leaveApplication.applicantId) isAuthorized = true;
       } else if (leaveApplication.applicantType === "TEACHER") {
-        const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+        const teacher = await db.teacher.findUnique({
+          where: { userId: userId, schoolId }
+        });
         if (teacher && teacher.id === leaveApplication.applicantId) isAuthorized = true;
       }
     }
@@ -705,8 +713,8 @@ export async function getLeaveApplicationById(id: string) {
     let applicantDetails = null;
 
     if (leaveApplication.applicantType === "STUDENT") {
-      const student = await db.student.findUnique({
-        where: { id: leaveApplication.applicantId },
+      const student = await db.student.findFirst({
+        where: { id: leaveApplication.applicantId, schoolId },
         include: {
           user: {
             select: {
@@ -717,7 +725,7 @@ export async function getLeaveApplicationById(id: string) {
             }
           },
           enrollments: {
-            where: { status: "ACTIVE" },
+            where: { status: "ACTIVE", schoolId },
             include: {
               class: true,
               section: true
@@ -737,8 +745,8 @@ export async function getLeaveApplicationById(id: string) {
         };
       }
     } else if (leaveApplication.applicantType === "TEACHER") {
-      const teacher = await db.teacher.findUnique({
-        where: { id: leaveApplication.applicantId },
+      const teacher = await db.teacher.findFirst({
+        where: { id: leaveApplication.applicantId, schoolId },
         include: {
           user: {
             select: {
@@ -796,7 +804,7 @@ export async function getLeaveApplicationById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch leave application"
     };
   }
-}
+});
 
 // Get leave applications for a specific student or teacher
 export async function getLeaveApplicationsForEntity(entityId: string, entityType: string) {

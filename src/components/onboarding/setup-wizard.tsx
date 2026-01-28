@@ -16,6 +16,8 @@ import Image from "next/image";
 interface SetupWizardProps {
     currentStep: number;
     hasExistingAdmin: boolean;
+    redirectUrl?: string;
+    schoolId?: string;
 }
 
 export interface WizardData {
@@ -91,7 +93,7 @@ const initialData: WizardData = {
     sections: ["A", "B"],
 };
 
-export function SetupWizard({ currentStep: initialStep, hasExistingAdmin }: SetupWizardProps) {
+export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redirectUrl, schoolId }: SetupWizardProps) {
     const [step, setStep] = useState(initialStep);
     const [data, setData] = useState<WizardData>(initialData);
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
@@ -157,7 +159,7 @@ export function SetupWizard({ currentStep: initialStep, hasExistingAdmin }: Setu
             case 5:
                 return <ClassesStep {...commonProps} />;
             case 6:
-                return <CompleteStep data={data} />;
+                return <CompleteStep data={data} redirectUrl={redirectUrl} schoolId={schoolId} />;
             default:
                 return null;
         }

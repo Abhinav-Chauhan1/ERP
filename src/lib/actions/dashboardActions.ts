@@ -1,9 +1,10 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 
-export async function getDashboardStats() {
+export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -14,10 +15,24 @@ export async function getDashboardStats() {
       totalClasses,
       totalSubjects,
     ] = await Promise.all([
-      db.student.count({ where: { user: { active: true } } }),
-      db.teacher.count({ where: { user: { active: true } } }),
-      db.class.count(),
-      db.subject.count(),
+      db.student.count({
+        where: {
+          schoolId,
+          user: {
+            active: true
+          }
+        }
+      }),
+      db.teacher.count({
+        where: {
+          schoolId,
+          user: {
+            active: true
+          }
+        }
+      }),
+      db.class.count({ where: { schoolId } }),
+      db.subject.count({ where: { schoolId } }),
     ]);
 
     return {
@@ -33,18 +48,21 @@ export async function getDashboardStats() {
     console.error("Error fetching dashboard stats:", error);
     return { success: false, error: "Failed to fetch dashboard stats" };
   }
-}
+});
 
 // New functions for Phase 10
 
-export async function getTotalStudents() {
+export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalStudents = await db.student.count({
       where: {
+        schoolId,
+
         user: {
           active: true,
+
         },
       },
     });
@@ -57,16 +75,19 @@ export async function getTotalStudents() {
     console.error("Error fetching total students:", error);
     return { success: false, error: "Failed to fetch total students" };
   }
-}
+});
 
-export async function getTotalTeachers() {
+export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalTeachers = await db.teacher.count({
       where: {
+        schoolId,
+
         user: {
           active: true,
+
         },
       },
     });
@@ -79,16 +100,19 @@ export async function getTotalTeachers() {
     console.error("Error fetching total teachers:", error);
     return { success: false, error: "Failed to fetch total teachers" };
   }
-}
+});
 
-export async function getPendingFeePayments() {
+export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const pendingPayments = await db.feePayment.aggregate({
       where: {
+        schoolId,
+
         status: {
           in: ["PENDING", "PARTIAL"],
+
         },
       },
       _sum: {
@@ -110,9 +134,9 @@ export async function getPendingFeePayments() {
     console.error("Error fetching pending fee payments:", error);
     return { success: false, error: "Failed to fetch pending fee payments" };
   }
-}
+});
 
-export async function getTodaysAttendance() {
+export const getTodaysAttendance = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -126,6 +150,9 @@ export async function getTodaysAttendance() {
     const studentAttendance = await db.studentAttendance.groupBy({
       by: ["status"],
       where: {
+        student: {
+          schoolId
+        },
         date: {
           gte: today,
           lt: tomorrow,
@@ -140,6 +167,9 @@ export async function getTodaysAttendance() {
     const teacherAttendance = await db.teacherAttendance.groupBy({
       by: ["status"],
       where: {
+        teacher: {
+          schoolId
+        },
         date: {
           gte: today,
           lt: tomorrow,
@@ -193,9 +223,9 @@ export async function getTodaysAttendance() {
     console.error("Error fetching today's attendance:", error);
     return { success: false, error: "Failed to fetch today's attendance" };
   }
-}
+});
 
-export async function getUpcomingEventsCount() {
+export const getUpcomingEventsCount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -204,9 +234,12 @@ export async function getUpcomingEventsCount() {
 
     const upcomingEventsCount = await db.event.count({
       where: {
+        schoolId,
+
         startDate: {
           gte: now,
           lte: thirtyDaysFromNow,
+
         },
         status: {
           in: ["UPCOMING", "ONGOING"],
@@ -222,9 +255,9 @@ export async function getUpcomingEventsCount() {
     console.error("Error fetching upcoming events count:", error);
     return { success: false, error: "Failed to fetch upcoming events count" };
   }
-}
+});
 
-export async function getRecentAnnouncementsCount() {
+export const getRecentAnnouncementsCount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -233,9 +266,12 @@ export async function getRecentAnnouncementsCount() {
 
     const recentAnnouncementsCount = await db.announcement.count({
       where: {
+        schoolId,
+
         isActive: true,
         createdAt: {
           gte: sevenDaysAgo,
+
         },
       },
     });
@@ -248,9 +284,9 @@ export async function getRecentAnnouncementsCount() {
     console.error("Error fetching recent announcements count:", error);
     return { success: false, error: "Failed to fetch recent announcements count" };
   }
-}
+});
 
-export async function getStudentAttendanceData() {
+export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -260,8 +296,11 @@ export async function getStudentAttendanceData() {
 
     const attendanceRecords = await db.studentAttendance.findMany({
       where: {
+        schoolId,
+
         date: {
           gte: twelveMonthsAgo,
+
         },
       },
       select: {
@@ -297,14 +336,15 @@ export async function getStudentAttendanceData() {
     console.error("Error fetching attendance data:", error);
     return { success: false, error: "Failed to fetch attendance data" };
   }
-}
+});
 
-export async function getExamResultsData() {
+export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get average exam results by subject
     const subjects = await db.subject.findMany({
+      where: { schoolId },
       take: 6,
       select: {
         id: true,
@@ -316,8 +356,11 @@ export async function getExamResultsData() {
       subjects.map(async (subject) => {
         const results = await db.examResult.findMany({
           where: {
+            schoolId,
+
             exam: {
               subjectId: subject.id,
+
             },
             isAbsent: false,
           },
@@ -342,13 +385,14 @@ export async function getExamResultsData() {
     console.error("Error fetching exam results:", error);
     return { success: false, error: "Failed to fetch exam results" };
   }
-}
+});
 
-export async function getEnrollmentDistribution() {
+export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const classes = await db.class.findMany({
+      where: { schoolId },
       select: {
         id: true,
         name: true,
@@ -356,7 +400,10 @@ export async function getEnrollmentDistribution() {
           select: {
             enrollments: {
               where: {
+                schoolId,
+
                 status: 'ACTIVE',
+
               },
             },
           },
@@ -378,15 +425,16 @@ export async function getEnrollmentDistribution() {
     console.error("Error fetching enrollment distribution:", error);
     return { success: false, error: "Failed to fetch enrollment distribution" };
   }
-}
+});
 
-export async function getRecentActivities() {
+export const getRecentActivities = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get recent activities from various sources with timeout protection
     const [recentExams, recentAssignments, recentAnnouncements] = await Promise.all([
       db.exam.findMany({
+        where: { schoolId },
         take: 2,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -406,8 +454,9 @@ export async function getRecentActivities() {
             },
           },
         },
-      }).catch(() => []),
+      }).catch(() => [] as any),
       db.assignment.findMany({
+        where: { schoolId },
         take: 2,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -427,7 +476,7 @@ export async function getRecentActivities() {
             },
           },
         },
-      }).catch(() => []),
+      }).catch(() => [] as any),
       db.announcement.findMany({
         take: 1,
         orderBy: { createdAt: 'desc' },
@@ -443,7 +492,7 @@ export async function getRecentActivities() {
             },
           },
         },
-      }).catch(() => []),
+      }).catch(() => [] as any),
     ]);
 
     const activities = [
@@ -488,9 +537,9 @@ export async function getRecentActivities() {
     console.error("Error fetching recent activities:", error);
     return { success: false, error: "Failed to fetch recent activities" };
   }
-}
+});
 
-export async function getUpcomingEvents() {
+export const getUpcomingEvents = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -499,9 +548,12 @@ export async function getUpcomingEvents() {
 
     const events = await db.event.findMany({
       where: {
+        schoolId,
+
         startDate: {
           gte: now,
           lte: thirtyDaysFromNow,
+
         },
         status: {
           in: ['UPCOMING', 'ONGOING'],
@@ -525,9 +577,9 @@ export async function getUpcomingEvents() {
     console.error("Error fetching upcoming events:", error);
     return { success: false, error: "Failed to fetch upcoming events" };
   }
-}
+});
 
-export async function getNotifications() {
+export const getNotifications = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
@@ -538,8 +590,13 @@ export async function getNotifications() {
     const attendanceBySection = await db.studentAttendance.groupBy({
       by: ['sectionId'],
       where: {
+        student: {
+          schoolId
+        },
+
         date: {
           gte: sevenDaysAgo,
+
         },
       },
       _count: {
@@ -550,9 +607,14 @@ export async function getNotifications() {
     // Get pending fee payments
     const pendingPayments = await db.feePayment.count({
       where: {
+        student: {
+          schoolId
+        },
+
         status: 'PENDING',
         paymentDate: {
           lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Due within 7 days
+
         },
       },
     });
@@ -560,9 +622,12 @@ export async function getNotifications() {
     // Get upcoming events count
     const upcomingEventsCount = await db.event.count({
       where: {
+        schoolId,
+
         startDate: {
           gte: new Date(),
           lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+
         },
         status: 'UPCOMING',
       },
@@ -605,4 +670,4 @@ export async function getNotifications() {
     console.error("Error fetching notifications:", error);
     return { success: false, error: "Failed to fetch notifications" };
   }
-}
+});

@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "reportId": "report_1769326761643",
+    "templateName": "Test Report 1769326750815",
+    "generatedAt": "2026-01-25T07:39:21.643Z",
+    "timeRange": {
+      "startDate": "2026-01-16T07:39:10.815Z",
+      "endDate": "2026-01-25T07:39:10.815Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-16T07:39:10.815Z",
+        "endDate": "2026-01-25T07:39:10.815Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "usage_overview",
+      "title": "Usage Overview",
+      "type": "metrics",
+      "data": {
+        "totalSchools": 44,
+        "activeSchools": 43
+      }
+    },
+    {
+      "id": "usage_by_feature",
+      "title": "Usage by Feature",
+      "type": "chart",
+      "data": [
+        {
+          "feature": "payment_processed",
+          "usage": 22,
+          "schools": 1
+        },
+        {
+          "feature": "student_enrolled",
+          "usage": 20,
+          "schools": 1
+        },
+        {
+          "feature": "user_login",
+          "usage": 24,
+          "schools": 2
+        },
+        {
+          "feature": "message_sent",
+          "usage": 26,
+          "schools": 1
+        },
+        {
+          "feature": "report_generated",
+          "usage": 19,
+          "schools": 1
+        },
+        {
+          "feature": "assignment_submitted",
+          "usage": 11,
+          "schools": 1
+        },
+        {
+          "feature": "exam_created",
+          "usage": 29,
+          "schools": 1
+        },
+        {
+          "feature": "api_call",
+          "usage": 1,
+          "schools": 1
+        },
+        {
+          "feature": "feature_usage",
+          "usage": 1,
+          "schools": 1
+        }
+      ],
+      "visualization": {
+        "id": "usage_chart",
+        "type": "chart",
+        "title": "Feature Usage",
+        "config": {
+          "chartType": "bar",
+          "xAxis": "feature",
+          "yAxis": "usage"
+        },
+        "position": {
+          "x": 0,
+          "y": 0,
+          "width": 12,
+          "height": 6
+        }
+      }
+    }
+  ],
+  "summary": {
+    "totalSchools": 44,
+    "activeSchools": 43
+  }
+}

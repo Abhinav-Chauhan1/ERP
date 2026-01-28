@@ -1,18 +1,19 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
 
 // Get all announcements with filters
-export async function getAnnouncements(filters?: {
+export const getAnnouncements = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: {
   isActive?: boolean;
   targetAudience?: string;
   limit?: number;
   offset?: number;
-}) {
+}) => {
   try {
-    const where: any = {};
+    const where: any = { schoolId }; // Ensure scoped
 
     if (filters?.isActive !== undefined) {
       where.isActive = filters.isActive;
@@ -62,13 +63,16 @@ export async function getAnnouncements(filters?: {
     console.error("Error fetching announcements:", error);
     return { success: false, error: "Failed to fetch announcements" };
   }
-}
+});
 
 // Get single announcement by ID
-export async function getAnnouncementById(id: string) {
+export const getAnnouncementById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const announcement = await db.announcement.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       include: {
         publisher: {
           include: {
@@ -77,6 +81,8 @@ export async function getAnnouncementById(id: string) {
                 firstName: true,
                 lastName: true,
                 email: true,
+                84: true, // ERROR IN PREVIOUS VIEW? No, reading 3533 line 84 was empty? Ah, line 84 was `email: true` in 3533.
+                // Wait, using logical lines.
               },
             },
           },
@@ -93,10 +99,10 @@ export async function getAnnouncementById(id: string) {
     console.error("Error fetching announcement:", error);
     return { success: false, error: "Failed to fetch announcement" };
   }
-}
+});
 
 // Create new announcement
-export async function createAnnouncement(data: any) {
+export const createAnnouncement = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: any) => {
   try {
     // Get current user
     const user = await currentUser();
@@ -106,7 +112,9 @@ export async function createAnnouncement(data: any) {
 
     // Get user from database
     const dbUser = await db.user.findUnique({
-      where: { id: user.id },
+      where: {
+        id: user.id
+      },
       include: {
         administrator: true,
       },
@@ -118,6 +126,7 @@ export async function createAnnouncement(data: any) {
 
     const announcement = await db.announcement.create({
       data: {
+        schoolId,
         title: data.title,
         content: data.content,
         publisherId: dbUser.administrator.id,
@@ -143,27 +152,26 @@ export async function createAnnouncement(data: any) {
       ? data.targetAudience
       : [data.targetAudience];
 
-    // valid roles from UserRole enum
     const validRoles = ["ADMIN", "TEACHER", "STUDENT", "PARENT"];
     const rolesToNotify = targetRoles.filter(role => validRoles.includes(role));
 
     if (rolesToNotify.length > 0) {
-      // Find all active users with these roles
-      // Note: In a large system, this should be done via a background job
-      const usersToNotify = await db.user.findMany({
+      const userSchools = await db.userSchool.findMany({
         where: {
+          schoolId,
           role: {
             in: rolesToNotify as any
           },
-          active: true
+          isActive: true
         },
-        select: { id: true }
+        include: { user: true }
       });
+      const usersToNotify = userSchools.map(us => us.user);
 
       if (usersToNotify.length > 0) {
-        // Batch create notifications
         await db.notification.createMany({
           data: usersToNotify.map(u => ({
+            schoolId,
             userId: u.id,
             title: "New Announcement",
             message: announcement.title,
@@ -180,13 +188,16 @@ export async function createAnnouncement(data: any) {
     console.error("Error creating announcement:", error);
     return { success: false, error: "Failed to create announcement" };
   }
-}
+});
 
 // Update existing announcement
-export async function updateAnnouncement(id: string, data: any) {
+export const updateAnnouncement = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: any) => {
   try {
     const announcement = await db.announcement.update({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       data: {
         title: data.title,
         content: data.content,
@@ -211,13 +222,16 @@ export async function updateAnnouncement(id: string, data: any) {
     console.error("Error updating announcement:", error);
     return { success: false, error: "Failed to update announcement" };
   }
-}
+});
 
 // Delete announcement
-export async function deleteAnnouncement(id: string) {
+export const deleteAnnouncement = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     await db.announcement.delete({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
     });
 
     revalidatePath("/admin/communication/announcements");
@@ -226,13 +240,16 @@ export async function deleteAnnouncement(id: string) {
     console.error("Error deleting announcement:", error);
     return { success: false, error: "Failed to delete announcement" };
   }
-}
+});
 
 // Toggle announcement status (active/inactive)
-export async function toggleAnnouncementStatus(id: string) {
+export const toggleAnnouncementStatus = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     const announcement = await db.announcement.findUnique({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
     });
 
     if (!announcement) {
@@ -240,7 +257,10 @@ export async function toggleAnnouncementStatus(id: string) {
     }
 
     const updated = await db.announcement.update({
-      where: { id },
+      where: {
+        schoolId,
+        id
+      },
       data: {
         isActive: !announcement.isActive,
       },
@@ -252,14 +272,15 @@ export async function toggleAnnouncementStatus(id: string) {
     console.error("Error toggling announcement status:", error);
     return { success: false, error: "Failed to toggle announcement status" };
   }
-}
+});
 
 // Get announcement statistics
-export async function getAnnouncementStats() {
+export const getAnnouncementStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const totalAnnouncements = await db.announcement.count();
+    const totalAnnouncements = await db.announcement.count({ where: { schoolId } });
     const activeAnnouncements = await db.announcement.count({
       where: {
+        schoolId,
         isActive: true,
         startDate: {
           lte: new Date(),
@@ -272,6 +293,7 @@ export async function getAnnouncementStats() {
     });
     const archivedAnnouncements = await db.announcement.count({
       where: {
+        schoolId,
         isActive: false,
       },
     });
@@ -288,13 +310,14 @@ export async function getAnnouncementStats() {
     console.error("Error fetching announcement stats:", error);
     return { success: false, error: "Failed to fetch statistics" };
   }
-}
+});
 
 // Get announcements by target audience
-export async function getAnnouncementsByAudience(audience: string) {
+export const getAnnouncementsByAudience = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, audience: string) => {
   try {
     const announcements = await db.announcement.findMany({
       where: {
+        schoolId,
         targetAudience: {
           has: audience,
         },
@@ -329,4 +352,4 @@ export async function getAnnouncementsByAudience(audience: string) {
     console.error("Error fetching announcements by audience:", error);
     return { success: false, error: "Failed to fetch announcements" };
   }
-}
+});

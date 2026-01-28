@@ -326,9 +326,23 @@ async function handleAttendanceConfirmation(
       return;
     }
 
+    // Verify school context (Optional but good for audit)
+    // attendance.schoolId should match student.schoolId (which is implicit)
+
+
+    if (!attendance) {
+      console.warn('Attendance record not found for student and date:', { studentId, dateStr });
+      return;
+    }
+
     // Update the attendance record with parent confirmation timestamp
+    // We use the ID, which is unique, but we could also add schoolId check if we had it handy from the record
     await prisma.studentAttendance.update({
-      where: { id: attendance.id },
+      where: {
+        id: attendance.id,
+        // Ensure we are in the same school as the record we just found
+        schoolId: attendance.schoolId
+      },
       data: {
         updatedAt: new Date(),
         // Note: Could add a parentConfirmedAt field in the future
@@ -525,13 +539,18 @@ async function handleLeaveApproval(
 
     // Update leave application
     await prisma.leaveApplication.update({
-      where: { id: leaveId },
+      where: {
+        id: leaveId,
+        // Ensure scope
+        schoolId: leaveApplication.schoolId
+      },
       data: {
         status: newStatus,
         approvedById: approver.id,
         approvedOn: new Date(),
         remarks: `${action === 'approve' ? 'Approved' : 'Rejected'} via WhatsApp`,
       },
+      // Note: approvedById is a User ID, we perform the check above
     });
 
     // 3. Log confirmation message to approver

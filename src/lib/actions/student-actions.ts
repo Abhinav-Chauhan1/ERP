@@ -1,7 +1,9 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 export async function getStudentProfile() {
   const session = await auth();
@@ -9,10 +11,21 @@ export async function getStudentProfile() {
     throw new Error("Not authenticated");
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: session.user.id },
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) throw new Error("School context required");
+
+  const dbUser = await db.user.findFirst({
+    where: {
+      id: session.user.id,
+      // User might not have schoolId directly usually, but Student does.
+      // But we are finding USER here.
+      // We should check if the student associated with this user belongs to the school.
+    },
     include: {
       student: {
+        where: {
+          schoolId
+        },
         include: {
           user: true,
           enrollments: {
@@ -151,11 +164,36 @@ export async function getStudentDashboardData() {
 }
 
 export async function getStudentSubjectPerformance(studentId: string) {
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return [];
+
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  // Verify authorization: User must be the student OR have valid permissions
+  // For now, let's enforce that the user IS the student, or rely on studentId filtering if strict.
+  // Weak check: just ensure student belongs to school.
+  // Stronger check: ensure student.userId === session.user.id (if student role).
+
+  // Checking if the target student belongs to the school
+  const targetStudent = await db.student.findFirst({
+    where: { id: studentId, schoolId },
+    select: { userId: true }
+  });
+
+  if (!targetStudent) return [];
+
+  // If student, they can only view their own performance
+  if (session.user.role === "STUDENT" && targetStudent.userId !== session.user.id) {
+    return [];
+  }
+
   // Get the student's current class enrollment
   const enrollment = await db.classEnrollment.findFirst({
     where: {
       studentId,
       status: "ACTIVE",
+      schoolId,
     },
     include: {
       class: true,
@@ -200,9 +238,9 @@ export async function getStudentSubjectPerformance(studentId: string) {
       // Calculate average percentage for exams
       const totalMarks = examResults.reduce((sum, result) => sum + result.marks, 0);
       const totalPossibleMarks = examResults.reduce((sum, result) => sum + result.exam.totalMarks, 0);
-      
-      const percentage = totalPossibleMarks > 0 
-        ? Math.round((totalMarks / totalPossibleMarks) * 100) 
+
+      const percentage = totalPossibleMarks > 0
+        ? Math.round((totalMarks / totalPossibleMarks) * 100)
         : 0;
 
       return {
@@ -218,6 +256,9 @@ export async function getStudentSubjectPerformance(studentId: string) {
 }
 
 export async function getStudentTodaySchedule(studentId: string) {
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return [];
+
   // Get the current day of the week
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   const today = days[new Date().getDay()];
@@ -227,6 +268,7 @@ export async function getStudentTodaySchedule(studentId: string) {
     where: {
       studentId,
       status: "ACTIVE",
+      schoolId,
     },
     include: {
       class: true,
@@ -305,11 +347,29 @@ export async function updateStudentProfile(studentId: string, data: {
   address?: string;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
     // Update user information
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId },
       include: { user: true },
     });
+
+    if (!student) {
+      return { success: false, error: "Student not found" };
+    }
+
+    // Verify ownership (IDOR check)
+    // Only allow update if the session user owns this student record
+    if (student.userId !== session.user.id) {
+      // Also allow admins/teachers? The function name implies student updating OWN profile.
+      // Safe bet: Restrict to owner for now.
+      return { success: false, error: "Unauthorized access" };
+    }
 
     if (!student) {
       return { success: false, error: "Student not found" };

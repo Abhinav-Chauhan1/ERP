@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { UserRole, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Schema for payment
 const paymentSchema = z.object({
@@ -44,9 +45,13 @@ async function getCurrentStudent() {
     return null;
   }
 
-  const student = await db.student.findUnique({
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return null;
+
+  const student = await db.student.findFirst({
     where: {
-      userId: dbUser.id
+      userId: dbUser.id,
+      schoolId,
     },
     include: {
       enrollments: {
@@ -500,6 +505,11 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
     const currentEnrollment = student.enrollments[0];
     const classId = currentEnrollment?.class?.id;
     const correctAmount = await getFeeAmountForClass(feeItem.feeTypeId, classId);
+
+    // Verify fee item belongs to the student's school
+    if (feeItem.schoolId !== student.schoolId) {
+      return { success: false, message: "Unauthorized fee item" };
+    }
 
     // Check if already paid
     const existingPayment = await db.feePayment.findFirst({

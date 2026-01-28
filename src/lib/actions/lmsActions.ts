@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db as prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { requireSchoolAccess, withSchoolScope, withSchoolId } from "@/lib/auth/tenant";
 
 // Course Management Actions
 
@@ -16,6 +17,8 @@ export async function createCourse(data: {
   level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -23,8 +26,8 @@ export async function createCourse(data: {
     }
 
     // Get teacher ID
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -32,12 +35,12 @@ export async function createCourse(data: {
     }
 
     const course = await prisma.course.create({
-      data: {
+      data: withSchoolId({
         ...data,
         teacherId: teacher.id,
         status: 'DRAFT',
         isPublished: false,
-      },
+      }, schoolId),
       include: {
         subject: true,
         class: true,
@@ -71,10 +74,16 @@ export async function updateCourse(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    // Verify ownership
+    const existing = await prisma.course.findFirst({
+      where: { id: courseId, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Course not found" };
     }
 
     const course = await prisma.course.update({
@@ -102,10 +111,16 @@ export async function updateCourse(
 
 export async function publishCourse(courseId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    // Verify ownership
+    const existing = await prisma.course.findFirst({
+      where: { id: courseId, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Course not found" };
     }
 
     const course = await prisma.course.update({
@@ -128,10 +143,16 @@ export async function publishCourse(courseId: string) {
 
 export async function deleteCourse(courseId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    // Verify ownership
+    const existing = await prisma.course.findFirst({
+      where: { id: courseId, schoolId },
+    });
+
+    if (!existing) {
+      return { success: false, error: "Course not found" };
     }
 
     await prisma.course.delete({
@@ -154,7 +175,11 @@ export async function getCourses(filters?: {
   isPublished?: boolean;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    const where: any = withSchoolScope({}, schoolId);
+
     if (filters) {
       if (filters.teacherId) where.teacherId = filters.teacherId;
       if (filters.subjectId) where.subjectId = filters.subjectId;
@@ -199,8 +224,11 @@ export async function getCourses(filters?: {
 
 export async function getCourseById(courseId: string) {
   try {
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, schoolId },
       include: {
         subject: true,
         class: true,
@@ -252,14 +280,22 @@ export async function createModule(data: {
   duration?: number;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
+    // Verify course ownership
+    const course = await prisma.course.findFirst({
+      where: { id: data.courseId, schoolId }
+    });
+    if (!course) return { success: false, error: "Course not found" };
+
     const newModule = await prisma.courseModule.create({
-      data,
+      data: withSchoolId(data, schoolId),
     });
 
     revalidatePath(`/teacher/courses/${data.courseId}`);
@@ -281,11 +317,16 @@ export async function updateLesson(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    // Verify ownership
+    const existing = await prisma.courseLesson.findFirst({
+      where: { id: lessonId, schoolId },
+      include: { module: true }
+    });
+
+    if (!existing) return { success: false, error: "Lesson not found" };
 
     const lesson = await prisma.courseLesson.update({
       where: { id: lessonId },
@@ -305,14 +346,11 @@ export async function updateLesson(
 
 export async function deleteLesson(lessonId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
 
-    const lesson = await prisma.courseLesson.findUnique({
-      where: { id: lessonId },
+    const lesson = await prisma.courseLesson.findFirst({
+      where: { id: lessonId, schoolId },
       include: {
         module: true,
       },
@@ -348,14 +386,17 @@ export async function createContent(data: {
   isDownloadable?: boolean;
 }) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    // Verify lesson ownership
+    const lesson = await prisma.courseLesson.findFirst({
+      where: { id: data.lessonId, schoolId }
+    });
+    if (!lesson) return { success: false, error: "Lesson not found" };
 
     const courseContent = await prisma.courseContent.create({
-      data,
+      data: withSchoolId(data, schoolId),
     });
 
     return { success: true, data: courseContent };
@@ -378,11 +419,13 @@ export async function updateContent(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    const existing = await prisma.courseContent.findFirst({
+      where: { id: contentId, schoolId }
+    });
+    if (!existing) return { success: false, error: "Content not found" };
 
     const courseContent = await prisma.courseContent.update({
       where: { id: contentId },
@@ -398,11 +441,13 @@ export async function updateContent(
 
 export async function deleteContent(contentId: string) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: 'Unauthorized' };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    const existing = await prisma.courseContent.findFirst({
+      where: { id: contentId, schoolId }
+    });
+    if (!existing) return { success: false, error: "Content not found" };
 
     await prisma.courseContent.delete({
       where: { id: contentId },
@@ -419,20 +464,28 @@ export async function deleteContent(contentId: string) {
 
 export async function enrollInCourse(courseId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    // Get student ID
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    // Get student ID for current school
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
       return { success: false, error: 'Student not found' };
     }
+
+    // Verify course belongs to school
+    const course = await prisma.course.findFirst({
+      where: { id: courseId, schoolId }
+    });
+    if (!course) return { success: false, error: "Course not found" };
 
     // Check if already enrolled
     const existingEnrollment = await prisma.courseEnrollment.findUnique({
@@ -449,11 +502,11 @@ export async function enrollInCourse(courseId: string) {
     }
 
     const enrollment = await prisma.courseEnrollment.create({
-      data: {
+      data: withSchoolId({
         courseId,
         studentId: student.id,
         status: 'ACTIVE',
-      },
+      }, schoolId),
       include: {
         course: {
           include: {
@@ -478,6 +531,8 @@ export async function enrollInCourse(courseId: string) {
 
 export async function getStudentEnrollments(studentId?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -487,8 +542,8 @@ export async function getStudentEnrollments(studentId?: string) {
     let targetStudentId = studentId;
 
     if (!targetStudentId) {
-      const student = await prisma.student.findUnique({
-        where: { userId },
+      const student = await prisma.student.findFirst({
+        where: { userId, schoolId },
       });
 
       if (!student) {
@@ -496,11 +551,18 @@ export async function getStudentEnrollments(studentId?: string) {
       }
 
       targetStudentId = student.id;
+    } else {
+      // Verify target student belongs to school
+      const targetStudent = await prisma.student.findFirst({
+        where: { id: studentId, schoolId }
+      });
+      if (!targetStudent) return { success: false, error: "Student not found" };
     }
 
     const enrollments = await prisma.courseEnrollment.findMany({
       where: {
         studentId: targetStudentId,
+        schoolId, // Redundant if student is scoped, but safe
       },
       include: {
         course: {
@@ -543,11 +605,19 @@ export async function updateLessonProgress(data: {
   status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
+
+    // Verify enrollment belongs to school
+    const enrollment = await prisma.courseEnrollment.findFirst({
+      where: { id: data.enrollmentId, schoolId }
+    });
+    if (!enrollment) return { success: false, error: "Enrollment not found" };
 
     const lessonProgress = await prisma.lessonProgress.upsert({
       where: {
@@ -563,7 +633,7 @@ export async function updateLessonProgress(data: {
         lastAccessedAt: new Date(),
         completedAt: data.status === 'COMPLETED' ? new Date() : undefined,
       },
-      create: {
+      create: withSchoolId({
         enrollmentId: data.enrollmentId,
         lessonId: data.lessonId,
         progress: data.progress,
@@ -571,7 +641,7 @@ export async function updateLessonProgress(data: {
         status: data.status || 'IN_PROGRESS',
         startedAt: new Date(),
         lastAccessedAt: new Date(),
-      },
+      }, schoolId),
     });
 
     // Update overall course progress
@@ -644,25 +714,33 @@ export async function createDiscussion(data: {
   content: string;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
       return { success: false, error: 'Student not found' };
     }
 
+    // Verify course
+    const course = await prisma.course.findFirst({
+      where: { id: data.courseId, schoolId }
+    });
+    if (!course) return { success: false, error: "Course not found" };
+
     const discussion = await prisma.courseDiscussion.create({
-      data: {
+      data: withSchoolId({
         ...data,
         studentId: student.id,
-      },
+      }, schoolId),
       include: {
         student: {
           include: {
@@ -686,21 +764,28 @@ export async function replyToDiscussion(data: {
   userType: 'STUDENT' | 'TEACHER';
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    const reply = await prisma.discussionReply.create({
-      data: {
-        ...data,
-        userId,
-      },
+    // Verify discussion exists in school
+    const discussion = await prisma.courseDiscussion.findFirst({
+      where: { id: data.discussionId, schoolId },
     });
 
-    const discussion = await prisma.courseDiscussion.findUnique({
-      where: { id: data.discussionId },
+    if (!discussion) {
+      return { success: false, error: "Discussion not found" };
+    }
+
+    const reply = await prisma.discussionReply.create({
+      data: withSchoolId({
+        ...data,
+        userId,
+      }, schoolId),
     });
 
     if (discussion) {
@@ -761,17 +846,25 @@ export async function createQuiz(data: {
   showCorrectAnswers?: boolean;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
+    // Verify lesson ownership
+    const lesson = await prisma.courseLesson.findFirst({
+      where: { id: data.lessonId, schoolId }
+    });
+    if (!lesson) return { success: false, error: "Lesson not found" };
+
     const quiz = await prisma.lessonQuiz.create({
-      data: {
+      data: withSchoolId({
         ...data,
         questions: JSON.stringify(data.questions),
-      },
+      }, schoolId),
     });
 
     return { success: true, data: quiz };
@@ -787,27 +880,32 @@ export async function submitQuizAttempt(data: {
   timeSpent?: number;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    const student = await prisma.student.findUnique({
-      where: { userId },
+    const student = await prisma.student.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!student) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Get quiz details
-    const quiz = await prisma.lessonQuiz.findUnique({
-      where: { id: data.quizId },
+    // Verify quiz belongs to school (via lesson)
+    const quiz = await prisma.lessonQuiz.findFirst({
+      where: {
+        id: data.quizId,
+        lesson: { schoolId }
+      }
     });
 
     if (!quiz) {
-      return { success: false, error: 'Quiz not found' };
+      return { success: false, error: "Quiz not found" };
     }
 
     // Count existing attempts

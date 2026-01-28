@@ -8,6 +8,7 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { aggregateReportCardData, type ReportCardData } from "@/lib/services/report-card-data-aggregation";
 
 export interface ReportCardListItem {
@@ -37,27 +38,23 @@ export interface ActionResult<T = any> {
  * @param filters - Optional filters for term and academic year
  * @returns List of published report cards
  */
-export async function getStudentReportCards(
+export const getStudentReportCards = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
   studentId: string,
   filters?: {
     termId?: string;
     academicYearId?: string;
   }
-): Promise<ActionResult<ReportCardListItem[]>> {
+): Promise<ActionResult<ReportCardListItem[]>> => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return {
-        success: false,
-        error: "Unauthorized",
-      };
-    }
-
-    // Verify the user has access to this student's data
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    // Verify the user has access to this student's data and matches the schoolId
+    const student = await db.student.findFirst({
+      where: {
+        id: studentId,
+        schoolId // Mandatory school check
+      },
       select: {
         userId: true,
         parents: {
@@ -75,27 +72,15 @@ export async function getStudentReportCards(
     if (!student) {
       return {
         success: false,
-        error: "Student not found",
+        error: "Student not found in this school",
       };
     }
 
     // Check if the user is the student or a parent
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
+    const isStudent = student.userId === userId;
+    const isParent = student.parents.some((p) => p.parent.userId === userId);
 
-    if (!user) {
-      return {
-        success: false,
-        error: "User not found",
-      };
-    }
-
-    const isStudent = student.userId === user.id;
-    const isParent = student.parents.some((p) => p.parent.userId === user.id);
-
-    if (!isStudent && !isParent) {
+    if (!isStudent && !isParent && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return {
         success: false,
         error: "Access denied",
@@ -105,7 +90,8 @@ export async function getStudentReportCards(
     // Build query filters
     const whereClause: any = {
       studentId,
-      isPublished: true, // Only show published report cards
+      schoolId, // Ensure report card belongs to the school
+      isPublished: true,
     };
 
     if (filters?.termId) {
@@ -115,6 +101,7 @@ export async function getStudentReportCards(
     if (filters?.academicYearId) {
       whereClause.term = {
         academicYearId: filters.academicYearId,
+        schoolId // Multi-hop check
       };
     }
 
@@ -176,7 +163,7 @@ export async function getStudentReportCards(
       error: "Failed to fetch report cards",
     };
   }
-}
+});
 
 /**
  * Get published report cards for all children of a parent
@@ -185,44 +172,29 @@ export async function getStudentReportCards(
  * @param filters - Optional filters for term and academic year
  * @returns Map of student ID to list of published report cards
  */
-export async function getParentChildrenReportCards(
+export const getParentChildrenReportCards = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
   filters?: {
     termId?: string;
     academicYearId?: string;
   }
-): Promise<ActionResult<Record<string, ReportCardListItem[]>>> {
+): Promise<ActionResult<Record<string, ReportCardListItem[]>>> => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return {
-        success: false,
-        error: "Unauthorized",
-      };
-    }
-
-    // Get the parent record
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // Get the parent record for this school
+    const parent = await db.parent.findFirst({
+      where: {
+        userId,
+        schoolId
+      },
       select: {
         id: true,
-        parent: {
+        children: {
           select: {
-            id: true,
-            children: {
+            student: {
               select: {
-                student: {
-                  select: {
-                    id: true,
-                    user: {
-                      select: {
-                        firstName: true,
-                        lastName: true,
-                      },
-                    },
-                  },
-                },
+                id: true,
               },
             },
           },
@@ -230,23 +202,64 @@ export async function getParentChildrenReportCards(
       },
     });
 
-    if (!user?.parent) {
+    if (!parent) {
       return {
         success: false,
-        error: "Parent not found",
+        error: "Parent record not found in this school",
       };
     }
 
-    const children = user.parent.children.map((c) => c.student);
+    const children = parent.children.map((c) => c.student);
 
     // Fetch report cards for all children
     const reportCardsMap: Record<string, ReportCardListItem[]> = {};
 
     for (const child of children) {
-      const result = await getStudentReportCards(child.id, filters);
-      if (result.success && result.data) {
-        reportCardsMap[child.id] = result.data;
-      }
+      // Pass the existing context to maintain consistency
+      const reportCards = await db.reportCard.findMany({
+        where: {
+          studentId: child.id,
+          schoolId,
+          isPublished: true,
+          ...(filters?.termId ? { termId: filters.termId } : {}),
+          ...(filters?.academicYearId ? { term: { academicYearId: filters.academicYearId, schoolId } } : {}),
+        },
+        select: {
+          id: true,
+          percentage: true,
+          grade: true,
+          rank: true,
+          isPublished: true,
+          publishDate: true,
+          pdfUrl: true,
+          createdAt: true,
+          term: {
+            select: {
+              id: true,
+              name: true,
+              academicYear: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      reportCardsMap[child.id] = reportCards.map((rc) => ({
+        id: rc.id,
+        termName: rc.term.name,
+        academicYear: rc.term.academicYear.name,
+        percentage: rc.percentage,
+        grade: rc.grade,
+        rank: rc.rank,
+        isPublished: rc.isPublished,
+        publishDate: rc.publishDate,
+        pdfUrl: rc.pdfUrl,
+        createdAt: rc.createdAt,
+      }));
     }
 
     return {
@@ -260,7 +273,7 @@ export async function getParentChildrenReportCards(
       error: "Failed to fetch report cards",
     };
   }
-}
+});
 
 /**
  * Get detailed report card data for viewing
@@ -269,23 +282,19 @@ export async function getParentChildrenReportCards(
  * @param reportCardId - The ID of the report card
  * @returns Complete report card data
  */
-export async function getReportCardDetails(
+export const getReportCardDetails = withSchoolAuthAction(async (
+  schoolId: string,
+  userId: string,
+  userRole: string,
   reportCardId: string
-): Promise<ActionResult<ReportCardData>> {
+): Promise<ActionResult<ReportCardData>> => {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return {
-        success: false,
-        error: "Unauthorized",
-      };
-    }
-
-    // Fetch the report card
-    const reportCard = await db.reportCard.findUnique({
-      where: { id: reportCardId },
+    // Fetch the report card with mandatory schoolId check
+    const reportCard = await db.reportCard.findFirst({
+      where: {
+        id: reportCardId,
+        schoolId // Critical tenant isolation
+      },
       select: {
         id: true,
         studentId: true,
@@ -311,12 +320,12 @@ export async function getReportCardDetails(
     if (!reportCard) {
       return {
         success: false,
-        error: "Report card not found",
+        error: "Report card not found or access denied",
       };
     }
 
     // Check if the report card is published
-    if (!reportCard.isPublished) {
+    if (!reportCard.isPublished && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return {
         success: false,
         error: "Report card is not published",
@@ -324,29 +333,17 @@ export async function getReportCardDetails(
     }
 
     // Verify the user has access to this report card
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
+    const isStudent = reportCard.student.userId === userId;
+    const isParent = reportCard.student.parents.some((p) => p.parent.userId === userId);
 
-    if (!user) {
-      return {
-        success: false,
-        error: "User not found",
-      };
-    }
-
-    const isStudent = reportCard.student.userId === user.id;
-    const isParent = reportCard.student.parents.some((p) => p.parent.userId === user.id);
-
-    if (!isStudent && !isParent) {
+    if (!isStudent && !isParent && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return {
         success: false,
         error: "Access denied",
       };
     }
 
-    // Aggregate report card data
+    // Aggregate report card data (must ensure this service is also school-aware or we pass context)
     const reportCardData = await aggregateReportCardData(
       reportCard.studentId,
       reportCard.termId
@@ -363,21 +360,24 @@ export async function getReportCardDetails(
       error: "Failed to fetch report card details",
     };
   }
-}
+});
 
 /**
  * Get available terms for filtering
  * 
  * @returns List of terms with academic year information
  */
-export async function getAvailableTerms(): Promise<ActionResult<Array<{
+export const getAvailableTerms = withSchoolAuthAction(async (
+  schoolId: string
+): Promise<ActionResult<Array<{
   id: string;
   name: string;
   academicYearId: string;
   academicYearName: string;
-}>>> {
+}>>> => {
   try {
     const terms = await db.term.findMany({
+      where: { schoolId }, // Filter by schoolId
       select: {
         id: true,
         name: true,
@@ -411,20 +411,23 @@ export async function getAvailableTerms(): Promise<ActionResult<Array<{
       error: "Failed to fetch terms",
     };
   }
-}
+});
 
 /**
  * Get available academic years for filtering
  * 
  * @returns List of academic years
  */
-export async function getAvailableAcademicYears(): Promise<ActionResult<Array<{
+export const getAvailableAcademicYears = withSchoolAuthAction(async (
+  schoolId: string
+): Promise<ActionResult<Array<{
   id: string;
   name: string;
   isCurrent: boolean;
-}>>> {
+}>>> => {
   try {
     const academicYears = await db.academicYear.findMany({
+      where: { schoolId }, // Filter by schoolId
       select: {
         id: true,
         name: true,
@@ -446,4 +449,4 @@ export async function getAvailableAcademicYears(): Promise<ActionResult<Array<{
       error: "Failed to fetch academic years",
     };
   }
-}
+});

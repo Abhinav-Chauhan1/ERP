@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { driverSchema, driverUpdateSchema, type DriverFormValues, type DriverUpdateFormValues } from "@/lib/schemas/driver-schemas";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all drivers with pagination and filters
 export async function getDrivers(params?: {
@@ -15,7 +16,10 @@ export async function getDrivers(params?: {
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
+    const where: any = { schoolId };
 
     // Search filter
     if (params?.search) {
@@ -61,8 +65,11 @@ export async function getDrivers(params?: {
 // Get a single driver by ID
 export async function getDriverById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     const driver = await db.driver.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         vehicles: {
           include: {
@@ -100,9 +107,12 @@ export async function createDriver(data: DriverFormValues) {
     // Validate input
     const validated = driverSchema.parse(data);
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Check if license number already exists
-    const existing = await db.driver.findUnique({
-      where: { licenseNo: validated.licenseNo },
+    const existing = await db.driver.findFirst({
+      where: { licenseNo: validated.licenseNo, schoolId },
     });
 
     if (existing) {
@@ -112,6 +122,7 @@ export async function createDriver(data: DriverFormValues) {
     // Create driver
     const driver = await db.driver.create({
       data: {
+        schoolId,
         name: validated.name,
         phone: validated.phone,
         licenseNo: validated.licenseNo,
@@ -135,9 +146,12 @@ export async function updateDriver(id: string, data: DriverUpdateFormValues) {
     // Validate input
     const validated = driverUpdateSchema.parse(data);
 
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Check if driver exists
     const existing = await db.driver.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existing) {
@@ -146,8 +160,8 @@ export async function updateDriver(id: string, data: DriverUpdateFormValues) {
 
     // If license number is being updated, check for duplicates
     if (validated.licenseNo && validated.licenseNo !== existing.licenseNo) {
-      const duplicate = await db.driver.findUnique({
-        where: { licenseNo: validated.licenseNo },
+      const duplicate = await db.driver.findFirst({
+        where: { licenseNo: validated.licenseNo, schoolId },
       });
 
       if (duplicate) {
@@ -157,7 +171,7 @@ export async function updateDriver(id: string, data: DriverUpdateFormValues) {
 
     // Update driver
     const driver = await db.driver.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         ...(validated.name && { name: validated.name }),
         ...(validated.phone && { phone: validated.phone }),
@@ -180,9 +194,12 @@ export async function updateDriver(id: string, data: DriverUpdateFormValues) {
 // Delete a driver
 export async function deleteDriver(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     // Check if driver exists
     const driver = await db.driver.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         vehicles: true,
       },
@@ -201,7 +218,7 @@ export async function deleteDriver(id: string) {
 
     // Delete driver
     await db.driver.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/transport/drivers");
@@ -218,8 +235,12 @@ export async function deleteDriver(id: string) {
 // Get available drivers (not assigned to any vehicle)
 export async function getAvailableDrivers() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     const drivers = await db.driver.findMany({
       where: {
+        schoolId,
         vehicles: {
           none: {},
         },
@@ -237,7 +258,11 @@ export async function getAvailableDrivers() {
 // Get all drivers for dropdown (simple list)
 export async function getAllDriversSimple() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+
     const drivers = await db.driver.findMany({
+      where: { schoolId },
       select: {
         id: true,
         name: true,

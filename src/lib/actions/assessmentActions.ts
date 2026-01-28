@@ -1,9 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 export async function getAssessmentOverview() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const [
       examTypesCount,
       examsCount,
@@ -11,11 +14,11 @@ export async function getAssessmentOverview() {
       resultsCount,
       reportCardsCount,
     ] = await Promise.all([
-      db.examType.count(),
-      db.exam.count(),
-      db.assignment.count(),
-      db.examResult.count(),
-      db.reportCard.count(),
+      db.examType.count({ where: { schoolId } }),
+      db.exam.count({ where: { schoolId } }),
+      db.assignment.count({ where: { schoolId } }),
+      db.examResult.count({ where: { schoolId } }),
+      db.reportCard.count({ where: { schoolId } }),
     ]);
 
     return {
@@ -37,8 +40,11 @@ export async function getAssessmentOverview() {
 
 export async function getRecentAssessments(limit: number = 10) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const [recentExams, recentAssignments] = await Promise.all([
       db.exam.findMany({
+        where: { schoolId },
         take: Math.ceil(limit / 2),
         orderBy: { createdAt: "desc" },
         include: {
@@ -48,6 +54,7 @@ export async function getRecentAssessments(limit: number = 10) {
         },
       }),
       db.assignment.findMany({
+        where: { schoolId },
         take: Math.ceil(limit / 2),
         orderBy: { createdAt: "desc" },
         include: {
@@ -82,11 +89,11 @@ export async function getRecentAssessments(limit: number = 10) {
         submissionsCount: assignment.submissions.length,
         averageScore: assignment.submissions.filter(s => s.marks !== null).length > 0
           ? Math.round(
-              assignment.submissions
-                .filter(s => s.marks !== null)
-                .reduce((sum, s) => sum + (s.marks || 0), 0) /
-              assignment.submissions.filter(s => s.marks !== null).length
-            )
+            assignment.submissions
+              .filter(s => s.marks !== null)
+              .reduce((sum, s) => sum + (s.marks || 0), 0) /
+            assignment.submissions.filter(s => s.marks !== null).length
+          )
           : 0,
         createdAt: assignment.createdAt,
       })),
@@ -104,9 +111,11 @@ export async function getRecentAssessments(limit: number = 10) {
 
 export async function getAssessmentMetrics() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const [examsCount, assignmentsCount, results, reportCards] = await Promise.all([
-      db.exam.count(),
-      db.assignment.count(),
+      db.exam.count({ where: { schoolId } }),
+      db.assignment.count({ where: { schoolId } }),
       db.examResult.findMany({
         where: { isAbsent: false },
         select: { marks: true, exam: { select: { passingMarks: true } } },

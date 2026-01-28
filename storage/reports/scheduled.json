@@ -1,0 +1,50 @@
+[
+  {
+    "templateId": "template_1769326750816",
+    "name": "Scheduled Test Report 1769326750815",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-16T07:39:10.815Z",
+        "endDate": "2026-01-25T07:39:10.815Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1769326761655",
+    "nextRun": "2026-01-26T03:30:00.000Z",
+    "createdAt": "2026-01-25T07:39:21.655Z",
+    "updatedAt": "2026-01-25T07:39:21.655Z"
+  },
+  {
+    "templateId": "template_1769326761666",
+    "name": "Scheduled Test Report 1769326761666",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2025-12-30T07:39:21.666Z",
+        "endDate": "2026-01-25T07:39:21.666Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1769326762566",
+    "nextRun": "2026-01-26T03:30:00.000Z",
+    "createdAt": "2026-01-25T07:39:22.567Z",
+    "updatedAt": "2026-01-25T07:39:22.567Z"
+  }
+]

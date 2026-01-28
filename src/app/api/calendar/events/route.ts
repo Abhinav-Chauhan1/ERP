@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withSchoolAuth } from '@/lib/auth/security-wrapper';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import {
@@ -48,11 +49,11 @@ import {
  * 
  * Requirements: 1.2, 2.1, 3.1, 3.4, 4.1
  */
-export async function GET(request: NextRequest) {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     // Apply rate limiting for event queries
     const rateLimitResult = await checkCalendarRateLimit(request, 'EVENT_QUERY');
-    
+
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         createRateLimitError(rateLimitResult.limit, rateLimitResult.reset),
@@ -79,7 +80,9 @@ export async function GET(request: NextRequest) {
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { id: session.user.id }
+      where: {
+        id: session.user.id
+      }
     });
 
     if (!user) {
@@ -126,20 +129,23 @@ export async function GET(request: NextRequest) {
 
     // Get events with visibility filtering
     let allEvents;
-    
+
     // For parents filtering by specific child (Requirement 4.2)
     if (childId && user.role === UserRole.PARENT) {
       const parent = await db.parent.findUnique({
-        where: { userId: user.id }
+        where: {
+          schoolId: context.schoolId,
+          userId: user.id
+        }
       });
-      
+
       if (!parent) {
         return NextResponse.json(
           { error: 'Parent record not found' },
           { status: 404 }
         );
       }
-      
+
       // Import getEventsForParentChild
       const { getEventsForParentChild } = await import('@/lib/services/event-visibility-service');
       allEvents = await getEventsForParentChild(parent.id, childId, options);
@@ -178,7 +184,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/calendar/events
@@ -204,11 +210,11 @@ export async function GET(request: NextRequest) {
  * 
  * Requirements: 1.1
  */
-export async function POST(request: NextRequest) {
+export const POST = withSchoolAuth(async (request, context) => {
   try {
     // Apply rate limiting for event creation
     const rateLimitResult = await checkCalendarRateLimit(request, 'EVENT_CREATE');
-    
+
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         createRateLimitError(rateLimitResult.limit, rateLimitResult.reset),
@@ -235,7 +241,10 @@ export async function POST(request: NextRequest) {
 
     // Get user from database
     const user = await db.user.findUnique({
-      where: { id: session.user.id }
+      where: {
+        schoolId: context.schoolId,
+        id: session.user.id
+      }
     });
 
     if (!user) {
@@ -300,4 +309,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

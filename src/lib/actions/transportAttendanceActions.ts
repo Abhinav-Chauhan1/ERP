@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Validation schemas
 const transportAttendanceSchema = z.object({
@@ -36,6 +37,7 @@ export type BulkTransportAttendanceFormValues = z.infer<typeof bulkTransportAtte
 // Record transport attendance for a single student
 export async function recordTransportAttendance(data: TransportAttendanceFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Validate input
     const validated = transportAttendanceSchema.parse(data);
 
@@ -58,6 +60,10 @@ export async function recordTransportAttendance(data: TransportAttendanceFormVal
 
     if (!studentRoute) {
       throw new Error("Student route assignment not found");
+    }
+
+    if (studentRoute.route.schoolId !== schoolId) {
+      throw new Error("Access denied");
     }
 
     // Validate that the stop exists in the route
@@ -153,12 +159,13 @@ export async function recordTransportAttendance(data: TransportAttendanceFormVal
 // Record bulk transport attendance for multiple students at a stop
 export async function recordBulkTransportAttendance(data: BulkTransportAttendanceFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Validate input
     const validated = bulkTransportAttendanceSchema.parse(data);
 
-    // Check if route exists
+    // Check if route exists and belongs to school
     const route = await db.route.findUnique({
-      where: { id: validated.routeId },
+      where: { id: validated.routeId, schoolId },
       include: {
         stops: true,
         students: {
@@ -259,9 +266,10 @@ export async function getTransportAttendanceByRouteAndDate(
   stopName?: string
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Get route with students
     const route = await db.route.findUnique({
-      where: { id: routeId },
+      where: { id: routeId, schoolId },
       include: {
         stops: {
           orderBy: { sequence: "asc" },
@@ -318,10 +326,12 @@ export async function getStudentTransportAttendance(
   }
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     // Build where clause
     const where: any = {
       studentRoute: {
         studentId,
+        route: { schoolId } // Ensure via route
       },
     };
 
@@ -370,9 +380,15 @@ export async function getStudentTransportAttendance(
 export async function getRouteAttendanceStats(
   routeId: string,
   startDate: Date,
+  startDate: Date,
   endDate: Date
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    // Verify route belongs to school first
+    const route = await db.route.findUnique({ where: { id: routeId, schoolId } });
+    if (!route) throw new Error("Route not found or access denied");
+
     const [totalRecords, presentCount, absentCount, lateCount, boardingCount, alightingCount] =
       await Promise.all([
         db.transportAttendance.count({
@@ -468,9 +484,15 @@ export async function getRouteAttendanceStats(
 // Delete transport attendance record
 export async function deleteTransportAttendance(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const attendance = await db.transportAttendance.findUnique({
       where: { id },
+      include: { studentRoute: { include: { route: true } } }
     });
+
+    if (!attendance || attendance.studentRoute.route.schoolId !== schoolId) {
+      throw new Error("Transport attendance record not found or access denied");
+    }
 
     if (!attendance) {
       throw new Error("Transport attendance record not found");
@@ -498,13 +520,14 @@ export async function deleteTransportAttendance(id: string) {
 // Get today's transport attendance summary for all routes
 export async function getTodayTransportAttendanceSummary() {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const routes = await db.route.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", schoolId },
       include: {
         vehicle: true,
         students: {

@@ -18,6 +18,7 @@ import {
   deleteCalendarEvent,
   CreateCalendarEventInput
 } from "@/lib/services/calendar-service";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 export async function getEvents(filter?: EventFilterData) {
   try {
@@ -28,7 +29,9 @@ export async function getEvents(filter?: EventFilterData) {
     }
 
     // Construct the database query based on filter
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+    const where: any = { schoolId };
 
     if (filter?.type) {
       where.type = filter.type;
@@ -87,8 +90,11 @@ export async function getEvents(filter?: EventFilterData) {
 
 export async function getEvent(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const event = await db.event.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         participants: {
           include: {
@@ -116,7 +122,7 @@ export async function getEvent(id: string) {
 }
 
 // Helper to get or create Calendar Category ID based on Event Type
-async function getCalendarCategoryId(eventType: string | undefined | null): Promise<string> {
+async function getCalendarCategoryId(eventType: string | undefined | null, schoolId: string): Promise<string> {
   const defaultCategoryName = "School Event";
   let searchName = defaultCategoryName;
   let color = '#10b981'; // Green for School Event
@@ -143,6 +149,7 @@ async function getCalendarCategoryId(eventType: string | undefined | null): Prom
   // Try to find existing category
   let category = await db.calendarEventCategory.findFirst({
     where: {
+      schoolId,
       name: {
         equals: searchName,
         mode: 'insensitive'
@@ -156,6 +163,7 @@ async function getCalendarCategoryId(eventType: string | undefined | null): Prom
   try {
     category = await db.calendarEventCategory.create({
       data: {
+        schoolId,
         name: searchName,
         description,
         color,
@@ -168,7 +176,7 @@ async function getCalendarCategoryId(eventType: string | undefined | null): Prom
   } catch (error) {
     console.error(`Failed to create calendar category ${searchName}:`, error);
     // Fallback to any existing category if creation fails (e.g. race condition)
-    const anyCategory = await db.calendarEventCategory.findFirst();
+    const anyCategory = await db.calendarEventCategory.findFirst({ where: { schoolId } });
     return anyCategory?.id || "";
   }
 }
@@ -179,8 +187,12 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
     const validatedData = eventSchemaWithRefinement.parse(formData);
 
     // Create the event in the database
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const event = await db.event.create({
       data: {
+        schoolId,
         title: validatedData.title,
         description: validatedData.description,
         startDate: validatedData.startDate,
@@ -199,7 +211,7 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
 
     // --- SYNC WITH CALENDAR ---
     try {
-      const calendarCategoryId = await getCalendarCategoryId(validatedData.type);
+      const calendarCategoryId = await getCalendarCategoryId(validatedData.type, schoolId);
       if (calendarCategoryId) {
         // Determine visibility based on isPublic
         // If public, visible to all roles. If not, maybe restrict (but current logic assumes public = all)
@@ -303,7 +315,7 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
 
     // Update the event in the database
     const updatedEvent = await db.event.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         title: validatedData.title,
         description: validatedData.description,
@@ -332,7 +344,7 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
       });
 
       if (calendarEvent) {
-        const calendarCategoryId = await getCalendarCategoryId(validatedData.type);
+        const calendarCategoryId = await getCalendarCategoryId(validatedData.type, schoolId);
 
         await updateCalendarEvent(calendarEvent.id, {
           title: validatedData.title,
@@ -378,7 +390,7 @@ export async function deleteEvent(id: string) {
 
     // Delete the event
     await db.event.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     // --- SYNC WITH CALENDAR ---
@@ -423,7 +435,7 @@ export async function updateEventStatus(id: string, status: EventStatus) {
 
     // Update the event status
     const updatedEvent = await db.event.update({
-      where: { id },
+      where: { id, schoolId },
       data: { status },
     });
 
@@ -445,8 +457,11 @@ export async function addParticipant(participantData: EventParticipantData) {
     const validatedData = eventParticipantSchema.parse(participantData);
 
     // Check if the event exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const existingEvent = await db.event.findUnique({
-      where: { id: validatedData.eventId },
+      where: { id: validatedData.eventId, schoolId },
       include: {
         _count: { select: { participants: true } },
       },
@@ -481,6 +496,7 @@ export async function addParticipant(participantData: EventParticipantData) {
     // Add the participant
     const participant = await db.eventParticipant.create({
       data: {
+        schoolId,
         eventId: validatedData.eventId,
         userId: validatedData.userId,
         role: validatedData.role,
@@ -576,8 +592,12 @@ export async function getUpcomingEvents(limit: number = 5) {
     const now = new Date();
 
     // Get upcoming events
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const events = await db.event.findMany({
       where: {
+        schoolId,
         startDate: { gte: now },
         status: "UPCOMING",
       },
@@ -603,9 +623,17 @@ export async function getUpcomingEvents(limit: number = 5) {
 
 export async function getEventParticipants(eventId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
+    // Verify event belongs to school (indirectly secure or check explicitly)
+    const event = await db.event.findUnique({ where: { id: eventId, schoolId } });
+    if (!event) return { success: false, error: "Event not found", data: [] };
+
     const participants = await db.eventParticipant.findMany({
       where: {
         eventId,
+        schoolId, // redundant but consistent
       },
       orderBy: {
         registrationDate: 'desc',

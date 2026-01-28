@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { withSchoolAuth } from "@/lib/auth/security-wrapper"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { cookies } from "next/headers"
@@ -10,7 +11,7 @@ import { cookies } from "next/headers"
  * Note: With JWT strategy, we can only show the current session
  * as sessions are not stored in the database
  */
-export async function GET() {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     const session = await auth()
 
@@ -24,8 +25,8 @@ export async function GET() {
     // With JWT strategy, we can only show the current session
     // Get session cookie to extract expiry
     const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get("authjs.session-token") || 
-                         cookieStore.get("__Secure-authjs.session-token")
+    const sessionCookie = cookieStore.get("authjs.session-token") ||
+      cookieStore.get("__Secure-authjs.session-token")
 
     if (!sessionCookie) {
       return NextResponse.json({
@@ -37,11 +38,11 @@ export async function GET() {
     // Calculate expiry based on maxAge (30 minutes = 1800 seconds)
     const maxAge = 1800 // from auth.ts config
     const expiresAt = new Date(Date.now() + maxAge * 1000)
-    
+
     // Get user agent for device info
     const userAgent = (await import("next/headers")).headers().then(h => h.get("user-agent") || "Unknown")
     const ua = await userAgent
-    
+
     const device = getDeviceFromUserAgent(ua)
 
     const currentSession = {
@@ -63,15 +64,15 @@ export async function GET() {
     return NextResponse.json(
       { success: false, error: "Failed to fetch sessions" },
       { status: 500 }
-    )
+    );
   }
-}
+});
 
 /**
  * DELETE /api/user/sessions
  * With JWT strategy, we can only sign out the current session
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withSchoolAuth(async (request, context) => {
   try {
     const session = await auth()
 
@@ -106,28 +107,28 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+});
 
 /**
  * Helper function to extract device info from user agent
  */
 function getDeviceFromUserAgent(userAgent: string): string {
   const ua = userAgent.toLowerCase()
-  
+
   if (ua.includes("mobile") || ua.includes("android") || ua.includes("iphone")) {
     if (ua.includes("iphone")) return "iPhone"
     if (ua.includes("android")) return "Android Phone"
     return "Mobile Device"
   }
-  
+
   if (ua.includes("tablet") || ua.includes("ipad")) {
     if (ua.includes("ipad")) return "iPad"
     return "Tablet"
   }
-  
+
   if (ua.includes("windows")) return "Windows PC"
   if (ua.includes("mac")) return "Mac"
   if (ua.includes("linux")) return "Linux PC"
-  
+
   return "Desktop Browser"
 }

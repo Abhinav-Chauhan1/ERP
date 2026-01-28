@@ -1,20 +1,25 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { 
-  documentSchema, 
-  documentTypeSchema, 
+import {
+  documentSchema,
+  documentTypeSchema,
   documentFilterSchema,
   type DocumentData,
   type DocumentTypeData,
   type DocumentFilterData
 } from "@/lib/schemaValidation/documentSchemaValidation";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Document Type Actions
 export async function getDocumentTypes() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const documentTypes = await db.documentType.findMany({
+      where: { schoolId },
       orderBy: {
         name: 'asc',
       },
@@ -36,8 +41,11 @@ export async function getDocumentTypes() {
 
 export async function getDocumentType(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const documentType = await db.documentType.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         documents: true,
       },
@@ -60,8 +68,12 @@ export async function createDocumentType(data: DocumentTypeData) {
     const validatedData = documentTypeSchema.parse(data);
 
     // Create the document type
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const documentType = await db.documentType.create({
       data: {
+        schoolId,
         name: validatedData.name,
         description: validatedData.description,
       },
@@ -84,8 +96,11 @@ export async function updateDocumentType(id: string, data: DocumentTypeData) {
     const validatedData = documentTypeSchema.parse(data);
 
     // Check if the document type exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const existingDocumentType = await db.documentType.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingDocumentType) {
@@ -94,7 +109,7 @@ export async function updateDocumentType(id: string, data: DocumentTypeData) {
 
     // Update the document type
     const updatedDocumentType = await db.documentType.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         name: validatedData.name,
         description: validatedData.description,
@@ -116,8 +131,11 @@ export async function updateDocumentType(id: string, data: DocumentTypeData) {
 export async function deleteDocumentType(id: string) {
   try {
     // Check if the document type exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const existingDocumentType = await db.documentType.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         documents: true,
       },
@@ -129,16 +147,16 @@ export async function deleteDocumentType(id: string) {
 
     // Check if there are documents associated with this type
     if (existingDocumentType.documents.length > 0) {
-      return { 
-        success: false, 
-        error: "Cannot delete document type with associated documents. Remove or reassign the documents first.", 
-        data: null 
+      return {
+        success: false,
+        error: "Cannot delete document type with associated documents. Remove or reassign the documents first.",
+        data: null
       };
     }
 
     // Delete the document type
     await db.documentType.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/documents");
@@ -159,7 +177,9 @@ export async function getDocuments(filter?: DocumentFilterData) {
     }
 
     // Construct the database query based on filter
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+    const where: any = { schoolId };
 
     if (filter?.documentTypeId) {
       where.documentTypeId = filter.documentTypeId;
@@ -209,8 +229,11 @@ export async function getDocuments(filter?: DocumentFilterData) {
 
 export async function getDocument(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const document = await db.document.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         user: {
           select: {
@@ -241,23 +264,27 @@ export async function createDocument(data: DocumentData) {
     const validatedData = documentSchema.parse(data);
 
     // Verify user exists before creating document
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const userExists = await db.user.findUnique({
       where: {
         id: validatedData.userId
       }
     });
-    
+
     if (!userExists) {
-      return { 
-        success: false, 
-        error: "User not found. Cannot create document with invalid user ID.", 
-        data: null 
+      return {
+        success: false,
+        error: "User not found. Cannot create document with invalid user ID.",
+        data: null
       };
     }
 
     // Create the document
     const document = await db.document.create({
       data: {
+        schoolId,
         title: validatedData.title,
         description: validatedData.description,
         fileName: validatedData.fileName,
@@ -288,8 +315,11 @@ export async function updateDocument(id: string, data: DocumentData) {
     const validatedData = documentSchema.parse(data);
 
     // Check if the document exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const existingDocument = await db.document.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingDocument) {
@@ -298,7 +328,7 @@ export async function updateDocument(id: string, data: DocumentData) {
 
     // Update the document
     const updatedDocument = await db.document.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         title: validatedData.title,
         description: validatedData.description,
@@ -327,8 +357,11 @@ export async function updateDocument(id: string, data: DocumentData) {
 export async function deleteDocument(id: string) {
   try {
     // Check if the document exists
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
     const existingDocument = await db.document.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingDocument) {
@@ -337,7 +370,7 @@ export async function deleteDocument(id: string) {
 
     // Delete the document
     await db.document.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/documents");
@@ -350,7 +383,11 @@ export async function deleteDocument(id: string) {
 
 export async function getRecentDocuments(limit: number = 5) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: [] };
+
     const documents = await db.document.findMany({
+      where: { schoolId },
       take: limit,
       orderBy: {
         createdAt: 'desc',

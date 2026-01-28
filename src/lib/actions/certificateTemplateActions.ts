@@ -10,7 +10,7 @@
  */
 
 import { db } from "@/lib/db";
-import { currentUser } from "@/lib/auth-helpers";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { revalidatePath } from "next/cache";
 import { CertificateType, CertificateStatus } from "@prisma/client";
 
@@ -43,21 +43,11 @@ export async function getCertificateTemplates(filters?: {
   isActive?: boolean;
 }) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Build where clause
-    const where: any = {};
+    const where: any = { schoolId };
     if (filters?.type) {
       where.type = filters.type;
     }
@@ -99,13 +89,11 @@ export async function getCertificateTemplates(filters?: {
  */
 export async function getCertificateTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const template = await db.certificateTemplate.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!template) {
@@ -132,18 +120,8 @@ export async function getCertificateTemplate(id: string) {
  */
 export async function createCertificateTemplate(data: CertificateTemplateInput) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId, user: dbUser } = await requireSchoolAccess();
+    if (!schoolId || !dbUser) return { success: false, error: "School context required" };
 
     // Check permissions
     if (dbUser.role !== "ADMIN") {
@@ -156,8 +134,8 @@ export async function createCertificateTemplate(data: CertificateTemplateInput) 
     }
 
     // Check if template name already exists
-    const existing = await db.certificateTemplate.findUnique({
-      where: { name: data.name },
+    const existing = await db.certificateTemplate.findFirst({
+      where: { name: data.name, schoolId },
     });
 
     if (existing) {
@@ -167,6 +145,7 @@ export async function createCertificateTemplate(data: CertificateTemplateInput) 
     // Create template
     const template = await db.certificateTemplate.create({
       data: {
+        schoolId,
         name: data.name,
         description: data.description,
         type: data.type,
@@ -210,18 +189,8 @@ export async function createCertificateTemplate(data: CertificateTemplateInput) 
  */
 export async function updateCertificateTemplate(id: string, data: Partial<CertificateTemplateInput>) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId, user: dbUser } = await requireSchoolAccess();
+    if (!schoolId || !dbUser) return { success: false, error: "School context required" };
 
     // Check permissions
     if (dbUser.role !== "ADMIN") {
@@ -230,7 +199,7 @@ export async function updateCertificateTemplate(id: string, data: Partial<Certif
 
     // Check if template exists
     const existing = await db.certificateTemplate.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existing) {
@@ -244,8 +213,8 @@ export async function updateCertificateTemplate(id: string, data: Partial<Certif
 
     // If name is being changed, check for duplicates
     if (data.name && data.name !== existing.name) {
-      const duplicate = await db.certificateTemplate.findUnique({
-        where: { name: data.name },
+      const duplicate = await db.certificateTemplate.findFirst({
+        where: { name: data.name, schoolId },
       });
 
       if (duplicate) {
@@ -299,18 +268,8 @@ export async function updateCertificateTemplate(id: string, data: Partial<Certif
  */
 export async function deleteCertificateTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId, user: dbUser } = await requireSchoolAccess();
+    if (!schoolId || !dbUser) return { success: false, error: "School context required" };
 
     // Check permissions
     if (dbUser.role !== "ADMIN") {
@@ -319,7 +278,7 @@ export async function deleteCertificateTemplate(id: string) {
 
     // Check if template exists
     const existing = await db.certificateTemplate.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         certificates: {
           take: 1,
@@ -343,7 +302,7 @@ export async function deleteCertificateTemplate(id: string) {
 
     // Delete template
     await db.certificateTemplate.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/certificates/templates");
@@ -363,13 +322,13 @@ export async function deleteCertificateTemplate(id: string) {
  */
 export async function renderCertificateTemplate(template: string, variables: Record<string, any>): Promise<string> {
   let rendered = template;
-  
+
   // Replace all variables in the format {{variableName}}
   Object.keys(variables).forEach(key => {
     const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
     rendered = rendered.replace(regex, String(variables[key] || ''));
   });
-  
+
   return rendered;
 }
 
@@ -378,10 +337,8 @@ export async function renderCertificateTemplate(template: string, variables: Rec
  */
 export async function getAvailableCertificateMergeFields() {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "Unauthorized" };
 
     // Define available merge fields for different contexts
     const mergeFields = {
@@ -450,18 +407,8 @@ export async function getAvailableCertificateMergeFields() {
  */
 export async function duplicateCertificateTemplate(id: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId, user: dbUser } = await requireSchoolAccess();
+    if (!schoolId || !dbUser) return { success: false, error: "School context required" };
 
     // Check permissions
     if (dbUser.role !== "ADMIN") {
@@ -470,7 +417,7 @@ export async function duplicateCertificateTemplate(id: string) {
 
     // Get original template
     const original = await db.certificateTemplate.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!original) {
@@ -480,15 +427,16 @@ export async function duplicateCertificateTemplate(id: string) {
     // Create duplicate with modified name
     let newName = `${original.name} (Copy)`;
     let counter = 1;
-    
+
     // Ensure unique name
-    while (await db.certificateTemplate.findUnique({ where: { name: newName } })) {
+    while (await db.certificateTemplate.findFirst({ where: { name: newName, schoolId } })) {
       counter++;
       newName = `${original.name} (Copy ${counter})`;
     }
 
     const duplicate = await db.certificateTemplate.create({
       data: {
+        schoolId,
         name: newName,
         description: original.description,
         type: original.type,
@@ -532,18 +480,8 @@ export async function duplicateCertificateTemplate(id: string) {
  */
 export async function getCertificateTemplateStats(templateId: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    const dbUser = await db.user.findUnique({
-      where: { id: user.id },
-    });
-
-    if (!dbUser) {
-      return { success: false, error: "User not found" };
-    }
+    const { schoolId, user: dbUser } = await requireSchoolAccess();
+    if (!schoolId || !dbUser) return { success: false, error: "School context required" };
 
     // Check permissions
     if (dbUser.role !== "ADMIN") {
@@ -552,7 +490,7 @@ export async function getCertificateTemplateStats(templateId: string) {
 
     // Get template with certificate count
     const template = await db.certificateTemplate.findUnique({
-      where: { id: templateId },
+      where: { id: templateId, schoolId },
       include: {
         _count: {
           select: {
@@ -598,13 +536,11 @@ export async function getCertificateTemplateStats(templateId: string) {
  */
 export async function previewCertificateTemplate(templateId: string, sampleData?: Record<string, any>) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const template = await db.certificateTemplate.findUnique({
-      where: { id: templateId },
+      where: { id: templateId, schoolId },
     });
 
     if (!template) {

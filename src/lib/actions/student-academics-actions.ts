@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { DayOfWeek } from "@prisma/client";
 import { z } from "zod";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Get the current student's academic details including enrollment information
@@ -23,9 +24,13 @@ export async function getStudentAcademicDetails() {
     throw new Error("Not a student account");
   }
 
-  const student = await db.student.findUnique({
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) throw new Error("School context required");
+
+  const student = await db.student.findFirst({
     where: {
       userId: dbUser.id,
+      schoolId,
     },
     include: {
       enrollments: {

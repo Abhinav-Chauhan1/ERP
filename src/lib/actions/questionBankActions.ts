@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { QuestionType, Difficulty } from "@prisma/client";
+import { requireSchoolAccess, withSchoolId } from "@/lib/auth/tenant";
 
 /**
  * Create a new question in the question bank
@@ -19,6 +20,8 @@ export async function createQuestion(data: {
   difficulty: Difficulty;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -26,8 +29,8 @@ export async function createQuestion(data: {
     }
 
     // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -61,7 +64,7 @@ export async function createQuestion(data: {
 
     // Create the question
     const question = await prisma.questionBank.create({
-      data: {
+      data: withSchoolId({
         question: data.question,
         questionType: data.questionType,
         options: data.options || undefined,
@@ -71,7 +74,7 @@ export async function createQuestion(data: {
         topic: data.topic || undefined,
         difficulty: data.difficulty,
         createdBy: teacher.id,
-      },
+      }, schoolId),
       include: {
         subject: true,
         teacher: {
@@ -102,14 +105,16 @@ export async function getTeacherQuestions(filters?: {
   search?: string;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -118,6 +123,7 @@ export async function getTeacherQuestions(filters?: {
 
     const where: any = {
       createdBy: teacher.id,
+      schoolId,
     };
 
     if (filters?.subjectId) {
@@ -170,14 +176,16 @@ export async function getTeacherQuestions(filters?: {
  */
 export async function getQuestionById(questionId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const question = await prisma.questionBank.findUnique({
-      where: { id: questionId },
+    const question = await prisma.questionBank.findFirst({
+      where: { id: questionId, schoolId },
       include: {
         subject: true,
         teacher: {
@@ -216,6 +224,8 @@ export async function updateQuestion(
   }
 ) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -223,17 +233,17 @@ export async function updateQuestion(
     }
 
     // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
       return { success: false, error: "Teacher not found" };
     }
 
-    // Check if question exists and belongs to teacher
-    const existingQuestion = await prisma.questionBank.findUnique({
-      where: { id: questionId },
+    // Check if question exists and belongs to teacher AND school
+    const existingQuestion = await prisma.questionBank.findFirst({
+      where: { id: questionId, schoolId },
     });
 
     if (!existingQuestion) {
@@ -249,7 +259,7 @@ export async function updateQuestion(
 
     // Validate question type specific fields if questionType is being updated
     const questionType = data.questionType || existingQuestion.questionType;
-    
+
     if (questionType === "MCQ") {
       const options = data.options || (existingQuestion.options as string[]);
       if (!options || options.length < 2) {
@@ -314,6 +324,8 @@ export async function updateQuestion(
  */
 export async function deleteQuestion(questionId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
@@ -321,17 +333,17 @@ export async function deleteQuestion(questionId: string) {
     }
 
     // Get teacher record
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
       return { success: false, error: "Teacher not found" };
     }
 
-    // Check if question exists and belongs to teacher
-    const existingQuestion = await prisma.questionBank.findUnique({
-      where: { id: questionId },
+    // Check if question exists and belongs to teacher and school
+    const existingQuestion = await prisma.questionBank.findFirst({
+      where: { id: questionId, schoolId },
     });
 
     if (!existingQuestion) {
@@ -364,14 +376,16 @@ export async function deleteQuestion(questionId: string) {
  */
 export async function getTeacherSubjectTopics(subjectId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -382,6 +396,7 @@ export async function getTeacherSubjectTopics(subjectId: string) {
       where: {
         subjectId,
         createdBy: teacher.id,
+        schoolId,
         topic: {
           not: null,
         },
@@ -408,14 +423,16 @@ export async function getTeacherSubjectTopics(subjectId: string) {
  */
 export async function getQuestionBankStats() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -424,27 +441,27 @@ export async function getQuestionBankStats() {
 
     // Get total questions
     const totalQuestions = await prisma.questionBank.count({
-      where: { createdBy: teacher.id },
+      where: { createdBy: teacher.id, schoolId },
     });
 
     // Get questions by type
     const questionsByType = await prisma.questionBank.groupBy({
       by: ["questionType"],
-      where: { createdBy: teacher.id },
+      where: { createdBy: teacher.id, schoolId },
       _count: true,
     });
 
     // Get questions by difficulty
     const questionsByDifficulty = await prisma.questionBank.groupBy({
       by: ["difficulty"],
-      where: { createdBy: teacher.id },
+      where: { createdBy: teacher.id, schoolId },
       _count: true,
     });
 
     // Get questions by subject
     const questionsBySubject = await prisma.questionBank.groupBy({
       by: ["subjectId"],
-      where: { createdBy: teacher.id },
+      where: { createdBy: teacher.id, schoolId },
       _count: true,
     });
 
@@ -463,6 +480,7 @@ export async function getQuestionBankStats() {
     const mostUsedQuestions = await prisma.questionBank.findMany({
       where: {
         createdBy: teacher.id,
+        schoolId,
         usageCount: { gt: 0 },
       },
       orderBy: { usageCount: "desc" },
@@ -504,14 +522,16 @@ export async function bulkImportQuestions(data: {
   }>;
 }) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
     const session = await auth();
     const userId = session?.user?.id;
     if (!userId) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const teacher = await prisma.teacher.findUnique({
-      where: { userId },
+    const teacher = await prisma.teacher.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!teacher) {
@@ -552,6 +572,7 @@ export async function bulkImportQuestions(data: {
         topic: q.topic || undefined,
         difficulty: q.difficulty,
         createdBy: teacher.id,
+        schoolId, // Injected
       })),
     });
 

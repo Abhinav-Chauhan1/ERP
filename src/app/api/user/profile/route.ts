@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { withSchoolAuth } from "@/lib/auth/security-wrapper"
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { hashPassword, verifyPassword, validatePasswordStrength } from "@/lib/password"
@@ -26,7 +27,7 @@ const updateProfileSchema = z.object({
  * GET /api/user/profile
  * Retrieves the current user's profile information
  */
-export async function GET() {
+export const GET = withSchoolAuth(async (request, context) => {
   try {
     const session = await auth()
 
@@ -38,7 +39,9 @@ export async function GET() {
     }
 
     const user = await db.user.findUnique({
-      where: { id: session.user.id },
+      where: {
+        id: session.user.id
+      },
       select: {
         id: true,
         email: true,
@@ -74,7 +77,7 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+});
 
 /**
  * PATCH /api/user/profile
@@ -97,7 +100,9 @@ export async function PATCH(request: NextRequest) {
 
     // Get current user
     const user = await db.user.findUnique({
-      where: { id: session.user.id }
+      where: {
+        id: session.user.id
+      }
     })
 
     if (!user) {
@@ -171,7 +176,9 @@ async function handleEmailUpdate(user: any, body: any) {
 
     // Check if email is already in use
     const existingUser = await db.user.findUnique({
-      where: { email }
+      where: {
+        email
+      }
     })
 
     if (existingUser && existingUser.id !== user.id) {
@@ -196,7 +203,9 @@ async function handleEmailUpdate(user: any, body: any) {
 
     // Update user email (mark as unverified)
     await db.user.update({
-      where: { id: user.id },
+      where: {
+        id: user.id
+      },
       data: {
         email,
         emailVerified: null
@@ -335,13 +344,17 @@ async function handlePasswordUpdate(user: any, body: any) {
     // Get current session token to preserve it
     const session = await auth()
     const currentSession = await db.session.findFirst({
-      where: { userId: user.id },
+      where: {
+        userId: user.id
+      },
       orderBy: { expires: 'desc' }
     })
 
     // Update password
     await db.user.update({
-      where: { id: user.id },
+      where: {
+        id: user.id
+      },
       data: {
         password: hashedPassword
       }
@@ -352,7 +365,9 @@ async function handlePasswordUpdate(user: any, body: any) {
       await db.session.deleteMany({
         where: {
           userId: user.id,
-          id: { not: currentSession.id }
+          id: {
+            not: currentSession.id
+          }
         }
       })
     }
@@ -429,7 +444,9 @@ async function handleProfileUpdate(user: any, body: any) {
 
     // Update user
     const updatedUser = await db.user.update({
-      where: { id: user.id },
+      where: {
+        id: user.id
+      },
       data: updateData,
       select: {
         id: true,

@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   createCalendarEventFromMeeting,
   updateCalendarEventFromMeeting,
@@ -19,7 +20,8 @@ export async function getParentMeetings(filters?: {
   limit?: number;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    const where: any = { schoolId };
 
     if (filters?.status) {
       where.status = filters.status;
@@ -42,6 +44,12 @@ export async function getParentMeetings(filters?: {
         where.scheduledAt.lte = filters.dateTo;
       }
     }
+
+    const stats = await db.parentMeeting.groupBy({
+      by: ["status"],
+      where: { schoolId },
+      _count: true,
+    });
 
     const meetings = await db.parentMeeting.findMany({
       where,
@@ -100,7 +108,7 @@ export async function getParentMeetings(filters?: {
       take: filters?.limit,
     });
 
-    return { success: true, data: meetings };
+    return { success: true, data: meetings, stats };
   } catch (error) {
     console.error("Error fetching parent meetings:", error);
     return { success: false, error: "Failed to fetch parent meetings" };
@@ -110,38 +118,13 @@ export async function getParentMeetings(filters?: {
 // Get single parent meeting by ID
 export async function getParentMeetingById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const meeting = await db.parentMeeting.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
-        parent: {
-          include: {
-            user: true,
-            children: {
-              include: {
-                student: {
-                  include: {
-                    user: true,
-                    enrollments: {
-                      where: {
-                        status: "ACTIVE",
-                      },
-                      include: {
-                        class: true,
-                        section: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        teacher: {
-          include: {
-            user: true,
-          },
-        },
-      },
+        teacher: { include: { user: true } },
+        parent: { include: { user: true } }
+      }
     });
 
     if (!meeting) {
@@ -160,16 +143,29 @@ export async function scheduleMeeting(data: any) {
   try {
     const user = await currentUser();
     const userId = user?.id || 'system';
+    const { schoolId } = await requireSchoolAccess();
+
+    // Validate parent and teacher exist and belong to the school
+    const parent = await db.parent.findFirst({
+      where: { id: data.parentId, schoolId },
+    });
+    if (!parent) return { success: false, error: "Parent not found" };
+
+    const teacher = await db.teacher.findFirst({
+      where: { id: data.teacherId, schoolId },
+    });
+    if (!teacher) return { success: false, error: "Teacher not found" };
 
     const meeting = await db.parentMeeting.create({
       data: {
-        title: data.title || "Parent-Teacher Meeting",
-        description: data.description || null,
+        schoolId,
+        title: data.title,
+        description: data.description,
         parentId: data.parentId,
         teacherId: data.teacherId,
-        scheduledDate: new Date(data.scheduledAt),
-        duration: data.duration || 30,
-        location: data.location || null,
+        scheduledDate: data.scheduledDate,
+        duration: data.duration,
+        location: data.location,
         status: "SCHEDULED",
       },
       include: {
@@ -200,8 +196,9 @@ export async function scheduleMeeting(data: any) {
 // Update existing meeting
 export async function updateMeeting(id: string, data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const meeting = await db.parentMeeting.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         scheduledDate: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
         duration: data.duration,
@@ -237,8 +234,9 @@ export async function updateMeeting(id: string, data: any) {
 // Cancel meeting
 export async function cancelMeeting(id: string, reason?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const meeting = await db.parentMeeting.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         status: "CANCELLED",
         notes: reason ? `Cancelled: ${reason}` : "Meeting cancelled",
@@ -259,8 +257,9 @@ export async function cancelMeeting(id: string, reason?: string) {
 // Complete meeting
 export async function completeMeeting(id: string, notes?: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const meeting = await db.parentMeeting.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         status: "COMPLETED",
         notes: notes || null,
@@ -278,8 +277,9 @@ export async function completeMeeting(id: string, notes?: string) {
 // Reschedule meeting
 export async function rescheduleMeeting(id: string, newDate: Date) {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const meeting = await db.parentMeeting.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         scheduledDate: newDate,
         status: "RESCHEDULED",
@@ -312,6 +312,11 @@ export async function rescheduleMeeting(id: string, newDate: Date) {
 // Delete meeting
 export async function deleteMeeting(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    // Validate existence and ownership
+    const meeting = await db.parentMeeting.findUnique({ where: { id, schoolId } });
+    if (!meeting) return { success: false, error: "Meeting not found" };
+
     // Delete calendar event first
     await deleteCalendarEventFromMeeting(id);
 
@@ -357,7 +362,18 @@ export async function getTeachersForMeetings() {
 // Get parents for dropdown
 export async function getParentsForMeetings() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    // Find parents who have children enrolled in this school
     const parents = await db.parent.findMany({
+      where: {
+        children: {
+          some: {
+            student: {
+              schoolId
+            }
+          }
+        }
+      },
       include: {
         user: {
           select: {
@@ -407,17 +423,18 @@ export async function getParentsForMeetings() {
 // Get meeting statistics
 export async function getMeetingStats() {
   try {
+    const { schoolId } = await requireSchoolAccess();
     const [totalMeetings, scheduledMeetings, completedMeetings, cancelledMeetings] =
       await Promise.all([
-        db.parentMeeting.count(),
+        db.parentMeeting.count({ where: { schoolId } }),
         db.parentMeeting.count({
-          where: { status: "SCHEDULED" },
+          where: { status: "SCHEDULED", schoolId },
         }),
         db.parentMeeting.count({
-          where: { status: "COMPLETED" },
+          where: { status: "COMPLETED", schoolId },
         }),
         db.parentMeeting.count({
-          where: { status: "CANCELLED" },
+          where: { status: "CANCELLED", schoolId },
         }),
       ]);
 

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@/lib/auth-helpers";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all budgets with filters
 export async function getBudgets(filters?: {
@@ -12,7 +12,9 @@ export async function getBudgets(filters?: {
   limit?: number;
 }) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const where: any = { schoolId };
 
     if (filters?.academicYearId) {
       where.academicYearId = filters.academicYearId;
@@ -49,8 +51,10 @@ export async function getBudgets(filters?: {
 // Get single budget by ID
 export async function getBudgetById(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const budget = await db.budget.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!budget) {
@@ -67,8 +71,11 @@ export async function getBudgetById(id: string) {
 // Create new budget
 export async function createBudget(data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const budget = await db.budget.create({
       data: {
+        schoolId,
         title: data.title,
         category: data.category,
         academicYearId: data.academicYearId,
@@ -91,8 +98,10 @@ export async function createBudget(data: any) {
 // Update budget
 export async function updateBudget(id: string, data: any) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const budget = await db.budget.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         title: data.title,
         allocatedAmount: parseFloat(data.allocatedAmount),
@@ -114,8 +123,10 @@ export async function updateBudget(id: string, data: any) {
 // Delete budget
 export async function deleteBudget(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     await db.budget.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/finance/budget");
@@ -129,8 +140,10 @@ export async function deleteBudget(id: string) {
 // Get budget utilization
 export async function getBudgetUtilization(budgetId: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
     const budget = await db.budget.findUnique({
-      where: { id: budgetId },
+      where: { id: budgetId, schoolId },
       include: {
         expenses: true,
       },
@@ -163,7 +176,9 @@ export async function getBudgetUtilization(budgetId: string) {
 // Get budget statistics
 export async function getBudgetStats(academicYearId?: string) {
   try {
-    const where: any = {};
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const where: any = { schoolId };
     if (academicYearId) where.academicYearId = academicYearId;
 
     const [
@@ -205,7 +220,7 @@ export async function getBudgetStats(academicYearId?: string) {
     }, 0);
 
     const totalRemaining = (totalAllocated._sum.allocatedAmount || 0) - totalSpent;
-    const utilizationRate = totalAllocated._sum.allocatedAmount 
+    const utilizationRate = totalAllocated._sum.allocatedAmount
       ? (totalSpent / totalAllocated._sum.allocatedAmount) * 100
       : 0;
 
@@ -216,7 +231,7 @@ export async function getBudgetStats(academicYearId?: string) {
         return sum + budget.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
       }, 0);
       const allocated = item._sum.allocatedAmount || 0;
-      
+
       return {
         category: item.category,
         allocated,
@@ -247,6 +262,8 @@ export async function getBudgetStats(academicYearId?: string) {
 // Note: Spent amounts are now calculated from expenses, so this function just revalidates
 export async function updateBudgetSpentAmount(category: string, year: number, amount: number) {
   try {
+    const { schoolId } = await requireSchoolAccess(); // Ensure context check even if logic empty
+    if (!schoolId) return { success: false, error: "School context required" };
     // Spent amounts are calculated from expenses relation, no need to update
     revalidatePath("/admin/finance/budget");
     return { success: true, message: "Budget updated" };
@@ -259,7 +276,9 @@ export async function updateBudgetSpentAmount(category: string, year: number, am
 // Get budget alerts (over budget or near limit)
 export async function getBudgetAlerts(academicYearId?: string) {
   try {
-    const where: any = { status: "Active" };
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const where: any = { status: "Active", schoolId };
     if (academicYearId) where.academicYearId = academicYearId;
 
     const budgets = await db.budget.findMany({
@@ -273,7 +292,7 @@ export async function getBudgetAlerts(academicYearId?: string) {
       .map((budget) => {
         const spentAmount = budget.expenses.reduce((sum, exp) => sum + exp.amount, 0);
         const utilizationPercentage = (spentAmount / budget.allocatedAmount) * 100;
-        
+
         if (spentAmount > budget.allocatedAmount) {
           return {
             budgetId: budget.id,

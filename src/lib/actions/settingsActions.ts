@@ -21,7 +21,7 @@ export async function getSystemSettings() {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -121,7 +121,7 @@ export async function updateSchoolInfo(data: {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -202,7 +202,7 @@ export async function updateAcademicSettings(data: {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -264,7 +264,7 @@ export async function updateNotificationSettings(data: {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -328,7 +328,7 @@ export async function updateSecuritySettings(data: {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -383,7 +383,7 @@ export async function updateAppearanceSettings(data: {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
@@ -423,7 +423,7 @@ export async function triggerBackup() {
       include: { administrator: true },
     });
 
-    if (!user || !user.administrator) {
+    if (!user || (!user.administrator && user.role !== "SUPER_ADMIN")) {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 

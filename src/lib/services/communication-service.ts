@@ -23,9 +23,9 @@ import {
   CommunicationError,
 } from '@/lib/types/communication';
 
-// Import channel services
-import { sendSMS, sendSMSWithRetry, isMSG91Configured } from './msg91-service';
-import { sendTextMessage, sendTextMessageWithRetry, isWhatsAppConfigured } from './whatsapp-service';
+// Import channel services with usage limits
+import { sendSMS, sendSMSWithRetry, isSMSConfigured } from './sms-service-with-limits';
+import { sendTextMessage, sendTextMessageWithRetry, isWhatsAppConfigured } from './whatsapp-service-with-limits';
 import { sendEmail, sendEmailWithRetry, isEmailConfigured } from './email-service';
 
 // Import message logging service

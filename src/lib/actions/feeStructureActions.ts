@@ -1,5 +1,6 @@
 "use server";
 
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
@@ -38,29 +39,29 @@ async function checkPermission(resource: string, action: PermissionAction, error
 }
 
 // Get all fee structures with related data
-export async function getFeeStructures(filters?: FeeStructureFilters) {
+export const getFeeStructures = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: FeeStructureFilters) => {
   try {
-    const feeStructures = await feeStructureService.getFeeStructures(filters || {});
+    const feeStructures = await feeStructureService.getFeeStructures({ ...filters, schoolId } || { schoolId });
     return { success: true, data: feeStructures };
   } catch (error) {
     console.error("Error fetching fee structures:", error);
     return { success: false, error: "Failed to fetch fee structures" };
   }
-}
+});
 
 // Get single fee structure by ID
-export async function getFeeStructureById(id: string) {
+export const getFeeStructureById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    const feeStructure = await feeStructureService.getFeeStructureById(id);
+    const feeStructure = await feeStructureService.getFeeStructureById(id, schoolId);
     return { success: true, data: feeStructure };
   } catch (error) {
     console.error("Error fetching fee structure:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch fee structure" };
   }
-}
+});
 
 // Get fee structures for a specific class
-export async function getFeeStructuresForClass(classId: string, academicYearId?: string) {
+export const getFeeStructuresForClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, classId: string, academicYearId?: string) => {
   try {
     const feeStructures = await feeStructureService.getFeeStructuresForClass(classId, academicYearId);
     return { success: true, data: feeStructures };
@@ -68,56 +69,56 @@ export async function getFeeStructuresForClass(classId: string, academicYearId?:
     console.error("Error fetching fee structures for class:", error);
     return { success: false, error: "Failed to fetch fee structures for class" };
   }
-}
+});
 
 
 // Create new fee structure
-export async function createFeeStructure(data: CreateFeeStructureInput) {
+export const createFeeStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: CreateFeeStructureInput) => {
   try {
     // Permission check: require FEE:CREATE
     await checkPermission('FEE', 'CREATE', 'You do not have permission to create fee structures');
 
-    const feeStructure = await feeStructureService.createFeeStructure(data);
+    const feeStructure = await feeStructureService.createFeeStructure(data, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
   } catch (error) {
     console.error("Error creating fee structure:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create fee structure" };
   }
-}
+});
 
 // Update existing fee structure
-export async function updateFeeStructure(id: string, data: UpdateFeeStructureInput) {
+export const updateFeeStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: UpdateFeeStructureInput) => {
   try {
     // Permission check: require FEE:UPDATE
     await checkPermission('FEE', 'UPDATE', 'You do not have permission to update fee structures');
 
-    const feeStructure = await feeStructureService.updateFeeStructure(id, data);
+    const feeStructure = await feeStructureService.updateFeeStructure(id, data, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
   } catch (error) {
     console.error("Error updating fee structure:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update fee structure" };
   }
-}
+});
 
 // Delete fee structure
-export async function deleteFeeStructure(id: string) {
+export const deleteFeeStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     // Permission check: require FEE:DELETE
     await checkPermission('FEE', 'DELETE', 'You do not have permission to delete fee structures');
 
-    await feeStructureService.deleteFeeStructure(id);
+    await feeStructureService.deleteFeeStructure(id, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true };
   } catch (error) {
     console.error("Error deleting fee structure:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete fee structure" };
   }
-}
+});
 
 // Duplicate fee structure
-export async function duplicateFeeStructure(id: string, newData?: DuplicateFeeStructureInput) {
+export const duplicateFeeStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, newData?: DuplicateFeeStructureInput) => {
   try {
     const duplicate = await feeStructureService.duplicateFeeStructure(id, newData);
     revalidatePath("/admin/finance/fee-structure");
@@ -126,10 +127,10 @@ export async function duplicateFeeStructure(id: string, newData?: DuplicateFeeSt
     console.error("Error duplicating fee structure:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to duplicate fee structure" };
   }
-}
+});
 
 // Get fee structure templates
-export async function getFeeStructureTemplates() {
+export const getFeeStructureTemplates = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
     const templates = await feeStructureService.getTemplates();
     return { success: true, data: templates };
@@ -137,10 +138,10 @@ export async function getFeeStructureTemplates() {
     console.error("Error fetching templates:", error);
     return { success: false, error: "Failed to fetch templates" };
   }
-}
+});
 
 // Create fee structure from template
-export async function createFeeStructureFromTemplate(templateId: string, data: CreateFromTemplateInput) {
+export const createFeeStructureFromTemplate = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, templateId: string, data: CreateFromTemplateInput) => {
   try {
     const feeStructure = await feeStructureService.createFromTemplate(templateId, data);
     revalidatePath("/admin/finance/fee-structure");
@@ -149,10 +150,10 @@ export async function createFeeStructureFromTemplate(templateId: string, data: C
     console.error("Error creating fee structure from template:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create from template" };
   }
-}
+});
 
 // Get all fee types
-export async function getFeeTypes(includeClassAmounts: boolean = false) {
+export const getFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, includeClassAmounts: boolean = false) => {
   try {
     const feeTypes = await feeTypeService.getFeeTypes(includeClassAmounts);
     return { success: true, data: feeTypes };
@@ -160,10 +161,10 @@ export async function getFeeTypes(includeClassAmounts: boolean = false) {
     console.error("Error fetching fee types:", error);
     return { success: false, error: "Failed to fetch fee types" };
   }
-}
+});
 
 // Get single fee type by ID
-export async function getFeeTypeById(id: string, includeClassAmounts: boolean = true) {
+export const getFeeTypeById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, includeClassAmounts: boolean = true) => {
   try {
     const feeType = await feeTypeService.getFeeTypeById(id, includeClassAmounts);
     return { success: true, data: feeType };
@@ -171,10 +172,10 @@ export async function getFeeTypeById(id: string, includeClassAmounts: boolean = 
     console.error("Error fetching fee type:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch fee type" };
   }
-}
+});
 
 // Get fee types with class amount info
-export async function getFeeTypesWithClassAmountInfo() {
+export const getFeeTypesWithClassAmountInfo = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
     const feeTypes = await feeTypeService.getFeeTypesWithClassAmountInfo();
     return { success: true, data: feeTypes };
@@ -182,10 +183,10 @@ export async function getFeeTypesWithClassAmountInfo() {
     console.error("Error fetching fee types with class amount info:", error);
     return { success: false, error: "Failed to fetch fee types" };
   }
-}
+});
 
 // Create new fee type
-export async function createFeeType(data: any) {
+export const createFeeType = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: any) => {
   try {
     const feeType = await feeTypeService.createFeeType({
       name: data.name,
@@ -202,10 +203,10 @@ export async function createFeeType(data: any) {
     console.error("Error creating fee type:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create fee type" };
   }
-}
+});
 
 // Update fee type
-export async function updateFeeType(id: string, data: any) {
+export const updateFeeType = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, data: any) => {
   try {
     const feeType = await feeTypeService.updateFeeType(id, {
       name: data.name,
@@ -222,10 +223,10 @@ export async function updateFeeType(id: string, data: any) {
     console.error("Error updating fee type:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update fee type" };
   }
-}
+});
 
 // Delete fee type
-export async function deleteFeeType(id: string) {
+export const deleteFeeType = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
     await feeTypeService.deleteFeeType(id);
     revalidatePath("/admin/finance/fee-structure");
@@ -234,10 +235,10 @@ export async function deleteFeeType(id: string) {
     console.error("Error deleting fee type:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to delete fee type" };
   }
-}
+});
 
 // Get amount for specific class
-export async function getAmountForClass(feeTypeId: string, classId: string) {
+export const getAmountForClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeTypeId: string, classId: string) => {
   try {
     const amount = await feeTypeService.getAmountForClass(feeTypeId, classId);
     return { success: true, data: amount };
@@ -245,10 +246,10 @@ export async function getAmountForClass(feeTypeId: string, classId: string) {
     console.error("Error getting amount for class:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to get amount" };
   }
-}
+});
 
 // Set class-specific amount
-export async function setClassAmount(feeTypeId: string, classId: string, amount: number) {
+export const setClassAmount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeTypeId: string, classId: string, amount: number) => {
   try {
     const classAmount = await feeTypeService.setClassAmount(feeTypeId, classId, amount);
     revalidatePath("/admin/finance/fee-structure");
@@ -257,10 +258,10 @@ export async function setClassAmount(feeTypeId: string, classId: string, amount:
     console.error("Error setting class amount:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to set class amount" };
   }
-}
+});
 
 // Remove class-specific amount
-export async function removeClassAmount(feeTypeId: string, classId: string) {
+export const removeClassAmount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeTypeId: string, classId: string) => {
   try {
     await feeTypeService.removeClassAmount(feeTypeId, classId);
     revalidatePath("/admin/finance/fee-structure");
@@ -269,16 +270,19 @@ export async function removeClassAmount(feeTypeId: string, classId: string) {
     console.error("Error removing class amount:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to remove class amount" };
   }
-}
+});
 
 // Get fee structure statistics
-export async function getFeeStructureStats() {
+export const getFeeStructureStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
-    const totalStructures = await db.feeStructure.count();
+    const totalStructures = await db.feeStructure.count({ where: { schoolId } });
     const activeStructures = await db.feeStructure.count({
-      where: { isActive: true },
+      where: {
+        academicYear: { schoolId },
+        isActive: true
+      },
     });
-    const totalFeeTypes = await db.feeType.count();
+    const totalFeeTypes = await db.feeType.count({ where: { schoolId } });
 
     return {
       success: true,
@@ -292,7 +296,7 @@ export async function getFeeStructureStats() {
     console.error("Error fetching fee structure stats:", error);
     return { success: false, error: "Failed to fetch statistics" };
   }
-}
+});
 
 // ============================================================================
 // Analytics Actions
@@ -303,7 +307,7 @@ export async function getFeeStructureStats() {
  * 
  * Requirements: 10.1, 10.2, 10.3
  */
-export async function getFeeStructureAnalytics(filters?: AnalyticsFilters) {
+export const getFeeStructureAnalytics = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: AnalyticsFilters) => {
   try {
     const analytics = await feeStructureAnalyticsService.getFeeStructureAnalytics(filters || {});
     return { success: true, data: analytics };
@@ -311,14 +315,14 @@ export async function getFeeStructureAnalytics(filters?: AnalyticsFilters) {
     console.error("Error fetching fee structure analytics:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch analytics" };
   }
-}
+});
 
 /**
  * Get students affected by a specific fee structure
  * 
  * Requirements: 10.2
  */
-export async function getStudentsAffectedByStructure(feeStructureId: string) {
+export const getStudentsAffectedByStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeStructureId: string) => {
   try {
     const result = await feeStructureAnalyticsService.getStudentsAffectedByStructure(feeStructureId);
     return { success: true, data: result };
@@ -326,14 +330,14 @@ export async function getStudentsAffectedByStructure(feeStructureId: string) {
     console.error("Error fetching students affected:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch students" };
   }
-}
+});
 
 /**
  * Calculate revenue projection for a fee structure
  * 
  * Requirements: 10.3
  */
-export async function calculateRevenueProjection(feeStructureId: string) {
+export const calculateRevenueProjection = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeStructureId: string) => {
   try {
     const projection = await feeStructureAnalyticsService.calculateRevenueProjection(feeStructureId);
     return { success: true, data: projection };
@@ -341,14 +345,14 @@ export async function calculateRevenueProjection(feeStructureId: string) {
     console.error("Error calculating revenue projection:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to calculate projection" };
   }
-}
+});
 
 /**
  * Get usage trends over time
  * 
  * Requirements: 10.4
  */
-export async function getFeeStructureUsageTrends(academicYearId?: string) {
+export const getFeeStructureUsageTrends = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, academicYearId?: string) => {
   try {
     const trends = await feeStructureAnalyticsService.getUsageTrends(academicYearId);
     return { success: true, data: trends };
@@ -356,7 +360,7 @@ export async function getFeeStructureUsageTrends(academicYearId?: string) {
     console.error("Error fetching usage trends:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to fetch trends" };
   }
-}
+});
 
 // ============================================================================
 // Bulk Operations Actions
@@ -367,11 +371,11 @@ export async function getFeeStructureUsageTrends(academicYearId?: string) {
  * 
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5
  */
-export async function bulkAssignFeeStructuresToClass(
+export const bulkAssignFeeStructuresToClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   classId: string,
   feeStructureIds: string[],
   academicYearId: string
-) {
+) => {
   try {
     const result = await feeStructureService.bulkAssignToClass(
       classId,
@@ -388,17 +392,17 @@ export async function bulkAssignFeeStructuresToClass(
       error: error instanceof Error ? error.message : "Failed to bulk assign fee structures"
     };
   }
-}
+});
 
 /**
  * Bulk remove fee structure assignments from a class
  * 
  * Requirements: 9.1, 9.4
  */
-export async function bulkRemoveFeeStructuresFromClass(
+export const bulkRemoveFeeStructuresFromClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   classId: string,
   feeStructureIds: string[]
-) {
+) => {
   try {
     const result = await feeStructureService.bulkRemoveFromClass(classId, feeStructureIds);
     revalidatePath("/admin/finance/fee-structure");
@@ -411,17 +415,17 @@ export async function bulkRemoveFeeStructuresFromClass(
       error: error instanceof Error ? error.message : "Failed to bulk remove fee structures"
     };
   }
-}
+});
 
 /**
  * Get available fee structures for bulk assignment
  * 
  * Requirements: 9.2
  */
-export async function getAvailableFeeStructuresForBulkAssignment(
+export const getAvailableFeeStructuresForBulkAssignment = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   classId: string,
   academicYearId: string
-) {
+) => {
   try {
     const result = await feeStructureService.getAvailableForBulkAssignment(
       classId,
@@ -435,7 +439,7 @@ export async function getAvailableFeeStructuresForBulkAssignment(
       error: error instanceof Error ? error.message : "Failed to fetch available fee structures"
     };
   }
-}
+});
 
 // ============================================================================
 // Auto-Generate Fee Types
@@ -445,7 +449,7 @@ export async function getAvailableFeeStructuresForBulkAssignment(
  * Auto-generate standard fee types for Indian schools
  * Similar to auto-generate for departments and grades
  */
-export async function autoGenerateFeeTypes(selectedNames?: string[]) {
+export const autoGenerateFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, selectedNames?: string[]) => {
   try {
     // Get existing fee types
     const existingFeeTypes = await db.feeType.findMany({
@@ -475,7 +479,7 @@ export async function autoGenerateFeeTypes(selectedNames?: string[]) {
 
     // Create the new fee types
     const result = await db.feeType.createMany({
-      data: feeTypesToCreate,
+      data: feeTypesToCreate.map(ft => ({ ...ft, schoolId })),
       skipDuplicates: true,
     });
 
@@ -492,12 +496,12 @@ export async function autoGenerateFeeTypes(selectedNames?: string[]) {
       error: error instanceof Error ? error.message : "Failed to auto-generate fee types"
     };
   }
-}
+});
 
 /**
  * Get list of standard fee types that can be auto-generated
  */
-export async function getAvailableStandardFeeTypes() {
+export const getAvailableStandardFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
     // Get existing fee types
     const existingFeeTypes = await db.feeType.findMany({
@@ -528,7 +532,7 @@ export async function getAvailableStandardFeeTypes() {
       error: error instanceof Error ? error.message : "Failed to fetch available fee types"
     };
   }
-}
+});
 
 // ============================================================================
 // Quick Create Fee Structures by Class
@@ -544,14 +548,17 @@ interface BulkCreateStructureInput {
  * Bulk create fee structures for multiple classes
  * Creates one fee structure per class with class-specific amounts
  */
-export async function bulkCreateFeeStructuresByClass(
+export const bulkCreateFeeStructuresByClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,
   academicYearId: string,
   structures: BulkCreateStructureInput[]
-) {
+) => {
   try {
     // Validate academic year exists
     const academicYear = await db.academicYear.findUnique({
-      where: { id: academicYearId },
+      where: {
+        schoolId,
+        id: academicYearId
+      },
     });
 
     if (!academicYear) {
@@ -567,7 +574,12 @@ export async function bulkCreateFeeStructuresByClass(
         // Validate all classes exist
         const classIds = structure.classIds;
         const classCount = await db.class.count({
-          where: { id: { in: classIds } },
+          where: {
+            schoolId,
+            id: {
+              in: classIds
+            }
+          },
         });
 
         if (classCount !== classIds.length) {
@@ -578,7 +590,11 @@ export async function bulkCreateFeeStructuresByClass(
         // Validate all fee types exist
         const feeTypeIds = structure.items.map((item) => item.feeTypeId);
         const feeTypeCount = await db.feeType.count({
-          where: { id: { in: feeTypeIds } },
+          where: {
+            id: {
+              in: feeTypeIds
+            }
+          },
         });
 
         if (feeTypeCount !== feeTypeIds.length) {
@@ -646,5 +662,5 @@ export async function bulkCreateFeeStructuresByClass(
       error: error instanceof Error ? error.message : "Failed to bulk create fee structures",
     };
   }
-}
+});
 
