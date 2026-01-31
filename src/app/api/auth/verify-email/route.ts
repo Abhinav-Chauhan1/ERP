@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!verificationToken) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'email_verification',
         changes: {
           reason: 'INVALID_TOKEN',
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'email_verification',
         changes: {
           reason: 'TOKEN_EXPIRED',
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'email_verification',
         changes: {
           reason: 'USER_NOT_FOUND',
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: user.id,
-        action: 'INFO',
+        action: 'READ',
         resource: 'email_verification',
         changes: {
           reason: 'ALREADY_VERIFIED',
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'CREATE',
       resource: 'email_verification',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

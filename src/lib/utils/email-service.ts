@@ -53,6 +53,13 @@ export async function sendEmail(options: EmailOptions) {
   }
 }
 
+/**
+ * Check if email service is configured
+ */
+export function isEmailConfigured(): boolean {
+  return !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+}
+
 import {
   getAdmissionConfirmationEmailHtml,
   getScheduledReportEmailHtml

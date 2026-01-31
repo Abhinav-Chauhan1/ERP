@@ -15,8 +15,8 @@ interface Receipt {
     rejectionReason?: string | null;
     student: {
         user: {
-            firstName: string;
-            lastName: string;
+            firstName: string | null;
+            lastName: string | null;
         };
         enrollments: Array<{
             class: {
@@ -56,7 +56,7 @@ export function ReceiptsHistoryTable({ data, type, onView }: ReceiptsHistoryTabl
             render: (receipt: Receipt) => (
                 <div className="flex flex-col">
                     <span className="font-medium">
-                        {receipt.student.user.firstName} {receipt.student.user.lastName}
+                        {`${receipt.student.user.firstName || ''} ${receipt.student.user.lastName || ''}`.trim() || 'Unknown Student'}
                     </span>
                     <span className="text-xs text-muted-foreground">
                         {receipt.feeStructure.name}
@@ -66,7 +66,7 @@ export function ReceiptsHistoryTable({ data, type, onView }: ReceiptsHistoryTabl
             mobileRender: (receipt: Receipt) => (
                 <div className="flex flex-col">
                     <span className="font-medium text-sm">
-                        {receipt.student.user.firstName} {receipt.student.user.lastName}
+                        {`${receipt.student.user.firstName || ''} ${receipt.student.user.lastName || ''}`.trim() || 'Unknown Student'}
                     </span>
                     <span className="text-xs text-muted-foreground">
                         {receipt.referenceNumber}

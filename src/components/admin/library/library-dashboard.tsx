@@ -44,9 +44,9 @@ interface LibraryDashboardProps {
         userId: string;
         user: {
           id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
+          firstName: string | null;
+          lastName: string | null;
+          email: string | null;
         };
       };
     }>;
@@ -68,9 +68,9 @@ interface LibraryDashboardProps {
         userId: string;
         user: {
           id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
+          firstName: string | null;
+          lastName: string | null;
+          email: string | null;
         };
       };
     }>;
@@ -250,7 +250,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{issue.student.user.firstName} {issue.student.user.lastName}</span>
+                          <span>{`${issue.student.user.firstName || ''} ${issue.student.user.lastName || ''}`.trim() || 'Unknown Student'}</span>
                           <span>•</span>
                           <span>
                             {formatDistanceToNow(new Date(issue.issueDate), {
@@ -306,7 +306,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{issue.student.user.firstName} {issue.student.user.lastName}</span>
+                          <span>{`${issue.student.user.firstName || ''} ${issue.student.user.lastName || ''}`.trim() || 'Unknown Student'}</span>
                           <span>•</span>
                           <span>
                             {issue.returnDate &&

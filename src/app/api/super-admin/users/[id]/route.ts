@@ -72,7 +72,7 @@ export async function GET(
             action: true,
             resource: true,
             createdAt: true,
-            metadata: true,
+            details: true,
           },
           orderBy: { createdAt: 'desc' },
           take: 10, // Last 10 audit logs
@@ -105,7 +105,7 @@ export async function GET(
               class: {
                 select: {
                   name: true,
-                  section: true,
+                  sections: true,
                 }
               }
             }
@@ -119,12 +119,15 @@ export async function GET(
         },
         select: {
           employeeId: true,
-          department: true,
+          departments: true,
           qualification: true,
-          experience: true,
           subjects: {
             select: {
-              name: true,
+              subject: {
+                select: {
+                  name: true,
+                }
+              }
             }
           }
         }
@@ -151,7 +154,7 @@ export async function GET(
                       class: {
                         select: {
                           name: true,
-                          section: true,
+                          sections: true,
                         }
                       }
                     }

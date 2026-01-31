@@ -339,6 +339,7 @@ export const DEFAULT_PERMISSIONS: PermissionDefinition[] = [
  */
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     ADMIN: ['*'], // Wildcard - handled by admin bypass in hasPermission
+    SUPER_ADMIN: ['*'], // Super admin has all permissions
 
     TEACHER: [
         // View access

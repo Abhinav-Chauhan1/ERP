@@ -19,11 +19,16 @@ import {
 
 export class NotificationTemplateService {
   /**
-   * Get a template by name
+   * Get a template by name and schoolId
    */
-  async getTemplateByName(name: string) {
+  async getTemplateByName(name: string, schoolId: string) {
     return await db.messageTemplate.findUnique({
-      where: { name, isActive: true },
+      where: { 
+        schoolId_name: {
+          schoolId,
+          name
+        }
+      },
     });
   }
 
@@ -41,6 +46,7 @@ export class NotificationTemplateService {
    * Render promotion notification
    */
   async renderPromotionNotification(data: {
+    schoolId: string;
     parentName: string;
     studentName: string;
     sourceClass: string;
@@ -234,14 +240,25 @@ export class NotificationTemplateService {
     body: string;
     variables: string[];
     createdBy: string;
+    schoolId: string;
   }) {
     const existing = await db.messageTemplate.findUnique({
-      where: { name: data.name },
+      where: { 
+        schoolId_name: {
+          schoolId: data.schoolId,
+          name: data.name
+        }
+      },
     });
 
     if (existing) {
       return await db.messageTemplate.update({
-        where: { name: data.name },
+        where: { 
+          schoolId_name: {
+            schoolId: data.schoolId,
+            name: data.name
+          }
+        },
         data: {
           description: data.description,
           type: data.type,
@@ -266,6 +283,9 @@ export class NotificationTemplateService {
         isActive: true,
         isDefault: false,
         createdBy: data.createdBy,
+        school: {
+          connect: { id: data.schoolId }
+        }
       },
     });
   }
@@ -273,9 +293,14 @@ export class NotificationTemplateService {
   /**
    * Deactivate a template
    */
-  async deactivateTemplate(name: string) {
+  async deactivateTemplate(name: string, schoolId: string) {
     return await db.messageTemplate.update({
-      where: { name },
+      where: { 
+        schoolId_name: {
+          schoolId,
+          name
+        }
+      },
       data: { isActive: false },
     });
   }
@@ -283,9 +308,14 @@ export class NotificationTemplateService {
   /**
    * Activate a template
    */
-  async activateTemplate(name: string) {
+  async activateTemplate(name: string, schoolId: string) {
     return await db.messageTemplate.update({
-      where: { name },
+      where: { 
+        schoolId_name: {
+          schoolId,
+          name
+        }
+      },
       data: { isActive: true },
     });
   }

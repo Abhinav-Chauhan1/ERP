@@ -3,7 +3,12 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
-import { authAnalyticsService } from "@/lib/services/auth-analytics-service";
+import { 
+  getCachedAuthAnalyticsDashboard,
+  getCachedAuthenticationMetrics,
+  getCachedSecurityMetrics,
+  getCachedUserActivityMetrics
+} from "@/lib/utils/cached-auth-analytics";
 
 export async function getDashboardAnalytics(timeRange: string = "30d") {
   await requireSuperAdminAccess();
@@ -35,25 +40,29 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
 
   try {
     // Get basic counts
+    // Optimize multiple count queries into fewer, more efficient queries
     const [
-      totalSchools,
-      activeSchools,
-      suspendedSchools,
-      totalUsers,
-      totalStudents,
-      totalTeachers,
-      totalAdmins,
-      recentSchools,
-      activeSubscriptions,
-      totalSubscriptions
+      schoolStats,
+      userStats,
+      subscriptionStats,
+      recentSchools
     ] = await Promise.all([
-      db.school.count(),
-      db.school.count({ where: { status: "ACTIVE" } }),
-      db.school.count({ where: { status: "SUSPENDED" } }),
-      db.user.count(),
-      db.user.count({ where: { role: "STUDENT" } }),
-      db.user.count({ where: { role: "TEACHER" } }),
-      db.user.count({ where: { role: "ADMIN" } }),
+      // Single query for all school statistics
+      db.school.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
+      // Single query for all user statistics  
+      db.user.groupBy({
+        by: ['role'],
+        _count: { id: true },
+      }),
+      // Single query for subscription statistics
+      db.subscription.groupBy({
+        by: ['isActive'],
+        _count: { id: true },
+      }),
+      // Recent schools count
       db.school.count({
         where: {
           createdAt: {
@@ -62,9 +71,22 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
           },
         },
       }),
-      db.subscription.count({ where: { isActive: true } }),
-      db.subscription.count(),
     ]);
+
+    // Process school statistics
+    const totalSchools = schoolStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const activeSchools = schoolStats.find(s => s.status === 'ACTIVE')?._count.id || 0;
+    const suspendedSchools = schoolStats.find(s => s.status === 'SUSPENDED')?._count.id || 0;
+
+    // Process user statistics
+    const totalUsers = userStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const totalStudents = userStats.find(u => u.role === 'STUDENT')?._count.id || 0;
+    const totalTeachers = userStats.find(u => u.role === 'TEACHER')?._count.id || 0;
+    const totalAdmins = userStats.find(u => u.role === 'ADMIN')?._count.id || 0;
+
+    // Process subscription statistics
+    const totalSubscriptions = subscriptionStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const activeSubscriptions = subscriptionStats.find(s => s.isActive === true)?._count.id || 0;
 
     // Get subscription data for revenue calculations
     const subscriptions = await db.subscription.findMany({
@@ -102,19 +124,30 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
       }
     });
 
-    // Get user growth data for the last 12 months
+    // Get user growth data for the last 12 months - OPTIMIZED SINGLE QUERY
+    const twelveMonthsAgo = startOfMonth(subDays(now, 11 * 30));
+    
+    // Single query to get all users created in the last 12 months
+    const allUsers = await db.user.findMany({
+      where: {
+        createdAt: {
+          gte: twelveMonthsAgo,
+          lte: now,
+        },
+      },
+      select: {
+        createdAt: true,
+      },
+    });
+
+    // Calculate cumulative user counts in memory
     const userGrowthData = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
       
-      const monthlyUsers = await db.user.count({
-        where: {
-          createdAt: {
-            lte: monthEnd,
-          },
-        },
-      });
+      // Count users created up to this month end (cumulative)
+      const monthlyUsers = allUsers.filter(user => user.createdAt <= monthEnd).length;
 
       userGrowthData.push({
         month: format(monthStart, "MMM yyyy"),
@@ -180,7 +213,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
     });
 
     // Get authentication analytics summary
-    const authAnalytics = await authAnalyticsService.getAuthAnalyticsDashboard(
+    const authAnalytics = await getCachedAuthAnalyticsDashboard(
       { startDate, endDate },
       {}
     ).catch(error => {
@@ -224,7 +257,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
           createdAt: log.createdAt,
           metadata: log.changes,
           ipAddress: log.ipAddress,
-          isAuthEvent: ['LOGIN_SUCCESS', 'LOGIN_FAILURE', 'AUTH_SUCCESS', 'AUTH_FAILED', 'SESSION_CREATED', 'SESSION_EXPIRED'].includes(log.action),
+          isAuthEvent: ['LOGIN', 'LOGOUT', 'CREATE', 'UPDATE'].includes(log.action),
         })),
         authenticationAnalytics: authAnalytics ? {
           overview: authAnalytics.overview,
@@ -273,7 +306,7 @@ export async function getRevenueAnalytics(timeRange: string = "30d") {
   }
 
   try {
-    // Get revenue data by month for the last 12 months
+    // Get revenue data by month - OPTIMIZED SINGLE QUERY
     const revenueData = [];
     const planPricing = {
       STARTER: 2900,
@@ -281,25 +314,32 @@ export async function getRevenueAnalytics(timeRange: string = "30d") {
       DOMINATE: 9900,
     };
 
+    // Single query to get all subscriptions for the time range
+    const allSubscriptions = await db.subscription.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: now,
+        },
+      },
+      include: {
+        school: {
+          select: {
+            plan: true,
+          },
+        },
+      },
+    });
+
+    // Group by month in memory instead of 12 separate queries
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
 
-      const monthlySubscriptions = await db.subscription.findMany({
-        where: {
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        include: {
-          school: {
-            select: {
-              plan: true,
-            },
-          },
-        },
-      });
+      // Filter in memory - much faster than DB query
+      const monthlySubscriptions = allSubscriptions.filter(sub => 
+        sub.createdAt >= monthStart && sub.createdAt <= monthEnd
+      );
 
       let monthlyRevenue = 0;
       monthlySubscriptions.forEach((sub) => {
@@ -361,10 +401,10 @@ export async function getAuthenticationAnalytics(timeRange: string = "30d", scho
       securityMetrics,
       activityMetrics
     ] = await Promise.all([
-      authAnalyticsService.getAuthAnalyticsDashboard(timeRangeObj, filters),
-      authAnalyticsService.getAuthenticationMetrics(timeRangeObj, filters),
-      authAnalyticsService.getSecurityMetrics(timeRangeObj, filters),
-      authAnalyticsService.getUserActivityMetrics(timeRangeObj, filters)
+      getCachedAuthAnalyticsDashboard(timeRangeObj, filters),
+      getCachedAuthenticationMetrics(timeRangeObj, filters),
+      getCachedSecurityMetrics(timeRangeObj, filters),
+      getCachedUserActivityMetrics(timeRangeObj, filters)
     ]);
 
     return {

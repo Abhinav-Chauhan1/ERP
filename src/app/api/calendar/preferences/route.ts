@@ -26,6 +26,34 @@ export async function GET() {
       );
     }
 
+    // Get user with school associations
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        userSchools: {
+          include: {
+            school: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get the first school (or handle multiple schools as needed)
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return NextResponse.json(
+        { error: 'No school association found' },
+        { status: 403 }
+      );
+    }
+
     let preferences = await db.userCalendarPreferences.findUnique({
       where: { userId }
     });
@@ -35,6 +63,7 @@ export async function GET() {
       preferences = await db.userCalendarPreferences.create({
         data: {
           userId,
+          schoolId,
           defaultView: 'month',
           defaultReminderTime: 1440, // 1 day
           reminderTypes: ['IN_APP']
@@ -65,6 +94,34 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Get user with school associations
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        userSchools: {
+          include: {
+            school: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get the first school (or handle multiple schools as needed)
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return NextResponse.json(
+        { error: 'No school association found' },
+        { status: 403 }
       );
     }
 
@@ -120,6 +177,7 @@ export async function PUT(request: NextRequest) {
       },
       create: {
         userId,
+        schoolId,
         defaultView: body.defaultView ?? 'month',
         filterSettings: body.filterSettings,
         defaultReminderTime: body.defaultReminderTime ?? 1440,

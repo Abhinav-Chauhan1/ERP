@@ -67,8 +67,9 @@ export async function POST(request: NextRequest) {
       if (!isValid) {
         // Log failed OTP verification
         await logAuditEvent({
+          userId: null,
           schoolId,
-          action: 'OTP_VERIFICATION_FAILED',
+          action: 'REJECT',
           resource: 'authentication',
           changes: {
             identifier: identifier.trim(),
@@ -90,8 +91,9 @@ export async function POST(request: NextRequest) {
 
       // Log successful OTP verification
       await logAuditEvent({
+        userId: null,
         schoolId,
-        action: 'OTP_VERIFICATION_SUCCESS',
+        action: 'VERIFY',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),
@@ -110,8 +112,9 @@ export async function POST(request: NextRequest) {
 
       // Log error
       await logAuditEvent({
+        userId: null,
         schoolId,
-        action: 'OTP_VERIFICATION_ERROR',
+        action: 'REJECT',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),

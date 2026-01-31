@@ -75,8 +75,9 @@ export async function POST(request: NextRequest) {
       if (!authResult.success) {
         // Log failed authentication
         await logAuditEvent({
+          userId: null,
           schoolId,
-          action: 'LOGIN_FAILED',
+          action: 'REJECT',
           resource: 'authentication',
           changes: {
             identifier: identifier.trim(),
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Authentication successful
-      const response = {
+      const response: any = {
         success: true,
         user: authResult.user,
         token: authResult.token,
@@ -121,9 +122,9 @@ export async function POST(request: NextRequest) {
 
       // Log successful authentication
       await logAuditEvent({
-        userId: authResult.user?.id,
+        userId: authResult.user?.id || null,
         schoolId,
-        action: 'LOGIN_SUCCESS',
+        action: 'LOGIN',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),
@@ -144,8 +145,9 @@ export async function POST(request: NextRequest) {
 
       // Log error
       await logAuditEvent({
+        userId: null,
         schoolId,
-        action: 'LOGIN_ERROR',
+        action: 'REJECT',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),

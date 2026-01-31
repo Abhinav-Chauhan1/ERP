@@ -75,49 +75,48 @@ export async function getBooks(params?: {
 // Get a single book by ID
 export async function getBookById(id: string) {
   try {
-    try {
-      const { schoolId } = await requireSchoolAccess();
-      if (!schoolId) throw new Error("School context required");
-      const book = await db.book.findUnique({
-        where: { id, schoolId },
-        include: {
-          issues: {
-            include: {
-              student: {
-                include: {
-                  user: true,
-                },
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) throw new Error("School context required");
+    const book = await db.book.findUnique({
+      where: { id, schoolId },
+      include: {
+        issues: {
+          include: {
+            student: {
+              include: {
+                user: true,
               },
             },
-            orderBy: { issueDate: "desc" },
-            take: 10,
           },
-          reservations: {
-            include: {
-              student: {
-                include: {
-                  user: true,
-                },
+          orderBy: { issueDate: "desc" },
+          take: 10,
+        },
+        reservations: {
+          include: {
+            student: {
+              include: {
+                user: true,
               },
             },
-            where: { status: "ACTIVE" },
-            orderBy: { reservedAt: "desc" },
           },
-          _count: {
-            select: {
-              issues: true,
-              reservations: true,
-            },
+          where: { status: "ACTIVE" },
+          orderBy: { reservedAt: "desc" },
+        },
+        _count: {
+          select: {
+            issues: true,
+            reservations: true,
           },
         },
-      });
+      },
+    });
 
-      return book;
-    } catch (error) {
-      console.error("Error fetching book:", error);
-      throw new Error("Failed to fetch book");
-    }
+    return book;
+  } catch (error) {
+    console.error("Error fetching book:", error);
+    throw new Error("Failed to fetch book");
   }
+}
 
 // Get all unique categories
 export async function getBookCategories() {
@@ -376,6 +375,7 @@ export async function getBookCategories() {
             issueDate: new Date(),
             dueDate: data.dueDate,
             status: "ISSUED",
+            schoolId,
           },
           include: {
             book: true,
@@ -893,6 +893,7 @@ export async function getBookCategories() {
           reservedAt: new Date(),
           expiresAt,
           status: "ACTIVE",
+          schoolId,
         },
         include: {
           book: true,
@@ -1141,6 +1142,7 @@ export async function getBookCategories() {
             issueDate: new Date(),
             dueDate: data.dueDate,
             status: "ISSUED",
+            schoolId,
           },
           include: {
             book: true,
@@ -1240,6 +1242,8 @@ export async function getBookCategories() {
   export async function notifyReservedBookAvailable(bookId: string) {
     try {
       const { schoolId } = await requireSchoolAccess();
+      if (!schoolId) return { success: false, error: "School context required" };
+      
       // Get the book
       const book = await db.book.findUnique({
         where: { id: bookId, schoolId },
@@ -1295,6 +1299,7 @@ export async function getBookCategories() {
         try {
           await createNotification({
             userId: reservation.student.userId,
+            schoolId,
             title: "Reserved Book Available",
             message: `The book "${reservation.book.title}" you reserved is now available. Please collect it from the library within 2 days.`,
             type: "GENERAL" as any,

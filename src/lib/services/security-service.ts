@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
-import { auditService } from "./audit-service";
+import { auditService, AuditAction } from "./audit-service";
 import crypto from "crypto";
 import speakeasy from "speakeasy";
 
@@ -89,9 +88,9 @@ class SecurityService {
   async logUserActivity(activity: Omit<UserActivity, 'id' | 'timestamp'>): Promise<UserActivity> {
     try {
       // Create activity record using audit service
-      await auditService.logAction({
+      await auditService.logAuditEvent({
         userId: activity.userId,
-        action: activity.action,
+        action: activity.action as AuditAction,
         resource: activity.resource || 'user_activity',
         resourceId: activity.sessionId,
         details: {
@@ -165,15 +164,15 @@ class SecurityService {
 
       return activities.map(log => ({
         id: log.id,
-        userId: log.userId,
+        userId: log.userId || '',
         sessionId: (log.details as any)?.sessionId,
         action: log.action,
-        resource: log.resource,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
+        resource: log.resource || undefined,
+        ipAddress: log.ipAddress || undefined,
+        userAgent: log.userAgent || undefined,
         location: (log.details as any)?.location,
         deviceFingerprint: (log.details as any)?.deviceFingerprint,
-        timestamp: log.timestamp,
+        timestamp: log.timestamp || new Date(),
         metadata: (log.details as any)?.metadata
       }));
     } catch (error) {
@@ -199,7 +198,7 @@ class SecurityService {
       const expiresAt = data.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       // Create session record in database
-      const session = await db.session.create({
+      await db.session.create({
         data: {
           id: sessionId,
           userId: data.userId,
@@ -229,7 +228,7 @@ class SecurityService {
         deviceFingerprint: data.deviceFingerprint,
         isActive: true,
         lastActivity: new Date(),
-        createdAt: session.createdAt || new Date(),
+        createdAt: new Date(),
         expiresAt
       };
     } catch (error) {
@@ -422,7 +421,7 @@ class SecurityService {
       };
 
       // Log security event
-      await auditService.logAction({
+      await auditService.logAuditEvent({
         userId: data.userId || 'system',
         action: 'CREATE',
         resource: 'security_event',
@@ -466,7 +465,7 @@ class SecurityService {
               }
             });
 
-            await auditService.logAction({
+            await auditService.logAuditEvent({
               userId: 'system',
               action: 'UPDATE',
               resource: 'user_security',
@@ -497,7 +496,7 @@ class SecurityService {
           break;
 
         case 'FLAG_FOR_REVIEW':
-          await auditService.logAction({
+          await auditService.logAuditEvent({
             userId: 'system',
             action: 'CREATE',
             resource: 'security_review',
@@ -516,7 +515,7 @@ class SecurityService {
       }
 
       // Update event with automated response
-      await auditService.logAction({
+      await auditService.logAuditEvent({
         userId: 'system',
         action: 'UPDATE',
         resource: 'security_event',
@@ -551,7 +550,6 @@ class SecurityService {
       // Generate secret
       const secret = speakeasy.generateSecret({
         name: `${user.firstName} ${user.lastName}`,
-        account: user.email,
         issuer: 'SikshaERP',
         length: 32
       });
@@ -571,7 +569,7 @@ class SecurityService {
       });
 
       // Log MFA setup
-      await auditService.logAction({
+      await auditService.logAuditEvent({
         userId,
         action: 'CREATE',
         resource: 'mfa_setup',
@@ -643,7 +641,7 @@ class SecurityService {
           });
         }
 
-        await auditService.logAction({
+        await auditService.logAuditEvent({
           userId,
           action: 'VERIFY',
           resource: 'mfa_token',
@@ -668,7 +666,7 @@ class SecurityService {
             }
           });
 
-          await auditService.logAction({
+          await auditService.logAuditEvent({
             userId,
             action: 'VERIFY',
             resource: 'mfa_backup_code',
@@ -700,7 +698,7 @@ class SecurityService {
           }
         });
 
-        await auditService.logAction({
+        await auditService.logAuditEvent({
           userId,
           action: 'CREATE',
           resource: 'security_event',
@@ -727,7 +725,7 @@ class SecurityService {
           }
         });
 
-        await auditService.logAction({
+        await auditService.logAuditEvent({
           userId,
           action: 'VERIFY',
           resource: 'mfa_token',

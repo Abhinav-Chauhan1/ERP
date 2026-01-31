@@ -22,6 +22,8 @@ import {
   Database
 } from "lucide-react";
 import { toast } from "sonner";
+import { useBreakpoint, mobileClasses } from "@/lib/utils/mobile-responsive";
+import { aria, focus } from "@/lib/utils/accessibility";
 
 interface SchoolPermissionsManagerProps {
   schoolId: string;
@@ -181,6 +183,7 @@ const defaultPermissions: Permission[] = [
 ];
 
 export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerProps) {
+  const { isMobile, isTablet } = useBreakpoint();
   const [permissions, setPermissions] = useState<Permission[]>(defaultPermissions);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -265,7 +268,7 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? mobileClasses.padding.mobile : mobileClasses.padding.desktop}`}>
       {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
         <div key={category} className="space-y-4">
           <div className="flex items-center gap-2">
@@ -275,11 +278,11 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
             </Badge>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
             {categoryPermissions.map((permission) => (
               <Card key={permission.id} className="relative">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+                <CardContent className={`${isMobile ? mobileClasses.card.mobile : 'p-4'}`}>
+                  <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-start justify-between'}`}>
                     <div className="flex items-start gap-3 flex-1">
                       <div className="p-2 rounded-lg bg-muted">
                         {permission.icon}
@@ -303,6 +306,8 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
                       onCheckedChange={(enabled) => 
                         handlePermissionToggle(permission.id, enabled)
                       }
+                      className={`${focus.classes.visible} ${isMobile ? 'self-start' : ''}`}
+                      {...aria.attributes.label(`Toggle ${permission.name} permission`)}
                     />
                   </div>
                 </CardContent>
@@ -317,7 +322,12 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
       ))}
 
       <div className="flex justify-end pt-6 border-t">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
+          {...aria.attributes.label("Save permission settings")}
+        >
           {isSaving ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />

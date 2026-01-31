@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Trash2, MapPin, Users, DollarSign, Bus } from "lucide-react";
+import { ArrowLeft, Edit, MapPin, Users, DollarSign, Bus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { getRouteById } from "@/lib/actions/routeActions";
 import { DeleteRouteButton } from "@/components/admin/transport/delete-route-button";
 import { AssignStudentToRouteDialog } from "@/components/admin/transport/assign-student-to-route-dialog";
 import { StudentRouteList } from "@/components/admin/transport/student-route-list";
+import { RouteWithDetails } from "@/types/transport";
 
 export const metadata = {
   title: "Route Details | Transport Management",
@@ -21,7 +22,7 @@ export default async function RouteDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let route;
+  let route: RouteWithDetails;
   try {
     route = await getRouteById(id);
   } catch (error) {
@@ -46,7 +47,7 @@ export default async function RouteDetailPage({
               </Badge>
             </div>
             <p className="text-muted-foreground">
-              {route.vehicle.registrationNo} - {route.vehicle.vehicleType}
+              {(route as any).vehicle?.registrationNo} - {(route as any).vehicle?.vehicleType}
             </p>
           </div>
         </div>
@@ -70,7 +71,7 @@ export default async function RouteDetailPage({
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{route.stops.length}</div>
+            <div className="text-2xl font-bold">{route.stops?.length || 0}</div>
           </CardContent>
         </Card>
 
@@ -80,7 +81,7 @@ export default async function RouteDetailPage({
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{route._count.students}</div>
+            <div className="text-2xl font-bold">{route._count?.students || 0}</div>
           </CardContent>
         </Card>
 
@@ -101,7 +102,7 @@ export default async function RouteDetailPage({
             <Bus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{route.vehicle.capacity}</div>
+            <div className="text-2xl font-bold">{route.vehicle?.capacity || 0}</div>
             <p className="text-xs text-muted-foreground">seats</p>
           </CardContent>
         </Card>
@@ -115,26 +116,26 @@ export default async function RouteDetailPage({
           <CardContent className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">Registration Number</p>
-              <p className="font-medium">{route.vehicle.registrationNo}</p>
+              <p className="font-medium">{route.vehicle?.registrationNo || 'N/A'}</p>
             </div>
             <Separator />
             <div>
               <p className="text-sm text-muted-foreground">Vehicle Type</p>
-              <p className="font-medium">{route.vehicle.vehicleType}</p>
+              <p className="font-medium">{route.vehicle?.vehicleType || 'N/A'}</p>
             </div>
             <Separator />
             <div>
               <p className="text-sm text-muted-foreground">Capacity</p>
-              <p className="font-medium">{route.vehicle.capacity} seats</p>
+              <p className="font-medium">{route.vehicle?.capacity || 0} seats</p>
             </div>
-            {route.vehicle.driver && (
+            {route.vehicle?.driver && (
               <>
                 <Separator />
                 <div>
                   <p className="text-sm text-muted-foreground">Driver</p>
-                  <p className="font-medium">{route.vehicle.driver.name}</p>
+                  <p className="font-medium">{route.vehicle?.driver?.name || 'N/A'}</p>
                   <p className="text-sm text-muted-foreground">
-                    {route.vehicle.driver.phone}
+                    {route.vehicle?.driver?.phone || 'N/A'}
                   </p>
                 </div>
               </>
@@ -142,8 +143,8 @@ export default async function RouteDetailPage({
             <Separator />
             <div>
               <p className="text-sm text-muted-foreground">Vehicle Status</p>
-              <Badge variant={route.vehicle.status === "ACTIVE" ? "default" : "secondary"}>
-                {route.vehicle.status}
+              <Badge variant={(route as any).vehicle?.status === "ACTIVE" ? "default" : "secondary"}>
+                {(route as any).vehicle?.status || 'N/A'}
               </Badge>
             </div>
           </CardContent>
@@ -191,7 +192,7 @@ export default async function RouteDetailPage({
           />
         </CardHeader>
         <CardContent>
-          <StudentRouteList students={route.students} routeFee={route.fee} />
+          <StudentRouteList students={(route as any).students || []} routeFee={route.fee} />
         </CardContent>
       </Card>
     </div>

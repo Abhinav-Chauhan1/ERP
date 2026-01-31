@@ -23,7 +23,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -34,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const subscription = await billingService.getSubscription(params.id);
+    const subscription = await billingService.getSubscription((await params).id);
     
     if (!subscription) {
       return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
@@ -44,7 +44,7 @@ export async function GET(
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SUBSCRIPTION',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json(subscription);
@@ -60,7 +60,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -74,13 +74,13 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateSubscriptionSchema.parse(body);
 
-    const subscription = await billingService.updateSubscription(params.id, validatedData);
+    const subscription = await billingService.updateSubscription((await params).id, validatedData);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SUBSCRIPTION',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: validatedData,
     });
 
@@ -105,7 +105,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -116,13 +116,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await billingService.updateSubscription(params.id, { cancelAtPeriodEnd: true });
+    await billingService.updateSubscription((await params).id, { cancelAtPeriodEnd: true });
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.DELETE,
       resource: 'SUBSCRIPTION',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: { cancelAtPeriodEnd: true },
     });
 

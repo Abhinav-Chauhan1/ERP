@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get messages for a user (inbox, sent, archive)
 export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox") {
@@ -166,6 +167,9 @@ export async function sendMessage(data: any) {
       return { success: false, error: "User not found" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     const message = await db.message.create({
       data: {
         senderId: dbUser.id,
@@ -173,6 +177,7 @@ export async function sendMessage(data: any) {
         subject: data.subject || null,
         content: data.content,
         attachments: data.attachments || null,
+        schoolId: schoolId || "",
       },
       include: {
         sender: {
@@ -206,6 +211,7 @@ export async function sendMessage(data: any) {
         type: "MESSAGE",
         link: `/communication/messages/${message.id}`,
         isRead: false,
+        schoolId: schoolId || "",
       },
     });
 
@@ -232,6 +238,9 @@ export async function replyToMessage(messageId: string, content: string) {
       return { success: false, error: "User not found" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Get original message
     const originalMessage = await db.message.findUnique({
       where: { id: messageId },
@@ -250,6 +259,7 @@ export async function replyToMessage(messageId: string, content: string) {
           ? `Re: ${originalMessage.subject}`
           : null,
         content: content,
+        schoolId: schoolId || "",
       },
       include: {
         sender: {
@@ -283,6 +293,7 @@ export async function replyToMessage(messageId: string, content: string) {
         type: "MESSAGE",
         link: `/communication/messages/${reply.id}`,
         isRead: false,
+        schoolId: schoolId || "",
       },
     });
 
@@ -309,6 +320,9 @@ export async function forwardMessage(messageId: string, recipientId: string) {
       return { success: false, error: "User not found" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Get original message
     const originalMessage = await db.message.findUnique({
       where: { id: messageId },
@@ -327,6 +341,7 @@ export async function forwardMessage(messageId: string, recipientId: string) {
           ? `Fwd: ${originalMessage.subject}`
           : null,
         content: `\n\n--- Forwarded Message ---\n${originalMessage.content}`,
+        schoolId: schoolId || "",
       },
       include: {
         sender: {
@@ -360,6 +375,7 @@ export async function forwardMessage(messageId: string, recipientId: string) {
         type: "MESSAGE",
         link: `/communication/messages/${forwarded.id}`,
         isRead: false,
+        schoolId: schoolId || "",
       },
     });
 

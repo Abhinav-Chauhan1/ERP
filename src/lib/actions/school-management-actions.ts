@@ -71,24 +71,20 @@ export async function getSchoolsWithFilters(filters: SchoolFilters = {}) {
         subscriptions: {
           where: { isActive: true },
           take: 1,
-          select: {
-            id: true,
-            endDate: true,
-            paymentStatus: true,
-          },
+          orderBy: { createdAt: 'desc' },
         },
         administrators: {
-          take: 1,
-          select: {
-            id: true,
-            user: {
-              select: {
-                name: true,
-                email: true,
-              },
-            },
+          take: 3, // Get more administrators for better overview
+          include: {
+            user: true,
           },
+          orderBy: { createdAt: 'desc' },
         },
+        // Add additional useful data to prevent future lazy loading
+        permissions: true,
+        securitySettings: true,
+        dataManagementSettings: true,
+        notificationSettings: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -446,7 +442,7 @@ export async function resetSchoolOnboarding(schoolId: string) {
     await db.auditLog.create({
       data: {
         userId: null, // Super admin actions don't require specific user ID for now
-        action: "RESET_ONBOARDING",
+        action: "UPDATE",
         resource: "SCHOOL",
         resourceId: schoolId,
         changes: {
@@ -531,7 +527,7 @@ export async function launchSetupWizard(schoolId: string) {
     await db.auditLog.create({
       data: {
         userId: null, // Super admin actions don't require specific user ID for now
-        action: "LAUNCH_SETUP_WIZARD",
+        action: "UPDATE",
         resource: "SCHOOL",
         resourceId: schoolId,
         changes: {
@@ -654,7 +650,7 @@ export async function bulkResetOnboarding(schoolIds: string[]) {
     await db.auditLog.create({
       data: {
         userId: null, // Super admin actions don't require specific user ID for now
-        action: "BULK_RESET_ONBOARDING",
+        action: "UPDATE",
         resource: "SCHOOL",
         resourceId: schoolIds.join(","),
         changes: {

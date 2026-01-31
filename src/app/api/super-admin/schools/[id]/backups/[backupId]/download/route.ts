@@ -4,6 +4,9 @@ import { db } from '@/lib/db';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { backupService } from '@/lib/services/backup-service';
+import { createReadStream } from 'fs';
+import { stat } from 'fs/promises';
 
 const rateLimitConfig = {
   windowMs: 15 * 60 * 1000,
@@ -16,7 +19,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; backupId: string } }
+  { params }: { params: Promise<{ id: string; backupId: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -29,7 +32,7 @@ export async function GET(
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true },
     });
 
@@ -40,8 +43,8 @@ export async function GET(
     // Check if backup exists and belongs to the school
     const backup = await db.backup.findFirst({
       where: {
-        id: params.backupId,
-        schoolId: params.id,
+        id: (await params).backupId,
+        schoolId: (await params).id,
         status: 'COMPLETED',
       },
     });
@@ -50,31 +53,43 @@ export async function GET(
       return NextResponse.json({ error: 'Backup not found or not completed' }, { status: 404 });
     }
 
-    // In a real implementation, you would:
-    // 1. Check if the backup file exists in storage (S3, local filesystem, etc.)
-    // 2. Stream the file to the client
-    // 3. Handle large file downloads with proper streaming
-    
-    // For demonstration, we'll create a mock zip file response
-    const mockZipContent = Buffer.from('PK\x03\x04\x14\x00\x00\x00\x08\x00'); // ZIP file header
-    
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.READ,
-      resource: 'SCHOOL_BACKUP_DOWNLOAD',
-      resourceId: params.backupId,
-      changes: { schoolId: params.id, filename: backup.filename },
-    });
+    try {
+      // Get backup file path using the service
+      const backupFilePath = await backupService.getBackupDownloadPath((await params).backupId);
+      
+      // Get file stats
+      const fileStats = await stat(backupFilePath);
+      
+      // Create read stream for the file
+      const fileStream = createReadStream(backupFilePath);
+      
+      // Log audit event
+      await logAuditEvent({
+        userId: session.user.id,
+        action: AuditAction.READ,
+        resource: 'SCHOOL_BACKUP_DOWNLOAD',
+        resourceId: (await params).backupId,
+        changes: { schoolId: (await params).id, filename: backup.filename, size: fileStats.size },
+      });
 
-    // Return the file as a download
-    return new NextResponse(mockZipContent, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${backup.filename}"`,
-        'Content-Length': mockZipContent.length.toString(),
-      },
-    });
+      // Return the file as a streaming download
+      return new NextResponse(fileStream as any, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="${backup.filename}"`,
+          'Content-Length': fileStats.size.toString(),
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    } catch (serviceError) {
+      console.error('Error accessing backup file:', serviceError);
+      return NextResponse.json({ 
+        error: serviceError instanceof Error ? serviceError.message : 'Backup file not accessible' 
+      }, { status: 404 });
+    }
   } catch (error) {
     console.error('Error downloading backup:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

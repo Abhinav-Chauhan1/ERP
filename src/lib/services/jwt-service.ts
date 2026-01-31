@@ -237,7 +237,7 @@ class JWTService {
       try {
         const { logAuditEvent } = await import('./audit-service');
         await logAuditEvent({
-          userId: undefined,
+          userId: null,
           action: 'DELETE' as any,
           resource: 'jwt_token',
           resourceId: this.getTokenHash(token),
@@ -407,7 +407,7 @@ class JWTService {
     try {
       const { logAuditEvent } = await import('./audit-service');
       await logAuditEvent({
-        userId: userId || undefined,
+        userId: userId || null,
         action: action as any, // Cast to avoid type issues
         resource: 'jwt_token',
         changes: {

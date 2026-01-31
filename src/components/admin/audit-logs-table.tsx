@@ -6,16 +6,18 @@ import { formatDistanceToNow } from "date-fns";
 
 interface AuditLogData {
     id: string;
-    timestamp: Date;
+    timestamp: Date | null;
     action: string;
-    resource: string;
+    resource: string | null;
     resourceId?: string | null;
     ipAddress?: string | null;
     user: {
-        firstName: string;
-        lastName: string;
-        email: string;
-    };
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        role: string;
+    } | null;
 }
 
 interface AuditLogsTableProps {
@@ -54,16 +56,16 @@ export function AuditLogsTable({ logs, emptyMessage }: AuditLogsTableProps) {
             isHeader: true,
             render: (log: AuditLogData) => (
                 <div>
-                    <div className="text-sm">{new Date(log.timestamp).toLocaleString()}</div>
+                    <div className="text-sm">{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</div>
                     <div className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                        {log.timestamp ? formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }) : 'Unknown time'}
                     </div>
                 </div>
             ),
             mobileRender: (log: AuditLogData) => (
                 <div className="flex items-center justify-between gap-2">
                     <div className="text-sm">
-                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                        {log.timestamp ? formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }) : 'Unknown time'}
                     </div>
                     <Badge className={`${getActionColor(log.action)} text-xs text-white`}>
                         {log.action}
@@ -77,14 +79,14 @@ export function AuditLogsTable({ logs, emptyMessage }: AuditLogsTableProps) {
             render: (log: AuditLogData) => (
                 <div>
                     <div className="text-sm font-medium">
-                        {log.user.firstName} {log.user.lastName}
+                        {log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || 'Unknown User' : 'Unknown User'}
                     </div>
-                    <div className="text-xs text-muted-foreground">{log.user.email}</div>
+                    <div className="text-xs text-muted-foreground">{log.user?.email || 'No email'}</div>
                 </div>
             ),
             mobileRender: (log: AuditLogData) => (
                 <span className="text-xs truncate max-w-[120px] inline-block">
-                    {log.user.firstName} {log.user.lastName}
+                    {log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || 'Unknown User' : 'Unknown User'}
                 </span>
             ),
         },
@@ -102,10 +104,10 @@ export function AuditLogsTable({ logs, emptyMessage }: AuditLogsTableProps) {
             key: "resource",
             label: "Resource",
             render: (log: AuditLogData) => (
-                <span className="capitalize">{log.resource}</span>
+                <span className="capitalize">{log.resource || 'N/A'}</span>
             ),
             mobileRender: (log: AuditLogData) => (
-                <span className="capitalize text-xs">{log.resource}</span>
+                <span className="capitalize text-xs">{log.resource || 'N/A'}</span>
             ),
         },
         {

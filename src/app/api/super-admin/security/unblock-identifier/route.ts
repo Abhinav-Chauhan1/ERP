@@ -10,11 +10,15 @@ export async function POST(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (authResult) {
+      return authResult; // Return the error response
+    }
+
+    // Get user info from session since auth succeeded
+    const { auth } = await import('@/auth');
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 401 });
     }
 
     const { identifier } = await request.json();
@@ -28,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const success = await rateLimitingService.unblockIdentifier(
       identifier,
-      authResult.user.id
+      session.user.id
     );
 
     if (success) {

@@ -27,6 +27,7 @@ export interface OnboardingStepProgress {
 }
 
 export interface SchoolOnboardingProgress {
+  [key: string]: any; // Index signature for Prisma compatibility
   schoolId: string;
   isOnboarded: boolean;
   currentStep: number;

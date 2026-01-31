@@ -35,8 +35,8 @@ interface Student {
   id: string;
   admissionId: string;
   user: {
-    firstName: string;
-    lastName: string;
+    firstName: string | null;
+    lastName: string | null;
   };
   enrollments?: Array<{
     class: {
@@ -115,7 +115,7 @@ export function ParentStudentAssociationDialog({ parentId, students }: ParentStu
                   className="justify-between"
                 >
                   {selectedStudent
-                    ? `${selectedStudent.user.firstName} ${selectedStudent.user.lastName} (${selectedStudent.admissionId})`
+                    ? `${selectedStudent.user.firstName || ''} ${selectedStudent.user.lastName || ''} (${selectedStudent.admissionId})`
                     : "Select student..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -140,7 +140,7 @@ export function ParentStudentAssociationDialog({ parentId, students }: ParentStu
                               <CheckIcon className="mr-2 h-4 w-4" />
                             )}
                             <span className="font-medium">
-                              {student.user.firstName} {student.user.lastName}
+                              {student.user.firstName || ''} {student.user.lastName || ''}
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">

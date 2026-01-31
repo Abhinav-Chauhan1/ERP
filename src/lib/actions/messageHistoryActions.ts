@@ -43,7 +43,7 @@ export interface MessageHistoryInput {
 /**
  * Log a bulk message operation to history
  */
-export async function logMessageHistory(data: MessageHistoryInput) {
+export async function logMessageHistory(data: MessageHistoryInput, schoolId: string) {
   try {
     const user = await currentUser();
     if (!user) {
@@ -76,6 +76,7 @@ export async function logMessageHistory(data: MessageHistoryInput) {
         recipientSelection: data.recipientSelection,
         results: data.results,
         sentBy: dbUser.id,
+        schoolId,
       },
     });
 

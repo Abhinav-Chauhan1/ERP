@@ -57,9 +57,14 @@ export async function sendVerificationSuccessNotification(
     if (inAppEnabled) {
       results.inApp.attempted = true;
       try {
-        const notificationData = getVerificationSuccessNotification(data);
+        const notificationData = getVerificationSuccessNotification({
+          ...data,
+          verifiedBy: data.verifiedBy || 'System',
+          verifiedAt: data.verifiedAt || new Date()
+        });
         await db.notification.create({
           data: {
+            schoolId: data.schoolId,
             userId,
             title: notificationData.title,
             message: notificationData.message,
@@ -151,9 +156,14 @@ export async function sendRejectionNotification(
     if (inAppEnabled) {
       results.inApp.attempted = true;
       try {
-        const notificationData = getRejectionNotification(data);
+        const notificationData = getRejectionNotification({
+          ...data,
+          rejectedBy: data.rejectedBy || 'System',
+          rejectedAt: data.rejectedAt || new Date()
+        });
         await db.notification.create({
           data: {
+            schoolId: data.schoolId,
             userId,
             title: notificationData.title,
             message: notificationData.message,
@@ -247,7 +257,7 @@ export async function notifyParentIfApplicable(
 
     // Send notification to first parent
     const parentUser = student.parents[0].parent.user;
-    return await notificationFn(parentUser.id, parentUser.email);
+    return await notificationFn(parentUser.id, parentUser.email || '');
   } catch (error) {
     console.error("Error notifying parent:", error);
     // Don't fail the operation if parent notification fails

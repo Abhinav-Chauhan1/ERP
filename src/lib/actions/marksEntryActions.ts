@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
 import { logUpdate, logCreate } from "@/lib/utils/audit-log";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   validateBulkMarks,
   formatValidationErrors,
@@ -181,6 +182,9 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
       );
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Permission check: require MARKS:CREATE
     const canCreateMarks = await hasPermission(userId, 'MARKS', 'CREATE');
     if (!canCreateMarks) {
@@ -347,6 +351,7 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
           grade: entry.isAbsent ? null : grade,
           isAbsent: entry.isAbsent,
           remarks: entry.remarks || null,
+          schoolId: schoolId || "",
         };
 
         const result = await tx.examResult.upsert({

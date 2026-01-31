@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!resetToken) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'password_reset_validation',
         changes: {
           reason: 'TOKEN_NOT_FOUND',
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (!resetToken.identifier.startsWith("password-reset:")) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'password_reset_validation',
         changes: {
           reason: 'INVALID_TOKEN_TYPE',
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'password_reset_validation',
         changes: {
           reason: 'TOKEN_EXPIRED',
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: user?.id || null,
-        action: 'FAILED',
+        action: 'READ',
         resource: 'password_reset_validation',
         changes: {
           reason: user ? 'USER_INACTIVE' : 'USER_NOT_FOUND',
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     // Log successful token validation
     await logAuditEvent({
       userId: user.id,
-      action: 'SUCCESS',
+      action: 'READ',
       resource: 'password_reset_validation',
       changes: {
         email: user.email,
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'CREATE',
       resource: 'password_reset_validation',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

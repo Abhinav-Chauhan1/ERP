@@ -329,7 +329,7 @@ export class SchoolService {
           }
         },
         data: {
-          role: operation.role,
+          role: operation.role as any,
           isActive: operation.isActive ?? true,
           updatedAt: new Date()
         }
@@ -340,7 +340,7 @@ export class SchoolService {
         data: {
           userId: operation.userId,
           schoolId: operation.schoolId,
-          role: operation.role,
+          role: operation.role as any,
           isActive: operation.isActive ?? true
         }
       });
@@ -381,8 +381,8 @@ export class SchoolService {
     return schoolUsers.map(relation => ({
       id: relation.user.id,
       name: relation.user.name || 'Unknown',
-      email: relation.user.email,
-      role: relation.role,
+      email: relation.user.email || '',
+      role: relation.role as string,
       isActive: relation.isActive,
       lastLoginAt: relation.user.lastLoginAt,
       createdAt: relation.user.createdAt
@@ -438,7 +438,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: null,
-          action: "SUSPEND",
+          action: "UPDATE" as any,
           resource: "SCHOOL",
           resourceId: schoolId,
           changes: {
@@ -461,7 +461,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: null,
-          action: "SUSPEND",
+          action: "UPDATE" as any,
           resource: "SCHOOL",
           resourceId: schoolId,
           changes: {
@@ -559,7 +559,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null, // Super admin actions don't require specific user ID for now
-        action: "REACTIVATE",
+        action: "UPDATE" as any,
         resource: "SCHOOL",
         resourceId: schoolId,
         changes: {
@@ -631,7 +631,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null,
-        action: "BULK_SUSPEND",
+        action: "UPDATE" as any,
         resource: "SCHOOL",
         resourceId: schoolIds.join(","),
         changes: {
@@ -704,7 +704,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null,
-        action: "BULK_REACTIVATE",
+        action: "UPDATE" as any,
         resource: "SCHOOL",
         resourceId: schoolIds.join(","),
         changes: {
@@ -1357,7 +1357,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: "system",
-          action: "ERROR",
+          action: "CREATE" as any,
           resource: "SUBDOMAIN_INFRASTRUCTURE",
           resourceId: schoolId,
           changes: {

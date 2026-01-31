@@ -24,18 +24,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const systemHealth = await monitoringService.getSystemHealth();
+    const systemHealthResult = await monitoringService.getSystemHealth();
+    
+    if (!systemHealthResult.success) {
+      throw systemHealthResult.error;
+    }
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SYSTEM_HEALTH',
       metadata: {
-        healthStatus: systemHealth.status,
+        healthStatus: systemHealthResult.data.overall,
       },
     });
 
-    return NextResponse.json(systemHealth);
+    return NextResponse.json(systemHealthResult.data);
   } catch (error) {
     console.error('Error fetching system health:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

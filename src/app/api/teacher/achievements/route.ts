@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
         date: achievementDate,
         documents: validatedData.documents || [],
         teacherId: validatedData.teacherId,
+        schoolId: user.teacher.schoolId,
       },
     });
 

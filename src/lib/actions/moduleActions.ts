@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   moduleSchema,
   moduleUpdateSchema,
@@ -49,6 +50,9 @@ export async function createModule(
     if (!authResult.authorized) {
       return formatAuthError(authResult);
     }
+
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
 
     // Validate input with Zod schema
     const validationResult = moduleSchema.safeParse(input);
@@ -102,6 +106,7 @@ export async function createModule(
         syllabusId: validatedData.syllabusId,
         term: validatedData.term,
         weightage: validatedData.weightage,
+        schoolId: schoolId || "",
       },
       include: {
         subModules: true,

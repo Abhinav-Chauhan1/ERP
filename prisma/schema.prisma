@@ -224,6 +224,10 @@ model School {
   alerts                  Alert[]
   alertConfigs            AlertConfig[]
   auditLogs               AuditLog[]
+  permissions             SchoolPermissions?
+  securitySettings        SchoolSecuritySettings?
+  dataManagementSettings  SchoolDataManagementSettings?
+  notificationSettings    SchoolNotificationSettings?
 
   @@map("schools")
 }
@@ -1987,14 +1991,14 @@ model Achievement {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String?
   schoolId  String?
-  action    String
+  action    AuditAction
   details   Json?
   ipAddress String?
   userAgent String?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
   
   // Legacy fields for backward compatibility
   resource   String?
@@ -2243,20 +2247,229 @@ model MeritListEntry {
   @@index([schoolId])
 }
 
+enum BackupType {
+  MANUAL
+  SCHEDULED
+  AUTOMATIC
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
 model Backup {
-  id        String   @id @default(cuid())
-  filename  String
-  size      BigInt
-  location  String
-  encrypted Boolean  @default(true)
-  status    String   @default("COMPLETED")
-  createdAt DateTime @default(now())
-  createdBy String?
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  filename     String
+  size         BigInt?
+  location     String
+  encrypted    Boolean      @default(true)
+  type         BackupType   @default(MANUAL)
+  status       BackupStatus @default(PENDING)
+  includeFiles Boolean      @default(true)
+  completedAt  DateTime?
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  createdBy    String?
+  schoolId     String
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([status])
+  @@index([schoolId])
+  @@index([type])
+}
+
+// School Settings Tables
+model SchoolPermissions {
+  id                    String   @id @default(cuid())
+  schoolId              String   @unique
+  school                School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // User Management Permissions
+  manageStudents        Boolean  @default(true)
+  manageTeachers        Boolean  @default(true)
+  manageParents         Boolean  @default(true)
+  manageAdmins          Boolean  @default(true)
+  
+  // Academic Permissions
+  manageClasses         Boolean  @default(true)
+  manageSubjects        Boolean  @default(true)
+  manageSyllabus        Boolean  @default(true)
+  manageExams           Boolean  @default(true)
+  manageAssignments     Boolean  @default(true)
+  manageAttendance      Boolean  @default(true)
+  generateReportCards   Boolean  @default(true)
+  
+  // Communication Permissions
+  messagingSystem       Boolean  @default(true)
+  notificationSystem    Boolean  @default(true)
+  announcementSystem    Boolean  @default(true)
+  whatsappIntegration   Boolean  @default(false)
+  smsIntegration        Boolean  @default(false)
+  emailIntegration      Boolean  @default(true)
+  
+  // Financial Permissions
+  feeManagement         Boolean  @default(true)
+  paymentProcessing     Boolean  @default(true)
+  financialReports      Boolean  @default(true)
+  
+  // Advanced Features
+  libraryManagement     Boolean  @default(false)
+  transportManagement   Boolean  @default(false)
+  hostelManagement      Boolean  @default(false)
+  alumniManagement      Boolean  @default(false)
+  certificateGeneration Boolean  @default(false)
+  
+  // System Permissions
+  backupRestore         Boolean  @default(true)
+  dataExport            Boolean  @default(true)
+  auditLogs             Boolean  @default(true)
+  apiAccess             Boolean  @default(false)
+  customBranding        Boolean  @default(true)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@index([schoolId])
+}
+
+model SchoolSecuritySettings {
+  id                        String   @id @default(cuid())
+  schoolId                  String   @unique
+  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Two-Factor Authentication
+  twoFactorEnabled          Boolean  @default(false)
+  twoFactorRequired         Boolean  @default(false)
+  twoFactorMethods          String[] @default(["SMS", "EMAIL"])
+  
+  // Session Management
+  sessionTimeout            Int      @default(480) // minutes
+  maxConcurrentSessions     Int      @default(3)
+  forceLogoutOnPasswordChange Boolean @default(true)
+  
+  // Password Policy
+  passwordMinLength         Int      @default(8)
+  passwordRequireUppercase  Boolean  @default(true)
+  passwordRequireLowercase  Boolean  @default(true)
+  passwordRequireNumbers    Boolean  @default(true)
+  passwordRequireSpecialChars Boolean @default(false)
+  passwordExpiry            Int      @default(90) // days, 0 = never
+  
+  // IP Whitelisting
+  ipWhitelistEnabled        Boolean  @default(false)
+  allowedIPs                String[] @default([])
+  blockUnknownIPs           Boolean  @default(false)
+  
+  // Audit Logging
+  auditLoggingEnabled       Boolean  @default(true)
+  auditLogLevel             String   @default("INFO")
+  auditLogRetention         Int      @default(365) // days
+  
+  // Data Encryption
+  encryptSensitiveData      Boolean  @default(true)
+  encryptionLevel           String   @default("AES-256")
+  
+  // API Security
+  rateLimitEnabled          Boolean  @default(true)
+  maxRequestsPerMinute      Int      @default(100)
+  requireApiKey             Boolean  @default(false)
+  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  @@index([schoolId])
+}
+
+model SchoolDataManagementSettings {
+  id                        String   @id @default(cuid())
+  schoolId                  String   @unique
+  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Backup Settings
+  autoBackupEnabled         Boolean  @default(true)
+  backupFrequency           String   @default("DAILY") // HOURLY, DAILY, WEEKLY, MONTHLY
+  backupRetention           Int      @default(30) // days
+  includeFiles              Boolean  @default(true)
+  encryptBackups            Boolean  @default(true)
+  
+  // Export Settings
+  allowDataExport           Boolean  @default(true)
+  exportFormats             String[] @default(["CSV", "JSON", "PDF"])
+  requireApproval           Boolean  @default(true)
+  
+  // Data Retention
+  studentDataRetention      Int      @default(7) // years
+  auditLogRetention         Int      @default(365) // days
+  messageRetention          Int      @default(90) // days
+  autoCleanup               Boolean  @default(false)
+  
+  // Storage Management
+  storageQuota              Int      @default(1) // GB
+  compressionEnabled        Boolean  @default(true)
+  autoArchive               Boolean  @default(true)
+  archiveAfterDays          Int      @default(365)
+  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  @@index([schoolId])
+}
+
+model SchoolNotificationSettings {
+  id                        String   @id @default(cuid())
+  schoolId                  String   @unique
+  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Email Notifications
+  emailEnabled              Boolean  @default(true)
+  emailAdmissionUpdates     Boolean  @default(true)
+  emailFeeReminders         Boolean  @default(true)
+  emailExamNotifications    Boolean  @default(true)
+  emailAttendanceAlerts     Boolean  @default(true)
+  emailSystemUpdates        Boolean  @default(true)
+  
+  // SMS Notifications
+  smsEnabled                Boolean  @default(false)
+  smsAdmissionUpdates       Boolean  @default(false)
+  smsFeeReminders           Boolean  @default(true)
+  smsExamNotifications      Boolean  @default(true)
+  smsAttendanceAlerts       Boolean  @default(true)
+  smsEmergencyAlerts        Boolean  @default(true)
+  
+  // WhatsApp Notifications
+  whatsappEnabled           Boolean  @default(false)
+  whatsappAdmissionUpdates  Boolean  @default(false)
+  whatsappFeeReminders      Boolean  @default(true)
+  whatsappExamNotifications Boolean  @default(true)
+  whatsappAttendanceAlerts  Boolean  @default(false)
+  whatsappGeneralUpdates    Boolean  @default(false)
+  
+  // Push Notifications
+  pushEnabled               Boolean  @default(true)
+  pushAdmissionUpdates      Boolean  @default(true)
+  pushFeeReminders          Boolean  @default(true)
+  pushExamNotifications     Boolean  @default(true)
+  pushAttendanceAlerts      Boolean  @default(true)
+  pushSystemMaintenance     Boolean  @default(true)
+  
+  // Notification Timing
+  quietHoursEnabled         Boolean  @default(true)
+  quietHoursStart           String   @default("22:00")
+  quietHoursEnd             String   @default("08:00")
+  weekendNotifications      Boolean  @default(false)
+  
+  // Delivery Preferences
+  batchNotifications        Boolean  @default(true)
+  immediateEmergency        Boolean  @default(true)
+  digestFrequency           String   @default("DAILY") // IMMEDIATE, HOURLY, DAILY, WEEKLY
+  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
   @@index([schoolId])
 }
 
@@ -3580,6 +3793,7 @@ enum PlanType {
 enum SchoolStatus {
   ACTIVE
   SUSPENDED
+  INACTIVE
   DEACTIVATED
 }
 

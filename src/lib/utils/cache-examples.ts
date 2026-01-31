@@ -114,6 +114,7 @@ export async function updateStudentEnrollment(
         studentId,
         classId,
         sectionId,
+        schoolId: "school-id", // Add required schoolId
         status: "ACTIVE",
         enrollDate: new Date(),
       },

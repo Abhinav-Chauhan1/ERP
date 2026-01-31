@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { db } from '@/lib/db';
+import { schoolSecuritySettingsService } from '@/lib/services/school-security-settings-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
@@ -12,12 +12,12 @@ const securitySettingsSchema = z.object({
       enabled: z.boolean(),
       required: z.boolean(),
       methods: z.array(z.string()),
-    }),
+    }).optional(),
     sessionManagement: z.object({
       sessionTimeout: z.number().min(15).max(1440),
       maxConcurrentSessions: z.number().min(1).max(10),
       forceLogoutOnPasswordChange: z.boolean(),
-    }),
+    }).optional(),
     passwordPolicy: z.object({
       minLength: z.number().min(6).max(32),
       requireUppercase: z.boolean(),
@@ -25,26 +25,26 @@ const securitySettingsSchema = z.object({
       requireNumbers: z.boolean(),
       requireSpecialChars: z.boolean(),
       passwordExpiry: z.number().min(0).max(365),
-    }),
+    }).optional(),
     ipWhitelisting: z.object({
       enabled: z.boolean(),
       allowedIPs: z.array(z.string()),
       blockUnknownIPs: z.boolean(),
-    }),
+    }).optional(),
     auditLogging: z.object({
       enabled: z.boolean(),
       logLevel: z.enum(['ERROR', 'WARN', 'INFO', 'DEBUG']),
       retentionDays: z.number().min(30).max(2555),
-    }),
+    }).optional(),
     dataEncryption: z.object({
       encryptSensitiveData: z.boolean(),
       encryptionLevel: z.enum(['AES-128', 'AES-256', 'RSA-2048']),
-    }),
+    }).optional(),
     apiSecurity: z.object({
       rateLimitEnabled: z.boolean(),
       maxRequestsPerMinute: z.number().min(10).max(1000),
       requireApiKey: z.boolean(),
-    }),
+    }).optional(),
   }),
 });
 
@@ -59,7 +59,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -70,72 +70,34 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if school exists
-    const school = await db.school.findUnique({
-      where: { id: params.id },
-      select: { id: true, name: true },
-    });
-
-    if (!school) {
-      return NextResponse.json({ error: 'School not found' }, { status: 404 });
-    }
-
-    // In a real implementation, you would fetch from a security_settings table
-    // For now, return default settings
-    const defaultSettings = {
-      twoFactorAuth: {
-        enabled: false,
-        required: false,
-        methods: ["SMS", "EMAIL"],
-      },
-      sessionManagement: {
-        sessionTimeout: 480, // 8 hours
-        maxConcurrentSessions: 3,
-        forceLogoutOnPasswordChange: true,
-      },
-      passwordPolicy: {
-        minLength: 8,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireNumbers: true,
-        requireSpecialChars: false,
-        passwordExpiry: 90,
-      },
-      ipWhitelisting: {
-        enabled: false,
-        allowedIPs: [],
-        blockUnknownIPs: false,
-      },
-      auditLogging: {
-        enabled: true,
-        logLevel: "INFO" as const,
-        retentionDays: 365,
-      },
-      dataEncryption: {
-        encryptSensitiveData: true,
-        encryptionLevel: "AES-256" as const,
-      },
-      apiSecurity: {
-        rateLimitEnabled: true,
-        maxRequestsPerMinute: 100,
-        requireApiKey: false,
-      },
-    };
+    // Get security settings using the service
+    const settings = await schoolSecuritySettingsService.getSchoolSecuritySettings((await params).id);
+    const recommendations = await schoolSecuritySettingsService.getSecurityRecommendations((await params).id);
+    const securityScore = await schoolSecuritySettingsService.getSecurityScore((await params).id);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SCHOOL_SECURITY_SETTINGS',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json({
-      schoolId: params.id,
-      schoolName: school.name,
-      settings: defaultSettings,
+      schoolId: (await params).id,
+      settings,
+      recommendations,
+      securityScore,
     });
   } catch (error) {
     console.error('Error fetching school security settings:', error);
+    
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -146,7 +108,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -160,42 +122,64 @@ export async function PUT(
     const body = await request.json();
     const { settings } = securitySettingsSchema.parse(body);
 
-    // Check if school exists
-    const school = await db.school.findUnique({
-      where: { id: params.id },
-    });
+    // Flatten the nested settings structure
+    const flatSettings = {
+      // Two-Factor Authentication
+      ...(settings.twoFactorAuth && {
+        twoFactorEnabled: settings.twoFactorAuth.enabled,
+        twoFactorRequired: settings.twoFactorAuth.required,
+        twoFactorMethods: settings.twoFactorAuth.methods,
+      }),
+      // Session Management
+      ...(settings.sessionManagement && {
+        sessionTimeout: settings.sessionManagement.sessionTimeout,
+        maxConcurrentSessions: settings.sessionManagement.maxConcurrentSessions,
+        forceLogoutOnPasswordChange: settings.sessionManagement.forceLogoutOnPasswordChange,
+      }),
+      // Password Policy
+      ...(settings.passwordPolicy && {
+        passwordMinLength: settings.passwordPolicy.minLength,
+        passwordRequireUppercase: settings.passwordPolicy.requireUppercase,
+        passwordRequireLowercase: settings.passwordPolicy.requireLowercase,
+        passwordRequireNumbers: settings.passwordPolicy.requireNumbers,
+        passwordRequireSpecialChars: settings.passwordPolicy.requireSpecialChars,
+        passwordExpiry: settings.passwordPolicy.passwordExpiry,
+      }),
+      // IP Whitelisting
+      ...(settings.ipWhitelisting && {
+        ipWhitelistEnabled: settings.ipWhitelisting.enabled,
+        allowedIPs: settings.ipWhitelisting.allowedIPs,
+        blockUnknownIPs: settings.ipWhitelisting.blockUnknownIPs,
+      }),
+      // Audit Logging
+      ...(settings.auditLogging && {
+        auditLoggingEnabled: settings.auditLogging.enabled,
+        auditLogLevel: settings.auditLogging.logLevel,
+        auditLogRetention: settings.auditLogging.retentionDays,
+      }),
+      // Data Encryption
+      ...(settings.dataEncryption && {
+        encryptSensitiveData: settings.dataEncryption.encryptSensitiveData,
+        encryptionLevel: settings.dataEncryption.encryptionLevel,
+      }),
+      // API Security
+      ...(settings.apiSecurity && {
+        rateLimitEnabled: settings.apiSecurity.rateLimitEnabled,
+        maxRequestsPerMinute: settings.apiSecurity.maxRequestsPerMinute,
+        requireApiKey: settings.apiSecurity.requireApiKey,
+      }),
+    };
 
-    if (!school) {
-      return NextResponse.json({ error: 'School not found' }, { status: 404 });
-    }
-
-    // Validate IP addresses if IP whitelisting is enabled
-    if (settings.ipWhitelisting.enabled && settings.ipWhitelisting.allowedIPs.length > 0) {
-      const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-      const invalidIPs = settings.ipWhitelisting.allowedIPs.filter(ip => !ipRegex.test(ip));
-      
-      if (invalidIPs.length > 0) {
-        return NextResponse.json(
-          { error: 'Invalid IP addresses', invalidIPs },
-          { status: 400 }
-        );
-      }
-    }
-
-    // In a real implementation, you would store settings in a security_settings table
-    // For now, we'll simulate the update
-    
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.UPDATE,
-      resource: 'SCHOOL_SECURITY_SETTINGS',
-      resourceId: params.id,
-      changes: { settings },
-    });
+    // Update settings using the service
+    const updatedSettings = await schoolSecuritySettingsService.updateSchoolSecuritySettings(
+      (await params).id,
+      flatSettings,
+      session.user.id
+    );
 
     return NextResponse.json({
       message: 'School security settings updated successfully',
-      settings,
+      settings: updatedSettings,
     });
   } catch (error) {
     console.error('Error updating school security settings:', error);
@@ -203,6 +187,13 @@ export async function PUT(
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
+        { status: 400 }
+      );
+    }
+
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
         { status: 400 }
       );
     }

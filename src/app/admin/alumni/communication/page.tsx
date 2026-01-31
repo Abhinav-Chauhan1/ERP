@@ -113,7 +113,7 @@ export default function AlumniCommunicationPage() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [selectedChannels, setSelectedChannels] = useState<Set<CommunicationChannel>>(
-    new Set(["email"])
+    new Set(["email" as CommunicationChannel])
   );
 
   // Dialog state

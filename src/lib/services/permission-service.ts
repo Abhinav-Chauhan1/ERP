@@ -590,12 +590,12 @@ class PermissionService {
           requests.push({
             id: log.resourceId || log.id,
             userId: details.targetUserId,
-            requestedBy: log.userId,
+            requestedBy: log.userId || 'unknown',
             permissionIds: details.permissionIds,
             justification: details.justification,
             status,
-            createdAt: log.timestamp,
-            updatedAt: statusUpdate?.timestamp || log.timestamp
+            createdAt: log.timestamp || new Date(),
+            updatedAt: statusUpdate?.timestamp || log.timestamp || new Date()
           });
         }
       }

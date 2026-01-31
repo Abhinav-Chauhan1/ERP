@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { sanitizeText, sanitizeEmail, sanitizePhoneNumber, sanitizeUrl } from "@/lib/utils/input-sanitization";
+import { getSystemSettings as getCachedSystemSettings } from "@/lib/utils/cached-queries";
+import { invalidateCache, CACHE_TAGS } from "@/lib/utils/cache";
 
 // Get system settings (creates default if doesn't exist)
 export async function getSystemSettings() {
@@ -25,7 +27,8 @@ export async function getSystemSettings() {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    let settings = await db.systemSettings.findFirst();
+    // Use cached query
+    let settings = await getCachedSystemSettings();
 
     // Create default settings if none exist
     if (!settings) {
@@ -46,6 +49,9 @@ export async function getSystemSettings() {
           autoNotifyOnVerification: true,
         },
       });
+      
+      // Invalidate cache after creating new settings
+      await invalidateCache([CACHE_TAGS.SETTINGS]);
     }
 
     return { success: true, data: settings };
@@ -56,9 +62,11 @@ export async function getSystemSettings() {
 }
 
 // Get system settings without authentication (for public use in layouts)
+// This now uses the cached version directly
 export async function getPublicSystemSettings() {
   try {
-    let settings = await db.systemSettings.findFirst();
+    // Use cached query directly
+    let settings = await getCachedSystemSettings();
 
     // Create default settings if none exist
     if (!settings) {
@@ -79,6 +87,9 @@ export async function getPublicSystemSettings() {
           autoNotifyOnVerification: true,
         },
       });
+      
+      // Invalidate cache after creating new settings
+      await invalidateCache([CACHE_TAGS.SETTINGS]);
     }
 
     return { success: true, data: settings };
@@ -125,7 +136,7 @@ export async function updateSchoolInfo(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await getCachedSystemSettings();
 
     if (!settings) {
       return { success: false, error: "Settings not found" };
@@ -156,6 +167,9 @@ export async function updateSchoolInfo(data: {
       data: sanitizedData,
     });
 
+    // Invalidate cache after update
+    await invalidateCache([CACHE_TAGS.SETTINGS]);
+    
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };
@@ -206,7 +220,7 @@ export async function updateAcademicSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await getCachedSystemSettings();
 
     if (!settings) {
       return { success: false, error: "Settings not found" };
@@ -224,6 +238,9 @@ export async function updateAcademicSettings(data: {
         attendanceThreshold: data.attendanceThreshold,
       },
     });
+
+    // Invalidate cache after update
+    await invalidateCache([CACHE_TAGS.SETTINGS]);
 
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
@@ -268,7 +285,7 @@ export async function updateNotificationSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await getCachedSystemSettings();
 
     if (!settings) {
       return { success: false, error: "Settings not found" };
@@ -293,6 +310,9 @@ export async function updateNotificationSettings(data: {
         leaveAppNotificationChannels: data.leaveAppNotificationChannels,
       },
     });
+
+    // Invalidate cache after update
+    await invalidateCache([CACHE_TAGS.SETTINGS]);
 
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
@@ -332,7 +352,7 @@ export async function updateSecuritySettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await getCachedSystemSettings();
 
     if (!settings) {
       return { success: false, error: "Settings not found" };
@@ -342,6 +362,9 @@ export async function updateSecuritySettings(data: {
       where: { id: settings.id },
       data,
     });
+
+    // Invalidate cache after update
+    await invalidateCache([CACHE_TAGS.SETTINGS]);
 
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
@@ -387,7 +410,7 @@ export async function updateAppearanceSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await getCachedSystemSettings();
 
     if (!settings) {
       return { success: false, error: "Settings not found" };
@@ -397,6 +420,9 @@ export async function updateAppearanceSettings(data: {
       where: { id: settings.id },
       data,
     });
+
+    // Invalidate cache after update
+    await invalidateCache([CACHE_TAGS.SETTINGS]);
 
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");

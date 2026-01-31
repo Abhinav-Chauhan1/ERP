@@ -2,9 +2,8 @@ import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { db } from "@/lib/db"
-import { UserRole } from "@prisma/client"
+import { UserRole, AuditAction } from "@prisma/client"
 import { verifyPassword } from "@/lib/password"
-import { authenticationService } from "@/lib/services/authentication-service"
 import { schoolContextService } from "@/lib/services/school-context-service"
 import { logAuditEvent } from "@/lib/services/audit-service"
 import { authConfig } from "./auth.config"
@@ -36,8 +35,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (identifier) {
             try {
               await logAuditEvent({
-                userId: null,
-                action: 'FAILED',
+                userId: 'anonymous',
+                action: AuditAction.LOGIN,
                 resource: 'nextauth_login',
                 changes: {
                   identifier,
@@ -59,8 +58,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const school = await schoolContextService.validateSchoolCode(schoolCode)
             if (!school) {
               await logAuditEvent({
-                userId: null,
-                action: 'FAILED',
+                userId: 'anonymous',
+                action: AuditAction.LOGIN,
                 resource: 'nextauth_login',
                 changes: {
                   identifier,
@@ -96,8 +95,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (!user || !user.passwordHash) {
             await logAuditEvent({
-              userId: null,
-              action: 'FAILED',
+              userId: 'anonymous',
+              action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
                 identifier,
@@ -113,8 +112,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (schoolId && user.userSchools.length === 0) {
             await logAuditEvent({
               userId: user.id,
-              schoolId,
-              action: 'FAILED',
+              schoolId: schoolId || undefined,
+              action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
                 identifier,
@@ -132,8 +131,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!isValidPassword) {
             await logAuditEvent({
               userId: user.id,
-              schoolId,
-              action: 'FAILED',
+              schoolId: schoolId || undefined,
+              action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
                 identifier,
@@ -145,12 +144,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null
           }
 
-          // Check if email is verified (if user has email)
-          if (user.email && !user.emailVerified) {
+          // Check if email is verified (if user has email) - Skip for SUPER_ADMIN
+          if (user.email && !user.emailVerified && user.role !== 'SUPER_ADMIN') {
             await logAuditEvent({
               userId: user.id,
-              schoolId,
-              action: 'FAILED',
+              schoolId: schoolId || undefined,
+              action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
                 identifier,
@@ -166,8 +165,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (!totpCode || totpCode === "undefined") {
               await logAuditEvent({
                 userId: user.id,
-                schoolId,
-                action: 'FAILED',
+                schoolId: schoolId || undefined,
+                action: AuditAction.LOGIN,
                 resource: 'nextauth_login',
                 changes: {
                   identifier,
@@ -224,7 +223,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     
                     await logAuditEvent({
                       userId: user.id,
-                      action: 'UPDATE',
+                      action: AuditAction.UPDATE,
                       resource: '2fa_backup_code',
                       changes: {
                         remainingCodes: remainingCount,
@@ -244,8 +243,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (!isValid2FA) {
               await logAuditEvent({
                 userId: user.id,
-                schoolId,
-                action: 'FAILED',
+                schoolId: schoolId || undefined,
+                action: AuditAction.LOGIN,
                 resource: 'nextauth_login',
                 changes: {
                   identifier,
@@ -260,8 +259,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Log successful authentication
           await logAuditEvent({
             userId: user.id,
-            schoolId,
-            action: 'SUCCESS',
+            schoolId: schoolId || undefined,
+            action: AuditAction.LOGIN,
             resource: 'nextauth_login',
             changes: {
               identifier,
@@ -278,11 +277,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: user.email,
             mobile: user.mobile,
             name: user.name,
-            role: user.userSchools[0]?.role || UserRole.STUDENT,
+            // For super-admin users, use their actual role from User table
+            // For regular users, use role from UserSchool relationship
+            role: user.role === UserRole.SUPER_ADMIN ? UserRole.SUPER_ADMIN : (user.userSchools[0]?.role || UserRole.STUDENT),
             image: user.image || user.avatar,
-            schoolId: user.userSchools[0]?.schoolId,
-            schoolCode: user.userSchools[0]?.school?.schoolCode,
-            schoolName: user.userSchools[0]?.school?.name,
+            schoolId: user.userSchools[0]?.schoolId || undefined,
+            schoolCode: user.userSchools[0]?.school?.schoolCode || undefined,
+            schoolName: user.userSchools[0]?.school?.name || undefined,
             authorizedSchools: user.userSchools.map(us => us.schoolId)
           }
 
@@ -294,8 +295,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           await logAuditEvent({
-            userId: null,
-            action: 'ERROR',
+            userId: 'anonymous',
+            action: AuditAction.LOGIN,
             resource: 'nextauth_login',
             changes: {
               identifier,
@@ -333,27 +334,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if ((trigger === "update" || user) && token.id) {
         const dbUser = await db.user.findUnique({
           where: { id: token.id as string },
-          select: {
-            id: true,
-            email: true,
-            mobile: true,
-            name: true,
-            image: true,
-            avatar: true,
-            isActive: true
-          },
           include: {
             userSchools: {
               where: { isActive: true },
               include: {
-                school: {
-                  select: {
-                    id: true,
-                    name: true,
-                    schoolCode: true,
-                    status: true
-                  }
-                }
+                school: true
               }
             }
           }
@@ -366,25 +351,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.picture = dbUser.image || dbUser.avatar
 
           // Update school context and role based on current user-school relationships
-          const activeUserSchools = dbUser.userSchools.filter(us => 
-            us.school.status === 'ACTIVE'
-          )
-
-          if (activeUserSchools.length > 0) {
-            // Use the first active school as default context
-            const primaryUserSchool = activeUserSchools[0]
-            token.role = primaryUserSchool.role
-            token.schoolId = primaryUserSchool.school.id
-            token.schoolName = primaryUserSchool.school.name
-            token.schoolCode = primaryUserSchool.school.schoolCode
-            token.authorizedSchools = activeUserSchools.map(us => us.schoolId)
-          } else {
-            // No active schools - clear school context
-            token.role = null
-            token.schoolId = null
+          // For super-admin users, preserve their role and skip school context
+          if (dbUser.role === UserRole.SUPER_ADMIN) {
+            token.role = UserRole.SUPER_ADMIN
+            token.schoolId = null // Super-admin has system-wide access
             token.schoolName = null
             token.schoolCode = null
-            token.authorizedSchools = []
+            token.authorizedSchools = [] // Super-admin can access all schools
+          } else {
+            const activeUserSchools = dbUser.userSchools.filter(us => 
+              us.school.status === 'ACTIVE'
+            )
+
+            if (activeUserSchools.length > 0) {
+              // Use the first active school as default context
+              const primaryUserSchool = activeUserSchools[0]
+              token.role = primaryUserSchool.role
+              token.schoolId = primaryUserSchool.school.id
+              token.schoolName = primaryUserSchool.school.name
+              token.schoolCode = primaryUserSchool.school.schoolCode
+              token.authorizedSchools = activeUserSchools.map(us => us.schoolId)
+            } else {
+              // No active schools - clear school context
+              token.role = null
+              token.schoolId = null
+              token.schoolName = null
+              token.schoolCode = null
+              token.authorizedSchools = []
+            }
           }
         } else {
           // User is inactive or doesn't exist - clear token data
@@ -420,14 +414,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user.id) {
         await logAuditEvent({
           userId: user.id,
-          schoolId: user.schoolId,
-          action: 'SUCCESS',
+          schoolId: user.schoolId || undefined,
+          action: AuditAction.LOGIN,
           resource: 'nextauth_signin',
           changes: {
             provider: account?.provider || "credentials",
             isNewUser,
             authMethod: 'nextauth',
-            schoolCode: user.schoolCode,
+            schoolCode: user.schoolCode || undefined,
             timestamp: new Date()
           }
         })
@@ -440,12 +434,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token?.id) {
         await logAuditEvent({
           userId: token.id as string,
-          schoolId: token.schoolId as string,
-          action: 'SUCCESS',
+          schoolId: (token.schoolId as string) || undefined,
+          action: AuditAction.LOGOUT,
           resource: 'nextauth_signout',
           changes: {
             authMethod: 'nextauth',
-            schoolCode: token.schoolCode,
+            schoolCode: (token.schoolCode as string) || undefined,
             timestamp: new Date()
           }
         })

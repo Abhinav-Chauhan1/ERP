@@ -35,7 +35,7 @@ async function ScheduleMeetingContent() {
   }
 
   // Fetch all active teachers
-  const teachers = await db.teacher.findMany({
+  const rawTeachers = await db.teacher.findMany({
     where: {
       user: {
         active: true,
@@ -58,6 +58,17 @@ async function ScheduleMeetingContent() {
       },
     },
   });
+
+  // Transform teachers to ensure firstName and lastName are strings
+  const teachers = rawTeachers.map(teacher => ({
+    ...teacher,
+    user: {
+      ...teacher.user,
+      firstName: teacher.user.firstName || '',
+      lastName: teacher.user.lastName || '',
+      email: teacher.user.email || '',
+    }
+  }));
 
   return (
     <div className="space-y-6">

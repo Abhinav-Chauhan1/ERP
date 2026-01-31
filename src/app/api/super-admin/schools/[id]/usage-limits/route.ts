@@ -31,7 +31,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -44,17 +44,15 @@ export async function GET(
 
     // Check if school exists and get basic info
     const school = await db.school.findUnique({
-      where: { id: params.id },
-      select: { 
-        id: true, 
-        name: true, 
-        plan: true,
+      where: { id: (await params).id },
+      include: {
         _count: {
           select: {
             students: true,
             teachers: true,
+            administrators: true,
             classes: true,
-            subjects: true,
+            Subject: true,
           }
         }
       },
@@ -69,7 +67,7 @@ export async function GET(
     const usageCounter = await db.usageCounter.findUnique({
       where: {
         schoolId_month: {
-          schoolId: params.id,
+          schoolId: (await params).id,
           month: currentMonth,
         }
       }
@@ -118,7 +116,7 @@ export async function GET(
       students: school._count.students,
       teachers: school._count.teachers,
       classes: school._count.classes,
-      subjects: school._count.subjects,
+      subjects: school._count.Subject,
       storage: 0.5, // This would come from actual storage calculation
       whatsapp: usageCounter?.whatsappUsed || 0,
       sms: usageCounter?.smsUsed || 0,
@@ -130,11 +128,11 @@ export async function GET(
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SCHOOL_USAGE_LIMITS',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json({
-      schoolId: params.id,
+      schoolId: (await params).id,
       schoolName: school.name,
       plan: school.plan,
       limits,
@@ -163,7 +161,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -179,7 +177,7 @@ export async function PUT(
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!school) {
@@ -193,7 +191,7 @@ export async function PUT(
     await db.usageCounter.upsert({
       where: {
         schoolId_month: {
-          schoolId: params.id,
+          schoolId: (await params).id,
           month: currentMonth,
         }
       },
@@ -203,7 +201,7 @@ export async function PUT(
         storageLimitMB: limits.storageLimit * 1024, // Convert GB to MB
       },
       create: {
-        schoolId: params.id,
+        schoolId: (await params).id,
         month: currentMonth,
         whatsappLimit: limits.whatsappLimit,
         smsLimit: limits.smsLimit,
@@ -215,7 +213,7 @@ export async function PUT(
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SCHOOL_USAGE_LIMITS',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: { limits },
     });
 

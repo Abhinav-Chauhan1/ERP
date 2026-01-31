@@ -18,6 +18,17 @@ export const metadata: Metadata = {
 export default async function ParentChildrenOverviewPage() {
   const { children } = await getMyChildren();
   
+  // Transform children to ensure firstName and lastName are strings
+  const transformedChildren = children.map(child => ({
+    ...child,
+    user: {
+      ...child.user,
+      firstName: child.user.firstName || '',
+      lastName: child.user.lastName || '',
+      email: child.user.email || '',
+    }
+  }));
+  
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -37,9 +48,9 @@ export default async function ParentChildrenOverviewPage() {
       </div>
       
       {/* Children List */}
-      {children.length > 0 ? (
+      {transformedChildren.length > 0 ? (
         <div className="grid gap-6">
-          {children.map(child => (
+          {transformedChildren.map(child => (
             <ChildOverviewCard key={child.id} child={child} />
           ))}
         </div>

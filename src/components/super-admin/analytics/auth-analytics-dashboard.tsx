@@ -185,7 +185,10 @@ export function AuthAnalyticsDashboard({
         } else if (view === 'detailed') {
           setDetailedData(result.data);
         } else if (view === 'security') {
-          setDetailedData(prev => ({ ...prev, security: result.data }));
+          setDetailedData(prev => ({ 
+            authentication: prev?.authentication || {} as AuthenticationMetrics,
+            security: result.data 
+          }));
         }
       } else {
         throw new Error(result.error || 'Failed to fetch analytics');

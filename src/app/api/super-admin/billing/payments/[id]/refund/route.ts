@@ -22,7 +22,7 @@ const rateLimitConfig = {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -36,13 +36,13 @@ export async function POST(
     const body = await request.json();
     const validatedData = refundSchema.parse(body);
 
-    const refundResult = await billingService.processRefund(params.id, validatedData.amount);
+    const refundResult = await billingService.processRefund((await params).id, validatedData.amount);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'PAYMENT',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: {
         action: 'refund',
         amount: validatedData.amount,

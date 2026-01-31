@@ -32,7 +32,7 @@ export default async function StudentProfilePage() {
     redirect("/login");
   }
 
-  const student = await db.student.findUnique({
+  const rawStudent = await db.student.findUnique({
     where: {
       userId: dbUser.id
     },
@@ -60,9 +60,20 @@ export default async function StudentProfilePage() {
     }
   });
 
-  if (!student) {
+  if (!rawStudent) {
     redirect("/login");
   }
+
+  // Transform student to ensure firstName and lastName are strings
+  const student = {
+    ...rawStudent,
+    user: {
+      ...rawStudent.user,
+      firstName: rawStudent.user.firstName || '',
+      lastName: rawStudent.user.lastName || '',
+      email: rawStudent.user.email || '',
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">

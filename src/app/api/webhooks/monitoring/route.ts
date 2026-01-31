@@ -160,7 +160,7 @@ async function processMonitoringEvent(event: any, provider: string): Promise<voi
  */
 async function processDataDogEvent(event: any): Promise<void> {
   const alertConfig = {
-    alertType: 'DATADOG_ALERT',
+    alertType: 'system_health' as const,
     severity: mapDataDogSeverity(event.priority),
     title: event.title || 'DataDog Alert',
     description: event.body || 'Alert from DataDog monitoring',
@@ -180,7 +180,7 @@ async function processDataDogEvent(event: any): Promise<void> {
  */
 async function processNewRelicEvent(event: any): Promise<void> {
   const alertConfig = {
-    alertType: 'NEWRELIC_ALERT',
+    alertType: 'system_health' as const,
     severity: mapNewRelicSeverity(event.severity),
     title: event.condition_name || 'New Relic Alert',
     description: event.details || 'Alert from New Relic monitoring',
@@ -200,8 +200,8 @@ async function processNewRelicEvent(event: any): Promise<void> {
  */
 async function processPingdomEvent(event: any): Promise<void> {
   const alertConfig = {
-    alertType: 'PINGDOM_ALERT',
-    severity: event.current_state === 'DOWN' ? 'HIGH' : 'MEDIUM',
+    alertType: 'system_health' as const,
+    severity: event.current_state === 'DOWN' ? 'ERROR' as const : 'WARNING' as const,
     title: `${event.check_name} - ${event.current_state}`,
     description: event.description || 'Alert from Pingdom monitoring',
     metadata: {
@@ -220,8 +220,8 @@ async function processPingdomEvent(event: any): Promise<void> {
  */
 async function processUptimeRobotEvent(event: any): Promise<void> {
   const alertConfig = {
-    alertType: 'UPTIMEROBOT_ALERT',
-    severity: event.alert_type === 1 ? 'HIGH' : 'MEDIUM', // 1 = down, 2 = up
+    alertType: 'system_health' as const,
+    severity: event.alert_type === 1 ? 'ERROR' as const : 'WARNING' as const, // 1 = down, 2 = up
     title: `${event.monitor_friendly_name} - ${event.alert_type === 1 ? 'DOWN' : 'UP'}`,
     description: event.alert_details || 'Alert from UptimeRobot monitoring',
     metadata: {
@@ -240,8 +240,8 @@ async function processUptimeRobotEvent(event: any): Promise<void> {
  */
 async function processGenericMonitoringEvent(event: any, provider: string): Promise<void> {
   const alertConfig = {
-    alertType: `${provider.toUpperCase()}_ALERT`,
-    severity: 'MEDIUM',
+    alertType: 'system_health' as const,
+    severity: 'WARNING' as const,
     title: event.title || event.name || `${provider} Alert`,
     description: event.description || event.message || `Alert from ${provider} monitoring`,
     metadata: {
@@ -257,38 +257,38 @@ async function processGenericMonitoringEvent(event: any, provider: string): Prom
 /**
  * Map DataDog severity to our severity levels
  */
-function mapDataDogSeverity(priority: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+function mapDataDogSeverity(priority: string): 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL' {
   switch (priority?.toLowerCase()) {
     case 'p1':
     case 'critical':
       return 'CRITICAL';
     case 'p2':
     case 'high':
-      return 'HIGH';
+      return 'ERROR';
     case 'p3':
     case 'medium':
-      return 'MEDIUM';
+      return 'WARNING';
     case 'p4':
     case 'low':
-      return 'LOW';
+      return 'INFO';
     default:
-      return 'MEDIUM';
+      return 'WARNING';
   }
 }
 
 /**
  * Map New Relic severity to our severity levels
  */
-function mapNewRelicSeverity(severity: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+function mapNewRelicSeverity(severity: string): 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL' {
   switch (severity?.toLowerCase()) {
     case 'critical':
       return 'CRITICAL';
     case 'warning':
-      return 'HIGH';
+      return 'ERROR';
     case 'info':
-      return 'MEDIUM';
+      return 'WARNING';
     default:
-      return 'MEDIUM';
+      return 'WARNING';
   }
 }
 

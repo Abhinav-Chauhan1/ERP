@@ -13,6 +13,7 @@ const prisma = new PrismaClient();
 
 // Types for note creation and updates
 export interface CreateEventNoteInput {
+  schoolId: string;
   eventId: string;
   userId: string;
   content: string;
@@ -71,7 +72,8 @@ export async function createEventNote(
     data: {
       eventId: data.eventId,
       userId: data.userId,
-      content: data.content.trim()
+      content: data.content.trim(),
+      schoolId: data.schoolId
     }
   });
   

@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       if (!school) {
         // Log failed validation attempt
         await logAuditEvent({
-          action: 'SCHOOL_VALIDATION_FAILED',
+          userId: null,
+          action: 'READ',
           resource: 'school_context',
           changes: {
             schoolCode: schoolCode.trim(),
@@ -57,8 +58,9 @@ export async function POST(request: NextRequest) {
 
       // Log successful validation
       await logAuditEvent({
+        userId: null,
         schoolId: school.id,
-        action: 'SCHOOL_VALIDATION_SUCCESS',
+        action: 'READ',
         resource: 'school_context',
         changes: {
           schoolCode: school.schoolCode,
@@ -83,7 +85,8 @@ export async function POST(request: NextRequest) {
 
       // Log error
       await logAuditEvent({
-        action: 'SCHOOL_VALIDATION_ERROR',
+        userId: null,
+        action: 'READ',
         resource: 'school_context',
         changes: {
           schoolCode: schoolCode.trim(),

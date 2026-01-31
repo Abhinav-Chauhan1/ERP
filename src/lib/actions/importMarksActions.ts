@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { AuditAction } from "@prisma/client";
 import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
@@ -223,6 +222,7 @@ export async function importMarksFromFile(
             grade: entry.isAbsent ? null : grade,
             isAbsent: entry.isAbsent || false,
             remarks: entry.remarks || null,
+            schoolId,
           },
           update: {
             marks: totalMarks,

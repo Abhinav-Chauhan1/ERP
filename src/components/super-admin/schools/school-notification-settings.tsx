@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { 
   Save, 
-  Bell, 
   Mail, 
   MessageSquare, 
   Smartphone,
@@ -19,6 +18,8 @@ import {
   Clock
 } from "lucide-react";
 import { toast } from "sonner";
+import { useBreakpoint, mobileClasses } from "@/lib/utils/mobile-responsive";
+import { aria, focus, formAccessibility } from "@/lib/utils/accessibility";
 
 interface SchoolNotificationSettingsProps {
   schoolId: string;
@@ -95,6 +96,7 @@ const defaultSettings: NotificationSettings = {
 };
 
 export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSettingsProps) {
+  const { isMobile, isTablet } = useBreakpoint();
   const [settings, setSettings] = useState<NotificationSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -163,7 +165,7 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? mobileClasses.padding.mobile : mobileClasses.padding.desktop}`}>
       {/* Email Notifications */}
       <Card>
         <CardHeader>
@@ -175,8 +177,8 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
             Configure email notification preferences
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+        <CardContent className={`space-y-4 ${isMobile ? mobileClasses.padding.mobile : ''}`}>
+          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center justify-between'}`}>
             <div>
               <Label className="text-base font-medium">Enable Email Notifications</Label>
               <p className="text-sm text-muted-foreground">
@@ -188,6 +190,8 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
               onCheckedChange={(checked) => 
                 handleSettingChange('emailNotifications', 'enabled', checked)
               }
+              className={focus.classes.visible}
+              {...aria.attributes.label("Enable email notifications")}
             />
           </div>
 
@@ -195,40 +199,48 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
             <>
               <Separator />
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
                   <Label>Admin Alerts</Label>
                   <Switch
                     checked={settings.emailNotifications.adminAlerts}
                     onCheckedChange={(checked) => 
                       handleSettingChange('emailNotifications', 'adminAlerts', checked)
                     }
+                    className={focus.classes.visible}
+                    {...aria.attributes.label("Enable admin alerts via email")}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
                   <Label>System Updates</Label>
                   <Switch
                     checked={settings.emailNotifications.systemUpdates}
                     onCheckedChange={(checked) => 
                       handleSettingChange('emailNotifications', 'systemUpdates', checked)
                     }
+                    className={focus.classes.visible}
+                    {...aria.attributes.label("Enable system update notifications via email")}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
                   <Label>Billing Alerts</Label>
                   <Switch
                     checked={settings.emailNotifications.billingAlerts}
                     onCheckedChange={(checked) => 
                       handleSettingChange('emailNotifications', 'billingAlerts', checked)
                     }
+                    className={focus.classes.visible}
+                    {...aria.attributes.label("Enable billing alerts via email")}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
                   <Label>Usage Alerts</Label>
                   <Switch
                     checked={settings.emailNotifications.usageAlerts}
                     onCheckedChange={(checked) => 
                       handleSettingChange('emailNotifications', 'usageAlerts', checked)
                     }
+                    className={focus.classes.visible}
+                    {...aria.attributes.label("Enable usage alerts via email")}
                   />
                 </div>
               </div>
@@ -248,8 +260,8 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
             Configure SMS notification preferences for critical alerts
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+        <CardContent className={`space-y-4 ${isMobile ? mobileClasses.padding.mobile : ''}`}>
+          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center justify-between'}`}>
             <div>
               <Label className="text-base font-medium">Enable SMS Notifications</Label>
               <p className="text-sm text-muted-foreground">
@@ -261,6 +273,8 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
               onCheckedChange={(checked) => 
                 handleSettingChange('smsNotifications', 'enabled', checked)
               }
+              className={focus.classes.visible}
+              {...aria.attributes.label("Enable SMS notifications")}
             />
           </div>
 
@@ -359,11 +373,11 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-3 gap-4'}`}>
             <div className="space-y-2">
-              <Label htmlFor="usageWarning">Usage Warning (%)</Label>
+              <Label {...formAccessibility.getLabelProps("usageWarning")}>Usage Warning (%)</Label>
               <Input
-                id="usageWarning"
+                {...formAccessibility.getFieldProps("usageWarning", "Usage Warning Percentage", undefined, "Set the percentage threshold for usage warnings")}
                 type="number"
                 min="0"
                 max="100"
@@ -371,12 +385,13 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
                 onChange={(e) => 
                   handleSettingChange('alertThresholds', 'usageWarning', parseInt(e.target.value))
                 }
+                className={focus.classes.visible}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="usageCritical">Usage Critical (%)</Label>
+              <Label {...formAccessibility.getLabelProps("usageCritical")}>Usage Critical (%)</Label>
               <Input
-                id="usageCritical"
+                {...formAccessibility.getFieldProps("usageCritical", "Usage Critical Percentage", undefined, "Set the percentage threshold for critical usage alerts")}
                 type="number"
                 min="0"
                 max="100"
@@ -384,12 +399,13 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
                 onChange={(e) => 
                   handleSettingChange('alertThresholds', 'usageCritical', parseInt(e.target.value))
                 }
+                className={focus.classes.visible}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="billingDueDays">Billing Due Alert (days)</Label>
+              <Label {...formAccessibility.getLabelProps("billingDueDays")}>Billing Due Alert (days)</Label>
               <Input
-                id="billingDueDays"
+                {...formAccessibility.getFieldProps("billingDueDays", "Billing Due Alert Days", undefined, "Set how many days before billing due date to send alerts")}
                 type="number"
                 min="1"
                 max="30"
@@ -397,6 +413,7 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
                 onChange={(e) => 
                   handleSettingChange('alertThresholds', 'billingDueDays', parseInt(e.target.value))
                 }
+                className={focus.classes.visible}
               />
             </div>
           </div>
@@ -477,7 +494,12 @@ export function SchoolNotificationSettings({ schoolId }: SchoolNotificationSetti
       </Card>
 
       <div className="flex justify-end pt-6 border-t">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
+          {...aria.attributes.label("Save notification settings")}
+        >
           {isSaving ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />

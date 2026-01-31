@@ -420,58 +420,82 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
       throw new Error("Unauthorized: Only the Head Class Teacher can mark attendance.");
     }
 
-    // Process each attendance record
-    for (const record of attendanceRecords) {
-      // Check if record already exists
-      const existingRecord = await db.studentAttendance.findFirst({
-        where: {
-          studentId: record.studentId,
-          date: {
-            gte: new Date(record.date.setHours(0, 0, 0, 0)),
-            lt: new Date(new Date(record.date).setHours(24, 0, 0, 0)),
-          },
-          sectionId,
-        },
-      });
+    // Batch process attendance records to avoid N+1 queries
+    const targetDate = new Date(attendanceRecords[0]?.date || new Date());
+    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
 
+    // Get all existing records for this date and section in one query
+    const existingRecords = await db.studentAttendance.findMany({
+      where: {
+        sectionId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        studentId: {
+          in: attendanceRecords.map(record => record.studentId)
+        }
+      },
+    });
+
+    // Create a map for O(1) lookup of existing records
+    const existingRecordsMap = new Map(
+      existingRecords.map(record => [record.studentId, record])
+    );
+
+    // Separate records into updates and creates
+    const recordsToUpdate: Array<{ id: string; data: any }> = [];
+    const recordsToCreate: Array<any> = [];
+
+    for (const record of attendanceRecords) {
+      const existingRecord = existingRecordsMap.get(record.studentId);
+      
       if (existingRecord) {
-        // Update existing record
-        await db.studentAttendance.update({
-          where: {
-            id: existingRecord.id,
-          },
+        recordsToUpdate.push({
+          id: existingRecord.id,
           data: {
             status: record.status,
             reason: record.reason,
             markedBy: userId,
-          },
+          }
         });
       } else {
-        // Create new record
-        await db.studentAttendance.create({
-          data: {
-            student: {
-              connect: {
-                id: record.studentId,
-              },
-            },
-            section: {
-              connect: {
-                id: sectionId,
-              },
-            },
-            date: record.date,
-            status: record.status,
-            reason: record.reason,
-            markedBy: userId,
-          },
+        recordsToCreate.push({
+          studentId: record.studentId,
+          sectionId: sectionId,
+          date: record.date,
+          status: record.status,
+          reason: record.reason,
+          markedBy: userId,
         });
       }
+    }
 
-      // Trigger notification (async, don't await blocking)
+    // Batch update existing records
+    if (recordsToUpdate.length > 0) {
+      await Promise.all(
+        recordsToUpdate.map(({ id, data }) =>
+          db.studentAttendance.update({
+            where: { id },
+            data,
+          })
+        )
+      );
+    }
+
+    // Batch create new records
+    if (recordsToCreate.length > 0) {
+      await db.studentAttendance.createMany({
+        data: recordsToCreate,
+      });
+    }
+
+    // Trigger notifications (async, don't await blocking)
+    attendanceRecords.forEach(record => {
       sendAttendanceNotification(record.studentId, record.status, record.date)
         .catch(err => console.error("Error triggering attendance notification:", err));
-    }
+    });
 
     revalidatePath(`/teacher/attendance/mark`);
     return { success: true };

@@ -300,7 +300,7 @@ export async function getParentDashboardData() {
 /**
  * Schedule a parent-teacher meeting
  */
-export async function scheduleParentTeacherMeeting(teacherId: string, scheduledDate: Date, title: string, description?: string) {
+export async function scheduleParentTeacherMeeting(teacherId: string, scheduledDate: Date, title: string, schoolId: string, description?: string) {
   const result = await getCurrentParent();
   
   if (!result || !result.parent) {
@@ -333,7 +333,8 @@ export async function scheduleParentTeacherMeeting(teacherId: string, scheduledD
         description,
         scheduledDate,
         status: "REQUESTED",
-        duration: 30 // Default 30 minutes
+        duration: 30, // Default 30 minutes
+        schoolId,
       },
       include: {
         parent: {

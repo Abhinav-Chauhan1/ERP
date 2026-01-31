@@ -496,7 +496,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
     ]);
 
     const activities = [
-      ...recentExams.map((exam) => ({
+      ...recentExams.map((exam: any) => ({
         id: exam.id,
         user: {
           name: exam.creator ? `${exam.creator.user.firstName} ${exam.creator.user.lastName}` : 'Unknown',
@@ -506,7 +506,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
         target: exam.subject.name,
         date: exam.createdAt,
       })),
-      ...recentAssignments.map((assignment) => ({
+      ...recentAssignments.map((assignment: any) => ({
         id: assignment.id,
         user: {
           name: assignment.creator ? `${assignment.creator.user.firstName} ${assignment.creator.user.lastName}` : 'Unknown',
@@ -516,7 +516,7 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
         target: assignment.subject.name,
         date: assignment.createdAt,
       })),
-      ...recentAnnouncements.map((announcement) => ({
+      ...recentAnnouncements.map((announcement: any) => ({
         id: announcement.id,
         user: {
           name: `${announcement.publisher.user.firstName} ${announcement.publisher.user.lastName}`,

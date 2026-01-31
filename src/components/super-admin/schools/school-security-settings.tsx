@@ -21,6 +21,8 @@ import {
   Smartphone
 } from "lucide-react";
 import { toast } from "sonner";
+import { useBreakpoint, mobileClasses } from "@/lib/utils/mobile-responsive";
+import { aria, focus, formAccessibility } from "@/lib/utils/accessibility";
 
 interface SchoolSecuritySettingsProps {
   schoolId: string;
@@ -107,6 +109,7 @@ const defaultSettings: SecuritySettings = {
 };
 
 export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps) {
+  const { isMobile, isTablet } = useBreakpoint();
   const [settings, setSettings] = useState<SecuritySettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -199,7 +202,7 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? mobileClasses.padding.mobile : mobileClasses.padding.desktop}`}>
       {/* Two-Factor Authentication */}
       <Card>
         <CardHeader>
@@ -211,8 +214,8 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
             Configure multi-factor authentication requirements
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+        <CardContent className={`space-y-4 ${isMobile ? mobileClasses.padding.mobile : ''}`}>
+          <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center justify-between'}`}>
             <div>
               <Label className="text-base font-medium">Enable 2FA</Label>
               <p className="text-sm text-muted-foreground">
@@ -224,6 +227,8 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
               onCheckedChange={(checked) => 
                 handleSettingChange('twoFactorAuth', 'enabled', checked)
               }
+              className={focus.classes.visible}
+              {...aria.attributes.label("Enable two-factor authentication")}
             />
           </div>
 
@@ -282,11 +287,11 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
             <div className="space-y-2">
-              <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+              <Label {...formAccessibility.getLabelProps("sessionTimeout")}>Session Timeout (minutes)</Label>
               <Input
-                id="sessionTimeout"
+                {...formAccessibility.getFieldProps("sessionTimeout", "Session Timeout", undefined, "Set session timeout in minutes")}
                 type="number"
                 min="15"
                 max="1440"
@@ -294,12 +299,13 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
                 onChange={(e) => 
                   handleSettingChange('sessionManagement', 'sessionTimeout', parseInt(e.target.value))
                 }
+                className={focus.classes.visible}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxSessions">Max Concurrent Sessions</Label>
+              <Label {...formAccessibility.getLabelProps("maxSessions")}>Max Concurrent Sessions</Label>
               <Input
-                id="maxSessions"
+                {...formAccessibility.getFieldProps("maxSessions", "Maximum Concurrent Sessions", undefined, "Set maximum number of concurrent sessions")}
                 type="number"
                 min="1"
                 max="10"
@@ -307,6 +313,7 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
                 onChange={(e) => 
                   handleSettingChange('sessionManagement', 'maxConcurrentSessions', parseInt(e.target.value))
                 }
+                className={focus.classes.visible}
               />
             </div>
           </div>
@@ -627,7 +634,12 @@ export function SchoolSecuritySettings({ schoolId }: SchoolSecuritySettingsProps
       </Card>
 
       <div className="flex justify-end pt-6 border-t">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
+          {...aria.attributes.label("Save security settings")}
+        >
           {isSaving ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />

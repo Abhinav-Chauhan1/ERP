@@ -256,8 +256,8 @@ export async function getSubjectDetails(subjectId: string) {
     syllabus: subject.syllabus[0] || null,
     teachers: subject.teachers.map((relation) => ({
       id: relation.teacher.id,
-      name: `${relation.teacher.user.firstName} ${relation.teacher.user.lastName}`,
-      email: relation.teacher.user.email,
+      name: `${relation.teacher.user.firstName || ''} ${relation.teacher.user.lastName || ''}`.trim() || 'Unnamed Teacher',
+      email: relation.teacher.user.email || '',
     })),
     lessons: subject.lessons,
     assignments: assignments.map((assignment) => ({

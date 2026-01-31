@@ -95,6 +95,7 @@ export async function POST(
             eventId: id,
             userId: user.id,
             status: validatedData.status,
+            schoolId: user.teacher?.schoolId || '',
           },
         });
       },

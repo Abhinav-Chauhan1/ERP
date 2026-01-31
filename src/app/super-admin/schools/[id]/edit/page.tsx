@@ -38,6 +38,12 @@ export default async function EditSchoolPage({ params }: { params: Promise<{ id:
         );
     }
 
+    // Transform school to match expected interface
+    const transformedSchool = {
+        ...school,
+        status: school.status === 'DEACTIVATED' ? 'INACTIVE' : school.status as 'ACTIVE' | 'SUSPENDED' | 'INACTIVE'
+    };
+
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex items-center gap-4">
@@ -52,7 +58,7 @@ export default async function EditSchoolPage({ params }: { params: Promise<{ id:
                 </div>
             </div>
 
-            <SchoolEditForm school={school} />
+            <SchoolEditForm school={transformedSchool} />
         </div>
     );
 }

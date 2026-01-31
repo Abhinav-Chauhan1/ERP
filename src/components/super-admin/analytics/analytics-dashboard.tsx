@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,19 +18,18 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowUpRight,
-  ArrowDownRight,
   BarChart3,
   PieChart,
   LineChart,
   Calendar,
-  Clock,
-  Globe
+  Clock
 } from "lucide-react";
-import { getDashboardAnalytics, getAuthenticationAnalytics } from "@/lib/actions/analytics-actions";
+import { getDashboardAnalytics } from "@/lib/actions/analytics-actions";
 import { toast } from "sonner";
 
 interface AnalyticsDashboardProps {
   timeRange?: string;
+  initialData?: DashboardData | null;
 }
 
 interface DashboardData {
@@ -78,13 +77,24 @@ interface DashboardData {
   };
 }
 
-export function AnalyticsDashboard({ timeRange = "30d" }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: AnalyticsDashboardProps) {
   const [selectedTimeRange, setSelectedTimeRange] = useState(timeRange);
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(!initialData);
+  const [data, setData] = useState<DashboardData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(initialData ? Date.now() : 0);
 
-  const fetchAnalytics = async (range: string) => {
+  // Cache analytics data for 5 minutes to prevent excessive queries
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const fetchAnalytics = useCallback(async (range: string, forceRefresh = false) => {
+    const now = Date.now();
+    
+    // Check if we have cached data that's still valid
+    if (!forceRefresh && data && (now - lastFetchTime) < CACHE_DURATION) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
@@ -93,6 +103,7 @@ export function AnalyticsDashboard({ timeRange = "30d" }: AnalyticsDashboardProp
       
       if (result.success && result.data) {
         setData(result.data);
+        setLastFetchTime(now);
       } else {
         setError(result.error || "Failed to fetch analytics");
         toast.error("Failed to load analytics data");
@@ -103,20 +114,40 @@ export function AnalyticsDashboard({ timeRange = "30d" }: AnalyticsDashboardProp
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [data, lastFetchTime]);
 
   useEffect(() => {
     fetchAnalytics(selectedTimeRange);
-  }, [selectedTimeRange]);
+  }, [selectedTimeRange, fetchAnalytics]);
 
-  const handleRefreshData = async () => {
-    await fetchAnalytics(selectedTimeRange);
+  const handleRefreshData = useCallback(async () => {
+    await fetchAnalytics(selectedTimeRange, true); // Force refresh
     toast.success("Analytics data refreshed");
-  };
+  }, [selectedTimeRange, fetchAnalytics]);
 
-  const handleTimeRangeChange = (newRange: string) => {
+  const handleTimeRangeChange = useCallback((newRange: string) => {
     setSelectedTimeRange(newRange);
-  };
+    setLastFetchTime(0); // Reset cache when time range changes
+  }, []);
+
+  // Memoize expensive calculations
+  const formattedData = useMemo(() => {
+    if (!data) return null;
+    
+    return {
+      ...data,
+      formattedRevenue: new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        minimumFractionDigits: 0,
+      }).format(data.kpiData.totalRevenue / 100),
+      formattedMRR: new Intl.NumberFormat("en-IN", {
+        style: "currency", 
+        currency: "INR",
+        minimumFractionDigits: 0,
+      }).format(data.kpiData.monthlyRecurringRevenue / 100),
+    };
+  }, [data]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {

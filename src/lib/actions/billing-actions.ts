@@ -125,27 +125,36 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       };
     });
 
-    // Get monthly revenue data for the last 12 months
+    // Get monthly revenue data for the last 12 months - OPTIMIZED SINGLE QUERY
+    const twelveMonthsAgo = startOfMonth(subDays(now, 11 * 30));
+    
+    // Single query to get all subscriptions for the last 12 months
+    const allMonthlySubscriptions = await db.subscription.findMany({
+      where: {
+        createdAt: {
+          gte: twelveMonthsAgo,
+          lte: now,
+        },
+      },
+      include: {
+        school: {
+          select: {
+            plan: true,
+          },
+        },
+      },
+    });
+
+    // Group subscriptions by month in memory (much faster than 12 DB queries)
     const monthlyRevenueData = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
 
-      const monthlySubscriptions = await db.subscription.findMany({
-        where: {
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        include: {
-          school: {
-            select: {
-              plan: true,
-            },
-          },
-        },
-      });
+      // Filter in memory instead of querying database
+      const monthlySubscriptions = allMonthlySubscriptions.filter(sub => 
+        sub.createdAt >= monthStart && sub.createdAt <= monthEnd
+      );
 
       let monthlyRevenue = 0;
       monthlySubscriptions.forEach((sub) => {

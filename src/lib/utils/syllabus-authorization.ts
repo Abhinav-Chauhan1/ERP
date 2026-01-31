@@ -62,7 +62,11 @@ export async function getCurrentUser(): Promise<AuthorizationResult> {
 
     return {
       authorized: true,
-      user,
+      user: {
+        id: user.id,
+        role: user.role,
+        email: user.email || ''
+      },
     };
   } catch (error) {
     console.error("Error getting current user:", error);

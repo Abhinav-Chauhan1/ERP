@@ -50,26 +50,29 @@ export const getMostBorrowedBooksReport = withSchoolAuthAction(async (
       take: limit,
     });
 
-    // Get book details for each book
-    const booksWithCounts = await Promise.all(
-      bookIssues.map(async (issue) => {
-        const book = await db.book.findFirst({
-          where: {
-            id: issue.bookId,
-            schoolId // Critical
-          },
-        });
+    // Get book details for all books in a single query (fixes N+1)
+    const bookIds = bookIssues.map(issue => issue.bookId);
+    const books = await db.book.findMany({
+      where: {
+        id: { in: bookIds },
+        schoolId // Critical
+      },
+    });
 
-        return {
-          book,
-          borrowCount: issue._count.id,
-        };
-      })
-    );
+    // Create a map for O(1) lookup
+    const bookMap = new Map(books.map(book => [book.id, book]));
+
+    // Combine book details with counts
+    const booksWithCounts = bookIssues
+      .map(issue => ({
+        book: bookMap.get(issue.bookId),
+        borrowCount: issue._count.id,
+      }))
+      .filter(item => item.book !== null);
 
     return {
       success: true,
-      data: booksWithCounts.filter((item) => item.book !== null),
+      data: booksWithCounts,
     };
   } catch (error) {
     console.error("Error generating most borrowed books report:", error);

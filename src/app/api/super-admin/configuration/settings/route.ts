@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
 
-    const settings = await configurationService.getSettings(category || undefined);
+    const settings = await configurationService.getConfigurations({ category: category || undefined });
 
     await logAuditEvent({
       userId: session.user.id,
@@ -68,10 +68,20 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateSettingsSchema.parse(body);
 
-    const updatedSettings = await configurationService.updateSettings(
-      validatedData.category,
-      validatedData.settings
-    );
+    // Update each setting individually
+    const updatedSettings = [];
+    for (const [key, value] of Object.entries(validatedData.settings)) {
+      const setting = await configurationService.setConfiguration(
+        session.user.id,
+        {
+          key,
+          value,
+          category: validatedData.category as any,
+          description: `Setting for ${key}`
+        }
+      );
+      updatedSettings.push(setting);
+    }
 
     await logAuditEvent({
       userId: session.user.id,

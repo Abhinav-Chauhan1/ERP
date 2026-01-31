@@ -83,10 +83,10 @@ class SessionContextService {
           us => us.schoolId === session.activeSchoolId
         );
         if (userSchool) {
-          role = userSchool.role;
+          role = userSchool.role as "STUDENT";
         }
       } else if (session.user.userSchools.length > 0) {
-        role = session.user.userSchools[0].role;
+        role = session.user.userSchools[0].role as "STUDENT";
       }
 
       return {
@@ -183,10 +183,13 @@ class SessionContextService {
           student: {
             include: {
               user: true,
-              section: {
+              enrollments: {
                 include: {
-                  class: true
-                }
+                  class: true,
+                  section: true
+                },
+                take: 1,
+                orderBy: { createdAt: 'desc' }
               }
             }
           }
@@ -205,8 +208,8 @@ class SessionContextService {
         .map(sp => ({
           id: sp.student.id,
           name: sp.student.user.name,
-          class: sp.student.section?.class?.name,
-          section: sp.student.section?.name,
+          class: sp.student.enrollments[0]?.class?.name,
+          section: sp.student.enrollments[0]?.section?.name,
           rollNumber: sp.student.rollNumber || undefined
         }));
 
@@ -259,7 +262,7 @@ class SessionContextService {
       await this.logContextEvent(
         hasAccess ? 'STUDENT_ACCESS_VALIDATED' : 'STUDENT_ACCESS_DENIED',
         userId,
-        schoolId,
+        schoolId || null,
         {
           studentId,
           parentId: parent.id,
@@ -446,8 +449,8 @@ class SessionContextService {
     try {
       await logAuditEvent({
         userId,
-        schoolId,
-        action,
+        schoolId: schoolId || undefined,
+        action: action as any, // TODO: Fix AuditAction type
         resource: 'session_context',
         changes: {
           metadata,

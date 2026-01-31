@@ -147,7 +147,7 @@ export function HelpPanel({
   });
 
   // Get unique categories
-  const categories = Array.from(new Set(helpContent.map(item => item.category).filter(Boolean)));
+  const categories = Array.from(new Set(helpContent.map(item => item.category).filter((category): category is string => Boolean(category))));
 
   const getTypeIcon = (type: string) => {
     switch (type) {

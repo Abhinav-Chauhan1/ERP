@@ -133,7 +133,7 @@ export const requireSuperAdmin = createAuthMiddleware({
  * Enhanced with school context validation
  */
 export const requireSchoolAdmin = createAuthMiddleware({
-  requiredRole: UserRole.SCHOOL_ADMIN,
+  requiredRole: UserRole.ADMIN,
   requireSchoolContext: true,
 });
 
@@ -142,7 +142,7 @@ export const requireSchoolAdmin = createAuthMiddleware({
  * Enhanced with school context validation
  */
 export const requireTeacher = createAuthMiddleware({
-  requiredRole: [UserRole.TEACHER, UserRole.SCHOOL_ADMIN],
+  requiredRole: [UserRole.TEACHER, UserRole.ADMIN],
   requireSchoolContext: true,
 });
 
@@ -252,7 +252,7 @@ export function getEffectivePermissions(user: AuthenticatedUser): string[] {
       // Super admins have all permissions
       permissions.add('*');
       break;
-    case UserRole.SCHOOL_ADMIN:
+    case UserRole.ADMIN:
       permissions.add('school:read');
       permissions.add('school:write');
       permissions.add('user:read');
@@ -328,7 +328,6 @@ function getClientIP(request: NextRequest): string {
   return 'unknown';
 }
 
-export default authenticate;
 /**
  * Validate API key for webhook endpoints
  * Enhanced with audit logging

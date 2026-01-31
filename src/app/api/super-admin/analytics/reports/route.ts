@@ -44,7 +44,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedConfig = reportConfigSchema.parse(body);
 
-    const report = await analyticsService.generateCustomReport(validatedConfig);
+    const report = await analyticsService.generateCustomReport({
+      ...validatedConfig,
+      filters: validatedConfig.filters || {}
+    });
 
     await logAuditEvent({
       userId: session.user.id,

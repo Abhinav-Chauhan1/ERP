@@ -136,7 +136,7 @@ export class ThresholdMonitoringService {
         enabled: alertConfig.enabled,
         actions: rule.actions,
         cooldownPeriod: rule.cooldownPeriod,
-        schoolId: alertConfig.schoolId,
+        schoolId: alertConfig.schoolId || undefined,
         metadata: rule.metadata,
       };
     } catch (error) {
@@ -218,7 +218,7 @@ export class ThresholdMonitoringService {
     metadata?: any
   ): Promise<void> {
     await monitoringService.createAlert({
-      alertType: 'automated_threshold',
+      alertType: 'usage_threshold' as any,
       severity: this.mapSeverityToAlertSeverity(rule.severity),
       title: `Automated Alert: ${rule.name}`,
       description: `Threshold breached for ${rule.metricName}. Current value: ${currentValue}, Threshold: ${rule.threshold}`,

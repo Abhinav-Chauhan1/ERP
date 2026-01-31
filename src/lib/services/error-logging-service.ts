@@ -46,6 +46,7 @@ export interface LogErrorParams {
   message: string;
   category: ErrorCategory;
   severity: ErrorSeverity;
+  schoolId: string;
   channel?: CommunicationChannel;
   errorCode?: string;
   errorDetails?: string;
@@ -295,6 +296,7 @@ export async function logError(params: LogErrorParams): Promise<ErrorLogEntry> {
       message,
       category,
       severity,
+      schoolId,
       channel,
       errorCode,
       errorDetails,
@@ -311,6 +313,7 @@ export async function logError(params: LogErrorParams): Promise<ErrorLogEntry> {
         message,
         category,
         severity,
+        schoolId,
         channel: channel || null,
         errorCode: errorCode || null,
         errorDetails: errorDetails || null,
@@ -681,6 +684,7 @@ Please review and resolve this issue as soon as possible.
           message: alertMessage,
           type: 'SYSTEM',
           isRead: false,
+          schoolId: errorLog.schoolId,
         },
       })
     );

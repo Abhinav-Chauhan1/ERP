@@ -10,11 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (authResult) {
+      return authResult; // Return the error response
     }
 
     const { searchParams } = new URL(request.url);
@@ -62,11 +59,8 @@ export async function POST(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (authResult) {
+      return authResult; // Return the error response
     }
 
     const body = await request.json();

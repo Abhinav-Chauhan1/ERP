@@ -1,3 +1,5 @@
+"use server";
+
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
@@ -81,7 +83,7 @@ export async function getQuestionBanks(filters: {
 
     const where: any = withSchoolScope({
       subjectId: filters.subjectId,
-    }, schoolId);
+    }, schoolId || undefined);
 
     if (filters.topic) {
       where.topic = filters.topic;

@@ -39,6 +39,7 @@ import { toast } from "sonner";
 interface BillingDashboardProps {
   schoolId?: string;
   showAllSchools?: boolean;
+  initialData?: BillingData | null;
 }
 
 interface BillingData {
@@ -84,9 +85,9 @@ interface BillingData {
   };
 }
 
-export function BillingDashboard({ showAllSchools = true }: BillingDashboardProps) {
-  const [data, setData] = useState<BillingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function BillingDashboard({ showAllSchools = true, initialData = null }: BillingDashboardProps) {
+  const [data, setData] = useState<BillingData | null>(initialData);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState("30d");
 

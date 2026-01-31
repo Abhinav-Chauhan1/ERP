@@ -67,6 +67,9 @@ export default async function ClassSchedulePage({
 
   const { schedule, enrollment } = await getClassSchedule(childId);
 
+  // Type assertion to handle the complex query result
+  const typedSchedule = schedule as any[];
+
   const studentName = enrollment
     ? `${enrollment.class.name} - ${enrollment.section.name}`
     : undefined;
@@ -88,8 +91,8 @@ export default async function ClassSchedulePage({
       </div>
 
       {/* Schedule Grid */}
-      {schedule.length > 0 ? (
-        <TimetableGrid schedule={schedule} studentName={studentName} />
+      {typedSchedule.length > 0 ? (
+        <TimetableGrid schedule={typedSchedule} studentName={studentName} />
       ) : (
         <Card>
           <CardHeader>

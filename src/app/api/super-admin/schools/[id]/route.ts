@@ -36,7 +36,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -47,7 +47,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const school = await schoolService.getSchoolById(params.id);
+    const school = await schoolService.getSchoolById((await params).id);
     
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
@@ -57,7 +57,7 @@ export async function GET(
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SCHOOL',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json(school);
@@ -73,7 +73,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -87,13 +87,13 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateSchoolSchema.parse(body);
 
-    const school = await schoolService.updateSchool(params.id, validatedData);
+    const school = await schoolService.updateSchool((await params).id, validatedData);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SCHOOL',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: validatedData,
     });
 
@@ -118,7 +118,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -129,13 +129,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await schoolService.deleteSchool(params.id);
+    await schoolService.performBulkOperation({
+      operation: 'delete',
+      schoolIds: [(await params).id]
+    });
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.DELETE,
       resource: 'SCHOOL',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json({ message: 'School deleted successfully' });

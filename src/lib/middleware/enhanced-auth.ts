@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserRole } from '@prisma/client';
+import { UserRole, AuditAction } from '@prisma/client';
 import { jwtService } from '@/lib/services/jwt-service';
 import { schoolContextService } from '@/lib/services/school-context-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
@@ -107,7 +107,7 @@ export async function enhancedAuthenticate(
   try {
     // Allow anonymous access if configured
     if (config.allowAnonymous) {
-      await logAuthEvent('ANONYMOUS_ACCESS', null, null, 'ALLOWED', {
+      await logAuthEvent(AuditAction.READ, null, null, 'ALLOWED', {
         path: url.pathname,
         method: request.method,
         ipAddress,
@@ -124,7 +124,7 @@ export async function enhancedAuthenticate(
     // Extract and validate JWT token
     const token = extractToken(request);
     if (!token) {
-      await logAuthEvent('AUTH_FAILED', null, null, 'NO_TOKEN', {
+      await logAuthEvent(AuditAction.LOGIN, null, null, 'NO_TOKEN', {
         path: url.pathname,
         method: request.method,
         ipAddress,
@@ -136,7 +136,7 @@ export async function enhancedAuthenticate(
     // Validate JWT token
     const tokenValidation = await jwtService.verifyToken(token);
     if (!tokenValidation.valid || !tokenValidation.payload) {
-      await logAuthEvent('AUTH_FAILED', null, null, 'INVALID_TOKEN', {
+      await logAuthEvent(AuditAction.LOGIN, null, null, 'INVALID_TOKEN', {
         path: url.pathname,
         method: request.method,
         ipAddress,
@@ -166,7 +166,7 @@ export async function enhancedAuthenticate(
         : [config.requiredRole];
       
       if (!requiredRoles.includes(user.role)) {
-        await logAuthEvent('AUTH_FAILED', user.id, user.activeSchoolId, 'INSUFFICIENT_ROLE', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, user.activeSchoolId || null, 'INSUFFICIENT_ROLE', {
           path: url.pathname,
           method: request.method,
           userRole: user.role,
@@ -185,7 +185,7 @@ export async function enhancedAuthenticate(
       );
 
       if (!hasAllPermissions) {
-        await logAuthEvent('AUTH_FAILED', user.id, user.activeSchoolId, 'INSUFFICIENT_PERMISSIONS', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, user.activeSchoolId || null, 'INSUFFICIENT_PERMISSIONS', {
           path: url.pathname,
           method: request.method,
           userPermissions: user.permissions,
@@ -201,7 +201,7 @@ export async function enhancedAuthenticate(
     let schoolContext;
     if (config.requireSchoolContext || user.activeSchoolId) {
       if (!user.activeSchoolId) {
-        await logAuthEvent('AUTH_FAILED', user.id, null, 'NO_SCHOOL_CONTEXT', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, null, 'NO_SCHOOL_CONTEXT', {
           path: url.pathname,
           method: request.method,
           ipAddress,
@@ -213,7 +213,7 @@ export async function enhancedAuthenticate(
       // Validate school context
       const school = await schoolContextService.validateSchoolById(user.activeSchoolId);
       if (!school) {
-        await logAuthEvent('AUTH_FAILED', user.id, user.activeSchoolId, 'INVALID_SCHOOL_CONTEXT', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, user.activeSchoolId || null, 'INVALID_SCHOOL_CONTEXT', {
           path: url.pathname,
           method: request.method,
           schoolId: user.activeSchoolId,
@@ -232,7 +232,7 @@ export async function enhancedAuthenticate(
       // Validate user has access to the school
       const hasSchoolAccess = await schoolContextService.validateSchoolAccess(user.id, user.activeSchoolId);
       if (!hasSchoolAccess) {
-        await logAuthEvent('AUTH_FAILED', user.id, user.activeSchoolId, 'UNAUTHORIZED_SCHOOL_ACCESS', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, user.activeSchoolId || null, 'UNAUTHORIZED_SCHOOL_ACCESS', {
           path: url.pathname,
           method: request.method,
           schoolId: user.activeSchoolId,
@@ -248,7 +248,7 @@ export async function enhancedAuthenticate(
       const requestedSchoolId = extractSchoolIdFromRequest(request, url);
       
       if (requestedSchoolId && !config.allowedSchools.includes(requestedSchoolId)) {
-        await logAuthEvent('AUTH_FAILED', user.id, requestedSchoolId, 'TENANT_ISOLATION_VIOLATION', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, requestedSchoolId, 'TENANT_ISOLATION_VIOLATION', {
           path: url.pathname,
           method: request.method,
           requestedSchoolId,
@@ -261,7 +261,7 @@ export async function enhancedAuthenticate(
 
       // Validate user has access to requested school
       if (requestedSchoolId && !user.authorizedSchools.includes(requestedSchoolId)) {
-        await logAuthEvent('AUTH_FAILED', user.id, requestedSchoolId, 'UNAUTHORIZED_SCHOOL_REQUEST', {
+        await logAuthEvent(AuditAction.LOGIN, user.id, requestedSchoolId, 'UNAUTHORIZED_SCHOOL_REQUEST', {
           path: url.pathname,
           method: request.method,
           requestedSchoolId,
@@ -275,7 +275,7 @@ export async function enhancedAuthenticate(
 
     // Log successful authentication
     const duration = Date.now() - startTime;
-    await logAuthEvent('AUTH_SUCCESS', user.id, user.activeSchoolId, config.auditAction || 'API_ACCESS', {
+    await logAuthEvent(AuditAction.LOGIN, user.id, user.activeSchoolId || null, config.auditAction || 'API_ACCESS', {
       path: url.pathname,
       method: request.method,
       role: user.role,
@@ -287,9 +287,9 @@ export async function enhancedAuthenticate(
 
     // Track authentication event for analytics
     await authAnalyticsService.trackAuthenticationEvent(
-      'LOGIN_SUCCESS',
+      'LOGIN',
       user.id,
-      user.activeSchoolId,
+      user.activeSchoolId || undefined,
       {
         path: url.pathname,
         method: request.method,
@@ -320,7 +320,7 @@ export async function enhancedAuthenticate(
     }
 
     // Log system errors
-    await logAuthEvent('AUTH_ERROR', null, null, 'SYSTEM_ERROR', {
+    await logAuthEvent(AuditAction.LOGIN, null, null, 'SYSTEM_ERROR', {
       path: url.pathname,
       method: request.method,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -385,7 +385,7 @@ export const requireSuperAdminEnhanced = createEnhancedAuthMiddleware({
  * Requirements: 12.2, 12.3
  */
 export const requireSchoolAdminEnhanced = createEnhancedAuthMiddleware({
-  requiredRole: UserRole.SCHOOL_ADMIN,
+  requiredRole: UserRole.ADMIN,
   requireSchoolContext: true,
   auditAction: 'SCHOOL_ADMIN_ACCESS'
 });
@@ -395,7 +395,7 @@ export const requireSchoolAdminEnhanced = createEnhancedAuthMiddleware({
  * Requirements: 12.2, 12.3
  */
 export const requireTeacherEnhanced = createEnhancedAuthMiddleware({
-  requiredRole: [UserRole.TEACHER, UserRole.SCHOOL_ADMIN],
+  requiredRole: [UserRole.TEACHER, UserRole.ADMIN],
   requireSchoolContext: true,
   auditAction: 'TEACHER_ACCESS'
 });
@@ -513,7 +513,7 @@ function getClientIP(request: NextRequest): string {
  * Requirements: 12.5, 8.5
  */
 async function logAuthEvent(
-  action: string,
+  action: AuditAction,
   userId: string | null,
   schoolId: string | null,
   details: string,
@@ -522,7 +522,7 @@ async function logAuthEvent(
   try {
     await logAuditEvent({
       userId,
-      schoolId,
+      schoolId: schoolId || undefined,
       action,
       resource: 'authentication_middleware',
       changes: {
@@ -544,7 +544,6 @@ export function getUserFromRequest(request: NextRequest): AuthenticatedUser | nu
   const userId = request.headers.get('x-user-id');
   const userRole = request.headers.get('x-user-role') as UserRole;
   const schoolId = request.headers.get('x-school-id');
-  const schoolCode = request.headers.get('x-school-code');
 
   if (!userId || !userRole) {
     return null;

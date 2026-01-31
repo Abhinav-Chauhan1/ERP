@@ -45,6 +45,7 @@ async function getTeacherData() {
     const newSettings = await db.teacherSettings.create({
       data: {
         teacherId: teacher.id,
+        schoolId: teacher.schoolId,
       },
     });
     teacher.settings = newSettings;
@@ -52,9 +53,9 @@ async function getTeacherData() {
 
   return {
     profile: {
-      firstName: teacher.user.firstName,
-      lastName: teacher.user.lastName,
-      email: teacher.user.email,
+      firstName: teacher.user.firstName || '',
+      lastName: teacher.user.lastName || '',
+      email: teacher.user.email || '',
       phone: teacher.user.phone || "",
       qualification: teacher.qualification || "",
       employeeId: teacher.employeeId,

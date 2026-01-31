@@ -5,10 +5,11 @@ import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { schoolDataManagementService } from '@/lib/services/school-data-management-service';
 
 const exportDataSchema = z.object({
   format: z.enum(['CSV', 'JSON', 'PDF', 'XLSX']),
-  tables: z.array(z.string()).optional(),
+  dataTypes: z.array(z.enum(['students', 'teachers', 'parents', 'classes', 'subjects', 'attendance', 'fees', 'messages'])).default(['students']),
   dateRange: z.object({
     from: z.string().optional(),
     to: z.string().optional(),
@@ -26,7 +27,7 @@ const rateLimitConfig = {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -38,11 +39,11 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { format, tables, dateRange } = exportDataSchema.parse(body);
+    const { format, dataTypes, dateRange } = exportDataSchema.parse(body);
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true },
     });
 
@@ -50,73 +51,32 @@ export async function POST(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // In a real implementation, you would:
-    // 1. Query the requested data from the database
-    // 2. Format the data according to the requested format
-    // 3. Generate the export file
-    // 4. Store it temporarily or stream it directly
-    // 5. Optionally send email notification when ready
+    // Use the data management service to handle the export
+    const exportResult = await schoolDataManagementService.exportSchoolData(
+      (await params).id,
+      format,
+      dataTypes,
+      session.user.id
+    );
 
-    // For demonstration, we'll simulate the export process
-    const exportId = `export-${Date.now()}`;
-    const filename = `${school.name.replace(/\s+/g, '-').toLowerCase()}-export-${Date.now()}.${format.toLowerCase()}`;
-
-    // Simulate export data based on format
-    let mockData: any;
-    let contentType: string;
-
-    switch (format) {
-      case 'CSV':
-        mockData = 'Name,Email,Role\nJohn Doe,john@example.com,Student\nJane Smith,jane@example.com,Teacher';
-        contentType = 'text/csv';
-        break;
-      case 'JSON':
-        mockData = JSON.stringify({
-          school: school.name,
-          exportDate: new Date().toISOString(),
-          data: {
-            students: [
-              { name: 'John Doe', email: 'john@example.com', role: 'Student' },
-              { name: 'Jane Smith', email: 'jane@example.com', role: 'Teacher' }
-            ]
-          }
-        }, null, 2);
-        contentType = 'application/json';
-        break;
-      case 'PDF':
-        mockData = Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj'); // Mock PDF header
-        contentType = 'application/pdf';
-        break;
-      case 'XLSX':
-        mockData = Buffer.from('PK\x03\x04'); // Mock XLSX header
-        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        break;
-      default:
-        return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
+    if (exportResult.requiresApproval) {
+      return NextResponse.json({
+        message: 'Export request submitted for approval',
+        exportId: exportResult.exportId,
+        status: 'PENDING_APPROVAL',
+      });
     }
 
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.CREATE,
-      resource: 'SCHOOL_DATA_EXPORT',
-      resourceId: params.id,
-      changes: { 
-        format, 
-        tables: tables || ['all'], 
-        dateRange,
-        filename,
-        exportId 
-      },
-    });
+    // For immediate exports, generate the data
+    const exportData = await generateExportData((await params).id, format, dataTypes, dateRange);
+    const filename = `${school.name.replace(/\s+/g, '-').toLowerCase()}-export-${Date.now()}.${format.toLowerCase()}`;
 
-    // Return the export file directly for small exports
-    // For large exports, you might want to return a job ID and process asynchronously
-    return new NextResponse(mockData, {
+    return new NextResponse(exportData.content as BodyInit, {
       status: 200,
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': exportData.contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': Buffer.isBuffer(mockData) ? mockData.length.toString() : Buffer.byteLength(mockData).toString(),
+        'Content-Length': exportData.size.toString(),
       },
     });
   } catch (error) {
@@ -129,6 +89,142 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
+}
+
+/**
+ * Generate export data based on format and data types
+ */
+async function generateExportData(
+  schoolId: string,
+  format: string,
+  dataTypes: string[],
+  dateRange?: { from?: string; to?: string }
+): Promise<{ content: Buffer | string; contentType: string; size: number }> {
+  // Fetch actual data from database based on dataTypes
+  const exportData: any = {
+    school: await db.school.findUnique({ where: { id: schoolId } }),
+    exportDate: new Date().toISOString(),
+    dataTypes,
+    dateRange,
+  };
+
+  // Add requested data types
+  for (const dataType of dataTypes) {
+    switch (dataType) {
+      case 'students':
+        exportData.students = await db.student.findMany({
+          where: { schoolId },
+          include: { user: { select: { name: true, email: true, mobile: true } } },
+        });
+        break;
+      case 'teachers':
+        exportData.teachers = await db.teacher.findMany({
+          where: { schoolId },
+          include: { user: { select: { name: true, email: true, mobile: true } } },
+        });
+        break;
+      case 'parents':
+        exportData.parents = await db.parent.findMany({
+          where: { schoolId },
+          include: { user: { select: { name: true, email: true, mobile: true } } },
+        });
+        break;
+      case 'classes':
+        exportData.classes = await db.class.findMany({
+          where: { schoolId },
+          include: { _count: { select: { enrollments: true } } },
+        });
+        break;
+      // Add more data types as needed
+    }
+  }
+
+  let content: Buffer | string;
+  let contentType: string;
+
+  switch (format) {
+    case 'CSV':
+      content = generateCSV(exportData);
+      contentType = 'text/csv';
+      break;
+    case 'JSON':
+      content = JSON.stringify(exportData, null, 2);
+      contentType = 'application/json';
+      break;
+    case 'PDF':
+      content = await generatePDF(exportData);
+      contentType = 'application/pdf';
+      break;
+    case 'XLSX':
+      content = await generateXLSX(exportData);
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      break;
+    default:
+      throw new Error('Unsupported format');
+  }
+
+  const size = Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content);
+
+  return { content, contentType, size };
+}
+
+/**
+ * Generate CSV format
+ */
+function generateCSV(data: any): string {
+  let csv = '';
+  
+  // Add school info
+  csv += `School: ${data.school?.name || 'Unknown'}\n`;
+  csv += `Export Date: ${data.exportDate}\n\n`;
+
+  // Add data for each type
+  for (const dataType of data.dataTypes) {
+    if (data[dataType] && Array.isArray(data[dataType])) {
+      csv += `${dataType.toUpperCase()}\n`;
+      
+      if (data[dataType].length > 0) {
+        // Get headers from first item
+        const headers = Object.keys(data[dataType][0]);
+        csv += headers.join(',') + '\n';
+        
+        // Add data rows
+        for (const item of data[dataType]) {
+          const row = headers.map(header => {
+            const value = item[header];
+            if (typeof value === 'object' && value !== null) {
+              return JSON.stringify(value).replace(/"/g, '""');
+            }
+            return `"${String(value || '').replace(/"/g, '""')}"`;
+          });
+          csv += row.join(',') + '\n';
+        }
+      }
+      csv += '\n';
+    }
+  }
+
+  return csv;
+}
+
+/**
+ * Generate PDF format (placeholder implementation)
+ */
+async function generatePDF(data: any): Promise<Buffer> {
+  // In a real implementation, you would use a PDF library like puppeteer, jsPDF, or PDFKit
+  // For now, return a mock PDF buffer
+  return Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj');
+}
+
+/**
+ * Generate XLSX format (placeholder implementation)
+ */
+async function generateXLSX(data: any): Promise<Buffer> {
+  // In a real implementation, you would use a library like xlsx or exceljs
+  // For now, return a mock XLSX buffer
+  return Buffer.from('PK\x03\x04');
 }

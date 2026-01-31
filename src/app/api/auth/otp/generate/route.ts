@@ -60,8 +60,9 @@ export async function POST(request: NextRequest) {
       if (!otpResult.success) {
         // Log failed OTP generation
         await logAuditEvent({
+          userId: null,
           schoolId,
-          action: 'OTP_GENERATION_FAILED',
+          action: 'REJECT',
           resource: 'authentication',
           changes: {
             identifier: identifier.trim(),
@@ -116,8 +117,9 @@ export async function POST(request: NextRequest) {
 
       // Log successful OTP generation
       await logAuditEvent({
+        userId: null,
         schoolId,
-        action: 'OTP_GENERATION_SUCCESS',
+        action: 'CREATE',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),
@@ -138,8 +140,9 @@ export async function POST(request: NextRequest) {
 
       // Log error
       await logAuditEvent({
+        userId: null,
         schoolId,
-        action: 'OTP_GENERATION_ERROR',
+        action: 'REJECT',
         resource: 'authentication',
         changes: {
           identifier: identifier.trim(),

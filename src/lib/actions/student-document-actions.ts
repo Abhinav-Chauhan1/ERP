@@ -84,7 +84,7 @@ export async function getStudentDocuments() {
   });
 
   // Get school documents (public)
-  const schoolDocuments = await db.document.findMany({
+  const rawSchoolDocuments = await db.document.findMany({
     where: {
       isPublic: true
     },
@@ -102,6 +102,16 @@ export async function getStudentDocuments() {
     },
     take: 20
   });
+
+  // Transform school documents to ensure firstName and lastName are strings
+  const schoolDocuments = rawSchoolDocuments.map(doc => ({
+    ...doc,
+    user: {
+      ...doc.user,
+      firstName: doc.user.firstName || '',
+      lastName: doc.user.lastName || '',
+    }
+  }));
 
   return {
     user: dbUser,

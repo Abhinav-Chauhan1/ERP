@@ -59,7 +59,8 @@ export function SyllabusProgress({
 
     try {
       setIsUpdating(true);
-      await updateSyllabusUnitProgress(units[0]?.id || "", units[0]?.completedTopics || 0);
+      // Pass boolean indicating completion status
+      await updateSyllabusUnitProgress(units[0]?.id || "", true);
       toast.success("Syllabus progress updated successfully");
     } catch (error) {
       toast.error("Failed to update syllabus progress");

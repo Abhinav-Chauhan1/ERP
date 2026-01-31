@@ -8,7 +8,7 @@ import { ResponsiveTable } from "@/components/shared/responsive-table";
 interface RecentUser {
     id: string;
     name: string;
-    email: string;
+    email: string | null;
     role: string;
     date: string;
     status: string;
@@ -40,9 +40,9 @@ export function RecentUsersTable({ users }: RecentUsersTableProps) {
         {
             key: "email",
             label: "Email",
-            render: (user: RecentUser) => user.email,
+            render: (user: RecentUser) => user.email || "N/A",
             mobileRender: (user: RecentUser) => (
-                <span className="truncate max-w-[150px] inline-block">{user.email}</span>
+                <span className="truncate max-w-[150px] inline-block">{user.email || "N/A"}</span>
             ),
         },
         {

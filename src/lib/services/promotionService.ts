@@ -27,6 +27,7 @@ export interface PromotionWarnings {
 }
 
 export interface PromotionExecutionData {
+  schoolId: string;
   students: string[];
   sourceEnrollments: Map<string, string>;
   targetAcademicYearId: string;
@@ -50,6 +51,7 @@ export interface PromotionExecutionResult {
 }
 
 export interface AlumniGraduationData {
+  schoolId: string;
   finalClass: string;
   finalSection: string;
   finalAcademicYear: string;
@@ -499,6 +501,7 @@ export class PromotionService {
     // Create promotion history record
     const promotionHistory = await tx.promotionHistory.create({
       data: {
+        schoolId: data.schoolId,
         sourceAcademicYear: data.sourceAcademicYear,
         sourceClass: data.sourceClass,
         sourceSection: data.sourceSection,
@@ -531,6 +534,7 @@ export class PromotionService {
         // Create new enrollment with ACTIVE status
         const newEnrollment = await tx.classEnrollment.create({
           data: {
+            schoolId: data.schoolId,
             studentId,
             classId: data.targetClassId,
             sectionId: data.targetSectionId!,
@@ -551,6 +555,7 @@ export class PromotionService {
         // Create promotion record
         await tx.promotionRecord.create({
           data: {
+            schoolId: data.schoolId,
             historyId: promotionHistory.id,
             studentId,
             previousEnrollmentId: sourceEnrollmentId,
@@ -572,6 +577,7 @@ export class PromotionService {
         try {
           await tx.promotionRecord.create({
             data: {
+              schoolId: data.schoolId,
               historyId: promotionHistory.id,
               studentId,
               previousEnrollmentId: data.sourceEnrollments.get(studentId) || "",
@@ -656,6 +662,7 @@ export class PromotionService {
         // Create alumni profile
         await tx.alumni.create({
           data: {
+            schoolId: gradData.schoolId,
             studentId,
             graduationDate: gradData.graduationDate,
             finalClass: gradData.finalClass,

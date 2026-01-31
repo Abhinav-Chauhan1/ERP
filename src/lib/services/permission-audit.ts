@@ -249,8 +249,9 @@ export async function getPermissionDenialStats(startDate?: Date, endDate?: Date)
     denials.forEach((denial) => {
       const changes = denial.changes as any;
       
-      // Count by user
-      stats.denialsByUser[denial.userId] = (stats.denialsByUser[denial.userId] || 0) + 1;
+      // Count by user (handle null userId)
+      const userId = denial.userId || 'unknown';
+      stats.denialsByUser[userId] = (stats.denialsByUser[userId] || 0) + 1;
       
       // Count by resource
       if (changes?.resource) {

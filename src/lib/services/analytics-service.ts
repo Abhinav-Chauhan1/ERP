@@ -189,37 +189,64 @@ export class AnalyticsService {
    */
   async getRevenueMetrics(timeRange: TimeRange): Promise<RevenueMetrics> {
     try {
-      // Get all payments in the time range
-      const payments = await prisma.payment.findMany({
-        where: {
-          status: PaymentStatus.COMPLETED,
-          processedAt: {
-            gte: timeRange.startDate,
-            lte: timeRange.endDate,
-          },
-        },
-        include: {
-          subscription: {
-            include: {
-              plan: true,
-              school: true,
+      // Calculate previous period dates for growth rate
+      const previousPeriodStart = new Date(timeRange.startDate);
+      previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 1);
+      const previousPeriodEnd = new Date(timeRange.endDate);
+      previousPeriodEnd.setMonth(previousPeriodEnd.getMonth() - 1);
+
+      // Parallelize all database queries to avoid sequential execution (fixes N+1)
+      const [
+        payments,
+        activeSubscriptions,
+        totalActiveSchools,
+        previousPeriodPayments
+      ] = await Promise.all([
+        // Current period payments
+        prisma.payment.findMany({
+          where: {
+            status: PaymentStatus.COMPLETED,
+            processedAt: {
+              gte: timeRange.startDate,
+              lte: timeRange.endDate,
             },
           },
-        },
-      });
+          include: {
+            subscription: {
+              include: {
+                plan: true,
+                school: true,
+              },
+            },
+          },
+        }),
+        // Active subscriptions for MRR/ARR calculation
+        prisma.enhancedSubscription.findMany({
+          where: {
+            status: SubscriptionStatus.ACTIVE,
+          },
+          include: {
+            plan: true,
+          },
+        }),
+        // Total active schools count
+        prisma.school.count({
+          where: { status: SchoolStatus.ACTIVE },
+        }),
+        // Previous period payments for growth rate
+        prisma.payment.findMany({
+          where: {
+            status: PaymentStatus.COMPLETED,
+            processedAt: {
+              gte: previousPeriodStart,
+              lte: previousPeriodEnd,
+            },
+          },
+        })
+      ]);
 
       // Calculate total revenue
       const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
-
-      // Get active subscriptions for MRR/ARR calculation
-      const activeSubscriptions = await prisma.enhancedSubscription.findMany({
-        where: {
-          status: SubscriptionStatus.ACTIVE,
-        },
-        include: {
-          plan: true,
-        },
-      });
 
       // Calculate MRR and ARR
       const monthlyRevenue = activeSubscriptions
@@ -234,27 +261,9 @@ export class AnalyticsService {
       const annualRecurringRevenue = monthlyRecurringRevenue * 12;
 
       // Calculate ARPU
-      const totalActiveSchools = await prisma.school.count({
-        where: { status: SchoolStatus.ACTIVE },
-      });
       const averageRevenuePerUser = totalActiveSchools > 0 ? monthlyRecurringRevenue / totalActiveSchools : 0;
 
       // Calculate revenue growth rate
-      const previousPeriodStart = new Date(timeRange.startDate);
-      previousPeriodStart.setMonth(previousPeriodStart.getMonth() - 1);
-      const previousPeriodEnd = new Date(timeRange.endDate);
-      previousPeriodEnd.setMonth(previousPeriodEnd.getMonth() - 1);
-
-      const previousPeriodPayments = await prisma.payment.findMany({
-        where: {
-          status: PaymentStatus.COMPLETED,
-          processedAt: {
-            gte: previousPeriodStart,
-            lte: previousPeriodEnd,
-          },
-        },
-      });
-
       const previousRevenue = previousPeriodPayments.reduce((sum, payment) => sum + payment.amount, 0);
       const revenueGrowthRate = previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
@@ -686,37 +695,59 @@ export class AnalyticsService {
   }
 
   private async getChurnByPlan(timeRange: TimeRange) {
-    const plans = await prisma.subscriptionPlan.findMany();
-    const churnByPlan = [];
-
-    for (const plan of plans) {
-      const subscriptionsAtStart = await prisma.enhancedSubscription.count({
+    // Get all plans and subscription data in parallel to avoid N+1 queries
+    const [plans, subscriptionsAtStartGrouped, churnedSubscriptionsGrouped] = await Promise.all([
+      // Get all plans
+      prisma.subscriptionPlan.findMany(),
+      
+      // Get subscriptions at start grouped by plan
+      prisma.enhancedSubscription.groupBy({
+        by: ['planId'],
         where: {
-          planId: plan.id,
           createdAt: { lte: timeRange.startDate },
         },
-      });
-
-      const churnedSubscriptions = await prisma.enhancedSubscription.count({
+        _count: {
+          id: true,
+        },
+      }),
+      
+      // Get churned subscriptions grouped by plan
+      prisma.enhancedSubscription.groupBy({
+        by: ['planId'],
         where: {
-          planId: plan.id,
           status: SubscriptionStatus.CANCELED,
           updatedAt: {
             gte: timeRange.startDate,
             lte: timeRange.endDate,
           },
         },
-      });
+        _count: {
+          id: true,
+        },
+      }),
+    ]);
 
+    // Create maps for O(1) lookup
+    const subscriptionsAtStartMap = new Map(
+      subscriptionsAtStartGrouped.map(item => [item.planId, item._count.id])
+    );
+    const churnedSubscriptionsMap = new Map(
+      churnedSubscriptionsGrouped.map(item => [item.planId, item._count.id])
+    );
+
+    // Calculate churn rates for all plans
+    const churnByPlan = plans.map(plan => {
+      const subscriptionsAtStart = subscriptionsAtStartMap.get(plan.id) || 0;
+      const churnedSubscriptions = churnedSubscriptionsMap.get(plan.id) || 0;
       const churnRate = subscriptionsAtStart > 0 ? (churnedSubscriptions / subscriptionsAtStart) * 100 : 0;
       const retentionRate = 100 - churnRate;
 
-      churnByPlan.push({
+      return {
         planName: plan.name,
         churnRate,
         retentionRate,
-      });
-    }
+      };
+    });
 
     return churnByPlan;
   }
@@ -802,35 +833,53 @@ export class AnalyticsService {
       },
     });
 
-    const patterns = [];
+    // Get all analytics events for all schools in one query (fixes N+1)
+    const schoolIds = schools.map(school => school.id);
+    const allEvents = await prisma.analyticsEvent.findMany({
+      where: { 
+        schoolId: { in: schoolIds }
+      },
+      orderBy: { timestamp: 'desc' },
+    });
 
-    for (const school of schools) {
-      const events = await prisma.analyticsEvent.findMany({
-        where: { schoolId: school.id },
-        orderBy: { timestamp: 'desc' },
-        take: 1,
-      });
+    // Group events by school for O(1) lookup
+    const eventsBySchool = new Map<string, any[]>();
+    const featuresBySchool = new Map<string, Record<string, number>>();
+    const lastActivityBySchool = new Map<string, Date>();
 
+    allEvents.forEach(event => {
+      // Group events by school
+      if (!eventsBySchool.has(event.schoolId)) {
+        eventsBySchool.set(event.schoolId, []);
+      }
+      eventsBySchool.get(event.schoolId)!.push(event);
+
+      // Track features usage
+      if (!featuresBySchool.has(event.schoolId)) {
+        featuresBySchool.set(event.schoolId, {});
+      }
+      const features = featuresBySchool.get(event.schoolId)!;
+      features[event.eventType] = (features[event.eventType] || 0) + 1;
+
+      // Track last activity (events are ordered by timestamp desc)
+      if (!lastActivityBySchool.has(event.schoolId)) {
+        lastActivityBySchool.set(event.schoolId, event.timestamp);
+      }
+    });
+
+    const patterns = schools.map(school => {
       const subscription = school.enhancedSubscriptions[0];
-      const features: Record<string, number> = {};
+      const features = featuresBySchool.get(school.id) || {};
+      const lastActivity = lastActivityBySchool.get(school.id) || new Date(0);
 
-      // Get feature usage for this school
-      const schoolEvents = await prisma.analyticsEvent.findMany({
-        where: { schoolId: school.id },
-      });
-
-      schoolEvents.forEach(event => {
-        features[event.eventType] = (features[event.eventType] || 0) + 1;
-      });
-
-      patterns.push({
+      return {
         schoolId: school.id,
         schoolName: school.name,
         plan: subscription?.plan.name || 'No Plan',
         features,
-        lastActivity: events[0]?.timestamp || new Date(0),
-      });
-    }
+        lastActivity,
+      };
+    });
 
     return patterns;
   }

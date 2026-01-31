@@ -169,5 +169,66 @@ export default async function SchoolUsersPage({ params }: SchoolUsersPageProps) 
     );
   }
 
-  return <SchoolUsersClient school={school} />;
+  // Transform school data to ensure firstName and lastName are strings
+  const transformedSchool = {
+    ...school,
+    teachers: school.teachers.map(teacher => ({
+      ...teacher,
+      user: {
+        ...teacher.user,
+        firstName: teacher.user.firstName || '',
+        lastName: teacher.user.lastName || '',
+        name: teacher.user.name || `${teacher.user.firstName || ''} ${teacher.user.lastName || ''}`.trim() || 'Unnamed User',
+        email: teacher.user.email || '',
+        phone: teacher.user.phone || null,
+      }
+    })),
+    students: school.students.map(student => ({
+      ...student,
+      user: {
+        ...student.user,
+        firstName: student.user.firstName || '',
+        lastName: student.user.lastName || '',
+        name: student.user.name || `${student.user.firstName || ''} ${student.user.lastName || ''}`.trim() || 'Unnamed User',
+        email: student.user.email || '',
+        phone: student.user.phone || null,
+      }
+    })),
+    administrators: school.administrators.map(admin => ({
+      ...admin,
+      user: {
+        ...admin.user,
+        firstName: admin.user.firstName || '',
+        lastName: admin.user.lastName || '',
+        name: admin.user.name || `${admin.user.firstName || ''} ${admin.user.lastName || ''}`.trim() || 'Unnamed User',
+        email: admin.user.email || '',
+        phone: admin.user.phone || null,
+      }
+    })),
+    parents: school.parents.map(parent => ({
+      ...parent,
+      user: {
+        ...parent.user,
+        firstName: parent.user.firstName || '',
+        lastName: parent.user.lastName || '',
+        name: parent.user.name || `${parent.user.firstName || ''} ${parent.user.lastName || ''}`.trim() || 'Unnamed User',
+        email: parent.user.email || '',
+        phone: parent.user.phone || null,
+      },
+      children: parent.children.map(child => ({
+        ...child,
+        student: {
+          ...child.student,
+          user: {
+            ...child.student.user,
+            firstName: child.student.user.firstName || '',
+            lastName: child.student.user.lastName || '',
+            name: child.student.user.name || `${child.student.user.firstName || ''} ${child.student.user.lastName || ''}`.trim() || 'Unnamed Student',
+          }
+        }
+      }))
+    }))
+  };
+
+  return <SchoolUsersClient school={transformedSchool} />;
 }

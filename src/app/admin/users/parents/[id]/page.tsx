@@ -214,13 +214,13 @@ export default async function ParentDetailPage({
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                          {child.student.user.firstName[0]}
-                          {child.student.user.lastName[0]}
+                          {(child.student.user.firstName || 'A')[0]}
+                          {(child.student.user.lastName || 'A')[0]}
                         </div>
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{child.student.user.firstName} {child.student.user.lastName}</p>
+                          <p className="font-medium">{child.student.user.firstName || ''} {child.student.user.lastName || ''}</p>
                           {child.isPrimary && (
                             <Badge variant="outline" className="text-xs">Primary</Badge>
                           )}

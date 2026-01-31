@@ -5,6 +5,7 @@ import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { schoolNotificationSettingsService } from '@/lib/services/school-notification-settings-service';
 
 const notificationSettingsSchema = z.object({
   settings: z.object({
@@ -54,7 +55,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -67,7 +68,7 @@ export async function GET(
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true },
     });
 
@@ -75,54 +76,24 @@ export async function GET(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // In a real implementation, you would fetch from a notification_settings table
-    // For now, return default settings
-    const defaultSettings = {
-      emailNotifications: {
-        enabled: true,
-        adminAlerts: true,
-        systemUpdates: true,
-        billingAlerts: true,
-        usageAlerts: true,
-      },
-      smsNotifications: {
-        enabled: false,
-        criticalAlerts: true,
-        billingAlerts: true,
-      },
-      whatsappNotifications: {
-        enabled: false,
-        adminAlerts: false,
-        systemUpdates: false,
-      },
-      pushNotifications: {
-        enabled: true,
-        realTimeAlerts: true,
-        dailyDigest: false,
-      },
-      alertThresholds: {
-        usageWarning: 80,
-        usageCritical: 95,
-        billingDueDays: 7,
-      },
-      notificationTiming: {
-        quietHoursStart: "22:00",
-        quietHoursEnd: "08:00",
-        timezone: "Asia/Kolkata",
-      },
-    };
+    // Get settings using the service
+    const settings = await schoolNotificationSettingsService.getSchoolNotificationSettings((await params).id);
+    const channels = await schoolNotificationSettingsService.getNotificationChannels((await params).id);
+    const stats = await schoolNotificationSettingsService.getNotificationStats((await params).id);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SCHOOL_NOTIFICATION_SETTINGS',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json({
-      schoolId: params.id,
+      schoolId: (await params).id,
       schoolName: school.name,
-      settings: defaultSettings,
+      settings,
+      channels,
+      stats,
     });
   } catch (error) {
     console.error('Error fetching school notification settings:', error);
@@ -136,7 +107,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -152,27 +123,32 @@ export async function PUT(
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!school) {
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // In a real implementation, you would store settings in a notification_settings table
-    // For now, we'll simulate the update
-    
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.UPDATE,
-      resource: 'SCHOOL_NOTIFICATION_SETTINGS',
-      resourceId: params.id,
-      changes: { settings },
-    });
+    // Update settings using the service
+    const updatedSettings = await schoolNotificationSettingsService.updateSchoolNotificationSettings(
+      (await params).id,
+      {
+        emailEnabled: settings.emailNotifications.enabled,
+        emailSystemUpdates: settings.emailNotifications.systemUpdates,
+        smsEnabled: settings.smsNotifications.enabled,
+        whatsappEnabled: settings.whatsappNotifications.enabled,
+        pushEnabled: settings.pushNotifications.enabled,
+        quietHoursEnabled: true,
+        quietHoursStart: settings.notificationTiming.quietHoursStart,
+        quietHoursEnd: settings.notificationTiming.quietHoursEnd,
+      },
+      session.user.id
+    );
 
     return NextResponse.json({
       message: 'School notification settings updated successfully',
-      settings,
+      settings: updatedSettings,
     });
   } catch (error) {
     console.error('Error updating school notification settings:', error);
@@ -184,6 +160,8 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }

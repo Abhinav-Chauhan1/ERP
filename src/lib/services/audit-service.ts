@@ -8,9 +8,24 @@
  */
 
 import { db } from "@/lib/db"
-import { headers } from "next/headers"
-import * as crypto from "crypto"
 import { AuditAction, Prisma } from "@prisma/client"
+
+// Re-export AuditAction for other modules
+export { AuditAction } from "@prisma/client"
+
+/**
+ * Get headers safely - only works in server components/API routes
+ */
+async function getHeadersSafely() {
+  try {
+    // Dynamic import to avoid issues in middleware/client components
+    const { headers } = await import("next/headers");
+    return await headers();
+  } catch (error) {
+    // Return null if headers are not available (middleware, client components, etc.)
+    return null;
+  }
+}
 
 /**
  * Audit severity levels enum for type safety
@@ -65,7 +80,7 @@ const DEFAULT_CONFIG: AuditServiceConfig = {
  * Audit event context for comprehensive logging
  */
 export interface AuditContext {
-  userId: string
+  userId: string | null
   action: AuditAction
   resource: string
   resourceId?: string
@@ -75,6 +90,7 @@ export interface AuditContext {
   userAgent?: string
   schoolId?: string
   severity?: AuditSeverity
+  details?: Record<string, any>
 }
 
 /**
@@ -83,6 +99,7 @@ export interface AuditContext {
 interface EnrichedAuditContext extends AuditContext {
   timestamp: Date
   ipAddress: string
+  userId: string | null
   userAgent: string
   severity: AuditSeverity
 }
@@ -109,7 +126,7 @@ export interface AuditFilters {
  */
 export interface AuditLogEntry {
   id: string
-  userId: string
+  userId: string | null
   action: AuditAction
   resource: string
   resourceId?: string
@@ -187,7 +204,9 @@ class RequestMetadataCache {
     // Cleanup old entries to prevent memory leaks
     if (this.cache.size > 100) {
       const oldestKey = this.cache.keys().next().value
-      this.cache.delete(oldestKey)
+      if (oldestKey) {
+        this.cache.delete(oldestKey)
+      }
     }
     
     return metadata
@@ -526,7 +545,16 @@ export class AuditService {
    * Persist audit log to database
    */
   private async persistAuditLog(auditData: any): Promise<void> {
-    await db.auditLog.create({ data: auditData })
+    try {
+      await db.auditLog.create({ data: auditData })
+    } catch (error) {
+      // Handle edge runtime errors gracefully
+      if (error instanceof Error && error.message.includes('Edge Runtime')) {
+        console.warn('Audit logging skipped in Edge Runtime:', error.message);
+        return;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -556,6 +584,12 @@ export class AuditService {
     console.error("Failed to log audit event:", error)
     
     try {
+      // Skip database logging in edge runtime
+      if (error instanceof Error && error.message.includes('Edge Runtime')) {
+        console.warn('Audit error logging skipped in Edge Runtime');
+        return;
+      }
+      
       await db.auditLog.create({
         data: {
           userId: context.userId,
@@ -579,7 +613,7 @@ export class AuditService {
    * Generate integrity checksum for audit log entry
    */
   private generateChecksum(data: {
-    userId: string
+    userId: string | null
     action: string
     resource: string
     resourceId?: string
@@ -595,7 +629,20 @@ export class AuditService {
       timestamp: data.timestamp.toISOString()
     })
     
-    return crypto.createHash(this.config.checksumAlgorithm).update(content).digest('hex')
+    // Use Web Crypto API for Edge Runtime compatibility
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+      // Browser environment - use Web Crypto API
+      return btoa(content).slice(0, 32) // Simple hash for browser
+    } else {
+      // Node.js environment - use dynamic import for crypto
+      try {
+        const crypto = require('crypto')
+        return crypto.createHash(this.config.checksumAlgorithm).update(content).digest('hex')
+      } catch (error) {
+        // Fallback to simple hash if crypto is not available
+        return btoa(content).slice(0, 32)
+      }
+    }
   }
 
   /**
@@ -667,17 +714,17 @@ export class AuditService {
         id: log.id,
         userId: log.userId,
         action: log.action,
-        resource: log.resource,
+        resource: log.resource || '',
         resourceId: log.resourceId || undefined,
         changes: log.changes as Record<string, any> || undefined,
         ipAddress: log.ipAddress || undefined,
         userAgent: log.userAgent || undefined,
-        timestamp: log.timestamp,
-        checksum: log.checksum,
+        timestamp: log.timestamp || new Date(),
+        checksum: log.checksum || '',
         user: {
-          id: log.user.id,
-          name: log.user.name || undefined,
-          email: log.user.email
+          id: log.user?.id || log.userId || '',
+          name: log.user?.name || undefined,
+          email: log.user?.email || ''
         },
         severity: (log.changes as any)?.severity as AuditSeverity,
         schoolId: (log.changes as any)?.schoolId || (log.changes as any)?.metadata?.schoolId
@@ -722,10 +769,10 @@ export class AuditService {
       const expectedChecksum = this.generateChecksum({
         userId: log.userId,
         action: log.action,
-        resource: log.resource,
+        resource: log.resource || '',
         resourceId: log.resourceId || undefined,
         changes: log.changes as Record<string, any> || undefined,
-        timestamp: log.timestamp
+        timestamp: log.timestamp || new Date()
       })
 
       const isValid = expectedChecksum === log.checksum
@@ -735,7 +782,7 @@ export class AuditService {
         data: {
           isValid,
           expectedChecksum,
-          actualChecksum: log.checksum,
+          actualChecksum: log.checksum || '',
           tamperedFields: isValid ? undefined : ['checksum']
         }
       }
@@ -869,7 +916,14 @@ const auditService = new AuditService()
  */
 async function getRequestMetadata(): Promise<{ ipAddress: string; userAgent: string }> {
   try {
-    const headersList = await headers()
+    const headersList = await getHeadersSafely()
+    
+    if (!headersList) {
+      return { 
+        ipAddress: AUDIT_CONSTANTS.UNKNOWN_VALUE, 
+        userAgent: AUDIT_CONSTANTS.UNKNOWN_VALUE 
+      }
+    }
 
     // Try to get real IP from various headers (for proxies/load balancers)
     const ipAddress =
@@ -897,9 +951,23 @@ async function getRequestMetadata(): Promise<{ ipAddress: string; userAgent: str
  * Main audit logging function (backward compatible)
  */
 export async function logAuditEvent(context: AuditContext): Promise<void> {
-  const result = await auditService.logAuditEvent(context)
-  if (!result.success) {
-    throw new Error(result.error)
+  try {
+    const result = await auditService.logAuditEvent(context)
+    if (!result.success) {
+      // Handle edge runtime errors gracefully
+      if (result.error?.includes('Edge Runtime')) {
+        console.warn('Audit logging skipped in Edge Runtime:', result.error);
+        return;
+      }
+      throw new Error(result.error)
+    }
+  } catch (error) {
+    // Handle edge runtime errors gracefully
+    if (error instanceof Error && error.message.includes('Edge Runtime')) {
+      console.warn('Audit logging skipped in Edge Runtime:', error.message);
+      return;
+    }
+    throw error;
   }
 }
 
@@ -1040,6 +1108,3 @@ export async function logDataAccess(
 
 // Export service instance for advanced usage
 export { auditService }
-
-// Export types and enums
-export type { AuditServiceConfig, EnrichedAuditContext, BatchVerificationResult, AuditResult }

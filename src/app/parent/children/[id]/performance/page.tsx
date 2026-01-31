@@ -28,6 +28,15 @@ export default async function ChildPerformancePage({
     notFound();
   }
 
+  // Type assertion to help TypeScript understand the student includes user relation
+  const studentWithUser = childDetails.student as typeof childDetails.student & {
+    user: {
+      firstName: string | null;
+      lastName: string | null;
+      avatar: string | null;
+    };
+  };
+
   // Get extended data for visualizations
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -122,7 +131,7 @@ export default async function ChildPerformancePage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <BarChart2 className="h-6 w-6 text-primary" />
-          Performance Analytics - {childDetails.student.user.firstName} {childDetails.student.user.lastName}
+          Performance Analytics - {studentWithUser.user.firstName || ''} {studentWithUser.user.lastName || ''}
         </h1>
         <p className="text-muted-foreground mt-1">
           Detailed performance trends and visualizations

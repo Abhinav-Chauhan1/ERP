@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     if (!rateLimitResult.allowed) {
       await logAuditEvent({
         userId: null,
-        action: 'RATE_LIMITED',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       if (!school) {
         await logAuditEvent({
           userId: null,
-          action: 'FAILED',
+          action: 'REJECT',
           resource: 'email_verification_resend',
           changes: {
             email: userEmail,
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       await logAuditEvent({
         userId: null,
         schoolId,
-        action: 'FAILED',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         schoolId,
-        action: 'FAILED',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         schoolId,
-        action: 'FAILED',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         schoolId,
-        action: 'INFO',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         schoolId,
-        action: 'ERROR',
+        action: 'REJECT',
         resource: 'email_verification_resend',
         changes: {
           email: userEmail,
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'REJECT',
       resource: 'email_verification_resend',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

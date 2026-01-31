@@ -79,7 +79,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
               <div className="p-3 bg-gray-50 rounded-lg text-center">
                 <p className="text-xs text-gray-500">Students</p>
                 <p className="text-lg font-bold">
-                  {subject.classes.reduce((sum, cls) => sum + cls.totalStudents, 0)}
+                  {subject.classes.reduce((sum: number, cls: { totalStudents: number }) => sum + cls.totalStudents, 0)}
                 </p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg text-center">
@@ -116,7 +116,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {subject.classes.map((cls) => (
+              {subject.classes.map((cls: { id: string; name: string; sections: { name: string }[]; totalStudents: number }) => (
                 <div key={cls.id} className="p-3 border rounded-lg hover:bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div>
@@ -152,15 +152,30 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
           {subject.syllabus.length > 0 ? (
             <SyllabusProgress 
               subjectName={subject.name}
-              className={subject.classes.map(c => c.name).join(", ")}
+              className={subject.classes.map((c: { name: string }) => c.name).join(", ")}
               academicYear="2023-2024"
               overallProgress={subject.progress}
               lastUpdated={new Date(subject.lastUpdated).toLocaleDateString()}
-              units={subject.syllabus[0].units.map(unit => ({
-                ...unit,
+              units={subject.syllabus[0].units.map((unit: {
+                id: string;
+                title: string;
+                description: string;
+                order: number;
+                totalTopics: number;
+                completedTopics: number;
+                status: string;
+                lastUpdated: string;
+              }) => ({
+                id: unit.id,
+                title: unit.title,
+                order: unit.order,
+                totalTopics: unit.totalTopics,
+                completedTopics: unit.completedTopics,
+                subModules: [], // Empty array since the current data doesn't have subModules
                 status: (unit.status === "completed" || unit.status === "in-progress" || unit.status === "not-started") 
                   ? unit.status as "completed" | "in-progress" | "not-started"
-                  : "not-started"
+                  : "not-started",
+                lastUpdated: unit.lastUpdated,
               }))}
               subjectId={subject.id}
             />
@@ -202,7 +217,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
             <CardContent>
               {subject.recentLessons.length > 0 ? (
                 <div className="space-y-3">
-                  {subject.recentLessons.map((lesson) => (
+                  {subject.recentLessons.map((lesson: { id: string; title: string; description: string; duration: number; unit: string | null }) => (
                     <div key={lesson.id} className="p-3 border rounded-lg hover:bg-gray-50">
                       <div className="flex justify-between items-start">
                         <div>

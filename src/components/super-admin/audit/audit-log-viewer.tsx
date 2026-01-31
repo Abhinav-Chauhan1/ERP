@@ -63,8 +63,8 @@ export function AuditLogViewer({ schoolId, showAllSchools = true }: AuditLogView
   const [actionFilter, setActionFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [dateFrom, setDateFrom] = useState<Date | null>(null);
-  const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [showLogDetails, setShowLogDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -375,12 +375,12 @@ export function AuditLogViewer({ schoolId, showAllSchools = true }: AuditLogView
                 <span className="text-sm font-medium">Date Range:</span>
                 <DatePicker
                   date={dateFrom}
-                  onDateChange={setDateFrom}
+                  onSelect={setDateFrom}
                   placeholder="From date"
                 />
                 <DatePicker
                   date={dateTo}
-                  onDateChange={setDateTo}
+                  onSelect={setDateTo}
                   placeholder="To date"
                 />
               </div>

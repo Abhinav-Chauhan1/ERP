@@ -647,9 +647,9 @@ export async function getBulkMessageHistory(
       const details = log.changes as any;
       return {
         id: log.id,
-        action: log.action,
-        userId: log.userId,
-        userName: log.user.name || "Unknown",
+        action: log.action as string,
+        userId: log.userId || "",
+        userName: log.user?.name || "Unknown",
         createdAt: log.createdAt,
         details: {
           channel: details.channel || "UNKNOWN",
@@ -912,7 +912,7 @@ export async function previewRecipients(
       recipients = parents.map(p => ({
         id: p.user.id,
         name: p.user.name || "Unknown Parent",
-        email: p.user.email,
+        email: p.user.email || undefined,
         phone: p.user.phone || undefined,
         role: "Parent"
       }));
@@ -927,7 +927,7 @@ export async function previewRecipients(
       recipients = teachers.map(t => ({
         id: t.user.id,
         name: t.user.name || "Unknown Teacher",
-        email: t.user.email,
+        email: t.user.email || undefined,
         phone: t.user.phone || undefined,
         role: "Teacher"
       }));
@@ -942,7 +942,7 @@ export async function previewRecipients(
       recipients = students.map(s => ({
         id: s.user.id,
         name: s.user.name || "Unknown Student",
-        email: s.user.email,
+        email: s.user.email || undefined,
         phone: s.user.phone || undefined,
         role: "Student"
       }));
@@ -977,7 +977,7 @@ export async function previewRecipients(
             uniqueMap.set(p.parent.user.id, {
               id: p.parent.user.id,
               name: p.parent.user.name || "Unknown Parent",
-              email: p.parent.user.email,
+              email: p.parent.user.email || undefined,
               phone: p.parent.user.phone || undefined,
               role: "Parent"
             });
@@ -993,15 +993,15 @@ export async function previewRecipients(
 
       if (data.selectedRoles.includes("TEACHER")) {
         const res = await db.teacher.findMany({ include: { user: true }, where: { user: { active: true } } });
-        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Teacher" }));
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Teacher" }));
       }
       if (data.selectedRoles.includes("STUDENT")) {
         const res = await db.student.findMany({ include: { user: true }, where: { user: { active: true } } });
-        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Student" }));
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Student" }));
       }
       if (data.selectedRoles.includes("PARENT")) {
         const res = await db.parent.findMany({ include: { user: true }, where: { user: { active: true } } });
-        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email, role: "Parent" }));
+        res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Parent" }));
       }
       recipients = Array.from(map.values());
     }

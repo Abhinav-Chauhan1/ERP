@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createFeatureFlagSchema.parse(body);
 
-    const featureFlag = await configurationService.createFeatureFlag(validatedData);
+    const featureFlag = await configurationService.setFeatureFlag(
+      session.user.id,
+      validatedData
+    );
 
     await logAuditEvent({
       userId: session.user.id,

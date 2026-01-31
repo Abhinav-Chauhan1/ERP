@@ -53,13 +53,17 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        results = await schoolService.bulkUpdateSchools(
-          validatedData.schoolIds,
-          validatedData.data
-        );
+        results = await schoolService.performBulkOperation({
+          operation: 'update_plan',
+          schoolIds: validatedData.schoolIds,
+          data: validatedData.data
+        });
         break;
       case 'delete':
-        results = await schoolService.bulkDeleteSchools(validatedData.schoolIds);
+        results = await schoolService.performBulkOperation({
+          operation: 'delete',
+          schoolIds: validatedData.schoolIds
+        });
         break;
       default:
         return NextResponse.json(
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
       changes: {
         bulkOperation: validatedData.action,
         schoolIds: validatedData.schoolIds,
-        affectedCount: results.successCount,
+        affectedCount: results.success,
         data: validatedData.data,
         reason: validatedData.reason,
       },

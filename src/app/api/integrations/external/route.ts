@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { configurationService } from '@/lib/services/configuration-service';
+import { environmentConfigurationManager } from '@/lib/services/configuration-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
@@ -39,10 +39,7 @@ export async function GET(request: NextRequest) {
     const provider = searchParams.get('provider');
     const isEnabled = searchParams.get('isEnabled');
 
-    const integrations = await configurationService.getExternalIntegrations({
-      provider: provider || undefined,
-      isEnabled: isEnabled === 'true' ? true : isEnabled === 'false' ? false : undefined,
-    });
+    const integrations = await environmentConfigurationManager.getExternalIntegrations();
 
     await logAuditEvent({
       userId: session.user.id,
@@ -87,7 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const integration = await configurationService.createExternalIntegration(validatedData);
+    const integration = await environmentConfigurationManager.createExternalIntegration(validatedData);
 
     await logAuditEvent({
       userId: session.user.id,

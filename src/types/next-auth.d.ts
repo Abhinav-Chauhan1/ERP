@@ -10,6 +10,7 @@ declare module "next-auth" {
             name: string | null
             image: string | null
             role: UserRole
+            mobile?: string | null
             schoolId?: string | null
             schoolName?: string | null
             schoolCode?: string | null
@@ -29,6 +30,7 @@ declare module "next-auth" {
 
     interface User {
         role: UserRole
+        mobile?: string | null
         schoolId?: string | null
         schoolName?: string | null
         schoolCode?: string | null
@@ -39,6 +41,7 @@ declare module "next-auth" {
 declare module "@auth/core/adapters" {
     interface AdapterUser {
         role: UserRole
+        mobile?: string | null
     }
 }
 
@@ -46,6 +49,7 @@ declare module "next-auth/jwt" {
     interface JWT {
         id: string
         role: UserRole
+        mobile?: string | null
         schoolId?: string | null
         schoolName?: string | null
         schoolCode?: string | null

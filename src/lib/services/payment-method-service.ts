@@ -411,17 +411,20 @@ export class PaymentMethodService {
     // In production, use proper encryption
     // This is a simplified example
     const key = process.env.PAYMENT_ENCRYPTION_KEY || 'default-key-change-in-production';
-    const cipher = crypto.createCipher('aes-256-cbc', key);
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key.padEnd(32, '0').slice(0, 32)), iv);
     let encrypted = cipher.update(JSON.stringify(details), 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return encrypted;
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   private decryptPaymentDetails(encryptedDetails: string): any {
     // In production, use proper decryption
     const key = process.env.PAYMENT_ENCRYPTION_KEY || 'default-key-change-in-production';
-    const decipher = crypto.createDecipher('aes-256-cbc', key);
-    let decrypted = decipher.update(encryptedDetails, 'hex', 'utf8');
+    const [ivHex, encrypted] = encryptedDetails.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key.padEnd(32, '0').slice(0, 32)), iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return JSON.parse(decrypted);
   }

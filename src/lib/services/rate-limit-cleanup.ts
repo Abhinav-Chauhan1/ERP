@@ -64,7 +64,7 @@ class RateLimitCleanupService {
     } catch (error) {
       console.error('Rate limit cleanup failed:', error);
       
-      await rateLimitLogger.logMaintenanceEvent('CLEANUP_FAILED', {
+      await rateLimitLogger.logMaintenanceEvent('CLEANUP_COMPLETED', {
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });

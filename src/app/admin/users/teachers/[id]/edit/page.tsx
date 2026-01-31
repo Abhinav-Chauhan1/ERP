@@ -83,9 +83,9 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
         }
 
         form.reset({
-          firstName: teacher.user.firstName,
-          lastName: teacher.user.lastName,
-          email: teacher.user.email,
+          firstName: teacher.user.firstName || "",
+          lastName: teacher.user.lastName || "",
+          email: teacher.user.email || "",
           phone: teacher.user.phone || "",
           role: UserRole.TEACHER,
           active: teacher.user.active,

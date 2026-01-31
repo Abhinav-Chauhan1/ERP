@@ -10,7 +10,7 @@ This document summarizes the comprehensive improvements made to the super-admin 
 
 **Solution**: Created reusable middleware functions:
 - `src/lib/middleware/super-admin-auth.ts` - Authentication middleware
-- `src/lib/middleware/compose.ts` - Middleware composition utilities
+- `src/lib/middleware/enhanced-compose.ts` - Middleware composition utilities
 
 ### 2. Error Handling Pattern (High Priority) ✅
 **Problem**: Inconsistent error handling and manual error response creation.
@@ -53,7 +53,7 @@ This document summarizes the comprehensive improvements made to the super-admin 
 ### Middleware
 - `src/lib/middleware/super-admin-auth.ts` - Authentication middleware
 - `src/lib/middleware/validation.ts` - Validation and sanitization middleware  
-- `src/lib/middleware/compose.ts` - Middleware composition utilities
+- `src/lib/middleware/enhanced-compose.ts` - Middleware composition utilities
 
 ### Utilities
 - `src/lib/utils/api-response.ts` - Response helpers and error handling
@@ -70,7 +70,7 @@ This document summarizes the comprehensive improvements made to the super-admin 
 - `src/test/api/super-admin-billing-improved.integration.test.ts` - Comprehensive test suite
 
 ### Examples
-- `src/app/api/super-admin/billing/subscriptions/route-improved.ts` - Clean implementation example
+- `src/app/api/super-admin/billing/subscriptions/route.ts` - Clean implementation example
 
 ## Key Improvements
 
@@ -187,7 +187,7 @@ return paginatedResponse(
 
 ### Creating a New Super Admin Route
 ```typescript
-import { createSuperAdminRoute } from '@/lib/middleware/compose';
+import { createSuperAdminRoute } from '@/lib/middleware/enhanced-compose';
 import { validateQuery } from '@/lib/middleware/validation';
 import { paginatedResponse } from '@/lib/utils/api-response';
 

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { logAuditEvent } from '@/lib/services/audit-service';
-import { AuditAction } from '@prisma/client';
+import { AuditAction, SchoolStatus } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 
 const updateStatusSchema = z.object({
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'INACTIVE']),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'INACTIVE', 'DEACTIVATED']),
 });
 
 const rateLimitConfig = {
@@ -21,7 +21,7 @@ const rateLimitConfig = {
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -37,7 +37,7 @@ export async function PUT(
 
     // Check if school exists
     const existingSchool = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     });
 
     if (!existingSchool) {
@@ -46,9 +46,9 @@ export async function PUT(
 
     // Update school status
     const updatedSchool = await db.school.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: { 
-        status,
+        status: status as SchoolStatus,
         updatedAt: new Date(),
       },
     });
@@ -57,7 +57,7 @@ export async function PUT(
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SCHOOL',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: { 
         status: { from: existingSchool.status, to: status }
       },

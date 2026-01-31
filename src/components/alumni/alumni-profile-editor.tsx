@@ -98,7 +98,7 @@ export interface AlumniProfileEditorProps {
     currentEmployer?: string;
     currentJobTitle?: string;
     currentPhone?: string;
-    currentEmail?: string;
+    currentEmail?: string | null;
     currentAddress?: string;
     currentCity?: string;
     currentState?: string;

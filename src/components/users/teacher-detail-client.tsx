@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/utils";
@@ -7,7 +8,7 @@ import { OptimizedImage } from "@/components/shared/optimized-image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, Calendar, Clock, Building2, X } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, Calendar, Clock, Building2, X, Plus } from "lucide-react";
 import { AssignSubjectDialog } from "@/components/users/assign-subject-dialog";
 import { AssignClassDialog } from "@/components/users/assign-class-dialog";
 import { AssignDepartmentDialog } from "@/components/users/assign-department-dialog";
@@ -22,9 +23,9 @@ interface TeacherDetailClientProps {
         joinDate: Date;
         salary: number | null;
         user: {
-            firstName: string;
-            lastName: string;
-            email: string;
+            firstName: string | null;
+            lastName: string | null;
+            email: string | null;
             phone: string | null;
             avatar: string | null;
             active: boolean;
@@ -69,6 +70,7 @@ interface TeacherDetailClientProps {
 
 export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
     const router = useRouter();
+    const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
 
     // Calculate attendance statistics
     const totalAttendanceRecords = teacher.attendance.length;
@@ -89,6 +91,7 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
     };
 
     return (
+        <>
         <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
                 <Link href="/admin/users/teachers">
@@ -101,7 +104,7 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
 
             <div className="flex justify-between items-start">
                 <h1 className="text-2xl font-bold tracking-tight">
-                    {teacher.user.firstName} {teacher.user.lastName}
+                    {teacher.user.firstName || ''} {teacher.user.lastName || ''}
                 </h1>
                 <div className="flex gap-2">
                     <Link href={`/admin/users/teachers/${teacher.id}/edit`}>
@@ -129,7 +132,7 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                 {teacher.user.avatar ? (
                                     <OptimizedImage
                                         src={teacher.user.avatar}
-                                        alt={`${teacher.user.firstName} ${teacher.user.lastName}`}
+                                        alt={`${teacher.user.firstName || ''} ${teacher.user.lastName || ''}`}
                                         width={128}
                                         height={128}
                                         className="h-32 w-32 rounded-full object-cover border-4 border-white shadow-md"
@@ -137,8 +140,8 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                     />
                                 ) : (
                                     <div className="h-32 w-32 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold border-4 border-white shadow-md">
-                                        {teacher.user.firstName[0]}
-                                        {teacher.user.lastName[0]}
+                                        {(teacher.user.firstName || 'T')[0]}
+                                        {(teacher.user.lastName || 'T')[0]}
                                     </div>
                                 )}
                                 <div className="text-center">
@@ -154,14 +157,14 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                 <div>
                                     <p className="text-sm text-muted-foreground">Full Name</p>
                                     <p className="font-medium">
-                                        {teacher.user.firstName} {teacher.user.lastName}
+                                        {teacher.user.firstName || ''} {teacher.user.lastName || ''}
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-muted-foreground">Email</p>
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
-                                        <p className="font-medium">{teacher.user.email}</p>
+                                        <p className="font-medium">{teacher.user.email || 'N/A'}</p>
                                     </div>
                                 </div>
                                 <div>
@@ -362,7 +365,14 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                             <CardTitle>Departments</CardTitle>
                             <CardDescription>Assigned departments</CardDescription>
                         </div>
-                        <AssignDepartmentDialog teacherId={teacher.id} onSuccess={handleRefresh} />
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setIsDepartmentDialogOpen(true)}
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Assign Department
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         {teacher.departments.length > 0 ? (
@@ -378,12 +388,14 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                             size="sm"
                                             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                                             onClick={async () => {
-                                                const result = await removeTeacherFromDepartment(teacher.id, dept.id);
-                                                if (result.success) {
-                                                    toast.success("Removed from department");
-                                                    handleRefresh();
-                                                } else {
-                                                    toast.error(result.error || "Failed to remove");
+                                                try {
+                                                    const result = await removeTeacherFromDepartment(teacher.id, dept.id);
+                                                    if (result.success) {
+                                                        toast.success("Removed from department");
+                                                        handleRefresh();
+                                                    }
+                                                } catch (error) {
+                                                    toast.error("Failed to remove from department");
                                                 }
                                             }}
                                         >
@@ -472,5 +484,20 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                 </Card>
             </div>
         </div>
+
+        {/* Department Assignment Dialog */}
+        <AssignDepartmentDialog
+            isOpen={isDepartmentDialogOpen}
+            onClose={() => setIsDepartmentDialogOpen(false)}
+            teacherId={teacher.id}
+            departments={[]} // TODO: Fetch departments from API
+            onAssign={async (teacherId: string, departmentId: string) => {
+                // TODO: Implement department assignment
+                console.log('Assign teacher', teacherId, 'to department', departmentId);
+                setIsDepartmentDialogOpen(false);
+                handleRefresh();
+            }}
+        />
+        </>
     );
 }

@@ -399,21 +399,27 @@ export function getPasswordResetEmailHtml(params: {
 }
 
 export interface ReceiptVerificationData {
+  schoolId: string;
   studentName: string;
   receiptReference: string;
   feeStructureName: string;
   amount: number;
   remainingBalance: number;
   paymentDate: string;
+  verifiedBy?: string;
+  verifiedAt?: Date;
 }
 
 export interface ReceiptRejectionData {
+  schoolId: string;
   studentName: string;
   receiptReference: string;
   feeStructureName: string;
   amount: number;
   rejectionReason: string;
   paymentDate: string;
+  rejectedBy?: string;
+  rejectedAt?: Date;
 }
 
 /**

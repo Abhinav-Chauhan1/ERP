@@ -11,7 +11,7 @@ import { SessionManager } from "@/components/auth/SessionManager";
 import { WebVitalsTracker } from "@/components/shared/web-vitals-tracker";
 import { WebVitalsDisplay } from "@/components/shared/web-vitals-display";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
-import { getPublicSystemSettings } from "@/lib/actions/settingsActions";
+import { getSystemSettingsRequestMemo } from "@/lib/utils/request-memoization";
 
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
@@ -26,8 +26,7 @@ const inter = Inter({
 });
 
 export async function generateMetadata() {
-  const settingsResult = await getPublicSystemSettings();
-  const settings = settingsResult.success ? settingsResult.data : null;
+  const settings = await getSystemSettingsRequestMemo();
 
   return {
     title: settings?.schoolName || "SikshaMitra",
@@ -40,9 +39,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Fetch school settings
-  const settingsResult = await getPublicSystemSettings();
-  const settings = settingsResult.success && settingsResult.data ? settingsResult.data : null;
+  // Fetch school settings using request-memoized cached query
+  const settings = await getSystemSettingsRequestMemo();
 
   return (
     <html lang="en" suppressHydrationWarning>

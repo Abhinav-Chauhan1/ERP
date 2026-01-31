@@ -26,7 +26,7 @@ interface Book {
 }
 
 interface MostBorrowedBook {
-  book: Book | null;
+  book: Book | null | undefined;
   borrowCount: number;
 }
 

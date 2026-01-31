@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   meritListConfigSchema,
   MeritListConfigFormValues,
@@ -12,6 +13,9 @@ import {
 // Create merit list configuration
 export async function createMeritListConfig(data: MeritListConfigFormValues) {
   try {
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+    
     // Validate the input data
     const validatedData = meritListConfigSchema.parse(data);
 
@@ -31,6 +35,7 @@ export async function createMeritListConfig(data: MeritListConfigFormValues) {
         appliedClassId: validatedData.appliedClassId,
         criteria: validatedData.criteria,
         isActive: true,
+        schoolId: schoolId || "",
       },
       include: {
         appliedClass: {
@@ -154,6 +159,9 @@ export async function updateMeritListConfig(
   data: MeritListConfigFormValues
 ) {
   try {
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+    
     // Validate the input data
     const validatedData = meritListConfigSchema.parse(data);
 
@@ -173,6 +181,7 @@ export async function updateMeritListConfig(
         name: validatedData.name,
         appliedClassId: validatedData.appliedClassId,
         criteria: validatedData.criteria,
+        schoolId: schoolId || "",
       },
       include: {
         appliedClass: {
@@ -308,6 +317,9 @@ export async function generateMeritList(
   generatedBy?: string
 ) {
   try {
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+    
     // Validate the input data
     const validatedData = generateMeritListSchema.parse(data);
 
@@ -362,11 +374,13 @@ export async function generateMeritList(
         appliedClassId: validatedData.appliedClassId,
         generatedBy,
         totalApplications: applications.length,
+        schoolId: schoolId || "",
         entries: {
           create: scoredApplications.map((app, index) => ({
             applicationId: app.id,
             rank: index + 1,
             score: app.score,
+            schoolId: schoolId || "",
           })),
         },
       },

@@ -372,6 +372,7 @@ export const createClass = withSchoolAuthAction(async (schoolId: string, userId:
         name: data.name,
         academicYearId: data.academicYearId,
         reportCardTemplateId: data.reportCardTemplateId,
+        schoolId,
       }
     });
 
@@ -561,6 +562,7 @@ export async function createClassSection(data: ClassSectionFormValues) {
         name: data.name,
         classId: data.classId,
         capacity: data.capacity,
+        schoolId,
       }
     });
 
@@ -746,7 +748,8 @@ export async function assignTeacherToClass(data: ClassTeacherFormValues) {
         classId: data.classId,
         sectionId: data.sectionId || null,
         teacherId: data.teacherId,
-        isClassHead: data.isClassHead
+        isClassHead: data.isClassHead,
+        schoolId,
       }
     });
 
@@ -1185,6 +1188,7 @@ export async function enrollStudentInClass(data: StudentEnrollmentFormValues) {
         rollNumber: data.rollNumber || null,
         status: data.status,
         enrollDate: new Date(),
+        schoolId,
       }
     });
 

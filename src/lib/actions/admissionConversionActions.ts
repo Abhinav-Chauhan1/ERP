@@ -119,6 +119,7 @@ export async function convertAdmissionToStudent(
       // Create base user
       const user = await tx.user.create({
         data: {
+          name: `${firstName} ${lastName}`,
           email: application.parentEmail,
           firstName,
           lastName,
@@ -134,6 +135,7 @@ export async function convertAdmissionToStudent(
       const student = await tx.student.create({
         data: {
           userId: user.id,
+          schoolId: application.schoolId,
           admissionId,
           admissionDate: new Date(),
           rollNumber: options?.rollNumber,
@@ -183,6 +185,7 @@ export async function convertAdmissionToStudent(
         await tx.classEnrollment.create({
           data: {
             studentId: student.id,
+            schoolId: application.schoolId,
             classId: application.appliedClassId,
             sectionId: options.sectionId,
             rollNumber: options.rollNumber,
@@ -204,6 +207,7 @@ export async function convertAdmissionToStudent(
       await tx.studentSettings.create({
         data: {
           studentId: student.id,
+          schoolId: application.schoolId,
         },
       });
 

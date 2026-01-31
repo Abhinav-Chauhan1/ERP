@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
         category: validatedData.category,
         tags: validatedData.tags,
         userId: validatedData.userId,
+        schoolId: user.teacher.schoolId,
         isPublic: false, // Teacher documents are private by default
       },
       include: {

@@ -53,6 +53,7 @@ async function ensureSystemUser(): Promise<string | null> {
         systemUser = await db.user.create({
           data: {
             id: SYSTEM_USER_ID,
+            name: "System Automated",
             email: "system@internal",
             firstName: "System",
             lastName: "Automated",

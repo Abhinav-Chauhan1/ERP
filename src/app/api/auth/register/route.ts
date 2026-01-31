@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'REJECT',
       resource: 'user_registration',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

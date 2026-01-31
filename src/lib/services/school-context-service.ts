@@ -678,8 +678,8 @@ class SchoolContextService {
     try {
       await logAuditEvent({
         userId: metadata?.userId || null,
-        schoolId,
-        action,
+        schoolId: schoolId || undefined,
+        action: 'VIEW' as any,
         resource: 'school_context',
         changes: {
           schoolCode,

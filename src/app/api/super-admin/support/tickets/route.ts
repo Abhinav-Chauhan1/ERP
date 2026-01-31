@@ -35,10 +35,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const statusParam = searchParams.get('status');
+    const priorityParam = searchParams.get('priority');
     const filters = {
       schoolId: searchParams.get('schoolId') || undefined,
-      status: searchParams.get('status') || undefined,
-      priority: searchParams.get('priority') || undefined,
+      status: statusParam ? [statusParam as any] : undefined,
+      priority: priorityParam ? [priorityParam as any] : undefined,
       assignedTo: searchParams.get('assignedTo') || undefined,
       category: searchParams.get('category') || undefined,
       startDate: searchParams.get('startDate') ? new Date(searchParams.get('startDate')!) : undefined,

@@ -65,7 +65,8 @@ export function calculateReminderTime(
  */
 export async function createRemindersForEvent(
   eventId: string,
-  userIds: string[]
+  userIds: string[],
+  schoolId: string
 ): Promise<EventReminder[]> {
   // Get the event details
   const event = await db.calendarEvent.findUnique({
@@ -117,7 +118,8 @@ export async function createRemindersForEvent(
           isSent: false,
           sentAt: null,
           createdAt: now,
-          updatedAt: now
+          updatedAt: now,
+          schoolId
         });
       }
     }
@@ -186,7 +188,7 @@ export async function sendReminderNotification(
         }
 
         const emailResult = await sendEmail({
-          to: userEmail,
+          to: [userEmail],
           subject: `Reminder: ${notificationData.eventTitle}`,
           html: getEventReminderEmailHtml(notificationData),
           text: `
@@ -511,6 +513,11 @@ export async function processPendingReminders(): Promise<{
 
           if (!user) {
             console.error('User not found for reminder:', reminder.userId);
+            return { status: 'failed' };
+          }
+
+          if (!user.email) {
+            console.error('User email not found for reminder:', reminder.userId);
             return { status: 'failed' };
           }
 

@@ -337,7 +337,7 @@ export default async function SuperAdminPage() {
             <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardContent className="p-8">
                 <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-                  <AnalyticsDashboard />
+                  <AnalyticsDashboard initialData={analytics} />
                 </Suspense>
               </CardContent>
             </Card>
@@ -347,7 +347,7 @@ export default async function SuperAdminPage() {
             <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardContent className="p-8">
                 <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-                  <BillingDashboard />
+                  <BillingDashboard initialData={billing} />
                 </Suspense>
               </CardContent>
             </Card>

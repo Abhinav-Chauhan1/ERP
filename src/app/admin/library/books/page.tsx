@@ -75,5 +75,10 @@ async function BookListContent({
     getBookCategories(),
   ]);
 
-  return <BookList data={booksData} categories={categories} />;
+  // Handle error case
+  if (!booksData.success) {
+    return <div>Error loading books: {booksData.error}</div>;
+  }
+
+  return <BookList data={booksData as any} categories={categories} />;
 }

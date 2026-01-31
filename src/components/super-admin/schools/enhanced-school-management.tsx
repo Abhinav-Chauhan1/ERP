@@ -48,6 +48,8 @@ import {
   bulkResetOnboarding
 } from "@/lib/actions/school-management-actions";
 import { SchoolDetailsDialog } from "./school-details-dialog";
+import { useBreakpoint, mobileTableConfig, mobileClasses } from "@/lib/utils/mobile-responsive";
+import { aria, focus, screenReader, formAccessibility, tableAccessibility } from "@/lib/utils/accessibility";
 
 // Plan pricing mapping
 const getPlanPrice = (plan: string): string => {
@@ -115,6 +117,7 @@ interface EnhancedSchoolManagementProps {
 
 export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchoolManagementProps) {
   const router = useRouter();
+  const { isMobile, isTablet, breakpoint } = useBreakpoint();
   const [schools, setSchools] = useState<School[]>(initialSchools);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +131,10 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   const [planFilter, setPlanFilter] = useState("ALL");
   const [onboardingFilter, setOnboardingFilter] = useState("ALL");
   const [filters, setFilters] = useState<SchoolFilters>({});
+
+  // Mobile table configuration
+  const tableClasses = mobileTableConfig.getTableClasses(isMobile);
+  const columnVisibility = mobileTableConfig.getColumnVisibility(breakpoint);
 
   const fetchSchools = async (currentFilters: SchoolFilters = {}) => {
     setIsLoading(true);
@@ -488,139 +495,282 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
               ))}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedSchools.length === schools.length && schools.length > 0}
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
-                  <TableHead>School</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Onboarding</TableHead>
-                  <TableHead>Users</TableHead>
-                  <TableHead>Subscription</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {schools.map((school) => (
-                  <TableRow key={school.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedSchools.includes(school.id)}
-                        onCheckedChange={(checked) => 
-                          handleSchoolSelect(school.id, checked as boolean)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
-                          {school.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-medium">{school.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {school.email}
+            <>
+              {/* Desktop Table View */}
+              <div className={tableClasses.table}>
+                <Table {...tableAccessibility.getTableProps("Schools list")}>
+                  <TableHeader>
+                    <TableRow {...tableAccessibility.getRowProps()}>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedSchools.length === schools.length && schools.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          {...aria.attributes.label("Select all schools")}
+                        />
+                      </TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()}>School</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnMobile}>Status</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnMobile}>Plan</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Onboarding</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Users</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Subscription</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()} className={columnVisibility.hideOnTablet}>Created</TableHead>
+                      <TableHead {...tableAccessibility.getHeaderProps()}>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {schools.map((school) => (
+                      <TableRow key={school.id} {...tableAccessibility.getRowProps(selectedSchools.includes(school.id))}>
+                        <TableCell {...tableAccessibility.getCellProps()}>
+                          <Checkbox
+                            checked={selectedSchools.includes(school.id)}
+                            onCheckedChange={(checked) => 
+                              handleSchoolSelect(school.id, checked as boolean)
+                            }
+                            {...aria.attributes.label(`Select ${school.name}`)}
+                          />
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps(true)}>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+                              {school.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium">{school.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {school.email}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(school.status) as any}>
-                        {school.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getPlanBadgeVariant(school.plan) as any}>
-                        {school.plan}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {getOnboardingStatusBadge(school)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{school.userCounts.total} total</div>
-                        <div className="text-muted-foreground">
-                          {school.userCounts.students} students
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {school.subscription ? (
-                        <div className="text-sm">
-                          <div>₹{getPlanPrice(school.plan)}</div>
-                          <div className="text-muted-foreground">
-                            Expires {new Date(school.subscription.endDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnMobile}>
+                          <Badge variant={getStatusBadgeVariant(school.status) as any}>
+                            {school.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnMobile}>
+                          <Badge variant={getPlanBadgeVariant(school.plan) as any}>
+                            {school.plan}
+                          </Badge>
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
+                          {getOnboardingStatusBadge(school)}
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
+                          <div className="text-sm">
+                            <div>{school.userCounts.total} total</div>
+                            <div className="text-muted-foreground">
+                              {school.userCounts.students} students
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">No subscription</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(school.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => setSelectedSchoolForDetails(school)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Settings className="h-4 w-4 mr-2" />
-                            Settings
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
-                          >
-                            <Users className="h-4 w-4 mr-2" />
-                            Manage Users
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {school.isOnboarded ? (
-                            <DropdownMenuItem
-                              onClick={() => handleResetOnboarding(school.id, school.name)}
-                              className="text-orange-600"
-                            >
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Reset Onboarding
-                            </DropdownMenuItem>
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
+                          {school.subscription ? (
+                            <div className="text-sm">
+                              <div>₹{getPlanPrice(school.plan)}</div>
+                              <div className="text-muted-foreground">
+                                Expires {new Date(school.subscription.endDate).toLocaleDateString()}
+                              </div>
+                            </div>
                           ) : (
-                            <DropdownMenuItem
-                              onClick={() => handleLaunchSetupWizard(school.id, school.name)}
-                              className="text-blue-600"
-                            >
-                              <PlayCircle className="h-4 w-4 mr-2" />
-                              Launch Setup Wizard
-                            </DropdownMenuItem>
+                            <span className="text-muted-foreground">No subscription</span>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <Ban className="h-4 w-4 mr-2" />
-                            Suspend
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()} className={columnVisibility.hideOnTablet}>
+                          {new Date(school.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell {...tableAccessibility.getCellProps()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className={focus.classes.visible}
+                                {...aria.attributes.label(`Actions for ${school.name}`)}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setSelectedSchoolForDetails(school)}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Settings
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
+                              >
+                                <Users className="h-4 w-4 mr-2" />
+                                Manage Users
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {school.isOnboarded ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleResetOnboarding(school.id, school.name)}
+                                  className="text-orange-600"
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Reset Onboarding
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleLaunchSetupWizard(school.id, school.name)}
+                                  className="text-blue-600"
+                                >
+                                  <PlayCircle className="h-4 w-4 mr-2" />
+                                  Launch Setup Wizard
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600">
+                                <Ban className="h-4 w-4 mr-2" />
+                                Suspend
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className={tableClasses.cardContainer}>
+                <div className="space-y-4">
+                  {schools.map((school) => (
+                    <Card key={school.id} className="relative">
+                      <CardContent className={`${mobileClasses.card.mobile} ${selectedSchools.includes(school.id) ? 'ring-2 ring-blue-500' : ''}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <Checkbox
+                              checked={selectedSchools.includes(school.id)}
+                              onCheckedChange={(checked) => 
+                                handleSchoolSelect(school.id, checked as boolean)
+                              }
+                              {...aria.attributes.label(`Select ${school.name}`)}
+                            />
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+                              {school.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-base truncate">{school.name}</h3>
+                              <p className="text-sm text-muted-foreground truncate">{school.email}</p>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className={`${focus.classes.visible} min-h-[44px] min-w-[44px]`}
+                                {...aria.attributes.label(`Actions for ${school.name}`)}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setSelectedSchoolForDetails(school)}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Settings
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
+                              >
+                                <Users className="h-4 w-4 mr-2" />
+                                Manage Users
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {school.isOnboarded ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleResetOnboarding(school.id, school.name)}
+                                  className="text-orange-600"
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Reset Onboarding
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleLaunchSetupWizard(school.id, school.name)}
+                                  className="text-blue-600"
+                                >
+                                  <PlayCircle className="h-4 w-4 mr-2" />
+                                  Launch Setup Wizard
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600">
+                                <Ban className="h-4 w-4 mr-2" />
+                                Suspend
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Status:</span>
+                            <div className="mt-1">
+                              <Badge variant={getStatusBadgeVariant(school.status) as any}>
+                                {school.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Plan:</span>
+                            <div className="mt-1">
+                              <Badge variant={getPlanBadgeVariant(school.plan) as any}>
+                                {school.plan}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Users:</span>
+                            <div className="mt-1">
+                              <div>{school.userCounts.total} total</div>
+                              <div className="text-xs text-muted-foreground">
+                                {school.userCounts.students} students
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Onboarding:</span>
+                            <div className="mt-1">
+                              {getOnboardingStatusBadge(school)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {school.subscription && (
+                          <div className="mt-3 pt-3 border-t text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">Subscription:</span>
+                              <div className="text-right">
+                                <div>₹{getPlanPrice(school.plan)}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  Expires {new Date(school.subscription.endDate).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

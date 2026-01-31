@@ -613,6 +613,19 @@ export class BillingService {
             schoolId: schoolId
           }
         },
+        include: {
+          subscription: {
+            include: {
+              plan: true,
+              school: {
+                select: {
+                  name: true,
+                  schoolCode: true
+                }
+              }
+            }
+          }
+        },
         orderBy: {
           createdAt: 'desc'
         }
@@ -627,6 +640,8 @@ export class BillingService {
         paymentMethod: payment.paymentMethod,
         failureReason: payment.failureReason,
         createdAt: payment.createdAt,
+        // Now we have access to subscription and plan data without additional queries
+        subscription: payment.subscription,
       }));
     } catch (error) {
       console.error('Error getting payment history:', error);
@@ -811,6 +826,33 @@ export class BillingService {
         paidAt: new Date(),
       }
     });
+  }
+
+  // Additional methods for super admin
+  async getAllPayments(): Promise<Payment[]> {
+    try {
+      return await prisma.payment.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+    } catch (error) {
+      console.error('Error getting all payments:', error);
+      throw new Error('Failed to get payments');
+    }
+  }
+
+  async getSubscription(id: string): Promise<EnhancedSubscription | null> {
+    try {
+      return await prisma.enhancedSubscription.findUnique({
+        where: { id },
+        include: {
+          plan: true,
+          school: true
+        }
+      });
+    } catch (error) {
+      console.error('Error getting subscription:', error);
+      throw new Error('Failed to get subscription');
+    }
   }
 }
 

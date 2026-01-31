@@ -74,12 +74,12 @@ export const POST = createTeacherRoute(
 
 // Example 3: Multi-role route (Teacher or School Admin)
 export const PUT = createMultiRoleRoute(
-  [UserRole.TEACHER, UserRole.SCHOOL_ADMIN],
+  [UserRole.TEACHER, UserRole.ADMIN],
   async (context: EnhancedMiddlewareContext) => {
     const { user, schoolContext } = context;
     
     // Different logic based on role
-    if (user!.role === UserRole.SCHOOL_ADMIN) {
+    if (user!.role === UserRole.ADMIN) {
       // Admin-specific logic
       return NextResponse.json({
         message: 'Admin update processed',
@@ -113,40 +113,35 @@ export const PATCH = createTenantIsolatedRoute(
     });
   },
   {
-    requiredRole: [UserRole.SCHOOL_ADMIN, UserRole.TEACHER],
+    requiredRole: [UserRole.ADMIN, UserRole.TEACHER],
     additionalPermissions: ['special:access']
   }
 );
 
-// Example 5: Custom context validation
-import { createContextAwareAuth } from '@/lib/middleware/auth';
+// Example 5: Simple DELETE handler with enhanced auth
+export async function DELETE(request: NextRequest) {
+  const { enhancedAuthenticate } = await import('@/lib/middleware/enhanced-auth');
+  
+  const authResult = await enhancedAuthenticate(request, {
+    requiredRole: UserRole.ADMIN,
+    requireSchoolContext: true,
+    auditAction: 'RESOURCE_DELETE'
+  });
 
-export const DELETE = createContextAwareAuth({
-  requiredRole: UserRole.SCHOOL_ADMIN,
-  requireSchoolContext: true,
-  contextValidator: async (user, request) => {
-    // Custom validation logic
-    const url = new URL(request.url);
-    const resourceId = url.searchParams.get('resourceId');
-    
-    if (!resourceId) {
-      return false;
-    }
-    
-    // Validate user has access to this specific resource
-    // This is where you'd implement custom business logic
-    return true;
-  },
-  onAccessDenied: async (user, request) => {
-    // Custom logging or alerting when access is denied
-    console.log(`Access denied for user ${user?.id} to ${request.url}`);
+  if (!authResult.success) {
+    return NextResponse.json(
+      { error: authResult.error },
+      { status: authResult.statusCode || 401 }
+    );
   }
-})(async (request: NextRequest) => {
+
   // Route handler logic
   return NextResponse.json({
-    message: 'Resource deleted successfully'
+    message: 'Resource deleted successfully',
+    user: authResult.user?.id,
+    school: authResult.schoolContext?.schoolCode
   });
-});
+}
 
 /**
  * Example of manual enhanced authentication usage

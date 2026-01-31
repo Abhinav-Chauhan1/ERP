@@ -158,7 +158,7 @@ export async function getEvents(filters?: EventFilter) {
  * Register a child for an event
  * Requirements: 8.2, 8.3
  */
-export async function registerForEvent(data: EventRegistration) {
+export async function registerForEvent(data: EventRegistration, schoolId: string) {
   try {
     // Validate input
     const validated = eventRegistrationSchema.parse(data);
@@ -246,7 +246,8 @@ export async function registerForEvent(data: EventRegistration) {
         eventId: validated.eventId,
         userId: student.userId,
         role: "ATTENDEE",
-        registrationDate: new Date()
+        registrationDate: new Date(),
+        schoolId,
       }
     });
     
@@ -256,7 +257,8 @@ export async function registerForEvent(data: EventRegistration) {
         userId: student.userId,
         title: "Event Registration Confirmed",
         message: `You have been registered for ${event.title}`,
-        type: "INFO"
+        type: "INFO",
+        schoolId,
       }
     });
     
@@ -278,7 +280,7 @@ export async function registerForEvent(data: EventRegistration) {
  * Cancel event registration for a child
  * Requirements: 8.3
  */
-export async function cancelEventRegistration(registrationId: string) {
+export async function cancelEventRegistration(registrationId: string, schoolId: string) {
   try {
     // Get current parent
     const parent = await getCurrentParent();
@@ -333,7 +335,8 @@ export async function cancelEventRegistration(registrationId: string) {
         userId: registration.userId,
         title: "Event Registration Cancelled",
         message: `Your registration for ${registration.event.title} has been cancelled`,
-        type: "INFO"
+        type: "INFO",
+        schoolId,
       }
     });
     

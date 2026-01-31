@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (!rateLimitResult.allowed) {
       await logAuditEvent({
         userId: null,
-        action: 'RATE_LIMITED',
+        action: 'REJECT',
         resource: 'password_reset',
         changes: {
           email,
@@ -81,8 +81,7 @@ export async function POST(request: NextRequest) {
         // Log but don't reveal school doesn't exist
         await logAuditEvent({
           userId: null,
-          schoolId: null,
-          action: 'FAILED',
+          action: 'REJECT',
           resource: 'password_reset',
           changes: {
             email,
@@ -126,8 +125,8 @@ export async function POST(request: NextRequest) {
       // Log the attempt but return success
       await logAuditEvent({
         userId: null,
-        schoolId,
-        action: 'FAILED',
+        ...(schoolId && { schoolId }),
+        action: 'REJECT',
         resource: 'password_reset',
         changes: {
           email,
@@ -151,8 +150,8 @@ export async function POST(request: NextRequest) {
     if (!user.isActive) {
       await logAuditEvent({
         userId: user.id,
-        schoolId,
-        action: 'FAILED',
+        ...(schoolId && { schoolId }),
+        action: 'REJECT',
         resource: 'password_reset',
         changes: {
           email,
@@ -176,8 +175,8 @@ export async function POST(request: NextRequest) {
     if (schoolId && user.userSchools.length === 0) {
       await logAuditEvent({
         userId: user.id,
-        schoolId,
-        action: 'FAILED',
+        ...(schoolId && { schoolId }),
+        action: 'REJECT',
         resource: 'password_reset',
         changes: {
           email,
@@ -242,7 +241,7 @@ export async function POST(request: NextRequest) {
     // Log password reset request using unified audit system
     await logAuditEvent({
       userId: user.id,
-      schoolId,
+      ...(schoolId && { schoolId }),
       action: 'CREATE',
       resource: 'password_reset',
       changes: {
@@ -268,7 +267,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'REJECT',
       resource: 'password_reset',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

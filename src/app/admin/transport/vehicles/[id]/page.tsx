@@ -51,11 +51,11 @@ export default async function EditVehiclePage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <VehicleForm vehicle={vehicle} drivers={drivers} />
+            <VehicleForm vehicle={vehicle as any} drivers={drivers} />
           </CardContent>
         </Card>
 
-        {vehicle.routes.length > 0 && (
+        {(vehicle as any).routes?.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Assigned Routes</CardTitle>
@@ -65,7 +65,7 @@ export default async function EditVehiclePage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {vehicle.routes.map((route) => (
+                {((vehicle as any).routes || []).map((route: any) => (
                   <div
                     key={route.id}
                     className="flex items-center justify-between p-3 border rounded-lg"

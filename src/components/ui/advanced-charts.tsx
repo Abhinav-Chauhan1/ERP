@@ -153,9 +153,9 @@ export function AdvancedLineChart({
             <YAxis fontSize={12} />
             <Tooltip 
               labelFormatter={(value) => new Date(value).toLocaleString()}
-              formatter={(value: number, name: string) => [
+              formatter={(value: number | undefined, name: string | undefined) => [
                 typeof value === 'number' ? value.toLocaleString() : value,
-                name
+                name || ''
               ]}
             />
             {showLegend && <Legend />}
@@ -334,7 +334,7 @@ export function InteractivePieChart({
                   />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => value.toLocaleString()} />
+              <Tooltip formatter={(value: number | undefined) => value?.toLocaleString() || ''} />
             </PieChart>
           </ResponsiveContainer>
           

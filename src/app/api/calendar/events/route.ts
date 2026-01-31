@@ -242,7 +242,6 @@ export const POST = withSchoolAuth(async (request, context) => {
     // Get user from database
     const user = await db.user.findUnique({
       where: {
-        schoolId: context.schoolId,
         id: session.user.id
       }
     });

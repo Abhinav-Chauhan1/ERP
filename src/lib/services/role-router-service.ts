@@ -666,7 +666,7 @@ class RoleRouterService {
         };
       } catch (error) {
         // Standard routing failed, try edge case handling
-        return this.handleEdgeCaseRouting(validContext, error.message);
+        return this.handleEdgeCaseRouting(validContext, error instanceof Error ? error.message : 'Unknown error');
       }
 
     } catch (error) {
@@ -774,7 +774,7 @@ class RoleRouterService {
    * Check if child selection is required for parent
    */
   private requiresChildSelection(context: SessionContext): boolean {
-    return context.requiresChildSelection || 
+    return Boolean(context.requiresChildSelection) || 
            (context.role === UserRole.PARENT && 
             !context.activeStudentId && 
             context.availableChildren && 
@@ -998,7 +998,7 @@ class RoleRouterService {
         const { logAuditEvent } = await import('./audit-service');
         await logAuditEvent({
           userId,
-          action,
+          action: 'VIEW' as any,
           resource: 'routing',
           changes: {
             route,

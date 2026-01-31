@@ -1503,6 +1503,8 @@ export class GDPRComplianceService {
 export class DataMigrationService {
   private cache = new MemoryCache();
 
+  // TODO: Implement when DataMigrationPlan model is added to schema
+  /*
   async createMigrationPlan(plan: Partial<MigrationPlan>, createdBy: string): Promise<Result<MigrationPlan>> {
     try {
       const migrationPlan = await db.dataMigrationPlan.create({
@@ -1526,7 +1528,10 @@ export class DataMigrationService {
       };
     }
   }
+  */
 
+  // TODO: Implement when DataMigrationPlan model is added to schema
+  /*
   async executeMigration(planId: string): Promise<Result<MigrationPlan>> {
     try {
       const plan = await db.dataMigrationPlan.findUnique({
@@ -1600,7 +1605,10 @@ export class DataMigrationService {
       };
     }
   }
+  */
 
+  // TODO: Implement when DataMigrationPlan model is added to schema
+  /*
   private async executeMigrationStep(planId: string, step: MigrationStep): Promise<void> {
     try {
       if (step.sql) {
@@ -1721,6 +1729,7 @@ export class DataMigrationService {
       };
     }
   }
+  */
 }
 
 // ============================================================================
@@ -1759,7 +1768,8 @@ export class EnhancedDataManagementService extends DataManagementService {
     return this.gdprService.getGDPRRequests(filters);
   }
 
-  // Data Migration Methods
+  // Data Migration Methods - TODO: Implement when DataMigrationPlan model is added to schema
+  /*
   async createMigrationPlan(plan: Partial<MigrationPlan>, createdBy: string): Promise<Result<MigrationPlan>> {
     return this.migrationService.createMigrationPlan(plan, createdBy);
   }
@@ -1779,6 +1789,7 @@ export class EnhancedDataManagementService extends DataManagementService {
   }): Promise<Result<MigrationPlan[]>> {
     return this.migrationService.getMigrationPlans(filters);
   }
+  */
 }
 
 // ============================================================================

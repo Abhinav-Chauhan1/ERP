@@ -131,7 +131,7 @@ export function CloneSyllabusDialog({
         newScope.sectionId = values.sectionId;
       }
 
-      const result = await cloneSyllabus(syllabus.id, newScope, userId);
+      const result = await cloneSyllabus(syllabus.id, newScope);
 
       if (result.success) {
         toast.success("Syllabus cloned successfully");

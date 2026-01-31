@@ -7,7 +7,7 @@ import { Chart } from "@/components/dashboard/chart";
 import { CalendarWidget } from "@/components/calendar/calendar-widget";
 import {
   Users, BookOpen, ClipboardCheck, Calendar, FileText,
-  Edit, CheckCircle, Clock, FileSpreadsheet, Bell, Mail
+  Edit, CheckCircle, Clock, FileSpreadsheet, Bell, Mail, School
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTeacherDashboardData } from "@/lib/actions/teacherDashboardActions";
@@ -514,40 +514,44 @@ export async function RecentActivitySection() {
 /**
  * Quick actions section - displays frequently used actions
  */
-<div className="mt-8">
-  <h2 className="text-xl font-bold mb-6 tracking-tight">Quick Actions</h2>
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-    <Link href="/teacher/attendance/mark" className="group">
-      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
-        <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
-          <ClipboardCheck className="h-6 w-6" />
-        </div>
-        <span className="text-sm font-bold">Attendance</span>
+export function QuickActionsSection() {
+  return (
+    <div className="mt-8">
+      <h2 className="text-xl font-bold mb-6 tracking-tight">Quick Actions</h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <Link href="/teacher/attendance/mark" className="group">
+          <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
+            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+              <ClipboardCheck className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-bold">Attendance</span>
+          </div>
+        </Link>
+        <Link href="/teacher/assessments/assignments/create" className="group">
+          <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
+            <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 group-hover:scale-110 transition-transform">
+              <Edit className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-bold">Assignment</span>
+          </div>
+        </Link>
+        <Link href="/teacher/teaching/lessons/create" className="group">
+          <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
+            <div className="p-3 rounded-2xl bg-violet-500/10 text-violet-600 group-hover:scale-110 transition-transform">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-bold">Lesson</span>
+          </div>
+        </Link>
+        <Link href="/teacher/communication/messages/compose" className="group">
+          <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
+            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 group-hover:scale-110 transition-transform">
+              <Mail className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-bold">Message</span>
+          </div>
+        </Link>
       </div>
-    </Link>
-    <Link href="/teacher/assessments/assignments/create" className="group">
-      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
-        <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-600 group-hover:scale-110 transition-transform">
-          <Edit className="h-6 w-6" />
-        </div>
-        <span className="text-sm font-bold">Assignment</span>
-      </div>
-    </Link>
-    <Link href="/teacher/teaching/lessons/create" className="group">
-      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
-        <div className="p-3 rounded-2xl bg-violet-500/10 text-violet-600 group-hover:scale-110 transition-transform">
-          <BookOpen className="h-6 w-6" />
-        </div>
-        <span className="text-sm font-bold">Lesson</span>
-      </div>
-    </Link>
-    <Link href="/teacher/communication/messages/compose" className="group">
-      <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
-        <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 group-hover:scale-110 transition-transform">
-          <Mail className="h-6 w-6" />
-        </div>
-        <span className="text-sm font-bold">Message</span>
-      </div>
-    </Link>
-  </div>
-</div>
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { AssessmentRuleFormValues, AssessmentRuleUpdateFormValues } from "../schemaValidation/assessmentRulesSchemaValidation";
 
 async function checkPermission(action: "CREATE" | "UPDATE" | "DELETE" | "VIEW") {
@@ -35,15 +36,19 @@ export async function getAssessmentRules() {
 export async function createAssessmentRule(data: AssessmentRuleFormValues) {
     try {
         await checkPermission("CREATE");
+        const { schoolId } = await requireSchoolAccess();
+        if (!schoolId) return { success: false, error: "School context required" };
+        
         const rule = await db.assessmentRule.create({
             data: {
                 name: data.name,
-                classId: data.classId,
-                subjectId: data.subjectId,
+                classId: data.classId || undefined,
+                subjectId: data.subjectId || undefined,
                 ruleType: data.ruleType,
                 examTypes: data.examTypes,
-                count: data.count,
+                count: data.count || undefined,
                 weight: data.weight,
+                schoolId,
             },
         });
         revalidatePath("/admin/assessment/assessment-rules");

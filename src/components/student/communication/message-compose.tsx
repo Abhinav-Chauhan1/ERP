@@ -57,9 +57,9 @@ type MessageFormData = z.infer<typeof messageSchema>;
 
 interface Recipient {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
   avatar: string | null;
   role: string;
   teacher?: {
@@ -261,8 +261,10 @@ export function MessageCompose({
     }
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const getInitials = (firstName: string | null, lastName: string | null) => {
+    const first = firstName?.charAt(0) || "";
+    const last = lastName?.charAt(0) || "";
+    return `${first}${last}`.toUpperCase() || "??";
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -322,7 +324,7 @@ export function MessageCompose({
                           const selected = recipients.find((r) => r.id === selectedRecipientId);
                           return selected ? (
                             <div className="flex items-center gap-2">
-                              <span>{selected.firstName} {selected.lastName}</span>
+                              <span>{(selected.firstName || "")} {(selected.lastName || "")}</span>
                               <Badge variant="outline" className={getRoleBadgeColor(selected.role)}>
                                 {selected.role}
                               </Badge>
@@ -342,7 +344,7 @@ export function MessageCompose({
                           {recipients.map((recipient) => (
                             <CommandItem
                               key={recipient.id}
-                              value={`${recipient.firstName} ${recipient.lastName} ${recipient.email} ${recipient.role}`}
+                              value={`${recipient.firstName || ""} ${recipient.lastName || ""} ${recipient.email || ""} ${recipient.role}`}
                               onSelect={() => {
                                 setValue("recipientId", recipient.id);
                                 setRecipientSearchOpen(false);
@@ -358,7 +360,7 @@ export function MessageCompose({
                               <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <span className="font-medium truncate">
-                                    {recipient.firstName} {recipient.lastName}
+                                    {(recipient.firstName || "")} {(recipient.lastName || "")}
                                   </span>
                                   {recipient.teacher?.subjects &&
                                     recipient.teacher.subjects.length > 0 && (
@@ -399,10 +401,10 @@ export function MessageCompose({
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
-                        {selectedRecipient.firstName} {selectedRecipient.lastName}
+                        {(selectedRecipient.firstName || "")} {(selectedRecipient.lastName || "")}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {selectedRecipient.email}
+                        {selectedRecipient.email || "No email"}
                       </p>
                     </div>
                     <Badge

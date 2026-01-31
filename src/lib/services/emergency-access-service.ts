@@ -169,7 +169,7 @@ class EmergencyAccessService {
       // Log comprehensive audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_DISABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.CRITICAL,
@@ -205,7 +205,7 @@ class EmergencyAccessService {
       // Log the error
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_DISABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.CRITICAL,
@@ -328,7 +328,7 @@ class EmergencyAccessService {
       // Log comprehensive audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_DISABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.CRITICAL,
@@ -363,7 +363,7 @@ class EmergencyAccessService {
       // Log the error
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_DISABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.CRITICAL,
@@ -474,7 +474,7 @@ class EmergencyAccessService {
       // Log audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_ENABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.HIGH,
@@ -602,7 +602,7 @@ class EmergencyAccessService {
       // Log audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'EMERGENCY_ENABLE',
+        action: 'UPDATE' as AuditAction,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.HIGH,
@@ -711,7 +711,7 @@ class EmergencyAccessService {
       performedBy: record.performedBy,
       performedByName: record.performedByUser?.name || 'Unknown',
       performedAt: record.createdAt,
-      disabledUntil: record.disabledUntil,
+      disabledUntil: record.disabledUntil || undefined,
       affectedUsers: record.affectedUsers,
       invalidatedSessions: record.invalidatedSessions,
       isReversed: record.isReversed,
@@ -816,7 +816,7 @@ class EmergencyAccessService {
       isDisabled: true,
       reason: record.reason,
       disabledAt: record.createdAt,
-      disabledUntil: record.disabledUntil,
+      disabledUntil: record.disabledUntil || undefined,
       performedBy: record.performedByUser?.name || 'Unknown'
     };
   }

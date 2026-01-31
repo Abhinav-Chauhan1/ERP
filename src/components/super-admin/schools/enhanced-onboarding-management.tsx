@@ -68,12 +68,12 @@ export function EnhancedOnboardingManagement({ school, onUpdate }: EnhancedOnboa
   const loadProgress = async () => {
     try {
       const result = await getSchoolOnboardingProgress(school.id);
-      if (result.success) {
+      if (result.success && result.data) {
         setProgress(result.data);
       } else {
         // Initialize progress if it doesn't exist
         const initResult = await initializeSchoolOnboardingProgress(school.id);
-        if (initResult.success) {
+        if (initResult.success && initResult.data) {
           setProgress(initResult.data.progress);
         }
       }
@@ -86,7 +86,7 @@ export function EnhancedOnboardingManagement({ school, onUpdate }: EnhancedOnboa
     setIsLoading(true);
     try {
       const result = await resetSchoolOnboardingProgress(school.id);
-      if (result.success) {
+      if (result.success && result.data) {
         toast.success("Onboarding progress reset successfully");
         setProgress(result.data.progress);
         onUpdate?.();

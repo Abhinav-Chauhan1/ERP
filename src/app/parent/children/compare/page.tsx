@@ -129,9 +129,9 @@ export default async function CompareChildrenPage() {
             <CardHeader>
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={child.user.avatar || ""} alt={child.user.firstName} />
+                  <AvatarImage src={child.user.avatar || ""} alt={child.user.firstName || ""} />
                   <AvatarFallback className="text-lg">
-                    {child.user.firstName.charAt(0)}{child.user.lastName.charAt(0)}
+                    {child.user.firstName?.charAt(0) || ""}{child.user.lastName?.charAt(0) || ""}
                   </AvatarFallback>
                 </Avatar>
                 <div>

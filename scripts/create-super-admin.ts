@@ -49,7 +49,7 @@ async function main() {
     // Create audit log entry
     await prisma.auditLog.create({
         data: {
-            action: 'CREATE_SUPER_ADMIN',
+            action: 'CREATE',
             resource: 'USER',
             changes: {
                 email,

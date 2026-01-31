@@ -491,7 +491,7 @@ export class AlertService {
           severity: config.severity,
           title: config.title,
           description: config.description,
-          metadata: config.metadata,
+          metadata: config.metadata as any,
           threshold: config.threshold,
           currentValue: config.currentValue,
           schoolId: config.schoolId,
@@ -499,9 +499,9 @@ export class AlertService {
       });
 
       // Trigger alert delivery
-      await this.deliverAlert(alert);
+      await this.deliverAlert(alert as Alert);
 
-      return { success: true, data: alert };
+      return { success: true, data: alert as Alert };
     } catch (error) {
       console.error('Error creating alert:', error);
       return {
@@ -539,7 +539,7 @@ export class AlertService {
         db.alert.count({ where }),
       ]);
 
-      return { success: true, data: { alerts, total } };
+      return { success: true, data: { alerts: alerts as Alert[], total } };
     } catch (error) {
       console.error('Error getting alerts:', error);
       return {
@@ -560,7 +560,7 @@ export class AlertService {
         },
       });
 
-      return { success: true, data: alert };
+      return { success: true, data: alert as Alert };
     } catch (error) {
       console.error('Error resolving alert:', error);
       return {
@@ -590,7 +590,7 @@ export class AlertService {
           if (!meetsThreshold) continue;
         }
 
-        await this.deliveryManager.deliverAlert(alert, config);
+        await this.deliveryManager.deliverAlert(alert, config as AlertConfig);
       }
     } catch (error) {
       console.error('Error delivering alert:', error);
@@ -660,7 +660,7 @@ export class PerformanceService {
           value,
           unit,
           component,
-          metadata,
+          metadata: metadata as any,
         },
       });
 
@@ -820,10 +820,10 @@ export class ThresholdService {
         let currentValue = 0;
         let status: ThresholdStatusType = 'OK';
 
-        if (config.metadata?.metricType) {
+        if (config.metadata && typeof config.metadata === 'object' && 'metricType' in config.metadata) {
           const latestMetric = await db.systemMetric.findFirst({
             where: {
-              metricName: config.metadata.metricType as string,
+              metricName: (config.metadata as any).metricType as string,
               schoolId: config.schoolId,
             },
             orderBy: { timestamp: 'desc' },
@@ -847,7 +847,7 @@ export class ThresholdService {
           threshold: config.threshold,
           status,
           lastChecked: new Date(),
-          metadata: config.metadata,
+          metadata: config.metadata as Record<string, unknown> | undefined,
         });
       }
 
@@ -982,7 +982,7 @@ export class MonitoringService {
           responseTime,
           errorRate,
           lastChecked: new Date(),
-          metadata,
+          metadata: metadata as any,
         },
         create: {
           component,
@@ -990,7 +990,7 @@ export class MonitoringService {
           responseTime,
           errorRate,
           lastChecked: new Date(),
-          metadata,
+          metadata: metadata as any,
         },
       });
 
@@ -1023,17 +1023,28 @@ export class MonitoringService {
           },
         },
         orderBy: { createdAt: 'asc' },
-      }) as ErrorLogData[];
+      });
 
-      const totalErrors = errors.length;
-      const criticalErrors = errors.filter(e => e.severity === 'CRITICAL').length;
-      const resolvedErrors = errors.filter(e => e.resolved).length;
+      // Transform to ErrorLogData format
+      const transformedErrors: ErrorLogData[] = errors.map(error => ({
+        id: error.id,
+        category: error.category || 'unknown',
+        channel: error.channel || 'unknown',
+        severity: error.severity as BottleneckSeverity,
+        errorMessage: error.message || 'No message',
+        resolved: error.resolved,
+        createdAt: error.createdAt,
+      }));
+
+      const totalErrors = transformedErrors.length;
+      const criticalErrors = transformedErrors.filter(e => e.severity === 'CRITICAL').length;
+      const resolvedErrors = transformedErrors.filter(e => e.resolved).length;
       const errorRate = totalErrors > 0 ? (totalErrors / (totalErrors + 1000)) * 100 : 0;
 
-      const errorsByType = this.groupErrorsByField(errors, 'category');
-      const errorsByComponent = this.groupErrorsByField(errors, 'channel');
-      const trends = this.createErrorTimeSeries(errors, validatedTimeRange);
-      const topErrors = this.getTopErrors(errors);
+      const errorsByType = this.groupErrorsByField(transformedErrors, 'category');
+      const errorsByComponent = this.groupErrorsByField(transformedErrors, 'channel');
+      const trends = this.createErrorTimeSeries(transformedErrors, validatedTimeRange);
+      const topErrors = this.getTopErrors(transformedErrors);
 
       const analysis: ErrorAnalysis = {
         timeRange: validatedTimeRange,
@@ -1141,13 +1152,13 @@ export class MonitoringService {
           notifyAdmins: validatedConfig.notifyAdmins,
           notifyEmail: validatedConfig.notifyEmail,
           emailRecipients: validatedConfig.emailRecipients || [],
-          metadata: validatedConfig.metadata,
+          metadata: validatedConfig.metadata as any,
           schoolId: validatedConfig.schoolId,
           createdBy,
         },
       });
 
-      return { success: true, data: alertConfig };
+      return { success: true, data: alertConfig as AlertConfig };
     } catch (error) {
       console.error('Error creating alert config:', error);
       return {
@@ -1169,11 +1180,11 @@ export class MonitoringService {
           ...(updates.notifyAdmins !== undefined && { notifyAdmins: updates.notifyAdmins }),
           ...(updates.notifyEmail !== undefined && { notifyEmail: updates.notifyEmail }),
           ...(updates.emailRecipients && { emailRecipients: updates.emailRecipients }),
-          ...(updates.metadata && { metadata: updates.metadata }),
+          ...(updates.metadata && { metadata: updates.metadata as any }),
         },
       });
 
-      return { success: true, data: alertConfig };
+      return { success: true, data: alertConfig as AlertConfig };
     } catch (error) {
       console.error('Error updating alert config:', error);
       return {
@@ -1200,7 +1211,7 @@ export class MonitoringService {
         orderBy: { createdAt: 'desc' },
       });
 
-      return { success: true, data: configs };
+      return { success: true, data: configs as AlertConfig[] };
     } catch (error) {
       console.error('Error getting alert configs:', error);
       return {
@@ -1227,7 +1238,7 @@ export class MonitoringService {
           metricName,
           value,
           unit,
-          tags,
+          tags: tags as any,
           schoolId,
         },
       });

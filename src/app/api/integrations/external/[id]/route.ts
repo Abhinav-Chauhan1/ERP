@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { configurationService } from '@/lib/services/configuration-service';
+import { db } from '@/lib/db';
+import { environmentConfigurationManager } from '@/lib/services/configuration-service';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -35,20 +36,24 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const integration = await configurationService.getExternalIntegrationById(params.id);
+    const { id } = await params;
     
-    if (!integration) {
-      return NextResponse.json({ error: 'Integration not found' }, { status: 404 });
-    }
+    // TODO: Implement integration configuration model
+    return NextResponse.json(
+      { error: 'Integration configuration not implemented' },
+      { status: 501 }
+    );
 
+    /*
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'EXTERNAL_INTEGRATION',
-      resourceId: params.id,
+      resourceId: id,
     });
 
     return NextResponse.json(integration);
+    */
   } catch (error) {
     console.error('Error fetching external integration:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -61,7 +66,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -74,9 +79,17 @@ export async function PUT(
 
     const body = await request.json();
     const validatedData = updateIntegrationSchema.parse(body);
+    const { id } = await params;
 
+    // TODO: Implement integration configuration model
+    return NextResponse.json(
+      { error: 'Integration configuration not implemented' },
+      { status: 501 }
+    );
+
+    /*
     const integration = await configurationService.updateExternalIntegration(
-      params.id,
+      id,
       validatedData
     );
 
@@ -84,11 +97,12 @@ export async function PUT(
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'EXTERNAL_INTEGRATION',
-      resourceId: params.id,
+      resourceId: id,
       changes: validatedData,
     });
 
     return NextResponse.json(integration);
+    */
   } catch (error) {
     console.error('Error updating external integration:', error);
     
@@ -109,7 +123,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -120,13 +134,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await configurationService.deleteExternalIntegration(params.id);
+    const { id } = await params;
+    await environmentConfigurationManager.deleteExternalIntegration(id);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.DELETE,
       resource: 'EXTERNAL_INTEGRATION',
-      resourceId: params.id,
+      resourceId: id,
     });
 
     return NextResponse.json({ message: 'Integration deleted successfully' });

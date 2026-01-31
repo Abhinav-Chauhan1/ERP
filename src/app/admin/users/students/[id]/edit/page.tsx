@@ -195,12 +195,12 @@ export default function EditStudentPage() {
 
         setUserId(student.userId);
         setStudentAvatar(student.user.avatar || null);
-        setStudentName(`${student.user.firstName} ${student.user.lastName}`);
+        setStudentName(`${student.user.firstName || ''} ${student.user.lastName || ''}`);
 
         form.reset({
-          firstName: student.user.firstName,
-          lastName: student.user.lastName,
-          email: student.user.email,
+          firstName: student.user.firstName || "",
+          lastName: student.user.lastName || "",
+          email: student.user.email || "",
           phone: student.user.phone || "",
           role: UserRole.STUDENT,
           active: student.user.active ?? true,

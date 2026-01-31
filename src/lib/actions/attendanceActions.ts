@@ -737,7 +737,6 @@ export async function getStudentsForDropdown() {
           include: {
             class: true,
             section: true,
-            take: 1,
           },
         },
       },
@@ -827,6 +826,8 @@ export async function markTeacherAttendance(data: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    
     const startOfDay = new Date(data.date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(data.date);
@@ -850,8 +851,8 @@ export async function markTeacherAttendance(data: {
         where: { id: existing.id },
         data: {
           status: data.status,
-          reason: data.reason,
-          markedBy: data.markedBy,
+          reason: data.reason || undefined,
+          markedBy: data.markedBy || undefined,
         },
       });
       return { success: true, data: updated };
@@ -862,8 +863,8 @@ export async function markTeacherAttendance(data: {
           teacherId: data.teacherId,
           date: data.date,
           status: data.status,
-          reason: data.reason,
-          markedBy: data.markedBy,
+          reason: data.reason || undefined,
+          markedBy: data.markedBy || undefined,
           schoolId,
         },
       });

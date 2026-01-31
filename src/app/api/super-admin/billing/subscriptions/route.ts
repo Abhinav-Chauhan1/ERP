@@ -33,10 +33,29 @@ export async function GET(request: NextRequest) {
     // Check authentication and authorization
     const authResult = await requireSuperAdmin(request);
     if (authResult instanceof NextResponse) return authResult;
+    
+    if (!authResult.success) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const { user } = authResult;
 
     // Validate and parse query parameters
     const { searchParams } = new URL(request.url);
-    const queryParams = validateQuery(subscriptionQuerySchema)(searchParams);
+    
+    // Convert string parameters to appropriate types
+    const rawParams = {
+      schoolId: searchParams.get('schoolId') || undefined,
+      status: searchParams.get('status') || undefined,
+      planId: searchParams.get('planId') || undefined,
+      search: searchParams.get('search') || undefined,
+      limit: parseInt(searchParams.get('limit') || '10'),
+      offset: parseInt(searchParams.get('offset') || '0'),
+      sortBy: searchParams.get('sortBy') || 'createdAt',
+      sortOrder: searchParams.get('sortOrder') || 'desc'
+    };
+    
+    const queryParams = subscriptionQuerySchema.parse(rawParams);
 
     // Sanitize input
     const sanitizedParams = sanitizeRequest(queryParams);
@@ -49,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     // Log audit event
     await logAuditEvent({
-      userId: authResult.user.id,
+      userId: user.id,
       action: AuditAction.READ,
       resource: 'SUBSCRIPTION',
       metadata: {
@@ -83,6 +102,12 @@ export async function POST(request: NextRequest) {
     // Check authentication and authorization
     const authResult = await requireSuperAdmin(request);
     if (authResult instanceof NextResponse) return authResult;
+    
+    if (!authResult.success) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const { user } = authResult;
 
     // Validate and parse request body
     const validatedData = await validateRequest(createSubscriptionSchema)(request);
@@ -98,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // Log audit event
     await logAuditEvent({
-      userId: authResult.user.id,
+      userId: user.id,
       action: AuditAction.CREATE,
       resource: 'SUBSCRIPTION',
       resourceId: subscription.id,

@@ -26,6 +26,15 @@ export default async function ChildAttendancePage({
     notFound();
   }
 
+  // Type assertion to help TypeScript understand the student includes user relation
+  const studentWithUser = childDetails.student as typeof childDetails.student & {
+    user: {
+      firstName: string | null;
+      lastName: string | null;
+      avatar: string | null;
+    };
+  };
+
   // Get attendance records for the past 6 months
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -70,7 +79,7 @@ export default async function ChildAttendancePage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Calendar className="h-6 w-6 text-primary" />
-          Attendance - {childDetails.student.user.firstName} {childDetails.student.user.lastName}
+          Attendance - {studentWithUser.user.firstName || ''} {studentWithUser.user.lastName || ''}
         </h1>
         <p className="text-muted-foreground mt-1">
           Detailed attendance records and calendar visualization

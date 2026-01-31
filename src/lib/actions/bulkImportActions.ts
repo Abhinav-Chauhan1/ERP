@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { auth } from "@/auth";
 import { parse, isValid } from "date-fns";
 import { hashPassword } from "@/lib/password";
 import { UserRole } from "@prisma/client";
@@ -302,6 +301,7 @@ export async function importStudents(
         data: {
           user: {
             create: {
+              name: `${validated.firstName} ${validated.lastName}`,
               firstName: validated.firstName,
               lastName: validated.lastName,
               email: validated.email,
@@ -319,7 +319,9 @@ export async function importStudents(
           bloodGroup: validated.bloodGroup,
           emergencyContact: validated.emergencyContact,
           rollNumber: validated.rollNumber,
-          schoolId,
+          school: {
+            connect: { id: schoolId }
+          },
         },
       });
 
@@ -470,6 +472,7 @@ export async function importTeachers(
         data: {
           user: {
             create: {
+              name: `${validated.firstName} ${validated.lastName}`,
               firstName: validated.firstName,
               lastName: validated.lastName,
               email: validated.email,
@@ -483,7 +486,9 @@ export async function importTeachers(
           qualification: validated.qualification,
           joinDate: parseImportDate(validated.joinDate),
           salary: validated.salary ? parseFloat(validated.salary) : undefined,
-          schoolId,
+          school: {
+            connect: { id: schoolId }
+          },
         },
       });
 
@@ -632,6 +637,7 @@ export async function importParents(
         data: {
           user: {
             create: {
+              name: `${validated.firstName} ${validated.lastName}`,
               firstName: validated.firstName,
               lastName: validated.lastName,
               email: validated.email,
@@ -642,7 +648,9 @@ export async function importParents(
             }
           },
           occupation: validated.occupation,
-          schoolId,
+          school: {
+            connect: { id: schoolId }
+          },
         },
       });
 

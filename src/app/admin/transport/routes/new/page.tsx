@@ -29,7 +29,7 @@ export default async function NewRoutePage() {
         </div>
       </div>
 
-      <RouteForm vehicles={vehicles} />
+      <RouteForm vehicles={vehicles as any} />
     </div>
   );
 }

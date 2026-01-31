@@ -943,6 +943,7 @@ export async function submitQuizAttempt(data: {
         attemptNumber: attemptCount + 1,
         submittedAt: new Date(),
         timeSpent: data.timeSpent,
+        schoolId,
       },
     });
 

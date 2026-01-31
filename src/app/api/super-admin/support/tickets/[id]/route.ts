@@ -27,7 +27,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -38,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const ticket = await supportService.getTicketById(params.id);
+    const ticket = await supportService.getTicketById((await params).id);
     
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
@@ -48,7 +48,7 @@ export async function GET(
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SUPPORT_TICKET',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json(ticket);
@@ -64,7 +64,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -78,13 +78,17 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateTicketSchema.parse(body);
 
-    const ticket = await supportService.updateTicket(params.id, validatedData);
+    const ticket = await supportService.updateTicket(
+      (await params).id, 
+      validatedData, 
+      session.user.id
+    );
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.UPDATE,
       resource: 'SUPPORT_TICKET',
-      resourceId: params.id,
+      resourceId: (await params).id,
       changes: validatedData,
     });
 

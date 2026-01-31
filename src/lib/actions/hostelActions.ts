@@ -30,13 +30,14 @@ export async function createHostel(data: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const hostel = await prisma.hostel.create({
       data: withSchoolId({
         name: data.name,
         address: data.address,
         capacity: data.capacity,
-        wardenId: data.wardenId,
+        wardenId: data.wardenId || null,
         wardenName: data.wardenName,
         wardenPhone: data.wardenPhone,
         type: data.type,
@@ -66,6 +67,7 @@ export async function updateHostel(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Verify ownership
     const existing = await prisma.hostel.findFirst({
@@ -78,7 +80,10 @@ export async function updateHostel(
 
     const hostel = await prisma.hostel.update({
       where: { id },
-      data,
+      data: {
+        ...data,
+        wardenId: data.wardenId || null,
+      },
     });
 
     revalidatePath("/admin/hostel");
@@ -92,6 +97,7 @@ export async function updateHostel(
 export async function getHostels() {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const hostels = await prisma.hostel.findMany({
       where: { schoolId },
@@ -124,6 +130,7 @@ export async function getHostels() {
 export async function getHostelById(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const hostel = await prisma.hostel.findFirst({
       where: { id, schoolId },
@@ -171,6 +178,7 @@ export async function getHostelById(id: string) {
 export async function deleteHostel(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Verify ownership
     const existing = await prisma.hostel.findFirst({
@@ -208,6 +216,7 @@ export async function createHostelRoom(data: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Verify hostel belongs to school
     const hostel = await prisma.hostel.findFirst({
@@ -252,6 +261,7 @@ export async function updateHostelRoom(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Verify room ownership via schoolId
     const existing = await prisma.hostelRoom.findFirst({
@@ -278,6 +288,7 @@ export async function updateHostelRoom(
 export async function getHostelRooms(hostelId: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const rooms = await prisma.hostelRoom.findMany({
       where: {
@@ -314,6 +325,7 @@ export async function getHostelRooms(hostelId: string) {
 export async function deleteHostelRoom(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const existing = await prisma.hostelRoom.findFirst({
       where: { id, schoolId },
@@ -650,6 +662,7 @@ export async function generateHostelFee(data: {
         totalAmount,
         balance: totalAmount,
         dueDate: data.dueDate,
+        schoolId,
       },
     });
 

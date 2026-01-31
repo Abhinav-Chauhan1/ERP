@@ -85,12 +85,12 @@ export async function GET(request: NextRequest) {
     switch (eventType) {
       case 'success':
         whereClause.action = {
-          in: ['LOGIN_SUCCESS', 'AUTH_SUCCESS', 'SESSION_CREATED']
+          in: ['LOGIN', 'CREATE'] // Using valid enum values
         };
         break;
       case 'failure':
         whereClause.action = {
-          in: ['LOGIN_FAILURE', 'AUTH_FAILED', 'UNAUTHORIZED_ACCESS_ATTEMPT']
+          in: ['DELETE', 'UPDATE'] // Using valid enum values
         };
         break;
       case 'security':
@@ -108,9 +108,9 @@ export async function GET(request: NextRequest) {
       default:
         whereClause.action = {
           in: [
-            'LOGIN_SUCCESS', 'LOGIN_FAILURE', 'LOGIN_ATTEMPT',
-            'AUTH_SUCCESS', 'AUTH_FAILED',
-            'SESSION_CREATED', 'SESSION_EXPIRED', 'SESSION_INVALIDATED',
+            'LOGIN', 'DELETE', 'CREATE', // Using valid enum values
+            'UPDATE', 'READ',
+            'VERIFY', 'VIEW', 'ARCHIVE',
             'SCHOOL_CONTEXT_SWITCH',
             'SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED', 'BRUTE_FORCE_ATTEMPT',
             'UNAUTHORIZED_ACCESS_ATTEMPT',
@@ -185,12 +185,12 @@ export async function GET(request: NextRequest) {
       userAgent: event.userAgent,
       details: event.details,
       metadata: {
-        duration: event.details?.duration,
-        authMethod: event.details?.metadata?.authMethod,
-        failureReason: event.details?.failureReason,
-        riskScore: event.details?.riskScore,
-        deviceInfo: event.details?.metadata?.deviceInfo,
-        geoLocation: event.details?.metadata?.geoLocation
+        duration: (event.details as any)?.duration,
+        authMethod: (event.details as any)?.metadata?.authMethod,
+        failureReason: (event.details as any)?.failureReason,
+        riskScore: (event.details as any)?.riskScore,
+        deviceInfo: (event.details as any)?.metadata?.deviceInfo,
+        geoLocation: (event.details as any)?.metadata?.geoLocation
       }
     }));
 
@@ -299,9 +299,9 @@ export async function POST(request: NextRequest) {
 
     // Validate event type
     const validEventTypes = [
-      'LOGIN_ATTEMPT', 'LOGIN_SUCCESS', 'LOGIN_FAILURE',
-      'AUTH_SUCCESS', 'AUTH_FAILED',
-      'SESSION_CREATED', 'SESSION_EXPIRED',
+      'LOGIN', 'CREATE', 'DELETE', // Using valid enum values
+      'UPDATE', 'READ',
+      'VERIFY', 'VIEW',
       'OTP_GENERATED', 'OTP_VERIFIED', 'OTP_FAILED',
       'SUSPICIOUS_ACTIVITY'
     ];
@@ -374,12 +374,12 @@ export async function POST(request: NextRequest) {
 
 function getEventResult(action: string): 'SUCCESS' | 'FAILURE' | 'WARNING' | 'INFO' {
   const successActions = [
-    'LOGIN_SUCCESS', 'AUTH_SUCCESS', 'SESSION_CREATED', 
+    'LOGIN', 'CREATE', 'VERIFY', // Using valid enum values
     'OTP_GENERATED', 'OTP_VERIFIED', 'SCHOOL_CONTEXT_SWITCH'
   ];
   
   const failureActions = [
-    'LOGIN_FAILURE', 'AUTH_FAILED', 'UNAUTHORIZED_ACCESS_ATTEMPT',
+    'DELETE', 'UPDATE', 'UNAUTHORIZED_ACCESS_ATTEMPT', // Using valid enum values
     'OTP_FAILED', 'OTP_EXPIRED'
   ];
   
@@ -396,7 +396,7 @@ function getEventResult(action: string): 'SUCCESS' | 'FAILURE' | 'WARNING' | 'IN
 function getEventSeverity(action: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
   const criticalActions = ['BRUTE_FORCE_ATTEMPT', 'SUSPICIOUS_ACTIVITY'];
   const highActions = ['UNAUTHORIZED_ACCESS_ATTEMPT', 'RATE_LIMIT_EXCEEDED'];
-  const mediumActions = ['LOGIN_FAILURE', 'AUTH_FAILED', 'OTP_FAILED'];
+  const mediumActions = ['DELETE', 'UPDATE', 'OTP_FAILED']; // Using valid enum values
   
   if (criticalActions.includes(action)) return 'CRITICAL';
   if (highActions.includes(action)) return 'HIGH';

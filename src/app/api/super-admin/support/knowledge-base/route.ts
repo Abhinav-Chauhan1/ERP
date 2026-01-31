@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       offset: parseInt(searchParams.get('offset') || '0'),
     };
 
-    const articles = await supportService.getKnowledgeBaseArticles(filters);
+    const result = await supportService.getKnowledgeBaseArticles(filters);
 
     await logAuditEvent({
       userId: session.user.id,
@@ -51,11 +51,11 @@ export async function GET(request: NextRequest) {
       resource: 'KNOWLEDGE_BASE',
       metadata: {
         filters,
-        resultCount: articles.length,
+        resultCount: result.articles.length,
       },
     });
 
-    return NextResponse.json(articles);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching knowledge base articles:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
     const article = await supportService.createKnowledgeBaseArticle({
       ...validatedData,
       authorId: session.user.id,
+      tags: validatedData.tags || [],
     });
 
     await logAuditEvent({

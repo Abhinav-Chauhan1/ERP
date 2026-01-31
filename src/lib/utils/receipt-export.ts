@@ -10,7 +10,7 @@ interface ReceiptExportData {
   referenceNumber: string;
   status: ReceiptStatus;
   studentName: string;
-  studentEmail: string;
+  studentEmail: string | null;
   admissionNumber?: string | null;
   class: string;
   section: string;
@@ -56,7 +56,7 @@ export function exportReceiptsToCSV(receipts: ReceiptExportData[]): string {
     receipt.referenceNumber,
     formatStatus(receipt.status),
     receipt.studentName,
-    receipt.studentEmail,
+    receipt.studentEmail || "N/A",
     receipt.admissionNumber || "N/A",
     receipt.class,
     receipt.section,

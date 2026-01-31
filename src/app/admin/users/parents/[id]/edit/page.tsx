@@ -80,9 +80,9 @@ export default function EditParentPage({ params }: EditParentPageProps) {
         }
 
         form.reset({
-          firstName: parent.user.firstName,
-          lastName: parent.user.lastName,
-          email: parent.user.email,
+          firstName: parent.user.firstName || "",
+          lastName: parent.user.lastName || "",
+          email: parent.user.email || "",
           phone: parent.user.phone || "",
           role: UserRole.PARENT,
           active: parent.user.active,

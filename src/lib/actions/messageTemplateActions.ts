@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { MessageType, WhatsAppTemplateStatus } from "@prisma/client";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 export interface MessageTemplateInput {
   name: string;
@@ -145,6 +146,9 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Validate required fields
     if (!data.name || !data.body) {
       return { success: false, error: "Name and body are required" };
@@ -160,9 +164,14 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
       return { success: false, error: "WhatsApp template name is required for WhatsApp templates" };
     }
 
-    // Check if template name already exists
+    // Check if template name already exists for this school
     const existing = await db.messageTemplate.findUnique({
-      where: { name: data.name },
+      where: { 
+        schoolId_name: {
+          schoolId: schoolId || "",
+          name: data.name
+        }
+      },
     });
 
     if (existing) {
@@ -180,15 +189,14 @@ export async function createMessageTemplate(data: MessageTemplateInput) {
         body: data.body,
         variables: JSON.stringify(data.variables || []),
         isActive: data.isActive ?? true,
-        isDefault: data.isDefault ?? false,
+        isDefault: false,
         createdBy: dbUser.id,
-        // WhatsApp fields
         whatsappTemplateName: data.whatsappTemplateName,
         whatsappTemplateId: data.whatsappTemplateId,
         whatsappLanguage: data.whatsappLanguage,
         whatsappStatus: data.whatsappStatus,
-        // SMS fields
         dltTemplateId: data.dltTemplateId,
+        schoolId: schoolId || "",
       },
     });
 
@@ -230,6 +238,9 @@ export async function updateMessageTemplate(id: string, data: Partial<MessageTem
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Check if template exists
     const existing = await db.messageTemplate.findUnique({
       where: { id },
@@ -247,7 +258,12 @@ export async function updateMessageTemplate(id: string, data: Partial<MessageTem
     // If name is being changed, check for duplicates
     if (data.name && data.name !== existing.name) {
       const duplicate = await db.messageTemplate.findUnique({
-        where: { name: data.name },
+        where: { 
+          schoolId_name: {
+            schoolId: schoolId || "",
+            name: data.name
+          }
+        },
       });
 
       if (duplicate) {
@@ -477,6 +493,9 @@ export async function duplicateMessageTemplate(id: string) {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Get original template
     const original = await db.messageTemplate.findUnique({
       where: { id },
@@ -490,8 +509,15 @@ export async function duplicateMessageTemplate(id: string) {
     let newName = `${original.name} (Copy)`;
     let counter = 1;
     
-    // Ensure unique name
-    while (await db.messageTemplate.findUnique({ where: { name: newName } })) {
+    // Ensure unique name for this school
+    while (await db.messageTemplate.findUnique({ 
+      where: { 
+        schoolId_name: {
+          schoolId: schoolId || "",
+          name: newName
+        }
+      } 
+    })) {
       counter++;
       newName = `${original.name} (Copy ${counter})`;
     }
@@ -508,6 +534,10 @@ export async function duplicateMessageTemplate(id: string) {
         isActive: original.isActive,
         isDefault: false, // Duplicates are never default
         createdBy: dbUser.id,
+        whatsappTemplateName: original.whatsappTemplateName,
+        whatsappLanguage: original.whatsappLanguage,
+        dltTemplateId: original.dltTemplateId,
+        schoolId: schoolId || "",
       },
     });
 

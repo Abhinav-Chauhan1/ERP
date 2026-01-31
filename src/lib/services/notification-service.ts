@@ -8,6 +8,7 @@
  */
 
 import { db } from '@/lib/db';
+import { getSystemSettings } from '@/lib/utils/cached-queries';
 import { Notification, AttendanceStatus } from '@prisma/client';
 import { sendSMS } from './sms-service';
 
@@ -17,6 +18,7 @@ export interface CreateNotificationInput {
   message: string;
   type?: string;
   link?: string;
+  schoolId: string;
 }
 
 export interface NotificationSummary {
@@ -41,7 +43,8 @@ export async function createNotification(
       message: input.message,
       type: input.type ?? 'INFO',
       link: input.link,
-      isRead: false
+      isRead: false,
+      schoolId: input.schoolId
     }
   });
 }
@@ -63,6 +66,7 @@ export async function createReminderNotification(
   eventTitle: string,
   eventDate: Date,
   eventTime: string,
+  schoolId: string,
   location?: string,
   eventId?: string
 ): Promise<Notification> {
@@ -80,7 +84,8 @@ export async function createReminderNotification(
     title: `Reminder: ${eventTitle}`,
     message,
     type: 'REMINDER',
-    link: eventId ? `/calendar?event=${eventId}` : undefined
+    link: eventId ? `/calendar?event=${eventId}` : undefined,
+    schoolId
   });
 }
 
@@ -248,7 +253,8 @@ export async function deleteOldNotifications(
 export async function sendAttendanceNotification(
   studentId: string,
   status: AttendanceStatus,
-  date: Date
+  date: Date,
+  schoolId: string
 ): Promise<{ success: boolean; smsSent?: boolean; notificationCreated?: boolean }> {
   try {
     // Only notify for ABSENT or LATE
@@ -257,7 +263,7 @@ export async function sendAttendanceNotification(
     }
 
     // 1. Check System Settings
-    const systemSettings = await db.systemSettings.findFirst();
+    const systemSettings = await getSystemSettings();
 
     // Default to true if settings don't exist (safety fallback)
     const smsEnabledSystem = systemSettings?.smsEnabled ?? false;
@@ -323,7 +329,8 @@ export async function sendAttendanceNotification(
         title: `Attendance Alert: ${status}`,
         message: `You have been marked ${status} for ${date.toLocaleDateString()}`,
         type: 'ATTENDANCE',
-        link: '/student/academics/attendance'
+        link: '/student/academics/attendance',
+        schoolId
       });
       notificationCreated = true;
     }
@@ -343,7 +350,8 @@ export async function sendAttendanceNotification(
           title: `Attendance Alert: ${student.user.firstName}`,
           message: `${student.user.firstName} has been marked ${status} for ${date.toLocaleDateString()}`,
           type: 'ATTENDANCE', // Or separate PARENT_ATTENDANCE type
-          link: `/parent/children/${student.id}/attendance`
+          link: `/parent/children/${student.id}/attendance`,
+          schoolId
         });
         notificationCreated = true;
 

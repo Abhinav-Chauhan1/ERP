@@ -520,8 +520,8 @@ export class SubscriptionService {
           type: 'proration',
           previousPlan: subscription.plan.name,
           newPlan: newPlan.name,
-          prorationDetails: proration,
-        },
+          prorationDetails: JSON.parse(JSON.stringify(proration)),
+        } as any,
       },
     });
   }
@@ -644,7 +644,7 @@ export class SubscriptionService {
       if (subscription.razorpaySubscriptionId) {
         await this.cancelExternalSubscription(
           subscription.razorpaySubscriptionId, 
-          options.immediate
+          options.immediate ?? false
         );
       }
 

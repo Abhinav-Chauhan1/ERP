@@ -118,6 +118,8 @@ async function sendGraduationNotifications(
   ceremonyDetails?: GraduationCeremonyDetails
 ): Promise<number> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return 0;
     // Fetch students with parent information
     const students = await db.student.findMany({
       where: {
@@ -153,6 +155,7 @@ async function sendGraduationNotifications(
             recipientId: student.userId,
             subject: "Congratulations on Your Graduation!",
             content: message,
+            schoolId,
           },
         });
         notificationCount++;
@@ -169,6 +172,7 @@ async function sendGraduationNotifications(
               recipientId: parentRelation.parent.userId,
               subject: `Congratulations! ${student.user.firstName} ${student.user.lastName} has graduated`,
               content: message,
+              schoolId,
             },
           });
           notificationCount++;

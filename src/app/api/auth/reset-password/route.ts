@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (!resetToken) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'REJECT',
         resource: 'password_reset',
         changes: {
           reason: 'INVALID_TOKEN',
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (!resetToken.identifier.startsWith("password-reset:")) {
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'LOGIN',
         resource: 'password_reset',
         changes: {
           reason: 'INVALID_TOKEN_TYPE',
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'LOGIN',
         resource: 'password_reset',
         changes: {
           reason: 'TOKEN_EXPIRED',
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
       await logAuditEvent({
         userId: null,
-        action: 'FAILED',
+        action: 'LOGIN',
         resource: 'password_reset',
         changes: {
           reason: 'USER_NOT_FOUND',
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     // (The JWT service will check this during token validation)
     await logAuditEvent({
       userId: user.id,
-      action: 'REVOKE',
+      action: 'DELETE',
       resource: 'jwt_token',
       changes: {
         reason: 'PASSWORD_RESET',
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     // Log error using unified audit system
     await logAuditEvent({
       userId: null,
-      action: 'ERROR',
+      action: 'CREATE',
       resource: 'password_reset',
       changes: {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -9,6 +9,7 @@
  */
 
 import { db } from '@/lib/db';
+import { getSystemSettings } from '@/lib/utils/cached-queries';
 import {
   CommunicationChannel,
   NotificationType,
@@ -426,7 +427,7 @@ export async function sendNotification(
     const { userId, type, title, message, data, channels: overrideChannels } = params;
 
     // 1. Get System Settings to determine globally allowed channels for this event type
-    const systemSettings = await db.systemSettings.findFirst();
+    const systemSettings = await getSystemSettings();
     let allowedSystemChannels: CommunicationChannel[] = [];
 
     // Default to all channels if settings missing (fallback)

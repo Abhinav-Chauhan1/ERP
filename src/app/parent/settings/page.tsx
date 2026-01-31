@@ -50,7 +50,19 @@ export default async function ParentSettingsPage() {
     );
   }
 
-  const { profile, settings } = settingsResult.data;
+  const { profile: rawProfile, settings } = settingsResult.data;
+  
+  // Transform profile to ensure firstName and lastName are strings
+  const profile = {
+    ...rawProfile,
+    user: {
+      ...rawProfile.user,
+      firstName: rawProfile.user.firstName || '',
+      lastName: rawProfile.user.lastName || '',
+      email: rawProfile.user.email || '',
+      phone: rawProfile.user.phone || null,
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

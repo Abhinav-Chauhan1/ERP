@@ -2113,6 +2113,66 @@ export class EnvironmentConfigurationManager {
       throw new Error('Failed to get environment summary')
     }
   }
+
+  // External Integration Methods
+  async getExternalIntegrations(): Promise<any[]> {
+    try {
+      return await db.integrationConfiguration.findMany({
+        where: { isActive: true }
+      });
+    } catch (error) {
+      console.error('Failed to get external integrations:', error);
+      throw new Error('Failed to get external integrations');
+    }
+  }
+
+  async getExternalIntegrationById(id: string): Promise<any> {
+    try {
+      return await db.integrationConfiguration.findUnique({
+        where: { id }
+      });
+    } catch (error) {
+      console.error('Failed to get external integration:', error);
+      throw new Error('Failed to get external integration');
+    }
+  }
+
+  async createExternalIntegration(data: any): Promise<any> {
+    try {
+      return await db.integrationConfiguration.create({
+        data: {
+          ...data,
+          environment: process.env.NODE_ENV || 'development'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to create external integration:', error);
+      throw new Error('Failed to create external integration');
+    }
+  }
+
+  async updateExternalIntegration(id: string, data: any): Promise<any> {
+    try {
+      return await db.integrationConfiguration.update({
+        where: { id },
+        data
+      });
+    } catch (error) {
+      console.error('Failed to update external integration:', error);
+      throw new Error('Failed to update external integration');
+    }
+  }
+
+  async deleteExternalIntegration(id: string): Promise<void> {
+    try {
+      await db.integrationConfiguration.delete({
+        where: { id }
+      });
+    } catch (error) {
+      console.error('Failed to delete external integration:', error);
+      throw new Error('Failed to delete external integration');
+    }
+  }
 }
 
 // Export environment configuration manager

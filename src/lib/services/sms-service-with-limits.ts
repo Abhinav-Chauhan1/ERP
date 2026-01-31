@@ -29,6 +29,7 @@ export async function sendSMS(
     from?: string;
     priority?: 'low' | 'normal' | 'high';
     scheduleTime?: Date;
+    dltTemplateId?: string;
   }
 ): Promise<SMSSendResult> {
   // Check if school can send SMS messages
@@ -44,7 +45,7 @@ export async function sendSMS(
   }
 
   // Send the SMS
-  const result = await coreSendSMS(to, message, options);
+  const result = await coreSendSMS(to, message, options?.dltTemplateId);
 
   // Increment usage counter on success
   if (result.success) {
@@ -66,6 +67,7 @@ export async function sendBulkSMS(
     from?: string;
     priority?: 'low' | 'normal' | 'high';
     scheduleTime?: Date;
+    dltTemplateId?: string;
   }
 ): Promise<Array<SMSSendResult>> {
   const messageCount = messages.length;
@@ -83,7 +85,9 @@ export async function sendBulkSMS(
   }
 
   // Send the bulk SMS
-  const results = await coreSendBulkSMS(messages, options);
+  const recipients = messages.map(msg => msg.to);
+  const messageBody = messages[0]?.body || ''; // Assuming all messages have the same body for bulk SMS
+  const results = await coreSendBulkSMS(recipients, messageBody, options?.dltTemplateId);
 
   // Count successful sends and increment usage counter
   const successCount = results.filter(result => result.success).length;
@@ -104,6 +108,7 @@ export async function sendSMSWithRetry(
     from?: string;
     priority?: 'low' | 'normal' | 'high';
     scheduleTime?: Date;
+    dltTemplateId?: string;
   },
   maxRetries: number = 3,
   retryConfig?: any
@@ -121,7 +126,7 @@ export async function sendSMSWithRetry(
   }
 
   // Send the SMS with retry
-  const result = await coreSendSMSWithRetry(to, message, options, maxRetries, retryConfig);
+  const result = await coreSendSMSWithRetry(to, message, options?.dltTemplateId, maxRetries);
 
   // Increment usage counter on success
   if (result.success) {

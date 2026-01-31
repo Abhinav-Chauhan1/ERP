@@ -41,7 +41,7 @@ async function checkPermission(resource: string, action: PermissionAction, error
 // Get all fee structures with related data
 export const getFeeStructures = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: FeeStructureFilters) => {
   try {
-    const feeStructures = await feeStructureService.getFeeStructures({ ...filters, schoolId } || { schoolId });
+    const feeStructures = await feeStructureService.getFeeStructures(filters ? { ...filters, schoolId } : { schoolId });
     return { success: true, data: feeStructures };
   } catch (error) {
     console.error("Error fetching fee structures:", error);
@@ -607,18 +607,29 @@ export const bulkCreateFeeStructuresByClass = withSchoolAuthAction(async (school
           data: {
             name: structure.name,
             academicYearId,
+            schoolId,
             validFrom: new Date(),
             isActive: true,
             isTemplate: false,
             classes: {
               create: classIds.map((classId) => ({
-                classId,
+                class: {
+                  connect: { id: classId }
+                },
+                school: {
+                  connect: { id: schoolId }
+                }
               })),
             },
             items: {
               create: structure.items.map((item) => ({
-                feeTypeId: item.feeTypeId,
+                feeType: {
+                  connect: { id: item.feeTypeId }
+                },
                 amount: item.amount,
+                school: {
+                  connect: { id: schoolId }
+                }
               })),
             },
           },

@@ -26,7 +26,44 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
 type Route = Awaited<ReturnType<typeof getRoutes>>["routes"][0];
-type RouteWithAttendance = Awaited<ReturnType<typeof getTransportAttendanceByRouteAndDate>>;
+
+interface RouteWithAttendance {
+  id: string;
+  name: string;
+  status: string;
+  vehicleId: string;
+  fee: number;
+  schoolId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  stops: Array<{
+    id: string;
+    name: string;
+    sequence: number;
+  }>;
+  students: Array<{
+    id: string;
+    pickupStop?: string;
+    dropStop?: string;
+    student: {
+      admissionId?: string;
+      user: {
+        firstName: string | null;
+        lastName: string | null;
+      };
+      enrollments: Array<{
+        class: { name: string };
+        section: { name: string };
+      }>;
+    };
+    attendance: Array<{
+      attendanceType: string;
+      stopName?: string;
+      status: string;
+      remarks?: string;
+    }>;
+  }>;
+}
 
 export function TransportAttendanceManager() {
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -67,14 +104,22 @@ export function TransportAttendanceManager() {
         attendanceType,
         selectedStop || undefined
       );
-      setRouteData(data);
+      setRouteData(data as RouteWithAttendance);
 
       // Initialize attendance records from existing data
       const records: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; remarks?: string }> =
         {};
-      data.students.forEach((studentRoute) => {
+      (data as RouteWithAttendance).students.forEach((studentRoute: {
+        id: string;
+        attendance: Array<{
+          attendanceType: string;
+          stopName?: string;
+          status: string;
+          remarks?: string;
+        }>;
+      }) => {
         const existingAttendance = studentRoute.attendance.find(
-          (a) =>
+          (a: { attendanceType: string; stopName?: string }) =>
             a.attendanceType === attendanceType &&
             (!selectedStop || a.stopName === selectedStop)
         );
@@ -129,7 +174,7 @@ export function TransportAttendanceManager() {
 
     const newRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; remarks?: string }> =
       {};
-    routeData.students.forEach((studentRoute) => {
+    routeData.students.forEach((studentRoute: { id: string }) => {
       newRecords[studentRoute.id] = {
         status,
         remarks: attendanceRecords[studentRoute.id]?.remarks,
@@ -315,7 +360,19 @@ export function TransportAttendanceManager() {
               <div className="space-y-4">
                 {/* Student List */}
                 <div className="space-y-3">
-                  {routeData.students.map((studentRoute) => {
+                  {routeData.students.map((studentRoute: {
+                    id: string;
+                    pickupStop?: string;
+                    dropStop?: string;
+                    student: {
+                      admissionId?: string;
+                      user: { firstName: string | null; lastName: string | null };
+                      enrollments: Array<{
+                        class: { name: string };
+                        section: { name: string };
+                      }>;
+                    };
+                  }) => {
                     const student = studentRoute.student;
                     const enrollment = student.enrollments[0];
                     const record = attendanceRecords[studentRoute.id];

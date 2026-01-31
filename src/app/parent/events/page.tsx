@@ -72,18 +72,23 @@ export default async function EventsPage() {
     }
   });
 
-  const children = parentChildren.map(pc => ({
-    id: pc.student.id,
-    userId: pc.student.user.id,
-    user: {
-      firstName: pc.student.user.firstName,
-      lastName: pc.student.user.lastName,
-    },
-    name: `${pc.student.user.firstName} ${pc.student.user.lastName}`,
-    class: pc.student.enrollments[0]?.class.name || "N/A",
-    section: pc.student.enrollments[0]?.section.name || "N/A",
-    isPrimary: pc.isPrimary
-  }));
+  const children = parentChildren.map(pc => {
+    const firstName = pc.student.user.firstName || '';
+    const lastName = pc.student.user.lastName || '';
+    
+    return {
+      id: pc.student.id,
+      userId: pc.student.user.id,
+      user: {
+        firstName,
+        lastName,
+      },
+      name: `${firstName} ${lastName}`.trim() || 'Unnamed Student',
+      class: pc.student.enrollments[0]?.class.name || "N/A",
+      section: pc.student.enrollments[0]?.section.name || "N/A",
+      isPrimary: pc.isPrimary
+    };
+  });
 
   if (children.length === 0) {
     return (

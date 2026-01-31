@@ -132,6 +132,10 @@ async function completeSystemSetup(data: SetupData) {
         return { success: false, error: "Admin account information is incomplete" };
     }
 
+    if (!data.schoolName) {
+        return { success: false, error: "School name is required" };
+    }
+
     if (!data.academicYearName || !data.academicYearStart || !data.academicYearEnd) {
         return { success: false, error: "Academic year information is incomplete" };
     }
@@ -156,13 +160,12 @@ async function completeSystemSetup(data: SetupData) {
         // 1. Create the school
         const school = await tx.school.create({
             data: {
-                name: data.schoolName,
+                name: data.schoolName!, // Safe to use ! because we validated above
                 schoolCode,
                 email: data.schoolEmail,
                 phone: data.schoolPhone,
                 address: data.schoolAddress,
-                website: data.schoolWebsite,
-                timezone: data.timezone || "UTC",
+                domain: data.schoolWebsite, // Map website to domain field
                 tagline: data.tagline,
                 plan: "STARTER",
                 status: "ACTIVE",

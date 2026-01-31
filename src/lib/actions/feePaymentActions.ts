@@ -744,7 +744,7 @@ export async function getPaymentReceiptHTML(paymentId: string) {
       paymentDate: payment.paymentDate,
       student: {
         name: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
-        email: payment.student.user.email,
+        email: payment.student.user.email || "",
         class: payment.student.enrollments[0]?.class.name || "N/A",
         section: payment.student.enrollments[0]?.section.name || "N/A",
         admissionId: payment.student.admissionId,

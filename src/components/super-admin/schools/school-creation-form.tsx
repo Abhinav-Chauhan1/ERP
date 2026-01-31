@@ -37,6 +37,9 @@ interface SchoolCreationData {
   adminPassword: string;
   enableOTPForAdmins: boolean;
   authenticationMethod: 'password' | 'otp' | 'both';
+  
+  // Subdomain Configuration
+  enableSubdomain: boolean;
 }
 
 const SCHOOL_TYPES = [
@@ -69,6 +72,8 @@ export function SchoolCreationForm() {
     adminPassword: "",
     enableOTPForAdmins: false,
     authenticationMethod: "password",
+    // Subdomain configuration
+    enableSubdomain: true,
   });
 
   const [subdomainAvailable, setSubdomainAvailable] = useState<boolean | null>(null);
@@ -107,6 +112,12 @@ export function SchoolCreationForm() {
       setSubdomainAvailable(null);
     }
     
+    // Clear subdomain when disabled
+    if (field === "enableSubdomain" && !value) {
+      setFormData(prev => ({ ...prev, subdomain: "" }));
+      setSubdomainAvailable(null);
+    }
+    
     // Auto-populate admin email with contact email if not set
     if (field === "contactEmail" && !formData.adminEmail) {
       setFormData(prev => ({ ...prev, adminEmail: value as string }));
@@ -114,7 +125,7 @@ export function SchoolCreationForm() {
   };
 
   const checkSubdomainAvailability = async () => {
-    if (!formData.subdomain) return;
+    if (!formData.subdomain || !formData.enableSubdomain) return;
     
     setCheckingSubdomain(true);
     try {
@@ -143,10 +154,17 @@ export function SchoolCreationForm() {
     setIsLoading(true);
 
     try {
+      // Prepare form data with proper subdomain handling
+      const submitData = {
+        ...formData,
+        // Ensure subdomain is empty string when disabled, not undefined
+        subdomain: formData.enableSubdomain ? formData.subdomain : "",
+      };
+
       const response = await fetch("/api/super-admin/schools", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const result = await response.json();
@@ -209,14 +227,30 @@ export function SchoolCreationForm() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subdomain">Subdomain *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="enableSubdomain">Enable Custom Subdomain</Label>
+                  <Switch
+                    id="enableSubdomain"
+                    checked={formData.enableSubdomain}
+                    onCheckedChange={(checked) => handleInputChange("enableSubdomain", checked)}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Enable to create a custom subdomain for this school
+                </p>
+              </div>
+            </div>
+
+            {formData.enableSubdomain && (
+              <div className="space-y-2">
+                <Label htmlFor="subdomain">Custom Subdomain *</Label>
                 <div className="flex space-x-2">
                   <Input
                     id="subdomain"
                     value={formData.subdomain}
                     onChange={(e) => handleInputChange("subdomain", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                     placeholder="school-name"
-                    required
+                    required={formData.enableSubdomain}
                   />
                   <Button
                     type="button"
@@ -242,7 +276,22 @@ export function SchoolCreationForm() {
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
+            {!formData.enableSubdomain && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <Building2 className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-900">No Custom Subdomain</p>
+                    <p className="text-blue-700 mt-1">
+                      This school will be accessible through the main platform without a custom subdomain. 
+                      Users will access it via the main domain with school selection.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -527,7 +576,12 @@ export function SchoolCreationForm() {
                 </div>
                 <div className="flex justify-between">
                   <span>Subdomain:</span>
-                  <span className="font-medium">{formData.subdomain ? `${formData.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'yourdomain.com'}` : "Not specified"}</span>
+                  <span className="font-medium">
+                    {formData.enableSubdomain 
+                      ? (formData.subdomain ? `${formData.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'yourdomain.com'}` : "Not specified")
+                      : "No custom subdomain (Main platform access)"
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Plan:</span>
@@ -587,7 +641,7 @@ export function SchoolCreationForm() {
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || !formData.schoolName || !formData.subdomain || !formData.contactEmail || !formData.adminName || !formData.adminEmail}
+            disabled={isLoading || !formData.schoolName || (formData.enableSubdomain && !formData.subdomain) || !formData.contactEmail || !formData.adminName || !formData.adminEmail}
           >
             {isLoading ? "Creating..." : "Create School & Launch Setup"}
           </Button>

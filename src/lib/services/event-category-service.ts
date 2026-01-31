@@ -12,6 +12,7 @@ const prisma = new PrismaClient();
 
 // Types for category creation and updates
 export interface CreateEventCategoryInput {
+  schoolId: string;
   name: string;
   description?: string;
   color: string;
@@ -103,7 +104,10 @@ export async function createEventCategory(
       color: data.color,
       icon: data.icon,
       isActive: data.isActive ?? true,
-      order: data.order ?? 0
+      order: data.order ?? 0,
+      school: {
+        connect: { id: data.schoolId }
+      }
     }
   });
   

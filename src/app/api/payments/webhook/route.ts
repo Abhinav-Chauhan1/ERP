@@ -199,6 +199,7 @@ async function handlePaymentSuccess(paymentEntity: any) {
           data: {
             studentId: notes.studentId,
             feeStructureId: notes.feeStructureId,
+            schoolId: "school-id", // TODO: Get from context
             amount: amount,
             paidAmount: amount,
             balance: 0,

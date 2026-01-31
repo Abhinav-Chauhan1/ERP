@@ -236,7 +236,7 @@ export const GET = withSchoolAuth(async (request, context) => {
       title: `${parent.user.firstName} ${parent.user.lastName}`,
       subtitle: parent.children.length > 0
         ? `Parent of ${parent.children.map((c) => `${c.student.user.firstName} ${c.student.user.lastName}`).join(", ")}`
-        : parent.user.email,
+        : parent.user.email || undefined,
       url: `/admin/users/parents/${parent.id}`,
       avatar: parent.user.avatar || undefined,
     }));

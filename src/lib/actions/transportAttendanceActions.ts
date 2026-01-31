@@ -380,7 +380,6 @@ export async function getStudentTransportAttendance(
 export async function getRouteAttendanceStats(
   routeId: string,
   startDate: Date,
-  startDate: Date,
   endDate: Date
 ) {
   try {

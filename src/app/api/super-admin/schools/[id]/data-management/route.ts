@@ -5,6 +5,9 @@ import { logAuditEvent } from '@/lib/services/audit-service';
 import { AuditAction } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { schoolDataManagementService } from '@/lib/services/school-data-management-service';
+import { cacheService } from '@/lib/services/cache-service';
+import { withErrorHandler, NotFoundError, validateInput } from '@/lib/middleware/enhanced-error-handler';
 
 const dataManagementSettingsSchema = z.object({
   settings: z.object({
@@ -45,152 +48,120 @@ const rateLimitConfig = {
  * GET /api/super-admin/schools/[id]/data-management
  * Get school data management settings
  */
-export async function GET(
+export const GET = withErrorHandler(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const rateLimitResult = await rateLimit(request, rateLimitConfig);
-    if (rateLimitResult) return rateLimitResult;
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  const rateLimitResult = await rateLimit(request, rateLimitConfig);
+  if (rateLimitResult) return rateLimitResult;
 
-    const session = await auth();
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if school exists
-    const school = await db.school.findUnique({
-      where: { id: params.id },
-      select: { id: true, name: true, plan: true },
-    });
-
-    if (!school) {
-      return NextResponse.json({ error: 'School not found' }, { status: 404 });
-    }
-
-    // Get current storage usage (this would be calculated from actual file storage)
-    const currentUsage = 2.5; // GB - placeholder
-
-    // Set storage quota based on plan
-    const storageQuotas = {
-      STARTER: 1,
-      GROWTH: 5,
-      DOMINATE: 50,
-    };
-
-    const defaultSettings = {
-      backupSettings: {
-        autoBackupEnabled: true,
-        backupFrequency: "DAILY" as const,
-        backupRetention: 30,
-        includeFiles: true,
-        encryptBackups: true,
-      },
-      exportSettings: {
-        allowDataExport: true,
-        exportFormats: ["CSV", "JSON", "PDF"],
-        requireApproval: true,
-      },
-      dataRetention: {
-        studentDataRetention: 7,
-        auditLogRetention: 365,
-        messageRetention: 90,
-        autoCleanup: false,
-      },
-      storageManagement: {
-        storageQuota: storageQuotas[school.plan as keyof typeof storageQuotas] || 1,
-        currentUsage,
-        compressionEnabled: true,
-        autoArchive: true,
-        archiveAfterDays: 365,
-      },
-    };
-
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.READ,
-      resource: 'SCHOOL_DATA_MANAGEMENT',
-      resourceId: params.id,
-    });
-
-    return NextResponse.json({
-      schoolId: params.id,
-      schoolName: school.name,
-      settings: defaultSettings,
-    });
-  } catch (error) {
-    console.error('Error fetching school data management settings:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-}
+
+  // Try to get from cache first
+  const cacheKey = `data-management-settings:${(await params).id}`;
+  const cached = cacheService.getSettings('data-management', (await params).id);
+  
+  if (cached) {
+    return NextResponse.json(cached);
+  }
+
+  // Check if school exists
+  const school = await db.school.findUnique({
+    where: { id: (await params).id },
+    select: { id: true, name: true, plan: true },
+  });
+
+  if (!school) {
+    throw new NotFoundError('School');
+  }
+
+  // Get settings using the service
+  const settings = await schoolDataManagementService.getSchoolDataManagementSettings((await params).id);
+  const storageUsage = await schoolDataManagementService.getStorageUsage((await params).id);
+  const recommendations = await schoolDataManagementService.getDataRetentionRecommendations((await params).id);
+
+  const response = {
+    schoolId: (await params).id,
+    schoolName: school.name,
+    settings,
+    storageUsage,
+    recommendations,
+  };
+
+  // Cache the response
+  cacheService.cacheSettings('data-management', (await params).id, response);
+
+  await logAuditEvent({
+    userId: session.user.id,
+    action: AuditAction.READ,
+    resource: 'SCHOOL_DATA_MANAGEMENT',
+    resourceId: (await params).id,
+  });
+
+  return NextResponse.json(response);
+});
 
 /**
  * PUT /api/super-admin/schools/[id]/data-management
  * Update school data management settings
  */
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const rateLimitResult = await rateLimit(request, rateLimitConfig);
-    if (rateLimitResult) return rateLimitResult;
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  const rateLimitResult = await rateLimit(request, rateLimitConfig);
+  if (rateLimitResult) return rateLimitResult;
 
-    const session = await auth();
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { settings } = dataManagementSettingsSchema.parse(body);
-
-    // Check if school exists
-    const school = await db.school.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!school) {
-      return NextResponse.json({ error: 'School not found' }, { status: 404 });
-    }
-
-    // Validate export formats
-    const validFormats = ['CSV', 'JSON', 'PDF', 'XLSX'];
-    const invalidFormats = settings.exportSettings.exportFormats.filter(
-      format => !validFormats.includes(format)
-    );
-
-    if (invalidFormats.length > 0) {
-      return NextResponse.json(
-        { error: 'Invalid export formats', invalidFormats },
-        { status: 400 }
-      );
-    }
-
-    // In a real implementation, you would store settings in a data_management_settings table
-    // For now, we'll simulate the update
-    
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.UPDATE,
-      resource: 'SCHOOL_DATA_MANAGEMENT',
-      resourceId: params.id,
-      changes: { settings },
-    });
-
-    return NextResponse.json({
-      message: 'School data management settings updated successfully',
-      settings,
-    });
-  } catch (error) {
-    console.error('Error updating school data management settings:', error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-}
+
+  const body = await request.json();
+  const validatedData = validateInput<{ settings: any }>(dataManagementSettingsSchema, body);
+  const { settings } = validatedData;
+
+  // Check if school exists
+  const school = await db.school.findUnique({
+    where: { id: (await params).id },
+  });
+
+  if (!school) {
+    throw new NotFoundError('School');
+  }
+
+  // Update settings using the service
+  const updatedSettings = await schoolDataManagementService.updateSchoolDataManagementSettings(
+    (await params).id,
+    {
+      autoBackupEnabled: settings.backupSettings.autoBackupEnabled,
+      backupFrequency: settings.backupSettings.backupFrequency,
+      backupRetention: settings.backupSettings.backupRetention,
+      includeFiles: settings.backupSettings.includeFiles,
+      encryptBackups: settings.backupSettings.encryptBackups,
+      allowDataExport: settings.exportSettings.allowDataExport,
+      exportFormats: settings.exportSettings.exportFormats,
+      requireApproval: settings.exportSettings.requireApproval,
+      studentDataRetention: settings.dataRetention.studentDataRetention,
+      auditLogRetention: settings.dataRetention.auditLogRetention,
+      messageRetention: settings.dataRetention.messageRetention,
+      autoCleanup: settings.dataRetention.autoCleanup,
+      storageQuota: settings.storageManagement.storageQuota,
+      compressionEnabled: settings.storageManagement.compressionEnabled,
+      autoArchive: settings.storageManagement.autoArchive,
+      archiveAfterDays: settings.storageManagement.archiveAfterDays,
+    },
+    session.user.id
+  );
+
+  // Invalidate cache
+  cacheService.invalidateSettingsCache((await params).id);
+
+  return NextResponse.json({
+    message: 'School data management settings updated successfully',
+    settings: updatedSettings,
+  });
+});

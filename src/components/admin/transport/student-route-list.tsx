@@ -27,8 +27,8 @@ interface StudentRouteListProps {
       id: string;
       admissionId: string;
       user: {
-        firstName: string;
-        lastName: string;
+        firstName: string | null;
+        lastName: string | null;
       };
     };
   }>;
@@ -68,7 +68,10 @@ export function StudentRouteList({ students, routeFee }: StudentRouteListProps) 
   return (
     <div className="space-y-2">
       {students.map((studentRoute) => {
-        const studentName = `${studentRoute.student.user.firstName} ${studentRoute.student.user.lastName}`;
+        const studentName = [
+          studentRoute.student.user.firstName,
+          studentRoute.student.user.lastName
+        ].filter(Boolean).join(' ') || 'Unknown Student';
         
         return (
           <div

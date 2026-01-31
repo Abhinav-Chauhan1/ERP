@@ -73,9 +73,9 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
         }
 
         form.reset({
-          firstName: administrator.user.firstName,
-          lastName: administrator.user.lastName,
-          email: administrator.user.email,
+          firstName: administrator.user.firstName || "",
+          lastName: administrator.user.lastName || "",
+          email: administrator.user.email || "",
           phone: administrator.user.phone || "",
           role: UserRole.ADMIN,
           active: administrator.user.active,

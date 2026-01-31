@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2017",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
+    "downlevelIteration": true,
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -38,6 +39,9 @@
   "exclude": [
     "node_modules",
     "scripts",
-    "prisma/seed*.ts"
+    "prisma/seed*.ts",
+    "src/test/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }

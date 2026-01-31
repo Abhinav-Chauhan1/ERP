@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { routeSchema, routeUpdateSchema, studentRouteSchema, type RouteFormValues, type RouteUpdateFormValues, type StudentRouteFormValues } from "@/lib/schemas/route-schemas";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { RouteWithDetails } from "@/types/transport";
 
 // Get all routes with pagination and filters
 export async function getRoutes(params?: {
@@ -14,10 +15,6 @@ export async function getRoutes(params?: {
   vehicleId?: string;
 }) {
   try {
-    const page = params?.page || 1;
-    const limit = params?.limit || 50;
-    const skip = (page - 1) * limit;
-
     const { schoolId } = await requireSchoolAccess();
     const page = params?.page || 1;
     const limit = params?.limit || 50;
@@ -82,7 +79,7 @@ export async function getRoutes(params?: {
 }
 
 // Get a single route by ID
-export async function getRouteById(id: string) {
+export async function getRouteById(id: string): Promise<RouteWithDetails> {
   try {
     const { schoolId } = await requireSchoolAccess();
     const route = await db.route.findUnique({
@@ -100,7 +97,12 @@ export async function getRouteById(id: string) {
           include: {
             student: {
               include: {
-                user: true,
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
               },
             },
           },

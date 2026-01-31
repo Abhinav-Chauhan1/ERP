@@ -301,12 +301,15 @@ function getCategoryFromType(type: string | undefined | null): EventCategory {
 
 export async function updateEvent(id: string, formData: EventFormDataWithRefinement) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+    
     // Validate the data
     const validatedData = eventSchemaWithRefinement.parse(formData);
 
     // Check if the event exists
     const existingEvent = await db.event.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingEvent) {
@@ -379,9 +382,12 @@ export async function updateEvent(id: string, formData: EventFormDataWithRefinem
 
 export async function deleteEvent(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+    
     // Check if the event exists
     const existingEvent = await db.event.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingEvent) {
@@ -424,9 +430,12 @@ export async function deleteEvent(id: string) {
 
 export async function updateEventStatus(id: string, status: EventStatus) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+    
     // Check if the event exists
     const existingEvent = await db.event.findUnique({
-      where: { id },
+      where: { id, schoolId },
     });
 
     if (!existingEvent) {

@@ -61,10 +61,10 @@ async function getAdministratorEmails(): Promise<string[]> {
       }
     });
 
-    // Filter active admins and extract emails
+    // Filter active admins and extract emails, filtering out null emails
     return admins
-      .filter(admin => admin.user.active)
-      .map(admin => admin.user.email);
+      .filter(admin => admin.user.active && admin.user.email)
+      .map(admin => admin.user.email!);
   } catch (error) {
     console.error('Failed to fetch administrator emails:', error);
     return [];

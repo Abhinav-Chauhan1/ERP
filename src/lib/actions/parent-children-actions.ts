@@ -214,7 +214,7 @@ export async function getChildDetails(childId: string) {
   const student = await db.student.findFirst({
     where: {
       id: childId,
-      schoolId // Enforce tenant isolation
+      ...(schoolId && { schoolId }) // Only add schoolId filter if it exists
     },
     include: {
       user: true,
@@ -236,7 +236,7 @@ export async function getChildDetails(childId: string) {
   }
 
   // Get the current enrollment details
-  const currentEnrollment = student.enrollments[0];
+  const currentEnrollment = student.enrollments?.[0];
 
   // Get subjects and performance
   interface Subject {

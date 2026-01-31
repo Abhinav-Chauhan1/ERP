@@ -405,7 +405,10 @@ export async function PerformanceSummarySection() {
 
     return {
       id: child.id,
-      user: child.user,
+      user: {
+        firstName: child.user.firstName || 'Unknown',
+        lastName: child.user.lastName || 'Student'
+      },
       latestExamResult: latestExam ? {
         score: latestExam.marks,
         maxScore: latestExam.exam.totalMarks

@@ -32,11 +32,11 @@ export default async function EditRoutePage({
     vehicleId: route.vehicleId,
     fee: route.fee,
     status: route.status,
-    stops: route.stops.map((stop) => ({
+    stops: (route as any).stops?.map((stop: any) => ({
       stopName: stop.stopName,
       arrivalTime: stop.arrivalTime,
       sequence: stop.sequence,
-    })),
+    })) || [],
   };
 
   return (
@@ -55,7 +55,7 @@ export default async function EditRoutePage({
         <p className="text-muted-foreground">Update route information and stops</p>
       </div>
 
-      <RouteForm vehicles={vehicles} initialData={initialData} />
+      <RouteForm vehicles={vehicles as any} initialData={initialData} />
     </div>
   );
 }

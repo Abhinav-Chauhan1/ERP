@@ -160,7 +160,7 @@ export class UserManagementService {
     // Get total count
     const total = await db.user.count({ where });
 
-    // Get users with details
+    // Get users with comprehensive details to avoid N+1 queries
     const users = await db.user.findMany({
       where,
       include: {
@@ -172,6 +172,7 @@ export class UserManagementService {
                 name: true,
                 schoolCode: true,
                 status: true,
+                plan: true, // Include plan for subscription info
               }
             }
           },
@@ -181,12 +182,71 @@ export class UserManagementService {
           select: {
             userSchools: true,
           }
+        },
+        // Include role-specific data to prevent future N+1 queries
+        student: {
+          select: {
+            id: true,
+            rollNumber: true,
+            admissionId: true,
+            enrollments: {
+              include: {
+                class: {
+                  select: {
+                    name: true,
+                    sections: true,
+                  }
+                }
+              },
+              take: 1,
+              orderBy: { createdAt: 'desc' }
+            }
+          }
+        },
+        teacher: {
+          select: {
+            id: true,
+            employeeId: true,
+            departments: true,
+            qualification: true,
+            subjects: {
+              select: {
+                subject: {
+                  select: {
+                    name: true,
+                  }
+                }
+              },
+              take: 3 // Limit subjects for performance
+            }
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            children: {
+              include: {
+                student: {
+                  include: {
+                    user: {
+                      select: {
+                        name: true,
+                        firstName: true,
+                        lastName: true,
+                      }
+                    }
+                  }
+                }
+              },
+              take: 5 // Limit children for performance
+            }
+          }
         }
       },
       orderBy: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
-    });
+    }) as any[];
 
     // Filter by hasMultipleSchools if specified
     let filteredUsers = users;
@@ -197,31 +257,46 @@ export class UserManagementService {
       });
     }
 
-    // Transform users to UserWithDetails format
-    const transformedUsers: UserWithDetails[] = filteredUsers.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      mobile: user.mobile,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      lastLoginAt: user.lastLoginAt,
-      hasPassword: !!user.passwordHash,
-      schools: user.userSchools.map(us => ({
-        id: us.id,
-        schoolId: us.schoolId,
-        schoolName: us.school.name,
-        schoolCode: us.school.schoolCode,
-        schoolStatus: us.school.status,
-        role: us.role,
-        isActive: us.isActive,
-        joinedAt: us.createdAt,
-      })),
-      totalSchools: user._count.userSchools,
-    }));
+    // Transform users to UserWithDetails format with role-specific data
+    const transformedUsers: UserWithDetails[] = filteredUsers.map(user => {
+      // Determine primary role and extract role-specific data
+      const primaryRole = user.userSchools[0]?.role;
+      let roleSpecificData = null;
+
+      if (primaryRole === UserRole.STUDENT && user.student) {
+        roleSpecificData = user.student;
+      } else if (primaryRole === UserRole.TEACHER && user.teacher) {
+        roleSpecificData = user.teacher;
+      } else if (primaryRole === UserRole.PARENT && user.parent) {
+        roleSpecificData = user.parent;
+      }
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        lastLoginAt: user.lastLoginAt,
+        hasPassword: !!user.passwordHash,
+        schools: user.userSchools.map((us: any) => ({
+          id: us.id,
+          schoolId: us.schoolId,
+          schoolName: us.school.name,
+          schoolCode: us.school.schoolCode,
+          schoolStatus: us.school.status,
+          role: us.role,
+          isActive: us.isActive,
+          joinedAt: us.createdAt,
+        })),
+        totalSchools: user._count.userSchools,
+        roleSpecificData, // Include role-specific data to prevent future queries
+      };
+    });
 
     return {
       users: transformedUsers,
@@ -239,45 +314,131 @@ export class UserManagementService {
   async getUserDetails(userId: string): Promise<UserWithDetails | null> {
     await requireSuperAdminAccess();
 
-    const user = await db.user.findUnique({
+    // First, get basic user info to determine primary role
+    const basicUser = await db.user.findUnique({
       where: { id: userId },
       include: {
         userSchools: {
-          include: {
-            school: {
-              select: {
-                id: true,
-                name: true,
-                schoolCode: true,
-                status: true,
-                plan: true,
-              }
-            }
-          },
+          select: { role: true },
+          take: 1,
           orderBy: { createdAt: 'desc' }
-        },
-        _count: {
-          select: {
-            userSchools: true,
-          }
         }
       }
     });
+
+    if (!basicUser) {
+      return null;
+    }
+
+    const primaryRole = basicUser.userSchools[0]?.role;
+
+    // Build dynamic include based on role to avoid N+1 queries
+    const includeConfig: any = {
+      userSchools: {
+        include: {
+          school: {
+            select: {
+              id: true,
+              name: true,
+              schoolCode: true,
+              status: true,
+              plan: true,
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      },
+      _count: {
+        select: {
+          userSchools: true,
+        }
+      }
+    };
+
+    // Conditionally include role-specific data based on primary role
+    if (primaryRole === UserRole.STUDENT) {
+      includeConfig.student = {
+        include: {
+          enrollments: {
+            include: {
+              class: {
+                select: {
+                  name: true,
+                  sections: true,
+                }
+              }
+            }
+          }
+        }
+      };
+    } else if (primaryRole === UserRole.TEACHER) {
+      includeConfig.teacher = {
+        select: {
+          employeeId: true,
+          department: true,
+          qualification: true,
+          experience: true,
+          subjects: {
+            select: {
+              subject: {
+                select: {
+                  name: true,
+                }
+              }
+            }
+          }
+        }
+      };
+    } else if (primaryRole === UserRole.PARENT) {
+      includeConfig.parent = {
+        include: {
+          children: {
+            include: {
+              student: {
+                include: {
+                  user: {
+                    select: {
+                      name: true,
+                      firstName: true,
+                      lastName: true,
+                    }
+                  },
+                  enrollments: {
+                    include: {
+                      class: {
+                        select: {
+                          name: true,
+                          sections: true,
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+    }
+
+    // Single query with all necessary data (fixes N+1)
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: includeConfig
+    }) as any;
 
     if (!user) {
       return null;
     }
 
-    // Get role-specific data
+    // Extract role-specific data from the single query result
     let roleSpecificData = null;
-    const primaryRole = user.userSchools[0]?.role;
-
-    if (primaryRole === UserRole.STUDENT) {
-      roleSpecificData = await this.getStudentData(userId);
-    } else if (primaryRole === UserRole.TEACHER) {
-      roleSpecificData = await this.getTeacherData(userId);
-    } else if (primaryRole === UserRole.PARENT) {
-      roleSpecificData = await this.getParentData(userId);
+    if (primaryRole === UserRole.STUDENT && user.student) {
+      roleSpecificData = user.student;
+    } else if (primaryRole === UserRole.TEACHER && user.teacher) {
+      roleSpecificData = user.teacher;
+    } else if (primaryRole === UserRole.PARENT && user.parent) {
+      roleSpecificData = user.parent;
     }
 
     return {
@@ -292,7 +453,7 @@ export class UserManagementService {
       updatedAt: user.updatedAt,
       lastLoginAt: user.lastLoginAt,
       hasPassword: !!user.passwordHash,
-      schools: user.userSchools.map(us => ({
+      schools: user.userSchools.map((us: any) => ({
         id: us.id,
         schoolId: us.schoolId,
         schoolName: us.school.name,
@@ -728,7 +889,7 @@ export class UserManagementService {
             class: {
               select: {
                 name: true,
-                section: true,
+                sections: true,
               }
             }
           }
@@ -747,12 +908,16 @@ export class UserManagementService {
       },
       select: {
         employeeId: true,
-        department: true,
+        departments: true,
         qualification: true,
         experience: true,
         subjects: {
           select: {
-            name: true,
+            subject: {
+              select: {
+                name: true,
+              }
+            }
           }
         }
       }
@@ -784,7 +949,7 @@ export class UserManagementService {
                     class: {
                       select: {
                         name: true,
-                        section: true,
+                        sections: true,
                       }
                     }
                   }

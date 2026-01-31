@@ -76,7 +76,7 @@ const navigationItems = [
  */
 function AlumniSidebar({ userName, userEmail, userAvatar }: {
   userName: string;
-  userEmail: string;
+  userEmail: string | null;
   userAvatar?: string;
 }) {
   const getInitials = (name: string) => {
@@ -110,7 +110,7 @@ function AlumniSidebar({ userName, userEmail, userAvatar }: {
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="font-medium truncate">{userName}</p>
-            <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
+            <p className="text-sm text-muted-foreground truncate">{userEmail || 'No email'}</p>
           </div>
         </div>
       </div>
@@ -165,7 +165,7 @@ function AlumniSidebar({ userName, userEmail, userAvatar }: {
  */
 function MobileNav({ userName, userEmail, userAvatar }: {
   userName: string;
-  userEmail: string;
+  userEmail: string | null;
   userAvatar?: string;
 }) {
   return (

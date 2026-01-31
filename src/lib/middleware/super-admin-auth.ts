@@ -453,7 +453,13 @@ export async function requireSuperAdminLegacy(request: NextRequest): Promise<Aut
   }
 
   return {
+    success: true,
     session: result.session,
     user: result.user,
   };
 }
+
+/**
+ * Legacy superAdminAuth export for backward compatibility
+ */
+export const superAdminAuth = requireSuperAdminResponse;

@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { z } from 'zod';
 
 const checkSubdomainSchema = z.object({
-  subdomain: z.string().min(1).regex(/^[a-z0-9-]+$/, "Subdomain must contain only lowercase letters, numbers, and hyphens"),
+  subdomain: z.string().min(1).regex(/^[a-z0-9-]+$/, "Subdomain must contain only lowercase letters, numbers, and hyphens").optional(),
 });
 
 /**
@@ -20,6 +20,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { subdomain } = checkSubdomainSchema.parse(body);
+
+    // If no subdomain provided, return as available (for optional subdomain case)
+    if (!subdomain) {
+      return NextResponse.json({
+        available: true,
+        subdomain: null,
+        message: 'No subdomain specified - school will use main platform access',
+      });
+    }
 
     // Check if subdomain exists
     const existingSchool = await db.school.findFirst({

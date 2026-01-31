@@ -24,6 +24,7 @@ import {
  */
 export async function createNotification(params: {
   userId: string;
+  schoolId: string;
   title: string;
   message: string;
   type: NotificationType;
@@ -33,6 +34,7 @@ export async function createNotification(params: {
     const notification = await db.notification.create({
       data: {
         userId: params.userId,
+        schoolId: params.schoolId,
         title: params.title,
         message: params.message,
         type: params.type,
@@ -53,6 +55,7 @@ export async function createNotification(params: {
  */
 export async function createBulkNotifications(params: {
   userIds: string[];
+  schoolId: string;
   title: string;
   message: string;
   type: NotificationType;
@@ -61,6 +64,7 @@ export async function createBulkNotifications(params: {
   try {
     const notifications = params.userIds.map((userId) => ({
       userId,
+      schoolId: params.schoolId,
       title: params.title,
       message: params.message,
       type: params.type,
@@ -88,6 +92,7 @@ export async function createBulkNotifications(params: {
  */
 export async function createAttendanceNotification(params: {
   parentUserId: string;
+  schoolId: string;
   studentName: string;
   status: "PRESENT" | "ABSENT" | "LATE";
   date: Date;
@@ -101,6 +106,7 @@ export async function createAttendanceNotification(params: {
 
   return createNotification({
     userId: params.parentUserId,
+    schoolId: params.schoolId,
     title: "Attendance Update",
     message: `${params.studentName} ${statusMessages[params.status]} on ${params.date.toLocaleDateString()}.`,
     type: NotificationType.ATTENDANCE,
@@ -113,6 +119,7 @@ export async function createAttendanceNotification(params: {
  */
 export async function createFeeNotification(params: {
   parentUserId: string;
+  schoolId: string;
   studentName: string;
   amount: number;
   dueDate?: Date;
@@ -133,6 +140,7 @@ export async function createFeeNotification(params: {
 
   return createNotification({
     userId: params.parentUserId,
+    schoolId: params.schoolId,
     title: titles[params.type],
     message: messages[params.type],
     type: NotificationType.FEE,
@@ -145,6 +153,7 @@ export async function createFeeNotification(params: {
  */
 export async function createGradeNotification(params: {
   parentUserId: string;
+  schoolId: string;
   studentName: string;
   examName: string;
   subject: string;
@@ -160,6 +169,7 @@ export async function createGradeNotification(params: {
 
   return createNotification({
     userId: params.parentUserId,
+    schoolId: params.schoolId,
     title: "New Grade Posted",
     message: `${params.examName} results for ${params.subject} are now available for ${params.studentName}. ${gradeInfo}`,
     type: NotificationType.GRADE,
@@ -172,12 +182,14 @@ export async function createGradeNotification(params: {
  */
 export async function createMessageNotification(params: {
   recipientUserId: string;
+  schoolId: string;
   senderName: string;
   subject: string;
   messageId: string;
 }): Promise<Notification | null> {
   return createNotification({
     userId: params.recipientUserId,
+    schoolId: params.schoolId,
     title: "New Message",
     message: `You have a new message from ${params.senderName}: ${params.subject}`,
     type: NotificationType.MESSAGE,
@@ -190,11 +202,13 @@ export async function createMessageNotification(params: {
  */
 export async function createAnnouncementNotification(params: {
   parentUserIds: string[];
+  schoolId: string;
   title: string;
   announcementId: string;
 }): Promise<{ success: boolean; count: number }> {
   return createBulkNotifications({
     userIds: params.parentUserIds,
+    schoolId: params.schoolId,
     title: "New Announcement",
     message: params.title,
     type: NotificationType.ANNOUNCEMENT,
@@ -207,6 +221,7 @@ export async function createAnnouncementNotification(params: {
  */
 export async function createMeetingNotification(params: {
   parentUserId: string;
+  schoolId: string;
   teacherName: string;
   meetingDate: Date;
   type: "SCHEDULED" | "CONFIRMED" | "CANCELLED" | "REMINDER";
@@ -228,6 +243,7 @@ export async function createMeetingNotification(params: {
 
   return createNotification({
     userId: params.parentUserId,
+    schoolId: params.schoolId,
     title: titles[params.type],
     message: messages[params.type],
     type: NotificationType.MEETING,
@@ -240,6 +256,7 @@ export async function createMeetingNotification(params: {
  */
 export async function createEventNotification(params: {
   parentUserId: string;
+  schoolId: string;
   eventName: string;
   eventDate: Date;
   type: "NEW" | "REMINDER" | "CANCELLED";
@@ -259,6 +276,7 @@ export async function createEventNotification(params: {
 
   return createNotification({
     userId: params.parentUserId,
+    schoolId: params.schoolId,
     title: titles[params.type],
     message: messages[params.type],
     type: NotificationType.EVENT,
@@ -272,6 +290,7 @@ export async function createEventNotification(params: {
  */
 export async function createReceiptVerificationNotification(params: {
   userId: string;
+  schoolId: string;
   receiptReference: string;
   feeStructureName: string;
   amount: number;
@@ -280,6 +299,7 @@ export async function createReceiptVerificationNotification(params: {
 }): Promise<Notification | null> {
   return createNotification({
     userId: params.userId,
+    schoolId: params.schoolId,
     title: "Payment Receipt Verified",
     message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been verified. Amount: ₹${params.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Remaining balance: ₹${params.remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
     type: "RECEIPT_VERIFIED" as NotificationType,
@@ -293,6 +313,7 @@ export async function createReceiptVerificationNotification(params: {
  */
 export async function createReceiptRejectionNotification(params: {
   userId: string;
+  schoolId: string;
   receiptReference: string;
   feeStructureName: string;
   rejectionReason: string;
@@ -300,6 +321,7 @@ export async function createReceiptRejectionNotification(params: {
 }): Promise<Notification | null> {
   return createNotification({
     userId: params.userId,
+    schoolId: params.schoolId,
     title: "Payment Receipt Rejected",
     message: `Your payment receipt (${params.receiptReference}) for ${params.feeStructureName} has been rejected. Reason: ${params.rejectionReason}. Please upload a new receipt with the correct information.`,
     type: "RECEIPT_REJECTED" as NotificationType,

@@ -258,6 +258,7 @@ export async function createLesson(data: LessonFormValues) {
         content: data.content || "",
         resources: data.resources || "",
         duration: data.duration || 60,
+        schoolId,
       }
     });
 

@@ -1385,7 +1385,7 @@ export default function TimetablePage() {
                       <FormLabel>Start Time</FormLabel>
                       <FormControl>
                         <TimePicker
-                          date={field.value}
+                          date={typeof field.value === 'string' ? new Date(field.value) : field.value}
                           setDate={field.onChange}
                         />
                       </FormControl>
@@ -1401,7 +1401,7 @@ export default function TimetablePage() {
                       <FormLabel>End Time</FormLabel>
                       <FormControl>
                         <TimePicker
-                          date={field.value}
+                          date={typeof field.value === 'string' ? new Date(field.value) : field.value}
                           setDate={field.onChange}
                         />
                       </FormControl>

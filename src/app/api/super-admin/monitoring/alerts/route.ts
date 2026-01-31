@@ -7,8 +7,8 @@ import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 
 const createAlertSchema = z.object({
-  alertType: z.string().min(1),
-  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  alertType: z.enum(['error_rate', 'delivery_rate', 'api_error', 'critical_error', 'usage_threshold', 'performance', 'system_health']),
+  severity: z.enum(['INFO', 'WARNING', 'ERROR', 'CRITICAL']),
   title: z.string().min(1),
   description: z.string().min(1),
   threshold: z.number().optional(),
@@ -45,7 +45,11 @@ export async function GET(request: NextRequest) {
       offset: parseInt(searchParams.get('offset') || '0'),
     };
 
-    const alerts = await monitoringService.getAlerts(filters);
+    const alertsResult = await monitoringService.getAlerts(filters);
+    
+    if (!alertsResult.success) {
+      throw alertsResult.error;
+    }
 
     await logAuditEvent({
       userId: session.user.id,
@@ -53,11 +57,11 @@ export async function GET(request: NextRequest) {
       resource: 'ALERT',
       metadata: {
         filters,
-        resultCount: alerts.length,
+        resultCount: alertsResult.data.alerts.length,
       },
     });
 
-    return NextResponse.json(alerts);
+    return NextResponse.json(alertsResult.data);
   } catch (error) {
     console.error('Error fetching alerts:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -81,17 +85,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createAlertSchema.parse(body);
 
-    const alert = await monitoringService.createAlert(validatedData);
+    const alertResult = await monitoringService.createAlert(validatedData);
+    
+    if (!alertResult.success) {
+      throw alertResult.error;
+    }
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.CREATE,
       resource: 'ALERT',
-      resourceId: alert.id,
+      resourceId: alertResult.data.id,
       changes: validatedData,
     });
 
-    return NextResponse.json(alert, { status: 201 });
+    return NextResponse.json(alertResult.data, { status: 201 });
   } catch (error) {
     console.error('Error creating alert:', error);
     

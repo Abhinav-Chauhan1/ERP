@@ -81,8 +81,6 @@ export const getAnnouncementById = withSchoolAuthAction(async (schoolId: string,
                 firstName: true,
                 lastName: true,
                 email: true,
-                84: true, // ERROR IN PREVIOUS VIEW? No, reading 3533 line 84 was empty? Ah, line 84 was `email: true` in 3533.
-                // Wait, using logical lines.
               },
             },
           },

@@ -49,18 +49,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const format = searchParams.get('format') as 'ical' | 'csv' | 'json';
@@ -78,9 +66,38 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get user with school associations
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        userSchools: {
+          include: {
+            school: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get the first school (or handle multiple schools as needed)
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return NextResponse.json(
+        { error: 'No school association found' },
+        { status: 403 }
+      );
+    }
+
     // Build export options
     const options: ExportOptions = {
       format,
+      schoolId,
       includeNotes,
       includeReminders
     };

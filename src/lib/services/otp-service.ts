@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { logAuditEvent } from "./audit-service";
+import { logAuditEvent, AuditAction } from "./audit-service";
 import { rateLimitingService } from "./rate-limiting-service";
 
 /**
@@ -335,7 +335,7 @@ class OTPService {
     try {
       await logAuditEvent({
         userId: null, // OTP events are identifier-based, not user-based initially
-        action,
+        action: action as AuditAction,
         resource: 'otp',
         changes: {
           identifier,

@@ -55,9 +55,9 @@ interface Receipt {
     id: string;
     admissionNumber?: string | null;
     user: {
-      firstName: string;
-      lastName: string;
-      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
     };
     enrollments: Array<{
       class: {

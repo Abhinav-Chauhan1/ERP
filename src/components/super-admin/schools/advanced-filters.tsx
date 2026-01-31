@@ -16,8 +16,8 @@ interface AdvancedFiltersProps {
 
 export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
   const [filters, setFilters] = useState({
-    createdAfter: null as Date | null,
-    createdBefore: null as Date | null,
+    createdAfter: undefined as Date | undefined,
+    createdBefore: undefined as Date | undefined,
     studentCountMin: 0,
     studentCountMax: 2000,
     teacherCountMin: 0,
@@ -39,8 +39,8 @@ export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
 
   const handleReset = () => {
     setFilters({
-      createdAfter: null,
-      createdBefore: null,
+      createdAfter: undefined,
+      createdBefore: undefined,
       studentCountMin: 0,
       studentCountMax: 2000,
       teacherCountMin: 0,
@@ -64,12 +64,12 @@ export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
               <div className="space-y-2">
                 <DatePicker
                   date={filters.createdAfter}
-                  onDateChange={(date) => handleFilterChange('createdAfter', date)}
+                  onSelect={(date) => handleFilterChange('createdAfter', date)}
                   placeholder="From date"
                 />
                 <DatePicker
                   date={filters.createdBefore}
-                  onDateChange={(date) => handleFilterChange('createdBefore', date)}
+                  onSelect={(date) => handleFilterChange('createdBefore', date)}
                   placeholder="To date"
                 />
               </div>

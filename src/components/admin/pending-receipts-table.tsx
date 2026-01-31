@@ -55,8 +55,8 @@ interface PendingReceipt {
   student: {
     id: string;
     user: {
-      firstName: string;
-      lastName: string;
+      firstName: string | null;
+      lastName: string | null;
     };
     enrollments: Array<{
       class: {
@@ -153,7 +153,9 @@ export function PendingReceiptsTable({ onVerify, onReject }: PendingReceiptsTabl
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         filteredReceipts = filteredReceipts.filter((receipt: PendingReceipt) => {
-          const studentName = `${receipt.student.user.firstName} ${receipt.student.user.lastName}`.toLowerCase();
+          const firstName = receipt.student.user.firstName || "";
+          const lastName = receipt.student.user.lastName || "";
+          const studentName = `${firstName} ${lastName}`.toLowerCase();
           const reference = receipt.referenceNumber.toLowerCase();
           return studentName.includes(query) || reference.includes(query);
         });
@@ -322,7 +324,7 @@ export function PendingReceiptsTable({ onVerify, onReject }: PendingReceiptsTabl
       render: (receipt: PendingReceipt) => (
         <div className="flex flex-col">
           <span className="font-medium">
-            {receipt.student.user.firstName} {receipt.student.user.lastName}
+            {(receipt.student.user.firstName || "")} {(receipt.student.user.lastName || "")}
           </span>
           <span className="text-xs text-muted-foreground">
             {receipt.feeStructure.name}
@@ -332,7 +334,7 @@ export function PendingReceiptsTable({ onVerify, onReject }: PendingReceiptsTabl
       mobileRender: (receipt: PendingReceipt) => (
         <div className="flex flex-col">
           <span className="font-medium text-sm">
-            {receipt.student.user.firstName} {receipt.student.user.lastName}
+            {(receipt.student.user.firstName || "")} {(receipt.student.user.lastName || "")}
           </span>
           <span className="text-xs text-muted-foreground">
             {receipt.referenceNumber}

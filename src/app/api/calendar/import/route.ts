@@ -50,15 +50,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
+    // Get user from database with school associations
     const user = await db.user.findUnique({
-      where: { id: session.user.id }
+      where: { id: session.user.id },
+      include: {
+        userSchools: {
+          include: {
+            school: true
+          }
+        }
+      }
     });
 
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Get the first school (or handle multiple schools as needed)
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return NextResponse.json(
+        { error: 'No school association found' },
+        { status: 403 }
       );
     }
 
@@ -117,7 +133,7 @@ export async function POST(request: NextRequest) {
     const content = await file.text();
 
     // Import events
-    const result = await importCalendarEvents(content, format, user.id);
+    const result = await importCalendarEvents(content, format, schoolId, user.id);
 
     // Log import operation for audit trail
     await logCalendarImport(user.id, format, result.success, {

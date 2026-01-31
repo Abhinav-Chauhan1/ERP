@@ -31,6 +31,15 @@ export default async function ChildDetailPage({
   
   const { student, currentEnrollment } = childDetails;
   
+  // Type assertion to help TypeScript understand the student includes user relation
+  const studentWithUser = student as typeof student & {
+    user: {
+      firstName: string | null;
+      lastName: string | null;
+      avatar: string | null;
+    };
+  };
+  
   return (
     <div className="container max-w-7xl mx-auto p-6">
       {/* Back Button */}
@@ -47,9 +56,9 @@ export default async function ChildDetailPage({
           {/* Avatar */}
           <div className="flex flex-col items-center gap-3">
             <Avatar className="h-40 w-40 border-4 border-white shadow-xl">
-              <AvatarImage src={student.user.avatar || ""} alt={student.user.firstName} />
+              <AvatarImage src={studentWithUser.user.avatar || ""} alt={studentWithUser.user.firstName || 'Student'} />
               <AvatarFallback className="text-5xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                {student.user.firstName.charAt(0)}{student.user.lastName.charAt(0)}
+                {(studentWithUser.user.firstName || 'S').charAt(0)}{(studentWithUser.user.lastName || 'T').charAt(0)}
               </AvatarFallback>
             </Avatar>
             {childDetails.isPrimary && (
@@ -60,7 +69,7 @@ export default async function ChildDetailPage({
           {/* Info */}
           <div className="flex-1">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              {student.user.firstName} {student.user.lastName}
+              {studentWithUser.user.firstName || ''} {studentWithUser.user.lastName || ''}
             </h1>
             
             <p className="text-lg text-gray-600 mb-6">

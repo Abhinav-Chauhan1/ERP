@@ -31,7 +31,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
             schoolCode: true,
             status: true,
             plan: true,
-            subscriptions: {
+            enhancedSubscriptions: {
                 select: {
                     id: true,
                     status: true,
@@ -61,7 +61,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
         redirect("/super-admin/schools");
     }
 
-    const currentSubscription = school.subscriptions.find(sub => sub.status === "ACTIVE");
+    const currentSubscription = school.enhancedSubscriptions.find(sub => sub.status === "ACTIVE");
 
     return (
         <div className="container mx-auto p-6 space-y-6">
@@ -210,7 +210,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
             )}
 
             {/* Subscription History */}
-            {school.subscriptions.length > 0 && (
+            {school.enhancedSubscriptions.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -223,7 +223,7 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {school.subscriptions.map((subscription, index) => (
+                            {school.enhancedSubscriptions.map((subscription, index) => (
                                 <div key={subscription.id} className="border rounded-lg p-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">

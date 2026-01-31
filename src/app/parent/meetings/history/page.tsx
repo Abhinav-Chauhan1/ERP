@@ -61,10 +61,21 @@ async function MeetingHistoryContent() {
     take: 50, // Limit to 50 most recent meetings
   });
 
-  // Map meetings to ensure duration is never null
+  // Map meetings to ensure duration is never null and transform nullable user fields
   const mappedMeetings = meetings.map(meeting => ({
     ...meeting,
-    duration: meeting.duration ?? 30 // Default to 30 minutes if null
+    duration: meeting.duration ?? 30, // Default to 30 minutes if null
+    teacher: {
+      ...meeting.teacher,
+      user: {
+        ...meeting.teacher.user,
+        firstName: meeting.teacher.user.firstName || '',
+        lastName: meeting.teacher.user.lastName || '',
+        email: meeting.teacher.user.email || '',
+        phone: meeting.teacher.user.phone || null,
+        avatar: meeting.teacher.user.avatar || null,
+      }
+    }
   }));
 
   return (

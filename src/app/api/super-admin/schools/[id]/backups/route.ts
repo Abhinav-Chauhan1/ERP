@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { logAuditEvent } from '@/lib/services/audit-service';
-import { AuditAction } from '@prisma/client';
+import { AuditAction, BackupType, BackupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
+import { backupService } from '@/lib/services/backup-service';
 
 const createBackupSchema = z.object({
-  type: z.enum(['MANUAL', 'SCHEDULED']),
+  type: z.enum(['MANUAL', 'SCHEDULED', 'AUTOMATIC']).default('MANUAL'),
   includeFiles: z.boolean().optional().default(true),
+  includeDatabase: z.boolean().optional().default(true),
+  includeLogs: z.boolean().optional().default(false),
+  compressionLevel: z.number().min(1).max(9).optional().default(6),
+  encryptBackup: z.boolean().optional().default(false),
 });
 
 const rateLimitConfig = {
@@ -22,7 +27,7 @@ const rateLimitConfig = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -35,7 +40,7 @@ export async function GET(
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true },
     });
 
@@ -43,43 +48,32 @@ export async function GET(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Get backups from database
-    const backups = await db.backup.findMany({
-      where: { schoolId: params.id },
-      orderBy: { createdAt: 'desc' },
-      take: 20, // Limit to recent backups
-      select: {
-        id: true,
-        filename: true,
-        size: true,
-        type: true,
-        status: true,
-        createdAt: true,
-        completedAt: true,
-        errorMessage: true,
-      }
-    });
+    // Get backups using the service
+    const backups = await backupService.listSchoolBackups((await params).id, 20, 0);
+    const backupStats = await backupService.getBackupStats((await params).id);
 
     await logAuditEvent({
       userId: session.user.id,
       action: AuditAction.READ,
       resource: 'SCHOOL_BACKUPS',
-      resourceId: params.id,
+      resourceId: (await params).id,
     });
 
     return NextResponse.json({
-      schoolId: params.id,
+      schoolId: (await params).id,
       schoolName: school.name,
       backups: backups.map(backup => ({
         id: backup.id,
         createdAt: backup.createdAt.toISOString(),
-        size: backup.size ? `${Math.round(backup.size / (1024 * 1024))} MB` : 'Unknown',
+        size: backup.size ? `${Math.round(Number(backup.size) / (1024 * 1024))} MB` : 'Unknown',
         type: backup.type,
         status: backup.status,
         filename: backup.filename,
         completedAt: backup.completedAt?.toISOString(),
         errorMessage: backup.errorMessage,
+        includeFiles: backup.includeFiles,
       })),
+      stats: backupStats,
     });
   } catch (error) {
     console.error('Error fetching school backups:', error);
@@ -93,7 +87,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const rateLimitResult = await rateLimit(request, rateLimitConfig);
@@ -105,11 +99,11 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { type, includeFiles } = createBackupSchema.parse(body);
+    const options = createBackupSchema.parse(body);
 
     // Check if school exists
     const school = await db.school.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, name: true },
     });
 
@@ -117,78 +111,24 @@ export async function POST(
       return NextResponse.json({ error: 'School not found' }, { status: 404 });
     }
 
-    // Check for existing pending backups
-    const pendingBackup = await db.backup.findFirst({
-      where: {
-        schoolId: params.id,
-        status: 'PENDING',
+    // Create backup using the service
+    const backupId = await backupService.createBackup(
+      (await params).id,
+      options.type as BackupType,
+      {
+        includeFiles: options.includeFiles,
+        includeDatabase: options.includeDatabase,
+        includeLogs: options.includeLogs,
+        compressionLevel: options.compressionLevel,
+        encryptBackup: options.encryptBackup,
       },
-    });
-
-    if (pendingBackup) {
-      return NextResponse.json(
-        { error: 'A backup is already in progress' },
-        { status: 409 }
-      );
-    }
-
-    // Create backup record
-    const backup = await db.backup.create({
-      data: {
-        schoolId: params.id,
-        filename: `school-${params.id}-${Date.now()}.zip`,
-        type: type,
-        status: 'PENDING',
-        includeFiles: includeFiles,
-        createdBy: session.user.id,
-      },
-    });
-
-    // In a real implementation, you would trigger the actual backup process here
-    // This could be a background job, queue system, or external service
-    
-    // For demonstration, we'll simulate the backup process
-    setTimeout(async () => {
-      try {
-        // Simulate backup completion
-        await db.backup.update({
-          where: { id: backup.id },
-          data: {
-            status: 'COMPLETED',
-            size: Math.floor(Math.random() * 500000000) + 100000000, // Random size between 100MB-600MB
-            completedAt: new Date(),
-          },
-        });
-      } catch (error) {
-        console.error('Error completing backup:', error);
-        await db.backup.update({
-          where: { id: backup.id },
-          data: {
-            status: 'FAILED',
-            errorMessage: 'Backup process failed',
-            completedAt: new Date(),
-          },
-        });
-      }
-    }, 5000); // Simulate 5 second backup process
-
-    await logAuditEvent({
-      userId: session.user.id,
-      action: AuditAction.CREATE,
-      resource: 'SCHOOL_BACKUP',
-      resourceId: backup.id,
-      changes: { schoolId: params.id, type, includeFiles },
-    });
+      session.user.id
+    );
 
     return NextResponse.json({
       message: 'Backup creation initiated',
-      backup: {
-        id: backup.id,
-        filename: backup.filename,
-        type: backup.type,
-        status: backup.status,
-        createdAt: backup.createdAt.toISOString(),
-      },
+      backupId,
+      status: 'PENDING',
     });
   } catch (error) {
     console.error('Error creating school backup:', error);
@@ -200,6 +140,8 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 });
   }
 }

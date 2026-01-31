@@ -69,13 +69,28 @@ const userId = session?.user?.id;
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { teacher: true }
+      include: { 
+        teacher: true,
+        userSchools: {
+          where: { isActive: true },
+          include: { school: true }
+        }
+      }
     });
     
     if (!user || !user.teacher) {
       return NextResponse.json(
         { error: 'Only teachers can create event notes' },
         { status: 403 }
+      );
+    }
+
+    // Get the user's school
+    const userSchool = user.userSchools[0];
+    if (!userSchool) {
+      return NextResponse.json(
+        { error: 'User not associated with any school' },
+        { status: 400 }
       );
     }
     
@@ -98,6 +113,7 @@ const userId = session?.user?.id;
     
     // Create the note
     const note = await createEventNote({
+      schoolId: userSchool.schoolId,
       eventId: sanitizedData.eventId,
       userId: sanitizedData.userId,
       content: sanitizedData.content

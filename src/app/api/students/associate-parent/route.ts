@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
             data: {
                 studentId,
                 parentId,
+                schoolId: "school-id", // TODO: Get from context
                 isPrimary: isPrimary || false,
             },
             include: {

@@ -15,12 +15,11 @@ import { ResponsiveTable } from "@/components/shared/responsive-table";
 interface Administrator {
   id: string;
   position: string | null;
-  department: string | null;
   createdAt: Date;
   user: {
-    firstName: string;
-    lastName: string;
-    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
     avatar: string | null;
     active: boolean;
   };
@@ -39,11 +38,10 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
 
   const filteredAndSortedAdmins = useMemo(() => {
     let filtered = administrators.filter((admin) => {
-      const fullName = `${admin.user.firstName} ${admin.user.lastName}`.toLowerCase();
+      const fullName = `${admin.user.firstName || ''} ${admin.user.lastName || ''}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) ||
-        admin.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        admin.position?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        admin.department?.toLowerCase().includes(searchQuery.toLowerCase());
+        (admin.user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        admin.position?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
         statusFilter === "all" ||
@@ -60,9 +58,9 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
         case "oldest":
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case "name-asc":
-          return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+          return `${a.user.firstName || ''} ${a.user.lastName || ''}`.localeCompare(`${b.user.firstName || ''} ${b.user.lastName || ''}`);
         case "name-desc":
-          return `${b.user.firstName} ${b.user.lastName}`.localeCompare(`${a.user.firstName} ${a.user.lastName}`);
+          return `${b.user.firstName || ''} ${b.user.lastName || ''}`.localeCompare(`${a.user.firstName || ''} ${a.user.lastName || ''}`);
         default:
           return 0;
       }
@@ -85,23 +83,23 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
       render: (admin: Administrator) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
-            <AvatarFallback>{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
+            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName || ''} ${admin.user.lastName || ''}`} />
+            <AvatarFallback>{(admin.user.firstName || 'A')[0]}{(admin.user.lastName || 'A')[0]}</AvatarFallback>
           </Avatar>
           <div className="font-medium">
-            {admin.user.firstName} {admin.user.lastName}
+            {admin.user.firstName || ''} {admin.user.lastName || ''}
           </div>
         </div>
       ),
       mobileRender: (admin: Administrator) => (
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName} ${admin.user.lastName}`} />
-            <AvatarFallback className="text-xs">{admin.user.firstName[0]}{admin.user.lastName[0]}</AvatarFallback>
+            <AvatarImage src={admin.user.avatar || undefined} alt={`${admin.user.firstName || ''} ${admin.user.lastName || ''}`} />
+            <AvatarFallback className="text-xs">{(admin.user.firstName || 'A')[0]}{(admin.user.lastName || 'A')[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm truncate">
-              {admin.user.firstName} {admin.user.lastName}
+              {admin.user.firstName || ''} {admin.user.lastName || ''}
             </div>
           </div>
           <Badge
@@ -116,21 +114,15 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
       key: "email",
       label: "Email",
       mobilePriority: "low" as const,
-      render: (admin: Administrator) => admin.user.email,
+      render: (admin: Administrator) => admin.user.email || "N/A",
       mobileRender: (admin: Administrator) => (
-        <span className="truncate max-w-[150px] inline-block">{admin.user.email}</span>
+        <span className="truncate max-w-[150px] inline-block">{admin.user.email || "N/A"}</span>
       ),
     },
     {
       key: "position",
       label: "Position",
       render: (admin: Administrator) => admin.position || "N/A",
-    },
-    {
-      key: "department",
-      label: "Department",
-      mobileLabel: "Dept",
-      render: (admin: Administrator) => admin.department || "N/A",
     },
     {
       key: "joined",

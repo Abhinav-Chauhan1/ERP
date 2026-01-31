@@ -54,7 +54,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
       schoolCode: true,
       status: true,
       plan: true,
-      subscriptions: {
+      enhancedSubscriptions: {
         select: {
           id: true,
           status: true,
@@ -78,7 +78,6 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
               status: true,
               dueDate: true,
               paidAt: true,
-              createdAt: true,
             },
             orderBy: {
               createdAt: 'desc',
@@ -93,7 +92,6 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
               status: true,
               paymentMethod: true,
               processedAt: true,
-              createdAt: true,
             },
             orderBy: {
               createdAt: 'desc',
@@ -121,7 +119,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
     );
   }
 
-  const currentSubscription = school.subscriptions[0];
+  const currentSubscription = school.enhancedSubscriptions[0];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -271,13 +269,13 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                           <Badge 
                             variant={
                               invoice.status === "PAID" ? "default" : 
-                              invoice.status === "PENDING" ? "secondary" : 
+                              invoice.status === "OPEN" ? "secondary" : 
                               "destructive"
                             }
                           >
                             {invoice.status === "PAID" && <CheckCircle className="h-3 w-3 mr-1" />}
-                            {invoice.status === "PENDING" && <Clock className="h-3 w-3 mr-1" />}
-                            {invoice.status === "FAILED" && <AlertCircle className="h-3 w-3 mr-1" />}
+                            {invoice.status === "OPEN" && <Clock className="h-3 w-3 mr-1" />}
+                            {(invoice.status === "VOID" || invoice.status === "UNCOLLECTIBLE") && <AlertCircle className="h-3 w-3 mr-1" />}
                             {invoice.status}
                           </Badge>
                         </TableCell>
@@ -351,12 +349,12 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                         <TableCell>
                           <Badge 
                             variant={
-                              payment.status === "SUCCEEDED" ? "default" : 
+                              payment.status === "COMPLETED" ? "default" : 
                               payment.status === "PENDING" ? "secondary" : 
                               "destructive"
                             }
                           >
-                            {payment.status === "SUCCEEDED" && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {payment.status === "COMPLETED" && <CheckCircle className="h-3 w-3 mr-1" />}
                             {payment.status === "PENDING" && <Clock className="h-3 w-3 mr-1" />}
                             {payment.status === "FAILED" && <AlertCircle className="h-3 w-3 mr-1" />}
                             {payment.status}
@@ -391,7 +389,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {school.subscriptions.map((subscription, index) => (
+                {school.enhancedSubscriptions.map((subscription, index) => (
                   <div key={subscription.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -416,7 +414,7 @@ export default async function SchoolBillingPage({ params }: SchoolBillingPagePro
                     </div>
                   </div>
                 ))}
-                {school.subscriptions.length === 0 && (
+                {school.enhancedSubscriptions.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No subscription history found
                   </div>

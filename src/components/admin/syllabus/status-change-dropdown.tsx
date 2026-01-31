@@ -91,7 +91,7 @@ export function StatusChangeDropdown({
 
     setIsUpdating(true);
     try {
-      const result = await updateSyllabusStatus(syllabusId, selectedStatus, userId);
+      const result = await updateSyllabusStatus(syllabusId, selectedStatus);
 
       if (result.success) {
         toast.success(`Status updated to ${statusLabels[selectedStatus]}`);

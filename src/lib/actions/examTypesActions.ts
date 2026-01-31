@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { ExamTypeFormValues, ExamTypeUpdateFormValues } from "../schemaValidation/examTypesSchemaValidation";
 
 // Fetch all exam types
@@ -89,9 +90,13 @@ export async function getExamTypeById(id: string) {
 // Create a new exam type
 export async function createExamType(data: ExamTypeFormValues) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    
     // Check if an exam type with this name already exists
     const existingType = await db.examType.findFirst({
       where: {
+        schoolId,
         name: {
           equals: data.name,
           mode: 'insensitive'
@@ -111,6 +116,9 @@ export async function createExamType(data: ExamTypeFormValues) {
         isActive: data.isActive,
         canRetest: data.canRetest,
         includeInGradeCard: data.includeInGradeCard,
+        school: {
+          connect: { id: schoolId }
+        }
       }
     });
 

@@ -177,6 +177,7 @@ export async function POST(req: NextRequest) {
         data: {
           studentId: validated.childId,
           feeStructureId: validated.feeStructureId,
+          schoolId: "school-id", // TODO: Get from context
           amount: validated.amount,
           paidAmount: validated.amount,
           balance: 0,

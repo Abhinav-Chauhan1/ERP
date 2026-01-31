@@ -59,7 +59,7 @@ const userId = session?.user?.id;
   const student = dbUser.student;
 
   // Fetch course with all related data
-  const course = await db.course.findUnique({
+  const rawCourse = await db.course.findUnique({
     where: { id: courseId },
     include: {
       subject: {
@@ -101,7 +101,7 @@ const userId = session?.user?.id;
   });
 
   // Handle course not found
-  if (!course) {
+  if (!rawCourse) {
     return (
       <div className="p-6">
         <Card>
@@ -116,6 +116,19 @@ const userId = session?.user?.id;
       </div>
     );
   }
+
+  // Transform course to ensure firstName and lastName are strings
+  const course = {
+    ...rawCourse,
+    teacher: {
+      ...rawCourse.teacher,
+      user: {
+        ...rawCourse.teacher.user,
+        firstName: rawCourse.teacher.user.firstName || '',
+        lastName: rawCourse.teacher.user.lastName || '',
+      }
+    }
+  };
 
   // Handle unpublished course
   if (!course.isPublished) {

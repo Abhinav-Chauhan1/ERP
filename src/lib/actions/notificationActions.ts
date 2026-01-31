@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth-helpers";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all notifications with filters
 export async function getNotifications(filters?: {
@@ -118,6 +119,9 @@ export async function createNotification(data: any) {
       return { success: false, error: "User not found" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Determine recipients
     let recipients: { id: string }[] = [];
 
@@ -152,7 +156,8 @@ export async function createNotification(data: any) {
         userId: recipient.id,
         createdAt: new Date(),
         updatedAt: new Date(),
-        isRead: false
+        isRead: false,
+        schoolId: schoolId || "",
       }))
     });
 
@@ -363,6 +368,9 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
       return { success: false, error: "User not found" };
     }
 
+    // Get schoolId from current user context
+    const { schoolId } = await requireSchoolAccess();
+
     // Create a single notification that targets multiple users
     // In a full implementation, you might create individual notifications
     // or use a more sophisticated notification system
@@ -373,6 +381,7 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
         type: data.type || "INFO",
         link: data.link || null,
         userId: dbUser.id, // Notification belongs to a user
+        schoolId: schoolId || "",
       },
     });
 

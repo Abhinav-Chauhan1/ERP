@@ -13,12 +13,12 @@ import { OnboardingProgressService } from "@/lib/services/onboarding-progress-se
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperAdminAccess();
 
-    const schoolId = params.id;
+    const schoolId = (await params).id;
 
     // Get basic onboarding status
     const statusResult = await getSchoolsOnboardingStatus([schoolId]);
@@ -35,7 +35,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        basic: statusResult.data[0] || null,
+        basic: statusResult.data?.[0] || null,
         detailed: detailedProgress,
       },
     });
@@ -54,12 +54,12 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperAdminAccess();
 
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const body = await request.json();
     const { action, step, status, metadata } = body;
 

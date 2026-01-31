@@ -148,9 +148,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
+    // Get user from database with school information
     const user = await db.user.findUnique({
-      where: { id: session.user.id }
+      where: { id: session.user.id },
+      include: {
+        userSchools: {
+          where: { isActive: true },
+          include: { school: true }
+        }
+      }
     });
 
     if (!user) {
@@ -168,6 +174,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the user's school
+    const userSchool = user.userSchools[0];
+    if (!userSchool) {
+      return NextResponse.json(
+        { error: 'User not associated with any school' },
+        { status: 400 }
+      );
+    }
+
     // Parse request body
     const body = await request.json();
 
@@ -175,6 +190,7 @@ export async function POST(request: NextRequest) {
     const sanitizedData = sanitizeCategoryData(body);
 
     const categoryData: CreateEventCategoryInput = {
+      schoolId: userSchool.schoolId,
       name: sanitizedData.name,
       description: sanitizedData.description,
       color: sanitizedData.color,

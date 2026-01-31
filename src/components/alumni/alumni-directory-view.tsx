@@ -60,7 +60,7 @@ export interface AlumniProfile {
   currentEmployer?: string;
   currentCity?: string;
   currentState?: string;
-  currentEmail?: string;
+  currentEmail?: string | null;
   collegeName?: string;
   higherEducation?: string;
   profilePhoto?: string;

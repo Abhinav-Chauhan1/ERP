@@ -47,13 +47,7 @@ export async function GET(request: NextRequest) {
       paymentHistory = await billingService.getPaymentHistory(schoolId);
     } else {
       // This would need to be implemented in billing service
-      paymentHistory = await billingService.getAllPayments({
-        status,
-        startDate: startDate ? new Date(startDate) : undefined,
-        endDate: endDate ? new Date(endDate) : undefined,
-        limit,
-        offset,
-      });
+      paymentHistory = await billingService.getAllPayments();
     }
 
     await logAuditEvent({

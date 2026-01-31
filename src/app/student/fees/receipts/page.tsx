@@ -44,7 +44,21 @@ export default async function StudentReceiptsPage() {
   // Fetch student's receipts
   const result = await getStudentReceipts(student.id);
 
-  const receipts = result.success ? result.data || [] : [];
+  const rawReceipts = result.success ? result.data || [] : [];
+  
+  // Transform receipts to ensure firstName and lastName are strings
+  const receipts = rawReceipts.map(receipt => ({
+    ...receipt,
+    student: {
+      ...receipt.student,
+      user: {
+        ...receipt.student.user,
+        firstName: receipt.student.user.firstName || '',
+        lastName: receipt.student.user.lastName || '',
+        email: receipt.student.user.email || '',
+      }
+    }
+  }));
 
   return (
     <div className="container p-6">

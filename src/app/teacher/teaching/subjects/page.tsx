@@ -114,7 +114,16 @@ export default async function TeacherSubjectsPage() {
                 academicYear="2023-2024"
                 overallProgress={subject.progress}
                 lastUpdated="December 1, 2023"
-                units={(subject.syllabus[0]?.units || []).map(unit => ({
+                units={(subject.syllabus[0]?.modules || []).map((unit: {
+                  id: string;
+                  title: string;
+                  order: number;
+                  totalTopics: number;
+                  completedTopics: number;
+                  subModules: { id: string; title: string; isCompleted: boolean }[];
+                  status: string;
+                  lastUpdated: string;
+                }) => ({
                   ...unit,
                   status: (unit.status as "completed" | "in-progress" | "not-started") || "not-started"
                 }))}

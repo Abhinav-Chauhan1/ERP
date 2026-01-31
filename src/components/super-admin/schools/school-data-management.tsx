@@ -26,6 +26,8 @@ import {
   Shield
 } from "lucide-react";
 import { toast } from "sonner";
+import { useBreakpoint, mobileClasses } from "@/lib/utils/mobile-responsive";
+import { aria, focus, formAccessibility } from "@/lib/utils/accessibility";
 
 interface SchoolDataManagementProps {
   schoolId: string;
@@ -120,6 +122,7 @@ const mockBackups: BackupInfo[] = [
 ];
 
 export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
+  const { isMobile, isTablet } = useBreakpoint();
   const [settings, setSettings] = useState<DataManagementSettings>(defaultSettings);
   const [backups, setBackups] = useState<BackupInfo[]>(mockBackups);
   const [isLoading, setIsLoading] = useState(false);
@@ -284,7 +287,7 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? mobileClasses.padding.mobile : mobileClasses.padding.desktop}`}>
       {/* Storage Overview */}
       <Card>
         <CardHeader>
@@ -296,21 +299,25 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
             Current storage usage and quota information
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${isMobile ? mobileClasses.padding.mobile : ''}`}>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Storage Used</span>
               <span>{settings.storageManagement.currentUsage} GB / {settings.storageManagement.storageQuota} GB</span>
             </div>
-            <Progress value={storageUsagePercentage} className="h-2" />
+            <Progress 
+              value={storageUsagePercentage} 
+              className="h-2" 
+              {...aria.attributes.label(`Storage usage: ${storageUsagePercentage.toFixed(1)}% used`)}
+            />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{storageUsagePercentage.toFixed(1)}% used</span>
               <span>{(settings.storageManagement.storageQuota - settings.storageManagement.currentUsage).toFixed(1)} GB available</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between">
+          <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
+            <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center justify-between'}`}>
               <div>
                 <Label className="text-base font-medium">Enable Compression</Label>
                 <p className="text-sm text-muted-foreground">
@@ -322,9 +329,11 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
                 onCheckedChange={(checked) => 
                   handleSettingChange('storageManagement', 'compressionEnabled', checked)
                 }
+                className={focus.classes.visible}
+                {...aria.attributes.label("Enable file compression")}
               />
             </div>
-            <div className="flex items-center justify-between">
+            <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-center justify-between'}`}>
               <div>
                 <Label className="text-base font-medium">Auto Archive</Label>
                 <p className="text-sm text-muted-foreground">
@@ -336,6 +345,8 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
                 onCheckedChange={(checked) => 
                   handleSettingChange('storageManagement', 'autoArchive', checked)
                 }
+                className={focus.classes.visible}
+                {...aria.attributes.label("Enable automatic archiving")}
               />
             </div>
           </div>
@@ -450,9 +461,14 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className={`flex ${isMobile ? 'flex-col space-y-2' : 'items-center justify-between'}`}>
             <h4 className="font-medium">Manual Backup</h4>
-            <Button onClick={createBackup} disabled={isCreatingBackup}>
+            <Button 
+              onClick={createBackup} 
+              disabled={isCreatingBackup}
+              className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
+              {...aria.attributes.label("Create manual backup")}
+            >
               {isCreatingBackup ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -720,7 +736,12 @@ export function SchoolDataManagement({ schoolId }: SchoolDataManagementProps) {
       </Card>
 
       <div className="flex justify-end pt-6 border-t">
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
+          {...aria.attributes.label("Save data management settings")}
+        >
           {isSaving ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
