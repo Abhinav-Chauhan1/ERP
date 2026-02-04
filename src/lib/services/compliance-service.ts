@@ -8,7 +8,7 @@
  */
 
 import { db } from "@/lib/db"
-import { logAuditEvent, logDataAccess } from "./audit-service"
+import { logAuditEvent, logDataAccess, AuditSeverity } from "./audit-service"
 import { AuditAction } from "@prisma/client"
 
 /**
@@ -79,6 +79,7 @@ export interface ComplianceReportData {
   recommendations?: string[]
   violations?: ComplianceViolation[]
   metadata?: Record<string, any>
+  [key: string]: any // Index signature for Prisma JSON compatibility
 }
 
 /**
@@ -111,7 +112,7 @@ export interface ComplianceViolation {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   description: string
   timestamp: Date
-  userId?: string
+  userId?: string | null
   resourceId?: string
   recommendation: string
 }
@@ -165,29 +166,29 @@ export async function generateComplianceReport(
       resource: 'COMPLIANCE_REPORT',
       changes: {
         reportType: config.reportType,
-        timeRange: config.timeRange,
+        timeRange: config.timeRange as any,
         requestedBy: generatedBy
       },
-      severity: 'HIGH'
+      severity: AuditSeverity.HIGH
     })
 
     // Create initial report record
     const reportRecord = await db.complianceReport.create({
       data: {
         reportType: config.reportType,
-        timeRange: config.timeRange,
+        timeRange: config.timeRange as any,
         generatedBy,
         status: 'GENERATING',
         reportData: {
           summary: {
             totalEvents: 0,
-            timeRange: config.timeRange,
+            timeRange: config.timeRange as any,
             reportType: config.reportType,
             generatedAt: new Date(),
             generatedBy
           },
           sections: []
-        }
+        } as any
       }
     })
 
@@ -214,13 +215,13 @@ export async function generateComplianceReport(
           status: 'COMPLETED',
           totalEvents: reportData.summary.totalEvents
         },
-        severity: 'HIGH'
+        severity: AuditSeverity.HIGH
       })
 
       return {
         id: updatedReport.id,
         reportType: config.reportType,
-        timeRange: config.timeRange,
+        timeRange: config.timeRange as any,
         generatedBy,
         status: 'COMPLETED',
         reportData,
@@ -236,14 +237,14 @@ export async function generateComplianceReport(
           reportData: {
             summary: {
               totalEvents: 0,
-              timeRange: config.timeRange,
+              timeRange: config.timeRange as any,
               reportType: config.reportType,
               generatedAt: new Date(),
               generatedBy
             },
             sections: [],
             error: error instanceof Error ? error.message : 'Unknown error'
-          }
+          } as any
         }
       })
 
@@ -291,7 +292,7 @@ async function generateReportData(
  */
 async function generateGDPRReport(
   timeRange: ComplianceTimeRange,
-  schoolIds?: string[],
+  _schoolIds?: string[],
   userIds?: string[]
 ): Promise<ComplianceReportData> {
   // Get data access events
@@ -338,7 +339,7 @@ async function generateGDPRReport(
         description: 'Summary of all data access events during the reporting period',
         data: dataAccessEvents.map(event => ({
           timestamp: event.timestamp,
-          user: event.user.email,
+          user: event.user?.email || 'Unknown',
           action: event.action,
           resource: event.resource,
           resourceId: event.resourceId,
@@ -374,7 +375,7 @@ async function generateGDPRReport(
  */
 async function generateDataAccessReport(
   timeRange: ComplianceTimeRange,
-  schoolIds?: string[],
+  _schoolIds?: string[],
   userIds?: string[],
   resources?: string[]
 ): Promise<ComplianceReportData> {
@@ -413,16 +414,20 @@ async function generateDataAccessReport(
 
   accessEvents.forEach(event => {
     // Group by user
-    if (!userAccessMap.has(event.userId)) {
+    if (event.userId && !userAccessMap.has(event.userId)) {
       userAccessMap.set(event.userId, [])
     }
-    userAccessMap.get(event.userId)!.push(event)
+    if (event.userId) {
+      userAccessMap.get(event.userId)!.push(event)
+    }
 
     // Group by resource
-    if (!resourceAccessMap.has(event.resource)) {
+    if (event.resource && !resourceAccessMap.has(event.resource)) {
       resourceAccessMap.set(event.resource, [])
     }
-    resourceAccessMap.get(event.resource)!.push(event)
+    if (event.resource) {
+      resourceAccessMap.get(event.resource)!.push(event)
+    }
   })
 
   return {
@@ -505,6 +510,8 @@ async function generateUserActivityReport(
   const userActivityMap = new Map<string, any>()
   
   activities.forEach(activity => {
+    if (!activity.userId) return // Skip activities without userId
+    
     if (!userActivityMap.has(activity.userId)) {
       userActivityMap.set(activity.userId, {
         user: activity.user,
@@ -545,10 +552,10 @@ async function generateUserActivityReport(
           userRole: data.user.role,
           totalActivities: data.activities.length,
           topActions: Array.from(data.actionCounts.entries())
-            .sort((a, b) => b[1] - a[1])
+            .sort((a, b) => (b as [string, number])[1] - (a as [string, number])[1])
             .slice(0, 5),
           topResources: Array.from(data.resourceCounts.entries())
-            .sort((a, b) => b[1] - a[1])
+            .sort((a, b) => (b as [string, number])[1] - (a as [string, number])[1])
             .slice(0, 5),
           lastActivity: data.activities[0].timestamp
         })),
@@ -646,9 +653,9 @@ async function generateSecurityEventsReport(
     violations: eventCategories.failed.map(event => ({
       id: event.id,
       type: 'AUTHENTICATION_FAILURE',
-      severity: 'MEDIUM' as const,
+      severity: AuditSeverity.MEDIUM as const,
       description: `Failed authentication attempt for ${(event.changes as any)?.email || 'unknown user'}`,
-      timestamp: event.timestamp,
+      timestamp: event.timestamp || new Date(),
       userId: event.userId,
       recommendation: 'Monitor for repeated failures and consider IP blocking'
     }))
@@ -660,7 +667,7 @@ async function generateSecurityEventsReport(
  */
 async function generateFinancialAuditReport(
   timeRange: ComplianceTimeRange,
-  schoolIds?: string[]
+  _schoolIds?: string[]
 ): Promise<ComplianceReportData> {
   const whereClause: any = {
     timestamp: {
@@ -702,7 +709,7 @@ async function generateFinancialAuditReport(
         description: 'All financial operations during the reporting period',
         data: financialEvents.map(event => ({
           timestamp: event.timestamp,
-          user: event.user.email,
+          user: event.user?.email || 'Unknown',
           action: event.action,
           resource: event.resource,
           resourceId: event.resourceId,
@@ -760,7 +767,7 @@ async function generateGenericComplianceReport(
         description: 'All audit events during the reporting period',
         data: events.map(event => ({
           timestamp: event.timestamp,
-          user: event.user.email,
+          user: event.user?.email || 'Unknown',
           action: event.action,
           resource: event.resource,
           resourceId: event.resourceId
@@ -839,7 +846,7 @@ function calculateRiskScore(pattern: DataAccessPattern, userEvents: any[]): numb
 /**
  * Detect GDPR violations
  */
-function detectGDPRViolations(events: any[], patterns: DataAccessPattern[]): ComplianceViolation[] {
+function detectGDPRViolations(_events: any[], patterns: DataAccessPattern[]): ComplianceViolation[] {
   const violations: ComplianceViolation[] = []
 
   // Check for excessive data access
@@ -848,7 +855,7 @@ function detectGDPRViolations(events: any[], patterns: DataAccessPattern[]): Com
       violations.push({
         id: `gdpr-${pattern.userId}-${pattern.resource}`,
         type: 'EXCESSIVE_DATA_ACCESS',
-        severity: 'HIGH',
+        severity: AuditSeverity.HIGH,
         description: `User ${pattern.userEmail} has excessive access to ${pattern.resource} (${pattern.frequency} times)`,
         timestamp: pattern.timestamp,
         userId: pattern.userId,
@@ -870,7 +877,7 @@ export async function logDataAccessPattern(
   userId: string,
   resource: string,
   resourceId?: string,
-  accessType: 'READ' | 'EXPORT' | 'DOWNLOAD' | 'VIEW' = 'READ',
+  accessType: 'READ' | 'EXPORT' | 'DOWNLOAD' = 'READ',
   schoolId?: string,
   metadata?: Record<string, any>
 ): Promise<void> {
@@ -890,7 +897,7 @@ export async function logDataAccessPattern(
       ...metadata
     },
     schoolId,
-    severity: 'MEDIUM'
+    severity: AuditSeverity.MEDIUM
   })
 }
 
@@ -945,7 +952,7 @@ export async function requireEnhancedAuth(
         authRequired: true,
         reason: 'Sensitive operation requires enhanced authentication'
       },
-      severity: 'HIGH'
+      severity: AuditSeverity.HIGH
     })
 
     return {
@@ -1023,10 +1030,10 @@ export async function getComplianceReports(filters: {
     reports: reports.map(report => ({
       id: report.id,
       reportType: report.reportType as ComplianceReportType,
-      timeRange: report.timeRange as ComplianceTimeRange,
+      timeRange: (report.timeRange as unknown) as ComplianceTimeRange,
       generatedBy: report.generatedBy,
       status: report.status as any,
-      reportData: report.reportData as ComplianceReportData,
+      reportData: (report.reportData as unknown) as ComplianceReportData,
       filePath: report.filePath || undefined,
       createdAt: report.createdAt
     })),

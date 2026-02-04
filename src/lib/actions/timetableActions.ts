@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { auth } from "@/auth";
 import {
   TimetableFormValues,
   TimetableUpdateFormValues,
@@ -546,6 +547,8 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
       }
     }
 
+    // Use the schoolId already obtained from requireSchoolAccess above
+
     const slot = await db.timetableSlot.create({
       data: {
         timetableId: data.timetableId,
@@ -557,6 +560,7 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
+        schoolId, // Add required schoolId
       }
     });
 

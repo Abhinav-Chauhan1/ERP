@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { UserRole, EventStatus } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 // Event registration schema
 const eventRegistrationSchema = z.object({
@@ -214,6 +215,9 @@ export async function registerForEvent(values: EventRegistrationValues) {
       return { success: false, message: "You are already registered for this event" };
     }
 
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+
     // Create registration
     await db.eventParticipant.create({
       data: {
@@ -222,6 +226,7 @@ export async function registerForEvent(values: EventRegistrationValues) {
         role: validatedData.role,
         registrationDate: new Date(),
         feedback: validatedData.notes,
+        schoolId, // Add required schoolId
       }
     });
 
@@ -231,7 +236,8 @@ export async function registerForEvent(values: EventRegistrationValues) {
         userId: dbUser.id,
         title: "Event Registration Confirmed",
         message: `You have successfully registered for ${event.title}`,
-        type: "INFO"
+        type: "INFO",
+        schoolId, // Add required schoolId
       }
     });
 
@@ -301,13 +307,17 @@ export async function cancelEventRegistration(eventId: string) {
       }
     });
 
+    // Get school context for notification
+    const schoolId = await getRequiredSchoolId();
+
     // Create notification
     await db.notification.create({
       data: {
         userId: dbUser.id,
         title: "Event Registration Cancelled",
         message: `Your registration for ${registration.event.title} has been cancelled`,
-        type: "INFO"
+        type: "INFO",
+        schoolId, // Add required schoolId
       }
     });
 

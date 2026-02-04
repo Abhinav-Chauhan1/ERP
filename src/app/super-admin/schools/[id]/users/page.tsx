@@ -5,13 +5,13 @@ import { db } from "@/lib/db";
 import { SchoolUsersClient } from "@/components/super-admin/schools/school-users-client";
 
 interface SchoolUsersPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function SchoolUsersPage({ params }: SchoolUsersPageProps) {
-  const { id } = params;
+  const { id } = await params;
 
   // Check authentication and super admin access
   try {

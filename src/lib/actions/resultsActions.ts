@@ -478,6 +478,11 @@ export async function generateReportCard(data: GenerateReportCardValues) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
     // Check if report card already exists
     const existingReportCard = await db.reportCard.findFirst({
       where: {
@@ -543,7 +548,8 @@ export async function generateReportCard(data: GenerateReportCardValues) {
           teacherRemarks: data.teacherRemarks,
           principalRemarks: data.principalRemarks,
           isPublished: true,
-          publishDate: new Date()
+          publishDate: new Date(),
+          schoolId, // Add required schoolId
         }
       });
     }

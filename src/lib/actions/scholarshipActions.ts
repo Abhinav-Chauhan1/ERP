@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all scholarships
@@ -11,6 +10,11 @@ export async function getScholarships(filters?: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const where: any = { schoolId };
 
     const scholarships = await db.scholarship.findMany({
@@ -57,6 +61,11 @@ export async function getScholarships(filters?: {
 export async function getScholarshipById(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const scholarship = await db.scholarship.findUnique({
       where: { id, schoolId },
       include: {
@@ -96,6 +105,11 @@ export async function getScholarshipById(id: string) {
 export async function createScholarship(data: any) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const scholarship = await db.scholarship.create({
       data: {
         schoolId,
@@ -121,6 +135,11 @@ export async function createScholarship(data: any) {
 export async function updateScholarship(id: string, data: any) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const scholarship = await db.scholarship.update({
       where: { id, schoolId },
       data: {
@@ -145,9 +164,15 @@ export async function updateScholarship(id: string, data: any) {
 // Delete scholarship
 export async function deleteScholarship(id: string) {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if scholarship has recipients
     const scholarship = await db.scholarship.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         recipients: true,
       },
@@ -160,7 +185,6 @@ export async function deleteScholarship(id: string) {
       };
     }
 
-    const { schoolId } = await requireSchoolAccess();
     await db.scholarship.delete({
       where: { id, schoolId },
     });
@@ -177,6 +201,11 @@ export async function deleteScholarship(id: string) {
 export async function getScholarshipRecipients(scholarshipId: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const recipients = await db.scholarshipRecipient.findMany({
       where: { scholarshipId, scholarship: { schoolId } }, // Verify scholarship belongs to school
       include: {
@@ -212,6 +241,11 @@ export async function getScholarshipRecipients(scholarshipId: string) {
 export async function awardScholarship(data: any) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if student already has this scholarship
     const existing = await db.scholarshipRecipient.findFirst({
       where: {
@@ -250,8 +284,17 @@ export async function awardScholarship(data: any) {
         studentId: data.studentId,
         awardDate: new Date(),
         endDate: data.endDate ? new Date(data.endDate) : null,
-        amount: data.amount ? parseFloat(data.amount) : scholarship!.amount,
+        amount: data.amount ? parseFloat(data.amount) : scholarship.amount,
         status: data.status || "Active",
+        school: {
+          connect: { id: schoolId }
+        },
+        scholarship: {
+          connect: { id: data.scholarshipId }
+        },
+        student: {
+          connect: { id: data.studentId }
+        }
       },
       include: {
         student: {
@@ -275,6 +318,11 @@ export async function awardScholarship(data: any) {
 export async function removeRecipient(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     await db.scholarshipRecipient.update({
       where: { id, scholarship: { schoolId } },
       data: {
@@ -294,6 +342,11 @@ export async function removeRecipient(id: string) {
 export async function getStudentsForScholarship() {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const students = await db.student.findMany({
       where: { schoolId },
       include: {
@@ -332,7 +385,12 @@ export async function getStudentsForScholarship() {
 export async function getScholarshipStats() {
   try {
     const { schoolId } = await requireSchoolAccess();
-    const [totalScholarships, totalRecipients, activeRecipients, totalAmountDistributed] = await Promise.all([
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
+    const [totalScholarships, totalRecipients, activeRecipients, totalAmountAwarded] = await Promise.all([
       db.scholarship.count({ where: { schoolId } }),
       db.scholarshipRecipient.count({ where: { scholarship: { schoolId } } }),
       db.scholarshipRecipient.count({

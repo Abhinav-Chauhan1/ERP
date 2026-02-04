@@ -5,7 +5,8 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
-import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
+import { r2StorageService } from "@/lib/services/r2-storage-service";
 import { hasPermission } from "@/lib/utils/permissions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
@@ -176,17 +177,45 @@ export async function uploadStudentAvatar(formData: FormData) {
     const base64 = buffer.toString("base64");
     const dataURI = `data:${file.type};base64,${base64}`;
 
-    // Upload to Cloudinary using shared utility
-    const uploadResponse = await uploadToCloudinary(dataURI, {
-      folder: "student-avatars",
-      publicId: `student_${student.userId}`,
-      transformation: "w_400,h_400,c_fill,g_face",
+    // Upload to R2 storage using upload handler
+    const uploadResult = await uploadHandler.uploadImage(file, {
+      folder: 'avatars',
+      category: 'image',
+      customMetadata: {
+        userId: student.userId,
+        studentId: student.id,
+        uploadType: 'avatar'
+      }
     });
 
-    // Update user avatar
-    await db.user.update({
-      where: { id: student.userId },
-      data: { avatar: uploadResponse.secure_url },
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload avatar');
+    }
+
+    // Update student avatar URL in database
+    const updatedStudent = await db.student.update({
+      where: { id: studentId },
+      data: {
+        user: {
+          update: {
+            avatar: uploadResult.url,
+          },
+        },
+      },
+      include: {
+        user: true,
+        enrollments: {
+          include: {
+            class: true,
+            section: true,
+          },
+          where: {
+            status: "ACTIVE"
+          },
+          take: 1
+        },
+        school: true,
+      },
     });
 
     revalidatePath(`/admin/users/students/${studentId}`);
@@ -195,7 +224,10 @@ export async function uploadStudentAvatar(formData: FormData) {
     return {
       success: true,
       message: "Student photo updated successfully",
-      data: { avatar: uploadResponse.secure_url },
+      data: { 
+        avatar: uploadResult.url,
+        metadata: uploadResult.metadata 
+      },
     };
   } catch (error) {
     console.error("Error uploading student avatar:", error);
@@ -253,13 +285,26 @@ export async function removeStudentAvatar(studentId: string) {
       };
     }
 
-    // Try to delete from Cloudinary if avatar exists
+    // Try to delete from R2 storage if avatar exists
     if (student.user.avatar) {
       try {
-        await deleteFromCloudinary(`student-avatars/student_${student.userId}`);
-      } catch (cloudinaryError) {
-        console.error("Error deleting from Cloudinary:", cloudinaryError);
-        // Continue anyway - the important thing is to clear the database
+        // Extract key from avatar URL to delete from R2
+        const url = new URL(student.user.avatar);
+        const key = url.pathname.substring(1); // Remove leading slash
+        
+        // Delete from R2 storage
+        await r2StorageService.deleteFile(schoolId, key);
+      } catch (error) {
+        console.warn("Failed to delete avatar from R2 storage:", error);
+        // Continue with database update even if R2 deletion fails
+        
+        try {
+          console.warn("Avatar deletion temporarily disabled during migration to R2 storage");
+          // await deleteFromR2(`student-avatars/student_${student.userId}`);
+        } catch (r2Error) {
+          console.error("Error deleting from R2 storage:", r2Error);
+          // Continue anyway - the important thing is to clear the database
+        }
       }
     }
 

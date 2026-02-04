@@ -11,6 +11,7 @@ interface AssignDepartmentDialogProps {
   teacherId: string;
   departments: Array<{ id: string; name: string }>;
   onAssign: (teacherId: string, departmentId: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function AssignDepartmentDialog({
@@ -18,7 +19,8 @@ export function AssignDepartmentDialog({
   onClose,
   teacherId,
   departments,
-  onAssign
+  onAssign,
+  isLoading: isLoadingDepartments = false
 }: AssignDepartmentDialogProps) {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -47,14 +49,20 @@ export function AssignDepartmentDialog({
         <div className="space-y-4">
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a department" />
+              <SelectValue placeholder={isLoadingDepartments ? "Loading departments..." : "Select a department"} />
             </SelectTrigger>
             <SelectContent>
-              {departments.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </SelectItem>
-              ))}
+              {isLoadingDepartments ? (
+                <SelectItem value="" disabled>Loading departments...</SelectItem>
+              ) : departments.length === 0 ? (
+                <SelectItem value="" disabled>No departments available</SelectItem>
+              ) : (
+                departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           <div className="flex justify-end space-x-2">
@@ -63,7 +71,7 @@ export function AssignDepartmentDialog({
             </Button>
             <Button 
               onClick={handleAssign} 
-              disabled={!selectedDepartment || isLoading}
+              disabled={!selectedDepartment || isLoading || isLoadingDepartments}
             >
               {isLoading ? "Assigning..." : "Assign"}
             </Button>

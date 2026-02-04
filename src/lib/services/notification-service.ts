@@ -335,34 +335,75 @@ export async function sendAttendanceNotification(
       notificationCreated = true;
     }
 
-    // 5. Notify Parents (Internal + SMS)
+    // 5. Notify Parents (Internal + SMS) - OPTIMIZED: Batch notifications and SMS
     let smsSent = false;
 
+    // Collect notifications and SMS recipients for batch processing
+    const notificationsToCreate: Array<{
+      userId: string;
+      title: string;
+      message: string;
+      type: string;
+      link: string;
+      schoolId: string;
+    }> = [];
+    
+    const smsRecipients: Array<{ phone: string; body: string }> = [];
+
+    // Process parents to collect batch data
     for (const p of student.parents) {
       const parent = p.parent;
       const parentNotify = parent.settings?.attendanceAlerts ?? true;
-      const parentSmsPref = parent.settings?.smsNotifications ?? false; // User preference
+      const parentSmsPref = parent.settings?.smsNotifications ?? false;
 
       if (parentNotify) {
-        // Internal Notification
-        await createNotification({
+        // Collect notification data for batch creation
+        notificationsToCreate.push({
           userId: parent.userId,
           title: `Attendance Alert: ${student.user.firstName}`,
           message: `${student.user.firstName} has been marked ${status} for ${date.toLocaleDateString()}`,
-          type: 'ATTENDANCE', // Or separate PARENT_ATTENDANCE type
+          type: 'ATTENDANCE',
           link: `/parent/children/${student.id}/attendance`,
           schoolId
         });
-        notificationCreated = true;
 
-        // SMS Notification
-        // Condition: System SMS enabled AND Parent SMS enabled AND Phone exists
+        // Collect SMS recipients for batch sending
         if (smsEnabledSystem && parentSmsPref && parent.user.phone) {
           const smsBody = `Alert: ${student.user.firstName} is marked ${status} on ${date.toLocaleDateString()}. - ${systemSettings?.schoolName || 'School Admin'}`;
-
-          await sendSMS(parent.user.phone, smsBody);
-          smsSent = true;
+          smsRecipients.push({ phone: parent.user.phone, body: smsBody });
         }
+      }
+    }
+
+    // Batch create notifications (1 query instead of N queries)
+    if (notificationsToCreate.length > 0) {
+      await db.notification.createMany({
+        data: notificationsToCreate.map(notification => ({
+          ...notification,
+          isRead: false
+        }))
+      });
+      notificationCreated = true;
+    }
+
+    // Batch send SMS messages (parallel instead of sequential)
+    if (smsRecipients.length > 0) {
+      try {
+        // Send SMS messages in parallel with rate limiting
+        const smsPromises = smsRecipients.map(({ phone, body }) => 
+          sendSMS(phone, body).catch(error => {
+            console.error(`Failed to send SMS to ${phone}:`, error);
+            return { success: false, error: error.message };
+          })
+        );
+        
+        // Use Promise.allSettled to handle partial failures gracefully
+        const smsResults = await Promise.allSettled(smsPromises);
+        smsSent = smsResults.some(result => 
+          result.status === 'fulfilled' && result.value.success !== false
+        );
+      } catch (error) {
+        console.error('Error in batch SMS sending:', error);
       }
     }
 

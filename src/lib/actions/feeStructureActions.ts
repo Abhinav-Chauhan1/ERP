@@ -215,7 +215,7 @@ export const updateFeeType = withSchoolAuthAction(async (schoolId: string, userI
       frequency: data.frequency,
       isOptional: data.isOptional,
       classAmounts: data.classAmounts,
-    });
+    }, schoolId); // Add required schoolId parameter
 
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeType };

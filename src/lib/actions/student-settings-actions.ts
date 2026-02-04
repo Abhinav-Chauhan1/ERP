@@ -56,9 +56,14 @@ export async function getStudentSettings(studentId: string) {
     // If no settings exist, create default settings
     if (!settings) {
       try {
+        // Get required school context
+        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+        const schoolId = await getRequiredSchoolId();
+
         const defaultSettings = await db.studentSettings.create({
           data: {
             studentId: studentId,
+            schoolId, // Add required schoolId
             emailNotifications: true,
             assignmentReminders: true,
             examReminders: true,
@@ -278,7 +283,8 @@ export async function updateNotificationSettings(data: {
         announcementNotifications: validated.announcementNotifications ?? true,
         whatsappNotifications: validated.whatsappNotifications ?? false,
         whatsappOptIn: validated.whatsappOptIn ?? false,
-        preferredLanguage: validated.preferredLanguage ?? "en"
+        preferredLanguage: validated.preferredLanguage ?? "en",
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 
@@ -342,7 +348,8 @@ export async function updatePrivacySettings(data: {
         studentId: validated.studentId,
         profileVisibility: validated.profileVisibility ?? "PRIVATE",
         showEmail: validated.showEmail ?? false,
-        showPhone: validated.showPhone ?? false
+        showPhone: validated.showPhone ?? false,
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 
@@ -409,7 +416,8 @@ export async function updateAppearanceSettings(data: {
         theme: validated.theme ?? "LIGHT",
         language: validated.language ?? "en",
         dateFormat: validated.dateFormat ?? "MM/DD/YYYY",
-        timeFormat: validated.timeFormat ?? "TWELVE_HOUR"
+        timeFormat: validated.timeFormat ?? "TWELVE_HOUR",
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 

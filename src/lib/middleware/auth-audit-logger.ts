@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRole, AuditAction } from '@prisma/client';
 import { logAuditEvent } from '@/lib/services/audit-service';
 import { NextRequest } from 'next/server';
 
@@ -12,8 +12,8 @@ import { NextRequest } from 'next/server';
 
 export interface AuthAuditEvent {
   action: AuthAuditAction;
-  userId?: string;
-  schoolId?: string;
+  userId?: string | null;
+  schoolId?: string | null;
   result: 'SUCCESS' | 'FAILURE' | 'ERROR' | 'WARNING';
   details: string;
   metadata: AuthAuditMetadata;
@@ -96,6 +96,46 @@ export enum AuthAuditAction {
   SYSTEM_ERROR = 'SYSTEM_ERROR'
 }
 
+/**
+ * Maps AuthAuditAction to AuditAction for database storage
+ */
+function mapAuthAuditActionToAuditAction(authAction: AuthAuditAction): AuditAction {
+  switch (authAction) {
+    case AuthAuditAction.LOGIN_ATTEMPT:
+    case AuthAuditAction.LOGIN_SUCCESS:
+    case AuthAuditAction.LOGIN_FAILURE:
+      return AuditAction.LOGIN;
+    case AuthAuditAction.LOGOUT:
+      return AuditAction.LOGOUT;
+    case AuthAuditAction.ACCESS_GRANTED:
+    case AuthAuditAction.ACCESS_DENIED:
+    case AuthAuditAction.PERMISSION_CHECK:
+    case AuthAuditAction.ROLE_VALIDATION:
+      return AuditAction.VIEW;
+    case AuthAuditAction.SCHOOL_CONTEXT_SWITCH:
+    case AuthAuditAction.SCHOOL_ACCESS_VALIDATION:
+    case AuthAuditAction.TENANT_ISOLATION_CHECK:
+      return AuditAction.UPDATE;
+    case AuthAuditAction.OTP_GENERATED:
+    case AuthAuditAction.SESSION_CREATED:
+      return AuditAction.CREATE;
+    case AuthAuditAction.OTP_VERIFIED:
+    case AuthAuditAction.OTP_FAILED:
+    case AuthAuditAction.OTP_EXPIRED:
+      return AuditAction.VERIFY;
+    case AuthAuditAction.SESSION_EXPIRED:
+    case AuthAuditAction.SESSION_INVALIDATED:
+      return AuditAction.DELETE;
+    case AuthAuditAction.USER_ACCOUNT_LOCKED:
+    case AuthAuditAction.USER_ACCOUNT_UNLOCKED:
+    case AuthAuditAction.PERMISSION_GRANTED:
+    case AuthAuditAction.PERMISSION_REVOKED:
+      return AuditAction.UPDATE;
+    default:
+      return AuditAction.VIEW; // Default fallback
+  }
+}
+
 class AuthAuditLogger {
   private readonly MAX_METADATA_SIZE = 10000; // 10KB limit for metadata
   private readonly SENSITIVE_FIELDS = ['password', 'token', 'secret', 'key', 'otp'];
@@ -111,8 +151,8 @@ class AuthAuditLogger {
       
       await logAuditEvent({
         userId: enrichedEvent.userId || null,
-        schoolId: enrichedEvent.schoolId || null,
-        action: enrichedEvent.action,
+        schoolId: enrichedEvent.schoolId || undefined,
+        action: mapAuthAuditActionToAuditAction(enrichedEvent.action),
         resource: 'authentication',
         resourceId: enrichedEvent.metadata.sessionId || enrichedEvent.metadata.requestId,
         changes: {

@@ -316,6 +316,10 @@ export async function createSection(data: SectionFormValues) {
     // Permission check: require SECTION:CREATE
     await checkPermission('SECTION', 'CREATE', 'You do not have permission to create sections');
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Check if section name already exists for this class
     const existingSection = await db.classSection.findFirst({
       where: {
@@ -334,6 +338,7 @@ export async function createSection(data: SectionFormValues) {
         name: data.name,
         classId: data.classId,
         capacity: data.capacity,
+        schoolId, // Add required schoolId
       }
     });
 
@@ -355,6 +360,7 @@ export async function createSection(data: SectionFormValues) {
             sectionId: section.id, // Link to the new section
             teacherId: data.teacherId,
             isClassHead: data.isClassHead,
+            schoolId, // Add required schoolId
           }
         });
       } else if (data.isClassHead && !existingTeacher.isClassHead) {
@@ -392,6 +398,10 @@ export async function updateSection(data: SectionUpdateFormValues) {
   try {
     // Permission check: require SECTION:UPDATE
     await checkPermission('SECTION', 'UPDATE', 'You do not have permission to update sections');
+
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
 
     // Check if section name already exists for this class (excluding current section)
     const existingSection = await db.classSection.findFirst({
@@ -434,6 +444,7 @@ export async function updateSection(data: SectionUpdateFormValues) {
             sectionId: data.id, // Link to the section being updated
             teacherId: data.teacherId,
             isClassHead: data.isClassHead,
+            schoolId, // Add required schoolId
           }
         });
       } else if (data.isClassHead && !existingTeacher.isClassHead) {

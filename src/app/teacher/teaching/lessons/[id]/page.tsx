@@ -4,7 +4,7 @@ import React from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CldUploadWidget } from 'next-cloudinary';
+import { R2UploadWidget } from '@/components/upload/r2-upload-widget';
 import {
   Card,
   CardContent,
@@ -370,28 +370,15 @@ export default function LessonDetailPage({ params }: { params: Promise<{ id: str
             <div className="space-y-2">
               <Label>Upload Documents</Label>
               <div className="border border-dashed rounded-lg p-4">
-                <CldUploadWidget
-                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+                <R2UploadWidget
                   onSuccess={handleUploadSuccess}
-                >
-                  {({ open }) => (
-                    <div className="flex flex-col items-center gap-2 py-4">
-                      <FileUp className="h-10 w-10 text-gray-400" />
-                      <p className="font-medium">Click to upload files</p>
-                      <p className="text-xs text-gray-500 text-center">
-                        Upload PDF, Word, Excel, PowerPoint, or image files
-                      </p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => open()}
-                        className="mt-2"
-                      >
-                        <Upload className="mr-2 h-4 w-4" /> Upload Document
-                      </Button>
-                    </div>
-                  )}
-                </CldUploadWidget>
+                  accept={['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'image/*']}
+                  maxSize={50 * 1024 * 1024} // 50MB
+                  folder="lessons"
+                  uploadText="Click to upload files"
+                  descriptionText="Upload PDF, Word, Excel, PowerPoint, or image files"
+                  multiple={true}
+                />
               </div>
 
               {uploadedFiles.length > 0 && (

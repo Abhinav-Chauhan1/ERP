@@ -12,6 +12,17 @@ export const baseUserSchema = z.object({
   active: z.boolean().default(true),
 });
 
+// Base user schema for students and parents (email optional, phone required for mobile login)
+export const mobileAuthUserSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone: z.string().min(10, "Phone number is required for login"),
+  avatar: z.string().url().optional(),
+  role: z.enum([UserRole.STUDENT, UserRole.PARENT]),
+  active: z.boolean().default(true),
+});
+
 // Password validation schema
 export const passwordSchema = z.object({
   password: z
@@ -80,21 +91,18 @@ export const studentSchema = z.object({
   medicalConditions: z.string().optional(),
   specialNeeds: z.string().optional(),
 
-  // Parent/Guardian details
+  // Parent/Guardian details (email removed - mobile-only authentication)
   fatherName: z.string().optional(),
   fatherOccupation: z.string().optional(),
   fatherPhone: z.string().optional(),
-  fatherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   fatherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
   motherName: z.string().optional(),
   motherOccupation: z.string().optional(),
   motherPhone: z.string().optional(),
-  motherEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   motherAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
   guardianName: z.string().optional(),
   guardianRelation: z.string().optional(),
   guardianPhone: z.string().optional(),
-  guardianEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   guardianAadhaar: z.string().max(12, "Aadhaar must be 12 digits").optional(),
 });
 
@@ -120,19 +128,18 @@ export const createTeacherSchema = baseUserSchema
   .and(teacherSchema)
   .and(passwordSchema);
 
-export const createStudentSchema = baseUserSchema
+// Students and parents use mobile-only authentication (no password)
+export const createStudentSchema = mobileAuthUserSchema
   .extend({
     role: z.literal(UserRole.STUDENT),
   })
-  .and(studentSchema)
-  .and(passwordSchema);
+  .and(studentSchema);
 
-export const createParentSchema = baseUserSchema
+export const createParentSchema = mobileAuthUserSchema
   .extend({
     role: z.literal(UserRole.PARENT),
   })
-  .and(parentSchema)
-  .and(passwordSchema);
+  .and(parentSchema);
 
 // Types for form data
 export type CreateAdministratorFormData = z.infer<typeof createAdministratorSchema>;

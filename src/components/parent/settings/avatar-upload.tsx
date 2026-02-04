@@ -78,13 +78,16 @@ export function AvatarUpload({ currentAvatar, userName, onAvatarUpdate }: Avatar
 
       const result = await uploadAvatar(formData);
 
-      if (result.success && result.data) {
+      if (result.success) {
+        // This case should not happen currently as upload is disabled
         toast.success(result.message || "Your profile picture has been updated successfully");
-        setPreview(result.data.avatarUrl);
-        
-        // Call optional callback
-        if (onAvatarUpdate) {
-          onAvatarUpdate(result.data.avatarUrl);
+        // Handle successful upload when it's re-enabled
+        if ('data' in result && result.data && typeof result.data === 'object' && 'avatarUrl' in result.data) {
+          const avatarUrl = (result.data as { avatarUrl: string }).avatarUrl;
+          setPreview(avatarUrl);
+          if (onAvatarUpdate) {
+            onAvatarUpdate(avatarUrl);
+          }
         }
       } else {
         // Provide specific error message from server or generic fallback

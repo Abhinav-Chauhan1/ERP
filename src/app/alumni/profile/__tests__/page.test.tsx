@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handlePhotoUpload } from '../page';
-import { uploadBufferToCloudinary } from '@/lib/cloudinary-server';
+import { uploadHandler } from '@/lib/services/upload-handler';
 
 // Mock dependencies
 vi.mock('@/auth', () => ({

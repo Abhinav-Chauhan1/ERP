@@ -233,8 +233,8 @@ export class AuthAnalyticsService {
       const failedLogins = totalLogins - successfulLogins;
       const successRate = totalLogins > 0 ? (successfulLogins / totalLogins) * 100 : 0;
 
-      // Get unique users
-      const uniqueUserIds = new Set(authEvents.map(event => event.userId).filter(Boolean));
+      // Get unique users (filter out null values)
+      const uniqueUserIds = new Set(authEvents.map(event => event.userId).filter((id): id is string => Boolean(id)));
       const uniqueUsers = uniqueUserIds.size;
 
       // Calculate new vs returning users

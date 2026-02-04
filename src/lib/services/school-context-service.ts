@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { SchoolStatus } from "@prisma/client";
+import { SchoolStatus, AuditAction } from "@prisma/client";
 import { logAuditEvent } from "./audit-service";
 
 /**
@@ -549,17 +549,8 @@ class SchoolContextService {
         }
       });
 
-      // Revoke JWT tokens (if using a token blacklist)
-      for (const session of activeSessions) {
-        try {
-          // Import JWT service dynamically to avoid circular dependencies
-          const { jwtService } = await import('./jwt-service');
-          await jwtService.revokeToken(session.token);
-        } catch (error) {
-          console.error('Failed to revoke JWT token:', error);
-          // Continue with other tokens even if one fails
-        }
-      }
+      // Note: JWT tokens are handled by NextAuth and will be invalidated automatically
+      // when the user tries to access protected routes
 
       // Log session invalidation
       await this.logSchoolEvent(
@@ -679,7 +670,7 @@ class SchoolContextService {
       await logAuditEvent({
         userId: metadata?.userId || null,
         schoolId: schoolId || undefined,
-        action: 'VIEW' as any,
+        action: AuditAction.VIEW,
         resource: 'school_context',
         changes: {
           schoolCode,

@@ -310,6 +310,7 @@ export async function createAssignment(formData: FormData) {
         creatorId: teacher.id,
         instructions,
         attachments: JSON.stringify(attachments),
+        schoolId, // Add required schoolId
       },
     });
 
@@ -320,6 +321,7 @@ export async function createAssignment(formData: FormData) {
           data: {
             assignmentId: assignment.id,
             classId,
+            schoolId, // Add required schoolId
           },
         });
       }
@@ -452,8 +454,7 @@ export async function updateAssignment(formData: FormData) {
       },
     });
 
-    // Update the assignment-class relationships
-    // First, delete existing relationships
+    // Delete existing relationships
     await db.assignmentClass.deleteMany({
       where: {
         assignmentId: id,
@@ -467,6 +468,7 @@ export async function updateAssignment(formData: FormData) {
           data: {
             assignmentId: id,
             classId,
+            schoolId, // Add required schoolId
           },
         });
       }

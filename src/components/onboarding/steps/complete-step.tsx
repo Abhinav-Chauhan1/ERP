@@ -6,7 +6,6 @@ import { CheckCircle, Loader2, PartyPopper, ArrowRight } from "lucide-react";
 import type { WizardData } from "../setup-wizard";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { completeSetup } from "@/lib/actions/onboarding/setup-actions";
 import { format } from "date-fns";
 
 interface CompleteStepProps {
@@ -21,13 +20,29 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
     const { toast } = useToast();
     const router = useRouter();
 
-    const handleComplete = async () => {
+    const handleComplete = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (isSubmitting) return; // Prevent double submission
+
         setIsSubmitting(true);
 
         try {
-            const result = await completeSetup(data);
+            // Use API endpoint instead of server action to avoid form submission behavior
+            const response = await fetch(`/api/super-admin/schools/${schoolId}/setup-wizard`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
 
-            if (!result.success) {
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
                 toast({
                     title: "Setup failed",
                     description: result.error || "Something went wrong",
@@ -62,8 +77,8 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
         return (
             <div className="text-center space-y-6 py-8">
                 <div className="flex justify-center">
-                    <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center animate-bounce">
-                        <PartyPopper className="h-10 w-10 text-green-600" />
+                    <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center animate-bounce">
+                        <PartyPopper className="h-10 w-10 text-green-600 dark:text-green-400" />
                     </div>
                 </div>
 
@@ -85,8 +100,8 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
         <div className="space-y-6">
             <div className="text-center space-y-2">
                 <div className="flex justify-center">
-                    <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle className="h-6 w-6 text-green-600" />
+                    <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold">Review & Complete</h2>
@@ -98,7 +113,7 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
             {/* Summary Cards */}
             <div className="space-y-4">
                 {/* School Info */}
-                <div className="border rounded-lg p-4 bg-gray-50/50">
+                <div className="border rounded-lg p-4 bg-muted/30">
                     <h3 className="font-semibold mb-2 text-sm text-muted-foreground uppercase tracking-wide">
                         School Information
                     </h3>
@@ -123,7 +138,7 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
                 </div>
 
                 {/* Admin Account */}
-                <div className="border rounded-lg p-4 bg-gray-50/50">
+                <div className="border rounded-lg p-4 bg-muted/30">
                     <h3 className="font-semibold mb-2 text-sm text-muted-foreground uppercase tracking-wide">
                         Administrator Account
                     </h3>
@@ -144,7 +159,7 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
                 </div>
 
                 {/* Academic Year */}
-                <div className="border rounded-lg p-4 bg-gray-50/50">
+                <div className="border rounded-lg p-4 bg-muted/30">
                     <h3 className="font-semibold mb-2 text-sm text-muted-foreground uppercase tracking-wide">
                         Academic Year
                     </h3>
@@ -165,7 +180,7 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
                 </div>
 
                 {/* Classes */}
-                <div className="border rounded-lg p-4 bg-gray-50/50">
+                <div className="border rounded-lg p-4 bg-muted/30">
                     <h3 className="font-semibold mb-2 text-sm text-muted-foreground uppercase tracking-wide">
                         Classes & Sections
                     </h3>
@@ -185,9 +200,9 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
             </div>
 
             {/* What's Next */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold mb-2 text-blue-800">What&apos;s Next?</h3>
-                <ul className="text-sm text-blue-700 space-y-1">
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h3 className="font-semibold mb-2 text-blue-800 dark:text-blue-200">What&apos;s Next?</h3>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
                     <li>• Add teachers and staff members</li>
                     <li>• Create subjects and assign to classes</li>
                     <li>• Set up fee structures</li>
@@ -198,6 +213,7 @@ export function CompleteStep({ data, redirectUrl, schoolId }: CompleteStepProps)
             {/* Complete Button */}
             <div className="pt-4">
                 <Button
+                    type="button"
                     onClick={handleComplete}
                     disabled={isSubmitting}
                     className="w-full"

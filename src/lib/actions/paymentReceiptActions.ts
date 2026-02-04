@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { ReceiptStatus } from "@prisma/client";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 import {
   receiptUploadSchema,
   validateReceiptFile,
@@ -14,6 +14,7 @@ import { sanitizeReceiptUploadData } from "@/lib/utils/input-sanitization";
 import { rateLimitReceiptUpload } from "@/lib/utils/receipt-rate-limit";
 import { getClientIp } from "@/lib/utils/rate-limit";
 import { logReceiptUpload } from "@/lib/services/receipt-audit-service";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Generate unique reference number for receipt
@@ -159,25 +160,42 @@ export async function uploadPaymentReceipt(
       return { success: false, error: "Fee structure not found" };
     }
 
-    // Upload receipt image to Cloudinary with enhanced security
-    // Requirement 10.1: Secure storage with HTTPS and folder structure
+    // Upload receipt image to R2 storage with enhanced security
+    const uploadResult = await uploadHandler.uploadImage(data.receiptImage, {
+      folder: 'payment-receipts',
+      category: 'image',
+      customMetadata: {
+        receiptType: 'payment-receipt',
+        uploadType: 'receipt-image'
+      }
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload receipt image');
+    }
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, "0");
     const folder = `receipts/${year}/${month}`;
 
-    let uploadResult;
     try {
-      uploadResult = await uploadToCloudinary(data.receiptImage, {
-        folder,
-        resource_type: "auto",
-        secure: true, // Force HTTPS only
-      });
+      console.warn("Receipt upload temporarily disabled during migration to R2 storage");
+      return {
+        success: false,
+        error: "Receipt upload temporarily disabled during migration to R2 storage",
+      };
     } catch (uploadError) {
-      console.error("Cloudinary upload error:", uploadError);
+      console.error("R2 upload error:", uploadError);
       return {
         success: false,
         error: "Failed to upload receipt image. Please try again.",
       };
+    }
+
+    // Get school context
+    const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
     }
 
     // Generate unique reference number
@@ -186,6 +204,7 @@ export async function uploadPaymentReceipt(
     // Create payment receipt record with sanitized data
     const receipt = await db.paymentReceipt.create({
       data: {
+        schoolId: schoolId!,
         studentId: data.studentId,
         feeStructureId: data.feeStructureId,
         amount: data.amount,
@@ -193,8 +212,8 @@ export async function uploadPaymentReceipt(
         paymentMethod: data.paymentMethod,
         transactionRef: sanitizedData.transactionRef,
         remarks: sanitizedData.remarks,
-        receiptImageUrl: uploadResult.secure_url,
-        receiptPublicId: uploadResult.public_id,
+        receiptImageUrl: uploadResult.url!,
+        receiptPublicId: uploadResult.key!,
         status: ReceiptStatus.PENDING_VERIFICATION,
         referenceNumber,
       },
@@ -225,7 +244,7 @@ export async function uploadPaymentReceipt(
     // Log audit trail
     try {
       await logReceiptUpload(
-        user.id,
+        user!.id, // Add non-null assertion since we've already checked user exists
         receipt.id,
         {
           referenceNumber: receipt.referenceNumber,

@@ -4,7 +4,6 @@ import Credentials from "next-auth/providers/credentials"
 import { db } from "@/lib/db"
 import { UserRole, AuditAction } from "@prisma/client"
 import { verifyPassword } from "@/lib/password"
-import { schoolContextService } from "@/lib/services/school-context-service"
 import { logAuditEvent } from "@/lib/services/audit-service"
 import { authConfig } from "./auth.config"
 
@@ -20,60 +19,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
         mobile: { label: "Mobile", type: "text", optional: true },
         schoolCode: { label: "School Code", type: "text", optional: true },
-        totpCode: { label: "2FA Code", type: "text", optional: true }
+        totpCode: { label: "2FA Code", type: "text", optional: true },
+        otpCode: { label: "OTP Code", type: "text", optional: true }
       },
       async authorize(credentials) {
         console.log("DEBUG: NextAuth authorize called with keys:", Object.keys(credentials || {}))
-        
+
         const identifier = (credentials?.email || credentials?.mobile) as string
         const password = credentials?.password as string
         const schoolCode = credentials?.schoolCode as string
         const totpCode = credentials?.totpCode as string
+        const otpCode = credentials?.otpCode as string
 
-        if (!identifier || !password) {
-          // Log failed login - missing credentials
-          if (identifier) {
-            try {
-              await logAuditEvent({
-                userId: 'anonymous',
-                action: AuditAction.LOGIN,
-                resource: 'nextauth_login',
-                changes: {
-                  identifier,
-                  reason: 'MISSING_CREDENTIALS',
-                  timestamp: new Date()
-                }
-              })
-            } catch (e) {
-              console.error("Failed to log audit event:", e)
-            }
-          }
-          return null
+        if (!identifier) {
+          console.log("Login failed: Missing identifier");
+          throw new Error("Phone number or email is required")
         }
 
         try {
-          // If school code is provided, validate it first
-          let schoolId: string | undefined
-          if (schoolCode) {
-            const school = await schoolContextService.validateSchoolCode(schoolCode)
-            if (!school) {
-              await logAuditEvent({
-                userId: 'anonymous',
-                action: AuditAction.LOGIN,
-                resource: 'nextauth_login',
-                changes: {
-                  identifier,
-                  schoolCode,
-                  reason: 'INVALID_SCHOOL_CODE',
-                  timestamp: new Date()
-                }
-              })
-              return null
+          // Check active connection
+          const currentIdentifier = identifier
+          const foundUser = await db.user.findFirst({
+            where: {
+              OR: [
+                { email: currentIdentifier },
+                { mobile: currentIdentifier }
+              ]
             }
-            schoolId = school.id
+          })
+
+          if (!foundUser) {
+            return null
           }
 
           // Find user by identifier (email or mobile)
+          // The previous user lookup was just to check existence for error message.
+          // Now we fetch with full details and active status.
           const user = await db.user.findFirst({
             where: {
               OR: [
@@ -86,61 +67,127 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               userSchools: {
                 where: {
                   isActive: true,
-                  ...(schoolId && { schoolId })
+                  ...(schoolCode && {
+                    school: {
+                      schoolCode: schoolCode
+                    }
+                  })
                 },
-                include: { school: true }
+                include: {
+                  school: true
+                }
               }
             }
           })
 
-          if (!user || !user.passwordHash) {
+          if (!user) {
             await logAuditEvent({
-              userId: 'anonymous',
+              userId: undefined,
               action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
                 identifier,
                 schoolCode,
-                reason: 'USER_NOT_FOUND_OR_NO_PASSWORD',
+                reason: 'USER_NOT_FOUND',
                 timestamp: new Date()
               }
             })
             return null
           }
 
-          // If school context is provided, validate user has access to that school
-          if (schoolId && user.userSchools.length === 0) {
-            await logAuditEvent({
-              userId: user.id,
-              schoolId: schoolId || undefined,
-              action: AuditAction.LOGIN,
-              resource: 'nextauth_login',
-              changes: {
-                identifier,
-                schoolCode,
-                reason: 'USER_NOT_IN_SCHOOL',
-                timestamp: new Date()
-              }
+          // For OTP-based authentication (students, parents)
+          // Ensure otpCode is a valid non-empty string and not "undefined"
+          if (otpCode && typeof otpCode === 'string' && otpCode !== 'undefined' && otpCode.trim() !== '') {
+            // Verify OTP code - find by identifier, then verify hash
+            const bcrypt = await import('bcryptjs')
+            const otpRecord = await db.oTP.findFirst({
+              where: {
+                identifier: identifier,
+                expiresAt: { gt: new Date() },
+                isUsed: false
+              },
+              orderBy: { createdAt: 'desc' } // Get the most recent OTP
             })
-            return null
+
+            if (!otpRecord) {
+              await logAuditEvent({
+                userId: user.id,
+                action: AuditAction.LOGIN,
+                resource: 'nextauth_login',
+                changes: {
+                  identifier,
+                  schoolCode,
+                  reason: 'OTP_NOT_FOUND',
+                  timestamp: new Date()
+                }
+              })
+              return null
+            }
+
+            // Verify the OTP code against the stored hash
+            const isValidOtp = await bcrypt.compare(otpCode, otpRecord.codeHash)
+            if (!isValidOtp) {
+              // Increment attempts
+              await db.oTP.update({
+                where: { id: otpRecord.id },
+                data: { attempts: { increment: 1 } }
+              })
+
+              await logAuditEvent({
+                userId: user.id,
+                action: AuditAction.LOGIN,
+                resource: 'nextauth_login',
+                changes: {
+                  identifier,
+                  schoolCode,
+                  reason: 'INVALID_OTP',
+                  timestamp: new Date()
+                }
+              })
+              return null
+            }
+
+            // Mark OTP as used
+            await db.oTP.update({
+              where: { id: otpRecord.id },
+              data: { isUsed: true }
+            })
           }
+          // For password-based authentication (teachers, admins, super-admins)
+          else if (password) {
+            if (!user.passwordHash) {
+              await logAuditEvent({
+                userId: user.id,
+                action: AuditAction.LOGIN,
+                resource: 'nextauth_login',
+                changes: {
+                  identifier,
+                  schoolCode,
+                  reason: 'NO_PASSWORD_SET',
+                  timestamp: new Date()
+                }
+              })
+              return null
+            }
 
-          // Verify password using the existing password verification
-          const isValidPassword = await verifyPassword(password, user.passwordHash)
+            const isValidPassword = await verifyPassword(password, user.passwordHash)
 
-          if (!isValidPassword) {
-            await logAuditEvent({
-              userId: user.id,
-              schoolId: schoolId || undefined,
-              action: AuditAction.LOGIN,
-              resource: 'nextauth_login',
-              changes: {
-                identifier,
-                schoolCode,
-                reason: 'INVALID_PASSWORD',
-                timestamp: new Date()
-              }
-            })
+            if (!isValidPassword) {
+              await logAuditEvent({
+                userId: user.id,
+                action: AuditAction.LOGIN,
+                resource: 'nextauth_login',
+                changes: {
+                  identifier,
+                  schoolCode,
+                  reason: 'INVALID_PASSWORD',
+                  timestamp: new Date()
+                }
+              })
+              return null
+            }
+          } else {
+            // No valid authentication method provided
             return null
           }
 
@@ -148,7 +195,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (user.email && !user.emailVerified && user.role !== 'SUPER_ADMIN') {
             await logAuditEvent({
               userId: user.id,
-              schoolId: schoolId || undefined,
               action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
@@ -161,22 +207,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // Check 2FA if enabled
-          if (user.twoFactorEnabled) {
-            if (!totpCode || totpCode === "undefined") {
-              await logAuditEvent({
-                userId: user.id,
-                schoolId: schoolId || undefined,
-                action: AuditAction.LOGIN,
-                resource: 'nextauth_login',
-                changes: {
-                  identifier,
-                  reason: '2FA_REQUIRED',
-                  timestamp: new Date()
-                }
-              })
-              throw new Error("2FA_REQUIRED")
-            }
-
+          if (user.twoFactorEnabled && totpCode) {
             let isValid2FA = false
 
             try {
@@ -220,7 +251,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     const remainingCount = backupResult.remainingCodes
                       ? JSON.parse(await decrypt(backupResult.remainingCodes)).length
                       : 0
-                    
+
                     await logAuditEvent({
                       userId: user.id,
                       action: AuditAction.UPDATE,
@@ -243,7 +274,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (!isValid2FA) {
               await logAuditEvent({
                 userId: user.id,
-                schoolId: schoolId || undefined,
                 action: AuditAction.LOGIN,
                 resource: 'nextauth_login',
                 changes: {
@@ -254,18 +284,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               })
               throw new Error("INVALID_2FA_CODE")
             }
+          } else if (user.twoFactorEnabled && !totpCode) {
+            // 2FA is enabled but no code provided
+            throw new Error("2FA_REQUIRED")
           }
 
           // Log successful authentication
           await logAuditEvent({
             userId: user.id,
-            schoolId: schoolId || undefined,
+            schoolId: user.userSchools[0]?.schoolId || undefined,
             action: AuditAction.LOGIN,
             resource: 'nextauth_login',
             changes: {
               identifier,
               schoolCode,
-              authMethod: 'password',
+              authMethod: otpCode ? 'otp' : 'password',
               has2FA: user.twoFactorEnabled,
               timestamp: new Date()
             }
@@ -289,13 +322,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         } catch (error) {
           console.error("NextAuth authorization error:", error)
-          
+
           if (error instanceof Error && ['EMAIL_NOT_VERIFIED', '2FA_REQUIRED', 'INVALID_2FA_CODE'].includes(error.message)) {
             throw error
           }
 
           await logAuditEvent({
-            userId: 'anonymous',
+            userId: undefined,
             action: AuditAction.LOGIN,
             resource: 'nextauth_login',
             changes: {
@@ -359,7 +392,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.schoolCode = null
             token.authorizedSchools = [] // Super-admin can access all schools
           } else {
-            const activeUserSchools = dbUser.userSchools.filter(us => 
+            const activeUserSchools = dbUser.userSchools.filter(us =>
               us.school.status === 'ACTIVE'
             )
 

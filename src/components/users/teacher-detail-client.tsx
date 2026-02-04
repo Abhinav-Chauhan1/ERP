@@ -12,7 +12,7 @@ import { ArrowLeft, Edit, Trash2, Mail, Phone, BookOpen, Calendar, Clock, Buildi
 import { AssignSubjectDialog } from "@/components/users/assign-subject-dialog";
 import { AssignClassDialog } from "@/components/users/assign-class-dialog";
 import { AssignDepartmentDialog } from "@/components/users/assign-department-dialog";
-import { removeTeacherFromDepartment } from "@/lib/actions/departmentsAction";
+import { removeTeacherFromDepartment, assignTeacherToDepartment, getDepartments } from "@/lib/actions/departmentsAction";
 import toast from "react-hot-toast";
 
 interface TeacherDetailClientProps {
@@ -71,6 +71,8 @@ interface TeacherDetailClientProps {
 export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
     const router = useRouter();
     const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+    const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+    const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 
     // Calculate attendance statistics
     const totalAttendanceRecords = teacher.attendance.length;
@@ -88,6 +90,43 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
 
     const handleRefresh = () => {
         router.refresh();
+    };
+
+    const fetchDepartments = async () => {
+        setIsLoadingDepartments(true);
+        try {
+            const result = await getDepartments();
+            if (result.success) {
+                setDepartments(result.departments);
+            } else {
+                toast.error(result.error || 'Failed to fetch departments');
+            }
+        } catch (error) {
+            toast.error('Failed to fetch departments');
+            console.error('Error fetching departments:', error);
+        } finally {
+            setIsLoadingDepartments(false);
+        }
+    };
+
+    const handleDepartmentAssignment = async (teacherId: string, departmentId: string) => {
+        try {
+            const result = await assignTeacherToDepartment(teacherId, departmentId);
+            if (result.success) {
+                toast.success('Teacher assigned to department successfully');
+                handleRefresh();
+            } else {
+                toast.error(result.error || 'Failed to assign teacher to department');
+            }
+        } catch (error) {
+            toast.error('Failed to assign teacher to department');
+            console.error('Error assigning teacher to department:', error);
+        }
+    };
+
+    const handleOpenDepartmentDialog = () => {
+        setIsDepartmentDialogOpen(true);
+        fetchDepartments();
     };
 
     return (
@@ -368,7 +407,7 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                         <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setIsDepartmentDialogOpen(true)}
+                            onClick={handleOpenDepartmentDialog}
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Assign Department
@@ -490,13 +529,9 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
             isOpen={isDepartmentDialogOpen}
             onClose={() => setIsDepartmentDialogOpen(false)}
             teacherId={teacher.id}
-            departments={[]} // TODO: Fetch departments from API
-            onAssign={async (teacherId: string, departmentId: string) => {
-                // TODO: Implement department assignment
-                console.log('Assign teacher', teacherId, 'to department', departmentId);
-                setIsDepartmentDialogOpen(false);
-                handleRefresh();
-            }}
+            departments={departments}
+            onAssign={handleDepartmentAssignment}
+            isLoading={isLoadingDepartments}
         />
         </>
     );

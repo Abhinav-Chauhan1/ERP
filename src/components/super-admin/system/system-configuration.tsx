@@ -173,7 +173,7 @@ export function SystemConfiguration() {
       type: "select",
       value: "msg91",
       defaultValue: "msg91",
-      options: ["msg91", "twilio", "textlocal"],
+      options: ["msg91"],
       validation: { required: true },
       isSystem: false,
       requiresRestart: true

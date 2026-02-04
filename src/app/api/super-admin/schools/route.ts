@@ -2,37 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { schoolService } from '@/lib/services/school-service';
 import { logAuditEvent, logSchoolManagementAction } from '@/lib/services/audit-service';
-import { authenticationService } from '@/lib/services/authentication-service';
 import { schoolContextService } from '@/lib/services/school-context-service';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/middleware/rate-limit';
 import { db } from '@/lib/db';
-import { AuditAction } from '@prisma/client';
+import { AuditAction, SchoolStatus, PlanType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const createSchoolSchema = z.object({
   // Basic Information
   schoolName: z.string().min(1),
+  schoolCode: z.string().min(1, "School code is required"),
   subdomain: z.string().optional(),
   contactEmail: z.string().email(),
   contactPhone: z.string().optional(),
   description: z.string().optional(),
-  
+
   // Subscription & Billing - Accept plan ID instead of enum
   subscriptionPlan: z.string().min(1, "Subscription plan is required"),
-  billingCycle: z.enum(['monthly', 'yearly']),
-  
+
   // Initial Configuration
   extraStudents: z.number().min(0).default(0),
   schoolType: z.string().optional(),
-  
+
   // Authentication Configuration (new fields for unified auth system)
-  adminEmail: z.string().email().optional(),
-  adminName: z.string().min(1).optional(),
-  adminPassword: z.string().min(8).optional(),
+  // Authentication Configuration
   enableOTPForAdmins: z.boolean().default(false),
   authenticationMethod: z.enum(['password', 'otp', 'both']).default('password'),
-  
+
   // Subdomain Configuration
   enableSubdomain: z.boolean().default(true),
 }).refine((data) => {
@@ -57,26 +54,24 @@ const createSchoolSchema = z.object({
 const updateSchoolSchema = z.object({
   // Basic Information
   schoolName: z.string().min(1).optional(),
+  schoolCode: z.string().min(1).optional(),
   subdomain: z.string().optional(),
   contactEmail: z.string().email().optional(),
   contactPhone: z.string().optional(),
   description: z.string().optional(),
-  
+
   // Subscription & Billing
   subscriptionPlan: z.string().min(1).optional(),
-  billingCycle: z.enum(['monthly', 'yearly']).optional(),
-  
+
   // Initial Configuration
   extraStudents: z.number().min(0).optional(),
   schoolType: z.string().optional(),
-  
+
   // Authentication Configuration
-  adminEmail: z.string().email().optional(),
-  adminName: z.string().min(1).optional(),
-  adminPassword: z.string().min(8).optional(),
+  // Authentication Configuration
   enableOTPForAdmins: z.boolean().optional(),
   authenticationMethod: z.enum(['password', 'otp', 'both']).optional(),
-  
+
   // Subdomain Configuration
   enableSubdomain: z.boolean().optional(),
 });
@@ -168,28 +163,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or inactive subscription plan' }, { status: 400 });
     }
 
-    // Generate school code - use subdomain if available, otherwise generate from school name
-    const schoolCode = validatedData.subdomain 
-      ? validatedData.subdomain.toUpperCase()
-      : validatedData.schoolName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10) + '_' + Date.now().toString().slice(-4);
-    
+    // Check school code uniqueness
     const existingSchoolCode = await db.school.findUnique({
-      where: { schoolCode }
+      where: { schoolCode: validatedData.schoolCode }
     });
     if (existingSchoolCode) {
       return NextResponse.json({ error: 'School code already exists' }, { status: 400 });
     }
 
+    // Map subscription plan name to PlanType enum
+    const mapPlanNameToEnum = (planName: string): PlanType => {
+      const normalizedName = planName.toLowerCase().replace(/\s+/g, '');
+      if (normalizedName.includes('starter')) return PlanType.STARTER;
+      if (normalizedName.includes('growth')) return PlanType.GROWTH;
+      if (normalizedName.includes('enterprise') || normalizedName.includes('dominate')) return PlanType.DOMINATE;
+      return PlanType.STARTER; // Default fallback
+    };
+
     // Create school with unified authentication system configuration
     const schoolData = {
       name: validatedData.schoolName,
-      schoolCode: schoolCode,
+      schoolCode: validatedData.schoolCode,
       email: validatedData.contactEmail,
       phone: validatedData.contactPhone,
       subdomain: validatedData.enableSubdomain ? validatedData.subdomain : null,
       description: validatedData.description,
-      plan: subscriptionPlan.name.toUpperCase().replace(/\s+/g, '_'), // Convert plan name to enum-like format
-      status: 'INACTIVE' as const, // Will be activated after setup and admin creation
+      plan: mapPlanNameToEnum(subscriptionPlan.name),
+      status: SchoolStatus.DEACTIVATED, // Will be activated after setup and admin creation
       isOnboarded: false, // Required by unified auth system - schools start non-onboarded
       onboardingStep: 0, // Track onboarding progress
       // Authentication system defaults
@@ -203,7 +203,6 @@ export async function POST(request: NextRequest) {
         planFeatures: subscriptionPlan.features,
         extraStudents: validatedData.extraStudents,
         schoolType: validatedData.schoolType,
-        billingCycle: validatedData.billingCycle,
         createdBy: session.user.id,
         enableSubdomain: validatedData.enableSubdomain,
         // Authentication configuration for unified auth system
@@ -219,80 +218,9 @@ export async function POST(request: NextRequest) {
     // Create school with SaaS configuration
     const school = await schoolService.createSchoolWithSaasConfig(schoolData);
 
-    // Create initial school admin user if provided
-    let adminUser = null;
-    if (validatedData.adminEmail && validatedData.adminName) {
-      try {
-        // Check if user already exists
-        const existingUser = await db.user.findFirst({
-          where: {
-            OR: [
-              { email: validatedData.adminEmail },
-              { mobile: validatedData.adminEmail } // In case email is used as mobile
-            ]
-          }
-        });
-
-        if (existingUser) {
-          // Link existing user to school as admin
-          await db.userSchool.create({
-            data: {
-              userId: existingUser.id,
-              schoolId: school.id,
-              role: 'ADMIN',
-              isActive: true
-            }
-          });
-          adminUser = existingUser;
-        } else {
-          // Create new admin user
-          const passwordHash = validatedData.adminPassword 
-            ? await bcrypt.hash(validatedData.adminPassword, 12)
-            : null;
-
-          adminUser = await db.user.create({
-            data: {
-              name: validatedData.adminName,
-              email: validatedData.adminEmail,
-              passwordHash,
-              isActive: true,
-              // Set mobile to email if no separate mobile provided (for unified auth)
-              mobile: validatedData.adminEmail.includes('@') ? null : validatedData.adminEmail
-            }
-          });
-
-          // Create user-school relationship
-          await db.userSchool.create({
-            data: {
-              userId: adminUser.id,
-              schoolId: school.id,
-              role: 'ADMIN',
-              isActive: true
-            }
-          });
-        }
-
-        // Log admin user creation/assignment
-        await logSchoolManagementAction(
-          session.user.id,
-          'CREATE',
-          school.id,
-          {
-            action: 'admin_user_created',
-            adminUserId: adminUser.id,
-            adminEmail: validatedData.adminEmail,
-            adminName: validatedData.adminName,
-            isNewUser: !existingUser,
-            authenticationMethod: validatedData.authenticationMethod
-          }
-        );
-
-      } catch (adminError) {
-        console.error('Error creating admin user:', adminError);
-        // Continue with school creation even if admin creation fails
-        // This will be handled in the setup wizard
-      }
-    }
+    // Admin creation moved to Setup Wizard
+    // Schools start without an admin user, relying on Super Admin to complete setup
+    const adminUser = null;
 
     // Initialize school context in the unified authentication system
     try {
@@ -330,11 +258,11 @@ export async function POST(request: NextRequest) {
         enableSubdomain: validatedData.enableSubdomain,
         plan: subscriptionPlan.name,
         planId: subscriptionPlan.id,
-        billingCycle: validatedData.billingCycle,
+        planInterval: subscriptionPlan.interval,
         extraStudents: validatedData.extraStudents,
         authenticationConfig: schoolData.metadata.authenticationConfig,
-        adminUserCreated: !!adminUser,
-        adminUserId: adminUser?.id,
+        adminUserCreated: false,
+        adminUserId: undefined,
         setupRequired: true,
         unifiedAuthEnabled: true
       }
@@ -356,15 +284,10 @@ export async function POST(request: NextRequest) {
         isOnboarded: school.isOnboarded,
         plan: school.plan
       },
-      adminUser: adminUser ? {
-        id: adminUser.id,
-        name: adminUser.name,
-        email: adminUser.email,
-        hasPassword: !!adminUser.passwordHash
-      } : null,
+      adminUser: null,
       nextSteps: [
         'Complete school setup wizard',
-        adminUser ? 'Admin user is ready for login' : 'Create admin user in setup wizard',
+        'Create admin user in setup wizard',
         'Configure authentication settings',
         'Activate school for student/parent access'
       ]
@@ -374,7 +297,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating school:', error);
-    
+
     // Log the error for audit purposes
     try {
       const session = await auth();
@@ -392,7 +315,7 @@ export async function POST(request: NextRequest) {
     } catch (logError) {
       console.error('Failed to log school creation error:', logError);
     }
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
@@ -400,7 +323,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       message: 'Failed to create school. Please try again.'
     }, { status: 500 });

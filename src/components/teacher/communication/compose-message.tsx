@@ -136,13 +136,30 @@ export function ComposeMessage({
 
     for (const file of attachments) {
       try {
-        // Upload to Cloudinary
-        const { uploadToCloudinary } = await import("@/lib/cloudinary");
-        const result = await uploadToCloudinary(file, {
-          folder: "messages/attachments",
-          resource_type: "auto",
+        // Get CSRF token
+        const csrfResponse = await fetch('/api/csrf-token');
+        const { token: csrfToken } = await csrfResponse.json();
+
+        // Prepare form data for R2 upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrf_token', csrfToken);
+        formData.append('folder', 'message-attachments');
+        formData.append('category', file.type.startsWith('image/') ? 'image' : 'document');
+
+        // Upload to R2 storage
+        const response = await fetch('/api/r2/upload', {
+          method: 'POST',
+          body: formData,
         });
-        uploadedUrls.push(result.secure_url);
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        uploadedUrls.push(result.data.url);
       } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
         throw new Error(`Failed to upload ${file.name}`);

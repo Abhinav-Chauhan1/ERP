@@ -56,7 +56,7 @@ export function SettingsPageClient({ profile, settings }: SettingsPageClientProp
       </TabsContent>
       
       <TabsContent value="notifications">
-        <NotificationPreferences settings={settings} />
+        <NotificationPreferences settings={settings} schoolId={settings.schoolId} />
       </TabsContent>
       
       <TabsContent value="reminders">

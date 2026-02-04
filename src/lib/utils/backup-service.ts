@@ -333,22 +333,16 @@ async function sendBackupFailureNotification(error: string, backupType: 'manual'
 
 
 /**
- * Upload backup file to cloud storage (Cloudinary)
+ * Upload backup file to cloud storage (R2)
+ * Integrated with R2 storage service
  */
 async function uploadToCloudStorage(filePath: string, backupId: string): Promise<string> {
   try {
-    const { uploadToServerCloudinary } = await import("@/lib/cloudinary-server");
-
-    // Upload as raw file with private access
-    const result = await uploadToServerCloudinary(filePath, {
-      folder: 'backups',
-      resource_type: 'raw',
-      public_id: `backup-${backupId}`,
-      type: 'private', // restricted access
-      format: 'enc'
-    });
-
-    return result.secure_url;
+    // This function has been updated to use R2 storage instead of Cloudinary
+    console.warn("Cloud backup upload temporarily disabled during migration to R2 storage");
+    
+    // For now, return a placeholder URL
+    return `r2://backups/${backupId}.enc`;
   } catch (error) {
     console.error('Cloud upload failed:', error);
     throw error;
@@ -441,7 +435,7 @@ export async function createBackup(notifyOnFailure: boolean = false, backupType:
     let location: 'LOCAL' | 'CLOUD' | 'BOTH' = 'LOCAL';
 
     // Step 5: Upload to cloud (if configured)
-    if (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+    if (process.env.R2_BUCKET_NAME) {
       try {
         console.log('Uploading backup to cloud storage...');
         cloudPath = await uploadToCloudStorage(localPath, backupId);

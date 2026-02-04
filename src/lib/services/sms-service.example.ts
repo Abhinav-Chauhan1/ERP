@@ -26,9 +26,8 @@ async function example1_CheckConfiguration() {
     console.log('✓ SMS service is ready to use');
   } else {
     console.log('✗ SMS service not configured. Set environment variables:');
-    console.log('  - TWILIO_ACCOUNT_SID');
-    console.log('  - TWILIO_AUTH_TOKEN');
-    console.log('  - TWILIO_PHONE_NUMBER');
+    console.log('  - MSG91_AUTH_KEY');
+    console.log('  - MSG91_SENDER_ID');
   }
 }
 

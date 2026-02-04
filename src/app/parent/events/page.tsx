@@ -100,6 +100,6 @@ export default async function EventsPage() {
   }
 
   return (
-    <EventsPageClient children={children} />
+    <EventsPageClient children={children} schoolId={parent.schoolId} />
   );
 }

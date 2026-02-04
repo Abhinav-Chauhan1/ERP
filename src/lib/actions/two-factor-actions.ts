@@ -47,6 +47,10 @@ export async function initiateTwoFactorSetup(): Promise<TwoFactorSetupResult> {
       return { success: false, error: 'User not found' };
     }
 
+    if (!user.email) {
+      return { success: false, error: 'User email is required for 2FA setup' };
+    }
+
     // Generate TOTP secret
     const { secret, uri } = generateTOTPSecret(user.email);
 

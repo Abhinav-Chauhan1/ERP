@@ -109,10 +109,13 @@ export class FeeStructureService {
         validTo: data.validTo,
         isActive: data.isActive,
         isTemplate: data.isTemplate,
+        schoolId: schoolId!, // schoolId is required (non-null assertion)
         // Create class associations
         classes: {
           create: data.classIds.map((classId) => ({
             classId,
+            class: { connect: { id: classId } },
+            school: { connect: { id: schoolId! } }, // schoolId is required
           })),
         },
         // Create fee items
@@ -121,6 +124,8 @@ export class FeeStructureService {
             feeTypeId: item.feeTypeId,
             amount: item.amount,
             dueDate: item.dueDate,
+            feeType: { connect: { id: item.feeTypeId } },
+            school: { connect: { id: schoolId! } }, // schoolId is required
           })),
         },
       },
@@ -203,6 +208,8 @@ export class FeeStructureService {
       updateData.classes = {
         create: data.classIds.map((classId) => ({
           classId,
+          class: { connect: { id: classId } },
+          school: { connect: { id: schoolId! } }, // schoolId is required
         })),
       };
     }
@@ -220,6 +227,8 @@ export class FeeStructureService {
           feeTypeId: item.feeTypeId,
           amount: item.amount,
           dueDate: item.dueDate,
+          feeType: { connect: { id: item.feeTypeId } },
+          school: { connect: { id: schoolId! } }, // schoolId is required
         })),
       };
     }
@@ -600,14 +609,21 @@ export class FeeStructureService {
 
     // Create associations for non-conflicting structures
     const created = await Promise.all(
-      toAssign.map((feeStructureId) =>
-        db.feeStructureClass.create({
+      toAssign.map(async (feeStructureId) => {
+        // Get the fee structure to find the school
+        const feeStructure = await db.feeStructure.findUnique({
+          where: { id: feeStructureId },
+          include: { academicYear: true }
+        });
+        
+        return db.feeStructureClass.create({
           data: {
             feeStructureId,
             classId,
+            schoolId: feeStructure?.academicYear.schoolId || '',
           },
-        })
-      )
+        });
+      })
     );
 
     return {

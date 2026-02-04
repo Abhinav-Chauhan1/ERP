@@ -204,19 +204,23 @@ export function MessageCompose({
     const result = await uploadMessageAttachment(formData);
     setUploadingFile(false);
 
-    if (result.success && result.data) {
-      setAttachments([
-        ...attachments,
-        {
-          url: result.data.url,
-          fileName: result.data.fileName,
-          fileSize: result.data.fileSize,
-        },
-      ]);
-      toast({
-        title: "Success",
-        description: "File uploaded successfully",
-      });
+    if (result.success) {
+      // This case should not happen currently as upload is disabled
+      if ('data' in result && result.data && typeof result.data === 'object') {
+        const data = result.data as { url: string; fileName: string; fileSize: number };
+        setAttachments([
+          ...attachments,
+          {
+            url: data.url,
+            fileName: data.fileName,
+            fileSize: data.fileSize,
+          },
+        ]);
+        toast({
+          title: "Success",
+          description: "File uploaded successfully",
+        });
+      }
     } else {
       toast({
         title: "Upload failed",

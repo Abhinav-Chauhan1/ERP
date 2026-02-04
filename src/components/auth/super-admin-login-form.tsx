@@ -2,23 +2,19 @@
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Eye, EyeOff, Loader2, Shield, CheckCircle2 } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Loader2, Shield } from "lucide-react"
 
 /**
  * Super Admin Login Form Component
  * 
- * Provides dedicated secure authentication for super administrators with:
- * - Email and password authentication only
- * - Additional security measures
- * - Direct redirect to /super-admin dashboard
- * 
- * Requirements: 3A.1, 3A.2, 3A.3, 3A.4, 3A.5
+ * Uses NextAuth's signIn function for super admin authentication.
  */
 
 export function SuperAdminLoginForm() {
@@ -40,6 +36,7 @@ export function SuperAdminLoginForm() {
   // Check for URL parameters
   const sessionExpired = searchParams.get("session_expired") === "true"
   const accessDenied = searchParams.get("access_denied") === "true"
+  const error = searchParams.get("error")
 
   // Clear errors when user types
   const handleInputChange = (field: string, value: string) => {
@@ -90,37 +87,27 @@ export function SuperAdminLoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/super-admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password
-        }),
+      // Use NextAuth's signIn function
+      const result = await signIn('credentials', {
+        email: formData.email.trim(),
+        password: formData.password,
+        redirect: false
       })
 
-      const data = await response.json()
-
-      if (!data.success) {
-        // Handle specific error cases
-        if (response.status === 401) {
-          setServerError("Invalid email or password")
-        } else if (response.status === 403) {
-          setServerError("Access denied. Super admin privileges required.")
-        } else if (response.status === 429) {
-          setServerError("Too many login attempts. Please wait before trying again.")
-        } else {
-          setServerError(data.error || "Authentication failed")
+      if (result?.error) {
+        // Handle NextAuth errors
+        switch (result.error) {
+          case 'CredentialsSignin':
+            setServerError("Invalid email or password")
+            break
+          case 'AccessDenied':
+            setServerError("Access denied. Super admin privileges required.")
+            break
+          default:
+            setServerError(result.error || "Authentication failed")
         }
-        setIsLoading(false)
-        return
-      }
-
-      // Authentication successful
-      if (data.success) {
-        // Redirect to super admin dashboard
+      } else if (result?.ok) {
+        // Authentication successful - redirect to super admin dashboard
         router.push('/super-admin')
         router.refresh()
       }
@@ -161,6 +148,16 @@ export function SuperAdminLoginForm() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Access denied. Super admin privileges required.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* NextAuth Error */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error === 'CredentialsSignin' ? 'Invalid email or password' : error}
               </AlertDescription>
             </Alert>
           )}

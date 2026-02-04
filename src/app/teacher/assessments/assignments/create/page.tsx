@@ -39,7 +39,7 @@ import { format } from "date-fns";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions"; 
 import { getTeacherClasses, createAssignment } from "@/lib/actions/teacherAssignmentsActions";
 import { toast } from "react-hot-toast";
-import { CldUploadWidget } from "next-cloudinary";
+import { R2UploadWidget } from "@/components/upload";
 
 export default function CreateAssignmentPage() {
   const router = useRouter();
@@ -143,15 +143,16 @@ export default function CreateAssignmentPage() {
   };
 
   const handleUploadSuccess = (result: any) => {
-    const fileInfo = {
-      name: result.info.original_filename + '.' + result.info.format,
-      url: result.info.secure_url,
-      size: result.info.bytes,
-      type: result.info.resource_type + '/' + result.info.format
-    };
-    
-    setAttachments(prev => [...prev, fileInfo]);
-    toast.success("File uploaded successfully");
+    if (result.success && result.url && result.metadata) {
+      const fileInfo = {
+        name: result.metadata.originalName,
+        url: result.url,
+        size: result.metadata.size,
+        type: result.metadata.mimeType
+      };
+      
+      setAttachments(prev => [...prev, fileInfo]);
+    }
   };
 
   const handleRemoveAttachment = (index: number) => {
@@ -340,25 +341,23 @@ export default function CreateAssignmentPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Attachments</Label>
-              <div className="border border-dashed rounded-lg p-8 text-center">
-                <CldUploadWidget 
-                  uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
-                  onSuccess={handleUploadSuccess}
-                >
-                  {({ open }) => (
-                    <div 
-                      onClick={() => open()}
-                      className="cursor-pointer flex flex-col items-center gap-2"
-                    >
-                      <Upload className="h-10 w-10 text-gray-400" />
-                      <p className="font-medium">Click to upload files</p>
-                      <p className="text-xs text-gray-500">
-                        Upload PDF, Word, Excel, or image files
-                      </p>
-                    </div>
-                  )}
-                </CldUploadWidget>
-              </div>
+              <R2UploadWidget
+                onSuccess={handleUploadSuccess}
+                onError={(error) => toast.error(error)}
+                folder="assignments"
+                maxFiles={10}
+                accept={[
+                  'image/*',
+                  'application/pdf',
+                  'application/msword',
+                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  'application/vnd.ms-excel',
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ]}
+                uploadText="Click to upload files"
+                descriptionText="Upload PDF, Word, Excel, or image files"
+                showPreviews={false} // We'll show our own list below
+              />
               
               {attachments.length > 0 && (
                 <div className="mt-4">

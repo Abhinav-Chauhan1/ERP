@@ -240,9 +240,9 @@ export function validateAttachmentUrl(url: string): {
     }
     
     // Check for allowed domains (if you have specific storage providers)
-    // For example, only allow Cloudinary or your own domain
+    // For example, only allow your own CDN domain
     const allowedDomains = [
-      'res.cloudinary.com',
+      'cdn.yourdomain.com', // Your R2 CDN domain
       // Add your own domains here
     ];
     

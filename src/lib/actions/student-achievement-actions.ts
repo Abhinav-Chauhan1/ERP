@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 
 // Schema for certificate upload
 const certificateSchema = z.object({
@@ -217,10 +217,21 @@ export async function addCertificate(values: CertificateValues) {
     // Handle image upload if provided
     let imageUrl = validatedData.imageUrl;
     if (validatedData.imageFile && validatedData.imageFile instanceof File) {
-      const uploadResult = await uploadToCloudinary(validatedData.imageFile, {
-        folder: `students/${result.student?.id}/certificates`,
+      // Upload image to R2 storage
+      const uploadResult = await uploadHandler.uploadImage(validatedData.imageFile, {
+        folder: 'achievements',
+        category: 'image',
+        customMetadata: {
+          achievementType: 'student-achievement',
+          uploadType: 'achievement-image'
+        }
       });
-      imageUrl = uploadResult.secure_url;
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload achievement image');
+      }
+
+      imageUrl = uploadResult.url;
     }
 
     // Get or create certificate document type
@@ -251,7 +262,8 @@ export async function addCertificate(values: CertificateValues) {
         fileType: "application/json",
         userId: result.dbUser.id,
         documentTypeId: certificateType.id,
-        tags: validatedData.category
+        tags: validatedData.category,
+        schoolId: result.student?.schoolId || '', // Add required schoolId
       }
     });
 
@@ -291,10 +303,21 @@ export async function addAward(values: AwardValues) {
     // Handle image upload if provided
     let imageUrl = validatedData.imageUrl;
     if (validatedData.imageFile && validatedData.imageFile instanceof File) {
-      const uploadResult = await uploadToCloudinary(validatedData.imageFile, {
-        folder: `students/${result.student?.id}/awards`,
+      // Upload image to R2 storage
+      const uploadResult = await uploadHandler.uploadImage(validatedData.imageFile, {
+        folder: 'awards',
+        category: 'image',
+        customMetadata: {
+          achievementType: 'student-award',
+          uploadType: 'award-image'
+        }
       });
-      imageUrl = uploadResult.secure_url;
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload award image');
+      }
+
+      imageUrl = uploadResult.url;
     }
 
     // Get or create award document type
@@ -325,7 +348,8 @@ export async function addAward(values: AwardValues) {
         fileType: "application/json",
         userId: result.dbUser.id,
         documentTypeId: awardType.id,
-        tags: validatedData.category
+        tags: validatedData.category,
+        schoolId: result.student?.schoolId || '', // Add required schoolId
       }
     });
 
@@ -390,7 +414,8 @@ export async function addExtraCurricular(values: ExtraCurricularValues) {
         fileType: "application/json",
         userId: result.dbUser.id,
         documentTypeId: activityType.id,
-        tags: validatedData.category
+        tags: validatedData.category,
+        schoolId: result.student?.schoolId || '', // Add required schoolId
       }
     });
 
@@ -461,6 +486,10 @@ export async function deleteAchievement(id: string, type: 'certificate' | 'award
 async function ensureDocumentTypes() {
   const requiredTypes = ["Certificate", "Award", "Extra-Curricular"];
 
+  // Get required school context
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   for (const typeName of requiredTypes) {
     const existingType = await db.documentType.findFirst({
       where: { name: typeName }
@@ -470,7 +499,8 @@ async function ensureDocumentTypes() {
       await db.documentType.create({
         data: {
           name: typeName,
-          description: `${typeName} documents for student achievements`
+          description: `${typeName} documents for student achievements`,
+          schoolId, // Add required schoolId
         }
       });
     }

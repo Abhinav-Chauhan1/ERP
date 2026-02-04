@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,6 +27,14 @@ export default function CreateStudentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Class and Section state
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingSections, setLoadingSections] = useState(false);
+
   const form = useForm<CreateStudentFormData>({
     resolver: zodResolver(createStudentSchema),
     defaultValues: {
@@ -47,9 +55,8 @@ export default function CreateStudentPage() {
       weight: undefined,
       emergencyContact: "",
       emergencyPhone: "",
-      password: "",
-      confirmPassword: "",
-      // Indian-specific fields
+      // No password - mobile-only authentication
+      // Parent/Guardian details
       aadhaarNumber: "",
       apaarId: "",
       pen: "",
@@ -69,26 +76,101 @@ export default function CreateStudentPage() {
       fatherName: "",
       fatherOccupation: "",
       fatherPhone: "",
-      fatherEmail: "",
       fatherAadhaar: "",
       motherName: "",
       motherOccupation: "",
       motherPhone: "",
-      motherEmail: "",
       motherAadhaar: "",
       guardianName: "",
       guardianRelation: "",
       guardianPhone: "",
-      guardianEmail: "",
       guardianAadhaar: "",
     },
   });
+
+  // Fetch classes on mount
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const response = await fetch('/api/classes');
+        if (response.ok) {
+          const data = await response.json();
+          setClasses(data);
+        }
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch sections when class is selected
+  useEffect(() => {
+    if (selectedClassId) {
+      const fetchSections = async () => {
+        try {
+          setLoadingSections(true);
+          setSections([]);
+          setSelectedSectionId("");
+          const response = await fetch(`/api/classes/${selectedClassId}/sections`);
+          if (response.ok) {
+            const data = await response.json();
+            setSections(data);
+          }
+        } catch (error) {
+          console.error('Error fetching sections:', error);
+        } finally {
+          setLoadingSections(false);
+        }
+      };
+      fetchSections();
+    } else {
+      setSections([]);
+      setSelectedSectionId("");
+    }
+  }, [selectedClassId]);
 
   const onSubmit = async (data: CreateStudentFormData) => {
     try {
       setIsSubmitting(true);
       setError(null);
-      await createStudent(data);
+
+      // Create student
+      const result = await createStudent(data);
+
+      // Create enrollment if class and section are selected
+      if (selectedClassId && selectedSectionId && result.student) {
+        try {
+          const enrollmentResponse = await fetch('/api/students/enroll', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: result.student.id,
+              classId: selectedClassId,
+              sectionId: selectedSectionId,
+            }),
+          });
+
+          if (!enrollmentResponse.ok) {
+            let errorMessage = 'Unknown error';
+            try {
+              const errorData = await enrollmentResponse.json();
+              errorMessage = errorData.error || 'Unknown error';
+            } catch (e) {
+              errorMessage = enrollmentResponse.statusText || 'Unknown error';
+            }
+            toast.error(`Student created but enrollment failed: ${errorMessage}`);
+          } else {
+            toast.success('Student enrolled successfully');
+          }
+        } catch (enrollError) {
+          toast.error('Student created but enrollment failed due to network error');
+        }
+      }
+
       toast.success("Student created successfully");
       router.push("/admin/users/students");
     } catch (error: any) {
@@ -172,9 +254,9 @@ export default function CreateStudentPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email (Optional)</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Email" {...field} />
+                          <Input type="email" placeholder="Email address" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -185,14 +267,68 @@ export default function CreateStudentPage() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel>Phone (For Login)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Phone number" {...field} />
+                          <Input placeholder="Phone number for login" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {/* Class Selector */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Class (Optional)</label>
+                    <Select
+                      value={selectedClassId}
+                      onValueChange={setSelectedClassId}
+                      disabled={loadingClasses}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={loadingClasses ? "Loading classes..." : "Select class"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((classItem) => (
+                          <SelectItem key={classItem.id} value={classItem.id}>
+                            {classItem.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Section Selector */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Section (Optional)</label>
+                    <Select
+                      value={selectedSectionId}
+                      onValueChange={setSelectedSectionId}
+                      disabled={!selectedClassId || loadingSections || sections.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            !selectedClassId
+                              ? "Select class first"
+                              : loadingSections
+                                ? "Loading sections..."
+                                : sections.length === 0
+                                  ? "No sections available"
+                                  : "Select section"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections.map((section) => (
+                          <SelectItem key={section.id} value={section.id}>
+                            {section.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <Separator className="my-4" />
@@ -652,19 +788,6 @@ export default function CreateStudentPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="fatherEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Father's email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name="fatherAadhaar"
                     render={({ field }) => (
                       <FormItem>
@@ -716,19 +839,6 @@ export default function CreateStudentPage() {
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
                           <Input placeholder="Mother's phone" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="motherEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Mother's email" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -795,19 +905,6 @@ export default function CreateStudentPage() {
                   />
                   <FormField
                     control={form.control}
-                    name="guardianEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="Guardian's email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
                     name="guardianAadhaar"
                     render={({ field }) => (
                       <FormItem>
@@ -821,40 +918,6 @@ export default function CreateStudentPage() {
                   />
                 </div>
 
-                <Separator className="my-4" />
-
-                <h3 className="text-lg font-medium">Account Security</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Must be at least 8 characters with uppercase, lowercase, and number
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end gap-2">

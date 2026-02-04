@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getCloudinaryPublicId, deleteFromCloudinary } from "@/lib/cloudinary";
+import { r2StorageService } from "@/lib/services/r2-storage-service";
 
 // DELETE /api/teacher/documents/[id] - Delete a document
 export async function DELETE(
@@ -58,23 +58,20 @@ export async function DELETE(
       );
     }
 
-    // Delete the file from Cloudinary if possible
+    // Delete the file from R2 storage if possible
     try {
-      const publicId = getCloudinaryPublicId(document.fileUrl);
-      if (publicId) {
-        // Determine resource type from file type
-        const resourceType = document.fileType?.startsWith('image/')
-          ? 'image'
-          : document.fileType?.startsWith('video/')
-            ? 'video'
-            : 'raw';
-
-        await deleteFromCloudinary(publicId, resourceType);
+      // Extract the key from the file URL to delete from R2
+      if (document.fileUrl) {
+        const url = new URL(document.fileUrl);
+        const key = url.pathname.substring(1); // Remove leading slash
+        
+        // Delete from R2 storage
+        await r2StorageService.deleteFile(user.teacher.schoolId, key);
       }
-    } catch (cloudinaryError) {
+    } catch (r2Error) {
       // Log the error but continue with database deletion
-      console.error('Failed to delete file from Cloudinary:', cloudinaryError);
-      // We don't want to fail the entire operation if Cloudinary deletion fails
+      console.error('Failed to delete file from R2 storage:', r2Error);
+      // We don't want to fail the entire operation if R2 deletion fails
     }
 
     // Delete the document from database

@@ -49,8 +49,7 @@ export default function CreateParentPage() {
       occupation: "",
       alternatePhone: "",
       relation: "",
-      password: "",
-      confirmPassword: "",
+      // No password - mobile-only authentication
     },
   });
 
@@ -240,9 +239,9 @@ export default function CreateParentPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email (Optional)</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Email" {...field} />
+                          <Input type="email" placeholder="Email address" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -253,9 +252,9 @@ export default function CreateParentPage() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel>Phone (For Login)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Phone number" {...field} />
+                          <Input placeholder="Phone number for login" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -430,38 +429,6 @@ export default function CreateParentPage() {
                   </div>
                 )}
 
-                <h3 className="text-lg font-medium">Account Security</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Must be at least 8 characters with uppercase, lowercase, and number
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end gap-2">

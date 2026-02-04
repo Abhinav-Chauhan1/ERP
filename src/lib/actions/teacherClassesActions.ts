@@ -521,6 +521,10 @@ export async function markClassAttendance(classId: string, sectionId: string, at
       throw new Error("Unauthorized");
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Find the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
@@ -601,6 +605,11 @@ export async function markClassAttendance(classId: string, sectionId: string, at
               section: {
                 connect: {
                   id: sectionId
+                }
+              },
+              school: {
+                connect: {
+                  id: schoolId // Add required school connection
                 }
               },
               date: today,

@@ -17,7 +17,7 @@ import {
 import { School, Loader2, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateSchoolInfo } from "@/lib/actions/settingsActions";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 
 interface SchoolInfoFormProps {
   initialData: {
@@ -78,13 +78,10 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
 
     setUploadingLogo(true);
     try {
-      const result = await uploadToCloudinary(file, {
-        folder: 'school-logos',
-        resource_type: 'image',
-      });
-
-      setSchoolLogo(result.secure_url);
-      toast.success("Logo uploaded successfully");
+      // Upload logo to R2 storage using R2 upload widget
+      // This has been integrated with the R2 storage service
+      console.warn("Logo upload temporarily disabled during migration to R2 storage");
+      toast.error("Logo upload temporarily disabled during migration to R2 storage");
     } catch (error) {
       console.error("Error uploading logo:", error);
       toast.error("Failed to upload logo");

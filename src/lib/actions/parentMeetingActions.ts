@@ -20,7 +20,13 @@ export async function getParentMeetings(filters?: {
   limit?: number;
 }) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const where: any = { schoolId };
 
     if (filters?.status) {
@@ -118,7 +124,17 @@ export async function getParentMeetings(filters?: {
 // Get single parent meeting by ID
 export async function getParentMeetingById(id: string) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    if (!id) {
+      return { success: false, error: "Meeting ID is required" };
+    }
+    
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const meeting = await db.parentMeeting.findUnique({
       where: { id, schoolId },
       include: {
@@ -143,7 +159,17 @@ export async function scheduleMeeting(data: any) {
   try {
     const user = await currentUser();
     const userId = user?.id || 'system';
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+
+    // Validate required fields
+    if (!data.parentId || !data.teacherId) {
+      return { success: false, error: "Parent ID and Teacher ID are required" };
+    }
 
     // Validate parent and teacher exist and belong to the school
     const parent = await db.parent.findFirst({
@@ -159,13 +185,13 @@ export async function scheduleMeeting(data: any) {
     const meeting = await db.parentMeeting.create({
       data: {
         schoolId,
-        title: data.title,
-        description: data.description,
+        title: data.title || 'Parent-Teacher Meeting',
+        description: data.description || null,
         parentId: data.parentId,
         teacherId: data.teacherId,
         scheduledDate: data.scheduledDate,
-        duration: data.duration,
-        location: data.location,
+        duration: data.duration || 30,
+        location: data.location || null,
         status: "SCHEDULED",
       },
       include: {
@@ -196,7 +222,13 @@ export async function scheduleMeeting(data: any) {
 // Update existing meeting
 export async function updateMeeting(id: string, data: any) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const meeting = await db.parentMeeting.update({
       where: { id, schoolId },
       data: {
@@ -204,7 +236,7 @@ export async function updateMeeting(id: string, data: any) {
         duration: data.duration,
         location: data.location,
         status: data.status,
-        notes: data.notes,
+        notes: data.notes || null,
       },
       include: {
         parent: {
@@ -234,7 +266,13 @@ export async function updateMeeting(id: string, data: any) {
 // Cancel meeting
 export async function cancelMeeting(id: string, reason?: string) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const meeting = await db.parentMeeting.update({
       where: { id, schoolId },
       data: {
@@ -257,7 +295,13 @@ export async function cancelMeeting(id: string, reason?: string) {
 // Complete meeting
 export async function completeMeeting(id: string, notes?: string) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const meeting = await db.parentMeeting.update({
       where: { id, schoolId },
       data: {
@@ -277,7 +321,13 @@ export async function completeMeeting(id: string, notes?: string) {
 // Reschedule meeting
 export async function rescheduleMeeting(id: string, newDate: Date) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const meeting = await db.parentMeeting.update({
       where: { id, schoolId },
       data: {
@@ -312,7 +362,13 @@ export async function rescheduleMeeting(id: string, newDate: Date) {
 // Delete meeting
 export async function deleteMeeting(id: string) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     // Validate existence and ownership
     const meeting = await db.parentMeeting.findUnique({ where: { id, schoolId } });
     if (!meeting) return { success: false, error: "Meeting not found" };
@@ -362,7 +418,13 @@ export async function getTeachersForMeetings() {
 // Get parents for dropdown
 export async function getParentsForMeetings() {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     // Find parents who have children enrolled in this school
     const parents = await db.parent.findMany({
       where: {
@@ -423,7 +485,13 @@ export async function getParentsForMeetings() {
 // Get meeting statistics
 export async function getMeetingStats() {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const [totalMeetings, scheduledMeetings, completedMeetings, cancelledMeetings] =
       await Promise.all([
         db.parentMeeting.count({ where: { schoolId } }),

@@ -64,6 +64,10 @@ export async function initiateTwoFactorSetup(
       return { success: false, error: "2FA is already enabled" }
     }
 
+    if (!user.email) {
+      return { success: false, error: 'User email is required for 2FA setup' };
+    }
+
     // Generate TOTP secret
     const { secret, uri } = generateTOTPSecret(user.email)
 

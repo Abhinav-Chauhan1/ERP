@@ -21,7 +21,7 @@ import {
   aggregateReportCardData,
   batchAggregateReportCardData
 } from '@/lib/services/report-card-data-aggregation';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { uploadHandler } from '@/lib/services/upload-handler';
 
 /**
  * Action result interface
@@ -56,18 +56,30 @@ export async function generateSingleReportCard(
     // Verify user has permission (admin or teacher)
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { 
+        role: true,
+        userSchools: {
+          select: { schoolId: true },
+          take: 1
+        }
+      },
     });
 
     if (!user || (user.role !== 'ADMIN' && user.role !== 'TEACHER')) {
       return { success: false, error: 'Insufficient permissions' };
     }
 
+    // Get schoolId from user's school associations
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return { success: false, error: 'No school association found' };
+    }
+
     // Aggregate report card data
     const reportCardData = await aggregateReportCardData(studentId, termId);
 
     // Fetch school information for branding
-    const schoolInfo = await getSchoolInfo();
+    const schoolInfo = await getSchoolInfo(schoolId);
 
     // Generate PDF
     const pdfResult = await generateReportCardPDF({
@@ -81,7 +93,7 @@ export async function generateSingleReportCard(
       return { success: false, error: pdfResult.error || 'Failed to generate PDF' };
     }
 
-    // Upload PDF to Cloudinary
+    // Upload PDF to R2 storage
     const pdfUrl = await uploadPDFToStorage(
       pdfResult.pdfBuffer,
       `report-card-${studentId}-${termId}`
@@ -105,6 +117,7 @@ export async function generateSingleReportCard(
         termId,
         templateId,
         pdfUrl,
+        schoolId: schoolId, // Add schoolId
         totalMarks: reportCardData.overallPerformance.obtainedMarks,
         averageMarks: reportCardData.overallPerformance.obtainedMarks / reportCardData.subjects.length,
         percentage: reportCardData.overallPerformance.percentage,
@@ -159,11 +172,23 @@ export async function generateBatchReportCards(
     // Verify user has permission (admin or teacher)
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { 
+        role: true,
+        userSchools: {
+          select: { schoolId: true },
+          take: 1
+        }
+      },
     });
 
     if (!user || (user.role !== 'ADMIN' && user.role !== 'TEACHER')) {
       return { success: false, error: 'Insufficient permissions' };
+    }
+
+    // Get schoolId from user's school associations
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return { success: false, error: 'No school association found' };
     }
 
     // Fetch all students in the class and section
@@ -172,6 +197,7 @@ export async function generateBatchReportCards(
         classId,
         sectionId,
         status: 'ACTIVE',
+        schoolId: schoolId, // Add school isolation
       },
       select: {
         studentId: true,
@@ -188,7 +214,7 @@ export async function generateBatchReportCards(
     const reportCardsData = await batchAggregateReportCardData(studentIds, termId);
 
     // Fetch school information for branding
-    const schoolInfo = await getSchoolInfo();
+    const schoolInfo = await getSchoolInfo(schoolId);
 
     // Generate batch PDF
     const pdfResult = await generateBatchReportCardsPDF(
@@ -204,7 +230,7 @@ export async function generateBatchReportCards(
       return { success: false, error: pdfResult.error || 'Failed to generate batch PDF' };
     }
 
-    // Upload batch PDF to Cloudinary
+    // Upload batch PDF to R2 storage
     const pdfUrl = await uploadPDFToStorage(
       pdfResult.pdfBuffer,
       `report-cards-batch-${classId}-${sectionId}-${termId}`
@@ -229,6 +255,7 @@ export async function generateBatchReportCards(
           termId,
           templateId,
           pdfUrl,
+          schoolId: schoolId, // Add schoolId
           totalMarks: data.overallPerformance.obtainedMarks,
           averageMarks: data.overallPerformance.obtainedMarks / data.subjects.length,
           percentage: data.overallPerformance.percentage,
@@ -262,7 +289,7 @@ export async function generateBatchReportCards(
 
 /**
  * Generate report cards as individual PDFs in a ZIP file
- * Returns base64 data for direct browser download (avoids Cloudinary auth issues)
+ * Returns base64 data for direct browser download (avoids R2 auth issues)
  * 
  * @param classId - Class ID
  * @param sectionId - Section ID
@@ -293,6 +320,10 @@ export async function generateBatchReportCardsZip(
     if (!user || (user.role !== 'ADMIN' && user.role !== 'TEACHER')) {
       return { success: false, error: 'Insufficient permissions' };
     }
+
+    // Get school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
 
     // Fetch class and section info for naming
     const classInfo = await db.class.findUnique({
@@ -331,7 +362,7 @@ export async function generateBatchReportCardsZip(
     }
 
     // Fetch school information for branding
-    const schoolInfo = await getSchoolInfo();
+    const schoolInfo = await getSchoolInfo(schoolId);
 
     // Generate individual PDFs
     const pdfPromises = enrollments.map(async (enrollment) => {
@@ -417,6 +448,7 @@ export async function generateBatchReportCardsZip(
           studentId: pdf.studentId,
           termId,
           templateId,
+          schoolId: schoolId, // Add required schoolId
           totalMarks: pdf.reportCardData.overallPerformance.obtainedMarks,
           averageMarks: pdf.reportCardData.overallPerformance.obtainedMarks / pdf.reportCardData.subjects.length,
           percentage: pdf.reportCardData.overallPerformance.percentage,
@@ -521,23 +553,33 @@ export async function previewReportCard(
 }
 
 /**
- * Upload PDF to storage (Cloudinary)
+ * Upload PDF to storage (R2)
+ * Integrated with R2 storage service
  */
 async function uploadPDFToStorage(pdfBuffer: Buffer, filename: string): Promise<string> {
   try {
-    // Convert buffer to base64
-    const base64PDF = pdfBuffer.toString('base64');
-    const dataURI = `data:application/pdf;base64,${base64PDF}`;
-
-    // Upload to Cloudinary
-    const result = await uploadToCloudinary(dataURI, {
-      folder: 'report-cards',
-      resource_type: 'raw',
-      public_id: filename,
-      format: 'pdf',
+    // Create a File-like object from the buffer
+    const file = new File([new Uint8Array(pdfBuffer)], filename, {
+      type: 'application/pdf'
     });
 
-    return result.secure_url;
+    const uploadResult = await uploadHandler.uploadDocument(file, {
+      folder: 'report-cards',
+      category: 'document',
+      customMetadata: {
+        documentType: 'report-card',
+        uploadType: 'generated-report-card'
+      }
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload report card PDF');
+    }
+
+    return uploadResult.url!;
+    
+    // For now, return a placeholder URL
+    return `r2://report-cards/${filename}`;
   } catch (error) {
     console.error('Error uploading PDF to storage:', error);
     throw new Error('Failed to upload PDF to storage');
@@ -545,26 +587,34 @@ async function uploadPDFToStorage(pdfBuffer: Buffer, filename: string): Promise<
 }
 
 /**
- * Upload ZIP file to storage (Cloudinary)
+ * Upload ZIP file to storage (R2)
+ * Integrated with R2 storage service
  */
 async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<string> {
   try {
-    // Convert buffer to base64
-    const base64ZIP = zipBuffer.toString('base64');
-    const dataURI = `data:application/zip;base64,${base64ZIP}`;
-
-    // Ensure filename has .zip extension for proper download
-    const filenameWithExt = filename.endsWith('.zip') ? filename : `${filename}.zip`;
-
-    // Upload to Cloudinary with explicit extension and public access
-    const result = await uploadToCloudinary(dataURI, {
-      folder: 'report-cards-batch',
-      resource_type: 'raw',
-      public_id: filenameWithExt,
-      type: 'upload', // Ensure public access (no authentication required)
+    // Create a File-like object from the buffer
+    const file = new File([new Uint8Array(zipBuffer)], filename, {
+      type: 'application/zip'
     });
 
-    return result.secure_url;
+    const uploadResult = await uploadHandler.uploadDocument(file, {
+      folder: 'report-cards',
+      category: 'document',
+      customMetadata: {
+        documentType: 'report-card-batch',
+        uploadType: 'batch-report-cards'
+      }
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload report cards ZIP');
+    }
+
+    return uploadResult.url!;
+    
+    // For now, return a placeholder URL
+    const filenameWithExt = filename.endsWith('.zip') ? filename : `${filename}.zip`;
+    return `r2://report-cards-batch/${filenameWithExt}`;
   } catch (error) {
     console.error('Error uploading ZIP to storage:', error);
     throw new Error('Failed to upload ZIP to storage');
@@ -574,7 +624,7 @@ async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<
 /**
  * Get school information for branding
  */
-async function getSchoolInfo(): Promise<{ name: string; address: string }> {
+async function getSchoolInfo(schoolId: string): Promise<{ name: string; address: string }> {
   // Fetch from SystemSettings
   try {
     const { getSystemSettings } = await import('@/lib/actions/settingsActions');

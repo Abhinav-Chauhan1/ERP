@@ -8,6 +8,7 @@ import { hasPermission } from "@/lib/utils/permissions";
 import { SubjectFormValues, SubjectUpdateFormValues } from "../schemaValidation/subjectsSchemaValidation";
 import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 // Helper to check permission and throw if denied
 async function checkPermission(userId: string, resource: string, action: PermissionAction, errorMessage?: string) {
@@ -265,7 +266,8 @@ export const createSubject = withSchoolAuthAction(async (schoolId, userId, userR
         description: data.description,
         classes: {
           create: data.classIds.map(classId => ({
-            class: { connect: { id: classId } }
+            class: { connect: { id: classId } },
+            school: { connect: { id: schoolId } }, // Add required school connection
           }))
         }
       }
@@ -321,7 +323,8 @@ export const updateSubject = withSchoolAuthAction(async (schoolId, userId, userR
         description: data.description,
         classes: {
           create: data.classIds.map(classId => ({
-            class: { connect: { id: classId } }
+            class: { connect: { id: classId } },
+            school: { connect: { id: schoolId } }, // Add required school connection
           }))
         }
       }

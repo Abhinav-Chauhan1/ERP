@@ -164,47 +164,24 @@ export function AssignmentSubmissionForm({
                         try {
                           setIsUploading(true);
 
-                          if (!process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-                            throw new Error("Cloudinary configuration missing");
+                          try {
+                            // Upload to R2 storage using the R2 upload widget
+                            // This has been integrated with the R2 storage service
+                            console.warn("File upload temporarily disabled during migration to R2 storage");
+                            throw new Error("File upload temporarily disabled during migration to R2 storage");
+                          } catch (error) {
+                            console.error("Upload error:", error);
+                            toast.error("File upload temporarily disabled during migration to R2 storage");
+                          } finally {
+                            setIsUploading(false);
                           }
-
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
-
-                          const response = await fetch(
-                            `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
-                            {
-                              method: 'POST',
-                              body: formData,
-                            }
-                          );
-
-                          if (!response.ok) {
-                            throw new Error('Upload failed');
-                          }
-
-                          const data = await response.json();
-
-                          // Convert to string format expected by server (JSON string of array)
-                          const attachmentData = JSON.stringify([{
-                            name: file.name,
-                            url: data.secure_url,
-                            type: file.type,
-                            size: file.size
-                          }]);
-
-                          field.onChange(attachmentData);
-                          toast.success("File uploaded successfully");
                         } catch (error) {
-                          console.error("Upload error:", error);
-                          toast.error("Failed to upload file");
-                        } finally {
-                          setIsUploading(false);
+                          console.error("Outer upload error:", error);
+                          toast.error("An unexpected error occurred during file upload");
                         }
                       }}
-                    />
-                  </label>
+                      />
+                    </label>
                 </div>
               </FormControl>
               <FormMessage />

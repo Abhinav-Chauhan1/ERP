@@ -1,33 +1,25 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { Suspense } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AnalyticsDashboard } from "@/components/super-admin/analytics/analytics-dashboard";
 
 export default async function AnalyticsPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-
-  try {
-    await requireSuperAdminAccess();
-  } catch (error) {
-    redirect("/");
-  }
-
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics & Business Intelligence</h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Comprehensive analytics, revenue tracking, and business insights
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+        <p className="text-gray-400 mt-1">Comprehensive analytics, revenue tracking, and business insights</p>
       </div>
 
-      <AnalyticsDashboard />
+      {/* Analytics Dashboard Component */}
+      <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+        <CardContent className="p-6">
+          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+            <AnalyticsDashboard />
+          </Suspense>
+        </CardContent>
+      </Card>
     </div>
   );
 }

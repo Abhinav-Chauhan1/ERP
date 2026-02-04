@@ -35,9 +35,9 @@ export class NotificationTemplateService {
   /**
    * Get templates by category
    */
-  async getTemplatesByCategory(category: string) {
+  async getTemplatesByCategory(category: string, schoolId: string) {
     return await db.messageTemplate.findMany({
-      where: { category, isActive: true },
+      where: { category, isActive: true, schoolId: schoolId },
       orderBy: { name: "asc" },
     });
   }
@@ -59,7 +59,7 @@ export class NotificationTemplateService {
     schoolName: string;
     schoolPhone: string;
   }) {
-    const template = await this.getTemplateByName("Student Promotion Notification");
+    const template = await this.getTemplateByName("Student Promotion Notification", data.schoolId);
 
     if (!template) {
       throw new Error("Promotion notification template not found");
@@ -84,6 +84,7 @@ export class NotificationTemplateService {
    * Render graduation ceremony notification
    */
   async renderGraduationCeremonyNotification(data: {
+    schoolId: string;
     parentName?: string;
     studentName: string;
     ceremonyDate: Date;
@@ -97,7 +98,7 @@ export class NotificationTemplateService {
     schoolPhone: string;
     schoolEmail: string;
   }) {
-    const template = await this.getTemplateByName("Graduation Ceremony Notification");
+    const template = await this.getTemplateByName("Graduation Ceremony Notification", data.schoolId);
 
     if (!template) {
       throw new Error("Graduation ceremony notification template not found");
@@ -112,6 +113,7 @@ export class NotificationTemplateService {
    * Render graduation congratulations message
    */
   async renderGraduationCongratulations(data: {
+    schoolId: string;
     studentName: string;
     finalClass: string;
     finalSection?: string;
@@ -121,7 +123,7 @@ export class NotificationTemplateService {
     schoolPhone: string;
     schoolEmail: string;
   }) {
-    const template = await this.getTemplateByName("Graduation Congratulations");
+    const template = await this.getTemplateByName("Graduation Congratulations", data.schoolId);
 
     if (!template) {
       throw new Error("Graduation congratulations template not found");
@@ -141,6 +143,7 @@ export class NotificationTemplateService {
    * Render alumni welcome message
    */
   async renderAlumniWelcomeMessage(data: {
+    schoolId: string;
     alumniName: string;
     graduationYear: number;
     finalClass: string;
@@ -150,7 +153,7 @@ export class NotificationTemplateService {
     schoolPhone: string;
     schoolEmail: string;
   }) {
-    const template = await this.getTemplateByName("Alumni Welcome Message");
+    const template = await this.getTemplateByName("Alumni Welcome Message", data.schoolId);
 
     if (!template) {
       throw new Error("Alumni welcome message template not found");
@@ -165,6 +168,7 @@ export class NotificationTemplateService {
    * Render alumni event invitation
    */
   async renderAlumniEventInvitation(data: {
+    schoolId: string;
     alumniName: string;
     eventName: string;
     eventDate: Date;
@@ -179,7 +183,7 @@ export class NotificationTemplateService {
     schoolPhone: string;
     schoolEmail: string;
   }) {
-    const template = await this.getTemplateByName("Alumni Event Invitation");
+    const template = await this.getTemplateByName("Alumni Event Invitation", data.schoolId);
 
     if (!template) {
       throw new Error("Alumni event invitation template not found");
@@ -194,6 +198,7 @@ export class NotificationTemplateService {
    * Render alumni profile update reminder
    */
   async renderAlumniProfileUpdateReminder(data: {
+    schoolId: string;
     alumniName: string;
     lastUpdated: Date;
     graduationYear: number;
@@ -202,7 +207,7 @@ export class NotificationTemplateService {
     schoolName: string;
     schoolEmail: string;
   }) {
-    const template = await this.getTemplateByName("Alumni Profile Update Reminder");
+    const template = await this.getTemplateByName("Alumni Profile Update Reminder", data.schoolId);
 
     if (!template) {
       throw new Error("Alumni profile update reminder template not found");
@@ -216,13 +221,14 @@ export class NotificationTemplateService {
   /**
    * Get all promotion and alumni templates
    */
-  async getAllPromotionAlumniTemplates() {
+  async getAllPromotionAlumniTemplates(schoolId: string) {
     return await db.messageTemplate.findMany({
       where: {
         category: {
           in: ["Promotion", "Graduation", "Alumni"],
         },
         isActive: true,
+        schoolId: schoolId,
       },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     });

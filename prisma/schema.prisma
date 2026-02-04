@@ -3793,7 +3793,6 @@ enum PlanType {
 enum SchoolStatus {
   ACTIVE
   SUSPENDED
-  INACTIVE
   DEACTIVATED
 }
 

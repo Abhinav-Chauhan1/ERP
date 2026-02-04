@@ -1,6 +1,6 @@
 /**
  * File storage error handling utilities
- * Handles Cloudinary and file system errors with proper error messages
+ * Handles R2 and file system errors with proper error messages
  * Requirements: Task 14 - File storage error handling
  */
 

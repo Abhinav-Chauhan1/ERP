@@ -116,7 +116,7 @@ export interface DataSchema {
     description?: string;
   }>;
   relationships?: Array<{
-    type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+    type: 'one-to-one' | 'one-to-many' | 'many-to-many' | 'many-to-one';
     targetTable: string;
     foreignKey: string;
     targetKey: string;

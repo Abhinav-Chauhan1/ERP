@@ -20,6 +20,7 @@ export interface CreateCalendarEventInput {
   title: string;
   description?: string;
   categoryId: string;
+  schoolId: string; // Add required schoolId
   startDate: Date;
   endDate: Date;
   isAllDay?: boolean;
@@ -181,6 +182,7 @@ export async function createCalendarEvent(
       title: data.title,
       description: data.description,
       categoryId: data.categoryId,
+      schoolId: data.schoolId, // Use schoolId from data
       startDate: data.startDate,
       endDate: data.endDate,
       isAllDay: data.isAllDay ?? false,

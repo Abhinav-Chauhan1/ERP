@@ -18,26 +18,23 @@ import Link from "next/link";
 interface SchoolCreationData {
   // Basic Information
   schoolName: string;
+  schoolCode: string;
   subdomain: string;
   contactEmail: string;
   contactPhone: string;
   description: string;
-  
+
   // Subscription & Billing
   subscriptionPlan: string;
-  billingCycle: string;
-  
+
   // Initial Configuration
   extraStudents: number;
   schoolType: string;
-  
+
   // Authentication Configuration (new for unified auth system)
-  adminEmail: string;
-  adminName: string;
-  adminPassword: string;
   enableOTPForAdmins: boolean;
   authenticationMethod: 'password' | 'otp' | 'both';
-  
+
   // Subdomain Configuration
   enableSubdomain: boolean;
 }
@@ -58,18 +55,15 @@ export function SchoolCreationForm() {
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const [formData, setFormData] = useState<SchoolCreationData>({
     schoolName: "",
+    schoolCode: "",
     subdomain: "",
     contactEmail: "",
     contactPhone: "",
     description: "",
     subscriptionPlan: "GROWTH",
-    billingCycle: "monthly",
     extraStudents: 0,
     schoolType: "",
     // Authentication defaults for unified auth system
-    adminEmail: "",
-    adminName: "",
-    adminPassword: "",
     enableOTPForAdmins: false,
     authenticationMethod: "password",
     // Subdomain configuration
@@ -88,14 +82,16 @@ export function SchoolCreationForm() {
       const response = await fetch("/api/super-admin/plans");
       if (response.ok) {
         const data = await response.json();
-        const monthlyPlans = data.plans.filter((plan: any) => plan.interval === 'monthly' && plan.isActive);
-        setAvailablePlans(monthlyPlans);
-        if (monthlyPlans.length > 0) {
-          // Set default to Growth plan or first available plan
-          const growthPlan = monthlyPlans.find((plan: any) => plan.name.toLowerCase().includes('growth'));
-          setFormData(prev => ({ 
-            ...prev, 
-            subscriptionPlan: growthPlan?.id || monthlyPlans[0]?.id 
+        const activePlans = data.plans.filter((plan: any) => plan.isActive);
+        setAvailablePlans(activePlans);
+        if (activePlans.length > 0) {
+          // Set default to Growth monthly plan or first available plan
+          const growthMonthlyPlan = activePlans.find((plan: any) =>
+            plan.name.toLowerCase().includes('growth') && plan.interval === 'monthly'
+          );
+          setFormData(prev => ({
+            ...prev,
+            subscriptionPlan: growthMonthlyPlan?.id || activePlans[0]?.id
           }));
         }
       }
@@ -106,27 +102,32 @@ export function SchoolCreationForm() {
 
   const handleInputChange = (field: keyof SchoolCreationData, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
+    // Auto-generate school code from school name if school code is empty
+    if (field === "schoolName" && !formData.schoolCode) {
+      const autoCode = (value as string)
+        .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .toUpperCase()
+        .substring(0, 10); // Limit to 10 characters
+      setFormData(prev => ({ ...prev, schoolCode: autoCode }));
+    }
+
     // Reset subdomain availability when subdomain changes
     if (field === "subdomain") {
       setSubdomainAvailable(null);
     }
-    
+
     // Clear subdomain when disabled
     if (field === "enableSubdomain" && !value) {
       setFormData(prev => ({ ...prev, subdomain: "" }));
       setSubdomainAvailable(null);
     }
-    
-    // Auto-populate admin email with contact email if not set
-    if (field === "contactEmail" && !formData.adminEmail) {
-      setFormData(prev => ({ ...prev, adminEmail: value as string }));
-    }
   };
 
   const checkSubdomainAvailability = async () => {
     if (!formData.subdomain || !formData.enableSubdomain) return;
-    
+
     setCheckingSubdomain(true);
     try {
       const response = await fetch("/api/super-admin/schools/check-subdomain", {
@@ -137,7 +138,7 @@ export function SchoolCreationForm() {
 
       const result = await response.json();
       setSubdomainAvailable(result.available);
-      
+
       if (!result.available) {
         toast.error(result.message);
       }
@@ -174,7 +175,7 @@ export function SchoolCreationForm() {
       }
 
       toast.success("School created successfully!");
-      
+
       // Redirect to setup wizard with school ID
       router.push(result.setupUrl);
     } catch (error: any) {
@@ -197,8 +198,8 @@ export function SchoolCreationForm() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Create New School</h1>
-          <p className="text-sm text-gray-600">Set up a new educational institution on the platform</p>
+          <h1 className="text-2xl font-semibold text-foreground">Create New School</h1>
+          <p className="text-sm text-muted-foreground">Set up a new educational institution on the platform</p>
         </div>
       </div>
 
@@ -227,18 +228,32 @@ export function SchoolCreationForm() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="enableSubdomain">Enable Custom Subdomain</Label>
-                  <Switch
-                    id="enableSubdomain"
-                    checked={formData.enableSubdomain}
-                    onCheckedChange={(checked) => handleInputChange("enableSubdomain", checked)}
-                  />
-                </div>
-                <p className="text-xs text-gray-500">
+                <Label htmlFor="schoolCode">School Code *</Label>
+                <Input
+                  id="schoolCode"
+                  value={formData.schoolCode}
+                  onChange={(e) => handleInputChange("schoolCode", e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                  placeholder="SCHOOL_CODE"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Unique identifier for the school (auto-generated from name)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="enableSubdomain">Enable Custom Subdomain</Label>
+                <p className="text-xs text-muted-foreground mt-1">
                   Enable to create a custom subdomain for this school
                 </p>
               </div>
+              <Switch
+                id="enableSubdomain"
+                checked={formData.enableSubdomain}
+                onCheckedChange={(checked) => handleInputChange("enableSubdomain", checked)}
+              />
             </div>
 
             {formData.enableSubdomain && (
@@ -285,7 +300,7 @@ export function SchoolCreationForm() {
                   <div className="text-sm">
                     <p className="font-medium text-blue-900">No Custom Subdomain</p>
                     <p className="text-blue-700 mt-1">
-                      This school will be accessible through the main platform without a custom subdomain. 
+                      This school will be accessible through the main platform without a custom subdomain.
                       Users will access it via the main domain with school selection.
                     </p>
                   </div>
@@ -337,72 +352,112 @@ export function SchoolCreationForm() {
               Subscription Plan
             </CardTitle>
             <CardDescription>
-              Choose the appropriate plan for this school
+              Choose the appropriate plan for this school. Yearly plans include 2 months free.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {availablePlans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`relative border rounded-lg p-4 cursor-pointer transition-colors ${
-                    formData.subscriptionPlan === plan.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => handleInputChange("subscriptionPlan", plan.id)}
-                >
-                  {plan.name.toLowerCase().includes('growth') && (
-                    <Badge className="absolute -top-2 left-4 bg-blue-600">
-                      Recommended
-                    </Badge>
-                  )}
-                  <div className="space-y-2">
-                    <h3 className="font-medium">{plan.name}</h3>
-                    <div className="text-2xl font-bold">
-                      ₹{plan.amount.toLocaleString('en-IN')}
-                      <span className="text-sm font-normal text-gray-500">/month</span>
-                    </div>
-                    <ul className="space-y-1 text-sm text-gray-600">
-                      <li className="flex items-center">
-                        <Check className="h-3 w-3 mr-2 text-green-500" />
-                        {plan.features.maxStudents === -1 ? 'Unlimited' : plan.features.maxStudents} students
-                      </li>
-                      <li className="flex items-center">
-                        <Check className="h-3 w-3 mr-2 text-green-500" />
-                        {plan.features.storageGB}GB storage
-                      </li>
-                      <li className="flex items-center">
-                        <Check className="h-3 w-3 mr-2 text-green-500" />
-                        {plan.features.emailSupport ? 'Email support' : 'Basic support'}
-                      </li>
-                      {plan.features.pricePerExtraStudent && (
-                        <li className="flex items-center text-blue-600">
-                          <Check className="h-3 w-3 mr-2 text-blue-500" />
-                          +₹{plan.features.pricePerExtraStudent}/extra student
-                        </li>
+          <CardContent className="space-y-6">
+            {/* Monthly Plans */}
+            <div>
+              <h3 className="text-sm font-medium text-foreground mb-3">Monthly Plans</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {availablePlans
+                  .filter(plan => plan.interval === 'monthly')
+                  .map((plan) => (
+                    <div
+                      key={plan.id}
+                      className={`relative border rounded-lg p-4 cursor-pointer transition-colors ${formData.subscriptionPlan === plan.id
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-[hsl(var(--border))] hover:border-[hsl(var(--ring))]"
+                        }`}
+                      onClick={() => handleInputChange("subscriptionPlan", plan.id)}
+                    >
+                      {plan.name.toLowerCase().includes('growth') && (
+                        <Badge className="absolute -top-2 left-4 bg-blue-600">
+                          Recommended
+                        </Badge>
                       )}
-                    </ul>
-                  </div>
-                </div>
-              ))}
+                      <div className="space-y-2">
+                        <h4 className="font-medium">{plan.name}</h4>
+                        <div className="text-2xl font-bold">
+                          ₹{plan.amount.toLocaleString('en-IN')}
+                          <span className="text-sm font-normal text-gray-500">/month</span>
+                        </div>
+                        <ul className="space-y-1 text-sm text-muted-foreground">
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.maxStudents === -1 ? 'Unlimited' : plan.features.maxStudents} students
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.storageGB}GB storage
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.emailSupport ? 'Email support' : 'Basic support'}
+                          </li>
+                          {plan.features.pricePerExtraStudent && (
+                            <li className="flex items-center text-blue-600">
+                              <Check className="h-3 w-3 mr-2 text-blue-500" />
+                              +₹{plan.features.pricePerExtraStudent}/extra student
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="billingCycle">Billing Cycle</Label>
-                <Select
-                  value={formData.billingCycle}
-                  onValueChange={(value) => handleInputChange("billingCycle", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="yearly">Yearly (2 months free)</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* Yearly Plans */}
+            <div>
+              <h3 className="text-sm font-medium text-foreground mb-3">Yearly Plans (2 months free)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {availablePlans
+                  .filter(plan => plan.interval === 'yearly')
+                  .map((plan) => (
+                    <div
+                      key={plan.id}
+                      className={`relative border rounded-lg p-4 cursor-pointer transition-colors ${formData.subscriptionPlan === plan.id
+                        ? "border-green-500 bg-green-500/10"
+                        : "border-[hsl(var(--border))] hover:border-[hsl(var(--ring))]"
+                        }`}
+                      onClick={() => handleInputChange("subscriptionPlan", plan.id)}
+                    >
+                      <Badge className="absolute -top-2 left-4 bg-green-600">
+                        Save 17%
+                      </Badge>
+                      <div className="space-y-2">
+                        <h4 className="font-medium">{plan.name}</h4>
+                        <div className="text-2xl font-bold">
+                          ₹{plan.amount.toLocaleString('en-IN')}
+                          <span className="text-sm font-normal text-gray-500">/year</span>
+                        </div>
+                        <div className="text-xs text-green-600 font-medium">
+                          ₹{Math.round(plan.amount / 10).toLocaleString('en-IN')}/month effective
+                        </div>
+                        <ul className="space-y-1 text-sm text-muted-foreground">
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.maxStudents === -1 ? 'Unlimited' : plan.features.maxStudents} students
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.storageGB}GB storage
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-3 w-3 mr-2 text-green-500" />
+                            {plan.features.emailSupport ? 'Email support' : 'Basic support'}
+                          </li>
+                          {plan.features.pricePerExtraStudent && (
+                            <li className="flex items-center text-blue-600">
+                              <Check className="h-3 w-3 mr-2 text-blue-500" />
+                              +₹{plan.features.pricePerExtraStudent}/extra student
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           </CardContent>
@@ -449,7 +504,7 @@ export function SchoolCreationForm() {
                   onChange={(e) => handleInputChange("extraStudents", parseInt(e.target.value) || 0)}
                   placeholder="0"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Additional students beyond the plan limit
                 </p>
               </div>
@@ -469,47 +524,7 @@ export function SchoolCreationForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="adminName">School Admin Name *</Label>
-                <Input
-                  id="adminName"
-                  value={formData.adminName}
-                  onChange={(e) => handleInputChange("adminName", e.target.value)}
-                  placeholder="Enter admin full name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="adminEmail">School Admin Email *</Label>
-                <Input
-                  id="adminEmail"
-                  type="email"
-                  value={formData.adminEmail}
-                  onChange={(e) => handleInputChange("adminEmail", e.target.value)}
-                  placeholder="admin@school.com"
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  This will be the primary admin account for the school
-                </p>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="adminPassword">Initial Admin Password</Label>
-              <Input
-                id="adminPassword"
-                type="password"
-                value={formData.adminPassword}
-                onChange={(e) => handleInputChange("adminPassword", e.target.value)}
-                placeholder="Enter secure password (min 8 characters)"
-                minLength={8}
-              />
-              <p className="text-xs text-gray-500">
-                Leave empty to require password setup during onboarding
-              </p>
-            </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
@@ -527,7 +542,7 @@ export function SchoolCreationForm() {
                     <SelectItem value="both">Password + Optional OTP</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   How school admins will authenticate (students/parents always use OTP)
                 </p>
               </div>
@@ -542,7 +557,7 @@ export function SchoolCreationForm() {
                   Enable OTP for Admin Login
                 </Label>
               </div>
-              <p className="text-xs text-gray-500 ml-6">
+              <p className="text-xs text-muted-foreground ml-6">
                 Require OTP verification for enhanced admin security
               </p>
             </div>
@@ -553,7 +568,7 @@ export function SchoolCreationForm() {
                 <div className="text-sm">
                   <p className="font-medium text-blue-900">Unified Authentication System</p>
                   <p className="text-blue-700 mt-1">
-                    This school will use the new unified authentication system with role-based access control, 
+                    This school will use the new unified authentication system with role-based access control,
                     multi-school support, and comprehensive audit logging.
                   </p>
                 </div>
@@ -575,9 +590,13 @@ export function SchoolCreationForm() {
                   <span className="font-medium">{formData.schoolName || "Not specified"}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span>School Code:</span>
+                  <span className="font-medium">{formData.schoolCode || "Not specified"}</span>
+                </div>
+                <div className="flex justify-between">
                   <span>Subdomain:</span>
                   <span className="font-medium">
-                    {formData.enableSubdomain 
+                    {formData.enableSubdomain
                       ? (formData.subdomain ? `${formData.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'yourdomain.com'}` : "Not specified")
                       : "No custom subdomain (Main platform access)"
                     }
@@ -588,28 +607,28 @@ export function SchoolCreationForm() {
                   <span className="font-medium">{selectedPlan.name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Admin User:</span>
-                  <span className="font-medium">{formData.adminName || "Not specified"} ({formData.adminEmail || "No email"})</span>
+                  <span>Contact Email:</span>
+                  <span className="font-medium">{formData.contactEmail || "No email"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Authentication:</span>
                   <span className="font-medium">
-                    {formData.authenticationMethod === 'password' ? 'Password' : 
-                     formData.authenticationMethod === 'otp' ? 'OTP Only' : 'Password + OTP'}
+                    {formData.authenticationMethod === 'password' ? 'Password' :
+                      formData.authenticationMethod === 'otp' ? 'OTP Only' : 'Password + OTP'}
                     {formData.enableOTPForAdmins ? ' (Enhanced Security)' : ''}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Base Price:</span>
                   <span className="font-medium">
-                    ₹{selectedPlan?.amount?.toLocaleString('en-IN') || 0}/{formData.billingCycle === "yearly" ? "month (billed yearly)" : "month"}
+                    ₹{selectedPlan?.amount?.toLocaleString('en-IN') || 0}/{selectedPlan?.interval || 'month'}
                   </span>
                 </div>
                 {formData.extraStudents > 0 && selectedPlan.features?.pricePerExtraStudent && (
                   <div className="flex justify-between">
                     <span>Extra Students ({formData.extraStudents}):</span>
                     <span className="font-medium">
-                      ₹{(formData.extraStudents * selectedPlan.features.pricePerExtraStudent).toLocaleString('en-IN')}/month
+                      ₹{(formData.extraStudents * selectedPlan.features.pricePerExtraStudent).toLocaleString('en-IN')}/{selectedPlan?.interval === 'yearly' ? 'year' : 'month'}
                     </span>
                   </div>
                 )}
@@ -619,14 +638,13 @@ export function SchoolCreationForm() {
                   <span>
                     ₹{(() => {
                       const basePrice = selectedPlan?.amount || 0;
-                      const extraStudentsCost = formData.extraStudents > 0 && selectedPlan.features?.pricePerExtraStudent 
-                        ? formData.extraStudents * selectedPlan.features.pricePerExtraStudent 
+                      const extraStudentsCost = formData.extraStudents > 0 && selectedPlan.features?.pricePerExtraStudent
+                        ? formData.extraStudents * selectedPlan.features.pricePerExtraStudent * (selectedPlan?.interval === 'yearly' ? 12 : 1)
                         : 0;
-                      const totalMonthly = basePrice + extraStudentsCost;
-                      const total = formData.billingCycle === "yearly" ? totalMonthly * 10 : totalMonthly;
+                      const total = basePrice + extraStudentsCost;
                       return total.toLocaleString('en-IN');
                     })()}
-                    /{formData.billingCycle === "yearly" ? "year" : "month"}
+                    /{selectedPlan?.interval || 'month'}
                   </span>
                 </div>
               </div>
@@ -641,7 +659,7 @@ export function SchoolCreationForm() {
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || !formData.schoolName || (formData.enableSubdomain && !formData.subdomain) || !formData.contactEmail || !formData.adminName || !formData.adminEmail}
+            disabled={isLoading || !formData.schoolName || !formData.schoolCode || (formData.enableSubdomain && !formData.subdomain) || !formData.contactEmail}
           >
             {isLoading ? "Creating..." : "Create School & Launch Setup"}
           </Button>

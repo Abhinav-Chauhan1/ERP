@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { School, SchoolStatus, PlanType, UserRole, Prisma } from "@prisma/client";
+import { School, SchoolStatus, PlanType, UserRole, Prisma, AuditAction } from "@prisma/client";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 
 // Types for school management operations
@@ -438,7 +438,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: null,
-          action: "UPDATE" as any,
+          action: AuditAction.UPDATE,
           resource: "SCHOOL",
           resourceId: schoolId,
           changes: {
@@ -461,7 +461,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: null,
-          action: "UPDATE" as any,
+          action: AuditAction.UPDATE,
           resource: "SCHOOL",
           resourceId: schoolId,
           changes: {
@@ -559,7 +559,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null, // Super admin actions don't require specific user ID for now
-        action: "UPDATE" as any,
+        action: AuditAction.UPDATE,
         resource: "SCHOOL",
         resourceId: schoolId,
         changes: {
@@ -631,7 +631,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null,
-        action: "UPDATE" as any,
+        action: AuditAction.UPDATE,
         resource: "SCHOOL",
         resourceId: schoolIds.join(","),
         changes: {
@@ -704,7 +704,7 @@ export class SchoolService {
     await db.auditLog.create({
       data: {
         userId: null,
-        action: "UPDATE" as any,
+        action: AuditAction.UPDATE,
         resource: "SCHOOL",
         resourceId: schoolIds.join(","),
         changes: {
@@ -1236,23 +1236,35 @@ export class SchoolService {
   async createSchoolWithSaasConfig(data: any): Promise<School> {
     await requireSuperAdminAccess();
 
-    // Validate required fields
-    if (!data.name || !data.schoolCode || !data.subdomain) {
-      throw new Error("School name, code, and subdomain are required");
+    // Validate required fields - subdomain is optional when disabled
+    if (!data.name || !data.schoolCode) {
+      throw new Error("School name and code are required");
+    }
+
+    // Build where conditions for uniqueness check
+    const whereConditions: any[] = [
+      { schoolCode: data.schoolCode }
+    ];
+
+    // Only check subdomain uniqueness if subdomain is provided
+    if (data.subdomain) {
+      whereConditions.push({ subdomain: data.subdomain });
     }
 
     // Validate subdomain uniqueness
     const existingSchool = await db.school.findFirst({
       where: {
-        OR: [
-          { subdomain: data.subdomain },
-          { schoolCode: data.schoolCode },
-        ],
+        OR: whereConditions,
       },
     });
 
     if (existingSchool) {
-      throw new Error("Subdomain or school code already exists");
+      if (existingSchool.schoolCode === data.schoolCode) {
+        throw new Error("School code already exists");
+      }
+      if (data.subdomain && existingSchool.subdomain === data.subdomain) {
+        throw new Error("Subdomain already exists");
+      }
     }
 
     // Create school with SaaS configuration
@@ -1263,9 +1275,9 @@ export class SchoolService {
         phone: data.phone,
         email: data.email,
         address: data.address,
-        subdomain: data.subdomain,
+        subdomain: data.subdomain || null, // Explicitly set to null if not provided
         plan: data.plan || PlanType.STARTER,
-        status: data.status || SchoolStatus.INACTIVE,
+        status: data.status || SchoolStatus.DEACTIVATED,
         isOnboarded: data.isOnboarded || false,
         onboardingStep: 0,
         primaryColor: "#3b82f6",
@@ -1277,8 +1289,10 @@ export class SchoolService {
       },
     });
 
-    // Initialize DNS and SSL setup in background
-    this.initializeSubdomainInfrastructure(school.subdomain!, school.id);
+    // Initialize DNS and SSL setup in background only if subdomain is provided
+    if (school.subdomain) {
+      this.initializeSubdomainInfrastructure(school.subdomain, school.id);
+    }
 
     return school;
   }
@@ -1357,7 +1371,7 @@ export class SchoolService {
       await db.auditLog.create({
         data: {
           userId: "system",
-          action: "CREATE" as any,
+          action: AuditAction.CREATE,
           resource: "SUBDOMAIN_INFRASTRUCTURE",
           resourceId: schoolId,
           changes: {

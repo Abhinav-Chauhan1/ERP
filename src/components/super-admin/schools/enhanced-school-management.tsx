@@ -23,16 +23,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  MoreHorizontal, 
-  Eye, 
-  Settings, 
-  Users, 
-  Ban, 
-  AlertCircle, 
+import {
+  Search,
+  Filter,
+  Plus,
+  MoreHorizontal,
+  Eye,
+  Users,
+  Ban,
+  AlertCircle,
   RefreshCw,
   PlayCircle,
   RotateCcw,
@@ -41,11 +40,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { 
+import {
   getSchoolsWithFilters,
   resetSchoolOnboarding,
   launchSetupWizard,
-  bulkResetOnboarding
+  bulkResetOnboarding,
+  bulkUpdateSchoolStatus
 } from "@/lib/actions/school-management-actions";
 import { SchoolDetailsDialog } from "./school-details-dialog";
 import { useBreakpoint, mobileTableConfig, mobileClasses } from "@/lib/utils/mobile-responsive";
@@ -124,7 +124,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedSchoolForDetails, setSelectedSchoolForDetails] = useState<School | null>(null);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -139,10 +139,10 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   const fetchSchools = async (currentFilters: SchoolFilters = {}) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const result = await getSchoolsWithFilters(currentFilters);
-      
+
       if (result.success && result.data) {
         // Map the data to include missing fields for SchoolDetailsDialog
         const mappedSchools = result.data.map((school: any) => ({
@@ -183,24 +183,24 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
 
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status);
-    setFilters(prev => ({ 
-      ...prev, 
-      status: status === "ALL" ? undefined : status 
+    setFilters(prev => ({
+      ...prev,
+      status: status === "ALL" ? undefined : status
     }));
   };
 
   const handlePlanFilter = (plan: string) => {
     setPlanFilter(plan);
-    setFilters(prev => ({ 
-      ...prev, 
-      plan: plan === "ALL" ? undefined : plan 
+    setFilters(prev => ({
+      ...prev,
+      plan: plan === "ALL" ? undefined : plan
     }));
   };
 
   const handleOnboardingFilter = (onboarding: string) => {
     setOnboardingFilter(onboarding);
-    setFilters(prev => ({ 
-      ...prev, 
+    setFilters(prev => ({
+      ...prev,
       isOnboarded: onboarding === "ALL" ? undefined : onboarding === "COMPLETED"
     }));
   };
@@ -234,12 +234,20 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
     try {
       switch (action) {
         case "suspend":
-          // Implement bulk suspend
-          toast.success(`Suspended ${selectedSchools.length} schools`);
+          const suspendResult = await bulkUpdateSchoolStatus(selectedSchools, "SUSPENDED");
+          if (suspendResult.success) {
+            toast.success(suspendResult.message);
+          } else {
+            toast.error(suspendResult.error);
+          }
           break;
         case "activate":
-          // Implement bulk activate
-          toast.success(`Activated ${selectedSchools.length} schools`);
+          const activateResult = await bulkUpdateSchoolStatus(selectedSchools, "ACTIVE");
+          if (activateResult.success) {
+            toast.success(activateResult.message);
+          } else {
+            toast.error(activateResult.error);
+          }
           break;
         case "reset-onboarding":
           const result = await bulkResetOnboarding(selectedSchools);
@@ -274,16 +282,37 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   };
 
   const handleLaunchSetupWizard = async (schoolId: string, schoolName: string) => {
+    console.log("🚀 Launch Setup Wizard clicked for:", schoolName, schoolId);
+
+    // Redirect to the existing setup wizard page
+    router.push(`/super-admin/schools/${schoolId}/setup`);
+  };
+
+  const handleSuspendSchool = async (schoolId: string, schoolName: string) => {
     try {
-      const result = await launchSetupWizard(schoolId);
+      const result = await bulkUpdateSchoolStatus([schoolId], "SUSPENDED");
       if (result.success) {
-        toast.success(result.data?.message || `Setup wizard launched for ${schoolName}`);
+        toast.success(`${schoolName} has been suspended`);
         fetchSchools(filters);
       } else {
-        toast.error(result.error || "Failed to launch setup wizard");
+        toast.error(result.error || "Failed to suspend school");
       }
     } catch (error) {
-      toast.error("Failed to launch setup wizard");
+      toast.error("Failed to suspend school");
+    }
+  };
+
+  const handleActivateSchool = async (schoolId: string, schoolName: string) => {
+    try {
+      const result = await bulkUpdateSchoolStatus([schoolId], "ACTIVE");
+      if (result.success) {
+        toast.success(`${schoolName} has been activated`);
+        fetchSchools(filters);
+      } else {
+        toast.error(result.error || "Failed to activate school");
+      }
+    } catch (error) {
+      toast.error("Failed to activate school");
     }
   };
 
@@ -431,9 +460,9 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
               <p className="text-sm text-muted-foreground">
                 Advanced filters will be implemented here
               </p>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="mt-2"
                 onClick={() => setShowAdvancedFilters(false)}
               >
@@ -461,9 +490,9 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                   <CheckCircle className="h-4 w-4 mr-1" />
                   Activate
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleBulkAction("reset-onboarding")}
                   className="text-orange-600 hover:text-orange-700"
                 >
@@ -524,7 +553,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                         <TableCell {...tableAccessibility.getCellProps()}>
                           <Checkbox
                             checked={selectedSchools.includes(school.id)}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked) =>
                               handleSchoolSelect(school.id, checked as boolean)
                             }
                             {...aria.attributes.label(`Select ${school.name}`)}
@@ -582,8 +611,8 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                         <TableCell {...tableAccessibility.getCellProps()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 className={focus.classes.visible}
                                 {...aria.attributes.label(`Actions for ${school.name}`)}
@@ -597,10 +626,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Settings className="h-4 w-4 mr-2" />
-                                Settings
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
@@ -627,10 +652,23 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
-                                <Ban className="h-4 w-4 mr-2" />
-                                Suspend
-                              </DropdownMenuItem>
+                              {school.status === "ACTIVE" ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleSuspendSchool(school.id, school.name)}
+                                  className="text-red-600"
+                                >
+                                  <Ban className="h-4 w-4 mr-2" />
+                                  Suspend
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleActivateSchool(school.id, school.name)}
+                                  className="text-green-600"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Activate
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -650,7 +688,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                           <div className="flex items-center space-x-3 flex-1">
                             <Checkbox
                               checked={selectedSchools.includes(school.id)}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked) =>
                                 handleSchoolSelect(school.id, checked as boolean)
                               }
                               {...aria.attributes.label(`Select ${school.name}`)}
@@ -665,8 +703,8 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 className={`${focus.classes.visible} min-h-[44px] min-w-[44px]`}
                                 {...aria.attributes.label(`Actions for ${school.name}`)}
@@ -680,10 +718,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Settings className="h-4 w-4 mr-2" />
-                                Settings
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => router.push(`/super-admin/users?schoolId=${school.id}`)}
@@ -710,14 +744,27 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600">
-                                <Ban className="h-4 w-4 mr-2" />
-                                Suspend
-                              </DropdownMenuItem>
+                              {school.status === "ACTIVE" ? (
+                                <DropdownMenuItem
+                                  onClick={() => handleSuspendSchool(school.id, school.name)}
+                                  className="text-red-600"
+                                >
+                                  <Ban className="h-4 w-4 mr-2" />
+                                  Suspend
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() => handleActivateSchool(school.id, school.name)}
+                                  className="text-green-600"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Activate
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        
+
                         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <span className="text-muted-foreground">Status:</span>

@@ -308,7 +308,12 @@ export async function submitLeaveApplication(values: LeaveApplicationValues) {
         toDate,
         reason: validated.reason,
         attachments: validated.attachments,
-        status: LeaveStatus.PENDING
+        status: LeaveStatus.PENDING,
+        school: {
+          connect: {
+            id: student.schoolId,
+          },
+        },
       }
     });
 

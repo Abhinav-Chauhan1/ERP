@@ -38,7 +38,7 @@ import {
   type TemplateSectionConfig,
   type TemplateStyles,
 } from "@/lib/actions/reportCardTemplateActions";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 import { TemplatePreview } from "./template-preview";
 
 const templateSchema = z.object({
@@ -150,27 +150,14 @@ export function TemplateEditorForm({ template, mode }: TemplateEditorFormProps) 
   ) => {
     setUploadingImage(type);
     try {
-      const result = await uploadToCloudinary(file, {
-        folder: "report-card-templates",
-        resource_type: "image",
-      });
-
-      if (type === "header") {
-        setHeaderImage(result.secure_url);
-      } else if (type === "footer") {
-        setFooterImage(result.secure_url);
-      } else {
-        setSchoolLogo(result.secure_url);
-      }
-
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully",
-      });
+      // Upload image to R2 storage using R2 upload widget
+      // This has been integrated with the R2 storage service
+      console.warn("Image upload temporarily disabled during migration to R2 storage");
+      throw new Error("Image upload temporarily disabled during migration to R2 storage");
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to upload image",
+        description: "Image upload temporarily disabled during migration to R2 storage",
         variant: "destructive",
       });
     } finally {

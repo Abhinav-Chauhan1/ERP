@@ -12,21 +12,34 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Save, 
-  AlertCircle, 
-  Building, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Globe, 
+import {
+  Save,
+  AlertCircle,
+  Building,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
   Palette,
   Settings,
   CreditCard,
   Users,
-  Shield
+  Shield,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { resetSchoolData, deleteSchool } from "@/lib/actions/school-management-actions";
 
 interface School {
   id: string;
@@ -77,6 +90,11 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
     razorpayCustomerId: school.razorpayCustomerId || "",
   });
 
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [confirmationInput, setConfirmationInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -113,7 +131,7 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
 
   const handleStatusChange = async (newStatus: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE') => {
     setIsLoading(true);
-    
+
     try {
       const response = await fetch(`/api/super-admin/schools/${school.id}/status`, {
         method: 'PUT',
@@ -138,6 +156,53 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
     }
   };
 
+  const handleResetSchool = async () => {
+    if (confirmationInput !== "RESET") {
+      toast.error("Please type 'RESET' to confirm.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await resetSchoolData(school.id);
+      if (result.success) {
+        toast.success(result.message);
+        setShowResetDialog(false);
+        setConfirmationInput("");
+        router.refresh();
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteSchool = async () => {
+    if (confirmationInput !== school.name) {
+      toast.error("Please type the school name to confirm.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await deleteSchool(school.id);
+      if (result.success) {
+        toast.success(result.message);
+        setShowDeleteDialog(false);
+        router.push("/super-admin/schools");
+      } else {
+        toast.error(result.error);
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs defaultValue="basic" className="space-y-6">
@@ -145,7 +210,6 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="subscription">Subscription</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
@@ -203,13 +267,13 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
                     </p>
                   </div>
                   <Badge variant={
-                    formData.status === 'ACTIVE' ? 'default' : 
-                    formData.status === 'SUSPENDED' ? 'destructive' : 'secondary'
+                    formData.status === 'ACTIVE' ? 'default' :
+                      formData.status === 'SUSPENDED' ? 'destructive' : 'secondary'
                   }>
                     {formData.status}
                   </Badge>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Button
                     type="button"
@@ -399,76 +463,17 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
               <div className="p-4 border rounded-lg bg-muted/50">
                 <h4 className="font-medium mb-2">Preview</h4>
                 <div className="flex items-center gap-4">
-                  <div 
+                  <div
                     className="w-8 h-8 rounded"
                     style={{ backgroundColor: formData.primaryColor }}
                   />
-                  <div 
+                  <div
                     className="w-8 h-8 rounded"
                     style={{ backgroundColor: formData.secondaryColor }}
                   />
                   <span className="text-sm text-muted-foreground">
                     Color scheme preview
                   </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="subscription" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Subscription & Billing
-              </CardTitle>
-              <CardDescription>
-                Manage school subscription and billing settings
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="plan">Subscription Plan</Label>
-                <Select
-                  value={formData.plan}
-                  onValueChange={(value: 'STARTER' | 'GROWTH' | 'DOMINATE') => 
-                    handleInputChange('plan', value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STARTER">Starter - ₹29/month</SelectItem>
-                    <SelectItem value="GROWTH">Growth - ₹49/month</SelectItem>
-                    <SelectItem value="DOMINATE">Dominate - ₹99/month</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="razorpayCustomerId">Razorpay Customer ID</Label>
-                <Input
-                  id="razorpayCustomerId"
-                  value={formData.razorpayCustomerId}
-                  onChange={(e) => handleInputChange('razorpayCustomerId', e.target.value)}
-                  placeholder="cust_xxxxxxxxxxxxx"
-                />
-              </div>
-
-              <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-900 dark:text-blue-100">
-                      Subscription Management
-                    </p>
-                    <p className="text-blue-700 dark:text-blue-200 mt-1">
-                      Changes to subscription plans will take effect immediately. 
-                      Billing adjustments will be handled automatically.
-                    </p>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -514,13 +519,127 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
                       Permanent actions that cannot be undone. Use with extreme caution.
                     </p>
                     <div className="mt-3 flex gap-2">
-                      <Button variant="destructive" size="sm" type="button">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          setConfirmationInput("");
+                          setShowResetDialog(true);
+                        }}
+                      >
                         Reset School Data
                       </Button>
-                      <Button variant="destructive" size="sm" type="button">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          setConfirmationInput("");
+                          setShowDeleteDialog(true);
+                        }}
+                      >
                         Delete School
                       </Button>
                     </div>
+
+                    {/* Reset Dialog */}
+                    <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-sm text-muted-foreground">
+                              <p>
+                                This action will <strong>PERMANENTLY DELETE</strong> all operational data
+                                including students, teachers, classes, and financial records.
+                              </p>
+                              <p className="font-medium text-red-600">
+                                Only the School Record and Administrators will be preserved.
+                              </p>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Type "RESET" to confirm</Label>
+                                <Input
+                                  value={confirmationInput}
+                                  onChange={(e) => setConfirmationInput(e.target.value)}
+                                  placeholder="RESET"
+                                  className="border-red-200 focus-visible:ring-red-500"
+                                />
+                              </div>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+                          <Button
+                            variant="destructive"
+                            disabled={isProcessing || confirmationInput !== "RESET"}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleResetSchool();
+                            }}
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Resetting...
+                              </>
+                            ) : (
+                              "Reset Data"
+                            )}
+                          </Button>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Delete Dialog */}
+                    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-sm text-muted-foreground">
+                              <p>
+                                This action will <strong>PERMANENTLY DELETE</strong> the school
+                                and <strong>ALL</strong> associated data including administrators.
+                              </p>
+                              <p className="font-medium text-red-600">
+                                This action cannot be undone.
+                              </p>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Type <strong>{school.name}</strong> to confirm</Label>
+                                <Input
+                                  value={confirmationInput}
+                                  onChange={(e) => setConfirmationInput(e.target.value)}
+                                  placeholder={school.name}
+                                  className="border-red-200 focus-visible:ring-red-500"
+                                />
+                              </div>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+                          <Button
+                            variant="destructive"
+                            disabled={isProcessing || confirmationInput !== school.name}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDeleteSchool();
+                            }}
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              "Delete School"
+                            )}
+                          </Button>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>

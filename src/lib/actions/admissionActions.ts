@@ -7,7 +7,7 @@ import {
   admissionApplicationSchema,
   AdmissionApplicationFormValues
 } from "../schemaValidation/admissionSchemaValidation";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 import { sendAdmissionConfirmationEmail } from "@/lib/utils/email-service";
 
 // Generate unique application number
@@ -46,7 +46,7 @@ export const getAvailableClasses = withSchoolAuthAction(async (schoolId: string,
   }
 });
 
-// Upload document to Cloudinary
+// Upload document to R2 storage
 export const uploadAdmissionDocument = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, formData: FormData) => {
   try {
     const file = formData.get("file") as File;
@@ -59,19 +59,27 @@ export const uploadAdmissionDocument = withSchoolAuthAction(async (schoolId: str
       };
     }
 
-    // Upload to Cloudinary
-    const result = await uploadToCloudinary(file, {
-      folder: "admission-documents",
-      resource_type: "auto",
+    // Upload document to R2 storage
+    const uploadResult = await uploadHandler.uploadDocument(file, {
+      folder: 'admission-documents',
+      category: 'document',
+      customMetadata: {
+        documentType: type,
+        uploadType: 'admission'
+      }
     });
 
+    if (!uploadResult.success) {
+      throw new Error(`Failed to upload document: ${uploadResult.error}`);
+    }
+    
     return {
       success: true,
       data: {
-        url: result.secure_url,
-        filename: result.original_filename,
-        type,
-      },
+        type: type,
+        url: uploadResult.url!,
+        filename: file.name
+      }
     };
   } catch (error) {
     console.error("Error uploading document:", error);

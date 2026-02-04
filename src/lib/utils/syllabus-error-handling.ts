@@ -205,7 +205,7 @@ export function handlePrismaError(error: unknown): ErrorResponse {
 
 /**
  * Handle file storage errors
- * Converts Cloudinary and file system errors to user-friendly messages
+ * Converts R2 and file system errors to user-friendly messages
  */
 export function handleFileStorageError(error: unknown): ErrorResponse {
   if (error instanceof Error) {

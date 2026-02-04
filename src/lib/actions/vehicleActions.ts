@@ -3,7 +3,6 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { vehicleSchema, vehicleUpdateSchema, type VehicleFormValues, type VehicleUpdateFormValues } from "@/lib/schemas/vehicle-schemas";
-import { auth } from "@/auth";
 import { hasPermission } from "@/lib/utils/permissions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
@@ -15,10 +14,13 @@ export async function getVehicles(params?: {
   status?: string;
   vehicleType?: string;
 }) {
-  /* const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
@@ -81,10 +83,13 @@ export async function getVehicles(params?: {
 
 // Get a single vehicle by ID
 export async function getVehicleById(id: string) {
-  /* const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const vehicle = await db.vehicle.findUnique({
       where: { id, schoolId },
       include: {
@@ -129,11 +134,14 @@ export async function getVehicleById(id: string) {
 export async function createVehicle(data: VehicleFormValues) {
   try {
     const { schoolId, user } = await requireSchoolAccess();
-    // const session = await auth();
-    // if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
 
     const hasPerm = await hasPermission(user.id, "VEHICLE", "CREATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+    
     // Validate input
     const validated = vehicleSchema.parse(data);
 
@@ -176,11 +184,14 @@ export async function createVehicle(data: VehicleFormValues) {
 export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
   try {
     const { schoolId, user } = await requireSchoolAccess();
-    /* const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
 
     const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+    
     // Validate input
     const validated = vehicleUpdateSchema.parse(data);
 
@@ -235,11 +246,14 @@ export async function updateVehicle(id: string, data: VehicleUpdateFormValues) {
 export async function deleteVehicle(id: string) {
   try {
     const { schoolId, user } = await requireSchoolAccess();
-    /* const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
 
     const hasPerm = await hasPermission(user.id, "VEHICLE", "DELETE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+    
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
       where: { id, schoolId },
@@ -253,7 +267,7 @@ export async function deleteVehicle(id: string) {
     }
 
     // Check if vehicle has active routes
-    const activeRoutes = vehicle.routes.filter((route) => route.status === "ACTIVE");
+    const activeRoutes = vehicle.routes.filter((route: any) => route.status === "ACTIVE");
     if (activeRoutes.length > 0) {
       throw new Error(
         "Cannot delete vehicle with active routes. Please deactivate or reassign routes first."
@@ -280,11 +294,14 @@ export async function deleteVehicle(id: string) {
 export async function assignDriverToVehicle(vehicleId: string, driverId: string | null) {
   try {
     const { schoolId, user } = await requireSchoolAccess();
-    /* const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" }; */
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
 
     const hasPerm = await hasPermission(user.id, "VEHICLE", "UPDATE");
     if (!hasPerm) return { success: false, error: "Insufficient permissions" };
+    
     // Check if vehicle exists
     const vehicle = await db.vehicle.findUnique({
       where: { id: vehicleId, schoolId },
@@ -328,10 +345,13 @@ export async function assignDriverToVehicle(vehicleId: string, driverId: string 
 
 // Get vehicle statistics
 export async function getVehicleStats() {
-  /* const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized"); */
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const [total, active, inactive, maintenance] = await Promise.all([
       db.vehicle.count({ where: { schoolId } }),
       db.vehicle.count({ where: { status: "ACTIVE", schoolId } }),

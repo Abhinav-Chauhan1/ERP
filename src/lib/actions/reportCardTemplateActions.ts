@@ -150,9 +150,18 @@ export async function createReportCardTemplate(input: ReportCardTemplateInput): 
       };
     }
 
-    // Check if name already exists
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Check if name already exists for this school
     const existing = await db.reportCardTemplate.findUnique({
-      where: { name: input.name },
+      where: { 
+        schoolId_name: {
+          schoolId: schoolId,
+          name: input.name
+        }
+      },
     });
 
     if (existing) {
@@ -162,10 +171,13 @@ export async function createReportCardTemplate(input: ReportCardTemplateInput): 
       };
     }
 
-    // If this is set as default, unset other defaults
+    // If this is set as default, unset other defaults for this school
     if (input.isDefault) {
       await db.reportCardTemplate.updateMany({
-        where: { isDefault: true },
+        where: { 
+          isDefault: true,
+          schoolId: schoolId
+        },
         data: { isDefault: false },
       });
     }
@@ -178,6 +190,7 @@ export async function createReportCardTemplate(input: ReportCardTemplateInput): 
         pageSize: input.pageSize || "A4",
         orientation: input.orientation || "PORTRAIT",
         sections: input.sections as any,
+        school: { connect: { id: schoolId } }, // Add required school connection
         styling: input.styling as any,
         headerImage: input.headerImage,
         footerImage: input.footerImage,
@@ -226,10 +239,19 @@ export async function updateReportCardTemplate(
       return { success: false, error: "Template not found" };
     }
 
-    // If name is being changed, check for duplicates
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // If name is being changed, check for duplicates within the school
     if (input.name && input.name !== existing.name) {
       const duplicate = await db.reportCardTemplate.findUnique({
-        where: { name: input.name },
+        where: { 
+          schoolId_name: {
+            schoolId: schoolId,
+            name: input.name
+          }
+        },
       });
 
       if (duplicate) {
@@ -442,10 +464,21 @@ export async function duplicateTemplate(id: string): Promise<ActionResult> {
       return { success: false, error: "Template not found" };
     }
 
-    // Generate unique name
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Generate unique name within the school
     let newName = `${template.name} (Copy)`;
     let counter = 1;
-    while (await db.reportCardTemplate.findUnique({ where: { name: newName } })) {
+    while (await db.reportCardTemplate.findUnique({ 
+      where: { 
+        schoolId_name: {
+          schoolId: schoolId,
+          name: newName
+        }
+      } 
+    })) {
       newName = `${template.name} (Copy ${counter})`;
       counter++;
     }
@@ -468,6 +501,7 @@ export async function duplicateTemplate(id: string): Promise<ActionResult> {
         isActive: false, // New duplicates start as inactive
         isDefault: false,
         createdBy: userId,
+        school: { connect: { id: schoolId } }, // Add required school connection
       },
     });
 

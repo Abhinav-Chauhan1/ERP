@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { hashPassword, validatePasswordStrength } from "@/lib/password"
-import { jwtService } from "@/lib/services/jwt-service"
 import { logAuditEvent } from "@/lib/services/audit-service"
 
 /**
  * Password Reset API Route
  * 
  * Handles password reset with token validation and session invalidation
- * Updated to integrate with unified authentication system
+ * Updated to integrate with NextAuth authentication system
  * Requirements: 11.4, 11.5, 11.6, 13.4, 11.1, 11.2, 11.3
  */
 export async function POST(request: NextRequest) {

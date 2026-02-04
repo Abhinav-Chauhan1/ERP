@@ -118,7 +118,7 @@ async function UpcomingMeetingsContent() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {mappedMeetings.map((meeting) => (
-            <MeetingCard key={meeting.id} meeting={meeting} />
+            <MeetingCard key={meeting.id} meeting={meeting} schoolId={user.parent?.schoolId || ''} />
           ))}
         </div>
       )}

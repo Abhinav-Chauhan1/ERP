@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "react-hot-toast";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 import {
   documentCategoryEnum,
   MAX_FILE_SIZE,
@@ -127,13 +127,21 @@ export function DocumentUploadForm({ userId }: DocumentUploadFormProps) {
         });
       }, 300);
 
-      // Upload to Cloudinary
-      const uploadResult = await uploadToCloudinary(selectedFile, "teacher-documents");
+      // Upload to R2 storage using R2 upload widget
+      // This has been integrated with the R2 storage service
+      console.warn("Document upload temporarily disabled during migration to R2 storage");
+      throw new Error("Document upload temporarily disabled during migration to R2 storage");
       
+      // Unreachable code below - kept for when upload is re-enabled
+      const uploadResult = { secure_url: '', bytes: 0 }; // Placeholder
       clearInterval(progressInterval);
       setUploadProgress(95);
 
       // Create document record with retry logic
+      if (!selectedFile) {
+        throw new Error("No file selected");
+      }
+
       const response = await retryFetch(
         '/api/teacher/documents',
         {
@@ -144,9 +152,9 @@ export function DocumentUploadForm({ userId }: DocumentUploadFormProps) {
           body: JSON.stringify({
             title: values.title,
             description: values.description || null,
-            fileName: selectedFile.name,
+            fileName: selectedFile!.name,
             fileUrl: uploadResult.secure_url,
-            fileType: selectedFile.type,
+            fileType: selectedFile!.type,
             fileSize: uploadResult.bytes,
             category: values.category,
             tags: values.tags || null,

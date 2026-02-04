@@ -58,6 +58,7 @@ interface Meeting {
 
 interface MeetingDetailModalProps {
   meeting: Meeting | null;
+  schoolId: string;
   isOpen: boolean;
   onClose: () => void;
   onReschedule?: () => void;
@@ -66,6 +67,7 @@ interface MeetingDetailModalProps {
 
 export function MeetingDetailModal({
   meeting,
+  schoolId,
   isOpen,
   onClose,
   onReschedule,
@@ -92,7 +94,7 @@ export function MeetingDetailModal({
           formData.append("reason", cancelReason);
         }
 
-        const result = await cancelMeeting(formData);
+        const result = await cancelMeeting(formData, schoolId);
 
         if (result.success) {
           toast({

@@ -2,27 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle2, Clock, School, User, Smartphone, Lock } from "lucide-react"
-// Remove direct service imports - we'll use API endpoints instead
+import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle2, School, User, Smartphone, Lock } from "lucide-react"
 import { UserRole } from "@prisma/client"
 
 /**
  * Unified Login Form Component
  * 
- * Provides unified authentication for all school-based user types with:
- * - School code validation and context loading
- * - Role-based authentication method determination
- * - OTP input for students and parents
- * - Password input for teachers and admins
- * - Multi-school and multi-child context management
- * 
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5
+ * Uses NextAuth's signIn function for all authentication.
+ * Supports both OTP and password authentication based on user type.
  */
 
 interface School {
@@ -32,37 +26,32 @@ interface School {
 }
 
 interface AuthStep {
-  step: 'school' | 'identifier' | 'credentials' | 'school-selection' | 'child-selection'
+  step: 'school' | 'identifier' | 'credentials'
   data?: any
 }
 
 export function UnifiedLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Form state
   const [currentStep, setCurrentStep] = useState<AuthStep>({ step: 'school' })
   const [formData, setFormData] = useState({
     schoolCode: "",
     identifier: "", // mobile or email
     password: "",
-    otpCode: "",
-    selectedSchoolId: "",
-    selectedChildId: ""
+    otpCode: ""
   })
-  
+
   // UI state
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
-  
+
   // Context state
   const [validatedSchool, setValidatedSchool] = useState<School | null>(null)
-  const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [authMethod, setAuthMethod] = useState<'otp' | 'password' | null>(null)
-  const [availableSchools, setAvailableSchools] = useState<School[]>([])
-  const [availableChildren, setAvailableChildren] = useState<any[]>([])
   const [otpSent, setOtpSent] = useState(false)
   const [otpExpiresAt, setOtpExpiresAt] = useState<Date | null>(null)
   const [otpCountdown, setOtpCountdown] = useState<number>(0)
@@ -71,6 +60,7 @@ export function UnifiedLoginForm() {
   const sessionExpired = searchParams.get("session_expired") === "true"
   const registered = searchParams.get("registered") === "true"
   const verified = searchParams.get("verified") === "true"
+  const error = searchParams.get("error")
 
   // OTP countdown timer
   useEffect(() => {
@@ -114,7 +104,8 @@ export function UnifiedLoginForm() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/school-validate', {
+      // Validate school code by checking if it exists
+      const response = await fetch('/api/schools/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,22 +115,13 @@ export function UnifiedLoginForm() {
         }),
       })
 
-      const data = await response.json()
-      
-      if (!data.success) {
-        if (response.status === 404) {
-          setErrors({ schoolCode: "Invalid school code. Please check and try again." })
-        } else if (response.status === 403) {
-          setServerError("This school is currently inactive. Please contact support.")
-        } else {
-          setServerError(data.error || "Unable to validate school code. Please try again.")
-        }
-        setIsLoading(false)
-        return
+      if (response.ok) {
+        const data = await response.json()
+        setValidatedSchool(data.school)
+        setCurrentStep({ step: 'identifier' })
+      } else {
+        setErrors({ schoolCode: "Invalid school code. Please check and try again." })
       }
-
-      setValidatedSchool(data.school)
-      setCurrentStep({ step: 'identifier' })
     } catch (error: any) {
       console.error('School validation error:', error)
       setServerError("Unable to validate school code. Please try again.")
@@ -172,45 +154,35 @@ export function UnifiedLoginForm() {
     setIsLoading(true)
 
     try {
-      // Generate OTP first to determine if user exists and get role
-      const response = await fetch('/api/auth/otp/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier: identifier,
-          schoolId: validatedSchool?.id
-        }),
-      })
-
-      const data = await response.json()
-      
-      if (!data.success) {
-        if (data.code === 'USER_NOT_FOUND') {
-          setErrors({ identifier: "No account found with this mobile number or email for the selected school" })
-        } else if (data.code === 'RATE_LIMITED') {
-          setServerError("Too many OTP requests. Please wait before trying again.")
-        } else {
-          setServerError(data.error || "Failed to send OTP")
-        }
-        setIsLoading(false)
-        return
-      }
-
-      // For now, we'll determine auth method based on identifier type
-      // In a real implementation, you'd query the user's role from the database
-      // Students and parents use OTP, teachers and admins can use both
-      const determinedAuthMethod = isEmail ? 'password' : 'otp'
-      
+      // For mobile numbers, use OTP. For emails, use password
+      const determinedAuthMethod = isMobile ? 'otp' : 'password'
       setAuthMethod(determinedAuthMethod)
-      
+
       if (determinedAuthMethod === 'otp') {
-        setOtpSent(true)
-        setOtpExpiresAt(data.expiresAt ? new Date(data.expiresAt) : new Date(Date.now() + 5 * 60 * 1000))
-        setOtpCountdown(300) // 5 minutes
+        // Generate OTP
+        const response = await fetch('/api/otp/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            identifier: identifier,
+            schoolCode: formData.schoolCode
+          }),
+        })
+
+        if (response.ok) {
+          setOtpSent(true)
+          setOtpExpiresAt(new Date(Date.now() + 5 * 60 * 1000)) // 5 minutes
+          setOtpCountdown(300)
+        } else {
+          const data = await response.json()
+          setServerError(data.error || "Failed to send OTP")
+          setIsLoading(false)
+          return
+        }
       }
-      
+
       setCurrentStep({ step: 'credentials' })
     } catch (error) {
       console.error('Identifier submission error:', error)
@@ -240,56 +212,38 @@ export function UnifiedLoginForm() {
     setIsLoading(true)
 
     try {
-      const credentials = {
-        type: authMethod!,
-        value: authMethod === 'otp' ? formData.otpCode : formData.password
-      }
-
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          identifier: formData.identifier,
-          schoolId: validatedSchool!.id,
-          credentials
-        }),
+      // Use NextAuth's signIn function
+      const result = await signIn('credentials', {
+        email: authMethod === 'password' ? formData.identifier : undefined,
+        mobile: authMethod === 'otp' ? formData.identifier : undefined,
+        password: authMethod === 'password' ? formData.password : undefined,
+        otpCode: authMethod === 'otp' ? formData.otpCode : undefined,
+        schoolCode: formData.schoolCode,
+        redirect: false
       })
 
-      const data = await response.json()
-
-      if (!data.success) {
-        setServerError(data.error || "Authentication failed")
-        setIsLoading(false)
-        return
-      }
-
-      // Handle multi-school selection
-      if (data.requiresSchoolSelection && data.availableSchools) {
-        setAvailableSchools(data.availableSchools)
-        setCurrentStep({ step: 'school-selection' })
-        setIsLoading(false)
-        return
-      }
-
-      // Handle multi-child selection (for parents)
-      if (data.requiresChildSelection && data.availableChildren) {
-        setAvailableChildren(data.availableChildren)
-        setCurrentStep({ step: 'child-selection' })
-        setIsLoading(false)
-        return
-      }
-
-      // Authentication successful - redirect to appropriate dashboard
-      if (data.token && data.user) {
-        // Store token in localStorage or cookie
-        localStorage.setItem('auth_token', data.token)
-        
-        // Redirect to the provided URL or default route
-        const redirectUrl = data.redirectUrl || '/dashboard'
-        router.push(redirectUrl)
-        router.refresh()
+      if (result?.error) {
+        // Handle NextAuth errors
+        switch (result.error) {
+          case 'EMAIL_NOT_VERIFIED':
+            setServerError("Please verify your email address before signing in.")
+            break
+          case '2FA_REQUIRED':
+            setServerError("Two-factor authentication is required.")
+            break
+          case 'INVALID_2FA_CODE':
+            setServerError("Invalid 2FA code. Please try again.")
+            break
+          case 'CredentialsSignin':
+            setServerError("Invalid credentials. Please check and try again.")
+            break
+          default:
+            setServerError(result.error || "Authentication failed")
+        }
+      } else if (result?.ok) {
+        // Authentication successful - redirect based on user role
+        // Use window.location for full page reload to ensure session is updated
+        window.location.href = '/dashboard'
       }
     } catch (error) {
       console.error('Authentication error:', error)
@@ -299,111 +253,30 @@ export function UnifiedLoginForm() {
     }
   }
 
-  // Handle school selection for multi-school users
-  const handleSchoolSelection = async (schoolId: string) => {
-    setFormData(prev => ({ ...prev, selectedSchoolId: schoolId }))
-    
-    try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setServerError("Session expired. Please sign in again.")
-        return
-      }
-
-      const response = await fetch('/api/auth/context/switch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          newSchoolId: schoolId,
-          token
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        setServerError(data.error || "Failed to switch school context")
-        return
-      }
-
-      // Redirect to the provided URL
-      if (data.redirectUrl) {
-        router.push(data.redirectUrl)
-        router.refresh()
-      }
-    } catch (error) {
-      console.error('School selection error:', error)
-      setServerError("Failed to switch school context. Please try again.")
-    }
-  }
-
-  // Handle child selection for parents
-  const handleChildSelection = async (childId: string) => {
-    setFormData(prev => ({ ...prev, selectedChildId: childId }))
-    
-    try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setServerError("Session expired. Please sign in again.")
-        return
-      }
-
-      const response = await fetch('/api/auth/context/switch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          newStudentId: childId,
-          token
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        setServerError(data.error || "Failed to switch child context")
-        return
-      }
-
-      // Redirect to the provided URL
-      if (data.redirectUrl) {
-        router.push(data.redirectUrl)
-        router.refresh()
-      }
-    } catch (error) {
-      console.error('Child selection error:', error)
-      setServerError("Failed to switch child context. Please try again.")
-    }
-  }
-
   // Resend OTP
   const handleResendOTP = async () => {
     if (!formData.identifier || !validatedSchool) return
 
     setIsLoading(true)
     try {
-      const response = await fetch('/api/auth/otp/generate', {
+      const response = await fetch('/api/otp/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           identifier: formData.identifier,
-          schoolId: validatedSchool.id
+          schoolCode: formData.schoolCode
         }),
       })
 
-      const data = await response.json()
-      
-      if (data.success) {
+      if (response.ok) {
         setOtpSent(true)
-        setOtpExpiresAt(data.expiresAt ? new Date(data.expiresAt) : new Date(Date.now() + 5 * 60 * 1000))
+        setOtpExpiresAt(new Date(Date.now() + 5 * 60 * 1000))
         setOtpCountdown(300)
         setServerError("")
       } else {
+        const data = await response.json()
         setServerError(data.error || "Failed to resend OTP")
       }
     } catch (error) {
@@ -522,7 +395,7 @@ export function UnifiedLoginForm() {
           {authMethod === 'otp' ? 'Enter OTP' : 'Enter Password'}
         </h2>
         <p className="text-sm text-gray-600">
-          {authMethod === 'otp' 
+          {authMethod === 'otp'
             ? `OTP sent to ${formData.identifier}`
             : 'Enter your password to continue'
           }
@@ -554,7 +427,7 @@ export function UnifiedLoginForm() {
           {errors.otpCode && (
             <p className="text-sm text-red-500">{errors.otpCode}</p>
           )}
-          
+
           {!otpSent || otpCountdown === 0 ? (
             <Button
               type="button"
@@ -620,60 +493,6 @@ export function UnifiedLoginForm() {
     </form>
   )
 
-  const renderSchoolSelectionStep = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <School className="h-12 w-12 mx-auto text-blue-600 mb-2" />
-        <h2 className="text-lg font-semibold">Select School</h2>
-        <p className="text-sm text-gray-600">You have access to multiple schools. Please select one to continue.</p>
-      </div>
-
-      <div className="space-y-2">
-        {availableSchools.map((school) => (
-          <Button
-            key={school.id}
-            variant="outline"
-            className="w-full justify-start h-auto p-4"
-            onClick={() => handleSchoolSelection(school.id)}
-          >
-            <div className="text-left">
-              <div className="font-medium">{school.name}</div>
-              <div className="text-sm text-gray-500">Code: {school.schoolCode}</div>
-            </div>
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-
-  const renderChildSelectionStep = () => (
-    <div className="space-y-4">
-      <div className="text-center mb-6">
-        <User className="h-12 w-12 mx-auto text-blue-600 mb-2" />
-        <h2 className="text-lg font-semibold">Select Child</h2>
-        <p className="text-sm text-gray-600">Please select which child's information you want to access.</p>
-      </div>
-
-      <div className="space-y-2">
-        {availableChildren.map((child) => (
-          <Button
-            key={child.id}
-            variant="outline"
-            className="w-full justify-start h-auto p-4"
-            onClick={() => handleChildSelection(child.id)}
-          >
-            <div className="text-left">
-              <div className="font-medium">{child.name}</div>
-              {child.class && child.section && (
-                <div className="text-sm text-gray-500">Class: {child.class} - {child.section}</div>
-              )}
-            </div>
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -713,6 +532,16 @@ export function UnifiedLoginForm() {
           </Alert>
         )}
 
+        {/* NextAuth Error */}
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error === 'CredentialsSignin' ? 'Invalid credentials. Please try again.' : error}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Server Error */}
         {serverError && (
           <Alert variant="destructive" className="mb-4">
@@ -725,10 +554,8 @@ export function UnifiedLoginForm() {
         {currentStep.step === 'school' && renderSchoolStep()}
         {currentStep.step === 'identifier' && renderIdentifierStep()}
         {currentStep.step === 'credentials' && renderCredentialsStep()}
-        {currentStep.step === 'school-selection' && renderSchoolSelectionStep()}
-        {currentStep.step === 'child-selection' && renderChildSelectionStep()}
       </CardContent>
-      
+
       {currentStep.step === 'school' && (
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-sm text-center text-gray-600">

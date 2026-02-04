@@ -12,6 +12,7 @@ import { updateNotificationPreferences } from "@/lib/actions/parent-settings-act
 import { toast } from "react-hot-toast";
 
 interface NotificationPreferencesProps {
+  schoolId: string;
   settings: {
     id: string;
     parentId: string;
@@ -32,7 +33,7 @@ interface NotificationPreferencesProps {
   };
 }
 
-export function NotificationPreferences({ settings }: NotificationPreferencesProps) {
+export function NotificationPreferences({ schoolId, settings }: NotificationPreferencesProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     emailNotifications: settings.emailNotifications,
@@ -75,7 +76,7 @@ export function NotificationPreferences({ settings }: NotificationPreferencesPro
         notificationFrequency: formData.notificationFrequency as "IMMEDIATE" | "DAILY_DIGEST" | "WEEKLY_DIGEST",
         whatsappNumber: formData.whatsappNumber || null,
         preferredLanguage: formData.preferredLanguage
-      });
+      }, schoolId);
 
       if (result.success) {
         toast.success(result.message || "Notification preferences updated successfully");

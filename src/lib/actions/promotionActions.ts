@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { UserRole, EnrollmentStatus, AuditAction } from "@prisma/client";
 import { PromotionService } from "@/lib/services/promotionService";
 import { logAudit } from "@/lib/utils/audit-log";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   getStudentsForPromotionSchema,
   promotionPreviewSchema,
@@ -318,6 +319,14 @@ export async function executeBulkPromotion(
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
 
+    // Get school context
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+
     // Validate input
     const validation = bulkPromotionSchema.safeParse(input);
     if (!validation.success) {
@@ -446,6 +455,7 @@ export async function executeBulkPromotion(
     // Execute promotion in transaction
     const result = await db.$transaction(async (tx) => {
       const executionData = {
+        schoolId,
         students: validationResult.eligible,
         sourceEnrollments: sourceEnrollmentMap,
         targetAcademicYearId,
@@ -472,6 +482,7 @@ export async function executeBulkPromotion(
         promotionResult.promoted.map((studentId) => [
           studentId,
           {
+            schoolId,
             finalClass: sourceClass.name,
             finalSection: sourceEnrollments.find((e) => e.studentId === studentId)?.section?.name || "",
             finalAcademicYear: sourceClass.academicYear.name,

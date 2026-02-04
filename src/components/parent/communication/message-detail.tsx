@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import DOMPurify from "dompurify";
 import {
   ArrowLeft,
   Reply,
@@ -194,7 +195,7 @@ export function MessageDetail({
         <div className="prose prose-sm max-w-none">
           <div
             className="whitespace-pre-wrap text-gray-800 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: message.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(message.content) }}
           />
         </div>
 

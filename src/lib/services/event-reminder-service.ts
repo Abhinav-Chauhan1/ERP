@@ -191,15 +191,6 @@ export async function sendReminderNotification(
           to: [userEmail],
           subject: `Reminder: ${notificationData.eventTitle}`,
           html: getEventReminderEmailHtml(notificationData),
-          text: `
-Event Reminder
-
-Event: ${notificationData.eventTitle}
-Date: ${notificationData.eventDate.toLocaleDateString()}
-Time: ${notificationData.eventTime}
-${notificationData.location ? `Location: ${notificationData.location}` : ''}
-${notificationData.description ? `Description: ${notificationData.description}` : ''}
-          `
         });
 
         return emailResult.success;
@@ -211,7 +202,7 @@ ${notificationData.description ? `Description: ${notificationData.description}` 
           notificationData.eventTitle,
           notificationData.eventDate,
           notificationData.eventTime,
-          notificationData.location,
+          notificationData.location || '',
           event.id
         );
         return true;

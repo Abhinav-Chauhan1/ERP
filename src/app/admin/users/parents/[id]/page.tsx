@@ -25,7 +25,14 @@ export default async function ParentDetailPage({
   // Get parent data with children and meetings
   const parent = await db.parent.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      schoolId: true,
+      occupation: true,
+      alternatePhone: true,
+      relation: true,
+      createdAt: true,
+      updatedAt: true,
       user: true,
       children: {
         include: {
@@ -193,6 +200,7 @@ export default async function ParentDetailPage({
               <CardTitle>Children</CardTitle>
               <ParentStudentAssociationDialog
                 parentId={parent.id}
+                schoolId={parent.schoolId}
                 students={unassociatedStudents}
               />
             </div>

@@ -168,7 +168,7 @@ export function createSchoolAdminRoute(
   return composeEnhancedMiddleware(
     {
       auth: {
-        requiredRole: UserRole.SCHOOL_ADMIN,
+        requiredRole: UserRole.ADMIN, // Use ADMIN instead of SCHOOL_ADMIN
         requireSchoolContext: true,
         requiredPermissions: options?.additionalPermissions,
         allowedSchools: options?.allowedSchools,
@@ -197,7 +197,7 @@ export function createTeacherRoute(
   return composeEnhancedMiddleware(
     {
       auth: {
-        requiredRole: [UserRole.TEACHER, UserRole.SCHOOL_ADMIN],
+        requiredRole: [UserRole.TEACHER, UserRole.ADMIN], // Use ADMIN instead of SCHOOL_ADMIN
         requireSchoolContext: true,
         requiredPermissions: options?.additionalPermissions,
         auditAction: 'TEACHER_API_ACCESS'

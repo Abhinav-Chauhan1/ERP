@@ -822,7 +822,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
 
     // Fetch school info from SystemSettings
     const systemSettings = await db.systemSettings.findFirst({
-      where: { schoolId: (parent as any).schoolId }
+      where: { id: (parent as any).schoolId }
     });
     if (systemSettings) {
       (receiptData as any).school = {
@@ -836,7 +836,13 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
     }
 
     // Generate the printable HTML receipt
-    const receiptHTML = getReceiptHTML(receiptData);
+    const receiptHTML = getReceiptHTML({
+      ...receiptData,
+      student: {
+        ...receiptData.student,
+        email: receiptData.student.email || '', // Convert null to empty string
+      }
+    });
 
     return {
       success: true,

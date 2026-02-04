@@ -2,7 +2,6 @@ import Razorpay from 'razorpay';
 import { prisma } from '@/lib/db';
 import { 
   EnhancedSubscription, 
-  SubscriptionPlan, 
   Invoice, 
   Payment, 
   SubscriptionStatus, 
@@ -428,9 +427,7 @@ export class BillingService {
 
         // For Razorpay, we need to cancel current subscription and create new one
         // This is a simplified approach - in production, you might want to handle this differently
-        await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, {
-          cancel_at_cycle_end: 1
-        });
+        await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, true);
 
         updateParams.planId = changes.planId;
       }
@@ -438,9 +435,7 @@ export class BillingService {
       // Handle cancellation
       if (changes.cancelAtPeriodEnd !== undefined) {
         if (changes.cancelAtPeriodEnd) {
-          await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, {
-            cancel_at_cycle_end: 1
-          });
+          await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, true);
         }
         updateParams.cancelAtPeriodEnd = changes.cancelAtPeriodEnd;
       }
@@ -485,7 +480,7 @@ export class BillingService {
       return {
         id: order.id,
         status: order.status,
-        amount: order.amount,
+        amount: typeof order.amount === 'string' ? parseInt(order.amount, 10) : order.amount,
         currency: order.currency,
         orderId: order.id,
         receipt: order.receipt,
@@ -512,7 +507,7 @@ export class BillingService {
 
       // For Razorpay, we create invoices manually or use their invoice API
       const invoiceData = {
-        type: 'invoice',
+        type: 'invoice' as const,
         description: `Invoice for ${subscription.plan.name} subscription`,
         partial_payment: false,
         customer: {
@@ -527,8 +522,8 @@ export class BillingService {
           currency: subscription.plan.currency.toUpperCase(),
           quantity: 1
         }],
-        sms_notify: 1,
-        email_notify: 1,
+        sms_notify: 1 as const,
+        email_notify: 1 as const,
         expire_by: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days from now
         notes: {
           subscriptionId: subscription.id,
@@ -537,7 +532,7 @@ export class BillingService {
         }
       };
 
-      const razorpayInvoice = await razorpay.invoices.create(invoiceData);
+      const razorpayInvoice = await razorpay.invoices.create(invoiceData) as any;
 
       // Create local invoice record
       const invoice = await prisma.invoice.create({
@@ -549,8 +544,8 @@ export class BillingService {
           status: this.mapRazorpayInvoiceStatusToLocal(razorpayInvoice.status),
           dueDate: new Date(razorpayInvoice.expire_by * 1000),
           metadata: {
-            razorpayInvoiceNumber: razorpayInvoice.invoice_number,
-            razorpayShortUrl: razorpayInvoice.short_url,
+            razorpayInvoiceNumber: razorpayInvoice.invoice_number || '',
+            razorpayShortUrl: razorpayInvoice.short_url || '',
           },
         },
       });
@@ -686,9 +681,9 @@ export class BillingService {
 
       return {
         id: refund.id,
-        amount: refund.amount,
+        amount: refund.amount || 0,
         status: refund.status,
-        reason: refund.notes?.reason || undefined,
+        reason: typeof refund.notes?.reason === 'string' ? refund.notes.reason : undefined,
       };
     } catch (error) {
       console.error('Error processing refund:', error);

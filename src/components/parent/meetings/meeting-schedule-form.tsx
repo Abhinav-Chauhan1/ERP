@@ -25,6 +25,7 @@ interface Teacher {
 
 interface MeetingScheduleFormProps {
   teachers: Teacher[];
+  schoolId: string;
   selectedTeacherId?: string;
   selectedDateTime?: string;
   onSuccess?: () => void;
@@ -33,6 +34,7 @@ interface MeetingScheduleFormProps {
 
 export function MeetingScheduleForm({
   teachers,
+  schoolId,
   selectedTeacherId,
   selectedDateTime,
   onSuccess,
@@ -105,7 +107,7 @@ export function MeetingScheduleForm({
         formDataObj.append("purpose", formData.purpose);
         formDataObj.append("description", formData.description);
 
-        const result = await scheduleMeeting(formDataObj);
+        const result = await scheduleMeeting(formDataObj, schoolId);
 
         if (result.success) {
           toast({

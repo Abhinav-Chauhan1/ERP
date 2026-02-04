@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { UserRole, AuditAction } from "@prisma/client";
 import { logAuditEvent } from "./audit-service";
 
 /**
@@ -447,14 +447,34 @@ class SessionContextService {
     metadata?: Record<string, any>
   ): Promise<void> {
     try {
+      // Map custom action strings to valid AuditAction enum values
+      let auditAction: AuditAction;
+      switch (action) {
+        case 'CONTEXT_SWITCHED':
+        case 'SCHOOL_SWITCHED':
+        case 'STUDENT_SWITCHED':
+          auditAction = AuditAction.UPDATE;
+          break;
+        case 'CONTEXT_CREATED':
+          auditAction = AuditAction.CREATE;
+          break;
+        case 'CONTEXT_VIEWED':
+        case 'CONTEXT_ACCESSED':
+          auditAction = AuditAction.VIEW;
+          break;
+        default:
+          auditAction = AuditAction.VIEW; // Default fallback
+      }
+
       await logAuditEvent({
         userId,
         schoolId: schoolId || undefined,
-        action: action as any, // TODO: Fix AuditAction type
+        action: auditAction,
         resource: 'session_context',
         changes: {
           metadata,
-          timestamp: new Date()
+          timestamp: new Date(),
+          originalAction: action // Keep original action for reference
         }
       });
     } catch (error) {

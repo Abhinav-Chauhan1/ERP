@@ -23,14 +23,14 @@ export default function GlobalError({
     if (typeof window !== 'undefined') {
       const errorContext = {
         error: {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-          digest: error.digest,
+          name: error?.name || 'Unknown',
+          message: error?.message || 'No message',
+          stack: error?.stack || 'No stack trace',
+          digest: error?.digest || 'No digest',
         },
-        userAgent: navigator.userAgent,
+        userAgent: navigator?.userAgent || 'Unknown',
         timestamp: new Date().toISOString(),
-        url: window.location.href,
+        url: window?.location?.href || 'Unknown',
       };
 
       console.error('Error context for monitoring:', errorContext);

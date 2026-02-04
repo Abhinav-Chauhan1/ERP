@@ -84,7 +84,7 @@ export function StudentAvatarUpload({
 
             const result = await uploadStudentAvatar(formData);
 
-            if (result.success && result.data) {
+            if (result.success && result.data && result.data.avatar) {
                 toast.success(result.message || "Student photo updated successfully");
                 setPreview(result.data.avatar);
                 onSuccess?.(result.data.avatar);

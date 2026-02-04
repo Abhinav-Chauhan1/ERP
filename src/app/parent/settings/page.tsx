@@ -75,7 +75,10 @@ export default async function ParentSettingsPage() {
 
       <SettingsPageClient
         profile={profile}
-        settings={settings}
+        settings={{
+          ...settings,
+          schoolId: dbUser.parent.schoolId
+        }}
       />
     </div>
   );

@@ -85,7 +85,7 @@ import {
 } from "@/lib/actions/documentActions";
 
 import { Spinner } from "@/components/ui/spinner";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 import { useSession } from "next-auth/react";
 
 // Utility function to format dates
@@ -286,17 +286,26 @@ export default function DocumentsPage() {
         });
       }, 300);
 
-      // Upload to Cloudinary
-      const uploadResult = await uploadToCloudinary(file, "documents");
+      // Upload to R2 storage
+      const uploadResult = await uploadHandler.uploadFile(file, {
+        folder: "documents",
+        customMetadata: {
+          uploadType: 'admin-document'
+        }
+      });
 
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      // Set form values with Cloudinary result
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
+
+      // Set form values with R2 result
       documentForm.setValue("fileName", file.name);
-      documentForm.setValue("fileUrl", uploadResult.secure_url);
+      documentForm.setValue("fileUrl", uploadResult.url);
       documentForm.setValue("fileType", file.type);
-      documentForm.setValue("fileSize", uploadResult.bytes);
+      documentForm.setValue("fileSize", file.size);
 
       toast.success("File uploaded successfully");
     } catch (error) {

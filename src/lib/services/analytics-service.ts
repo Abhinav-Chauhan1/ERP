@@ -848,6 +848,9 @@ export class AnalyticsService {
     const lastActivityBySchool = new Map<string, Date>();
 
     allEvents.forEach(event => {
+      // Skip events without schoolId (shouldn't happen due to our query filter)
+      if (!event.schoolId) return;
+      
       // Group events by school
       if (!eventsBySchool.has(event.schoolId)) {
         eventsBySchool.set(event.schoolId, []);
@@ -868,6 +871,9 @@ export class AnalyticsService {
     });
 
     const patterns = schools.map(school => {
+      // Skip schools without id (shouldn't happen)
+      if (!school.id) return null;
+      
       const subscription = school.enhancedSubscriptions[0];
       const features = featuresBySchool.get(school.id) || {};
       const lastActivity = lastActivityBySchool.get(school.id) || new Date(0);
@@ -879,7 +885,7 @@ export class AnalyticsService {
         features,
         lastActivity,
       };
-    });
+    }).filter((pattern): pattern is NonNullable<typeof pattern> => pattern !== null);
 
     return patterns;
   }

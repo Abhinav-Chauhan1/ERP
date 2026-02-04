@@ -406,20 +406,24 @@ export async function getNotificationStats() {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get school context for scoping
+    const { schoolId } = await requireSchoolAccess();
+    const schoolWhere = schoolId ? { schoolId } : {};
+
     const [totalNotifications, infoCount, warningCount, alertCount, successCount] =
       await Promise.all([
-        db.notification.count(),
+        db.notification.count({ where: schoolWhere }),
         db.notification.count({
-          where: { type: "INFO" },
+          where: { ...schoolWhere, type: "INFO" },
         }),
         db.notification.count({
-          where: { type: "WARNING" },
+          where: { ...schoolWhere, type: "WARNING" },
         }),
         db.notification.count({
-          where: { type: "ALERT" },
+          where: { ...schoolWhere, type: "ALERT" },
         }),
         db.notification.count({
-          where: { type: "SUCCESS" },
+          where: { ...schoolWhere, type: "SUCCESS" },
         }),
       ]);
 

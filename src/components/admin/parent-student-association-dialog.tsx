@@ -47,10 +47,11 @@ interface Student {
 
 interface ParentStudentAssociationDialogProps {
   parentId: string;
+  schoolId: string;
   students: Student[];
 }
 
-export function ParentStudentAssociationDialog({ parentId, students }: ParentStudentAssociationDialogProps) {
+export function ParentStudentAssociationDialog({ parentId, schoolId, students }: ParentStudentAssociationDialogProps) {
   const [open, setOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -72,7 +73,7 @@ export function ParentStudentAssociationDialog({ parentId, students }: ParentStu
     formData.append('isPrimary', isPrimary ? 'true' : 'false');
 
     try {
-      const result = await associateStudentWithParent(formData);
+      const result = await associateStudentWithParent(formData, schoolId);
       
       if (result.success) {
         toast.success(result.message);

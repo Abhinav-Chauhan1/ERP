@@ -49,6 +49,7 @@ interface Meeting {
 
 interface MeetingCardProps {
   meeting: Meeting;
+  schoolId: string;
   onCancel?: () => void;
   onReschedule?: () => void;
   onViewDetails?: () => void;
@@ -58,6 +59,7 @@ interface MeetingCardProps {
 
 export function MeetingCard({
   meeting,
+  schoolId,
   onCancel,
   onReschedule,
   onViewDetails,
@@ -83,7 +85,7 @@ export function MeetingCard({
           formData.append("reason", cancelReason);
         }
 
-        const result = await cancelMeeting(formData);
+        const result = await cancelMeeting(formData, schoolId);
 
         if (result.success) {
           toast({

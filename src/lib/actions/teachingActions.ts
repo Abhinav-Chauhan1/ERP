@@ -180,7 +180,8 @@ export const createSubject = withSchoolAuthAction(async (schoolId, userId, userR
         departmentId: data.departmentId,
         classes: {
           create: data.classIds.map(classId => ({
-            class: { connect: { id: classId } }
+            class: { connect: { id: classId } },
+            school: { connect: { id: schoolId } } // Add required school connection
           }))
         }
       }

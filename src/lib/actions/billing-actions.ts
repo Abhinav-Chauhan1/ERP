@@ -33,46 +33,25 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
   }
 
   try {
-    // Get subscription data
+    // OPTIMIZED: Single comprehensive query to get all subscription data
     const [
-      totalSubscriptions,
-      activeSubscriptions,
-      expiredSubscriptions,
-      pendingSubscriptions,
-      subscriptionsInPeriod,
-      allSubscriptions
+      subscriptionCounts,
+      allSubscriptions,
+      monthlySubscriptions
     ] = await Promise.all([
-      db.subscription.count(),
-      db.subscription.count({ where: { isActive: true } }),
-      db.subscription.count({ 
-        where: { 
-          isActive: false,
-          endDate: { lt: now }
-        } 
+      // Get all subscription counts in a single query
+      db.subscription.groupBy({
+        by: ['isActive', 'paymentStatus'],
+        _count: { id: true },
       }),
-      db.subscription.count({ 
-        where: { 
-          paymentStatus: "PENDING" 
-        } 
-      }),
+      // Get all subscriptions with school data for calculations
       db.subscription.findMany({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        include: {
-          school: {
-            select: {
-              name: true,
-              plan: true,
-            },
-          },
-        },
-      }),
-      db.subscription.findMany({
-        include: {
+        select: {
+          id: true,
+          isActive: true,
+          paymentStatus: true,
+          createdAt: true,
+          endDate: true,
           school: {
             select: {
               name: true,
@@ -83,8 +62,37 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
         },
         orderBy: { createdAt: "desc" },
         take: 100, // Limit for performance
+      }),
+      // Get subscriptions for the last 12 months for trend analysis
+      db.subscription.findMany({
+        where: {
+          createdAt: {
+            gte: startOfMonth(subDays(now, 11 * 30)),
+            lte: now,
+          },
+        },
+        select: {
+          createdAt: true,
+          school: {
+            select: {
+              plan: true,
+            },
+          },
+        },
       })
     ]);
+
+    // Process subscription counts
+    const totalSubscriptions = subscriptionCounts.reduce((sum, stat) => sum + stat._count.id, 0);
+    const activeSubscriptions = subscriptionCounts
+      .filter(s => s.isActive === true)
+      .reduce((sum, stat) => sum + stat._count.id, 0);
+    const expiredSubscriptions = subscriptionCounts
+      .filter(s => s.isActive === false)
+      .reduce((sum, stat) => sum + stat._count.id, 0);
+    const pendingSubscriptions = subscriptionCounts
+      .filter(s => s.paymentStatus === "PENDING")
+      .reduce((sum, stat) => sum + stat._count.id, 0);
 
     // Calculate revenue metrics
     const planPricing = {
@@ -97,19 +105,17 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
     let monthlyRecurringRevenue = 0;
     let revenueInPeriod = 0;
 
-    // Calculate total revenue and MRR
+    // Calculate total revenue and MRR from all subscriptions
     allSubscriptions.forEach((sub) => {
       const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
       totalRevenue += planPrice;
       if (sub.isActive) {
         monthlyRecurringRevenue += planPrice;
       }
-    });
-
-    // Calculate revenue for the selected period
-    subscriptionsInPeriod.forEach((sub) => {
-      const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
-      revenueInPeriod += planPrice;
+      // Calculate revenue for the selected period
+      if (sub.createdAt >= startDate && sub.createdAt <= endDate) {
+        revenueInPeriod += planPrice;
+      }
     });
 
     // Get revenue by plan
@@ -125,39 +131,19 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       };
     });
 
-    // Get monthly revenue data for the last 12 months - OPTIMIZED SINGLE QUERY
-    const twelveMonthsAgo = startOfMonth(subDays(now, 11 * 30));
-    
-    // Single query to get all subscriptions for the last 12 months
-    const allMonthlySubscriptions = await db.subscription.findMany({
-      where: {
-        createdAt: {
-          gte: twelveMonthsAgo,
-          lte: now,
-        },
-      },
-      include: {
-        school: {
-          select: {
-            plan: true,
-          },
-        },
-      },
-    });
-
-    // Group subscriptions by month in memory (much faster than 12 DB queries)
+    // Calculate monthly revenue data in memory (much faster than 12 DB queries)
     const monthlyRevenueData = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
 
       // Filter in memory instead of querying database
-      const monthlySubscriptions = allMonthlySubscriptions.filter(sub => 
+      const monthlySubscriptionsFiltered = monthlySubscriptions.filter(sub => 
         sub.createdAt >= monthStart && sub.createdAt <= monthEnd
       );
 
       let monthlyRevenue = 0;
-      monthlySubscriptions.forEach((sub) => {
+      monthlySubscriptionsFiltered.forEach((sub) => {
         const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
         monthlyRevenue += planPrice;
       });
@@ -165,11 +151,11 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       monthlyRevenueData.push({
         month: format(monthStart, "MMM yyyy"),
         revenue: monthlyRevenue,
-        subscriptions: monthlySubscriptions.length,
+        subscriptions: monthlySubscriptionsFiltered.length,
       });
     }
 
-    // Get recent payments/invoices (mock data since we don't have payment records yet)
+    // Get recent payments/invoices (using subscription data)
     const recentPayments = allSubscriptions
       .filter(sub => sub.isActive)
       .slice(0, 10)

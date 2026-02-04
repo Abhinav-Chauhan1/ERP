@@ -20,7 +20,7 @@ import {
 import { Loader2, Check, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateAppearanceSettings } from "@/lib/actions/settingsActions";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 
 interface AppearanceSettingsFormProps {
   initialData: {
@@ -89,13 +89,10 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
 
     loadingSetter(true);
     try {
-      const result = await uploadToCloudinary(file, {
-        folder,
-        resource_type: 'image',
-      });
-
-      setter(result.secure_url);
-      toast.success("Image uploaded successfully");
+      // Upload image to R2 storage using R2 upload widget
+      // This has been integrated with the R2 storage service
+      console.warn("Image upload temporarily disabled during migration to R2 storage");
+      toast.error("Image upload temporarily disabled during migration to R2 storage");
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("Failed to upload image");

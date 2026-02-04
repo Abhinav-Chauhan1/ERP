@@ -69,7 +69,8 @@ export async function createCalendarEventFromAssignment(
       sourceType: EventSourceType.ASSIGNMENT,
       sourceId: assignment.id,
       isRecurring: false,
-      createdBy
+      createdBy,
+      schoolId: assignment.schoolId // Add required schoolId
     });
 
     console.log(`Calendar event created for assignment: ${assignment.id}`);

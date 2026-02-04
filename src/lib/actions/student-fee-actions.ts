@@ -539,7 +539,8 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
         status: validatedData.amount >= correctAmount
           ? PaymentStatus.COMPLETED
           : PaymentStatus.PARTIAL,
-        remarks: validatedData.remarks
+        remarks: validatedData.remarks,
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 
@@ -549,7 +550,8 @@ export async function makePayment(feeItemId: string, paymentData: z.infer<typeof
         userId: student.userId,
         title: "Fee Payment Recorded",
         message: `Your payment of $${validatedData.amount} has been recorded and is pending verification.`,
-        type: "INFO"
+        type: "INFO",
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 
@@ -657,7 +659,8 @@ export async function applyForScholarship(scholarshipId: string) {
         studentId: student.id,
         awardDate: new Date(),
         amount: 0, // Will be updated when approved
-        status: "Pending"
+        status: "Pending",
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 
@@ -667,7 +670,8 @@ export async function applyForScholarship(scholarshipId: string) {
         userId: student.userId,
         title: "Scholarship Application Submitted",
         message: `Your application for ${scholarship.name} has been submitted and is pending approval.`,
-        type: "INFO"
+        type: "INFO",
+        schoolId: student.schoolId, // Add required schoolId
       }
     });
 

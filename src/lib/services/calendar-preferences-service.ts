@@ -9,6 +9,7 @@
 
 import { UserCalendarPreferences, Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
+import { getCurrentUserSchoolContext } from '@/lib/auth/tenant';
 
 // Types for preference management
 export interface CalendarPreferencesInput {
@@ -127,9 +128,18 @@ export async function getUserCalendarPreferences(
 
   // Create default preferences if they don't exist
   if (!preferences) {
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    
+    if (!schoolId) {
+      throw new Error('School context required for calendar preferences');
+    }
+
     preferences = await db.userCalendarPreferences.create({
       data: {
         userId,
+        schoolId, // Add required schoolId
         defaultView: 'month',
         filterSettings: Prisma.DbNull,
         defaultReminderTime: 1440, // 1 day in minutes
@@ -148,6 +158,7 @@ export async function getUserCalendarPreferences(
  */
 export async function updateUserCalendarPreferences(
   userId: string,
+  schoolId: string,
   data: CalendarPreferencesInput
 ): Promise<UserCalendarPreferences> {
   // Validate input data
@@ -178,6 +189,7 @@ export async function updateUserCalendarPreferences(
     update: updateData,
     create: {
       userId,
+      schoolId,
       defaultView: data.defaultView || 'month',
       filterSettings: data.filterSettings || Prisma.DbNull,
       defaultReminderTime: data.defaultReminderTime || 1440,
@@ -194,7 +206,8 @@ export async function updateUserCalendarPreferences(
  * Requirement 2.5: Allow users to reset preferences to default values
  */
 export async function resetUserCalendarPreferences(
-  userId: string
+  userId: string,
+  schoolId: string
 ): Promise<UserCalendarPreferences> {
   const preferences = await db.userCalendarPreferences.upsert({
     where: { userId },
@@ -206,6 +219,7 @@ export async function resetUserCalendarPreferences(
     },
     create: {
       userId,
+      schoolId,
       defaultView: 'month',
       filterSettings: Prisma.DbNull,
       defaultReminderTime: 1440,
@@ -256,7 +270,14 @@ export async function updateUserFilterSettings(
   userId: string,
   filterSettings: CalendarFilterSettings | null
 ): Promise<UserCalendarPreferences> {
-  return updateUserCalendarPreferences(userId, { filterSettings });
+  const context = await getCurrentUserSchoolContext();
+  const schoolId = context?.schoolId;
+  
+  if (!schoolId) {
+    throw new Error('School context required for calendar preferences');
+  }
+  
+  return updateUserCalendarPreferences(userId, schoolId, { filterSettings });
 }
 
 /**
@@ -267,5 +288,12 @@ export async function updateUserFilterSettings(
 export async function clearUserFilterSettings(
   userId: string
 ): Promise<UserCalendarPreferences> {
-  return updateUserCalendarPreferences(userId, { filterSettings: null });
+  const context = await getCurrentUserSchoolContext();
+  const schoolId = context?.schoolId;
+  
+  if (!schoolId) {
+    throw new Error('School context required for calendar preferences');
+  }
+  
+  return updateUserCalendarPreferences(userId, schoolId, { filterSettings: null });
 }

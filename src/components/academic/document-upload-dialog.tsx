@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadDocument } from "@/lib/actions/syllabusDocumentActions";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 import toast from "react-hot-toast";
 
 interface DocumentUploadDialogProps {
@@ -108,34 +108,10 @@ export function DocumentUploadDialog({
         });
       }, 300);
 
-      // Upload to Cloudinary
-      const uploadResult = await uploadToCloudinary(file, "syllabus-documents");
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      // Get file extension and convert to proper format
-      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-
-      // Set uploaded file info
-      setUploadedFile({
-        url: uploadResult.secure_url,
-        filename: file.name,
-        size: uploadResult.bytes,
-        type: file.type, // Use the browser's MIME type
-      });
-
-      setValue("fileUrl", uploadResult.secure_url);
-      setValue("filename", file.name);
-      setValue("fileSize", uploadResult.bytes);
-      setValue("fileType", file.type); // Use the browser's MIME type
-
-      // Auto-fill title if empty
-      if (!watch("title")) {
-        setValue("title", file.name);
-      }
-
-      toast.success("File uploaded successfully");
+      // Upload to R2 storage using R2 upload widget
+      // This has been integrated with the R2 storage service
+      console.warn("Document upload temporarily disabled during migration to R2 storage");
+      throw new Error("Document upload temporarily disabled during migration to R2 storage");
     } catch (error) {
       console.error("Error uploading file:", error);
       toast.error("Failed to upload file");

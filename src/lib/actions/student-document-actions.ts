@@ -131,7 +131,7 @@ export async function uploadDocument(values: DocumentUploadValues) {
     return { success: false, message: "Authentication required" };
   }
 
-  const { dbUser } = result;
+  const { dbUser, student } = result;
 
   try {
     // Validate data
@@ -150,6 +150,7 @@ export async function uploadDocument(values: DocumentUploadValues) {
         tags: validatedData.tags,
         userId: dbUser.id,
         documentTypeId: validatedData.documentTypeId,
+        schoolId: student?.schoolId || '', // Add required schoolId
       }
     });
 

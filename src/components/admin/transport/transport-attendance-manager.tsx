@@ -38,8 +38,13 @@ interface RouteWithAttendance {
   updatedAt: Date;
   stops: Array<{
     id: string;
-    name: string;
+    stopName: string;
     sequence: number;
+    routeId: string;
+    schoolId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    arrivalTime: string;
   }>;
   students: Array<{
     id: string;

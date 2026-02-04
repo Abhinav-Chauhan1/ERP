@@ -9,7 +9,13 @@ export async function getOverallSchoolPerformance(filters?: {
   termId?: string;
 }) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const where: any = {
       exam: { schoolId },
     };
@@ -144,7 +150,13 @@ export async function getTeacherPerformanceMetrics(filters?: {
 // Get student progress tracking
 export async function getStudentProgressTracking(studentId: string) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const results = await db.examResult.findMany({
       where: {
         studentId,
@@ -229,7 +241,13 @@ export async function getComparativeAnalysis(filters?: {
   compareBy?: "class" | "term" | "subject";
 }) {
   try {
-    const { schoolId } = await requireSchoolAccess();
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+    
     const results = await db.examResult.findMany({
       where: { exam: { schoolId } },
       include: {

@@ -2,7 +2,8 @@ import NextAuth from "next-auth";
 import { authConfig } from "./src/auth.config";
 import { NextResponse } from "next/server";
 import { handleSubdomainRouting, getSubdomain } from "./src/lib/middleware/subdomain";
-import { roleRouterService } from "./src/lib/services/role-router-service";
+import { csrfProtection } from "./src/lib/middleware/csrf-protection";
+import { rateLimit } from "./src/lib/middleware/rate-limit";
 import { UserRole } from "@prisma/client";
 
 const { auth } = NextAuth(authConfig);
@@ -25,6 +26,8 @@ const publicRoutes = [
   /^\/api\/web-vitals/,
   /^\/api\/test-rate-limit/,
   /^\/api\/subdomain/, // Subdomain validation API
+  /^\/api\/schools\/validate/, // School validation API
+  /^\/api\/otp/, // OTP generation API
   /^\/api\/health/,
   /^\/api\/status/,
   /^\/about/,
@@ -41,16 +44,55 @@ const contextRoutes = [
   /^\/setup/,
 ];
 
+// Rate limiting configurations for different route types
+const rateLimitConfigs = {
+  api: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per 15 minutes
+    message: 'Too many API requests'
+  },
+  auth: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 requests per 15 minutes for auth endpoints
+    message: 'Too many authentication attempts'
+  },
+  general: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // 1000 requests per 15 minutes for general routes
+    message: 'Too many requests'
+  }
+};
+
 export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const hostname = req.headers.get('host') || '';
   const subdomain = getSubdomain(hostname);
 
+  // Apply rate limiting first (before any other processing)
+  let rateLimitConfig = rateLimitConfigs.general;
+
+  if (pathname.startsWith('/api/auth/')) {
+    rateLimitConfig = rateLimitConfigs.auth;
+  } else if (pathname.startsWith('/api/')) {
+    rateLimitConfig = rateLimitConfigs.api;
+  }
+
+  const rateLimitResponse = await rateLimit(req, rateLimitConfig);
+  if (rateLimitResponse) {
+    return rateLimitResponse; // Rate limit exceeded
+  }
+
+  // Apply CSRF protection for state-changing requests
+  const csrfResponse = await csrfProtection(req);
+  if (csrfResponse) {
+    return csrfResponse; // CSRF validation failed
+  }
+
   // Handle subdomain routing first
   if (subdomain) {
     // For subdomains, we need to handle routing differently
     const subdomainResponse = await handleSubdomainRouting(req);
-    
+
     // If subdomain handling returns a redirect or error, return it
     if (subdomainResponse.status !== 200) {
       return subdomainResponse;
@@ -65,7 +107,7 @@ export default auth(async (req) => {
 
     // Continue with subdomain-specific auth logic
     const session = req.auth;
-    
+
     // For subdomain public routes, allow access
     if (publicRoutes.some(pattern => pattern.test(pathname))) {
       return subdomainResponse;
@@ -80,8 +122,8 @@ export default auth(async (req) => {
 
     // Get school ID from subdomain response headers
     const schoolId = subdomainResponse.headers.get('x-school-id');
-    
-    // Verify user has access to this school using RoleRouterService
+
+    // Verify user has access to this school
     if (session.user.role !== 'SUPER_ADMIN' && session.user.schoolId !== schoolId) {
       return new NextResponse('Access denied to this school', { status: 403 });
     }
@@ -105,68 +147,74 @@ export default auth(async (req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Create session context for route validation
-  const sessionContext = {
-    userId: session.user.id,
-    role: session.user.role as UserRole,
-    activeSchoolId: session.user.schoolId || undefined,
-    activeStudentId: session.user.activeStudentId || undefined,
-    authorizedSchools: session.user.authorizedSchools || [],
-    availableChildren: session.user.availableChildren || [],
-    permissions: session.user.permissions || [],
-    isOnboarded: session.user.isOnboarded || false,
-    requiresSchoolSelection: !session.user.schoolId && session.user.role !== UserRole.SUPER_ADMIN,
-    requiresChildSelection: session.user.role === UserRole.PARENT && 
-                           !session.user.activeStudentId && 
-                           session.user.availableChildren && 
-                           session.user.availableChildren.length > 1
-  };
+  // Role-based route protection
+  const user = session.user;
 
-  // Allow context selection routes when needed
-  if (contextRoutes.some(pattern => pattern.test(pathname))) {
-    const validation = roleRouterService.validateRouteAccessDetailed(sessionContext, pathname);
-    if (validation.isValid) {
-      return NextResponse.next();
-    } else if (validation.suggestedRoute) {
-      return NextResponse.redirect(new URL(validation.suggestedRoute, req.url));
+  // Super admin routes
+  if (pathname.startsWith('/super-admin')) {
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.redirect(new URL("/login?error=access_denied", req.url));
     }
+    return NextResponse.next();
   }
 
-  // Use RoleRouterService for comprehensive route validation
-  const routeValidation = roleRouterService.validateRouteAccessDetailed(sessionContext, pathname);
-  
-  if (!routeValidation.isValid) {
-    // Handle different validation failures
-    switch (routeValidation.reason) {
-      case 'MISSING_SCHOOL_CONTEXT':
-        return NextResponse.redirect(new URL("/select-school", req.url));
-      
-      case 'MISSING_CHILD_CONTEXT':
-        return NextResponse.redirect(new URL("/select-child", req.url));
-      
-      case 'ONBOARDING_INCOMPLETE':
-        return NextResponse.redirect(new URL("/setup", req.url));
-      
-      case 'ROLE_MISMATCH':
-        // Redirect to appropriate dashboard for user's role
-        const userRoute = roleRouterService.getDefaultRoute(sessionContext);
-        return NextResponse.redirect(new URL(userRoute, req.url));
-      
-      case 'INSUFFICIENT_PERMISSIONS':
-        // Redirect to user's default route with error parameter
-        const defaultRoute = roleRouterService.getDefaultRoute(sessionContext);
-        const errorUrl = new URL(defaultRoute, req.url);
-        errorUrl.searchParams.set("error", "insufficient_permissions");
-        return NextResponse.redirect(errorUrl);
-      
+  // Admin routes
+  if (pathname.startsWith('/admin')) {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Teacher routes
+  if (pathname.startsWith('/teacher')) {
+    if (user.role !== UserRole.TEACHER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Student routes
+  if (pathname.startsWith('/student')) {
+    if (user.role !== UserRole.STUDENT && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Parent routes
+  if (pathname.startsWith('/parent')) {
+    if (user.role !== UserRole.PARENT && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Context selection routes - allow when needed
+  if (contextRoutes.some(pattern => pattern.test(pathname))) {
+    return NextResponse.next();
+  }
+
+  // Default dashboard route
+  // Handle /dashboard and /dashboard/ explicitly
+  if (pathname === '/dashboard' || pathname === '/dashboard/') {
+    console.log(`[Middleware] Handling /dashboard redirect for user: ${user.id}, role: ${user.role}`);
+
+    // Redirect to role-specific dashboard
+    switch (user.role) {
+      case UserRole.SUPER_ADMIN:
+        return NextResponse.redirect(new URL("/super-admin", req.url));
+      case UserRole.ADMIN:
+        return NextResponse.redirect(new URL("/admin", req.url));
+      case UserRole.TEACHER:
+        return NextResponse.redirect(new URL("/teacher", req.url));
+      case UserRole.STUDENT:
+        return NextResponse.redirect(new URL("/student", req.url));
+      case UserRole.PARENT:
+        return NextResponse.redirect(new URL("/parent", req.url));
       default:
-        // For other validation failures, redirect to appropriate dashboard
-        if (routeValidation.suggestedRoute) {
-          return NextResponse.redirect(new URL(routeValidation.suggestedRoute, req.url));
-        } else {
-          const fallbackRoute = roleRouterService.getDefaultRoute(sessionContext);
-          return NextResponse.redirect(new URL(fallbackRoute, req.url));
-        }
+        console.log(`[Middleware] No matching role for /dashboard, redirecting to login. Role: ${user.role}`);
+        return NextResponse.redirect(new URL("/login", req.url));
     }
   }
 

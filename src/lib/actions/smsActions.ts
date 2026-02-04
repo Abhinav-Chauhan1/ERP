@@ -56,11 +56,11 @@ export async function sendSingleSMS(data: {
     // Validate and format phone number
     let phoneNumber = data.to;
     if (!phoneNumber.startsWith('+')) {
-      phoneNumber = formatPhoneNumber(phoneNumber, data.countryCode || '+1');
+      phoneNumber = formatPhoneNumber(phoneNumber, data.countryCode || '91');
     }
 
     if (!isValidPhoneNumber(phoneNumber)) {
-      return { success: false, error: "Invalid phone number format. Use E.164 format: +1234567890" };
+      return { success: false, error: "Invalid phone number format. Use E.164 format: +919876543210" };
     }
 
     // Send SMS with retry logic (includes DLT template ID if provided)
@@ -122,7 +122,7 @@ export async function sendBulkSMSAction(data: {
     // Validate and format phone numbers
     const formattedRecipients = data.recipients.map(phone => {
       if (!phone.startsWith('+')) {
-        return formatPhoneNumber(phone, data.countryCode || '+1');
+        return formatPhoneNumber(phone, data.countryCode || '91');
       }
       return phone;
     });
@@ -132,7 +132,7 @@ export async function sendBulkSMSAction(data: {
     if (invalidNumbers.length > 0) {
       return {
         success: false,
-        error: `Invalid phone numbers: ${invalidNumbers.join(', ')}. Use E.164 format: +1234567890`,
+        error: `Invalid phone numbers: ${invalidNumbers.join(', ')}. Use E.164 format: +919876543210`,
       };
     }
 
@@ -378,11 +378,7 @@ export async function checkSMSConfiguration() {
     if (configured) {
       message = `SMS service is configured and ready to use (Provider: ${provider})`;
     } else {
-      if (provider === 'MSG91') {
-        message = "SMS service is not configured. Please set MSG91_AUTH_KEY and MSG91_SENDER_ID environment variables.";
-      } else {
-        message = "SMS service is not configured. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables.";
-      }
+      message = "SMS service is not configured. Please set MSG91_AUTH_KEY and MSG91_SENDER_ID environment variables.";
     }
 
     return {

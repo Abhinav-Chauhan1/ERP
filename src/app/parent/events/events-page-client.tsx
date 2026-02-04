@@ -52,9 +52,10 @@ interface EventsPageClientProps {
     section: string;
     isPrimary: boolean;
   }[];
+  schoolId: string;
 }
 
-export function EventsPageClient({ children }: EventsPageClientProps) {
+export function EventsPageClient({ children, schoolId }: EventsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -148,7 +149,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
     }
 
     try {
-      const result = await cancelEventRegistration(registration.id);
+      const result = await cancelEventRegistration(registration.id, schoolId);
       if (result.success) {
         toast.success(result.message || "Registration cancelled successfully");
         loadData();
@@ -504,6 +505,7 @@ export function EventsPageClient({ children }: EventsPageClientProps) {
                 eventId={eventToRegister.id}
                 eventTitle={eventToRegister.title}
                 children={children}
+                schoolId={schoolId}
                 onSuccess={handleRegistrationSuccess}
                 onCancel={() => {
                   setIsRegistrationFormOpen(false);

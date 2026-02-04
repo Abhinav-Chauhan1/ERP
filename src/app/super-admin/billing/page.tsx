@@ -1,50 +1,71 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { Suspense } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BillingDashboard } from "@/components/super-admin/billing/billing-dashboard";
-import { SubscriptionManagement } from "@/components/super-admin/billing/subscription-management";
+import { SubscriptionPlansManagement } from "@/components/super-admin/plans/subscription-plans-management";
 import { InvoiceManagement } from "@/components/super-admin/billing/invoice-management";
 
-export default async function BillingPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-
-  try {
-    await requireSuperAdminAccess();
-  } catch (error) {
-    redirect("/");
-  }
-
+export default function BillingPage() {
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Billing & Subscriptions</h1>
-        <p className="text-muted-foreground">
-          Comprehensive billing management and subscription oversight
-        </p>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">Plans & Billing</h1>
+        <p className="text-gray-400 mt-1">Manage subscription plans, invoices, and payment tracking</p>
       </div>
 
+      {/* Billing Content */}
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+        <TabsList className="bg-[hsl(var(--secondary))] border border-[hsl(var(--border))]">
+          <TabsTrigger
+            value="dashboard"
+            className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="plans"
+            className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+          >
+            Plans
+          </TabsTrigger>
+          <TabsTrigger
+            value="invoices"
+            className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
+          >
+            Invoices
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-6">
-          <BillingDashboard showAllSchools={true} />
+        <TabsContent value="dashboard">
+          <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+            <CardContent className="p-6">
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <BillingDashboard showAllSchools={true} />
+              </Suspense>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="subscriptions" className="space-y-6">
-          <SubscriptionManagement showAllSchools={true} />
+        <TabsContent value="plans">
+          <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+            <CardContent className="p-6">
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <SubscriptionPlansManagement />
+              </Suspense>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="invoices" className="space-y-6">
-          <InvoiceManagement showAllSchools={true} />
+        <TabsContent value="invoices">
+          <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+            <CardContent className="p-6">
+              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                <InvoiceManagement showAllSchools={true} />
+              </Suspense>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

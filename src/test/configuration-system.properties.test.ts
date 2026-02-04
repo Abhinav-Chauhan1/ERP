@@ -332,7 +332,7 @@ describe('Configuration System Property Tests', () => {
     await fc.assert(fc.asyncProperty(
       fc.record({
         configType: fc.constantFrom('INTEGRATION', 'USAGE_LIMIT'),
-        serviceName: fc.constantFrom('STRIPE', 'RAZORPAY', 'TWILIO', 'MSG91', 'CLOUDINARY', 'EMAIL_SERVICE'),
+        serviceName: fc.constantFrom('STRIPE', 'RAZORPAY', 'MSG91', 'EMAIL_SERVICE'),
         environment: fc.constantFrom('production', 'staging', 'development'),
         resourceType: fc.constantFrom('SMS', 'WHATSAPP', 'STORAGE', 'API_CALLS', 'USERS'),
         limitType: fc.constantFrom('GLOBAL', 'PER_SCHOOL', 'PER_USER'),

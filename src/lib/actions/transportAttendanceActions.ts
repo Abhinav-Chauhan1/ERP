@@ -38,6 +38,11 @@ export type BulkTransportAttendanceFormValues = z.infer<typeof bulkTransportAtte
 export async function recordTransportAttendance(data: TransportAttendanceFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     // Validate input
     const validated = transportAttendanceSchema.parse(data);
 
@@ -126,6 +131,7 @@ export async function recordTransportAttendance(data: TransportAttendanceFormVal
         status: validated.status,
         recordedBy: validated.recordedBy,
         remarks: validated.remarks,
+        schoolId,
       },
       include: {
         studentRoute: {
@@ -160,6 +166,11 @@ export async function recordTransportAttendance(data: TransportAttendanceFormVal
 export async function recordBulkTransportAttendance(data: BulkTransportAttendanceFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     // Validate input
     const validated = bulkTransportAttendanceSchema.parse(data);
 
@@ -185,13 +196,13 @@ export async function recordBulkTransportAttendance(data: BulkTransportAttendanc
     }
 
     // Validate that the stop exists in the route
-    const stopNames = route.stops.map((stop) => stop.stopName);
+    const stopNames = route.stops.map((stop: any) => stop.stopName);
     if (!stopNames.includes(validated.stopName)) {
       throw new Error("Stop does not exist in this route");
     }
 
     // Validate all student route IDs belong to this route
-    const routeStudentIds = route.students.map((sr) => sr.id);
+    const routeStudentIds = route.students.map((sr: any) => sr.id);
     const invalidStudentRoutes = validated.attendanceRecords.filter(
       (record) => !routeStudentIds.includes(record.studentRouteId)
     );
@@ -238,6 +249,7 @@ export async function recordBulkTransportAttendance(data: BulkTransportAttendanc
             status: record.status,
             recordedBy: validated.recordedBy,
             remarks: record.remarks,
+            schoolId,
           },
         });
       })
@@ -267,6 +279,11 @@ export async function getTransportAttendanceByRouteAndDate(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     // Get route with students
     const route = await db.route.findUnique({
       where: { id: routeId, schoolId },
@@ -327,6 +344,11 @@ export async function getStudentTransportAttendance(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     // Build where clause
     const where: any = {
       studentRoute: {
@@ -384,6 +406,11 @@ export async function getRouteAttendanceStats(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     // Verify route belongs to school first
     const route = await db.route.findUnique({ where: { id: routeId, schoolId } });
     if (!route) throw new Error("Route not found or access denied");
@@ -484,6 +511,11 @@ export async function getRouteAttendanceStats(
 export async function deleteTransportAttendance(id: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     const attendance = await db.transportAttendance.findUnique({
       where: { id },
       include: { studentRoute: { include: { route: true } } }
@@ -520,6 +552,11 @@ export async function deleteTransportAttendance(id: string) {
 export async function getTodayTransportAttendanceSummary() {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School access required");
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -551,15 +588,15 @@ export async function getTodayTransportAttendanceSummary() {
 
     const summary = routes.map((route) => {
       const totalStudents = route._count.students;
-      const boardingRecords = route.students.flatMap((sr) =>
-        sr.attendance.filter((a) => a.attendanceType === "BOARDING")
+      const boardingRecords = route.students.flatMap((sr: any) =>
+        sr.attendance.filter((a: any) => a.attendanceType === "BOARDING")
       );
-      const alightingRecords = route.students.flatMap((sr) =>
-        sr.attendance.filter((a) => a.attendanceType === "ALIGHTING")
+      const alightingRecords = route.students.flatMap((sr: any) =>
+        sr.attendance.filter((a: any) => a.attendanceType === "ALIGHTING")
       );
 
-      const boardingPresent = boardingRecords.filter((a) => a.status === "PRESENT").length;
-      const alightingPresent = alightingRecords.filter((a) => a.status === "PRESENT").length;
+      const boardingPresent = boardingRecords.filter((a: any) => a.status === "PRESENT").length;
+      const alightingPresent = alightingRecords.filter((a: any) => a.status === "PRESENT").length;
 
       return {
         routeId: route.id,

@@ -142,7 +142,8 @@ function encryptContent(content: string, key: string): string {
  * @returns Created message log entry
  */
 export async function logMessage(
-  params: LogMessageParams
+  params: LogMessageParams,
+  schoolId?: string
 ): Promise<MessageLogEntry> {
   try {
     const {
@@ -184,6 +185,7 @@ export async function logMessage(
         messageId: messageId || null,
         metadata: (metadata as any) || Prisma.DbNull,
         estimatedCost: finalCost || null,
+        schoolId: schoolId!, // Add schoolId parameter (required)
         sentAt: null,
         deliveredAt: null,
         readAt: null,

@@ -130,3 +130,29 @@ export async function assignTeacherToDepartment(teacherId: string, departmentId:
     throw error;
   }
 }
+
+export async function getDepartments() {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", departments: [] };
+
+    const departments = await db.department.findMany({
+      where: {
+        schoolId
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    return { success: true, departments };
+  } catch (error) {
+    console.error("Error fetching departments:", error);
+    return { success: false, error: "Failed to fetch departments", departments: [] };
+  }
+}

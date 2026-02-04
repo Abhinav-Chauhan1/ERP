@@ -18,10 +18,12 @@ interface SetupWizardProps {
     hasExistingAdmin: boolean;
     redirectUrl?: string;
     schoolId?: string;
+    initialData?: Partial<WizardData>;
 }
 
 export interface WizardData {
     // School Details
+    schoolId?: string; // Added for super admin context
     schoolName: string;
     schoolEmail: string;
     schoolPhone: string;
@@ -67,6 +69,7 @@ const STEPS = [
 ];
 
 const initialData: WizardData = {
+    schoolId: undefined, // Will be set from props
     schoolName: "",
     schoolEmail: "",
     schoolPhone: "",
@@ -93,9 +96,13 @@ const initialData: WizardData = {
     sections: ["A", "B"],
 };
 
-export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redirectUrl, schoolId }: SetupWizardProps) {
+export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redirectUrl, schoolId, initialData: providedInitialData }: SetupWizardProps) {
     const [step, setStep] = useState(initialStep);
-    const [data, setData] = useState<WizardData>(initialData);
+    const [data, setData] = useState<WizardData>(() => ({
+        ...initialData,
+        schoolId, // Set schoolId from props
+        ...providedInitialData,
+    }));
     const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
 
     const updateData = (updates: Partial<WizardData>) => {
@@ -168,7 +175,7 @@ export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redire
     return (
         <div className="min-h-screen flex flex-col">
             {/* Header */}
-            <header className="py-6 px-8 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm">
+            <header className="py-6 px-8 flex items-center justify-between border-b bg-[hsl(var(--card))]/80 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <Image
                         src="/logo.png"
@@ -184,7 +191,7 @@ export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redire
             </header>
 
             {/* Progress */}
-            <div className="bg-white border-b px-8 py-4">
+            <div className="bg-[hsl(var(--card))] border-b px-8 py-4">
                 <WizardProgress
                     steps={STEPS}
                     currentStep={step}
@@ -194,7 +201,7 @@ export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redire
 
             {/* Content */}
             <main className="flex-1 flex items-center justify-center p-8">
-                <Card className="w-full max-w-2xl p-8 shadow-xl border-0 bg-white/90 backdrop-blur">
+                <Card className="w-full max-w-2xl p-8 shadow-xl bg-[hsl(var(--card))]/90 backdrop-blur border-[hsl(var(--border))]">
                     <AnimatePresence mode="wait" custom={direction}>
                         <motion.div
                             key={step}
@@ -215,7 +222,7 @@ export function SetupWizard({ currentStep: initialStep, hasExistingAdmin, redire
             </main>
 
             {/* Footer */}
-            <footer className="py-4 px-8 text-center text-sm text-muted-foreground border-t bg-white/80">
+            <footer className="py-4 px-8 text-center text-sm text-muted-foreground border-t bg-[hsl(var(--card))]/80">
                 © {new Date().getFullYear()} SikshaMitra. All rights reserved.
             </footer>
         </div>

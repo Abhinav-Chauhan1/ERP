@@ -435,6 +435,11 @@ export async function submitAssignment(values: z.infer<typeof assignmentSubmissi
       content: content || "",
       attachments: attachments || null,
       status: isLate ? "LATE" : "SUBMITTED",
+      school: {
+        connect: {
+          id: student.schoolId,
+        },
+      },
     },
   });
 

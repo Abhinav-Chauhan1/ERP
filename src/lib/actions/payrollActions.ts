@@ -252,6 +252,7 @@ export const generatePayroll = withSchoolAuthAction(async (schoolId: string, use
 
     const payroll = await db.payroll.create({
       data: {
+        schoolId,
         teacherId: data.teacherId,
         month: parseInt(data.month),
         year: parseInt(data.year),
@@ -559,6 +560,7 @@ export const bulkGeneratePayrolls = withSchoolAuthAction(async (schoolId: string
         if (!existing) {
           const payroll = await db.payroll.create({
             data: {
+              schoolId,
               teacherId: teacher.id,
               month,
               year,

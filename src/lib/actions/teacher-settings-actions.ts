@@ -68,9 +68,14 @@ export async function getSettings(teacherId?: string) {
 
     // If no settings exist, create default settings
     if (!teacher.settings) {
+      // Get required school context
+      const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+      const schoolId = await getRequiredSchoolId();
+
       const newSettings = await db.teacherSettings.create({
         data: {
           teacherId: teacher.id,
+          schoolId, // Add required schoolId
         },
       });
 
@@ -145,12 +150,17 @@ export async function updateSettings(settingsData: {
       };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Update or create settings
     const settings = await db.teacherSettings.upsert({
       where: { teacherId: teacher.id },
       update: validated,
       create: {
         teacherId: teacher.id,
+        schoolId, // Add required schoolId
         ...validated,
       },
     });

@@ -103,7 +103,7 @@ class RazorpayAdapter implements PaymentGateway {
     return this.razorpay.customers.create(data);
   }
 
-  async createPlan(data: { period: string; interval: number; item: any; notes: Record<string, string> }) {
+  async createPlan(data: { period: 'daily' | 'weekly' | 'monthly' | 'yearly'; interval: number; item: any; notes: Record<string, string> }) {
     return this.razorpay.plans.create(data);
   }
 

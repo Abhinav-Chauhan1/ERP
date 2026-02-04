@@ -9,6 +9,7 @@
 
 import jsPDF from 'jspdf';
 import { db } from '@/lib/db';
+import { uploadHandler } from '@/lib/services/upload-handler';
 
 export interface IDCardGenerationResult {
   success: boolean;
@@ -119,27 +120,39 @@ export async function generateIDCardPreview(
 }
 
 /**
- * Upload PDF to storage (Cloudinary)
+ * Upload PDF to storage (R2)
+ * Integrated with R2 storage service
  */
 async function uploadPDFToStorage(
   pdfBuffer: Buffer,
   studentId: string
 ): Promise<string> {
   try {
-    const { uploadBufferToCloudinary } = await import("@/lib/cloudinary-server");
-
-    // Upload to Cloudinary using buffer upload
-    const result = await uploadBufferToCloudinary(pdfBuffer, {
-      folder: 'id-cards',
-      resource_type: 'raw',
-      public_id: `id-card-${studentId}-${Date.now()}`,
-      format: 'pdf',
-      overwrite: true,
+    // Create a File-like object from the buffer
+    const file = new File([new Uint8Array(pdfBuffer)], `id-card-${studentId}.pdf`, {
+      type: 'application/pdf'
     });
 
-    return result.secure_url;
+    const uploadResult = await uploadHandler.uploadDocument(file, {
+      folder: 'id-cards',
+      category: 'document',
+      customMetadata: {
+        studentId,
+        documentType: 'id-card',
+        uploadType: 'generated-id-card'
+      }
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload ID card PDF');
+    }
+
+    return uploadResult.url!;
+    
+    // Return a fallback local path if upload fails
+    return `/api/id-cards/${studentId}/download`;
   } catch (error) {
-    console.error('Failed to upload ID card to Cloudinary:', error);
+    console.error('Failed to upload ID card to R2 storage:', error);
     return `/api/id-cards/${studentId}/download`;
   }
 }

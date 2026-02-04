@@ -4,8 +4,14 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { getCurrentSchoolId } from "@/lib/auth/tenant";
+import crypto from "crypto";
+import { sendEmail } from "@/lib/utils/email-service";
+import { getVerificationEmailHtml } from "@/lib/utils/email-templates";
 
 interface SetupData {
+    // School ID for super admin context
+    schoolId?: string;
+
     // School Details (only needed for initial system setup)
     schoolName?: string;
     schoolEmail?: string;
@@ -100,14 +106,31 @@ export async function checkOnboardingStatus() {
  * Complete the setup wizard - handles both system setup and school setup
  */
 export async function completeSetup(data: SetupData) {
+    console.log("completeSetup called with data:", {
+        schoolId: data.schoolId,
+        academicYearName: data.academicYearName,
+        hasSchoolName: !!data.schoolName,
+        hasAdminEmail: !!data.adminEmail
+    });
+
     try {
+        // If schoolId is explicitly provided (super admin context), use it
+        if (data.schoolId) {
+            console.log("Using provided schoolId for school setup:", data.schoolId);
+            return await completeSchoolSetup(data.schoolId, data);
+        }
+
+        // Otherwise, try to get current school context
         const currentSchoolId = await getCurrentSchoolId();
+        console.log("Current school ID from context:", currentSchoolId);
 
         if (!currentSchoolId) {
             // System setup - creating the first school
+            console.log("No current school ID, performing system setup");
             return await completeSystemSetup(data);
         } else {
             // School setup - setting up an existing school
+            console.log("Using current school ID for school setup:", currentSchoolId);
             return await completeSchoolSetup(currentSchoolId, data);
         }
     } catch (error) {
@@ -178,13 +201,16 @@ async function completeSystemSetup(data: SetupData) {
         const adminUser = await tx.user.create({
             data: {
                 email: data.adminEmail,
-                password: hashedPassword,
+                passwordHash: hashedPassword,
                 firstName: data.adminFirstName,
                 lastName: data.adminLastName,
                 name: `${data.adminFirstName} ${data.adminLastName}`,
                 phone: data.adminPhone || null,
                 role: "ADMIN",
                 active: true,
+                emailVerified: null, // Require email verification
+                // Set mobile to email if no separate mobile provided (for unified auth)
+                mobile: data.adminEmail?.includes('@') ? null : data.adminEmail,
             },
         });
 
@@ -246,6 +272,43 @@ async function completeSystemSetup(data: SetupData) {
         return schoolSetupResult;
     }
 
+    // Generate and send email verification token
+    try {
+        const verificationToken = crypto.randomBytes(32).toString("hex");
+        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Store verification token
+        await db.verificationToken.create({
+            data: {
+                identifier: result.adminUser.email!,
+                token: verificationToken,
+                expires: verificationExpires,
+            },
+        });
+
+        // Send verification email
+        const verificationUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`;
+
+        const emailHtml = getVerificationEmailHtml({
+            userName: result.adminUser.firstName!,
+            verificationUrl,
+        });
+
+        const emailResult = await sendEmail({
+            to: [result.adminUser.email!],
+            subject: "Verify Your Email - SikshaMitra",
+            html: emailHtml,
+        });
+
+        if (!emailResult.success) {
+            console.error("Failed to send verification email:", emailResult.error);
+            // Don't fail setup if email fails, but log it
+        }
+    } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        // Don't fail setup if email sending fails
+    }
+
     // Revalidate paths
     revalidatePath("/");
     revalidatePath("/admin");
@@ -254,9 +317,10 @@ async function completeSystemSetup(data: SetupData) {
     return {
         success: true,
         data: {
-            message: "System setup completed successfully",
+            message: "System setup completed successfully. Please check your email to verify your account before logging in.",
             adminEmail: result.adminUser.email,
             schoolCode: result.school.schoolCode,
+            requiresEmailVerification: true,
         },
     };
 }
@@ -265,14 +329,171 @@ async function completeSystemSetup(data: SetupData) {
  * Complete school setup (set up academic structure for existing school)
  */
 async function completeSchoolSetup(schoolId: string, data: SetupData) {
+    console.log("completeSchoolSetup called with:", {
+        schoolId,
+        academicYearName: data.academicYearName,
+        academicYearStart: data.academicYearStart,
+        academicYearEnd: data.academicYearEnd,
+        termsCount: data.terms.length,
+        classesCount: data.selectedClasses.length
+    });
+
     if (!data.academicYearName || !data.academicYearStart || !data.academicYearEnd) {
+        console.error("Academic year information is incomplete:", {
+            academicYearName: data.academicYearName,
+            academicYearStart: data.academicYearStart,
+            academicYearEnd: data.academicYearEnd
+        });
         return { success: false, error: "Academic year information is incomplete" };
     }
 
-    // Use a transaction to ensure all data is created together
-    const result = await db.$transaction(async (tx) => {
-        // 1. Create academic year
-        const academicYear = await tx.academicYear.create({
+    // 0. Create/Update Admin User if provided (for schools created by super admin without admin)
+    if (data.adminEmail) {
+        try {
+            console.log("Processing admin user for school:", schoolId);
+
+            // Check if user already exists
+            const existingUser = await db.user.findFirst({
+                where: {
+                    OR: [
+                        { email: data.adminEmail },
+                        { mobile: data.adminEmail }
+                    ]
+                }
+            });
+
+            let adminUserId = existingUser?.id;
+
+            if (existingUser) {
+                console.log("Found existing user:", existingUser.email);
+                // Check if already linked as ADMIN
+                const existingLink = await db.userSchool.findFirst({
+                    where: {
+                        userId: existingUser.id,
+                        schoolId: schoolId,
+                        role: "ADMIN"
+                    }
+                });
+
+                if (!existingLink) {
+                    console.log("Linking existing user as ADMIN");
+                    await db.userSchool.create({
+                        data: {
+                            userId: existingUser.id,
+                            schoolId: schoolId,
+                            role: "ADMIN",
+                            isActive: true
+                        }
+                    });
+                }
+
+                // Update password if provided
+                if (data.adminPassword) {
+                    const hashedPassword = await bcrypt.hash(data.adminPassword, 12);
+                    await db.user.update({
+                        where: { id: existingUser.id },
+                        data: { passwordHash: hashedPassword }
+                    });
+                    console.log("Updated existing admin password");
+                }
+            } else {
+                console.log("Creating new admin user");
+                // Create new user
+                const hashedPassword = data.adminPassword
+                    ? await bcrypt.hash(data.adminPassword, 12)
+                    : null;
+
+                const newUser = await db.user.create({
+                    data: {
+                        email: data.adminEmail,
+                        passwordHash: hashedPassword,
+                        firstName: data.adminFirstName || data.adminEmail.split('@')[0],
+                        lastName: data.adminLastName || "Admin",
+                        name: `${data.adminFirstName || ""} ${data.adminLastName || ""}`.trim() || "School Admin",
+                        phone: data.adminPhone || null,
+                        role: "ADMIN", // Explicitly set role
+                        active: true,
+                        emailVerified: null, // Require email verification
+                        mobile: data.adminEmail.includes('@') ? null : data.adminEmail,
+                    }
+                });
+                adminUserId = newUser.id;
+
+                // Link to school
+                await db.userSchool.create({
+                    data: {
+                        userId: newUser.id,
+                        schoolId: schoolId,
+                        role: "ADMIN",
+                        isActive: true
+                    }
+                });
+
+                // Create administrator profile
+                await db.administrator.create({
+                    data: {
+                        userId: newUser.id,
+                        schoolId: schoolId,
+                        position: data.adminPosition || "Administrator",
+                    },
+                });
+
+                console.log("Created new admin user and linked to school");
+
+                // Send verification email for new admin
+                try {
+                    const verificationToken = crypto.randomBytes(32).toString("hex");
+                    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+                    // Store verification token
+                    await db.verificationToken.create({
+                        data: {
+                            identifier: data.adminEmail,
+                            token: verificationToken,
+                            expires: verificationExpires,
+                        },
+                    });
+
+                    // Send verification email
+                    const verificationUrl = `${process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${verificationToken}`;
+
+                    const emailHtml = getVerificationEmailHtml({
+                        userName: data.adminFirstName || data.adminEmail.split('@')[0],
+                        verificationUrl,
+                    });
+
+                    const emailResult = await sendEmail({
+                        to: [data.adminEmail],
+                        subject: "Verify Your Email - SikshaMitra",
+                        html: emailHtml,
+                    });
+
+                    if (!emailResult.success) {
+                        console.error("Failed to send verification email:", emailResult.error);
+                        // Don't fail setup if email fails, but log it
+                    } else {
+                        console.log("Verification email sent to:", data.adminEmail);
+                    }
+                } catch (emailError) {
+                    console.error("Error sending verification email:", emailError);
+                    // Don't fail setup if email sending fails
+                }
+            }
+
+        } catch (error) {
+            console.error("Error setting up admin user:", error);
+            // Don't fail the whole setup if admin creation fails (logging/error reporting)
+            return { success: false, error: "Failed to create/link admin user: " + (error as Error).message };
+        }
+    }
+
+    try {
+        // Break down into smaller transactions to avoid timeout
+        console.log("Starting school setup process...");
+
+        // 1. Create academic year first
+        console.log("Creating academic year...");
+        const academicYear = await db.academicYear.create({
             data: {
                 schoolId,
                 name: data.academicYearName,
@@ -281,12 +502,14 @@ async function completeSchoolSetup(schoolId: string, data: SetupData) {
                 isCurrent: true,
             },
         });
+        console.log("Academic year created:", academicYear.id);
 
         // 2. Create terms
+        console.log("Creating terms...");
         const createdTerms = [];
         for (const term of data.terms) {
             if (term.name && term.startDate && term.endDate) {
-                const createdTerm = await tx.term.create({
+                const createdTerm = await db.term.create({
                     data: {
                         schoolId,
                         name: term.name,
@@ -296,72 +519,90 @@ async function completeSchoolSetup(schoolId: string, data: SetupData) {
                     },
                 });
                 createdTerms.push(createdTerm);
+                console.log("Term created:", createdTerm.name);
             }
         }
 
-        // 3. Create classes and sections
-        for (const className of data.selectedClasses) {
-            const createdClass = await tx.class.create({
+        // 3. Create classes and sections in batches
+        console.log("Creating classes and sections...");
+        const classPromises = data.selectedClasses.map(async (className) => {
+            const createdClass = await db.class.create({
                 data: {
                     schoolId,
                     name: className,
                     academicYearId: academicYear.id,
                 },
             });
+            console.log("Class created:", createdClass.name);
 
-            // Create sections for each class
-            for (const sectionName of data.sections) {
-                await tx.classSection.create({
+            // Create sections for this class
+            const sectionPromises = data.sections.map(sectionName =>
+                db.classSection.create({
                     data: {
                         schoolId,
                         name: sectionName,
                         classId: createdClass.id,
                         capacity: 40, // Default capacity
                     },
-                });
-            }
-        }
+                })
+            );
 
-        // 4. Create default grade scale
-        const gradeScales = [
-            { grade: "A+", minMarks: 90, maxMarks: 100, gpa: 10, description: "Outstanding" },
-            { grade: "A", minMarks: 80, maxMarks: 89, gpa: 9, description: "Excellent" },
-            { grade: "B+", minMarks: 70, maxMarks: 79, gpa: 8, description: "Very Good" },
-            { grade: "B", minMarks: 60, maxMarks: 69, gpa: 7, description: "Good" },
-            { grade: "C+", minMarks: 50, maxMarks: 59, gpa: 6, description: "Above Average" },
-            { grade: "C", minMarks: 40, maxMarks: 49, gpa: 5, description: "Average" },
-            { grade: "D", minMarks: 33, maxMarks: 39, gpa: 4, description: "Below Average" },
-            { grade: "F", minMarks: 0, maxMarks: 32, gpa: 0, description: "Fail" },
-        ];
+            await Promise.all(sectionPromises);
+            console.log(`Sections created for ${createdClass.name}: ${data.sections.join(', ')}`);
 
-        for (const scale of gradeScales) {
-            await tx.gradeScale.create({
-                data: {
-                    schoolId,
-                    ...scale
-                }
-            });
-        }
+            return createdClass;
+        });
 
-        // 5. Create default exam types
-        const examTypes = [
-            { name: "Unit Test", description: "Regular unit assessment", weight: 10, isActive: true, includeInGradeCard: true },
-            { name: "Mid-Term Exam", description: "Mid-term examination", weight: 30, isActive: true, includeInGradeCard: true },
-            { name: "Final Exam", description: "End of term examination", weight: 50, isActive: true, includeInGradeCard: true },
-            { name: "Practical", description: "Practical examination", weight: 10, isActive: true, includeInGradeCard: true },
-        ];
+        await Promise.all(classPromises);
 
-        for (const examType of examTypes) {
-            await tx.examType.create({
-                data: {
-                    schoolId,
-                    ...examType
-                }
-            });
-        }
+        // 4. Create default grade scale and exam types in a single transaction
+        console.log("Creating grade scales and exam types...");
+        await db.$transaction(async (tx) => {
+            // Grade scales
+            const gradeScales = [
+                { grade: "A+", minMarks: 90, maxMarks: 100, gpa: 10, description: "Outstanding" },
+                { grade: "A", minMarks: 80, maxMarks: 89, gpa: 9, description: "Excellent" },
+                { grade: "B+", minMarks: 70, maxMarks: 79, gpa: 8, description: "Very Good" },
+                { grade: "B", minMarks: 60, maxMarks: 69, gpa: 7, description: "Good" },
+                { grade: "C+", minMarks: 50, maxMarks: 59, gpa: 6, description: "Above Average" },
+                { grade: "C", minMarks: 40, maxMarks: 49, gpa: 5, description: "Average" },
+                { grade: "D", minMarks: 33, maxMarks: 39, gpa: 4, description: "Below Average" },
+                { grade: "F", minMarks: 0, maxMarks: 32, gpa: 0, description: "Fail" },
+            ];
 
-        // 6. Mark school as onboarded
-        await tx.school.update({
+            const gradeScalePromises = gradeScales.map(scale =>
+                tx.gradeScale.create({
+                    data: {
+                        schoolId,
+                        ...scale
+                    }
+                })
+            );
+
+            // Exam types
+            const examTypes = [
+                { name: "Unit Test", description: "Regular unit assessment", weight: 10, isActive: true, includeInGradeCard: true },
+                { name: "Mid-Term Exam", description: "Mid-term examination", weight: 30, isActive: true, includeInGradeCard: true },
+                { name: "Final Exam", description: "Final examination", weight: 50, isActive: true, includeInGradeCard: true },
+                { name: "Practical", description: "Practical examination", weight: 10, isActive: true, includeInGradeCard: true },
+            ];
+
+            const examTypePromises = examTypes.map(examType =>
+                tx.examType.create({
+                    data: {
+                        schoolId,
+                        ...examType
+                    }
+                })
+            );
+
+            await Promise.all([...gradeScalePromises, ...examTypePromises]);
+        });
+        console.log("Grade scales and exam types created");
+
+        // 5. Mark school as onboarded
+        console.log("Marking school as onboarded...");
+        await db.school.update({
             where: { id: schoolId },
             data: {
                 isOnboarded: true,
@@ -369,43 +610,56 @@ async function completeSchoolSetup(schoolId: string, data: SetupData) {
                 onboardingCompletedAt: new Date(),
             },
         });
+        console.log("School marked as onboarded");
 
-        return {
+        const result = {
             academicYear,
             termsCount: createdTerms.length,
             classesCount: data.selectedClasses.length,
         };
-    });
 
-    // Update detailed progress tracking to mark all steps as completed
-    try {
-        const { OnboardingProgressService } = await import("@/lib/services/onboarding-progress-service");
-        
-        // Mark all required steps as completed
-        for (let step = 1; step <= 7; step++) {
-            await OnboardingProgressService.updateStepProgress(
-                schoolId,
-                step,
-                'completed',
-                { completedVia: 'setup_wizard', timestamp: new Date() }
-            );
+        console.log("Database operations completed successfully");
+
+        // Update detailed progress tracking to mark all steps as completed
+        try {
+            console.log("Updating progress tracking...");
+            const { OnboardingProgressService } = await import("@/lib/services/onboarding-progress-service");
+
+            // Mark all required steps as completed
+            for (let step = 1; step <= 7; step++) {
+                await OnboardingProgressService.updateStepProgress(
+                    schoolId,
+                    step,
+                    'completed',
+                    { completedVia: 'setup_wizard', timestamp: new Date() }
+                );
+            }
+            console.log("Progress tracking updated");
+        } catch (progressError) {
+            console.warn("Failed to update detailed progress tracking:", progressError);
         }
-    } catch (progressError) {
-        console.warn("Failed to update detailed progress tracking:", progressError);
+
+        // Revalidate paths
+        revalidatePath("/");
+        revalidatePath("/admin");
+        revalidatePath("/setup");
+        revalidatePath(`/super-admin/schools/${schoolId}`);
+
+        console.log("School setup completed successfully");
+        return {
+            success: true,
+            data: {
+                message: data.adminEmail
+                    ? "School setup completed successfully. Please check your email to verify your account before logging in."
+                    : "School setup completed successfully",
+                academicYear: result.academicYear.name,
+                requiresEmailVerification: !!data.adminEmail,
+            },
+        };
+    } catch (error) {
+        console.error("Error in completeSchoolSetup:", error);
+        throw error;
     }
-
-    // Revalidate paths
-    revalidatePath("/");
-    revalidatePath("/admin");
-    revalidatePath("/setup");
-
-    return {
-        success: true,
-        data: {
-            message: "School setup completed successfully",
-            academicYear: result.academicYear.name,
-        },
-    };
 }
 
 /**

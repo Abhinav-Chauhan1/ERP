@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 import {
   uploadDocumentSchema,
   bulkUploadDocumentsSchema,
@@ -18,7 +19,8 @@ import {
   type ReorderDocumentsFormValues,
   type FileTypeValidationFormValues,
 } from "@/lib/schemaValidation/syllabusDocumentSchemaValidations";
-import { getCloudinaryPublicId, deleteFromCloudinary, getResourceType } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
+import { r2StorageService } from "@/lib/services/r2-storage-service";
 import {
   requireModifyAccess,
   requireViewAccess,
@@ -117,7 +119,8 @@ export async function validateFileType(
 }
 
 /**
- * Upload a single document with Cloudinary integration
+ * Upload a single document with R2 integration
+ * Integrated with R2 storage service
  * Requirements: 3.1, 3.2, 3.4, 4.1, 4.2
  * Authorization: Admin only
  */
@@ -206,6 +209,9 @@ export async function uploadDocument(
     // Use filename as title if title is not provided (Requirement 4.2)
     const title = validatedData.title || validatedData.filename;
 
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+
     // Create the document
     const document = await db.syllabusDocument.create({
       data: {
@@ -219,6 +225,7 @@ export async function uploadDocument(
         moduleId: validatedData.moduleId || null,
         subModuleId: validatedData.subModuleId || null,
         uploadedBy: validatedData.uploadedBy,
+        schoolId, // Add required schoolId
       },
     });
 
@@ -405,6 +412,9 @@ export async function deleteDocument(id: string): Promise<ActionResponse> {
       return formatAuthError(authResult);
     }
 
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+
     if (!id) {
       return {
         success: false,
@@ -426,22 +436,27 @@ export async function deleteDocument(id: string): Promise<ActionResponse> {
       };
     }
 
-    // Extract public ID from Cloudinary URL
-    const publicId = getCloudinaryPublicId(document.fileUrl);
+    // Extract key from R2 URL for deletion
+    // This has been integrated with the R2 storage service
+    // const key = extractKeyFromR2Url(document.fileUrl);
 
     // Delete from database first
     await db.syllabusDocument.delete({
       where: { id },
     });
 
-    // Attempt to delete from Cloudinary storage (Requirement 3.6)
-    if (publicId) {
+    // Attempt to delete from R2 storage (Requirement 3.6)
+    if (document.fileUrl) {
       try {
-        const resourceType = getResourceType(document.fileType);
-        await deleteFromCloudinary(publicId, resourceType);
+        // Extract key from R2 URL to delete from storage
+        const url = new URL(document.fileUrl);
+        const key = url.pathname.substring(1); // Remove leading slash
+        
+        // Delete from R2 storage
+        await r2StorageService.deleteFile(schoolId, key);
       } catch (storageError) {
         // Log the error but don't fail the operation since DB record is already deleted
-        console.error("Failed to delete file from storage:", storageError);
+        console.error("Failed to delete file from R2 storage:", storageError);
         // Return success with a warning
         return {
           success: true,

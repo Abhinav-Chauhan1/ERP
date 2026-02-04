@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Building2, 
-  CreditCard, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Building2,
+  CreditCard,
   Activity,
   DollarSign,
   UserCheck,
@@ -67,9 +67,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Revenue Metrics */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <DollarSign className="h-4 w-4 mr-2" />
             Revenue Metrics
           </CardTitle>
@@ -77,24 +77,24 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
         <CardContent className="space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Total Revenue</span>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white">
+              <span className="text-sm text-muted-foreground">Total Revenue</span>
+              <span className="text-lg font-semibold text-foreground">
                 {kpi?.totalRevenue ? formatCurrency(kpi.totalRevenue) : "₹0"}
               </span>
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Monthly Recurring</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">
+              <span className="text-sm text-muted-foreground">Monthly Recurring</span>
+              <span className="text-sm font-medium text-foreground">
                 {kpi?.monthlyRecurringRevenue ? formatCurrency(kpi.monthlyRecurringRevenue) : "₹0"}
               </span>
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">ARPU</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">
+              <span className="text-sm text-muted-foreground">ARPU</span>
+              <span className="text-sm font-medium text-foreground">
                 {kpi?.averageRevenuePerUser ? formatCurrency(kpi.averageRevenuePerUser) : "₹0"}
               </span>
             </div>
@@ -103,9 +103,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
       </Card>
 
       {/* School Metrics */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <Building2 className="h-4 w-4 mr-2" />
             School Metrics
           </CardTitle>
@@ -113,15 +113,15 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
         <CardContent className="space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Total Schools</span>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white">
+              <span className="text-sm text-muted-foreground">Total Schools</span>
+              <span className="text-lg font-semibold text-foreground">
                 {kpi?.totalSchools || 0}
               </span>
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Active</span>
+              <span className="text-sm text-muted-foreground">Active</span>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-green-600">
                   {kpi?.activeSchools || 0}
@@ -132,7 +132,7 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Suspended</span>
+              <span className="text-sm text-muted-foreground">Suspended</span>
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-red-600">
                   {kpi?.suspendedSchools || 0}
@@ -145,9 +145,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
       </Card>
 
       {/* User Metrics */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <Users className="h-4 w-4 mr-2" />
             User Metrics
           </CardTitle>
@@ -155,23 +155,23 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
         <CardContent className="space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Total Users</span>
-              <span className="text-lg font-semibold text-slate-900 dark:text-white">
+              <span className="text-sm text-muted-foreground">Total Users</span>
+              <span className="text-lg font-semibold text-foreground">
                 {kpi?.totalUsers?.toLocaleString() || "0"}
               </span>
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Students</span>
+              <span className="text-muted-foreground">Students</span>
               <span className="font-medium">{kpi?.totalStudents || 0}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Teachers</span>
+              <span className="text-muted-foreground">Teachers</span>
               <span className="font-medium">{kpi?.totalTeachers || 0}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Admins</span>
+              <span className="text-muted-foreground">Admins</span>
               <span className="font-medium">{kpi?.totalAdmins || 0}</span>
             </div>
           </div>
@@ -179,9 +179,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
       </Card>
 
       {/* Subscription Health */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <CreditCard className="h-4 w-4 mr-2" />
             Subscription Health
           </CardTitle>
@@ -189,7 +189,7 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
         <CardContent className="space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Active Subscriptions</span>
+              <span className="text-sm text-muted-foreground">Active Subscriptions</span>
               <span className="text-lg font-semibold text-green-600">
                 {billingMetrics?.activeSubscriptions || 0}
               </span>
@@ -197,11 +197,10 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Churn Rate</span>
+              <span className="text-sm text-muted-foreground">Churn Rate</span>
               <div className="flex items-center space-x-1">
-                <span className={`text-sm font-medium ${
-                  (kpi?.churnRate || 0) > 5 ? 'text-red-600' : 'text-green-600'
-                }`}>
+                <span className={`text-sm font-medium ${(kpi?.churnRate || 0) > 5 ? 'text-red-600' : 'text-green-600'
+                  }`}>
                   {kpi?.churnRate?.toFixed(1) || "0.0"}%
                 </span>
                 {(kpi?.churnRate || 0) > 5 ? (
@@ -214,7 +213,7 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Conversion Rate</span>
+              <span className="text-sm text-muted-foreground">Conversion Rate</span>
               <span className="text-sm font-medium text-blue-600">
                 {kpi?.conversionRate?.toFixed(1) || "0.0"}%
               </span>
@@ -224,9 +223,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
       </Card>
 
       {/* Plan Distribution */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <Activity className="h-4 w-4 mr-2" />
             Plan Distribution
           </CardTitle>
@@ -235,9 +234,9 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
           {analytics?.schoolDistribution?.map((plan) => (
             <div key={plan.plan} className="space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600 dark:text-slate-400">{plan.plan}</span>
+                <span className="text-sm text-muted-foreground">{plan.plan}</span>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">
+                  <span className="text-sm font-medium text-foreground">
                     {plan.count}
                   </span>
                   <Badge variant="outline" className="text-xs">
@@ -248,17 +247,17 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
               <Progress value={parseFloat(plan.percentage)} className="h-1" />
             </div>
           )) || (
-            <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-              No plan data available
-            </div>
-          )}
+              <div className="text-sm text-muted-foreground text-center py-4">
+                No plan data available
+              </div>
+            )}
         </CardContent>
       </Card>
 
       {/* System Status */}
-      <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
+      <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-[hsl(var(--border))]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
             <Activity className="h-4 w-4 mr-2" />
             System Status
           </CardTitle>
@@ -266,19 +265,19 @@ export function QuickStats({ analytics, billing }: QuickStatsProps) {
         <CardContent className="space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Uptime</span>
+              <span className="text-sm text-muted-foreground">Uptime</span>
               <span className="text-lg font-semibold text-green-600">99.97%</span>
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Avg Response</span>
-              <span className="text-sm font-medium text-slate-900 dark:text-white">145ms</span>
+              <span className="text-sm text-muted-foreground">Avg Response</span>
+              <span className="text-sm font-medium text-foreground">145ms</span>
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Status</span>
+              <span className="text-sm text-muted-foreground">Status</span>
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Healthy

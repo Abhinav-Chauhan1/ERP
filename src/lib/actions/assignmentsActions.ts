@@ -13,7 +13,7 @@ import {
   updateCalendarEventFromAssignment,
   deleteCalendarEventFromAssignment
 } from "../services/assignment-calendar-integration";
-import { uploadBufferToCloudinary } from "@/lib/cloudinary-server";
+import { uploadHandler } from "@/lib/services/upload-handler";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Get all assignments with optional filtering
@@ -295,13 +295,20 @@ export async function createAssignment(data: AssignmentFormValues, creatorId: st
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
 
-          // Upload to Cloudinary
-          const uploadResult = await uploadBufferToCloudinary(buffer, {
+          // Upload to R2 storage
+          const uploadResult = await uploadHandler.uploadFile(file, {
             folder: 'assignments',
-            resource_type: 'auto'
+            customMetadata: {
+              assignmentTitle: data.title,
+              uploadType: 'assignment-attachment'
+            }
           });
 
-          attachments.push(uploadResult.secure_url);
+          if (!uploadResult.success) {
+            throw new Error(`Failed to upload file ${file.name}: ${uploadResult.error}`);
+          }
+
+          attachments.push(uploadResult.url!);
         } catch (uploadError) {
           console.error(`Failed to upload file ${file.name}:`, uploadError);
           // Continue with other files or throw error? 
@@ -400,13 +407,20 @@ export async function updateAssignment(data: AssignmentUpdateValues, files?: Fil
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
 
-          // Upload to Cloudinary
-          const uploadResult = await uploadBufferToCloudinary(buffer, {
+          // Upload to R2 storage
+          const uploadResult = await uploadHandler.uploadFile(file, {
             folder: 'assignments',
-            resource_type: 'auto'
+            customMetadata: {
+              assignmentId: data.id,
+              uploadType: 'assignment-attachment-update'
+            }
           });
 
-          currentAttachments.push(uploadResult.secure_url);
+          if (!uploadResult.success) {
+            throw new Error(`Failed to upload file ${file.name}: ${uploadResult.error}`);
+          }
+
+          currentAttachments.push(uploadResult.url!);
         } catch (uploadError) {
           console.error(`Failed to upload file ${file.name}:`, uploadError);
         }

@@ -230,7 +230,7 @@ async function checkExternalServicesHealth(): Promise<ServiceHealth> {
   try {
     // In a real implementation, you would check external services like:
     // - Email service (SendGrid, etc.)
-    // - SMS service (Twilio, MSG91, etc.)
+    // - SMS service (MSG91, etc.)
     // - File storage (AWS S3, etc.)
     // - Payment gateway (Stripe, Razorpay, etc.)
     

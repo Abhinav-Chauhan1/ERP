@@ -68,19 +68,55 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateSettingsSchema.parse(body);
 
-    // Update each setting individually
+    // OPTIMIZED: Batch configuration updates instead of sequential updates
+    const settingsEntries = Object.entries(validatedData.settings);
+    
+    if (settingsEntries.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'No settings to update',
+        updatedSettings: [] 
+      });
+    }
+
+    // Process settings in parallel with controlled concurrency
+    const BATCH_SIZE = 5; // Process 5 settings concurrently
     const updatedSettings = [];
-    for (const [key, value] of Object.entries(validatedData.settings)) {
-      const setting = await configurationService.setConfiguration(
-        session.user.id,
-        {
-          key,
-          value,
-          category: validatedData.category as any,
-          description: `Setting for ${key}`
+    
+    for (let i = 0; i < settingsEntries.length; i += BATCH_SIZE) {
+      const batch = settingsEntries.slice(i, i + BATCH_SIZE);
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(async ([key, value]) => {
+        try {
+          return await configurationService.setConfiguration(
+            session.user.id,
+            {
+              key,
+              value,
+              category: validatedData.category as any,
+              description: `Setting for ${key}`
+            }
+          );
+        } catch (error) {
+          console.error(`Failed to update setting ${key}:`, error);
+          throw new Error(`Failed to update setting ${key}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-      );
-      updatedSettings.push(setting);
+      });
+      
+      // Wait for batch to complete
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      // Process results and collect successful updates
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          updatedSettings.push(result.value);
+        } else {
+          const [key] = batch[index];
+          console.error(`Failed to update setting ${key}:`, result.reason);
+          // Continue processing other settings instead of failing completely
+        }
+      });
     }
 
     await logAuditEvent({

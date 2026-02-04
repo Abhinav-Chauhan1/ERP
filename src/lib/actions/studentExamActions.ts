@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { autoGradeExam, calculateFinalScore } from "@/lib/utils/auto-grading";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 /**
  * Get available online exams for a student
@@ -133,6 +134,8 @@ export async function startExamAttempt(examId: string) {
       return { success: false, error: "You have already attempted this exam" };
     }
 
+    // Use the schoolId already obtained from requireSchoolAccess above
+
     // Create exam attempt
     const attempt = await prisma.examAttempt.create({
       data: {
@@ -140,6 +143,7 @@ export async function startExamAttempt(examId: string) {
         studentId: student.id,
         answers: {},
         status: "IN_PROGRESS",
+        schoolId, // Add required schoolId
       },
     });
 

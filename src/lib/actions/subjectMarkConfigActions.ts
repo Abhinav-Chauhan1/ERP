@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 export interface SubjectMarkConfigInput {
   examId: string;
@@ -157,6 +158,9 @@ export async function saveSubjectMarkConfig(input: SubjectMarkConfigInput): Prom
         },
       });
     } else {
+      // Get school context
+      const schoolId = await getRequiredSchoolId();
+
       // Create new configuration
       config = await db.subjectMarkConfig.create({
         data: {
@@ -166,6 +170,7 @@ export async function saveSubjectMarkConfig(input: SubjectMarkConfigInput): Prom
           practicalMaxMarks: input.practicalMaxMarks || null,
           internalMaxMarks: input.internalMaxMarks || null,
           totalMarks: input.totalMarks,
+          schoolId, // Add required schoolId
         },
         include: {
           subject: {

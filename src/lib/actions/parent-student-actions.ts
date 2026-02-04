@@ -11,7 +11,7 @@ const associationSchema = z.object({
   isPrimary: z.boolean().default(false)
 });
 
-export async function associateStudentWithParent(formData: FormData) {
+export async function associateStudentWithParent(formData: FormData, schoolId: string) {
   const parentId = formData.get('parentId') as string;
   const studentId = formData.get('studentId') as string;
   const isPrimary = formData.get('isPrimary') === 'true';
@@ -72,7 +72,8 @@ export async function associateStudentWithParent(formData: FormData) {
       data: {
         studentId,
         parentId,
-        isPrimary
+        isPrimary,
+        schoolId,
       }
     });
     

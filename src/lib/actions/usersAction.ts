@@ -14,6 +14,7 @@ import { sanitizeText, sanitizeEmail, sanitizePhoneNumber } from "@/lib/utils/in
 import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
 import { hasPermission } from "@/lib/utils/permissions";
+import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -36,28 +37,44 @@ async function checkPermission(resource: string, action: PermissionAction, error
 const createBaseUser = async (userData: {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
   phone?: string;
   avatar?: string;
   role: UserRole;
   password?: string;
 }) => {
-  // Generate default password if not provided: {firstName}@123
-  const passwordToHash = userData.password || `${userData.firstName.toLowerCase()}@123`;
-  // Hash password using Web Crypto API (PBKDF2)
-  const hashedPassword = await hashPassword(passwordToHash);
+  // Only generate password if provided or if role requires it (admin/teacher)
+  // Students and parents use phone-only auth (OTP)
+  let hashedPassword: string | undefined;
+  if (userData.password) {
+    hashedPassword = await hashPassword(userData.password);
+  } else if (userData.role === UserRole.ADMIN || userData.role === UserRole.TEACHER) {
+    // Generate default password for admin/teacher: {firstName}@123
+    const defaultPassword = `${userData.firstName.toLowerCase()}@123`;
+    hashedPassword = await hashPassword(defaultPassword);
+  }
+  // For students/parents, passwordHash remains undefined (phone/OTP auth)
 
   // Sanitize inputs
-  const sanitizedData = {
+  const sanitizedData: any = {
+    name: `${userData.firstName} ${userData.lastName}`,
     firstName: sanitizeText(userData.firstName),
     lastName: sanitizeText(userData.lastName),
-    email: sanitizeEmail(userData.email),
-    phone: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
+    mobile: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined, // Use 'mobile' not 'phone'
     avatar: userData.avatar,
     role: userData.role,
-    password: hashedPassword,
     emailVerified: new Date(), // Admin-created users are pre-verified
   };
+
+  // Only include email if provided
+  if (userData.email) {
+    sanitizedData.email = sanitizeEmail(userData.email);
+  }
+
+  // Only include passwordHash if generated
+  if (hashedPassword) {
+    sanitizedData.passwordHash = hashedPassword;
+  }
 
   return await db.user.create({
     data: sanitizedData
@@ -69,6 +86,12 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
   try {
     // Permission check: require USER:CREATE
     await checkPermission('USER', 'CREATE', 'You do not have permission to create administrators');
+
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.schoolId && !context?.isSuperAdmin) {
+      throw new Error('School context required');
+    }
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
@@ -88,7 +111,17 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
         data: {
           userId: user.id,
           position: data.position,
+          schoolId: context.schoolId!, // Add required schoolId
+        }
+      });
 
+      // Create UserSchool relationship (CRITICAL for authentication)
+      await tx.userSchool.create({
+        data: {
+          userId: user.id,
+          schoolId: context.schoolId!,
+          role: UserRole.ADMIN,
+          isActive: true,
         }
       });
 
@@ -120,6 +153,12 @@ export async function createTeacher(data: CreateTeacherFormData) {
     // Permission check: require TEACHER:CREATE
     await checkPermission('TEACHER', 'CREATE', 'You do not have permission to create teachers');
 
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.schoolId && !context?.isSuperAdmin) {
+      throw new Error('School context required');
+    }
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user
@@ -141,6 +180,17 @@ export async function createTeacher(data: CreateTeacherFormData) {
           qualification: data.qualification,
           joinDate: data.joinDate,
           salary: data.salary,
+          schoolId: context.schoolId!, // Add required schoolId
+        }
+      });
+
+      // Create UserSchool relationship (CRITICAL for authentication)
+      await tx.userSchool.create({
+        data: {
+          userId: user.id,
+          schoolId: context.schoolId!,
+          role: UserRole.TEACHER,
+          isActive: true,
         }
       });
 
@@ -173,23 +223,30 @@ export async function createStudent(data: CreateStudentFormData) {
     // Permission check: require STUDENT:CREATE
     await checkPermission('STUDENT', 'CREATE', 'You do not have permission to create students');
 
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.schoolId && !context?.isSuperAdmin) {
+      throw new Error('School context required');
+    }
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
-      // Create the base user
+      // Create the base user (email optional, no password for students)
       const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email,
+        email: data.email || undefined,
         phone: data.phone,
         avatar: data.avatar,
         role: UserRole.STUDENT,
-        password: data.password
+        // No password - students use phone/OTP authentication
       });
 
       // Create the student profile
       const student = await tx.student.create({
         data: {
           userId: user.id,
+          schoolId: context.schoolId!, // Add required schoolId
           admissionId: data.admissionId,
           admissionDate: data.admissionDate,
           rollNumber: data.rollNumber,
@@ -217,22 +274,30 @@ export async function createStudent(data: CreateStudentFormData) {
           tcNumber: data.tcNumber,
           medicalConditions: data.medicalConditions,
           specialNeeds: data.specialNeeds,
-          // Parent/Guardian details
+          // Parent/Guardian details (mobile-only authentication)
           fatherName: data.fatherName,
           fatherOccupation: data.fatherOccupation,
           fatherPhone: data.fatherPhone,
-          fatherEmail: data.fatherEmail || undefined,
           fatherAadhaar: data.fatherAadhaar,
           motherName: data.motherName,
           motherOccupation: data.motherOccupation,
           motherPhone: data.motherPhone,
-          motherEmail: data.motherEmail || undefined,
           motherAadhaar: data.motherAadhaar,
           guardianName: data.guardianName,
           guardianRelation: data.guardianRelation,
           guardianPhone: data.guardianPhone,
-          guardianEmail: data.guardianEmail || undefined,
           guardianAadhaar: data.guardianAadhaar,
+        }
+      });
+
+      // Create UserSchool relationship (CRITICAL for authentication)
+      // Without this, students cannot login because auth checks userSchools
+      await tx.userSchool.create({
+        data: {
+          userId: user.id,
+          schoolId: context.schoolId!,
+          role: UserRole.STUDENT,
+          isActive: true,
         }
       });
 
@@ -266,26 +331,43 @@ export async function createParent(data: CreateParentFormData) {
     // Permission check: require PARENT:CREATE
     await checkPermission('PARENT', 'CREATE', 'You do not have permission to create parents');
 
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.schoolId && !context?.isSuperAdmin) {
+      throw new Error('School context required');
+    }
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
-      // Create the base user
+      // Create the base user (email optional, no password for parents)
       const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email,
+        email: data.email || undefined,
         phone: data.phone,
         avatar: data.avatar,
         role: UserRole.PARENT,
-        password: data.password
+        // No password - parents use phone/OTP authentication
       });
 
       // Create the parent profile
       const parent = await tx.parent.create({
         data: {
           userId: user.id,
+          schoolId: context.schoolId!, // Add required schoolId
           occupation: data.occupation,
           alternatePhone: data.alternatePhone,
           relation: data.relation,
+        }
+      });
+
+      // Create UserSchool relationship (CRITICAL for authentication)
+      await tx.userSchool.create({
+        data: {
+          userId: user.id,
+          schoolId: context.schoolId!,
+          role: UserRole.PARENT,
+          isActive: true,
         }
       });
 
@@ -315,11 +397,18 @@ export async function createParent(data: CreateParentFormData) {
 // Associate a student with a parent
 export async function associateStudentWithParent(studentId: string, parentId: string, isPrimary: boolean = false) {
   try {
+    // Get current school context
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.schoolId && !context?.isSuperAdmin) {
+      throw new Error('School context required');
+    }
+
     const studentParent = await db.studentParent.create({
       data: {
         studentId,
         parentId,
         isPrimary,
+        schoolId: context.schoolId!, // Add required schoolId
       }
     });
 
@@ -510,21 +599,18 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
           tcNumber: data.tcNumber,
           medicalConditions: data.medicalConditions,
           specialNeeds: data.specialNeeds,
-          // Parent/Guardian details
+          // Parent/Guardian details (mobile-only authentication)
           fatherName: data.fatherName,
           fatherOccupation: data.fatherOccupation,
           fatherPhone: data.fatherPhone,
-          fatherEmail: data.fatherEmail || undefined,
           fatherAadhaar: data.fatherAadhaar,
           motherName: data.motherName,
           motherOccupation: data.motherOccupation,
           motherPhone: data.motherPhone,
-          motherEmail: data.motherEmail || undefined,
           motherAadhaar: data.motherAadhaar,
           guardianName: data.guardianName,
           guardianRelation: data.guardianRelation,
           guardianPhone: data.guardianPhone,
-          guardianEmail: data.guardianEmail || undefined,
           guardianAadhaar: data.guardianAadhaar,
         }
       });
@@ -619,7 +705,7 @@ export async function syncClerkUser(clerkId: string, userData: {
       // Create new user if not found by email
       return await db.user.create({
         data: {
-          //   clerkId, // Eliminating clerkId reliance
+          name: `${userData.firstName} ${userData.lastName}`, // Add required name field
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,
@@ -730,7 +816,7 @@ export async function updateUserPassword(userId: string, newPassword: string) {
     await db.user.update({
       where: { id: userId },
       data: {
-        password: hashedPassword
+        passwordHash: hashedPassword // Use passwordHash instead of password
       }
     });
 

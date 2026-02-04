@@ -141,23 +141,41 @@ export function SetupWizardManagement({ school, onUpdate }: SetupWizardManagemen
   const handleLaunchSetupWizard = async () => {
     setIsLoading(true);
     try {
+      console.log("🚀 Launching setup wizard for school:", school.id);
+      
       const response = await fetch(`/api/super-admin/schools/${school.id}/onboarding`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
+        },
         body: JSON.stringify({ action: "launch" }),
       });
       
+      console.log("📡 API Response status:", response.status);
+      console.log("📡 API Response headers:", Object.fromEntries(response.headers.entries()));
+      
       const result = await response.json();
+      console.log("📋 API Response data:", result);
       
       if (result.success) {
         toast.success(result.data?.message || "Setup wizard launched successfully");
         await loadOnboardingStatus();
         onUpdate?.();
       } else {
+        console.error("❌ Setup wizard launch failed:", result);
         toast.error(result.error || "Failed to launch setup wizard");
+        
+        // Show more detailed error information
+        if (result.error?.includes("Super admin access required")) {
+          toast.error("Authentication issue: Please log out and log back in as super admin");
+        } else if (result.error?.includes("School not found")) {
+          toast.error("School not found. Please refresh the page and try again.");
+        }
       }
     } catch (error) {
-      toast.error("Failed to launch setup wizard");
+      console.error("🔥 Setup wizard launch error:", error);
+      toast.error("Network error: Failed to launch setup wizard");
     } finally {
       setIsLoading(false);
     }

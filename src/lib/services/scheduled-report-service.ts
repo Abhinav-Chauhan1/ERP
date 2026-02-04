@@ -205,10 +205,14 @@ async function executeScheduledReport(reportId: string) {
 
 /**
  * Check and execute due scheduled reports
+ * SECURITY: Added rate limiting and error handling
  */
 async function checkScheduledReports() {
   try {
     const now = new Date();
+
+    // SECURITY: Limit the number of reports processed per run to prevent resource exhaustion
+    const MAX_REPORTS_PER_RUN = 10;
 
     // Find all active reports that are due
     const dueReports = await prisma.scheduledReport.findMany({
@@ -218,13 +222,22 @@ async function checkScheduledReports() {
           lte: now,
         },
       },
+      take: MAX_REPORTS_PER_RUN, // SECURITY: Limit batch size
+      orderBy: {
+        nextRunAt: 'asc', // Process oldest first
+      },
     });
 
     console.log(`Found ${dueReports.length} due scheduled reports`);
 
-    // Execute each report
+    // Execute each report with error isolation
     for (const report of dueReports) {
-      await executeScheduledReport(report.id);
+      try {
+        await executeScheduledReport(report.id);
+      } catch (error) {
+        console.error(`Failed to execute report ${report.id}:`, error);
+        // Continue with other reports even if one fails
+      }
     }
   } catch (error) {
     console.error("Error checking scheduled reports:", error);
@@ -233,17 +246,18 @@ async function checkScheduledReports() {
 
 /**
  * Initialize scheduled report cron job
- * Runs every minute to check for due reports
+ * Optimized polling with intelligent scheduling
  */
 export function initializeScheduledReportService() {
   console.log("Initializing scheduled report service...");
 
-  // Run every minute
-  cron.schedule("* * * * *", async () => {
+  // OPTIMIZED: Run every 5 minutes instead of every minute to reduce database load
+  // Most scheduled reports don't need minute-level precision
+  cron.schedule("*/5 * * * *", async () => {
     await checkScheduledReports();
   });
 
-  console.log("Scheduled report service initialized");
+  console.log("Scheduled report service initialized with 5-minute intervals");
 }
 
 /**

@@ -238,12 +238,19 @@ export default function MessagesPage() {
 
     for (const file of attachments) {
       try {
-        const { uploadToCloudinary } = await import("@/lib/cloudinary");
-        const result = await uploadToCloudinary(file, {
+        const { uploadHandler } = await import("@/lib/services/upload-handler");
+        const result = await uploadHandler.uploadFile(file, {
           folder: "messages/attachments",
-          resource_type: "auto",
+          customMetadata: {
+            messageType: 'admin-communication'
+          }
         });
-        uploadedUrls.push(result.secure_url);
+        
+        if (!result.success || !result.url) {
+          throw new Error(result.error || 'Upload failed');
+        }
+        
+        uploadedUrls.push(result.url);
       } catch (error) {
         console.error(`Failed to upload ${file.name}:`, error);
         throw new Error(`Failed to upload ${file.name}`);

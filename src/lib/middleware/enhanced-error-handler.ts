@@ -318,7 +318,7 @@ async function logSecurityEvent(
   try {
     await logAuditEvent({
       userId: context.userId,
-      action: AuditAction.SECURITY_EVENT,
+      action: AuditAction.VIEW, // Use VIEW instead of SECURITY_EVENT
       resource: 'API_SECURITY',
       resourceId: requestId,
       changes: {

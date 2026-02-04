@@ -370,6 +370,7 @@ export async function logError(params: LogErrorParams): Promise<ErrorLogEntry> {
 export async function logErrorAuto(
   error: Error | string,
   context?: {
+    schoolId?: string;
     channel?: CommunicationChannel;
     errorCode?: string;
     recipient?: string;
@@ -390,6 +391,7 @@ export async function logErrorAuto(
     message: errorMessage,
     category,
     severity,
+    schoolId: context?.schoolId || 'unknown',
     channel: context?.channel,
     errorCode,
     errorDetails: typeof error === 'string' ? undefined : error.toString(),
@@ -629,6 +631,7 @@ interface TriggerAdminAlertParams {
   type: ErrorCategory | AlertType;
   severity: ErrorSeverity;
   message: string;
+  schoolId?: string;
   errorCode?: string;
   errorDetails?: string;
   channel?: CommunicationChannel;
@@ -645,7 +648,7 @@ interface TriggerAdminAlertParams {
  */
 async function triggerAdminAlert(params: TriggerAdminAlertParams): Promise<void> {
   try {
-    const { type, severity, message, errorCode, errorDetails, channel } = params;
+    const { type, severity, message, schoolId, errorCode, errorDetails, channel } = params;
 
     // Get all administrators
     const admins = await db.user.findMany({
@@ -684,7 +687,7 @@ Please review and resolve this issue as soon as possible.
           message: alertMessage,
           type: 'SYSTEM',
           isRead: false,
-          schoolId: errorLog.schoolId,
+          schoolId: schoolId || 'system', // Use 'system' as fallback for admin notifications
         },
       })
     );

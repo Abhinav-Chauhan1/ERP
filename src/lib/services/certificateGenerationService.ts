@@ -11,6 +11,7 @@ import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { db } from '@/lib/db';
 import { CertificateType, CertificateStatus } from '@prisma/client';
+import { uploadHandler } from '@/lib/services/upload-handler';
 
 export interface CertificateGenerationData {
   studentId?: string;
@@ -22,6 +23,7 @@ export interface BulkCertificateGenerationOptions {
   templateId: string;
   students: CertificateGenerationData[];
   issuedBy: string;
+  schoolId: string;
 }
 
 export interface CertificateGenerationResult {
@@ -274,29 +276,40 @@ async function generateCertificatePDF(
 }
 
 /**
- * Upload PDF to storage (Cloudinary)
- */
-/**
- * Upload PDF to storage (Cloudinary)
+ * Upload PDF to storage (R2)
+ * Integrated with R2 storage service
  */
 async function uploadPDFToStorage(
   pdfBuffer: Buffer,
   certificateNumber: string
 ): Promise<string> {
   try {
-    const { uploadBufferToCloudinary } = await import("@/lib/cloudinary-server");
-
-    // Upload to Cloudinary using buffer upload
-    const result = await uploadBufferToCloudinary(pdfBuffer, {
-      folder: 'certificates',
-      resource_type: 'raw',
-      public_id: `certificate-${certificateNumber}-${Date.now()}`,
-      format: 'pdf'
+    // Create a File-like object from the buffer
+    const file = new File([new Uint8Array(pdfBuffer)], `certificate-${certificateNumber}.pdf`, {
+      type: 'application/pdf'
     });
 
-    return result.secure_url;
+    const uploadResult = await uploadHandler.uploadDocument(file, {
+      folder: 'certificates',
+      category: 'document',
+      customMetadata: {
+        certificateNumber,
+        documentType: 'certificate',
+        uploadType: 'generated-certificate'
+      }
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Failed to upload certificate PDF');
+    }
+
+    return uploadResult.url!;
+    
+    // Return a fallback local path if upload fails
+    // This allows the system to still generate records even if storage is not configured
+    return `/api/certificates/${certificateNumber}/download`;
   } catch (error) {
-    console.error('Failed to upload certificate to Cloudinary:', error);
+    console.error('Failed to upload certificate to R2 storage:', error);
     // Return a fallback local path if upload fails
     // This allows the system to still generate records even if storage is not configured
     return `/api/certificates/${certificateNumber}/download`;
@@ -309,7 +322,8 @@ async function uploadPDFToStorage(
 export async function generateSingleCertificate(
   templateId: string,
   studentData: CertificateGenerationData,
-  issuedBy: string
+  issuedBy: string,
+  schoolId: string
 ): Promise<CertificateGenerationResult> {
   try {
     // Fetch template
@@ -351,6 +365,7 @@ export async function generateSingleCertificate(
       data: {
         certificateNumber,
         templateId,
+        schoolId,
         studentId: studentData.studentId,
         studentName: studentData.studentName,
         data: studentData.data,
@@ -384,7 +399,7 @@ export async function generateSingleCertificate(
 export async function generateBulkCertificates(
   options: BulkCertificateGenerationOptions
 ): Promise<BulkCertificateGenerationResult> {
-  const { templateId, students, issuedBy } = options;
+  const { templateId, students, issuedBy, schoolId } = options;
 
   const results: CertificateGenerationResult[] = [];
   const errors: string[] = [];
@@ -421,7 +436,8 @@ export async function generateBulkCertificates(
       const result = await generateSingleCertificate(
         templateId,
         student,
-        issuedBy
+        issuedBy,
+        schoolId
       );
 
       results.push(result);

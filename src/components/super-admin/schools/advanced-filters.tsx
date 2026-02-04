@@ -23,7 +23,6 @@ export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
     teacherCountMin: 0,
     teacherCountMax: 200,
     onboardedOnly: false,
-    hasActiveSubscription: false,
     paymentStatus: "ALL",
     usageThreshold: 50, // percentage
     lastLoginDays: 30,
@@ -46,7 +45,6 @@ export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
       teacherCountMin: 0,
       teacherCountMax: 200,
       onboardedOnly: false,
-      hasActiveSubscription: false,
       paymentStatus: "ALL",
       usageThreshold: 50,
       lastLoginDays: 30,
@@ -173,17 +171,6 @@ export function AdvancedFilters({ onApplyFilters }: AdvancedFiltersProps) {
               />
               <Label htmlFor="onboarded" className="text-sm">
                 Fully onboarded only
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="activeSubscription"
-                checked={filters.hasActiveSubscription}
-                onCheckedChange={(checked) => handleFilterChange('hasActiveSubscription', checked)}
-              />
-              <Label htmlFor="activeSubscription" className="text-sm">
-                Has active subscription
               </Label>
             </div>
           </div>

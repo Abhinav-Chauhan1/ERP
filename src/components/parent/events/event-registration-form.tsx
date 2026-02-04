@@ -35,6 +35,7 @@ type RegistrationFormValues = z.infer<typeof registrationSchema>;
 interface EventRegistrationFormProps {
   eventId: string;
   eventTitle: string;
+  schoolId: string;
   children: {
     id: string;
     user: {
@@ -49,6 +50,7 @@ interface EventRegistrationFormProps {
 export function EventRegistrationForm({
   eventId,
   eventTitle,
+  schoolId,
   children,
   onSuccess,
   onCancel,
@@ -66,7 +68,7 @@ export function EventRegistrationForm({
   const onSubmit = async (data: RegistrationFormValues) => {
     setIsSubmitting(true);
     try {
-      const result = await registerForEvent(data);
+      const result = await registerForEvent(data, schoolId);
       
       if (result.success) {
         toast.success(result.message || "Successfully registered for the event");

@@ -155,30 +155,30 @@ This specification defines the requirements for migrating the Next.js school ERP
 
 #### Acceptance Criteria
 
-1. THE System SHALL enforce per-school storage quotas based on subscription plans
+1. THE System SHALL enforce per-school storage quotas based on existing subscription plans (Starter: 5GB, Growth: 25GB, Enterprise: 100GB)
 2. WHEN a school approaches their storage limit, THE System SHALL send warnings to school administrators
 3. WHEN a school exceeds their storage quota, THE System SHALL prevent new uploads and display quota exceeded messages
-4. THE Super_Admin_Dashboard SHALL display storage usage statistics for all schools
-5. THE System SHALL allow super admins to adjust storage limits for individual schools
-6. THE System SHALL track storage usage per school in real-time
+4. THE Super_Admin_Dashboard SHALL display storage usage statistics for all schools using existing UsageCounter model
+5. THE System SHALL allow super admins to adjust storage limits for individual schools via storageLimitMB field
+6. THE System SHALL track storage usage per school in real-time using existing storageUsedMB field
 7. THE System SHALL provide storage analytics including usage trends and projections
-8. THE System SHALL support different storage tiers based on subscription plans (Basic: 1GB, Pro: 5GB, Enterprise: 25GB)
-9. WHEN schools upgrade/downgrade plans, THE System SHALL automatically adjust storage quotas
+8. THE System SHALL use existing subscription plan features.storageGB for plan-based limits
+9. WHEN schools upgrade/downgrade plans, THE System SHALL automatically adjust storageLimitMB based on new plan
 10. THE System SHALL implement soft limits (warnings) and hard limits (upload blocking)
 
-### Requirement 11: Multi-Tenant Storage Quota Management
+### Requirement 12: School-Isolated Storage Architecture
 
-**User Story:** As a super admin, I want to control storage limits for each school, so that I can manage resource allocation and prevent abuse in the multi-tenant SaaS system.
+**User Story:** As a super admin, I want each school to have completely isolated storage folders in R2, so that data is properly segregated and schools cannot access each other's files.
 
 #### Acceptance Criteria
 
-1. THE System SHALL enforce per-school storage quotas based on subscription plans
-2. WHEN a school approaches their storage limit, THE System SHALL send warnings to school administrators
-3. WHEN a school exceeds their storage quota, THE System SHALL prevent new uploads and display quota exceeded messages
-4. THE Super_Admin_Dashboard SHALL display storage usage statistics for all schools
-5. THE System SHALL allow super admins to adjust storage limits for individual schools
-6. THE System SHALL track storage usage per school in real-time
-7. THE System SHALL provide storage analytics including usage trends and projections
-8. THE System SHALL support different storage tiers based on subscription plans (Basic: 1GB, Pro: 5GB, Enterprise: 25GB)
-9. WHEN schools upgrade/downgrade plans, THE System SHALL automatically adjust storage quotas
-10. THE System SHALL implement soft limits (warnings) and hard limits (upload blocking)
+1. THE R2_Storage SHALL create separate folder structures for each school using schoolId as the root folder
+2. THE System SHALL organize files using the pattern: `schools/{schoolId}/{category}/{filename}`
+3. THE Upload_Handler SHALL automatically route files to the correct school folder based on user context
+4. THE System SHALL prevent cross-school file access through folder-level isolation
+5. THE File_Manager SHALL only list and access files within the authenticated school's folder
+6. THE System SHALL maintain existing folder categories within each school's root (events, students, documents, etc.)
+7. THE CDN_Service SHALL serve files with school-specific URL patterns for better organization
+8. THE Storage_Quota_Service SHALL calculate usage per school folder for accurate quota tracking
+9. THE System SHALL support school data export by copying entire school folder contents
+10. THE System SHALL enable school deletion by removing the entire school folder structure

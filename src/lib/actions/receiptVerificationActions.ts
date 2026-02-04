@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { ReceiptStatus, PaymentStatus, PaymentSource } from "@prisma/client";
 import { sanitizeRejectionReason } from "@/lib/utils/input-sanitization";
 import { rateLimitVerification } from "@/lib/utils/receipt-rate-limit";
+import { getRequiredSchoolId } from "@/lib/utils/school-context-helper";
 import {
   logReceiptVerification,
   logReceiptRejection,
@@ -35,10 +36,22 @@ export async function getPendingReceipts(filters?: {
     // Find user in database
     const user = await db.user.findFirst({
       where: { id: userId },
+      include: {
+        userSchools: {
+          select: { schoolId: true },
+          take: 1
+        }
+      }
     });
 
     if (!user) {
       return { success: false, error: "User not found" };
+    }
+
+    // Get schoolId from user's school associations
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return { success: false, error: "No school association found" };
     }
 
     // Check if user is admin
@@ -52,6 +65,7 @@ export async function getPendingReceipts(filters?: {
     // Build where clause
     const where: any = {
       status: ReceiptStatus.PENDING_VERIFICATION,
+      schoolId: schoolId, // Add school isolation
     };
 
     if (filters?.dateFrom || filters?.dateTo) {
@@ -140,10 +154,22 @@ export async function getVerificationStats() {
     // Find user in database
     const user = await db.user.findFirst({
       where: { id: userId },
+      include: {
+        userSchools: {
+          select: { schoolId: true },
+          take: 1
+        }
+      }
     });
 
     if (!user) {
       return { success: false, error: "User not found" };
+    }
+
+    // Get schoolId from user's school associations
+    const schoolId = user.userSchools[0]?.schoolId;
+    if (!schoolId) {
+      return { success: false, error: "No school association found" };
     }
 
     // Check if user is admin
@@ -158,16 +184,16 @@ export async function getVerificationStats() {
     const [pendingCount, verifiedCount, rejectedCount, pendingReceipts] =
       await Promise.all([
         db.paymentReceipt.count({
-          where: { status: ReceiptStatus.PENDING_VERIFICATION },
+          where: { status: ReceiptStatus.PENDING_VERIFICATION, schoolId: schoolId },
         }),
         db.paymentReceipt.count({
-          where: { status: ReceiptStatus.VERIFIED },
+          where: { status: ReceiptStatus.VERIFIED, schoolId: schoolId },
         }),
         db.paymentReceipt.count({
-          where: { status: ReceiptStatus.REJECTED },
+          where: { status: ReceiptStatus.REJECTED, schoolId: schoolId },
         }),
         db.paymentReceipt.findMany({
-          where: { status: ReceiptStatus.PENDING_VERIFICATION },
+          where: { status: ReceiptStatus.PENDING_VERIFICATION, schoolId: schoolId },
           select: {
             amount: true,
           },
@@ -238,6 +264,9 @@ export async function verifyReceipt(receiptId: string) {
       };
     }
 
+    // Get required school context
+    const schoolId = await getRequiredSchoolId();
+
     // Use transaction for atomicity
     const result = await db.$transaction(async (tx) => {
       // Fetch receipt with related data
@@ -286,6 +315,7 @@ export async function verifyReceipt(receiptId: string) {
         data: {
           studentId: receipt.studentId,
           feeStructureId: receipt.feeStructureId,
+          schoolId: schoolId, // Add required schoolId
           amount: receipt.amount,
           paidAmount: receipt.amount,
           balance: 0,
@@ -368,6 +398,7 @@ export async function verifyReceipt(receiptId: string) {
       );
 
       const notificationData = {
+        schoolId: schoolId, // Add required schoolId
         studentName: `${result.receipt.student.user.firstName} ${result.receipt.student.user.lastName}`,
         receiptReference: result.receipt.referenceNumber,
         feeStructureName: result.receipt.feeStructure.name,
@@ -381,11 +412,13 @@ export async function verifyReceipt(receiptId: string) {
       };
 
       // Send notification to student
-      await sendVerificationSuccessNotification(
-        result.receipt.student.user.id,
-        result.receipt.student.user.email,
-        notificationData
-      );
+      if (result.receipt.student.user.email) {
+        await sendVerificationSuccessNotification(
+          result.receipt.student.user.id,
+          result.receipt.student.user.email,
+          notificationData
+        );
+      }
 
       // Send notification to parent if applicable
       await notifyParentIfApplicable(
@@ -484,6 +517,9 @@ export async function rejectReceipt(
       };
     }
 
+    // Get required school context
+    const schoolId = await getRequiredSchoolId();
+
     // Fetch receipt with related data
     const receipt = await db.paymentReceipt.findUnique({
       where: { id: receiptId },
@@ -567,6 +603,7 @@ export async function rejectReceipt(
       );
 
       const notificationData = {
+        schoolId: schoolId, // Add required schoolId
         studentName: `${updatedReceipt.student.user.firstName} ${updatedReceipt.student.user.lastName}`,
         receiptReference: updatedReceipt.referenceNumber,
         feeStructureName: updatedReceipt.feeStructure.name,
@@ -580,11 +617,13 @@ export async function rejectReceipt(
       };
 
       // Send notification to student
-      await sendRejectionNotification(
-        updatedReceipt.student.user.id,
-        updatedReceipt.student.user.email,
-        notificationData
-      );
+      if (updatedReceipt.student.user.email) {
+        await sendRejectionNotification(
+          updatedReceipt.student.user.id,
+          updatedReceipt.student.user.email,
+          notificationData
+        );
+      }
 
       // Send notification to parent if applicable
       await notifyParentIfApplicable(
@@ -890,6 +929,9 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
       };
     }
 
+    // Get required school context
+    const schoolId = await getRequiredSchoolId();
+
     const results = {
       successful: [] as string[],
       failed: [] as { id: string; error: string }[],
@@ -937,6 +979,7 @@ export async function bulkVerifyReceipts(receiptIds: string[]) {
             data: {
               studentId: receipt.studentId,
               feeStructureId: receipt.feeStructureId,
+              schoolId: schoolId, // Add required schoolId
               amount: receipt.amount,
               paidAmount: receipt.amount,
               paymentDate: receipt.paymentDate,

@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import { getCloudinaryThumb } from "@/lib/cloudinary";
+import { generateCdnUrl } from "@/lib/config/r2-config";
 
 interface PendingReceipt {
   id: string;

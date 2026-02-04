@@ -1,8 +1,21 @@
 /**
  * Image Optimization Utilities
  * 
- * Helper functions for working with Next.js Image component and Cloudinary
+ * Production-ready helper functions for working with Next.js Image component and R2 storage
  * Supports Requirements 16.1, 16.2, 16.3, 16.4, 16.5
+ * 
+ * Features:
+ * - Type-safe image URL generation with validation
+ * - Responsive image sizing with breakpoint support
+ * - Error handling and fallback mechanisms
+ * - Performance optimization presets
+ * - R2 CDN integration with transformation parameters
+ * - Accessibility compliance (alt text validation)
+ * - Image preloading utilities
+ * - Comprehensive dimension and quality validation
+ * 
+ * @version 2.0.0
+ * @author ERP System
  */
 
 /**
@@ -45,41 +58,100 @@ export function generateSizes(breakpoints: {
 }
 
 /**
- * Get Cloudinary URL with Next.js optimization
- * @param publicId Cloudinary public ID
- * @param options Transformation options
- * @returns Full Cloudinary URL
+ * R2 CDN transformation options
  */
-export function getCloudinaryUrl(
-  publicId: string,
-  options?: {
-    width?: number;
-    height?: number;
-    crop?: 'fill' | 'fit' | 'scale' | 'crop' | 'thumb';
-    quality?: number;
-    format?: 'auto' | 'webp' | 'avif' | 'jpg' | 'png';
-  }
+export interface R2TransformationOptions {
+  width?: number;
+  height?: number;
+  crop?: 'fill' | 'fit' | 'scale' | 'crop' | 'thumb';
+  fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside';
+  quality?: number;
+  format?: 'auto' | 'webp' | 'avif' | 'jpg' | 'png';
+  blur?: number;
+  rotate?: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  auto?: string | string[];
+  dpr?: number;
+}
+
+/**
+ * Get R2 CDN URL with Next.js optimization
+ * @param key R2 object key
+ * @param options Transformation options
+ * @returns Full R2 CDN URL
+ * Integrated with R2 CDN URL generation
+ */
+export function getR2Url(
+  key: string,
+  options?: R2TransformationOptions
 ): string {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  // Validate key parameter
+  if (!key || typeof key !== 'string') {
+    throw new Error('Invalid key parameter: must be a non-empty string');
+  }
+
+  const customDomain = process.env.R2_CUSTOM_DOMAIN;
   
-  if (!cloudName) {
-    console.warn('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME not configured');
-    return publicId;
+  if (!customDomain) {
+    console.warn('R2_CUSTOM_DOMAIN not configured, returning key as fallback');
+    return key;
   }
   
-  const transformations: string[] = [];
+  // Implement R2 CDN URL generation with transformations
+  const params = new URLSearchParams();
   
-  if (options?.width) transformations.push(`w_${options.width}`);
-  if (options?.height) transformations.push(`h_${options.height}`);
-  if (options?.crop) transformations.push(`c_${options.crop}`);
-  if (options?.quality) transformations.push(`q_${options.quality}`);
-  if (options?.format) transformations.push(`f_${options.format}`);
+  if (!options) {
+    // No transformations, return basic URL
+    const baseUrl = `https://${customDomain}/${key.replace(/^\/+/, '')}`; // Remove leading slashes
+    return baseUrl;
+  }
   
-  const transformString = transformations.length > 0 
-    ? `${transformations.join(',')}/` 
-    : '';
+  // Add transformation parameters
+  if (options.width) params.set('w', options.width.toString());
+  if (options.height) params.set('h', options.height.toString());
+  if (options.quality) params.set('q', options.quality.toString());
+  if (options.format) params.set('f', options.format);
   
-  return `https://res.cloudinary.com/${cloudName}/image/upload/${transformString}${publicId}`;
+  // Add fit parameter for resizing behavior
+  if (options.fit) {
+    params.set('fit', options.fit);
+  } else if (options.width && options.height) {
+    params.set('fit', 'cover'); // Default to cover when both dimensions specified
+  }
+  
+  // Add blur effect if specified
+  if (options.blur) params.set('blur', options.blur.toString());
+  
+  // Add rotation if specified
+  if (options.rotate) params.set('r', options.rotate.toString());
+  
+  // Add brightness adjustment if specified
+  if (options.brightness) params.set('brightness', options.brightness.toString());
+  
+  // Add contrast adjustment if specified
+  if (options.contrast) params.set('contrast', options.contrast.toString());
+  
+  // Add saturation adjustment if specified
+  if (options.saturation) params.set('saturation', options.saturation.toString());
+  
+  // Add auto optimization flags
+  if (options.auto) {
+    const autoFlags = Array.isArray(options.auto) ? options.auto : [options.auto];
+    params.set('auto', autoFlags.join(','));
+  }
+  
+  // Add DPR (Device Pixel Ratio) support
+  if (options.dpr) params.set('dpr', options.dpr.toString());
+  
+  // Add crop parameter
+  if (options.crop) params.set('c', options.crop);
+  
+  const queryString = params.toString();
+  const baseUrl = `https://${customDomain}/${key.replace(/^\/+/, '')}`; // Remove leading slashes
+  
+  return queryString ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
 /**
@@ -119,6 +191,14 @@ export function getOptimizedImageProps(
     className?: string;
   }
 ) {
+  // Validate required parameters
+  if (!src || typeof src !== 'string') {
+    throw new Error('Invalid src parameter: must be a non-empty string');
+  }
+  if (!options.alt || typeof options.alt !== 'string') {
+    throw new Error('Invalid alt parameter: must be a non-empty string for accessibility');
+  }
+
   const baseProps = {
     src,
     alt: options.alt,
@@ -130,17 +210,29 @@ export function getOptimizedImageProps(
       ...baseProps,
       fill: true,
       sizes: options.sizes || '100vw',
-      priority: options.priority,
-      quality: options.quality,
+      priority: options.priority || false,
+      quality: options.quality && options.quality >= 1 && options.quality <= 100 
+        ? options.quality 
+        : QUALITY_PRESETS.medium,
     };
+  }
+  
+  // Validate dimensions for non-fill images
+  const width = options.width && options.width > 0 ? options.width : 400;
+  const height = options.height && options.height > 0 ? options.height : 300;
+  
+  if (!validateImageDimensions(width, height)) {
+    console.warn(`Invalid image dimensions: ${width}x${height}, using defaults`);
   }
   
   return {
     ...baseProps,
-    width: options.width || 400,
-    height: options.height || 300,
-    priority: options.priority,
-    quality: options.quality,
+    width,
+    height,
+    priority: options.priority || false,
+    quality: options.quality && options.quality >= 1 && options.quality <= 100 
+      ? options.quality 
+      : QUALITY_PRESETS.medium,
     sizes: options.sizes,
   };
 }
@@ -354,3 +446,107 @@ export function getCertificateImageProps(
     className: 'object-contain',
   };
 }
+
+/**
+ * Handle image loading errors with fallback
+ * @param error Image loading error
+ * @param fallbackSrc Optional fallback image URL
+ * @returns Fallback image URL or placeholder
+ */
+export function handleImageError(error: Event, fallbackSrc?: string): string {
+  console.warn('Image loading failed:', error);
+  
+  if (fallbackSrc) {
+    return fallbackSrc;
+  }
+  
+  // Return a placeholder data URL
+  return generateBlurDataUrl(400, 300);
+}
+
+/**
+ * Get image URL with error handling
+ * @param primarySrc Primary image URL
+ * @param fallbackSrc Fallback image URL
+ * @returns Promise resolving to valid image URL
+ */
+export async function getValidImageUrl(
+  primarySrc: string,
+  fallbackSrc?: string
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    
+    img.onload = () => resolve(primarySrc);
+    img.onerror = () => {
+      if (fallbackSrc) {
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => resolve(fallbackSrc);
+        fallbackImg.onerror = () => resolve(generateBlurDataUrl(400, 300));
+        fallbackImg.src = fallbackSrc;
+      } else {
+        resolve(generateBlurDataUrl(400, 300));
+      }
+    };
+    
+    img.src = primarySrc;
+  });
+}
+
+/**
+ * Preload critical images
+ * @param imageUrls Array of image URLs to preload
+ * @returns Promise resolving when all images are loaded
+ */
+export function preloadImages(imageUrls: string[]): Promise<void[]> {
+  const promises = imageUrls.map((url) => {
+    return new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = url;
+    });
+  });
+  
+  return Promise.all(promises);
+}
+
+/**
+ * Image optimization configuration for different contexts
+ */
+export const IMAGE_CONFIGS = {
+  // Student profiles
+  studentProfile: {
+    sizes: RESPONSIVE_SIZES.cardSmall,
+    quality: QUALITY_PRESETS.high,
+    priority: false,
+  },
+  
+  // Document thumbnails
+  documentThumbnail: {
+    sizes: RESPONSIVE_SIZES.cardSmall,
+    quality: QUALITY_PRESETS.medium,
+    priority: false,
+  },
+  
+  // Hero banners
+  heroBanner: {
+    sizes: RESPONSIVE_SIZES.fullWidth,
+    quality: QUALITY_PRESETS.high,
+    priority: true,
+  },
+  
+  // Gallery images
+  galleryImage: {
+    sizes: RESPONSIVE_SIZES.threeColumn,
+    quality: QUALITY_PRESETS.medium,
+    priority: false,
+  },
+  
+  // Certificate images
+  certificate: {
+    sizes: RESPONSIVE_SIZES.mainContent,
+    quality: QUALITY_PRESETS.maximum,
+    priority: false,
+  },
+} as const;

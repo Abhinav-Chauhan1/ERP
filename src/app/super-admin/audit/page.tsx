@@ -1,33 +1,35 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { Suspense } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { FileText } from "lucide-react";
 import { AuditLogViewer } from "@/components/super-admin/audit/audit-log-viewer";
 
-export default async function AuditPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-
-  try {
-    await requireSuperAdminAccess();
-  } catch (error) {
-    redirect("/");
-  }
-
+export default function AuditPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Audit & Compliance</h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            View audit logs, compliance reports, and security events
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <FileText className="h-6 w-6 text-red-500" />
+          Audit Logs
+        </h1>
+        <p className="text-gray-400 mt-1">View audit logs, compliance reports, and security events</p>
       </div>
 
-      <AuditLogViewer />
+      {/* Audit Logs */}
+      <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+        <CardHeader>
+          <CardTitle className="text-white">Activity Log</CardTitle>
+          <CardDescription className="text-gray-400">
+            Complete history of all system activities and events
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+            <AuditLogViewer />
+          </Suspense>
+        </CardContent>
+      </Card>
     </div>
   );
 }

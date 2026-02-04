@@ -1,11 +1,11 @@
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  User, 
-  Building2, 
-  CreditCard, 
-  Settings, 
+import {
+  User,
+  Building2,
+  CreditCard,
+  Settings,
   Shield,
   AlertTriangle,
   CheckCircle,
@@ -88,7 +88,7 @@ const formatActionText = (action: string, entityType: string, metadata?: any) =>
   };
 
   let baseText = actionMap[action] || action.toLowerCase().replace(/_/g, " ");
-  
+
   if (metadata) {
     if (action === "UPDATE_SCHOOL_STATUS" && metadata.newStatus) {
       baseText += ` to ${metadata.newStatus}`;
@@ -107,7 +107,7 @@ const formatActionText = (action: string, entityType: string, metadata?: any) =>
 export function RecentActivity({ activities }: RecentActivityProps) {
   if (!activities || activities.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
         <Clock className="h-5 w-5 mr-2" />
         No recent activity
       </div>
@@ -119,12 +119,12 @@ export function RecentActivity({ activities }: RecentActivityProps) {
       {activities.map((activity) => (
         <div
           key={activity.id}
-          className="flex items-start space-x-4 p-4 rounded-lg bg-white/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50"
+          className="flex items-start space-x-4 p-4 rounded-lg bg-[hsl(var(--card))]/50 border border-[hsl(var(--border))]"
         >
-          <div className="flex-shrink-0 p-2 rounded-full bg-slate-100 dark:bg-slate-700">
+          <div className="flex-shrink-0 p-2 rounded-full bg-[hsl(var(--muted))]">
             {getActivityIcon(activity.action, activity.entityType)}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -133,7 +133,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                     {getInitials(activity.userName || "System")}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-slate-900 dark:text-white">
+                <span className="text-sm font-medium text-foreground">
                   {activity.userName || "System"}
                 </span>
               </div>
@@ -141,17 +141,17 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                 {activity.entityType}
               </Badge>
             </div>
-            
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+
+            <p className="text-sm text-muted-foreground mt-1">
               {formatActionText(activity.action, activity.entityType, activity.metadata)}
             </p>
-            
+
             <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
               </span>
               {activity.entityId && (
-                <span className="text-xs font-mono text-slate-400 dark:text-slate-500">
+                <span className="text-xs font-mono text-muted-foreground">
                   ID: {activity.entityId.slice(0, 8)}...
                 </span>
               )}

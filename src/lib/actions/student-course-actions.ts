@@ -183,6 +183,7 @@ export async function enrollInCourse(courseId: string) {
       data: {
         studentId: student.id,
         courseId: validatedCourseId,
+        schoolId: student.schoolId,
         progress: 0,
         status: 'ACTIVE',
         lastAccessedAt: new Date()
@@ -197,6 +198,7 @@ export async function enrollInCourse(courseId: string) {
         data: allLessons.map(lesson => ({
           enrollmentId: enrollment.id,
           lessonId: lesson.id,
+          schoolId: student.schoolId,
           status: LessonProgressStatus.NOT_STARTED,
           progress: 0,
           timeSpent: 0
@@ -503,10 +505,10 @@ export async function getLessonById(lessonId: string, courseId: string) {
       // Map documents to contents
       if (subModule.documents && subModule.documents.length > 0) {
         subModule.documents.forEach((doc, index) => {
-          // Simple mapping of MIME types or extensions if 'type' is not strict enum
-          // Assuming 'doc.type' is somewhat reliable, else default to DOCUMENT
+          // Simple mapping of MIME types or extensions if 'fileType' is not strict enum
+          // Assuming 'doc.fileType' is somewhat reliable, else default to DOCUMENT
           let type = "DOCUMENT";
-          const lowerType = doc.type.toLowerCase();
+          const lowerType = doc.fileType?.toLowerCase() || "";
           if (lowerType.includes("video")) type = "VIDEO";
           else if (lowerType.includes("image")) type = "IMAGE";
           else if (lowerType.includes("pdf")) type = "PDF";
@@ -516,7 +518,7 @@ export async function getLessonById(lessonId: string, courseId: string) {
             id: doc.id,
             contentType: type,
             title: doc.title,
-            url: doc.url,
+            url: doc.fileUrl,
             content: null,
             duration: 0,
             sequence: index + 1,
@@ -684,6 +686,7 @@ export async function markLessonComplete(lessonId: string, enrollmentId: string)
           // Conditionally set the ID field
           lessonId: isSubModule ? undefined : validatedLessonId,
           subModuleId: isSubModule ? validatedLessonId : undefined,
+          schoolId: student.schoolId,
           status: LessonProgressStatus.COMPLETED,
           progress: 100,
           timeSpent: 0,
@@ -834,6 +837,7 @@ export async function updateLessonProgress(
           enrollmentId: validatedEnrollmentId,
           lessonId: isSubModule ? undefined : validatedLessonId,
           subModuleId: isSubModule ? validatedLessonId : undefined,
+          schoolId: student.schoolId,
           status,
           progress: validatedProgress,
           timeSpent: 0,

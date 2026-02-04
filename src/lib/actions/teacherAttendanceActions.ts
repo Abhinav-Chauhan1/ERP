@@ -491,9 +491,12 @@ export async function saveAttendanceRecords(classId: string, sectionId: string, 
       });
     }
 
+    // Get required school context for notifications
+    // Use the schoolId already obtained from requireSchoolAccess above
+
     // Trigger notifications (async, don't await blocking)
     attendanceRecords.forEach(record => {
-      sendAttendanceNotification(record.studentId, record.status, record.date)
+      sendAttendanceNotification(record.studentId, record.status, record.date, schoolId)
         .catch(err => console.error("Error triggering attendance notification:", err));
     });
 

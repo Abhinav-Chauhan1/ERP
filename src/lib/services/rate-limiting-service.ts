@@ -1,13 +1,45 @@
-import { db } from "@/lib/db";
-import { logAuditEvent } from "./audit-service";
+import { Redis } from '@upstash/redis';
+import { logAuditEvent, AuditAction } from "./audit-service";
 import { rateLimitLogger } from "./rate-limit-logger";
 
 /**
- * Rate Limiting Service
- * Implements comprehensive rate limiting and abuse protection for authentication.
+ * Redis-based Rate Limiting Service
+ * Implements comprehensive distributed rate limiting and abuse protection.
  * 
  * Requirements: 14.1, 14.2, 14.3, 14.4, 14.5
  */
+
+// Initialize Redis client with proper configuration
+let redis: Redis | null = null;
+
+try {
+  if (process.env.REDIS_URL) {
+    // Check if it's an Upstash Redis URL (starts with https)
+    if (process.env.REDIS_URL.startsWith('https://')) {
+      // Upstash Redis configuration
+      redis = new Redis({
+        url: process.env.REDIS_URL,
+        token: process.env.REDIS_TOKEN || '',
+      });
+    } else {
+      // For local Redis, we'll use a different approach
+      console.warn('⚠️  Local Redis URL detected. Upstash Redis client requires HTTPS URLs.');
+      console.warn('   Falling back to in-memory rate limiting for development.');
+      console.warn('   For production, please use Upstash Redis or configure a Redis client that supports local connections.');
+      redis = null;
+    }
+  }
+} catch (error) {
+  console.error('Failed to initialize Redis client:', error);
+  redis = null;
+}
+
+// Warn if Redis is not configured in production
+if (!redis && process.env.NODE_ENV === 'production') {
+  console.error('🚨 CRITICAL: Redis not configured for rate limiting in production!');
+  console.error('   This will cause rate limiting to fail across multiple server instances.');
+  console.error('   Please configure REDIS_URL (Upstash HTTPS URL) and REDIS_TOKEN environment variables.');
+}
 
 export interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds
@@ -92,13 +124,210 @@ export class BlockedIdentifierError extends Error {
   }
 }
 
+// Fallback in-memory store for development
+const memoryStore = new Map<string, { count: number; resetTime: number; blocked?: { expiresAt: number; reason: string } }>();
+
 class RateLimitingService {
+  /**
+   * Redis-based rate limiting check
+   */
+  private async checkRedisRateLimit(
+    key: string, 
+    config: RateLimitConfig
+  ): Promise<RateLimitResult> {
+    if (!redis) {
+      return this.fallbackRateLimit(key, config);
+    }
+
+    try {
+      const now = Date.now();
+      const windowStart = now - config.windowMs;
+
+      // Use Redis pipeline for atomic operations
+      const pipeline = redis.pipeline();
+      
+      // Remove expired entries
+      pipeline.zremrangebyscore(key, 0, windowStart);
+      
+      // Count current requests in window
+      pipeline.zcard(key);
+      
+      // Add current request
+      const requestId = `${now}-${Math.random()}`;
+      pipeline.zadd(key, now, requestId);
+      
+      // Set expiration
+      pipeline.expire(key, Math.ceil(config.windowMs / 1000));
+      
+      const results = await pipeline.exec();
+      const currentCount = (results[1] as number) || 0;
+
+      // Check if blocked
+      const blockKey = `block:${key}`;
+      const blockData = await redis.get(blockKey);
+      
+      if (blockData) {
+        const block = JSON.parse(blockData as string);
+        if (block.expiresAt > now) {
+          // Remove the request we just added since it's blocked
+          await redis.zrem(key, requestId);
+          
+          return {
+            allowed: false,
+            remaining: 0,
+            resetTime: new Date(block.expiresAt),
+            retryAfter: Math.ceil((block.expiresAt - now) / 1000),
+            isBlocked: true,
+            blockExpiresAt: new Date(block.expiresAt)
+          };
+        } else {
+          // Block expired, remove it
+          await redis.del(blockKey);
+        }
+      }
+
+      if (currentCount >= config.maxRequests) {
+        // Block the identifier
+        const blockExpiresAt = now + config.blockDurationMs;
+        await redis.setex(
+          blockKey,
+          Math.ceil(config.blockDurationMs / 1000),
+          JSON.stringify({
+            expiresAt: blockExpiresAt,
+            reason: 'Rate limit exceeded',
+            attempts: currentCount
+          })
+        );
+
+        // Remove the request we just added since it's not allowed
+        await redis.zrem(key, requestId);
+        
+        // Log the rate limit violation
+        await rateLimitLogger.logRateLimit({
+          identifier: key,
+          action: 'RATE_LIMIT_EXCEEDED',
+          attempts: currentCount,
+          windowMs: config.windowMs,
+          maxRequests: config.maxRequests,
+          blocked: true,
+          blockDurationMs: config.blockDurationMs
+        });
+
+        return {
+          allowed: false,
+          remaining: 0,
+          resetTime: new Date(blockExpiresAt),
+          retryAfter: Math.ceil(config.blockDurationMs / 1000),
+          isBlocked: true,
+          blockExpiresAt: new Date(blockExpiresAt)
+        };
+      }
+
+      return {
+        allowed: true,
+        remaining: config.maxRequests - currentCount - 1,
+        resetTime: new Date(now + config.windowMs),
+        isBlocked: false
+      };
+
+    } catch (error) {
+      console.error('Redis rate limiting error:', error);
+      // Fallback to allowing request on Redis error
+      return {
+        allowed: true,
+        remaining: config.maxRequests - 1,
+        resetTime: new Date(Date.now() + config.windowMs),
+        isBlocked: false
+      };
+    }
+  }
+
+  /**
+   * Fallback in-memory rate limiting (development only)
+   */
+  private fallbackRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('🚨 CRITICAL: Using fallback rate limiting in production!');
+    }
+
+    const now = Date.now();
+    let entry = memoryStore.get(key);
+    
+    if (!entry || entry.resetTime < now) {
+      entry = {
+        count: 0,
+        resetTime: now + config.windowMs,
+      };
+      memoryStore.set(key, entry);
+    }
+
+    // Check if blocked
+    if (entry.blocked && entry.blocked.expiresAt > now) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: new Date(entry.blocked.expiresAt),
+        retryAfter: Math.ceil((entry.blocked.expiresAt - now) / 1000),
+        isBlocked: true,
+        blockExpiresAt: new Date(entry.blocked.expiresAt)
+      };
+    } else if (entry.blocked && entry.blocked.expiresAt <= now) {
+      // Block expired
+      delete entry.blocked;
+    }
+
+    entry.count++;
+
+    if (entry.count > config.maxRequests) {
+      // Block the identifier
+      const blockExpiresAt = now + config.blockDurationMs;
+      entry.blocked = {
+        expiresAt: blockExpiresAt,
+        reason: 'Rate limit exceeded'
+      };
+
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: new Date(blockExpiresAt),
+        retryAfter: Math.ceil(config.blockDurationMs / 1000),
+        isBlocked: true,
+        blockExpiresAt: new Date(blockExpiresAt)
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: config.maxRequests - entry.count,
+      resetTime: new Date(entry.resetTime),
+      isBlocked: false
+    };
+  }
+
   /**
    * Check OTP rate limiting for identifier
    * Requirements: 14.1
    */
   async checkOTPRateLimit(identifier: string): Promise<RateLimitResult> {
-    return this.checkRateLimit(identifier, 'OTP_GENERATION', RATE_LIMIT_CONFIGS.OTP_GENERATION);
+    const key = `otp:${identifier}`;
+    return this.checkRedisRateLimit(key, RATE_LIMIT_CONFIGS.OTP_GENERATION);
+  }
+
+  /**
+   * Check login rate limiting for identifier
+   * Requirements: 14.2
+   */
+  async checkLoginRateLimit(identifier: string): Promise<RateLimitResult> {
+    const key = `login:${identifier}`;
+    return this.checkRedisRateLimit(key, RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS);
+  }
+
+  /**
+   * Check general rate limiting
+   */
+  async checkRateLimit(identifier: string, type: string, config: RateLimitConfig): Promise<RateLimitResult> {
+    const key = `${type}:${identifier}`;
+    return this.checkRedisRateLimit(key, config);
   }
 
   /**
@@ -106,21 +335,83 @@ class RateLimitingService {
    * Requirements: 14.2
    */
   async checkLoginFailureRateLimit(identifier: string): Promise<LoginFailureResult> {
-    const config = RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS;
+    const key = `login_failures:${identifier}`;
     
-    // Get recent login failures
-    const windowStart = new Date(Date.now() - config.windowMs);
-    const failures = await db.loginFailure.findMany({
-      where: {
-        identifier,
-        createdAt: { gte: windowStart }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    if (!redis) {
+      // Fallback for development
+      const entry = memoryStore.get(key);
+      const attempts = entry?.count || 0;
+      
+      if (attempts === 0) {
+        return {
+          allowed: true,
+          backoffMs: 0,
+          attempts: 0,
+          nextAttemptAt: new Date(),
+          isBlocked: false
+        };
+      }
 
-    const attempts = failures.length;
-    
-    if (attempts === 0) {
+      const config = RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS;
+      const backoffMs = Math.min(
+        Math.pow(config.exponentialBackoffBase, attempts - 1) * 1000,
+        config.maxBackoffMs
+      );
+
+      const nextAttemptAt = new Date(Date.now() + backoffMs);
+      const allowed = attempts < config.maxRequests;
+
+      return {
+        allowed,
+        backoffMs,
+        attempts,
+        nextAttemptAt,
+        isBlocked: !allowed
+      };
+    }
+
+    try {
+      const now = Date.now();
+      const windowStart = now - RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs;
+      
+      // Get failure count in current window
+      const failures = await redis.zcount(key, windowStart, now);
+      
+      if (failures === 0) {
+        return {
+          allowed: true,
+          backoffMs: 0,
+          attempts: 0,
+          nextAttemptAt: new Date(),
+          isBlocked: false
+        };
+      }
+
+      // Calculate exponential backoff
+      const config = RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS;
+      const backoffMs = Math.min(
+        Math.pow(config.exponentialBackoffBase, failures - 1) * 1000,
+        config.maxBackoffMs
+      );
+
+      // Get last failure time
+      const lastFailures = await redis.zrevrange(key, 0, 0, { withScores: true });
+      const lastFailureTime = lastFailures.length > 0 ? lastFailures[0].score : now;
+      
+      const nextAttemptAt = new Date(lastFailureTime + backoffMs);
+      const allowed = new Date() >= nextAttemptAt && failures < config.maxRequests;
+
+      return {
+        allowed,
+        backoffMs,
+        attempts: failures,
+        nextAttemptAt,
+        isBlocked: !allowed
+      };
+
+    } catch (error) {
+      console.error('Redis login failure check error:', error);
+      // Fallback to allowing on error
       return {
         allowed: true,
         backoffMs: 0,
@@ -129,27 +420,6 @@ class RateLimitingService {
         isBlocked: false
       };
     }
-
-    // Calculate exponential backoff
-    const backoffMs = Math.min(
-      Math.pow(config.exponentialBackoffBase, attempts - 1) * 1000,
-      config.maxBackoffMs
-    );
-
-    const lastFailure = failures[0];
-    const nextAttemptAt = new Date(lastFailure.createdAt.getTime() + backoffMs);
-    const now = new Date();
-
-    const allowed = now >= nextAttemptAt;
-    const isBlocked = attempts >= config.maxRequests && !allowed;
-
-    return {
-      allowed,
-      backoffMs,
-      attempts,
-      nextAttemptAt,
-      isBlocked
-    };
   }
 
   /**
@@ -162,17 +432,27 @@ class RateLimitingService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<void> {
+    const key = `login_failures:${identifier}`;
+    const now = Date.now();
+
+    if (!redis) {
+      // Fallback for development
+      const entry = memoryStore.get(key) || { count: 0, resetTime: now + RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs };
+      entry.count++;
+      memoryStore.set(key, entry);
+      return;
+    }
+
     try {
-      // Record the failure
-      await db.loginFailure.create({
-        data: {
-          identifier,
-          reason,
-          ipAddress,
-          userAgent,
-          createdAt: new Date()
-        }
-      });
+      // Add failure to sorted set
+      await redis.zadd(key, now, `${now}-${Math.random()}`);
+      
+      // Set expiration
+      await redis.expire(key, Math.ceil(RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs / 1000));
+      
+      // Clean up old entries
+      const windowStart = now - RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs;
+      await redis.zremrangebyscore(key, 0, windowStart);
 
       // Check if we should block the identifier
       const rateLimit = await this.checkLoginFailureRateLimit(identifier);
@@ -186,20 +466,104 @@ class RateLimitingService {
       }
 
       // Log the event
-      await this.logRateLimitEvent(
-        'LOGIN_FAILURE_RECORDED',
+      await rateLimitLogger.logRateLimit({
         identifier,
-        {
-          reason,
-          attempts: rateLimit.attempts,
-          backoffMs: rateLimit.backoffMs,
-          ipAddress,
-          userAgent
-        }
-      );
+        action: 'LOGIN_FAILURE_RECORDED',
+        attempts: rateLimit.attempts,
+        windowMs: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs,
+        maxRequests: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.maxRequests,
+        blocked: rateLimit.isBlocked,
+        blockDurationMs: rateLimit.isBlocked ? RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.blockDurationMs : undefined
+      });
 
     } catch (error) {
       console.error('Failed to record login failure:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Block identifier in Redis
+   */
+  async blockIdentifier(identifier: string, reason: string, durationMs: number): Promise<void> {
+    if (!redis) {
+      // Fallback for development
+      const key = `block:${identifier}`;
+      const entry = memoryStore.get(key) || { count: 0, resetTime: 0 };
+      entry.blocked = {
+        expiresAt: Date.now() + durationMs,
+        reason
+      };
+      memoryStore.set(key, entry);
+      return;
+    }
+
+    try {
+      const blockKey = `block:${identifier}`;
+      const blockData = {
+        expiresAt: Date.now() + durationMs,
+        reason,
+        blockedAt: Date.now()
+      };
+
+      await redis.setex(
+        blockKey,
+        Math.ceil(durationMs / 1000),
+        JSON.stringify(blockData)
+      );
+
+      // Log the block
+      await logAuditEvent({
+        userId: null,
+        action: AuditAction.REJECT,
+        resource: 'rate_limiting',
+        resourceId: identifier,
+        changes: {
+          reason,
+          durationMs,
+          expiresAt: new Date(blockData.expiresAt),
+          originalAction: 'IDENTIFIER_BLOCKED'
+        }
+      });
+
+    } catch (error) {
+      console.error('Failed to block identifier:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unblock identifier
+   */
+  async unblockIdentifier(identifier: string): Promise<void> {
+    if (!redis) {
+      // Fallback for development
+      const key = `block:${identifier}`;
+      const entry = memoryStore.get(key);
+      if (entry?.blocked) {
+        delete entry.blocked;
+      }
+      return;
+    }
+
+    try {
+      const blockKey = `block:${identifier}`;
+      await redis.del(blockKey);
+
+      // Log the unblock
+      await logAuditEvent({
+        userId: null,
+        action: AuditAction.UPDATE,
+        resource: 'rate_limiting',
+        resourceId: identifier,
+        changes: {
+          unblockedAt: new Date(),
+          originalAction: 'IDENTIFIER_UNBLOCKED'
+        }
+      });
+
+    } catch (error) {
+      console.error('Failed to unblock identifier:', error);
       throw error;
     }
   }

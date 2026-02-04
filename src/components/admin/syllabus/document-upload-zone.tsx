@@ -10,7 +10,7 @@ import { useState, useCallback, useRef } from "react";
 import { Upload, X, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 import { validateFileType } from "@/lib/actions/syllabusDocumentActions";
 import { cn } from "@/lib/utils";
 
@@ -112,15 +112,32 @@ export function DocumentUploadZone({
         };
       }
 
-      // Upload to Cloudinary
-      const result = await uploadToCloudinary(file, {
-        folder: "syllabus/documents",
-        resource_type: "auto",
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token');
+      const { token: csrfToken } = await csrfResponse.json();
+
+      // Prepare form data for R2 upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('csrf_token', csrfToken);
+      formData.append('folder', 'syllabus-documents');
+      formData.append('category', 'document');
+
+      // Upload to R2 storage
+      const response = await fetch('/api/r2/upload', {
+        method: 'POST',
+        body: formData,
       });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
 
       return {
         ...uploadedFile,
-        fileUrl: result.secure_url,
+        fileUrl: result.data.url,
         status: "success",
         progress: 100,
       };

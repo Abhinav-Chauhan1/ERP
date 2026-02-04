@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { UserRole, AuditAction } from "@prisma/client";
 
 /**
  * Role Router Service
@@ -777,8 +777,7 @@ class RoleRouterService {
     return Boolean(context.requiresChildSelection) || 
            (context.role === UserRole.PARENT && 
             !context.activeStudentId && 
-            context.availableChildren && 
-            context.availableChildren.length > 1);
+            (context.availableChildren?.length ?? 0) > 1);
   }
 
   /**
@@ -998,7 +997,7 @@ class RoleRouterService {
         const { logAuditEvent } = await import('./audit-service');
         await logAuditEvent({
           userId,
-          action: 'VIEW' as any,
+          action: AuditAction.VIEW,
           resource: 'routing',
           changes: {
             route,

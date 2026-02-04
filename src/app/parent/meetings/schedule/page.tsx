@@ -82,7 +82,7 @@ async function ScheduleMeetingContent() {
         </p>
       </div>
 
-      <MeetingScheduleForm teachers={teachers} />
+      <MeetingScheduleForm teachers={teachers} schoolId={user.parent?.schoolId || ''} />
     </div>
   );
 }

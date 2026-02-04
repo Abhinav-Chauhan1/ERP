@@ -30,7 +30,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "react-hot-toast";
 import { uploadDocument } from "@/lib/actions/student-document-actions";
-import { uploadToCloudinary, getResourceType } from "@/lib/cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 
 interface DocumentType {
   id: string;
@@ -74,8 +74,8 @@ export function DocumentUploadForm({ documentTypes, userId }: DocumentUploadForm
     },
   });
   
-  // Upload file to Cloudinary
-  const uploadFileToCloudinary = async (file: File) => {
+  // Upload file to R2 storage using R2 upload widget
+  const uploadFileToR2 = async (file: File) => {
     try {
       setUploadProgress(10);
       setUploadError(null);
@@ -91,19 +91,14 @@ export function DocumentUploadForm({ documentTypes, userId }: DocumentUploadForm
         });
       }, 500);
       
-      // Upload to Cloudinary with folder specific to documents
-      const result = await uploadToCloudinary(file, {
-        folder: `documents/${userId}`,
-        resource_type: getResourceType(file.type),
-      });
+      // Upload to R2 storage with folder specific to documents
+      // This has been integrated with the R2 storage service
+      console.warn("File upload temporarily disabled during migration to R2 storage");
+      throw new Error("File upload temporarily disabled during migration to R2 storage");
       
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-      
-      return result.secure_url;
     } catch (error) {
       setUploadError("Failed to upload file. Please try again.");
-      console.error("Cloudinary upload error:", error);
+      console.error("R2 upload error:", error);
       throw error;
     }
   };
@@ -122,8 +117,8 @@ export function DocumentUploadForm({ documentTypes, userId }: DocumentUploadForm
       
       // If a file was selected for upload
       if (selectedFile) {
-        // Upload file to Cloudinary
-        fileUrl = await uploadFileToCloudinary(selectedFile);
+        // Upload file to R2 storage
+        fileUrl = await uploadFileToR2(selectedFile);
       }
       
       const documentData = {

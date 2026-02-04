@@ -36,7 +36,7 @@ export interface Response {
 }
 
 export interface Schema {
-  type: string;
+  type?: string;
   properties?: Record<string, Schema>;
   items?: Schema;
   enum?: string[];

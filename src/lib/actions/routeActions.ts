@@ -16,6 +16,11 @@ export async function getRoutes(params?: {
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const page = params?.page || 1;
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
@@ -82,6 +87,11 @@ export async function getRoutes(params?: {
 export async function getRouteById(id: string): Promise<RouteWithDetails> {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const route = await db.route.findUnique({
       where: { id, schoolId },
       include: {
@@ -130,6 +140,11 @@ export async function getRouteById(id: string): Promise<RouteWithDetails> {
 export async function createRoute(data: RouteFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Validate input
     const validated = routeSchema.parse(data);
 
@@ -162,6 +177,9 @@ export async function createRoute(data: RouteFormValues) {
             stopName: stop.stopName,
             arrivalTime: stop.arrivalTime,
             sequence: stop.sequence,
+            school: {
+              connect: { id: schoolId }
+            }
           })),
         },
       },
@@ -173,6 +191,11 @@ export async function createRoute(data: RouteFormValues) {
         },
         stops: {
           orderBy: { sequence: "asc" },
+        },
+        _count: {
+          select: {
+            students: true,
+          },
         },
       },
     });
@@ -192,6 +215,11 @@ export async function createRoute(data: RouteFormValues) {
 export async function updateRoute(id: string, data: RouteUpdateFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Validate input
     const validated = routeUpdateSchema.parse(data);
 
@@ -227,26 +255,38 @@ export async function updateRoute(id: string, data: RouteUpdateFormValues) {
       }
     }
 
+    // Prepare update data
+    const updateData: any = {};
+    if (validated.name) updateData.name = validated.name;
+    if (validated.fee !== undefined) updateData.fee = validated.fee;
+    if (validated.status) updateData.status = validated.status;
+    
+    // Handle vehicle update using connect/disconnect pattern
+    if (validated.vehicleId) {
+      updateData.vehicle = {
+        connect: { id: validated.vehicleId }
+      };
+    }
+    
+    // Handle stops update
+    if (validated.stops) {
+      updateData.stops = {
+        deleteMany: {},
+        create: validated.stops.map((stop) => ({
+          stopName: stop.stopName,
+          arrivalTime: stop.arrivalTime,
+          sequence: stop.sequence,
+          school: {
+            connect: { id: schoolId }
+          }
+        })),
+      };
+    }
+
     // Update route
     const route = await db.route.update({
       where: { id },
-      data: {
-        ...(validated.name && { name: validated.name }),
-        ...(validated.vehicleId && { vehicleId: validated.vehicleId }),
-        ...(validated.fee !== undefined && { fee: validated.fee }),
-        ...(validated.status && { status: validated.status }),
-        ...(validated.stops && {
-          stops: {
-            // Delete existing stops and create new ones
-            deleteMany: {},
-            create: validated.stops.map((stop) => ({
-              stopName: stop.stopName,
-              arrivalTime: stop.arrivalTime,
-              sequence: stop.sequence,
-            })),
-          },
-        }),
-      },
+      data: updateData,
       include: {
         vehicle: {
           include: {
@@ -255,6 +295,11 @@ export async function updateRoute(id: string, data: RouteUpdateFormValues) {
         },
         stops: {
           orderBy: { sequence: "asc" },
+        },
+        _count: {
+          select: {
+            students: true,
+          },
         },
       },
     });
@@ -274,8 +319,12 @@ export async function updateRoute(id: string, data: RouteUpdateFormValues) {
 // Delete a route
 export async function deleteRoute(id: string) {
   try {
-    // Check if route exists
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if route exists
     const route = await db.route.findUnique({
       where: { id, schoolId },
@@ -315,6 +364,11 @@ export async function deleteRoute(id: string) {
 export async function getRouteStats() {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const [total, active, inactive, totalStudents] = await Promise.all([
       db.route.count({ where: { schoolId } }),
       db.route.count({ where: { status: "ACTIVE", schoolId } }),
@@ -338,6 +392,11 @@ export async function getRouteStats() {
 export async function getAvailableVehicles() {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     const vehicles = await db.vehicle.findMany({
       where: {
         schoolId,
@@ -367,6 +426,11 @@ export async function getAvailableVehicles() {
 export async function assignStudentToRoute(data: StudentRouteFormValues) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Validate input
     const validated = studentRouteSchema.parse(data);
 
@@ -418,7 +482,7 @@ export async function assignStudentToRoute(data: StudentRouteFormValues) {
     }
 
     // Validate that pickup and drop stops exist in the route
-    const stopNames = route.stops.map((stop) => stop.stopName);
+    const stopNames = route.stops.map((stop: any) => stop.stopName);
     if (!stopNames.includes(validated.pickupStop)) {
       throw new Error("Pickup stop does not exist in this route");
     }
@@ -433,6 +497,7 @@ export async function assignStudentToRoute(data: StudentRouteFormValues) {
         routeId: validated.routeId,
         pickupStop: validated.pickupStop,
         dropStop: validated.dropStop,
+        schoolId,
       },
       include: {
         student: {
@@ -464,6 +529,11 @@ export async function assignStudentToRoute(data: StudentRouteFormValues) {
 export async function unassignStudentFromRoute(studentRouteId: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if assignment exists and route belongs to school (indirect check via student or route)
     // Best to fetch assignment then verify school
     const assignment = await db.studentRoute.findUnique({
@@ -473,10 +543,6 @@ export async function unassignStudentFromRoute(studentRouteId: string) {
 
     if (!assignment || assignment.route.schoolId !== schoolId) {
       throw new Error("Student route assignment not found or access denied");
-    }
-
-    if (!assignment) {
-      throw new Error("Student route assignment not found");
     }
 
     // Delete the assignment
@@ -503,6 +569,11 @@ export async function updateStudentRouteAssignment(
 ) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if assignment exists
     const assignment = await db.studentRoute.findUnique({
       where: { id: studentRouteId },
@@ -519,12 +590,8 @@ export async function updateStudentRouteAssignment(
       throw new Error("Student route assignment not found or access denied");
     }
 
-    if (!assignment) {
-      throw new Error("Student route assignment not found");
-    }
-
     // Validate stops if provided
-    const stopNames = assignment.route.stops.map((stop) => stop.stopName);
+    const stopNames = assignment.route.stops.map((stop: any) => stop.stopName);
     if (data.pickupStop && !stopNames.includes(data.pickupStop)) {
       throw new Error("Pickup stop does not exist in this route");
     }
@@ -565,6 +632,11 @@ export async function updateStudentRouteAssignment(
 export async function getAvailableStudentsForRoute(routeId: string, search?: string) {
   try {
     const { schoolId } = await requireSchoolAccess();
+    
+    if (!schoolId) {
+      throw new Error("School context required");
+    }
+    
     // Check if route belongs to school
     const route = await db.route.findUnique({ where: { id: routeId, schoolId } });
     if (!route) throw new Error("Route not found or access denied");

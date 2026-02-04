@@ -7,10 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { 
-  TrendingUp, 
-  Users, 
-  Building, 
+import {
+  TrendingUp,
+  Users,
+  Building,
   DollarSign,
   Activity,
   RefreshCw,
@@ -89,7 +89,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
 
   const fetchAnalytics = useCallback(async (range: string, forceRefresh = false) => {
     const now = Date.now();
-    
+
     // Check if we have cached data that's still valid
     if (!forceRefresh && data && (now - lastFetchTime) < CACHE_DURATION) {
       return;
@@ -97,10 +97,10 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
 
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const result = await getDashboardAnalytics(range);
-      
+
       if (result.success && result.data) {
         setData(result.data);
         setLastFetchTime(now);
@@ -133,7 +133,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
   // Memoize expensive calculations
   const formattedData = useMemo(() => {
     if (!data) return null;
-    
+
     return {
       ...data,
       formattedRevenue: new Intl.NumberFormat("en-IN", {
@@ -142,7 +142,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
         minimumFractionDigits: 0,
       }).format(data.kpiData.totalRevenue / 100),
       formattedMRR: new Intl.NumberFormat("en-IN", {
-        style: "currency", 
+        style: "currency",
         currency: "INR",
         minimumFractionDigits: 0,
       }).format(data.kpiData.monthlyRecurringRevenue / 100),
@@ -184,13 +184,13 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
           <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
             Analytics Dashboard
           </h2>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Comprehensive business intelligence and performance metrics
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <Select value={selectedTimeRange} onValueChange={handleTimeRangeChange}>
-            <SelectTrigger className="w-40 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+            <SelectTrigger className="w-40 bg-[hsl(var(--card))]/80 backdrop-blur-sm">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -202,12 +202,12 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               <SelectItem value="mtd">Month to date</SelectItem>
             </SelectContent>
           </Select>
-          <Button 
-            onClick={handleRefreshData} 
+          <Button
+            onClick={handleRefreshData}
             disabled={isLoading}
             variant="outline"
             size="sm"
-            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            className="bg-[hsl(var(--card))]/80 backdrop-blur-sm"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -219,7 +219,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
+            <Card key={i} className="bg-[hsl(var(--card))]/60 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-4" />
@@ -232,15 +232,15 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
           ))
         ) : data ? (
           <>
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
                 <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                   <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="text-2xl font-bold text-foreground">
                   {formatCurrency(data.kpiData.totalRevenue)}
                 </div>
                 <div className="flex items-center space-x-2 mt-1">
@@ -255,15 +255,15 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               </CardContent>
             </Card>
 
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Schools</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Schools</CardTitle>
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(data.kpiData.totalSchools)}</div>
+                <div className="text-2xl font-bold text-foreground">{formatNumber(data.kpiData.totalSchools)}</div>
                 <div className="flex items-center space-x-2 mt-1">
                   <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -276,9 +276,9 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               </CardContent>
             </Card>
 
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                   <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -318,7 +318,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               </CardContent>
             </Card>
 
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">ARPU</CardTitle>
                 <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
@@ -335,7 +335,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               </CardContent>
             </Card>
 
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-400">Customer LTV</CardTitle>
                 <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
@@ -387,7 +387,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
 
       {/* Premium Charts Section */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+        <TabsList className="bg-[hsl(var(--card))]/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
           <TabsTrigger value="overview" className="flex items-center space-x-2">
             <BarChart3 className="h-4 w-4" />
             <span>Overview</span>
@@ -412,7 +412,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <LineChart className="h-5 w-5 text-blue-600" />
@@ -434,7 +434,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
               </CardContent>
             </Card>
 
-            <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+            <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Users className="h-5 w-5 text-purple-600" />
@@ -474,11 +474,10 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                     {data.schoolDistribution.map((item, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${
-                            index === 0 ? 'bg-blue-500' : 
-                            index === 1 ? 'bg-emerald-500' : 
-                            index === 2 ? 'bg-purple-500' : 'bg-orange-500'
-                          }`} />
+                          <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-blue-500' :
+                              index === 1 ? 'bg-emerald-500' :
+                                index === 2 ? 'bg-purple-500' : 'bg-orange-500'
+                            }`} />
                           <span className="font-medium">{item.plan}</span>
                         </div>
                         <div className="text-right">

@@ -77,7 +77,8 @@ export async function createCalendarEventFromExam(
       sourceType: EventSourceType.EXAM,
       sourceId: exam.id,
       isRecurring: false,
-      createdBy
+      createdBy,
+      schoolId: exam.schoolId // Add required schoolId
     });
 
     console.log(`Calendar event created for exam: ${exam.id}`);

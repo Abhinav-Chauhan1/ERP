@@ -24,7 +24,7 @@ import {
   generateSecureFileName,
   getFileExtension
 } from "@/lib/utils/file-security";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 
 /**
  * POST /api/upload
@@ -112,27 +112,32 @@ export async function POST(req: NextRequest) {
     const secureFileName = generateSecureFileName(file.name);
     const sanitizedOriginalName = sanitizeFileName(file.name);
 
-    // 8. Upload to Cloudinary with folder structure
+    // 8. Upload to R2 with folder structure
     const uploadFolder = folder || `uploads/${user.id}`;
     
     try {
-      const uploadResult = await uploadToCloudinary(file, {
+      const uploadResult = await uploadHandler.uploadFile(file, {
         folder: uploadFolder,
-        publicId: secureFileName.replace(getFileExtension(secureFileName), ""),
-        resource_type: "auto",
+        customMetadata: {
+          originalName: sanitizedOriginalName,
+          uploadedBy: user.id
+        }
       });
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
 
       // 9. Return success with upload details
       return NextResponse.json({
         success: true,
         data: {
-          url: uploadResult.secure_url,
-          publicId: uploadResult.public_id,
+          url: uploadResult.url,
+          key: uploadResult.key,
           fileName: sanitizedOriginalName,
           secureFileName: secureFileName,
-          fileSize: uploadResult.bytes,
-          fileType: uploadResult.format,
-          resourceType: uploadResult.resource_type,
+          fileSize: file.size,
+          fileType: file.type,
         },
         message: "File uploaded successfully"
       });

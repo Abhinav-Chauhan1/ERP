@@ -223,6 +223,7 @@ export async function createEvent(formData: EventFormDataWithRefinement) {
           title: validatedData.title,
           description: validatedData.description || "",
           categoryId: calendarCategoryId,
+          schoolId: schoolId, // Add required schoolId
           startDate: validatedData.startDate,
           endDate: validatedData.endDate,
           location: validatedData.location || undefined,

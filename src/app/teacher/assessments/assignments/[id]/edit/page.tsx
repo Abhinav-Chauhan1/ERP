@@ -39,7 +39,7 @@ import { format, parseISO } from "date-fns";
 import { getTeacherSubjects } from "@/lib/actions/teacherSubjectsActions"; 
 import { getAssignmentDetails, getTeacherClasses, updateAssignment } from "@/lib/actions/teacherAssignmentsActions";
 import { toast } from "react-hot-toast";
-import { CldUploadWidget } from "next-cloudinary";
+import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
 
 export default function EditAssignmentPage(props: { params: Promise<{ id: string }> }) {
   const params = use(props.params);
@@ -394,23 +394,15 @@ export default function EditAssignmentPage(props: { params: Promise<{ id: string
               <div className="mt-4">
                 <Label>Upload New Files</Label>
                 <div className="border border-dashed rounded-lg p-8 text-center mt-2">
-                  <CldUploadWidget 
-                    uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+                  <R2UploadWidget 
                     onSuccess={handleUploadSuccess}
-                  >
-                    {({ open }) => (
-                      <div 
-                        onClick={() => open()}
-                        className="cursor-pointer flex flex-col items-center gap-2"
-                      >
-                        <Upload className="h-10 w-10 text-gray-400" />
-                        <p className="font-medium">Click to upload files</p>
-                        <p className="text-xs text-gray-500">
-                          Upload PDF, Word, Excel, or image files
-                        </p>
-                      </div>
-                    )}
-                  </CldUploadWidget>
+                    accept={['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/*']}
+                    maxSize={50 * 1024 * 1024} // 50MB
+                    folder="assignments"
+                    uploadText="Click to upload files"
+                    descriptionText="Upload PDF, Word, Excel, or image files"
+                    multiple={true}
+                  />
                 </div>
               </div>
             </div>

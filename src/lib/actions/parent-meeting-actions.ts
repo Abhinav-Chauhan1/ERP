@@ -44,7 +44,7 @@ const getMeetingHistorySchema = z.object({
  * Schedule a new parent-teacher meeting
  * Requirements: 1.1, 1.2, 1.3
  */
-export async function scheduleMeeting(formData: FormData) {
+export async function scheduleMeeting(formData: FormData, schoolId: string) {
   try {
     // 1. Authentication check
     const session = await auth();
@@ -129,6 +129,7 @@ export async function scheduleMeeting(formData: FormData) {
         duration: validated.duration,
         location: validated.mode === "ONLINE" ? "Online Meeting" : validated.location || null,
         status: "SCHEDULED",
+        schoolId,
       },
       include: {
         parent: {
@@ -167,6 +168,7 @@ export async function scheduleMeeting(formData: FormData) {
           title: "Meeting Scheduled",
           message: `Your meeting with ${teacher.user.firstName} ${teacher.user.lastName} has been scheduled for ${scheduledDateTime.toLocaleString()}`,
           type: "INFO",
+          schoolId,
         },
       }),
       db.notification.create({
@@ -175,6 +177,7 @@ export async function scheduleMeeting(formData: FormData) {
           title: "New Meeting Request",
           message: `${user.firstName} ${user.lastName} has scheduled a meeting with you for ${scheduledDateTime.toLocaleString()}`,
           type: "INFO",
+          schoolId,
         },
       }),
     ]);
@@ -377,7 +380,7 @@ export async function getMeetingHistory(params: {
  * Cancel a meeting
  * Requirements: 1.4
  */
-export async function cancelMeeting(formData: FormData) {
+export async function cancelMeeting(formData: FormData, schoolId: string) {
   try {
     // 1. Authentication check
     const session = await auth();
@@ -458,6 +461,7 @@ export async function cancelMeeting(formData: FormData) {
         title: "Meeting Cancelled",
         message: `${user.firstName} ${user.lastName} has cancelled the meeting scheduled for ${meeting.scheduledDate.toLocaleString()}${validated.reason ? `. Reason: ${validated.reason}` : ""}`,
         type: "WARNING",
+        schoolId,
       },
     });
 
@@ -483,7 +487,7 @@ export async function cancelMeeting(formData: FormData) {
  * Reschedule a meeting
  * Requirements: 1.5
  */
-export async function rescheduleMeeting(formData: FormData) {
+export async function rescheduleMeeting(formData: FormData, schoolId: string) {
   try {
     // 1. Authentication check
     const session = await auth();
@@ -612,6 +616,7 @@ export async function rescheduleMeeting(formData: FormData) {
         title: "Meeting Rescheduled",
         message: `${user.firstName} ${user.lastName} has rescheduled the meeting from ${meeting.scheduledDate.toLocaleString()} to ${newDateTime.toLocaleString()}`,
         type: "INFO",
+        schoolId,
       },
     });
 

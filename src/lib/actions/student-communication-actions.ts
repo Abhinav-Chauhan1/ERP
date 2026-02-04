@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 
 /**
  * Helper function to get current student and verify authentication
@@ -783,7 +783,7 @@ export async function sendMessage(data: z.infer<typeof sendMessageSchema>) {
       return { success: false, message: "Unauthorized" };
     }
 
-    const { user } = studentData;
+    const { user, student } = studentData;
 
     // Validate input
     const validated = sendMessageSchema.parse(data);
@@ -823,6 +823,7 @@ export async function sendMessage(data: z.infer<typeof sendMessageSchema>) {
         content: sanitizedContent,
         attachments: validated.attachments ? JSON.stringify(validated.attachments) : null,
         isRead: false,
+        schoolId: student.schoolId,
       },
       include: {
         sender: {
@@ -857,6 +858,7 @@ export async function sendMessage(data: z.infer<typeof sendMessageSchema>) {
         type: "MESSAGE",
         link: `/student/communication/messages/${message.id}`,
         isRead: false,
+        schoolId: student.schoolId,
       }
     });
 
@@ -890,7 +892,7 @@ export async function replyToMessage(data: z.infer<typeof replyToMessageSchema>)
       return { success: false, message: "Unauthorized" };
     }
 
-    const { user } = studentData;
+    const { user, student } = studentData;
 
     // Validate input
     const validated = replyToMessageSchema.parse(data);
@@ -947,6 +949,7 @@ export async function replyToMessage(data: z.infer<typeof replyToMessageSchema>)
         content: sanitizedContent,
         attachments: null,
         isRead: false,
+        schoolId: student.schoolId,
       },
       include: {
         sender: {
@@ -981,6 +984,7 @@ export async function replyToMessage(data: z.infer<typeof replyToMessageSchema>)
         type: "MESSAGE",
         link: `/student/communication/messages/${replyMessage.id}`,
         isRead: false,
+        schoolId: student.schoolId,
       }
     });
 
@@ -1114,25 +1118,29 @@ export async function uploadMessageAttachment(formData: FormData) {
       return { success: false, message: "File type not allowed. Allowed types: PDF, images, Word, Excel, and text files" };
     }
 
-    // Upload to Cloudinary
+    // Upload to R2 storage
     try {
-      const uploadResult = await uploadToCloudinary(file, {
-        folder: `messages/attachments/${studentData.student?.id}`,
-        resource_type: "auto",
+      const uploadResult = await uploadHandler.uploadFile(file, {
+        folder: 'communication-attachments',
+        customMetadata: {
+          messageType: 'student-communication',
+          studentId: studentData.student.id,
+          uploadType: 'attachment'
+        }
       });
 
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload attachment');
+      }
+      
+      console.warn("File upload temporarily disabled during migration to R2 storage");
+      
       return {
-        success: true,
-        data: {
-          url: uploadResult.secure_url,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-        },
-        message: "File uploaded successfully"
+        success: false,
+        message: "File upload temporarily disabled during migration to R2 storage"
       };
     } catch (uploadError) {
-      console.error("Cloudinary upload error:", uploadError);
+      console.error("R2 upload error:", uploadError);
       return {
         success: false,
         message: "Failed to upload file to storage. Please try again."
@@ -1194,7 +1202,6 @@ export async function getAvailableRecipients() {
           select: {
             id: true,
             position: true,
-            department: true,
           }
         }
       },

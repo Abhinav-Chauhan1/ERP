@@ -15,7 +15,7 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
     return (
         <div className="text-center space-y-6">
             <div className="flex justify-center">
-                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
                     <Rocket className="h-10 w-10 text-white" />
                 </div>
             </div>
@@ -23,14 +23,14 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight">
                     Welcome to <span className="text-red-500">SIKSHA</span>
-                    <span className="text-gray-900">MITRA</span>
+                    <span className="text-foreground">MITRA</span>
                 </h1>
                 <p className="text-lg text-muted-foreground">
                     Let&apos;s set up your school management system
                 </p>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 text-left">
+            <div className="bg-muted/30 rounded-lg p-6 text-left border border-border">
                 <h3 className="font-semibold mb-4">What we&apos;ll configure:</h3>
                 <ul className="space-y-3">
                     {[

@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { notFound } from 'next/navigation';
+import { JSDOM } from 'jsdom';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,11 @@ export default async function CertificateTemplatePreviewPage({ params }: PagePro
     }
 
     const template = templateResult.data;
-    const previewHtml = previewResult.success ? previewResult.data : null;
+    // Sanitize preview HTML for XSS protection (server-side)
+    const rawPreviewHtml = previewResult.success ? previewResult.data : null;
+    const window = new JSDOM('').window;
+    const purify = DOMPurify(window as unknown as Window);
+    const previewHtml = rawPreviewHtml ? purify.sanitize(rawPreviewHtml as string) : null;
 
     return (
         <div className="container mx-auto py-6 space-y-6">

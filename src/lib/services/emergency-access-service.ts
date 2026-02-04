@@ -1,9 +1,8 @@
 import { db } from "@/lib/db";
-import { UserRole, SchoolStatus, Prisma } from "@prisma/client";
+import { UserRole, SchoolStatus, Prisma, AuditAction } from "@prisma/client";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { logAuditEvent, AuditSeverity } from "./audit-service";
 import { schoolContextService } from "./school-context-service";
-import { jwtService } from "./jwt-service";
 
 /**
  * Emergency Access Service
@@ -127,14 +126,8 @@ class EmergencyAccessService {
           data: { expiresAt: new Date() } // Expire immediately
         });
 
-        // Revoke JWT tokens
-        for (const session of activeSessions) {
-          try {
-            await jwtService.revokeToken(session.token);
-          } catch (error) {
-            console.error('Failed to revoke JWT token:', error);
-          }
-        }
+        // Note: JWT tokens are handled by NextAuth and will be invalidated automatically
+        // when the user tries to access protected routes
 
         invalidatedSessions = activeSessions.length;
       }
@@ -169,7 +162,7 @@ class EmergencyAccessService {
       // Log comprehensive audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.CRITICAL,
@@ -205,7 +198,7 @@ class EmergencyAccessService {
       // Log the error
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.CRITICAL,
@@ -328,7 +321,7 @@ class EmergencyAccessService {
       // Log comprehensive audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.CRITICAL,
@@ -363,7 +356,7 @@ class EmergencyAccessService {
       // Log the error
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.CRITICAL,
@@ -474,7 +467,7 @@ class EmergencyAccessService {
       // Log audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'USER',
         resourceId: userId,
         severity: AuditSeverity.HIGH,
@@ -602,7 +595,7 @@ class EmergencyAccessService {
       // Log audit event
       await logAuditEvent({
         userId: performedBy,
-        action: 'UPDATE' as AuditAction,
+        action: AuditAction.UPDATE,
         resource: 'SCHOOL',
         resourceId: schoolId,
         severity: AuditSeverity.HIGH,
@@ -715,9 +708,9 @@ class EmergencyAccessService {
       affectedUsers: record.affectedUsers,
       invalidatedSessions: record.invalidatedSessions,
       isReversed: record.isReversed,
-      reversedAt: record.reversedAt,
-      reversedBy: record.reversedBy,
-      reversedReason: record.reversedReason
+      reversedAt: record.reversedAt || undefined,
+      reversedBy: record.reversedBy || undefined,
+      reversedReason: record.reversedReason || undefined
     }));
 
     return {

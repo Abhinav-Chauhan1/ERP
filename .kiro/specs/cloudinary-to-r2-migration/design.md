@@ -77,6 +77,61 @@ graph LR
     VS --> R2C
 ```
 
+## School-Based Folder Structure
+
+### Multi-Tenant Storage Organization
+
+The R2 storage system implements a school-based folder structure to ensure complete data isolation between different schools in the multi-tenant ERP system.
+
+**Folder Hierarchy**:
+```
+bucket-root/
+├── school-{schoolId}/
+│   ├── students/
+│   │   ├── {studentId}/
+│   │   │   ├── avatar/
+│   │   │   ├── documents/
+│   │   │   └── certificates/
+│   ├── teachers/
+│   │   ├── {teacherId}/
+│   │   │   ├── profile/
+│   │   │   └── documents/
+│   ├── events/
+│   │   ├── {eventId}/
+│   │   │   ├── banners/
+│   │   │   └── gallery/
+│   ├── announcements/
+│   │   └── attachments/
+│   ├── certificates/
+│   │   └── templates/
+│   ├── reports/
+│   │   └── generated/
+│   └── system/
+│       ├── logos/
+│       └── branding/
+```
+
+**Benefits**:
+- **Data Isolation**: Complete separation of school data prevents cross-contamination
+- **Security**: School-level access control and permissions
+- **Backup & Recovery**: School-specific backup and restore operations
+- **Migration**: Easier school-by-school migration from Cloudinary
+- **Quota Management**: Per-school storage quota enforcement
+- **Compliance**: Meets data residency and privacy requirements
+
+**Key Generation Pattern**:
+```typescript
+// Pattern: school-{schoolId}/{folder}/{subfolder}/{filename}
+const generateKey = (schoolId: string, folder: string, filename: string): string => {
+  return `school-${schoolId}/${folder}/${filename}`;
+};
+
+// Examples:
+// school-123/students/456/avatar/profile-abc123.jpg
+// school-123/events/789/banner/event-banner-def456.webp
+// school-456/certificates/templates/graduation-template.pdf
+```
+
 ## Components and Interfaces
 
 ### 1. R2 Storage Client
@@ -84,11 +139,11 @@ graph LR
 **Purpose**: Core interface for all R2 storage operations
 
 **Key Methods**:
-- `uploadFile(file: Buffer, key: string, metadata: FileMetadata): Promise<UploadResult>`
-- `deleteFile(key: string): Promise<void>`
-- `generatePresignedUrl(key: string, operation: 'GET' | 'PUT', expiresIn: number): Promise<string>`
-- `listFiles(prefix: string, maxKeys?: number): Promise<FileList>`
-- `getFileMetadata(key: string): Promise<FileMetadata>`
+- `uploadFile(schoolId: string, file: Buffer, key: string, metadata: FileMetadata): Promise<UploadResult>`
+- `deleteFile(schoolId: string, key: string): Promise<void>`
+- `generatePresignedUrl(schoolId: string, key: string, operation: 'GET' | 'PUT', expiresIn: number): Promise<string>`
+- `listFiles(schoolId: string, prefix: string, maxKeys?: number): Promise<FileList>`
+- `getFileMetadata(schoolId: string, key: string): Promise<FileMetadata>`
 
 **Configuration**:
 ```typescript
@@ -117,10 +172,10 @@ interface R2Config {
 **Interface**:
 ```typescript
 interface UploadHandler {
-  uploadImage(file: File, folder: string): Promise<UploadResult>;
-  uploadDocument(file: File, folder: string): Promise<UploadResult>;
+  uploadImage(schoolId: string, file: File, folder: string): Promise<UploadResult>;
+  uploadDocument(schoolId: string, file: File, folder: string): Promise<UploadResult>;
   validateFile(file: File, type: FileType): ValidationResult;
-  generateUniqueKey(originalName: string, folder: string): string;
+  generateUniqueKey(schoolId: string, originalName: string, folder: string): string;
 }
 ```
 
@@ -160,42 +215,45 @@ interface ImageProcessor {
 **Interface**:
 ```typescript
 interface MigrationService {
-  discoverCloudinaryUrls(): Promise<CloudinaryAsset[]>;
-  migrateAsset(asset: CloudinaryAsset): Promise<MigrationResult>;
-  validateMigration(asset: CloudinaryAsset, r2Key: string): Promise<boolean>;
-  updateDatabaseReferences(oldUrl: string, newUrl: string): Promise<void>;
-  generateMigrationReport(): Promise<MigrationReport>;
+  discoverCloudinaryUrls(schoolId?: string): Promise<CloudinaryAsset[]>;
+  migrateAsset(schoolId: string, asset: CloudinaryAsset): Promise<MigrationResult>;
+  validateMigration(schoolId: string, asset: CloudinaryAsset, r2Key: string): Promise<boolean>;
+  updateDatabaseReferences(schoolId: string, oldUrl: string, newUrl: string): Promise<void>;
+  generateMigrationReport(schoolId?: string): Promise<MigrationReport>;
+  migrateSchoolAssets(schoolId: string): Promise<SchoolMigrationResult>;
 }
 ```
 
 ### 6. Storage Quota Management Service
 
-**Purpose**: Manages per-school storage quotas and usage tracking
+**Purpose**: Manages per-school storage quotas using existing UsageCounter and SubscriptionPlan models
 
 **Key Features**:
-- Real-time storage usage tracking
-- Plan-based quota enforcement
-- Warning notifications at 80% usage
+- Real-time storage usage tracking via storageUsedMB
+- Plan-based quota enforcement using features.storageGB
+- Warning notifications at 80% usage threshold
 - Super admin quota management interface
 - Usage analytics and reporting
 
 **Interface**:
 ```typescript
 interface StorageQuotaService {
-  checkQuota(schoolId: string): Promise<QuotaStatus>;
-  updateUsage(schoolId: string, sizeChange: number): Promise<void>;
-  getUsageStats(schoolId: string): Promise<StorageStats>;
-  setQuotaLimit(schoolId: string, limitBytes: number): Promise<void>;
+  checkQuota(schoolId: string): Promise<StorageQuotaStatus>;
+  updateUsage(schoolId: string, sizeMB: number): Promise<void>;
+  getUsageStats(schoolId: string): Promise<UsageCounter>;
+  setCustomQuota(schoolId: string, limitMB: number): Promise<void>;
   getAllSchoolUsage(): Promise<SchoolStorageUsage[]>;
   sendQuotaWarning(schoolId: string): Promise<void>;
+  syncQuotaFromPlan(schoolId: string): Promise<void>; // Sync from subscription plan
 }
 
-interface QuotaStatus {
+interface StorageQuotaStatus {
   isWithinLimit: boolean;
-  currentUsage: number;
-  maxLimit: number;
+  currentUsageMB: number;
+  maxLimitMB: number;
   percentageUsed: number;
   warningThreshold: number;
+  planStorageGB: number;
 }
 ```
 
@@ -211,9 +269,10 @@ interface QuotaStatus {
 
 **URL Structure**:
 ```
-https://cdn.schoolerp.com/{folder}/{filename}
-https://cdn.schoolerp.com/students/12345/avatar/profile-abc123.jpg
-https://cdn.schoolerp.com/events/event-456/banner-def789.webp
+https://cdn.schoolerp.com/{schoolId}/{folder}/{filename}
+https://cdn.schoolerp.com/school-123/students/12345/avatar/profile-abc123.jpg
+https://cdn.schoolerp.com/school-456/events/event-789/banner-def789.webp
+https://cdn.schoolerp.com/school-123/documents/certificates/cert-abc123.pdf
 ```
 
 ## Data Models
@@ -223,9 +282,10 @@ https://cdn.schoolerp.com/events/event-456/banner-def789.webp
 ```typescript
 interface FileMetadata {
   id: string;
+  schoolId: string; // School identifier for multi-tenant isolation
   originalName: string;
-  key: string; // R2 object key
-  url: string; // CDN URL
+  key: string; // R2 object key including school prefix
+  url: string; // CDN URL with school path
   mimeType: string;
   size: number;
   folder: string;
@@ -237,8 +297,8 @@ interface FileMetadata {
 
 interface FileVariant {
   size: ThumbnailSize;
-  key: string;
-  url: string;
+  key: string; // Includes school prefix
+  url: string; // CDN URL with school path
   dimensions: { width: number; height: number };
 }
 ```
@@ -248,9 +308,10 @@ interface FileVariant {
 ```typescript
 interface MigrationRecord {
   id: string;
+  schoolId: string; // School identifier for tracking
   cloudinaryUrl: string;
-  r2Key: string;
-  r2Url: string;
+  r2Key: string; // Includes school prefix (school-123/folder/file.jpg)
+  r2Url: string; // Full CDN URL with school path
   status: 'pending' | 'completed' | 'failed' | 'skipped';
   migratedAt?: Date;
   errorMessage?: string;
@@ -306,6 +367,38 @@ interface StoragePlanLimits {
 }
 ```
 
+### Storage Quota Models (Updated for Existing System)
+
+```typescript
+// Use existing Prisma models
+interface UsageCounter {
+  schoolId: string;
+  month: string;
+  storageUsedMB: number; // Current usage in MB
+  storageLimitMB: number; // Limit in MB (from plan or custom)
+  // ... other usage fields
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string; // 'Starter', 'Growth', 'Enterprise'
+  features: {
+    storageGB: number; // 5, 25, 100
+    // ... other features
+  };
+  // ... other plan fields
+}
+
+interface StorageQuotaStatus {
+  isWithinLimit: boolean;
+  currentUsageMB: number;
+  maxLimitMB: number;
+  percentageUsed: number;
+  warningThreshold: number; // 80%
+  planStorageGB: number;
+}
+```
+
 ## Correctness Properties
 
 *A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
@@ -314,12 +407,12 @@ interface StoragePlanLimits {
 *For any* file type currently supported by Cloudinary, the R2 storage system should successfully store and retrieve that file type without data corruption.
 **Validates: Requirements 2.1**
 
-### Property 2: Folder Structure Preservation
-*For any* file uploaded to a specific folder path, the R2 storage system should maintain the same folder organization pattern as the original Cloudinary structure.
+### Property 2: School-Based Folder Structure Preservation
+*For any* file uploaded to a specific school and folder path, the R2 storage system should maintain the school-based folder organization pattern with proper isolation between schools.
 **Validates: Requirements 2.2**
 
-### Property 3: Filename Uniqueness
-*For any* set of files uploaded simultaneously, the Upload Handler should generate unique filenames for all files, preventing naming conflicts.
+### Property 3: School-Scoped Filename Uniqueness
+*For any* set of files uploaded simultaneously to the same school, the Upload Handler should generate unique filenames within that school's namespace, preventing naming conflicts while allowing same filenames across different schools.
 **Validates: Requirements 2.3**
 
 ### Property 4: Presigned URL Functionality
@@ -394,8 +487,8 @@ interface StoragePlanLimits {
 *For any* file identified for migration, the Migration Service should successfully download from Cloudinary and upload to R2 while preserving file integrity.
 **Validates: Requirements 6.2**
 
-### Property 22: Migration Structure Preservation
-*For any* migrated file, the Migration Service should maintain the original folder structure and filename where possible.
+### Property 22: Migration School Structure Preservation
+*For any* migrated file, the Migration Service should maintain the original folder structure within the appropriate school namespace and preserve filename where possible.
 **Validates: Requirements 6.3**
 
 ### Property 23: Database Reference Updates
@@ -406,8 +499,8 @@ interface StoragePlanLimits {
 *For any* migrated file, the Migration Service should verify file integrity by comparing checksums between source and destination.
 **Validates: Requirements 6.7**
 
-### Property 25: URL Pattern Consistency
-*For any* file stored in R2, the system should generate URLs following a predictable and consistent pattern.
+### Property 25: School-Based URL Pattern Consistency
+*For any* file stored in R2, the system should generate URLs following a predictable and consistent school-based pattern that includes the school identifier.
 **Validates: Requirements 7.1**
 
 ### Property 26: Custom Domain Usage
@@ -469,6 +562,10 @@ interface StoragePlanLimits {
 ### Property 40: Plan-Based Storage Limits
 *For any* school with a specific subscription plan, the system should enforce the correct storage quota associated with that plan tier.
 **Validates: Requirements 11.8, 11.9**
+
+### Property 41: School Data Isolation
+*For any* file operation request, the system should ensure complete data isolation between schools, preventing access to files from other schools regardless of user permissions.
+**Validates: Requirements 8.1, 8.2**
 
 ## Error Handling
 

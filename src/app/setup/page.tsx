@@ -3,6 +3,11 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
 import { schoolContextService } from "@/lib/services/school-context-service";
+import { db } from "@/lib/db";
+
+interface SetupPageProps {
+    searchParams: { [key: string]: string | string[] | undefined };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +15,9 @@ export const dynamic = "force-dynamic";
  * School-specific setup page for multi-tenant system
  * Requirements: 9.3 - Setup wizard redirection for non-onboarded schools
  */
-export default async function SetupPage() {
+export default async function SetupPage({ searchParams }: SetupPageProps) {
     const session = await auth();
-    
+
     // Require authentication
     if (!session?.user?.id) {
         redirect("/login");
@@ -20,24 +25,33 @@ export default async function SetupPage() {
 
     // Get user's school context
     const context = await getCurrentUserSchoolContext();
-    
+
     if (!context) {
         redirect("/login");
     }
 
-    // Super admins should not access this route directly
-    if (context.isSuperAdmin) {
-        redirect("/super-admin");
-    }
+    // Super admins need schoolId in params or context
+    let targetSchoolId = context.schoolId;
 
-    // Regular users must have a school context
-    if (!context.schoolId) {
-        redirect("/select-school");
+    if (context.isSuperAdmin) {
+        // Use param if available, otherwise fall back to context
+        if (searchParams.schoolId && typeof searchParams.schoolId === 'string') {
+            targetSchoolId = searchParams.schoolId;
+        }
+
+        if (!targetSchoolId) {
+            redirect("/super-admin/schools");
+        }
+    } else {
+        // Regular users must have a school context
+        if (!targetSchoolId) {
+            redirect("/select-school");
+        }
     }
 
     // Check if school is already onboarded
-    const onboardingStatus = await schoolContextService.getSchoolOnboardingStatus(context.schoolId);
-    
+    const onboardingStatus = await schoolContextService.getSchoolOnboardingStatus(targetSchoolId);
+
     if (!onboardingStatus) {
         // School not found, redirect to login
         redirect("/login");
@@ -59,18 +73,27 @@ export default async function SetupPage() {
         }
     }
 
-    // Only school admins can complete setup
-    if (context.role !== "ADMIN") {
+    // Only school admins or super admins can complete setup
+    if (context.role !== "ADMIN" && context.role !== "SUPER_ADMIN") {
         redirect("/login");
     }
+
+    // Check if school has an existing admin user
+    const existingAdmin = await db.userSchool.findFirst({
+        where: {
+            schoolId: targetSchoolId,
+            role: "ADMIN",
+            isActive: true
+        }
+    });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
             <SetupWizard
                 currentStep={onboardingStatus.onboardingStep}
-                hasExistingAdmin={true} // Admin already exists in multi-tenant system
-                redirectUrl="/admin" // Redirect to admin dashboard after completion
-                schoolId={context.schoolId}
+                hasExistingAdmin={!!existingAdmin} // Dynamically check for existing admin
+                redirectUrl={context.isSuperAdmin ? "/super-admin/schools" : "/admin"} // Redirect appropriately
+                schoolId={targetSchoolId}
             />
         </div>
     );

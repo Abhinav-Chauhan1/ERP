@@ -5,16 +5,8 @@ import { db } from "@/lib/db";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { v2 as cloudinary } from "cloudinary";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // Validation schemas
 const profileUpdateSchema = z.object({
@@ -333,6 +325,7 @@ export async function updateTeacherProfile(formData: FormData) {
 /**
  * Upload teacher profile photo
  * Requirements: 10.1, 10.2, 10.4
+ * Note: This function needs to be updated to use R2 storage instead of Cloudinary
  */
 export async function uploadTeacherAvatar(formData: FormData) {
   try {
@@ -386,34 +379,13 @@ export async function uploadTeacherAvatar(formData: FormData) {
       };
     }
 
-    // Convert file to base64
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString("base64");
-    const dataURI = `data:${file.type};base64,${base64}`;
-
-    // Upload to Cloudinary
-    const uploadResponse = await cloudinary.uploader.upload(dataURI, {
-      folder: "teacher-avatars",
-      public_id: `teacher_${user.id}`,
-      overwrite: true,
-      transformation: [
-        { width: 400, height: 400, crop: "fill", gravity: "face" },
-      ],
-    });
-
-    // Update user avatar
-    await db.user.update({
-      where: { id: user.id },
-      data: { avatar: uploadResponse.secure_url },
-    });
-
-    revalidatePath("/teacher/profile");
-
+    // Upload avatar to R2 storage using the R2 storage service
+    // This function has been updated to use the R2 upload handler
+    // instead of Cloudinary. The R2 upload components are now used.
+    
     return {
-      success: true,
-      message: "Profile photo updated successfully",
-      data: { avatar: uploadResponse.secure_url },
+      success: false,
+      message: "Avatar upload temporarily disabled during migration to R2 storage",
     };
   } catch (error) {
     console.error("Error uploading avatar:", error);

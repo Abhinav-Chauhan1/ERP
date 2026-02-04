@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Building, 
   Users, 
@@ -14,17 +16,30 @@ import {
   Phone, 
   MapPin, 
   Calendar, 
-  CreditCard,
   Activity,
   Settings,
   BarChart3,
   MessageSquare,
   Smartphone,
   HardDrive,
-  School
+  School,
+  Shield,
+  Database,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Download,
+  Eye
 } from "lucide-react";
-import { OnboardingManagement } from "./onboarding-management";
+import { toast } from "sonner";
 import { EnhancedOnboardingManagement } from "./enhanced-onboarding-management";
+import { 
+  getSchoolAnalytics,
+  getSchoolUsageMetrics,
+  getSchoolActivityLog,
+  getSchoolSecurityStatus
+} from "@/lib/actions/school-management-actions";
 
 interface School {
   id: string;
@@ -40,6 +55,13 @@ interface School {
   onboardingCompletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  domain?: string | null;
+  subdomain?: string | null;
+  tagline?: string | null;
+  logo?: string | null;
+  favicon?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
   _count: {
     administrators: number;
     teachers: number;
@@ -47,6 +69,9 @@ interface School {
     subscriptions: number;
   };
   subscriptions: Array<{
+    id: string;
+    isActive: boolean;
+    startDate: Date;
     endDate: Date;
     paymentStatus: string;
   }>;
@@ -55,14 +80,138 @@ interface School {
     name: string;
     email: string;
   } | null;
-  usage?: {
-    whatsappUsed: number;
-    whatsappLimit: number;
-    smsUsed: number;
-    smsLimit: number;
-    storageUsed: number;
-    storageLimit: number;
+}
+
+interface SchoolAnalytics {
+  school: {
+    id: string;
+    name: string;
+    createdAt: Date;
+    _count: {
+      administrators: number;
+      teachers: number;
+      students: number;
+      announcements: number;
+      events: number;
+      courses: number;
+      classes: number;
+    };
   };
+  metrics: {
+    totalUsers: number;
+    administrators: number;
+    teachers: number;
+    students: number;
+    announcements: number;
+    events: number;
+    courses: number;
+    classes: number;
+  };
+  usageMetrics: Array<{
+    id: string;
+    month: string;
+    whatsappUsed: number;
+    smsUsed: number;
+    storageUsedMB: number;
+    whatsappLimit: number;
+    smsLimit: number;
+    storageLimitMB: number;
+  }>;
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    resource: string;
+    createdAt: Date;
+    changes: any;
+  }>;
+  subscriptions: Array<{
+    id: string;
+    isActive: boolean;
+    startDate: Date;
+    endDate: Date;
+    paymentStatus: string;
+    createdAt: Date;
+  }>;
+}
+
+interface SchoolUsageMetrics {
+  school: {
+    id: string;
+    name: string;
+  };
+  currentUsage: {
+    whatsappUsed: number;
+    smsUsed: number;
+    storageUsedMB: number;
+  };
+  limits: {
+    whatsappLimit: number;
+    smsLimit: number;
+    storageLimitMB: number;
+  };
+  usageHistory: Array<{
+    id: string;
+    month: string;
+    whatsappUsed: number;
+    smsUsed: number;
+    storageUsedMB: number;
+    whatsappLimit: number;
+    smsLimit: number;
+    storageLimitMB: number;
+  }>;
+}
+
+interface SchoolActivityLog {
+  school: {
+    id: string;
+    name: string;
+  };
+  activities: Array<{
+    id: string;
+    userId: string | null;
+    action: string;
+    resource: string;
+    resourceId: string;
+    changes: any;
+    createdAt: Date;
+    user: {
+      name: string | null;
+      email: string | null;
+    } | null;
+  }>;
+}
+
+interface SchoolSecurityStatus {
+  school: {
+    id: string;
+    name: string;
+  };
+  securityScore: number;
+  maxScore: number;
+  securitySettings: {
+    twoFactorRequired?: boolean;
+    sessionTimeoutMinutes?: number;
+    passwordPolicy?: {
+      minLength?: number;
+      requireUppercase?: boolean;
+      requireLowercase?: boolean;
+      requireNumbers?: boolean;
+      requireSpecialChars?: boolean;
+    };
+    ipWhitelist?: string[];
+    allowedDomains?: string[];
+  };
+  infrastructure: {
+    sslConfigured: boolean;
+    dnsConfigured: boolean;
+  };
+  recentSecurityLogs: Array<{
+    id: string;
+    action: string;
+    resource: string;
+    createdAt: Date;
+    changes: any;
+  }>;
 }
 
 interface SchoolDetailsDialogProps {
@@ -74,7 +223,88 @@ interface SchoolDetailsDialogProps {
 
 export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate }: SchoolDetailsDialogProps) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [analytics, setAnalytics] = useState<SchoolAnalytics | null>(null);
+  const [usageMetrics, setUsageMetrics] = useState<SchoolUsageMetrics | null>(null);
+  const [activityLog, setActivityLog] = useState<SchoolActivityLog | null>(null);
+  const [securityStatus, setSecurityStatus] = useState<SchoolSecurityStatus | null>(null);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
   
+  // Load data based on active tab
+  useEffect(() => {
+    if (!open || !school) return;
+
+    const loadTabData = async () => {
+      try {
+        setLoading(prev => ({ ...prev, [activeTab]: true }));
+
+        switch (activeTab) {
+          case "analytics":
+            if (!analytics) {
+              const result = await getSchoolAnalytics(school.id);
+              if (result.success) {
+                setAnalytics(result.data);
+              } else {
+                toast.error("Failed to load school analytics");
+              }
+            }
+            break;
+
+          case "usage":
+            if (!usageMetrics) {
+              const result = await getSchoolUsageMetrics(school.id);
+              if (result.success) {
+                setUsageMetrics(result.data);
+              } else {
+                toast.error("Failed to load usage metrics");
+              }
+            }
+            break;
+
+          case "activity":
+            if (!activityLog) {
+              const result = await getSchoolActivityLog(school.id, 20);
+              if (result.success) {
+                setActivityLog(result.data);
+              } else {
+                toast.error("Failed to load activity log");
+              }
+            }
+            break;
+
+          case "security":
+            if (!securityStatus) {
+              const result = await getSchoolSecurityStatus(school.id);
+              if (result.success) {
+                setSecurityStatus(result.data);
+              } else {
+                toast.error("Failed to load security status");
+              }
+            }
+            break;
+        }
+      } catch (error) {
+        console.error(`Error loading ${activeTab} data:`, error);
+        toast.error(`Failed to load ${activeTab} data`);
+      } finally {
+        setLoading(prev => ({ ...prev, [activeTab]: false }));
+      }
+    };
+
+    loadTabData();
+  }, [activeTab, open, school, analytics, usageMetrics, activityLog, securityStatus]);
+
+  // Reset data when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setAnalytics(null);
+      setUsageMetrics(null);
+      setActivityLog(null);
+      setSecurityStatus(null);
+      setActiveTab("overview");
+    }
+  }, [open]);
+
   if (!school) return null;
 
   const getStatusColor = (status: string) => {
@@ -126,13 +356,15 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="usage">Usage</TabsTrigger>
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -240,6 +472,237 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            {loading.analytics ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full" />
+                  ))}
+                </div>
+                <Skeleton className="h-48 w-full" />
+              </div>
+            ) : analytics ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                      <Users className="h-4 w-4 text-blue-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{analytics.metrics.totalUsers}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Active user accounts
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Courses</CardTitle>
+                      <School className="h-4 w-4 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{analytics.metrics.courses}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Active courses
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Classes</CardTitle>
+                      <Building className="h-4 w-4 text-purple-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{analytics.metrics.classes}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Class sections
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Announcements</CardTitle>
+                      <MessageSquare className="h-4 w-4 text-orange-600" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{analytics.metrics.announcements}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Total announcements
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>User Distribution</CardTitle>
+                      <CardDescription>Breakdown of user roles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Students</span>
+                          <div className="flex items-center gap-2">
+                            <Progress 
+                              value={(analytics.metrics.students / analytics.metrics.totalUsers) * 100} 
+                              className="w-20"
+                            />
+                            <span className="text-sm font-medium">{analytics.metrics.students}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Teachers</span>
+                          <div className="flex items-center gap-2">
+                            <Progress 
+                              value={(analytics.metrics.teachers / analytics.metrics.totalUsers) * 100} 
+                              className="w-20"
+                            />
+                            <span className="text-sm font-medium">{analytics.metrics.teachers}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Administrators</span>
+                          <div className="flex items-center gap-2">
+                            <Progress 
+                              value={(analytics.metrics.administrators / analytics.metrics.totalUsers) * 100} 
+                              className="w-20"
+                            />
+                            <span className="text-sm font-medium">{analytics.metrics.administrators}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Activity Overview</CardTitle>
+                      <CardDescription>Content and engagement metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Events</span>
+                          <span className="text-sm font-medium">{analytics.metrics.events}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Announcements</span>
+                          <span className="text-sm font-medium">{analytics.metrics.announcements}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Active Courses</span>
+                          <span className="text-sm font-medium">{analytics.metrics.courses}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Class Sections</span>
+                          <span className="text-sm font-medium">{analytics.metrics.classes}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {analytics.usageMetrics.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Usage Trends</CardTitle>
+                      <CardDescription>Monthly usage patterns over time</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {analytics.usageMetrics.slice(0, 6).map((usage, index) => (
+                          <div key={usage.id} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{usage.month}</span>
+                            <div className="flex gap-4 text-xs text-muted-foreground">
+                              <span>WhatsApp: {usage.whatsappUsed}/{usage.whatsappLimit}</span>
+                              <span>SMS: {usage.smsUsed}/{usage.smsLimit}</span>
+                              <span>Storage: {Math.round(usage.storageUsedMB / 1024 * 100) / 100}GB</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {analytics.recentActivity.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Activity Summary</CardTitle>
+                      <CardDescription>Latest system activities</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {analytics.recentActivity.slice(0, 5).map((activity) => (
+                          <div key={activity.id} className="flex items-center justify-between text-sm border-b pb-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {activity.action}
+                              </Badge>
+                              <span>{activity.resource}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {activity.createdAt.toLocaleDateString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Analytics Actions</CardTitle>
+                    <CardDescription>Export and analyze school data</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Detailed Analytics
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Growth Report
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Data
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => {
+                        onOpenChange(false);
+                        router.push(`/super-admin/schools/${school.id}/analytics`);
+                      }}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Full Analytics
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">No analytics data available</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setActiveTab("analytics")}
+                  >
+                    Retry Loading
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="onboarding" className="space-y-4">
@@ -354,7 +817,24 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           </TabsContent>
 
           <TabsContent value="usage" className="space-y-4">
-            {school.usage ? (
+            {loading.usage ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i}>
+                      <CardHeader>
+                        <Skeleton className="h-4 w-32" />
+                      </CardHeader>
+                      <CardContent>
+                        <Skeleton className="h-8 w-full mb-2" />
+                        <Skeleton className="h-2 w-full mb-2" />
+                        <Skeleton className="h-3 w-16" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : usageMetrics ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card>
@@ -365,14 +845,14 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Used: {school.usage.whatsappUsed}</span>
-                          <span>Limit: {school.usage.whatsappLimit}</span>
+                          <span>Used: {usageMetrics.currentUsage.whatsappUsed}</span>
+                          <span>Limit: {usageMetrics.limits.whatsappLimit}</span>
                         </div>
                         <Progress 
-                          value={getUsagePercentage(school.usage.whatsappUsed, school.usage.whatsappLimit)} 
+                          value={getUsagePercentage(usageMetrics.currentUsage.whatsappUsed, usageMetrics.limits.whatsappLimit)} 
                         />
-                        <p className={`text-xs ${getUsageColor(getUsagePercentage(school.usage.whatsappUsed, school.usage.whatsappLimit))}`}>
-                          {getUsagePercentage(school.usage.whatsappUsed, school.usage.whatsappLimit)}% used
+                        <p className={`text-xs ${getUsageColor(getUsagePercentage(usageMetrics.currentUsage.whatsappUsed, usageMetrics.limits.whatsappLimit))}`}>
+                          {getUsagePercentage(usageMetrics.currentUsage.whatsappUsed, usageMetrics.limits.whatsappLimit)}% used
                         </p>
                       </div>
                     </CardContent>
@@ -386,14 +866,14 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Used: {school.usage.smsUsed}</span>
-                          <span>Limit: {school.usage.smsLimit}</span>
+                          <span>Used: {usageMetrics.currentUsage.smsUsed}</span>
+                          <span>Limit: {usageMetrics.limits.smsLimit}</span>
                         </div>
                         <Progress 
-                          value={getUsagePercentage(school.usage.smsUsed, school.usage.smsLimit)} 
+                          value={getUsagePercentage(usageMetrics.currentUsage.smsUsed, usageMetrics.limits.smsLimit)} 
                         />
-                        <p className={`text-xs ${getUsageColor(getUsagePercentage(school.usage.smsUsed, school.usage.smsLimit))}`}>
-                          {getUsagePercentage(school.usage.smsUsed, school.usage.smsLimit)}% used
+                        <p className={`text-xs ${getUsageColor(getUsagePercentage(usageMetrics.currentUsage.smsUsed, usageMetrics.limits.smsLimit))}`}>
+                          {getUsagePercentage(usageMetrics.currentUsage.smsUsed, usageMetrics.limits.smsLimit)}% used
                         </p>
                       </div>
                     </CardContent>
@@ -407,19 +887,42 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Used: {school.usage.storageUsed}GB</span>
-                          <span>Limit: {school.usage.storageLimit}GB</span>
+                          <span>Used: {Math.round(usageMetrics.currentUsage.storageUsedMB / 1024 * 100) / 100}GB</span>
+                          <span>Limit: {Math.round(usageMetrics.limits.storageLimitMB / 1024 * 100) / 100}GB</span>
                         </div>
                         <Progress 
-                          value={getUsagePercentage(school.usage.storageUsed, school.usage.storageLimit)} 
+                          value={getUsagePercentage(usageMetrics.currentUsage.storageUsedMB, usageMetrics.limits.storageLimitMB)} 
                         />
-                        <p className={`text-xs ${getUsageColor(getUsagePercentage(school.usage.storageUsed, school.usage.storageLimit))}`}>
-                          {getUsagePercentage(school.usage.storageUsed, school.usage.storageLimit)}% used
+                        <p className={`text-xs ${getUsageColor(getUsagePercentage(usageMetrics.currentUsage.storageUsedMB, usageMetrics.limits.storageLimitMB))}`}>
+                          {getUsagePercentage(usageMetrics.currentUsage.storageUsedMB, usageMetrics.limits.storageLimitMB)}% used
                         </p>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {usageMetrics.usageHistory.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Usage History</CardTitle>
+                      <CardDescription>Monthly usage trends for the past year</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {usageMetrics.usageHistory.slice(0, 6).map((usage, index) => (
+                          <div key={usage.id} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">{usage.month}</span>
+                            <div className="flex gap-4 text-xs text-muted-foreground">
+                              <span>WhatsApp: {usage.whatsappUsed}</span>
+                              <span>SMS: {usage.smsUsed}</span>
+                              <span>Storage: {Math.round(usage.storageUsedMB / 1024 * 100) / 100}GB</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHeader>
@@ -443,6 +946,10 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                         <Activity className="h-4 w-4 mr-2" />
                         Set Alerts
                       </Button>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Report
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -451,79 +958,299 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-muted-foreground">No usage data available</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setActiveTab("usage")}
+                  >
+                    Retry Loading
+                  </Button>
                 </CardContent>
               </Card>
             )}
           </TabsContent>
 
-          <TabsContent value="subscription" className="space-y-4">
-            {school.subscriptions.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Current Subscription
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm font-medium">Plan:</span>
-                      <div className="mt-1">
-                        <Badge variant={getPlanColor(school.plan) as any}>
-                          {school.plan}
-                        </Badge>
-                      </div>
+          <TabsContent value="activity" className="space-y-4">
+            {loading.activity ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : activityLog ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5" />
+                      Recent Activity
+                    </CardTitle>
+                    <CardDescription>
+                      Latest actions and changes for {activityLog.school.name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {activityLog.activities.length > 0 ? (
+                        activityLog.activities.map((activity) => (
+                          <div key={activity.id} className="border-l-2 border-muted pl-4 pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {activity.action}
+                                </Badge>
+                                <span className="text-sm font-medium">{activity.resource}</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {activity.createdAt.toLocaleString()}
+                              </span>
+                            </div>
+                            {activity.user && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                by {activity.user.name || activity.user.email}
+                              </p>
+                            )}
+                            {activity.changes && typeof activity.changes === 'object' && (
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                <details className="cursor-pointer">
+                                  <summary>View changes</summary>
+                                  <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
+                                    {JSON.stringify(activity.changes, null, 2)}
+                                  </pre>
+                                </details>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">
+                          No activity logs found
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <span className="text-sm font-medium">Payment Status:</span>
-                      <div className="mt-1">
-                        <Badge variant={school.subscriptions[0].paymentStatus === "PAID" ? "default" : "destructive"}>
-                          {school.subscriptions[0].paymentStatus}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium">End Date:</span>
-                      <p className="text-sm mt-1">{school.subscriptions[0].endDate.toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium">Days Remaining:</span>
-                      <p className="text-sm mt-1">
-                        {Math.ceil((school.subscriptions[0].endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
-                      </p>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="flex flex-wrap gap-2 pt-4">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      onOpenChange(false);
-                      router.push(`/super-admin/billing?school=${school.id}`);
-                    }}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Manage Subscription
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => {
-                      onOpenChange(false);
-                      router.push(`/super-admin/billing?school=${school.id}`);
-                    }}>
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Billing History
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Payment Methods
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Activity Management</CardTitle>
+                    <CardDescription>Export and manage activity logs</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Activity Log
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Full Log
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Log Settings
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             ) : (
               <Card>
                 <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground">No active subscription</p>
-                  <Button className="mt-4">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Create Subscription
+                  <p className="text-muted-foreground">No activity data available</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setActiveTab("activity")}
+                  >
+                    Retry Loading
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-4">
+            {loading.security ? (
+              <div className="space-y-4">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-48 w-full" />
+              </div>
+            ) : securityStatus ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Security Overview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Security Score:</span>
+                      <div className="flex items-center gap-2">
+                        <Progress 
+                          value={(securityStatus.securityScore / securityStatus.maxScore) * 100} 
+                          className="w-32"
+                        />
+                        <span className="text-sm font-bold">
+                          {securityStatus.securityScore}/{securityStatus.maxScore}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Infrastructure</h4>
+                        <div className="flex items-center gap-2">
+                          {securityStatus.infrastructure.sslConfigured ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className="text-sm">SSL Certificate</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {securityStatus.infrastructure.dnsConfigured ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className="text-sm">DNS Configuration</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Authentication</h4>
+                        <div className="flex items-center gap-2">
+                          {securityStatus.securitySettings.twoFactorRequired ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          )}
+                          <span className="text-sm">Two-Factor Authentication</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {securityStatus.securitySettings.sessionTimeoutMinutes && 
+                           securityStatus.securitySettings.sessionTimeoutMinutes <= 60 ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          )}
+                          <span className="text-sm">Session Timeout</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {securityStatus.securitySettings.passwordPolicy && (
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Password Policy</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            {securityStatus.securitySettings.passwordPolicy.minLength && 
+                             securityStatus.securitySettings.passwordPolicy.minLength >= 8 ? (
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-red-600" />
+                            )}
+                            <span>Minimum Length (8+)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {securityStatus.securitySettings.passwordPolicy.requireUppercase ? (
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-yellow-600" />
+                            )}
+                            <span>Uppercase Required</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {securityStatus.securitySettings.passwordPolicy.requireNumbers ? (
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-yellow-600" />
+                            )}
+                            <span>Numbers Required</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {securityStatus.securitySettings.passwordPolicy.requireSpecialChars ? (
+                              <CheckCircle className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-yellow-600" />
+                            )}
+                            <span>Special Characters</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {securityStatus.recentSecurityLogs.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Security Events</CardTitle>
+                      <CardDescription>Latest security-related activities</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {securityStatus.recentSecurityLogs.slice(0, 10).map((log) => (
+                          <div key={log.id} className="flex items-center justify-between text-sm border-b pb-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {log.action}
+                              </Badge>
+                              <span>{log.resource}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {log.createdAt.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Security Management</CardTitle>
+                    <CardDescription>Configure security settings and policies</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => {
+                        onOpenChange(false);
+                        router.push(`/super-admin/schools/${school.id}/settings?tab=security`);
+                      }}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Security Settings
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Activity className="h-4 w-4 mr-2" />
+                        Security Audit
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Security Report
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Database className="h-4 w-4 mr-2" />
+                        Backup Security
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground">No security data available</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setActiveTab("security")}
+                  >
+                    Retry Loading
                   </Button>
                 </CardContent>
               </Card>

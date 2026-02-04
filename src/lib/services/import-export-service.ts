@@ -459,7 +459,6 @@ export async function importCalendarEvents(
           isRecurring: eventData.isRecurring ?? false,
           recurrenceRule: eventData.recurrenceRule,
           exceptionDates: eventData.exceptionDates,
-          exceptionDates: eventData.exceptionDates,
           attachments: eventData.attachments,
           schoolId,
           createdBy

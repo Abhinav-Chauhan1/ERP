@@ -428,6 +428,7 @@ class SchoolDataManagementService {
 
   /**
    * Bulk update data management settings for multiple schools
+   * OPTIMIZED: Use parallel processing instead of sequential updates
    */
   async bulkUpdateDataManagementSettings(
     schoolIds: string[],
@@ -438,14 +439,43 @@ class SchoolDataManagementService {
 
     const results = { success: 0, failed: 0, errors: [] as string[] };
 
-    for (const schoolId of schoolIds) {
-      try {
-        await this.updateSchoolDataManagementSettings(schoolId, data, updatedBy);
-        results.success++;
-      } catch (error) {
-        results.failed++;
-        results.errors.push(`School ${schoolId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
+    // Process schools in parallel with controlled concurrency
+    const BATCH_SIZE = 5; // Process 5 schools concurrently to avoid overwhelming the database
+    
+    for (let i = 0; i < schoolIds.length; i += BATCH_SIZE) {
+      const batch = schoolIds.slice(i, i + BATCH_SIZE);
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(async (schoolId) => {
+        try {
+          await this.updateSchoolDataManagementSettings(schoolId, data, updatedBy);
+          return { schoolId, success: true };
+        } catch (error) {
+          return { 
+            schoolId, 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+          };
+        }
+      });
+      
+      // Wait for batch to complete
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      // Process results
+      batchResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          if (result.value.success) {
+            results.success++;
+          } else {
+            results.failed++;
+            results.errors.push(`School ${result.value.schoolId}: ${result.value.error}`);
+          }
+        } else {
+          results.failed++;
+          results.errors.push(`Unknown school: ${result.reason?.message || 'Promise rejected'}`);
+        }
+      });
     }
 
     return results;

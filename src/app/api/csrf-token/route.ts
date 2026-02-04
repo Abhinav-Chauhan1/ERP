@@ -1,41 +1,46 @@
-/**
- * CSRF Token API Route
- * Generates and returns a CSRF token for client-side forms
- * Requirements: 10.1, 10.2
- */
-
-import { NextResponse } from "next/server";
-import { generateCsrfToken } from "@/lib/utils/csrf";
-import { currentUser } from "@/lib/auth-helpers";
+import { NextRequest, NextResponse } from 'next/server';
+import { generateCSRFToken, setCSRFTokenCookie } from '@/lib/middleware/csrf-protection';
 
 /**
- * GET /api/csrf-token
- * Generate and return a CSRF token
+ * CSRF Token API Endpoint
+ * Provides CSRF tokens for client-side forms and AJAX requests
  */
-export async function GET() {
+
+export async function GET(request: NextRequest) {
   try {
-    // Verify user is authenticated
-    const user = await currentUser();
+    // Generate a new CSRF token
+    const token = generateCSRFToken();
     
-    if (!user) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    
-    // Generate CSRF token
-    const token = await generateCsrfToken();
-    
-    return NextResponse.json({
-      success: true,
+    // Create response with token
+    const response = NextResponse.json({
       token,
+      success: true
     });
+
+    // Set the token in a secure cookie
+    setCSRFTokenCookie(response, token);
+
+    // Add security headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
+
   } catch (error) {
-    console.error("Error generating CSRF token:", error);
+    console.error('Error generating CSRF token:', error);
+    
     return NextResponse.json(
-      { success: false, message: "Failed to generate CSRF token" },
+      { 
+        error: 'Failed to generate CSRF token',
+        success: false 
+      },
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  // POST method can be used to refresh the token
+  return GET(request);
 }

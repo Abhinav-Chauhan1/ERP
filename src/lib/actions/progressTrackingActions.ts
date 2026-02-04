@@ -15,6 +15,7 @@ import {
   verifyTeacherOwnership,
   formatAuthError,
 } from "@/lib/utils/syllabus-authorization";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Response type
 interface ActionResponse<T = any> {
@@ -76,6 +77,14 @@ export async function markSubModuleComplete(
       return formatAuthError(authResult);
     }
 
+    // Get school context
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+
     // Check if sub-module exists
     const subModule = await db.subModule.findUnique({
       where: { id: subModuleId },
@@ -101,6 +110,7 @@ export async function markSubModuleComplete(
         completedAt: completed ? new Date() : null,
       },
       create: {
+        schoolId,
         subModuleId,
         teacherId,
         completed,

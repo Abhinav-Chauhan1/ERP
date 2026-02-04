@@ -132,8 +132,8 @@ export function TermsStep({ data, updateData, onNext, onPrev }: TermsStepProps) 
         <div className="space-y-6">
             <div className="text-center space-y-2">
                 <div className="flex justify-center">
-                    <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-                        <ClipboardList className="h-6 w-6 text-orange-600" />
+                    <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                        <ClipboardList className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold">Terms / Semesters</h2>
@@ -143,10 +143,10 @@ export function TermsStep({ data, updateData, onNext, onPrev }: TermsStepProps) 
             </div>
 
             {/* Quick Templates */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                    <Lightbulb className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm text-amber-800">Quick Templates</span>
+                    <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-medium text-sm text-amber-800 dark:text-amber-200">Quick Templates</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {TERM_TEMPLATES.map((template) => (
@@ -168,7 +168,7 @@ export function TermsStep({ data, updateData, onNext, onPrev }: TermsStepProps) 
                 {data.terms.map((term, index) => (
                     <div
                         key={index}
-                        className="border rounded-lg p-4 space-y-3 bg-gray-50/50"
+                        className="border rounded-lg p-4 space-y-3 bg-muted/30"
                     >
                         <div className="flex items-center justify-between">
                             <Label className="font-medium">Term {index + 1}</Label>
@@ -177,7 +177,7 @@ export function TermsStep({ data, updateData, onNext, onPrev }: TermsStepProps) 
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => removeTerm(index)}
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>

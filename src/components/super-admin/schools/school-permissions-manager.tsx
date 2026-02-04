@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { useBreakpoint, mobileClasses } from "@/lib/utils/mobile-responsive";
 import { aria, focus } from "@/lib/utils/accessibility";
+import { updateSchoolPermissions } from "@/lib/actions/school-management-actions";
 
 interface SchoolPermissionsManagerProps {
   schoolId: string;
@@ -198,10 +199,12 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
       const response = await fetch(`/api/super-admin/schools/${schoolId}/permissions`);
       if (response.ok) {
         const data = await response.json();
-        // Merge with default permissions
+        // Merge with default permissions - data.permissions is an object, not array
         const updatedPermissions = defaultPermissions.map(perm => {
-          const saved = data.permissions?.find((p: any) => p.id === perm.id);
-          return saved ? { ...perm, enabled: saved.enabled } : perm;
+          const saved = data.permissions && typeof data.permissions === 'object' 
+            ? data.permissions[perm.id]
+            : undefined;
+          return saved !== undefined ? { ...perm, enabled: saved } : perm;
         });
         setPermissions(updatedPermissions);
       }
@@ -223,23 +226,26 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/super-admin/schools/${schoolId}/permissions`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          permissions: permissions.map(p => ({
-            id: p.id,
-            enabled: p.enabled,
-          })),
-        }),
+      const permissionsData = permissions.reduce((acc, perm) => {
+        acc[perm.id] = perm.enabled;
+        return acc;
+      }, {} as Record<string, boolean>);
+
+      const result = await updateSchoolPermissions(schoolId, {
+        canCreateUsers: permissionsData.manage_students || permissionsData.manage_teachers,
+        canManageRoles: permissionsData.manage_settings,
+        canAccessReports: permissionsData.generate_reports,
+        canManageBilling: permissionsData.manage_billing,
+        canExportData: permissionsData.data_export,
+        maxAdministrators: 10, // Default limits
+        maxTeachers: 100,
+        maxStudents: 1000,
       });
 
-      if (response.ok) {
+      if (result.success) {
         toast.success('Permissions updated successfully');
       } else {
-        throw new Error('Failed to update permissions');
+        throw new Error(result.error || 'Failed to update permissions');
       }
     } catch (error) {
       toast.error('Failed to update permissions');

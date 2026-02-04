@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 // Get a subject by ID with assigned teachers
 export async function getSubjectById(id: string) {
@@ -155,11 +156,15 @@ export async function assignTeacherToSubject(subjectId: string, teacherId: strin
       return { success: false, error: "Teacher is already assigned to this subject" };
     }
     
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+    
     // Create the new assignment
     const assignment = await db.subjectTeacher.create({
       data: {
         subject: { connect: { id: subjectId } },
-        teacher: { connect: { id: teacherId } }
+        teacher: { connect: { id: teacherId } },
+        school: { connect: { id: schoolId } }, // Add required school connection
       },
       include: {
         teacher: {

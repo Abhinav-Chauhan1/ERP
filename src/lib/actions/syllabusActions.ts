@@ -8,8 +8,8 @@ import {
   SyllabusUpdateFormValues,
   SyllabusScopeFilterValues,
 } from "../schemaValidation/syllabusSchemaValidations";
-import { uploadToCloudinary, getResourceType } from "@/lib/cloudinary";
 import { SyllabusStatus, CurriculumType, Prisma } from "@prisma/client";
+import { uploadHandler } from "@/lib/services/upload-handler";
 
 // Get all subjects for dropdown
 export const getSubjectsForDropdown = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
@@ -312,19 +312,24 @@ export const createSyllabus = withSchoolAuthAction(async (schoolId: string, user
       };
     }
 
-    // Upload file to Cloudinary if provided
+    // Upload file to R2 if provided
     let documentUrl = data.document;
     if (file) {
-      const resourceType = getResourceType(file.type);
-      const uploadResult = await uploadToCloudinary(file, {
-        folder: 'syllabus',
-        resource_type: resourceType,
-        publicId: `${data.subjectId}_syllabus_${Date.now()}`
+      const uploadResult = await uploadHandler.uploadDocument(file, {
+        folder: 'syllabus-documents',
+        category: 'document',
+        customMetadata: {
+          syllabusTitle: data.title,
+          subjectId: data.subjectId,
+          uploadType: 'syllabus-document'
+        }
       });
 
-      if (uploadResult.secure_url) {
-        documentUrl = uploadResult.secure_url;
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload syllabus document');
       }
+
+      documentUrl = uploadResult.url;
     }
 
     // Create syllabus
@@ -378,16 +383,29 @@ export const updateSyllabus = withSchoolAuthAction(async (schoolId: string, user
       sectionId = data.sectionId || null;
     }
 
+    // Upload file to R2 if provided
     let documentUrl = data.document;
     if (file) {
-      const resourceType = getResourceType(file.type);
-      const uploadResult = await uploadToCloudinary(file, {
-        folder: 'syllabus',
-        resource_type: resourceType,
-        publicId: `${data.subjectId}_syllabus_${Date.now()}`
-      });
-      if (uploadResult.secure_url) {
-        documentUrl = uploadResult.secure_url;
+      try {
+        const uploadResult = await uploadHandler.uploadDocument(file, {
+          folder: 'syllabus-documents',
+          category: 'document',
+          customMetadata: {
+            syllabusId: data.id,
+            syllabusTitle: data.title,
+            uploadType: 'syllabus-document-update'
+          }
+        });
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Failed to upload syllabus document');
+        }
+
+        documentUrl = uploadResult.url;
+      } catch (uploadError) {
+        console.warn("File upload temporarily disabled during Cloudinary to R2 migration");
+        console.error("Upload error:", uploadError);
+        // Continue without updating document URL
       }
     }
 

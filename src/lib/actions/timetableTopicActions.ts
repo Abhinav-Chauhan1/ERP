@@ -42,18 +42,15 @@ interface TodayTopicSlot {
 /**
  * Assign a topic (sub-module) to a timetable slot
  */
-export const assignTopicToSlot = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string, topicId: string): Promise<ActionResponse> => {
+export const assignTopicToSlot = withSchoolAuthAction(async (schoolId, _userId, _userRole, slotId: string, topicId: string): Promise<ActionResponse> => {
     try {
         // Verify the slot exists
         const slot = await db.timetableSlot.findFirst({
             where: { id: slotId, schoolId },
             include: {
                 subjectTeacher: {
-                    where: { schoolId },
                     include: {
-                        subject: {
-                            where: { schoolId }
-                        }
+                        subject: true
                     }
                 }
             }
@@ -68,11 +65,8 @@ export const assignTopicToSlot = withSchoolAuthAction(async (schoolId, userId, u
             where: { id: topicId, schoolId },
             include: {
                 module: {
-                    where: { schoolId },
                     include: {
-                        syllabus: {
-                            where: { schoolId }
-                        }
+                        syllabus: true
                     }
                 }
             }
@@ -112,7 +106,7 @@ export const assignTopicToSlot = withSchoolAuthAction(async (schoolId, userId, u
 /**
  * Remove topic assignment from a timetable slot
  */
-export const removeTopicFromSlot = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string): Promise<ActionResponse> => {
+export const removeTopicFromSlot = withSchoolAuthAction(async (schoolId, _userId, _userRole, slotId: string): Promise<ActionResponse> => {
     try {
         await db.timetableSlot.update({
             where: { id: slotId, schoolId },
@@ -135,7 +129,7 @@ export const removeTopicFromSlot = withSchoolAuthAction(async (schoolId, userId,
 /**
  * Get all topics scheduled for today for a teacher
  */
-export const getTodaysTopics = withSchoolAuthAction(async (schoolId, userId, userRole, teacherId?: string): Promise<ActionResponse<TodayTopicSlot[]>> => {
+export const getTodaysTopics = withSchoolAuthAction(async (schoolId, userId, _userRole, teacherId?: string): Promise<ActionResponse<TodayTopicSlot[]>> => {
     try {
         // Get teacher ID - either from param or from session
         let actualTeacherId = teacherId;
@@ -177,28 +171,17 @@ export const getTodaysTopics = withSchoolAuthAction(async (schoolId, userId, use
                 }
             },
             include: {
-                class: {
-                    where: { schoolId }
-                },
-                section: {
-                    where: { schoolId }
-                },
-                room: {
-                    where: { schoolId }
-                },
+                class: true,
+                section: true,
+                room: true,
                 subjectTeacher: {
-                    where: { schoolId },
                     include: {
-                        subject: {
-                            where: { schoolId }
-                        }
+                        subject: true
                     }
                 },
                 topic: {
                     include: {
-                        module: {
-                            where: { schoolId }
-                        },
+                        module: true,
                         progress: {
                             where: {
                                 teacherId: actualTeacherId,
@@ -249,7 +232,7 @@ export const getTodaysTopics = withSchoolAuthAction(async (schoolId, userId, use
 /**
  * Mark a scheduled topic as completed via the timetable
  */
-export const markSlotTopicComplete = withSchoolAuthAction(async (schoolId, userId, userRole, slotId: string, teacherId: string): Promise<ActionResponse> => {
+export const markSlotTopicComplete = withSchoolAuthAction(async (schoolId, _userId, _userRole, slotId: string, teacherId: string): Promise<ActionResponse> => {
     try {
         // Get the slot with topic
         const slot = await db.timetableSlot.findFirst({
@@ -302,18 +285,16 @@ export const markSlotTopicComplete = withSchoolAuthAction(async (schoolId, userI
 /**
  * Get available topics for a subject (for assigning to timetable slots)
  */
-export const getTopicsForSubject = withSchoolAuthAction(async (schoolId, userId, userRole, subjectId: string): Promise<ActionResponse<{ id: string; title: string; chapterNumber: number; moduleTitle: string }[]>> => {
+export const getTopicsForSubject = withSchoolAuthAction(async (schoolId, _userId, _userRole, subjectId: string): Promise<ActionResponse<{ id: string; title: string; chapterNumber: number; moduleTitle: string }[]>> => {
     try {
         // Get all syllabi for this subject
         const syllabi = await db.syllabus.findMany({
             where: { subjectId, schoolId },
             include: {
                 modules: {
-                    where: { schoolId },
                     orderBy: { chapterNumber: "asc" },
                     include: {
                         subModules: {
-                            where: { schoolId },
                             orderBy: { order: "asc" }
                         }
                     }

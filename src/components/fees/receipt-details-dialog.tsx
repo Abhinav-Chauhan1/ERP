@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { ReceiptStatus, PaymentMethod } from "@prisma/client";
 import { format } from "date-fns";
-import { getCloudinaryThumb } from "@/lib/cloudinary";
+import { generateCdnUrl } from "@/lib/config/r2-config";
 
 interface ReceiptDetailsDialogProps {
   open: boolean;

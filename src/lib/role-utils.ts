@@ -26,7 +26,7 @@ export async function updateUserRole(userId: string, role: UserRole) {
 /**
  * Creates role-specific profile for a user
  */
-export async function createRoleProfile(userId: string, data: any) {
+export async function createRoleProfile(userId: string, data: any, schoolId: string) {
   try {
     // Get the user to determine their role
     const user = await db.user.findUnique({
@@ -44,8 +44,9 @@ export async function createRoleProfile(userId: string, data: any) {
         return await db.administrator.create({
           data: {
             userId,
+            schoolId, // Add required schoolId
             position: data.position,
-            department: data.department
+            // Remove department as it doesn't exist in the schema
           }
         });
       
@@ -53,6 +54,7 @@ export async function createRoleProfile(userId: string, data: any) {
         return await db.teacher.create({
           data: {
             userId,
+            schoolId, // Add required schoolId
             employeeId: data.employeeId,
             qualification: data.qualification,
             joinDate: data.joinDate || new Date(),
@@ -64,6 +66,7 @@ export async function createRoleProfile(userId: string, data: any) {
         return await db.student.create({
           data: {
             userId,
+            schoolId, // Add required schoolId
             admissionId: data.admissionId,
             admissionDate: data.admissionDate || new Date(),
             rollNumber: data.rollNumber,
@@ -76,6 +79,7 @@ export async function createRoleProfile(userId: string, data: any) {
         return await db.parent.create({
           data: {
             userId,
+            schoolId, // Add required schoolId
             occupation: data.occupation,
             alternatePhone: data.alternatePhone,
             relation: data.relation

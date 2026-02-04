@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { TimetableConfigFormValues } from "../schemaValidation/timetableConfigSchemaValidation";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 
 // Get the current timetable configuration
 export async function getTimetableConfig() {
@@ -69,6 +70,9 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
   console.log("Server received data:", data);
   
   try {
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+    
     // Validate input
     if (!data.name) {
       return { success: false, error: "Configuration name is required" };
@@ -98,7 +102,8 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
                 name: period.name,
                 startTime: new Date(`1970-01-01T${period.startTime}:00`),
                 endTime: new Date(`1970-01-01T${period.endTime}:00`),
-                order: index + 1
+                order: index + 1,
+                school: { connect: { id: schoolId } } // Add required school connection
               }))
             }
           }
@@ -121,12 +126,17 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
           data: { isActive: false }
         });
         
+        // Get required school context
+        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+        const schoolId = await getRequiredSchoolId();
+        
         // Create new config
         const config = await db.timetableConfig.create({
           data: {
             name: data.name,
             daysOfWeek: data.daysOfWeek,
             isActive: true,
+            school: { connect: { id: schoolId } } // Add required school connection
           }
         });
         
@@ -138,7 +148,8 @@ export async function saveTimetableConfig(data: TimetableConfigFormValues) {
               startTime: new Date(`1970-01-01T${period.startTime}:00`),
               endTime: new Date(`1970-01-01T${period.endTime}:00`),
               order: period.order || data.periods.indexOf(period) + 1,
-              configId: config.id
+              configId: config.id,
+              schoolId, // Add required schoolId
             }
           });
         }

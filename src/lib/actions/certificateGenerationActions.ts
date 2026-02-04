@@ -12,6 +12,8 @@
 import { currentUser } from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 import {
   generateBulkCertificates,
   generateSingleCertificate,
@@ -47,6 +49,9 @@ export async function bulkGenerateCertificates(
     if (dbUser.role !== "ADMIN" && dbUser.role !== "TEACHER") {
       return { success: false, error: "Insufficient permissions" };
     }
+
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
 
     // Fetch student data
     const students = await db.student.findMany({
@@ -115,6 +120,7 @@ export async function bulkGenerateCertificates(
       templateId,
       students: studentData,
       issuedBy: dbUser.id,
+      schoolId, // Add required schoolId
     };
 
     const result = await generateBulkCertificates(options);
@@ -153,6 +159,9 @@ export async function generateCertificateForStudent(
     if (!user) {
       return { success: false, error: "Unauthorized" };
     }
+
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
@@ -228,7 +237,8 @@ export async function generateCertificateForStudent(
     const result = await generateSingleCertificate(
       templateId,
       studentData,
-      dbUser.id
+      dbUser.id,
+      schoolId
     );
 
     // Revalidate certificates page
@@ -270,19 +280,19 @@ export async function getGeneratedCertificates(filters?: {
 
     // Build where clause
     const where: any = {};
-    
+
     if (filters?.templateId) {
       where.templateId = filters.templateId;
     }
-    
+
     if (filters?.studentId) {
       where.studentId = filters.studentId;
     }
-    
+
     if (filters?.status) {
       where.status = filters.status;
     }
-    
+
     if (filters?.startDate || filters?.endDate) {
       where.issuedDate = {};
       if (filters.startDate) {
@@ -423,18 +433,25 @@ export async function getCertificateGenerationStats() {
       return { success: false, error: "Insufficient permissions" };
     }
 
-    // Get total certificates
-    const totalCertificates = await db.generatedCertificate.count();
+    // Get school context for scoping
+    const schoolId = await getRequiredSchoolId();
 
-    // Get certificates by status
+    // Get total certificates for this school
+    const totalCertificates = await db.generatedCertificate.count({
+      where: { schoolId }
+    });
+
+    // Get certificates by status for this school
     const statusBreakdown = await db.generatedCertificate.groupBy({
       by: ['status'],
+      where: { schoolId },
       _count: true,
     });
 
-    // Get certificates by type
+    // Get certificates by type for this school
     const typeBreakdown = await db.generatedCertificate.groupBy({
       by: ['templateId'],
+      where: { schoolId },
       _count: true,
       orderBy: {
         _count: {
@@ -469,8 +486,9 @@ export async function getCertificateGenerationStats() {
       };
     });
 
-    // Get recent certificates
+    // Get recent certificates for this school
     const recentCertificates = await db.generatedCertificate.findMany({
+      where: { schoolId },
       take: 10,
       orderBy: {
         issuedDate: 'desc',

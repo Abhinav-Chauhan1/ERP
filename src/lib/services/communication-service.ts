@@ -271,7 +271,7 @@ async function sendViaSMS(
   userId?: string
 ): Promise<ChannelResult> {
   try {
-    if (!isMSG91Configured()) {
+    if (!isSMSConfigured()) {
       return {
         success: false,
         error: 'SMS service not configured',
@@ -287,7 +287,7 @@ async function sendViaSMS(
       metadata: dltTemplateId ? { dltTemplateId } : undefined,
     });
 
-    const result = await sendSMSWithRetry(phone, message, dltTemplateId);
+    const result = await sendSMSWithRetry(phone, message, dltTemplateId ? { dltTemplateId } : undefined);
 
     // Update log with result
     if (result.success && result.messageId) {
@@ -299,7 +299,6 @@ async function sendViaSMS(
       await updateMessageStatus({
         messageId: log.id,
         status: MessageLogStatus.FAILED,
-        errorCode: result.errorCode,
         errorMessage: result.error,
       });
     }
@@ -381,6 +380,7 @@ async function sendInAppNotification(
   title: string,
   message: string,
   type: NotificationType,
+  schoolId: string,
   data?: Record<string, any>
 ): Promise<ChannelResult> {
   try {
@@ -388,6 +388,7 @@ async function sendInAppNotification(
     const notification = await db.notification.create({
       data: {
         userId,
+        schoolId,
         title,
         message,
         type,
@@ -424,7 +425,7 @@ export async function sendNotification(
   params: NotificationParams
 ): Promise<CommunicationResult> {
   try {
-    const { userId, type, title, message, data, channels: overrideChannels } = params;
+    const { userId, type, title, message, data, channels: overrideChannels, schoolId } = params;
 
     // 1. Get System Settings to determine globally allowed channels for this event type
     const systemSettings = await getSystemSettings();
@@ -528,7 +529,7 @@ export async function sendNotification(
 
         case CommunicationChannel.IN_APP:
           channelPromises.push(
-            sendInAppNotification(userId, title, message, type, data).then(res => {
+            sendInAppNotification(userId, title, message, type, schoolId || 'system', data).then(res => {
               result.channels.inApp = res;
             })
           );
@@ -930,7 +931,7 @@ export function checkCommunicationConfiguration(): {
 } {
   return {
     email: isEmailConfigured(),
-    sms: isMSG91Configured(),
+    sms: isSMSConfigured(),
     whatsapp: isWhatsAppConfigured(),
   };
 }
@@ -947,7 +948,7 @@ export function getAvailableChannels(): CommunicationChannel[] {
     channels.push(CommunicationChannel.EMAIL);
   }
 
-  if (isMSG91Configured()) {
+  if (isSMSConfigured()) {
     channels.push(CommunicationChannel.SMS);
   }
 

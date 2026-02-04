@@ -112,6 +112,7 @@ export class FeeStructureMigrationService {
       name: string;
       applicableClasses: string | null;
       academicYearId: string;
+      schoolId: string;
     }
   ): Promise<{
     success: boolean;
@@ -145,7 +146,8 @@ export class FeeStructureMigrationService {
         await prisma.feeStructureClass.createMany({
           data: matched.map(classId => ({
             feeStructureId: feeStructure.id,
-            classId
+            classId,
+            schoolId: feeStructure.schoolId
           })),
           skipDuplicates: true
         });
@@ -196,7 +198,8 @@ export class FeeStructureMigrationService {
           id: true,
           name: true,
           applicableClasses: true,
-          academicYearId: true
+          academicYearId: true,
+          schoolId: true
         }
       });
 

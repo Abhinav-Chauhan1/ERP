@@ -4,6 +4,8 @@
  * This utility validates environment variables for MSG91 SMS and WhatsApp Business API.
  * It ensures all required credentials are present and properly formatted before
  * attempting to use the communication services.
+ * 
+ * Note: Twilio support has been removed - MSG91 is now the only SMS provider.
  */
 
 /**
@@ -46,14 +48,6 @@ export function validateMSG91Config(): ConfigValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Check if MSG91 is enabled
-  const useMSG91 = process.env.USE_MSG91 === 'true';
-  
-  if (!useMSG91) {
-    warnings.push('MSG91 is not enabled (USE_MSG91=false)');
-    return { isValid: true, errors, warnings };
-  }
-
   // Validate required fields
   if (!process.env.MSG91_AUTH_KEY) {
     errors.push('MSG91_AUTH_KEY is required');
@@ -74,7 +68,7 @@ export function validateMSG91Config(): ConfigValidationResult {
   }
 
   if (!process.env.MSG91_ROUTE) {
-    errors.push('MSG91_ROUTE is required');
+    warnings.push('MSG91_ROUTE not set, defaulting to "transactional"');
   } else {
     const route = process.env.MSG91_ROUTE;
     if (route !== 'transactional' && route !== 'promotional') {
@@ -223,14 +217,11 @@ export function getWhatsAppConfig(): WhatsAppConfig {
 }
 
 /**
- * Checks if MSG91 is configured and enabled
+ * Checks if MSG91 is configured
  * 
- * @returns true if MSG91 is properly configured and enabled
+ * @returns true if MSG91 is properly configured
  */
 export function isMSG91Configured(): boolean {
-  const useMSG91 = process.env.USE_MSG91 === 'true';
-  if (!useMSG91) return false;
-
   const validation = validateMSG91Config();
   return validation.isValid;
 }
@@ -276,21 +267,18 @@ export function validateAllCommunicationConfigs(): {
 export function logCommunicationConfigStatus(): void {
   console.log('\n=== Communication Service Configuration Status ===');
   
-  const msg91Enabled = process.env.USE_MSG91 === 'true';
   const whatsappEnabled = process.env.USE_WHATSAPP === 'true';
   
-  console.log(`MSG91 Enabled: ${msg91Enabled}`);
+  console.log(`MSG91 SMS: Always enabled (Twilio removed)`);
   console.log(`WhatsApp Enabled: ${whatsappEnabled}`);
   
-  if (msg91Enabled) {
-    const msg91Validation = validateMSG91Config();
-    console.log(`\nMSG91 Status: ${msg91Validation.isValid ? '✓ Valid' : '✗ Invalid'}`);
-    if (msg91Validation.errors.length > 0) {
-      console.error('MSG91 Errors:', msg91Validation.errors);
-    }
-    if (msg91Validation.warnings.length > 0) {
-      console.warn('MSG91 Warnings:', msg91Validation.warnings);
-    }
+  const msg91Validation = validateMSG91Config();
+  console.log(`\nMSG91 Status: ${msg91Validation.isValid ? '✓ Valid' : '✗ Invalid'}`);
+  if (msg91Validation.errors.length > 0) {
+    console.error('MSG91 Errors:', msg91Validation.errors);
+  }
+  if (msg91Validation.warnings.length > 0) {
+    console.warn('MSG91 Warnings:', msg91Validation.warnings);
   }
   
   if (whatsappEnabled) {

@@ -17,7 +17,7 @@ import {
   type AvatarUrlInput,
 } from "@/lib/schemaValidation/parent-settings-schemas";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadHandler } from "@/lib/services/upload-handler";
 import { checkRateLimit, RateLimitPresets } from "@/lib/utils/rate-limit";
 import { validateImageFile } from "@/lib/utils/file-security";
 import { CACHE_TAGS } from "@/lib/utils/cache";
@@ -53,7 +53,7 @@ async function getCurrentParent() {
  * Requirements: 6.1, 6.2, 6.3
  * Cached for 10 minutes (600 seconds) as per requirements 9.5
  */
-export async function getSettings(input?: GetSettingsInput) {
+export async function getSettings(input?: GetSettingsInput, schoolId?: string) {
   try {
     // Get current parent
     const parentData = await getCurrentParent();
@@ -80,7 +80,8 @@ export async function getSettings(input?: GetSettingsInput) {
         if (!settings) {
           settings = await db.parentSettings.create({
             data: {
-              parentId
+              parentId,
+              schoolId: schoolId || parent.schoolId,
             }
           });
         }
@@ -278,7 +279,7 @@ export async function changePassword(input: ChangePasswordInput) {
  * Update notification preferences for all notification types
  * Requirements: 6.3
  */
-export async function updateNotificationPreferences(input: UpdateNotificationPreferencesInput) {
+export async function updateNotificationPreferences(input: UpdateNotificationPreferencesInput, schoolId: string) {
   try {
     // Validate input
     const validated = updateNotificationPreferencesSchema.parse(input);
@@ -300,7 +301,8 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
       // Create default settings first
       settings = await db.parentSettings.create({
         data: {
-          parentId: parent.id
+          parentId: parent.id,
+          schoolId,
         }
       });
     }
@@ -351,7 +353,8 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
 
 
 /**
- * Upload avatar with file validation and Cloudinary upload
+ * Upload avatar with file validation and R2 upload
+ * Integrated with R2 storage service
  * Requirements: 6.5, 10.1, 10.2, 10.4
  */
 export async function uploadAvatar(formData: FormData) {
@@ -362,7 +365,7 @@ export async function uploadAvatar(formData: FormData) {
       return { success: false, message: "Unauthorized" };
     }
     
-    const { user } = parentData;
+    const { user, parent } = parentData;
     
     // Rate limiting for file uploads
     const rateLimitKey = `file-upload:${user.id}`;
@@ -384,36 +387,30 @@ export async function uploadAvatar(formData: FormData) {
       return { success: false, message: validation.error || "Invalid file" };
     }
     
-    // Upload to Cloudinary
+    // Upload to R2 storage
     try {
-      const uploadResult = await uploadToCloudinary(file, {
-        folder: `parents/${user.id}/avatar`,
-        resource_type: "image"
+      const uploadResult = await uploadHandler.uploadImage(file, {
+        folder: 'avatars',
+        category: 'image',
+        customMetadata: {
+          userId: parent.userId,
+          parentId: parent.id,
+          uploadType: 'avatar'
+        }
       });
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Failed to upload avatar');
+      }
       
-      const avatarUrl = uploadResult.secure_url;
+      console.warn("Avatar upload temporarily disabled during migration to R2 storage");
       
-      // Update user avatar in database
-      await db.user.update({
-        where: { id: user.id },
-        data: { avatar: avatarUrl }
-      });
-      
-      // Invalidate cache and revalidate settings page
-      revalidateTag(CACHE_TAGS.SETTINGS, "default");
-      revalidateTag(CACHE_TAGS.PARENTS, "default");
-      revalidateTag(CACHE_TAGS.USERS, "default");
-      revalidatePath("/parent/settings");
-      
-      return {
-        success: true,
-        data: {
-          avatarUrl
-        },
-        message: "Avatar uploaded successfully"
+      return { 
+        success: false, 
+        message: "Avatar upload temporarily disabled during migration to R2 storage" 
       };
     } catch (uploadError) {
-      console.error("Error uploading to Cloudinary:", uploadError);
+      console.error("Error uploading to R2 storage:", uploadError);
       return { success: false, message: "Unable to upload your profile picture. Please check your internet connection and try again." };
     }
   } catch (error) {

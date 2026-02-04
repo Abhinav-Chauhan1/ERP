@@ -16,7 +16,7 @@ import {
 import { ArrowLeft, ArrowRight, Building2, Upload, Loader2, X } from "lucide-react";
 import type { WizardData } from "../setup-wizard";
 import { useToast } from "@/hooks/use-toast";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { uploadImageAction } from "@/lib/actions/upload-actions";
 
 interface SchoolDetailsStepProps {
     data: WizardData;
@@ -66,16 +66,28 @@ export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDe
 
         setUploadingLogo(true);
         try {
-            const result = await uploadToCloudinary(file, {
-                folder: 'school-logos',
-                resource_type: 'image',
-            });
+            // Create form data for server action
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'school-logos');
 
-            updateData({ schoolLogo: result.secure_url });
-            toast({
-                title: "Success",
-                description: "Logo uploaded successfully",
-            });
+            // For super admin setup, we need to pass the school ID
+            // This will be available from the wizard context
+            if (data.schoolId) {
+                formData.append('schoolId', data.schoolId);
+            }
+
+            const result = await uploadImageAction(formData);
+
+            if (result.success) {
+                updateData({ schoolLogo: result.url });
+                toast({
+                    title: "Success",
+                    description: "Logo uploaded successfully",
+                });
+            } else {
+                throw new Error(result.error || 'Upload failed');
+            }
         } catch (error) {
             console.error("Error uploading logo:", error);
             toast({
@@ -131,8 +143,8 @@ export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDe
         <div className="space-y-6">
             <div className="text-center space-y-2">
                 <div className="flex justify-center">
-                    <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                    <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                        <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold">School Details</h2>
@@ -289,8 +301,8 @@ export function SchoolDetailsStep({ data, updateData, onNext, onPrev }: SchoolDe
                     {!data.schoolLogo && (
                         <div
                             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${uploadingLogo
-                                    ? "border-primary bg-primary/5"
-                                    : "hover:border-primary/50 cursor-pointer"
+                                ? "border-primary bg-primary/5"
+                                : "hover:border-primary/50 cursor-pointer"
                                 }`}
                             onClick={() => !uploadingLogo && document.getElementById('logoUpload')?.click()}
                         >

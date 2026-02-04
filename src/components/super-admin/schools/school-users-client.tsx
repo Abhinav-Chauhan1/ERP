@@ -6,28 +6,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { ParentDetailsDialog } from "@/components/super-admin/schools/parent-details-dialog";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  Users, 
-  GraduationCap, 
-  UserCheck, 
+import {
+  ArrowLeft,
+  Users,
+  GraduationCap,
+  UserCheck,
   UserPlus,
   Search,
   Filter,
   MoreHorizontal,
   Mail,
-  Phone
+  Phone,
+  Edit,
+  Trash,
+  Shield,
+  Eye
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SchoolUsersClientProps {
   school: {
@@ -139,7 +151,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
+          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground">{school.name} • {school.schoolCode}</p>
         </div>
         <div className="ml-auto">
@@ -238,7 +250,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button>
+                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Student
                   </Button>
@@ -277,9 +289,36 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                       </TableCell>
                       <TableCell>{student.createdAt.toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => navigator.clipboard.writeText(student.id)}
+                            >
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Student
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete Student
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -315,7 +354,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button>
+                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Teacher
                   </Button>
@@ -359,9 +398,36 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                       </TableCell>
                       <TableCell>{teacher.createdAt.toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => navigator.clipboard.writeText(teacher.id)}
+                            >
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Teacher
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete Teacher
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -397,7 +463,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button>
+                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Administrator
                   </Button>
@@ -441,9 +507,36 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                       </TableCell>
                       <TableCell>{admin.createdAt.toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => navigator.clipboard.writeText(admin.id)}
+                            >
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <Shield className="mr-2 h-4 w-4" />
+                              Manage Permissions
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Administrator
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete Administrator
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -479,7 +572,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button>
+                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Parent
                   </Button>
@@ -502,8 +595,8 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                 </TableHeader>
                 <TableBody>
                   {school.parents.map((parent) => (
-                    <TableRow 
-                      key={parent.id} 
+                    <TableRow
+                      key={parent.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => handleParentClick(parent)}
                     >
@@ -553,16 +646,47 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                       </TableCell>
                       <TableCell>{parent.createdAt.toLocaleDateString()}</TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Handle more actions
-                          }}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(parent.id);
+                              }}
+                            >
+                              Copy ID
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleParentClick(parent);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Parent
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete Parent
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}

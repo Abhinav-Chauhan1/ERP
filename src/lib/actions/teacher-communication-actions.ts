@@ -231,6 +231,10 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
       return { success: false, message: "Recipient is not active" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Create message
     const message = await db.message.create({
       data: {
@@ -239,28 +243,18 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
         subject: sanitizedSubject,
         content: sanitizedContent,
         attachments: validated.attachments || null,
-        isRead: false
+        isRead: false,
+        schoolId, // Add required schoolId
       },
       include: {
         recipient: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
             email: true
           }
         }
-      }
-    });
-
-    // Create notification for recipient
-    await db.notification.create({
-      data: {
-        userId: validated.recipientId,
-        title: "New Message",
-        message: `You have a new message from ${user.firstName} ${user.lastName}`,
-        type: "MESSAGE",
-        isRead: false,
-        link: `/communication/messages/${message.id}`
       }
     });
 

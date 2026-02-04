@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { RoomFormValues, RoomUpdateFormValues } from "../schemaValidation/roomsSchemaValidation";
+import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 
 // Get all rooms with usage information
-export async function getRooms() {
+export const getRooms = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    // Get all rooms
+    // Get all rooms for this school
     const rooms = await db.classRoom.findMany({
+      where: { schoolId },
       orderBy: {
         name: 'asc',
       },
@@ -87,7 +89,7 @@ export async function getRooms() {
       error: error instanceof Error ? error.message : "Failed to fetch rooms"
     };
   }
-}
+});
 
 // Helper function to extract building info from room name
 function extractBuilding(name: string): string {
@@ -128,10 +130,10 @@ function extractFloor(name: string): string {
 }
 
 // Get a single room by ID
-export async function getRoomById(id: string) {
+export const getRoomById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    const room = await db.classRoom.findUnique({
-      where: { id },
+    const room = await db.classRoom.findFirst({
+      where: { id, schoolId },
       include: {
         timetableSlots: {
           include: {
@@ -165,14 +167,15 @@ export async function getRoomById(id: string) {
       error: error instanceof Error ? error.message : "Failed to fetch room"
     };
   }
-}
+});
 
 // Create a new room
-export async function createRoom(data: RoomFormValues) {
+export const createRoom = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: RoomFormValues) => {
   try {
-    // Check if room name already exists
+    // Check if room name already exists in this school
     const existingRoom = await db.classRoom.findFirst({
       where: {
+        schoolId,
         name: {
           equals: data.name,
           mode: 'insensitive' // Case insensitive search 
@@ -198,6 +201,7 @@ export async function createRoom(data: RoomFormValues) {
         floor: data.floor,
         capacity: data.capacity,
         description: description,
+        school: { connect: { id: schoolId } },
       }
     });
 
@@ -210,14 +214,14 @@ export async function createRoom(data: RoomFormValues) {
       error: error instanceof Error ? error.message : "Failed to create classroom"
     };
   }
-}
+});
 
 // Update an existing room
-export async function updateRoom(data: RoomUpdateFormValues) {
+export const updateRoom = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: RoomUpdateFormValues) => {
   try {
-    // Check if room exists
-    const existingRoom = await db.classRoom.findUnique({
-      where: { id: data.id }
+    // Check if room exists and belongs to this school
+    const existingRoom = await db.classRoom.findFirst({
+      where: { id: data.id, schoolId }
     });
 
     if (!existingRoom) {
@@ -227,6 +231,7 @@ export async function updateRoom(data: RoomUpdateFormValues) {
     // Check if updated name would conflict with another room
     const nameConflict = await db.classRoom.findFirst({
       where: {
+        schoolId,
         name: {
           equals: data.name,
           mode: 'insensitive'
@@ -267,11 +272,20 @@ export async function updateRoom(data: RoomUpdateFormValues) {
       error: error instanceof Error ? error.message : "Failed to update classroom"
     };
   }
-}
+});
 
 // Delete a room
-export async function deleteRoom(id: string) {
+export const deleteRoom = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
+    // Check if room exists and belongs to this school
+    const room = await db.classRoom.findFirst({
+      where: { id, schoolId }
+    });
+
+    if (!room) {
+      return { success: false, error: "Classroom not found" };
+    }
+
     // Check if room has any timetable slots
     const hasTimeTableSlots = await db.timetableSlot.findFirst({
       where: { roomId: id }
@@ -284,7 +298,7 @@ export async function deleteRoom(id: string) {
       };
     }
 
-    const room = await db.classRoom.delete({
+    await db.classRoom.delete({
       where: { id }
     });
 
@@ -297,15 +311,16 @@ export async function deleteRoom(id: string) {
       error: error instanceof Error ? error.message : "Failed to delete classroom"
     };
   }
-}
+});
 
 // Get room usage statistics
-export async function getRoomUsageStats() {
+export const getRoomUsageStats = withSchoolAuthAction(async (schoolId: string) => {
   try {
-    const roomCount = await db.classRoom.count();
+    const roomCount = await db.classRoom.count({ where: { schoolId } });
 
     const inUseCount = await db.classRoom.count({
       where: {
+        schoolId,
         timetableSlots: {
           some: {
             timetable: {
@@ -331,12 +346,13 @@ export async function getRoomUsageStats() {
       error: error instanceof Error ? error.message : "Failed to get room usage statistics"
     };
   }
-}
+});
 
 // Get all classes and sections for assignment
-export async function getClassesAndSections() {
+export const getClassesAndSections = withSchoolAuthAction(async (schoolId: string) => {
   try {
     const classes = await db.class.findMany({
+      where: { schoolId },
       include: {
         sections: true
       },
@@ -353,14 +369,14 @@ export async function getClassesAndSections() {
       error: error instanceof Error ? error.message : "Failed to fetch classes"
     };
   }
-}
+});
 
 // Assign a room to a class section
-export async function assignRoomToSection(roomId: string, sectionId: string) {
+export const assignRoomToSection = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, roomId: string, sectionId: string) => {
   try {
-    // Check if room is already assigned
-    const room = await db.classRoom.findUnique({
-      where: { id: roomId },
+    // Check if room exists and belongs to this school
+    const room = await db.classRoom.findFirst({
+      where: { id: roomId, schoolId },
       include: { assignedSection: true }
     });
 
@@ -372,9 +388,9 @@ export async function assignRoomToSection(roomId: string, sectionId: string) {
       return { success: false, error: "Room is already assigned to another section" };
     }
 
-    // Check if section already has a room
-    const section = await db.classSection.findUnique({
-      where: { id: sectionId },
+    // Check if section exists and has a room
+    const section = await db.classSection.findFirst({
+      where: { id: sectionId, class: { schoolId } },
       include: { homeRoom: true }
     });
 
@@ -403,13 +419,13 @@ export async function assignRoomToSection(roomId: string, sectionId: string) {
       error: error instanceof Error ? error.message : "Failed to assign room"
     };
   }
-}
+});
 
 // Unassign a room
-export async function unassignRoom(roomId: string) {
+export const unassignRoom = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, roomId: string) => {
   try {
-    const room = await db.classRoom.findUnique({
-      where: { id: roomId },
+    const room = await db.classRoom.findFirst({
+      where: { id: roomId, schoolId },
       include: { assignedSection: true }
     });
 
@@ -438,4 +454,4 @@ export async function unassignRoom(roomId: string) {
       error: error instanceof Error ? error.message : "Failed to unassign room"
     };
   }
-}
+});

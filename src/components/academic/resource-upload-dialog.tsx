@@ -57,39 +57,39 @@ export function ResourceUploadDialog({ subjectId, onSuccess }: ResourceUploadDia
     try {
       setIsSubmitting(true);
 
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token');
+      const { token: csrfToken } = await csrfResponse.json();
+
+      // Prepare form data for R2 upload
       const formData = new FormData();
-      formData.append("title", title);
-      formData.append("description", description);
-      formData.append("resourceType", resourceType);
-      formData.append("file", file);
-      formData.append("subjectId", subjectId);
+      formData.append('file', file);
+      formData.append('csrf_token', csrfToken);
+      formData.append('folder', 'academic-resources');
+      formData.append('category', file.type.startsWith('image/') ? 'image' : 'document');
+      formData.append('customMetadata', JSON.stringify({
+        title,
+        description,
+        resourceType,
+        subjectId,
+      }));
 
-      // Upload to Cloudinary
-      if (!process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-        throw new Error("Cloudinary configuration missing");
+      // Upload to R2 storage
+      const response = await fetch('/api/r2/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Upload failed');
       }
 
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      uploadFormData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+      console.log("File uploaded to:", result.data.url);
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/auto/upload`,
-        {
-          method: 'POST',
-          body: uploadFormData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      console.log("File uploaded to:", data.secure_url);
-
-      // In a real app, this would call an API endpoint
-      // await createResource({ ...metadata, url: data.secure_url });
+      // In a real app, this would call an API endpoint to save the resource metadata
+      // await createResource({ title, description, resourceType, subjectId, url: result.data.url });
       await mockUploadResource(formData);
 
       toast.success("Resource uploaded successfully");

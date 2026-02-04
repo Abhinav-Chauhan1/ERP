@@ -1,33 +1,35 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { Suspense } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Settings } from "lucide-react";
 import { SystemConfiguration } from "@/components/super-admin/system/system-configuration";
 
 export default async function SettingsPage() {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-        redirect("/login");
-    }
-
-    try {
-        await requireSuperAdminAccess();
-    } catch (error) {
-        redirect("/");
-    }
-
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">System Configuration</h1>
-                    <p className="text-slate-600 dark:text-slate-400">
-                        Manage global platform settings, feature flags, and system configuration
-                    </p>
-                </div>
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Settings className="h-6 w-6 text-red-500" />
+                    System Settings
+                </h1>
+                <p className="text-gray-400 mt-1">Manage global platform settings and system configuration</p>
             </div>
 
-            <SystemConfiguration />
+            {/* System Configuration */}
+            <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+                <CardHeader>
+                    <CardTitle className="text-white">Platform Configuration</CardTitle>
+                    <CardDescription className="text-gray-400">
+                        Configure global settings, feature flags, and system preferences
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                        <SystemConfiguration />
+                    </Suspense>
+                </CardContent>
+            </Card>
         </div>
     );
 }

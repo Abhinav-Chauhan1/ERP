@@ -377,7 +377,6 @@ export class UserManagementService {
           employeeId: true,
           department: true,
           qualification: true,
-          experience: true,
           subjects: {
             select: {
               subject: {
@@ -910,7 +909,6 @@ export class UserManagementService {
         employeeId: true,
         departments: true,
         qualification: true,
-        experience: true,
         subjects: {
           select: {
             subject: {

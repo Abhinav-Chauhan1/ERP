@@ -279,6 +279,10 @@ export async function createReportCard(data: ReportCardCreateValues) {
       };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Create the report card
     const reportCard = await db.reportCard.create({
       data: {
@@ -290,6 +294,7 @@ export async function createReportCard(data: ReportCardCreateValues) {
         grade: data.grade,
         rank: data.rank,
         attendance: data.attendance,
+        schoolId, // Add required schoolId
       }
     });
 
@@ -309,6 +314,10 @@ export async function generateReportCard(studentId: string, termId: string) {
   try {
     // Import the aggregation service
     const { aggregateReportCardData } = await import("@/lib/services/report-card-data-aggregation");
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
 
     // Check if a report card already exists for this student and term
     const existingReportCard = await db.reportCard.findUnique({
@@ -359,6 +368,7 @@ export async function generateReportCard(studentId: string, termId: string) {
         data: {
           studentId,
           termId,
+          schoolId, // Add required schoolId (from context above)
           totalMarks: overallPerformance.totalMarks,
           averageMarks: overallPerformance.obtainedMarks / presentSubjectsCount || 0,
           percentage: overallPerformance.percentage,
@@ -469,6 +479,10 @@ export async function publishReportCard(data: ReportCardPublishValues) {
       }
     });
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Send notifications if requested
     if (data.sendNotification) {
       try {
@@ -480,6 +494,7 @@ export async function publishReportCard(data: ReportCardPublishValues) {
             message: `Your report card for ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published and is now available for viewing.`,
             type: "ACADEMIC",
             isRead: false,
+            schoolId, // Add required schoolId
           }
         });
 
@@ -492,6 +507,7 @@ export async function publishReportCard(data: ReportCardPublishValues) {
               message: `Report card for ${reportCard.student.user.firstName} ${reportCard.student.user.lastName} - ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published.`,
               type: "ACADEMIC",
               isRead: false,
+              schoolId, // Add required schoolId
             }
           });
         }

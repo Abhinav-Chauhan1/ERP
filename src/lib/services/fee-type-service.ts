@@ -43,7 +43,7 @@ export class FeeTypeService {
    * @param data - Fee type creation data
    * @returns Created fee type with all relationships
    */
-  async createFeeType(data: CreateFeeTypeInput) {
+  async createFeeType(data: CreateFeeTypeInput, schoolId?: string) {
     // Validate that default amount is positive
     if (data.amount <= 0) {
       throw new Error("Default amount must be positive");
@@ -84,6 +84,7 @@ export class FeeTypeService {
         amount: data.amount,
         frequency: data.frequency,
         isOptional: data.isOptional,
+        school: { connect: { id: schoolId } }, // schoolId is required
         // Create class-specific amounts if provided
         ...(data.classAmounts &&
           data.classAmounts.length > 0 && {
@@ -91,6 +92,8 @@ export class FeeTypeService {
               create: data.classAmounts.map((ca) => ({
                 classId: ca.classId,
                 amount: ca.amount,
+                class: { connect: { id: ca.classId } },
+                school: { connect: { id: schoolId } }, // Add required school connection
               })),
             },
           }),
@@ -114,7 +117,7 @@ export class FeeTypeService {
    * @param data - Update data
    * @returns Updated fee type
    */
-  async updateFeeType(id: string, data: UpdateFeeTypeInput) {
+  async updateFeeType(id: string, data: UpdateFeeTypeInput, schoolId: string) {
     // Validate that fee type exists
     const existing = await db.feeType.findUnique({
       where: { id },
@@ -180,6 +183,8 @@ export class FeeTypeService {
           create: data.classAmounts.map((ca) => ({
             classId: ca.classId,
             amount: ca.amount,
+            class: { connect: { id: ca.classId } },
+            school: { connect: { id: schoolId } }, // Add required school connection
           })),
         };
       }
@@ -294,7 +299,7 @@ export class FeeTypeService {
    * @param amount - Amount to set
    * @returns Created or updated class amount record
    */
-  async setClassAmount(feeTypeId: string, classId: string, amount: number) {
+  async setClassAmount(feeTypeId: string, classId: string, amount: number, schoolId?: string) {
     // Validate amount
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -330,6 +335,7 @@ export class FeeTypeService {
         feeTypeId,
         classId,
         amount,
+        schoolId: schoolId || '',
       },
       update: {
         amount,

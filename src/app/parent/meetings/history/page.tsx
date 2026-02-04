@@ -121,7 +121,7 @@ async function MeetingHistoryContent() {
                 <h2 className="text-lg font-semibold text-muted-foreground">{monthYear}</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {monthMeetings.map((meeting) => (
-                    <MeetingCard key={meeting.id} meeting={meeting} isPast />
+                    <MeetingCard key={meeting.id} meeting={meeting} schoolId={user.parent?.schoolId || ''} isPast />
                   ))}
                 </div>
               </div>

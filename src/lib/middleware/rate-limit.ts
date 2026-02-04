@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { Redis } from '@upstash/redis';
 
 interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds
@@ -9,26 +9,58 @@ interface RateLimitConfig {
   skipFailedRequests?: boolean; // Don't count failed requests
 }
 
-interface RateLimitStore {
-  [key: string]: {
-    count: number;
-    resetTime: number;
-  };
+interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetTime: number;
+  retryAfter?: number;
 }
 
-// In-memory store for rate limiting
-// In production, you'd want to use Redis or another distributed cache
-const store: RateLimitStore = {};
+// Initialize Redis client for distributed rate limiting
+let redis: Redis | null = null;
 
-// Cleanup old entries periodically
-setInterval(() => {
-  const now = Date.now();
-  Object.keys(store).forEach(key => {
-    if (store[key].resetTime < now) {
-      delete store[key];
+try {
+  if (process.env.REDIS_URL) {
+    // Check if it's an Upstash Redis URL (starts with https)
+    if (process.env.REDIS_URL.startsWith('https://')) {
+      // Upstash Redis configuration
+      redis = new Redis({
+        url: process.env.REDIS_URL,
+        token: process.env.REDIS_TOKEN || '',
+      });
+    } else {
+      // For local Redis, we'll use a different approach
+      console.warn('⚠️  Local Redis URL detected. Upstash Redis client requires HTTPS URLs.');
+      console.warn('   Falling back to in-memory rate limiting for development.');
+      redis = null;
     }
-  });
-}, 60000); // Cleanup every minute
+  }
+} catch (error) {
+  console.error('Failed to initialize Redis client:', error);
+  redis = null;
+}
+
+// Warn if Redis is not configured in production
+if (!redis && process.env.NODE_ENV === 'production') {
+  console.error('🚨 CRITICAL: Redis not configured for rate limiting in production!');
+  console.error('   This will cause rate limiting to fail across multiple server instances.');
+  console.error('   Please configure REDIS_URL (Upstash HTTPS URL) and REDIS_TOKEN environment variables.');
+}
+
+// Fallback in-memory store for development only
+const memoryStore: Record<string, { count: number; resetTime: number }> = {};
+
+// Cleanup old entries periodically (development only)
+if (!redis) {
+  setInterval(() => {
+    const now = Date.now();
+    Object.keys(memoryStore).forEach(key => {
+      if (memoryStore[key].resetTime < now) {
+        delete memoryStore[key];
+      }
+    });
+  }, 60000); // Cleanup every minute
+}
 
 /**
  * Get client identifier for rate limiting
@@ -42,7 +74,6 @@ function getClientId(request: NextRequest): string {
   const ip = forwarded?.split(',')[0].trim() || 
              realIp || 
              cfConnectingIp || 
-             request.ip || 
              'unknown';
 
   // Include user agent for additional uniqueness
@@ -53,60 +84,138 @@ function getClientId(request: NextRequest): string {
 }
 
 /**
+ * Distributed rate limiting using Redis
+ */
+async function distributedRateLimit(
+  request: NextRequest,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const clientId = getClientId(request);
+  const key = `ratelimit:${clientId}`;
+  const now = Date.now();
+  const windowStart = now - config.windowMs;
+
+  if (!redis) {
+    // Fallback to in-memory for development
+    if (process.env.NODE_ENV === 'production') {
+      console.error('🚨 CRITICAL: Using fallback rate limiting in production!');
+    }
+    return fallbackRateLimit(clientId, config);
+  }
+
+  try {
+    // Use Redis pipeline for atomic operations
+    const pipeline = redis.pipeline();
+    
+    // Remove expired entries
+    pipeline.zremrangebyscore(key, 0, windowStart);
+    
+    // Count current requests in window
+    pipeline.zcard(key);
+    
+    // Add current request with correct zadd format
+    const requestId = `${now}-${Math.random()}`;
+    pipeline.zadd(key, { score: now, member: requestId });
+    
+    // Set expiration
+    pipeline.expire(key, Math.ceil(config.windowMs / 1000));
+    
+    const results = await pipeline.exec();
+    const currentCount = (results[1] as number) || 0;
+
+    if (currentCount >= config.max) {
+      // Remove the request we just added since it's not allowed
+      await redis.zrem(key, requestId);
+      
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: now + config.windowMs,
+        retryAfter: Math.ceil(config.windowMs / 1000)
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: config.max - currentCount - 1,
+      resetTime: now + config.windowMs
+    };
+
+  } catch (error) {
+    console.error('Redis rate limiting error:', error);
+    // Fallback to allowing request on Redis error
+    return {
+      allowed: true,
+      remaining: config.max - 1,
+      resetTime: now + config.windowMs
+    };
+  }
+}
+
+/**
+ * Fallback in-memory rate limiting (development only)
+ */
+function fallbackRateLimit(clientId: string, config: RateLimitConfig): RateLimitResult {
+  const now = Date.now();
+  let entry = memoryStore[clientId];
+  
+  if (!entry || entry.resetTime < now) {
+    entry = {
+      count: 0,
+      resetTime: now + config.windowMs,
+    };
+    memoryStore[clientId] = entry;
+  }
+
+  entry.count++;
+
+  if (entry.count > config.max) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetTime: entry.resetTime,
+      retryAfter: Math.ceil((entry.resetTime - now) / 1000)
+    };
+  }
+
+  return {
+    allowed: true,
+    remaining: config.max - entry.count,
+    resetTime: entry.resetTime
+  };
+}
+
+/**
  * Rate limiting middleware
  */
 export async function rateLimit(
   request: NextRequest,
   config: RateLimitConfig
 ): Promise<NextResponse | null> {
-  const clientId = getClientId(request);
-  const now = Date.now();
-  const windowStart = now - config.windowMs;
+  const result = await distributedRateLimit(request, config);
 
-  // Get or create rate limit entry
-  let entry = store[clientId];
-  
-  if (!entry || entry.resetTime < now) {
-    // Create new entry or reset expired entry
-    entry = {
-      count: 0,
-      resetTime: now + config.windowMs,
-    };
-    store[clientId] = entry;
-  }
-
-  // Increment request count
-  entry.count++;
-
-  // Check if limit exceeded
-  if (entry.count > config.max) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-    
-    return NextResponse.json(
-      {
+  if (!result.allowed) {
+    const response = NextResponse.json(
+      { 
         error: config.message || 'Too many requests',
-        retryAfter,
-        limit: config.max,
-        windowMs: config.windowMs,
+        retryAfter: result.retryAfter 
       },
-      {
-        status: 429,
-        headers: {
-          'X-RateLimit-Limit': config.max.toString(),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': entry.resetTime.toString(),
-          'Retry-After': retryAfter.toString(),
-        },
-      }
+      { status: 429 }
     );
+
+    // Add rate limit headers
+    response.headers.set('X-RateLimit-Limit', config.max.toString());
+    response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
+    response.headers.set('X-RateLimit-Reset', result.resetTime.toString());
+    
+    if (result.retryAfter) {
+      response.headers.set('Retry-After', result.retryAfter.toString());
+    }
+
+    return response;
   }
 
-  // Add rate limit headers to successful responses
-  const remaining = Math.max(0, config.max - entry.count);
-  
-  // Return null to indicate request should proceed
-  // The calling route handler should add these headers to the response
-  return null;
+  return null; // Allow request to proceed
 }
 
 /**
@@ -117,7 +226,7 @@ export function addRateLimitHeaders(
   config: RateLimitConfig,
   clientId: string
 ): NextResponse {
-  const entry = store[clientId];
+  const entry = memoryStore[clientId];
   
   if (entry) {
     const remaining = Math.max(0, config.max - entry.count);
@@ -189,14 +298,14 @@ export async function rateLimitByUser(
   const now = Date.now();
   const key = `user:${userId}`;
   
-  let entry = store[key];
+  let entry = memoryStore[key];
   
   if (!entry || entry.resetTime < now) {
     entry = {
       count: 0,
       resetTime: now + config.windowMs,
     };
-    store[key] = entry;
+    memoryStore[key] = entry;
   }
 
   entry.count++;
@@ -214,14 +323,14 @@ export async function rateLimitByResource(
   const now = Date.now();
   const key = `resource:${resourceId}`;
   
-  let entry = store[key];
+  let entry = memoryStore[key];
   
   if (!entry || entry.resetTime < now) {
     entry = {
       count: 0,
       resetTime: now + config.windowMs,
     };
-    store[key] = entry;
+    memoryStore[key] = entry;
   }
 
   entry.count++;
@@ -233,19 +342,19 @@ export async function rateLimitByResource(
  * Clear rate limit for a specific client
  */
 export function clearRateLimit(clientId: string): void {
-  delete store[clientId];
+  delete memoryStore[clientId];
 }
 
 /**
  * Get current rate limit status for a client
  */
-export function getRateLimitStatus(clientId: string): {
+export function getRateLimitStatus(clientId: string, maxRequests: number = 100): {
   count: number;
   remaining: number;
   resetTime: number;
   isLimited: boolean;
 } | null {
-  const entry = store[clientId];
+  const entry = memoryStore[clientId];
   
   if (!entry) {
     return null;
@@ -254,15 +363,15 @@ export function getRateLimitStatus(clientId: string): {
   const now = Date.now();
   
   if (entry.resetTime < now) {
-    delete store[clientId];
+    delete memoryStore[clientId];
     return null;
   }
   
   return {
     count: entry.count,
-    remaining: Math.max(0, 100 - entry.count), // Assuming max of 100, adjust as needed
+    remaining: Math.max(0, maxRequests - entry.count),
     resetTime: entry.resetTime,
-    isLimited: entry.count > 100, // Assuming max of 100, adjust as needed
+    isLimited: entry.count > maxRequests,
   };
 }
 

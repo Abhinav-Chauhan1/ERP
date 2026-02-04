@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { DayOfWeek } from "@prisma/client";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 import {
   createCalendarEventFromExam,
   updateCalendarEventFromExam,
@@ -326,6 +327,10 @@ export async function createExam(formData: FormData) {
       throw new Error("Unauthorized access to this subject");
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Create the exam
     const exam = await db.exam.create({
       data: {
@@ -340,6 +345,7 @@ export async function createExam(formData: FormData) {
         passingMarks,
         creatorId: teacher.id,
         instructions,
+        schoolId, // Add required schoolId
       },
       include: {
         subject: true,
@@ -376,6 +382,9 @@ export async function updateExamResults(examId: string, results: any[]) {
     if (!userId) {
       throw new Error("Unauthorized");
     }
+
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
 
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
@@ -435,6 +444,7 @@ export async function updateExamResults(examId: string, results: any[]) {
           grade: result.grade,
           remarks: result.remarks,
           isAbsent: result.isAbsent,
+          schoolId, // Add required schoolId (from context above)
         },
       });
     }

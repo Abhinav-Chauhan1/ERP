@@ -412,6 +412,7 @@ export interface NotificationParams {
   message: string;
   data?: Record<string, any>;
   channels?: CommunicationChannel[];
+  schoolId?: string; // Add optional schoolId
 }
 
 /**

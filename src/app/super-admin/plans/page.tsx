@@ -1,30 +1,35 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { Suspense } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Layers } from "lucide-react";
 import { SubscriptionPlansManagement } from "@/components/super-admin/plans/subscription-plans-management";
 
 export default async function PlansManagementPage() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    redirect("/login");
-  }
-
-  try {
-    await requireSuperAdminAccess();
-  } catch (error) {
-    redirect("/");
-  }
-
   return (
-    <div className="container mx-auto py-6">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Subscription Plans</h1>
-          <p className="text-sm text-gray-600">Manage subscription plans and pricing</p>
-        </div>
-        <SubscriptionPlansManagement />
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Layers className="h-6 w-6 text-red-500" />
+          Subscription Plans
+        </h1>
+        <p className="text-gray-400 mt-1">Manage subscription plans and pricing tiers</p>
       </div>
+
+      {/* Plans Management */}
+      <Card className="bg-[hsl(var(--card))] border-[hsl(var(--border))]">
+        <CardHeader>
+          <CardTitle className="text-white">Plan Management</CardTitle>
+          <CardDescription className="text-gray-400">
+            Create, edit, and manage subscription plans for schools
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+            <SubscriptionPlansManagement />
+          </Suspense>
+        </CardContent>
+      </Card>
     </div>
   );
 }

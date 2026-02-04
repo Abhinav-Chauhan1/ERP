@@ -237,6 +237,10 @@ export async function createLesson(formData: FormData) {
       throw new Error("You are not authorized to create lessons for this subject");
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Create the lesson
     const lesson = await db.lesson.create({
       data: {
@@ -247,6 +251,7 @@ export async function createLesson(formData: FormData) {
         content: validatedData.content,
         resources: validatedData.resources,
         duration: validatedData.duration,
+        schoolId, // Add required schoolId
       },
     });
 

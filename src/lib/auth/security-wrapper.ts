@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { requireSchoolAccess, requireSuperAdminAccess, getCurrentUserSchoolContext } from "./tenant";
+import { validateSessionForSecurityWrapper } from "./session-refresh";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -21,22 +22,22 @@ export function withSchoolAuth(
 
       // Super admin can access everything
       if (session.user.role === "SUPER_ADMIN") {
-        const context = await requireSuperAdminAccess();
+        const authContext = await requireSuperAdminAccess();
         return handler(request, {
-          schoolId: context.schoolId || "", // Super admin may not have a specific school
-          userId: context.userId,
-          userRole: context.role,
+          schoolId: authContext.schoolId || "", // Super admin may not have a specific school
+          userId: authContext.userId,
+          userRole: authContext.role,
           params
         });
       }
 
       // Regular users need school access
-      const context = await requireSchoolAccess();
+      const authContext = await requireSchoolAccess();
 
       return handler(request, {
-        schoolId: context.schoolId,
-        userId: context.userId,
-        userRole: context.role,
+        schoolId: authContext.schoolId || "", // Handle null schoolId
+        userId: authContext.userId,
+        userRole: authContext.role,
         params
       });
     } catch (error: any) {
@@ -58,21 +59,30 @@ export function withSchoolAuthAction<T extends any[], R>(
 ) {
   return async (...args: T): Promise<R> => {
     try {
-      const session = await auth();
-
-      if (!session?.user?.id) {
-        throw new Error("Unauthorized: You must be logged in");
+      // Use enhanced session validation for better debugging
+      const sessionValidation = await validateSessionForSecurityWrapper();
+      
+      if (!sessionValidation.isValid) {
+        console.error("Security wrapper session validation failed:", {
+          error: sessionValidation.error,
+          debugInfo: sessionValidation.debugInfo
+        });
+        throw new Error(`Unauthorized: ${sessionValidation.error || "You must be logged in"}`);
       }
 
+      const session = sessionValidation.session;
+      const userId = sessionValidation.userId!;
+      const role = sessionValidation.role!;
+
       // Super admin can access everything
-      if (session.user.role === "SUPER_ADMIN") {
-        const context = await requireSuperAdminAccess();
-        return action(context.schoolId || "", context.userId, context.role, ...args);
+      if (role === "SUPER_ADMIN") {
+        const authContext = await requireSuperAdminAccess();
+        return action(authContext.schoolId || "", authContext.userId, authContext.role, ...args);
       }
 
       // Regular users need school access
-      const context = await requireSchoolAccess();
-      return action(context.schoolId, context.userId, context.role, ...args);
+      const authContext = await requireSchoolAccess();
+      return action(authContext.schoolId || "", authContext.userId, authContext.role, ...args);
     } catch (error: any) {
       console.error("Security action wrapper error:", error);
       throw new Error(error.message || "Access denied");
@@ -89,30 +99,39 @@ export function withSchoolAuthPage<T>(
 ) {
   return async (props: T) => {
     try {
-      const session = await auth();
-
-      if (!session?.user?.id) {
-        throw new Error("Unauthorized");
+      // Use enhanced session validation for better debugging
+      const sessionValidation = await validateSessionForSecurityWrapper();
+      
+      if (!sessionValidation.isValid) {
+        console.error("Security wrapper page validation failed:", {
+          error: sessionValidation.error,
+          debugInfo: sessionValidation.debugInfo
+        });
+        throw new Error(`Unauthorized: ${sessionValidation.error || "You must be logged in"}`);
       }
 
+      const session = sessionValidation.session;
+      const userId = sessionValidation.userId!;
+      const role = sessionValidation.role!;
+
       // Super admin can access everything
-      if (session.user.role === "SUPER_ADMIN") {
-        const context = await requireSuperAdminAccess();
+      if (role === "SUPER_ADMIN") {
+        const authContext = await requireSuperAdminAccess();
         return pageComponent({
           ...props,
-          schoolId: context.schoolId || "",
-          userId: context.userId,
-          userRole: context.role,
+          schoolId: authContext.schoolId || "",
+          userId: authContext.userId,
+          userRole: authContext.role,
         });
       }
 
       // Regular users need school access
-      const context = await requireSchoolAccess();
+      const authContext = await requireSchoolAccess();
       return pageComponent({
         ...props,
-        schoolId: context.schoolId,
-        userId: context.userId,
-        userRole: context.role,
+        schoolId: authContext.schoolId || "",
+        userId: authContext.userId,
+        userRole: authContext.role,
       });
     } catch (error: any) {
       // This will be caught by error boundaries
@@ -196,7 +215,7 @@ export async function validateResourcesOwnership(resourceIds: string[], model: a
     select: { id: true, schoolId: true },
   });
 
-  const invalidResources = resources.filter(r => r.schoolId !== targetSchoolId);
+  const invalidResources = resources.filter((r: any) => r.schoolId !== targetSchoolId);
 
   if (invalidResources.length > 0) {
     throw new Error(`Access denied: ${invalidResources.length} resources belong to different schools`);

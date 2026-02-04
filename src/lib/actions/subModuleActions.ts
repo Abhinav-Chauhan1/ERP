@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { getRequiredSchoolId } from '@/lib/utils/school-context-helper';
 import {
   subModuleSchema,
   subModuleUpdateSchema,
@@ -77,6 +78,9 @@ export async function createSubModule(
       };
     }
 
+    // Get school context
+    const schoolId = await getRequiredSchoolId();
+
     // Create the sub-module
     const subModule = await db.subModule.create({
       data: {
@@ -84,6 +88,7 @@ export async function createSubModule(
         description: validatedData.description || null,
         order: validatedData.order,
         moduleId: validatedData.moduleId,
+        schoolId, // Add required schoolId
       },
       include: {
         documents: true,

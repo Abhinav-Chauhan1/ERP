@@ -8,6 +8,7 @@ export type Theme = "LIGHT" | "DARK" | "SYSTEM";
 export interface ParentSettingsData {
   id: string;
   parentId: string;
+  schoolId: string;
 
   // Notification preferences
   emailNotifications: boolean;

@@ -8,6 +8,7 @@ import {
   logReceiptNoteAdd,
   logReceiptNoteDelete,
 } from "@/lib/services/receipt-audit-service";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Add a note to a payment receipt
@@ -59,6 +60,14 @@ export async function addReceiptNote(receiptId: string, note: string) {
       return { success: false, error: "Only admins can add notes" };
     }
 
+    // Get school context
+    const context = await requireSchoolAccess();
+    const schoolId = context.schoolId;
+    
+    if (!schoolId) {
+      return { success: false, error: "School context required" };
+    }
+
     // Verify receipt exists
     const receipt = await db.paymentReceipt.findUnique({
       where: { id: receiptId },
@@ -72,6 +81,7 @@ export async function addReceiptNote(receiptId: string, note: string) {
     // Create note
     const receiptNote = await db.receiptNote.create({
       data: {
+        schoolId,
         receiptId,
         note: note.trim(),
         authorId: user.id,

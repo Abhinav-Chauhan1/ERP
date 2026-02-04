@@ -18,7 +18,7 @@ import { AlumniProfileEditor } from "@/components/alumni/alumni-profile-editor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { updateAlumniProfile } from "@/lib/actions/alumniActions";
-import { uploadBufferToCloudinary } from "@/lib/cloudinary-server";
+import { uploadHandler } from "@/lib/services/upload-handler";
 
 export const metadata = {
   title: "My Profile - Alumni Portal",
@@ -168,16 +168,21 @@ export async function handlePhotoUpload(file: File) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Cloudinary
+    // Upload to R2 storage
     // Using a specific folder for alumni profiles to keep things organized
-    const result = await uploadBufferToCloudinary(buffer, {
+    const uploadFile = new File([new Uint8Array(buffer)], 'profile-photo.jpg', { type: 'image/jpeg' });
+    const result = await uploadHandler.uploadImage(uploadFile, {
       folder: "alumni-profiles",
-      resource_type: "image",
+      category: "image",
     });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Upload failed');
+    }
 
     return {
       success: true,
-      url: result.secure_url,
+      url: result.url,
     };
   } catch (error) {
     console.error("Error uploading photo:", error);

@@ -79,7 +79,8 @@ export async function createCalendarEventFromMeeting(
       sourceType: EventSourceType.MEETING,
       sourceId: meeting.id,
       isRecurring: false,
-      createdBy
+      createdBy,
+      schoolId: meeting.schoolId // Add required schoolId
     });
 
     console.log(`Calendar event created for meeting: ${meeting.id}`);

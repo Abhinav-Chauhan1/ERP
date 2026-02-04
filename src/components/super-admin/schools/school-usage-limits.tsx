@@ -7,18 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { 
   Save, 
   Users, 
   MessageSquare, 
-  Smartphone, 
   HardDrive,
   AlertTriangle,
-  TrendingUp,
   Settings
 } from "lucide-react";
 import { toast } from "sonner";
+import { updateSchoolUsageLimits, getSchoolUsageMetrics } from "@/lib/actions/school-management-actions";
 
 interface SchoolUsageLimitsProps {
   schoolId: string;
@@ -81,7 +79,9 @@ const defaultLimits: Record<string, UsageLimits> = {
 };
 
 export function SchoolUsageLimits({ schoolId, plan }: SchoolUsageLimitsProps) {
-  const [limits, setLimits] = useState<UsageLimits>(defaultLimits[plan]);
+  const [limits, setLimits] = useState<UsageLimits>(() => 
+    defaultLimits[plan] || defaultLimits.STARTER
+  );
   const [currentUsage, setCurrentUsage] = useState<CurrentUsage>({
     students: 0,
     teachers: 0,
@@ -102,23 +102,31 @@ export function SchoolUsageLimits({ schoolId, plan }: SchoolUsageLimitsProps) {
 
   const fetchUsageLimits = async () => {
     try {
-      const response = await fetch(`/api/super-admin/schools/${schoolId}/usage-limits`);
-      if (response.ok) {
-        const data = await response.json();
-        setLimits(data.limits || defaultLimits[plan]);
-      }
+      // For now, use default limits based on plan
+      // In a real implementation, you might fetch from school metadata
+      setLimits(defaultLimits[plan] || defaultLimits.STARTER);
     } catch (error) {
       console.error('Error fetching usage limits:', error);
+      setLimits(defaultLimits[plan] || defaultLimits.STARTER);
     }
   };
 
   const fetchCurrentUsage = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/super-admin/schools/${schoolId}/usage`);
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentUsage(data.usage);
+      const result = await getSchoolUsageMetrics(schoolId);
+      if (result.success) {
+        const data = result.data;
+        setCurrentUsage({
+          students: 0, // Would need to be fetched from school details
+          teachers: 0,
+          admins: 0,
+          whatsappUsed: data.currentUsage.whatsappUsed,
+          smsUsed: data.currentUsage.smsUsed,
+          storageUsed: data.currentUsage.storageUsedMB,
+          classes: 0,
+          subjects: 0,
+        });
       }
     } catch (error) {
       console.error('Error fetching current usage:', error);
@@ -138,18 +146,18 @@ export function SchoolUsageLimits({ schoolId, plan }: SchoolUsageLimitsProps) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/super-admin/schools/${schoolId}/usage-limits`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ limits }),
+      const result = await updateSchoolUsageLimits(schoolId, {
+        whatsappLimit: limits.whatsappLimit,
+        smsLimit: limits.smsLimit,
+        storageLimitMB: limits.storageLimit,
+        maxActiveUsers: limits.maxStudents + limits.maxTeachers + limits.maxAdmins,
+        maxConcurrentSessions: 100, // Default value
       });
 
-      if (response.ok) {
+      if (result.success) {
         toast.success('Usage limits updated successfully');
       } else {
-        throw new Error('Failed to update usage limits');
+        throw new Error(result.error || 'Failed to update usage limits');
       }
     } catch (error) {
       toast.error('Failed to update usage limits');
@@ -170,7 +178,8 @@ export function SchoolUsageLimits({ schoolId, plan }: SchoolUsageLimitsProps) {
     return 'text-green-600';
   };
 
-  const formatLimit = (limit: number) => {
+  const formatLimit = (limit: number | undefined | null) => {
+    if (limit === undefined || limit === null) return 'Not set';
     return limit === -1 ? 'Unlimited' : limit.toLocaleString();
   };
 
