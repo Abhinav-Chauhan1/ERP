@@ -156,41 +156,38 @@ export async function sendSMS(
     // Remove + from phone number for MSG91 API
     const phoneNumber = to.replace('+', '');
 
-    // Prepare request payload
-    const payload: any = {
+    // Build URL parameters for Simple SMS API
+    const params = new URLSearchParams({
+      authkey: config.authKey,
+      mobiles: phoneNumber,
+      message: message,
       sender: config.senderId,
       route: config.route,
       country: config.country,
-      sms: [
-        {
-          message,
-          to: [phoneNumber],
-        },
-      ],
-    };
+    });
 
     // Add DLT template ID if provided (required for Indian compliance)
     if (dltTemplateId) {
-      payload.DLT_TE_ID = dltTemplateId;
+      params.append('DLT_TE_ID', dltTemplateId);
     }
 
-    // Send request to MSG91 API
-    const response = await fetch('https://api.msg91.com/api/v5/flow/', {
-      method: 'POST',
-      headers: {
-        'authkey': config.authKey,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    // Send request to MSG91 Simple SMS API
+    const response = await fetch(
+      `https://api.msg91.com/api/sendhttp.php?${params.toString()}`,
+      { method: 'GET' }
+    );
 
-    const data = await response.json();
+    const responseText = await response.text();
+
+    // MSG91 Simple SMS API returns text response
+    // Success: message ID (e.g., "5218f16e3ac3d94032000005")
+    // Error: error message string
 
     // Handle API errors
-    if (!response.ok || data.type === 'error') {
+    if (!response.ok || responseText.toLowerCase().includes('error') || responseText.toLowerCase().includes('invalid')) {
       throw new MSG91Error(
-        data.message || 'Failed to send SMS',
-        data.code || response.status.toString(),
+        responseText || 'Failed to send SMS',
+        response.status.toString(),
         to,
         dltTemplateId
       );
@@ -198,7 +195,7 @@ export async function sendSMS(
 
     return {
       success: true,
-      messageId: data.request_id,
+      messageId: responseText.trim(), // Message ID from MSG91
     };
   } catch (error: any) {
     console.error('Error sending SMS via MSG91:', error);
@@ -279,8 +276,8 @@ export async function sendBulkSMS(
       return results;
     }
 
-    // MSG91 supports sending to multiple recipients in a single API call
-    // But we'll batch them in groups of 100 to avoid rate limits
+    // MSG91 Simple SMS API supports comma-separated mobile numbers
+    // Batch them in groups of 100 to avoid rate limits
     const batchSize = 100;
     const batches: string[][] = [];
 
@@ -291,44 +288,40 @@ export async function sendBulkSMS(
     // Send each batch
     for (const batch of batches) {
       try {
-        // Prepare request payload
-        const payload: any = {
+        // Join mobile numbers with commas for MSG91 Simple SMS API
+        const mobileNumbers = batch.join(',');
+
+        // Build URL parameters for Simple SMS API
+        const params = new URLSearchParams({
+          authkey: config.authKey,
+          mobiles: mobileNumbers,
+          message: message,
           sender: config.senderId,
           route: config.route,
           country: config.country,
-          sms: [
-            {
-              message,
-              to: batch,
-            },
-          ],
-        };
+        });
 
         // Add DLT template ID if provided
         if (dltTemplateId) {
-          payload.DLT_TE_ID = dltTemplateId;
+          params.append('DLT_TE_ID', dltTemplateId);
         }
 
-        // Send request to MSG91 API
-        const response = await fetch('https://api.msg91.com/api/v5/flow/', {
-          method: 'POST',
-          headers: {
-            'authkey': config.authKey,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+        // Send request to MSG91 Simple SMS API
+        const response = await fetch(
+          `https://api.msg91.com/api/sendhttp.php?${params.toString()}`,
+          { method: 'GET' }
+        );
 
-        const data = await response.json();
+        const responseText = await response.text();
 
         // Handle API errors
-        if (!response.ok || data.type === 'error') {
+        if (!response.ok || responseText.toLowerCase().includes('error') || responseText.toLowerCase().includes('invalid')) {
           // All messages in this batch failed
           for (let i = 0; i < batch.length; i++) {
             results.push({
               success: false,
-              error: data.message || 'Failed to send SMS',
-              errorCode: data.code || response.status.toString(),
+              error: responseText || 'Failed to send SMS',
+              errorCode: response.status.toString(),
             });
           }
         } else {
@@ -336,7 +329,7 @@ export async function sendBulkSMS(
           for (let i = 0; i < batch.length; i++) {
             results.push({
               success: true,
-              messageId: data.request_id,
+              messageId: responseText.trim(),
             });
           }
         }
