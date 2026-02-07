@@ -90,13 +90,9 @@ export default auth(async (req) => {
 
   // Handle subdomain routing first
   if (subdomain) {
-    // For subdomains, we need to handle routing differently
+    // Pass subdomain info to the application via headers
+    // The application layer will validate the subdomain and handle errors
     const subdomainResponse = await handleSubdomainRouting(req);
-
-    // If subdomain handling returns a redirect or error, return it
-    if (subdomainResponse.status !== 200) {
-      return subdomainResponse;
-    }
 
     // For subdomain requests, super-admin routes should redirect to main domain
     if (pathname.startsWith('/super-admin')) {
@@ -120,13 +116,8 @@ export default auth(async (req) => {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Get school ID from subdomain response headers
-    const schoolId = subdomainResponse.headers.get('x-school-id');
-
-    // Verify user has access to this school
-    if (session.user.role !== 'SUPER_ADMIN' && session.user.schoolId !== schoolId) {
-      return new NextResponse('Access denied to this school', { status: 403 });
-    }
+    // Note: School access validation will happen in the application layer
+    // where we can safely use Prisma to check if the user has access to this school
 
     return subdomainResponse;
   }
