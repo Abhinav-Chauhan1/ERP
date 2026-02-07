@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { handleSubdomainRouting, getSubdomain } from "./src/lib/middleware/subdomain";
 import { csrfProtection } from "./src/lib/middleware/csrf-protection";
 import { rateLimit } from "./src/lib/middleware/rate-limit";
+import { shouldBypassRateLimit, getBypassReason } from "./src/lib/middleware/ip-whitelist";
 import { UserRole } from "@prisma/client";
 
 const { auth } = NextAuth(authConfig);
@@ -68,18 +69,37 @@ export default auth(async (req) => {
   const hostname = req.headers.get('host') || '';
   const subdomain = getSubdomain(hostname);
 
-  // Apply rate limiting first (before any other processing)
-  let rateLimitConfig = rateLimitConfigs.general;
+  // Check if request should bypass rate limiting (Vercel infrastructure, monitoring, etc.)
+  const bypassRateLimit = shouldBypassRateLimit(req);
+  
+  // Skip rate limiting for whitelisted sources and specific routes
+  const shouldSkipRateLimit = 
+    bypassRateLimit ||
+    pathname.startsWith('/api/health') ||
+    pathname.startsWith('/api/status') ||
+    pathname.startsWith('/_next/') || // Next.js internal routes
+    pathname.startsWith('/api/super-admin/system/health'); // System health checks
 
-  if (pathname.startsWith('/api/auth/')) {
-    rateLimitConfig = rateLimitConfigs.auth;
-  } else if (pathname.startsWith('/api/')) {
-    rateLimitConfig = rateLimitConfigs.api;
+  // Log bypass reason for monitoring (optional)
+  if (bypassRateLimit && process.env.NODE_ENV === 'production') {
+    const reason = getBypassReason(req);
+    console.log(`[Rate Limit Bypass] ${pathname} - Reason: ${reason}`);
   }
 
-  const rateLimitResponse = await rateLimit(req, rateLimitConfig);
-  if (rateLimitResponse) {
-    return rateLimitResponse; // Rate limit exceeded
+  // Apply rate limiting only when not bypassed
+  if (!shouldSkipRateLimit) {
+    let rateLimitConfig = rateLimitConfigs.general;
+
+    if (pathname.startsWith('/api/auth/')) {
+      rateLimitConfig = rateLimitConfigs.auth;
+    } else if (pathname.startsWith('/api/')) {
+      rateLimitConfig = rateLimitConfigs.api;
+    }
+
+    const rateLimitResponse = await rateLimit(req, rateLimitConfig);
+    if (rateLimitResponse) {
+      return rateLimitResponse; // Rate limit exceeded
+    }
   }
 
   // Apply CSRF protection for state-changing requests
