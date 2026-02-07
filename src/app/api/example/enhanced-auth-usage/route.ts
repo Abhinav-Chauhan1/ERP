@@ -131,15 +131,15 @@ export async function DELETE(request: NextRequest) {
   if (!authResult.success) {
     return NextResponse.json(
       { error: authResult.error },
-      { status: authResult.statusCode || 401 }
+      { status: 401 }
     );
   }
 
   // Route handler logic
   return NextResponse.json({
     message: 'Resource deleted successfully',
-    user: authResult.user?.id,
-    school: authResult.schoolContext?.schoolCode
+    user: authResult.context.user?.id,
+    school: authResult.context.schoolContext?.schoolCode
   });
 }
 
@@ -165,7 +165,7 @@ export async function customHandler(request: NextRequest) {
   }
 
   // Use authenticated user and school context
-  const { user, schoolContext } = authResult;
+  const { user, schoolContext } = authResult.context;
   
   return NextResponse.json({
     message: 'Custom authentication successful',

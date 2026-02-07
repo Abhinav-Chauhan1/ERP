@@ -8,88 +8,88 @@ datasource db {
 }
 
 model User {
-  id                   String                 @id @default(cuid())
-  name                 String
-  mobile               String?                @unique
-  email                String?                @unique
-  passwordHash         String?
-  isActive             Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  
+  id           String   @id @default(cuid())
+  name         String
+  mobile       String?  @unique
+  email        String?  @unique
+  passwordHash String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   // Legacy fields for backward compatibility
-  emailVerified        DateTime?
-  password             String?
-  image                String?
-  firstName            String?
-  lastName             String?
-  phone                String?
-  avatar               String?
-  role                 UserRole               @default(STUDENT)
-  active               Boolean                @default(true)
-  twoFactorEnabled     Boolean                @default(false)
-  twoFactorSecret      String?
-  twoFactorBackupCodes String?
-  lastLoginAt          DateTime?
-  mfaEnabled           Boolean                @default(false)
-  mfaSecret            String?
-  permissions          Json?
-  accounts             Account[]
-  administrator        Administrator?
-  documents            Document[]
-  eventRSVPs           EventRSVP[]
-  receivedMessages     Message[]              @relation("ReceivedMessages")
-  sentMessages         Message[]              @relation("SentMessages")
-  notifications        Notification[]
-  parent               Parent?
-  sessions             Session[]
-  authSessions         AuthSession[]          @relation("AuthSessions")
-  student              Student?
-  teacher              Teacher?
-  analyticsEvents      AnalyticsEvent[]
-  auditLogs            AuditLog[]
-  complianceReports    ComplianceReport[]
-  kbArticles           KnowledgeBaseArticle[]
-  messageHistory       MessageHistory[]       @relation("MessageHistorySentBy")
-  savedReports         SavedReportConfig[]
-  assignedTickets      SupportTicket[]        @relation("AssignedTickets")
-  createdTickets       SupportTicket[]        @relation("CreatedTickets")
-  ticketComments       TicketComment[]
-  userPermissions      UserPermission[]
-  userSchools          UserSchool[]
-  resolvedAlerts       Alert[]
-  createdAlertConfigs  AlertConfig[]
-  performedEmergencyAccess EmergencyAccess[]     @relation("EmergencyAccessPerformedBy")
-  reversedEmergencyAccess  EmergencyAccess[]     @relation("EmergencyAccessReversedBy")
+  emailVerified            DateTime?
+  password                 String?
+  image                    String?
+  firstName                String?
+  lastName                 String?
+  phone                    String?
+  avatar                   String?
+  role                     UserRole               @default(STUDENT)
+  active                   Boolean                @default(true)
+  twoFactorEnabled         Boolean                @default(false)
+  twoFactorSecret          String?
+  twoFactorBackupCodes     String?
+  lastLoginAt              DateTime?
+  mfaEnabled               Boolean                @default(false)
+  mfaSecret                String?
+  permissions              Json?
+  accounts                 Account[]
+  administrator            Administrator?
+  documents                Document[]
+  eventRSVPs               EventRSVP[]
+  receivedMessages         Message[]              @relation("ReceivedMessages")
+  sentMessages             Message[]              @relation("SentMessages")
+  notifications            Notification[]
+  parent                   Parent?
+  sessions                 Session[]
+  authSessions             AuthSession[]          @relation("AuthSessions")
+  student                  Student?
+  teacher                  Teacher?
+  analyticsEvents          AnalyticsEvent[]
+  auditLogs                AuditLog[]
+  complianceReports        ComplianceReport[]
+  kbArticles               KnowledgeBaseArticle[]
+  messageHistory           MessageHistory[]       @relation("MessageHistorySentBy")
+  savedReports             SavedReportConfig[]
+  assignedTickets          SupportTicket[]        @relation("AssignedTickets")
+  createdTickets           SupportTicket[]        @relation("CreatedTickets")
+  ticketComments           TicketComment[]
+  userPermissions          UserPermission[]
+  userSchools              UserSchool[]
+  resolvedAlerts           Alert[]
+  createdAlertConfigs      AlertConfig[]
+  performedEmergencyAccess EmergencyAccess[]      @relation("EmergencyAccessPerformedBy")
+  reversedEmergencyAccess  EmergencyAccess[]      @relation("EmergencyAccessReversedBy")
 }
 
 model School {
-  id                      String                    @id @default(cuid())
+  id                      String                        @id @default(cuid())
   name                    String
-  schoolCode              String                    @unique
+  schoolCode              String                        @unique
   phone                   String?
   email                   String?
   address                 String?
   domain                  String?
-  subdomain               String?                   @unique
-  subdomainStatus         SubdomainStatus           @default(PENDING)
-  dnsConfigured           Boolean                   @default(false)
-  sslConfigured           Boolean                   @default(false)
+  subdomain               String?                       @unique
+  subdomainStatus         SubdomainStatus               @default(PENDING)
+  dnsConfigured           Boolean                       @default(false)
+  sslConfigured           Boolean                       @default(false)
   sslExpiresAt            DateTime?
-  plan                    PlanType                  @default(STARTER)
-  status                  SchoolStatus              @default(ACTIVE)
-  isOnboarded             Boolean                   @default(false)
-  onboardingStep          Int                       @default(0)
+  plan                    PlanType                      @default(STARTER)
+  status                  SchoolStatus                  @default(ACTIVE)
+  isOnboarded             Boolean                       @default(false)
+  onboardingStep          Int                           @default(0)
   onboardingCompletedAt   DateTime?
   tagline                 String?
   logo                    String?
   favicon                 String?
-  primaryColor            String                    @default("#3b82f6")
-  secondaryColor          String                    @default("#8b5cf6")
+  primaryColor            String                        @default("#3b82f6")
+  secondaryColor          String                        @default("#8b5cf6")
   metadata                Json?
-  razorpayCustomerId      String?                   @unique
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  razorpayCustomerId      String?                       @unique
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
   academicYears           AcademicYear[]
   Achievement             Achievement[]
   administrators          Administrator[]
@@ -228,6 +228,14 @@ model School {
   securitySettings        SchoolSecuritySettings?
   dataManagementSettings  SchoolDataManagementSettings?
   notificationSettings    SchoolNotificationSettings?
+  studentAchievements     StudentAchievement[]
+  studentXPLevels         StudentXPLevel[]
+  studentNotes            StudentNote[]
+  flashcardDecks          FlashcardDeck[]
+  flashcards              Flashcard[]
+  mindMaps                MindMap[]
+  lessonContents          LessonContent[]
+  studentContentProgress  StudentContentProgress[]
 
   @@map("schools")
 }
@@ -249,18 +257,18 @@ model Subscription {
 }
 
 model SubscriptionPlan {
-  id            String                 @id @default(cuid())
-  name          String
-  description   String?
-  razorpayPlanId String?               @unique
-  amount        Int
-  currency      String                 @default("inr")
-  interval      String
-  features      Json
-  isActive      Boolean                @default(true)
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  subscriptions EnhancedSubscription[]
+  id             String                 @id @default(cuid())
+  name           String
+  description    String?
+  razorpayPlanId String?                @unique
+  amount         Int
+  currency       String                 @default("inr")
+  interval       String
+  features       Json
+  isActive       Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  subscriptions  EnhancedSubscription[]
 
   @@map("subscription_plans")
 }
@@ -324,22 +332,22 @@ model Payment {
 }
 
 model PaymentMethodRecord {
-  id                  String   @id @default(cuid())
-  schoolId            String
-  razorpayCustomerId  String?
-  type                String   // card, netbanking, wallet, upi
-  encryptedDetails    String   // encrypted payment details
-  last4               String?
-  brand               String?
-  expiryMonth         String?
-  expiryYear          String?
-  holderName          String?
-  isDefault           Boolean  @default(false)
-  isActive            Boolean  @default(true)
-  metadata            Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  school              School   @relation(fields: [schoolId], references: [id])
+  id                 String   @id @default(cuid())
+  schoolId           String
+  razorpayCustomerId String?
+  type               String // card, netbanking, wallet, upi
+  encryptedDetails   String // encrypted payment details
+  last4              String?
+  brand              String?
+  expiryMonth        String?
+  expiryYear         String?
+  holderName         String?
+  isDefault          Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  metadata           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  school             School   @relation(fields: [schoolId], references: [id])
 
   @@map("payment_method_records")
 }
@@ -412,13 +420,13 @@ model Session {
 
 model OTP {
   id         String   @id @default(cuid())
-  identifier String   // mobile or email
+  identifier String // mobile or email
   codeHash   String
   expiresAt  DateTime
   attempts   Int      @default(0)
   isUsed     Boolean  @default(false)
   createdAt  DateTime @default(now())
-  
+
   @@index([identifier])
   @@index([expiresAt])
   @@map("otps")
@@ -432,9 +440,9 @@ model AuthSession {
   expiresAt      DateTime
   createdAt      DateTime @default(now())
   lastAccessAt   DateTime @default(now())
-  
-  user           User     @relation("AuthSessions", fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation("AuthSessions", fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
@@ -517,9 +525,9 @@ model TeacherSettings {
 }
 
 model Student {
-  id                    String                 @id @default(cuid())
-  userId                String                 @unique
-  admissionId           String                 @unique
+  id                    String                   @id @default(cuid())
+  userId                String                   @unique
+  admissionId           String                   @unique
   admissionDate         DateTime
   rollNumber            String?
   dateOfBirth           DateTime
@@ -529,11 +537,11 @@ model Student {
   height                Float?
   weight                Float?
   emergencyContact      String?
-  aadhaarNumber         String?                @db.VarChar(12)
-  apaarId               String?                @db.VarChar(50)
-  pen                   String?                @db.VarChar(50)
-  abcId                 String?                @db.VarChar(50)
-  nationality           String?                @default("Indian")
+  aadhaarNumber         String?                  @db.VarChar(12)
+  apaarId               String?                  @db.VarChar(50)
+  pen                   String?                  @db.VarChar(50)
+  abcId                 String?                  @db.VarChar(50)
+  nationality           String?                  @default("Indian")
   religion              String?
   caste                 String?
   category              String?
@@ -548,19 +556,19 @@ model Student {
   fatherOccupation      String?
   fatherPhone           String?
   fatherEmail           String?
-  fatherAadhaar         String?                @db.VarChar(12)
+  fatherAadhaar         String?                  @db.VarChar(12)
   motherName            String?
   motherOccupation      String?
   motherPhone           String?
   motherEmail           String?
-  motherAadhaar         String?                @db.VarChar(12)
+  motherAadhaar         String?                  @db.VarChar(12)
   guardianName          String?
   guardianRelation      String?
   guardianPhone         String?
   guardianEmail         String?
-  guardianAadhaar       String?                @db.VarChar(12)
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  guardianAadhaar       String?                  @db.VarChar(12)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
   phone                 String?
   emergencyPhone        String?
   parentMobile          String?
@@ -574,8 +582,8 @@ model Student {
   feePayments           FeePayment[]
   reportCards           ReportCard[]
   scholarships          ScholarshipRecipient[]
-  school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school                School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendance            StudentAttendance[]
   parents               StudentParent[]
   settings              StudentSettings?
@@ -591,6 +599,13 @@ model Student {
   promotionRecords      PromotionRecord[]
   quizAttempts          QuizAttempt[]
   routes                StudentRoute[]
+  achievements          StudentAchievement[]
+  xpLevel               StudentXPLevel?
+  notes                 StudentNote[]
+  flashcardDecks        FlashcardDeck[]
+  flashcards            Flashcard[]
+  mindMaps              MindMap[]
+  contentProgress       StudentContentProgress[]
 
   @@index([aadhaarNumber])
   @@index([abcId])
@@ -782,22 +797,23 @@ model Class {
 }
 
 model ClassSection {
-  id                String              @id @default(cuid())
-  name              String
-  classId           String
-  capacity          Int?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  homeRoomId        String?             @unique
-  schoolId          String
-  enrollments       ClassEnrollment[]
-  class             Class               @relation(fields: [classId], references: [id])
-  homeRoom          ClassRoom?          @relation("HomeRoom", fields: [homeRoomId], references: [id])
-  school            School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teachers          ClassTeacher[]
-  attendanceRecords StudentAttendance[]
-  syllabi           Syllabus[]
-  timetableSlots    TimetableSlot[]
+  id                 String              @id @default(cuid())
+  name               String
+  classId            String
+  capacity           Int?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  homeRoomId         String?             @unique
+  schoolId           String
+  enrollments        ClassEnrollment[]
+  class              Class               @relation(fields: [classId], references: [id])
+  homeRoom           ClassRoom?          @relation("HomeRoom", fields: [homeRoomId], references: [id])
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teachers           ClassTeacher[]
+  attendanceRecords  StudentAttendance[]
+  syllabi            Syllabus[]
+  timetableSlots     TimetableSlot[]
+  subjectAssignments SubjectClass[]
 
   @@unique([schoolId, name, classId])
   @@index([schoolId])
@@ -955,17 +971,20 @@ model SubjectTeacher {
 }
 
 model SubjectClass {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   subjectId String
   classId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sectionId String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   schoolId  String
-  class     Class    @relation(fields: [classId], references: [id])
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject   Subject  @relation(fields: [subjectId], references: [id])
+  class     Class         @relation(fields: [classId], references: [id])
+  school    School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section   ClassSection? @relation(fields: [sectionId], references: [id])
+  subject   Subject       @relation(fields: [subjectId], references: [id])
 
-  @@unique([subjectId, classId])
+  @@unique([subjectId, classId, sectionId])
+  @@index([sectionId])
   @@index([schoolId])
 }
 
@@ -1999,7 +2018,7 @@ model AuditLog {
   ipAddress String?
   userAgent String?
   createdAt DateTime    @default(now())
-  
+
   // Legacy fields for backward compatibility
   resource   String?
   resourceId String?
@@ -2007,11 +2026,11 @@ model AuditLog {
   timestamp  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
   checksum   String?
-  
+
   // Relationships
   user   User?   @relation(fields: [userId], references: [id])
   school School? @relation(fields: [schoolId], references: [id])
-  
+
   @@index([userId, createdAt])
   @@index([schoolId, createdAt])
   @@index([action, createdAt])
@@ -2284,192 +2303,192 @@ model Backup {
 
 // School Settings Tables
 model SchoolPermissions {
-  id                    String   @id @default(cuid())
-  schoolId              String   @unique
-  school                School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   // User Management Permissions
-  manageStudents        Boolean  @default(true)
-  manageTeachers        Boolean  @default(true)
-  manageParents         Boolean  @default(true)
-  manageAdmins          Boolean  @default(true)
-  
+  manageStudents Boolean @default(true)
+  manageTeachers Boolean @default(true)
+  manageParents  Boolean @default(true)
+  manageAdmins   Boolean @default(true)
+
   // Academic Permissions
-  manageClasses         Boolean  @default(true)
-  manageSubjects        Boolean  @default(true)
-  manageSyllabus        Boolean  @default(true)
-  manageExams           Boolean  @default(true)
-  manageAssignments     Boolean  @default(true)
-  manageAttendance      Boolean  @default(true)
-  generateReportCards   Boolean  @default(true)
-  
+  manageClasses       Boolean @default(true)
+  manageSubjects      Boolean @default(true)
+  manageSyllabus      Boolean @default(true)
+  manageExams         Boolean @default(true)
+  manageAssignments   Boolean @default(true)
+  manageAttendance    Boolean @default(true)
+  generateReportCards Boolean @default(true)
+
   // Communication Permissions
-  messagingSystem       Boolean  @default(true)
-  notificationSystem    Boolean  @default(true)
-  announcementSystem    Boolean  @default(true)
-  whatsappIntegration   Boolean  @default(false)
-  smsIntegration        Boolean  @default(false)
-  emailIntegration      Boolean  @default(true)
-  
+  messagingSystem     Boolean @default(true)
+  notificationSystem  Boolean @default(true)
+  announcementSystem  Boolean @default(true)
+  whatsappIntegration Boolean @default(false)
+  smsIntegration      Boolean @default(false)
+  emailIntegration    Boolean @default(true)
+
   // Financial Permissions
-  feeManagement         Boolean  @default(true)
-  paymentProcessing     Boolean  @default(true)
-  financialReports      Boolean  @default(true)
-  
+  feeManagement     Boolean @default(true)
+  paymentProcessing Boolean @default(true)
+  financialReports  Boolean @default(true)
+
   // Advanced Features
-  libraryManagement     Boolean  @default(false)
-  transportManagement   Boolean  @default(false)
-  hostelManagement      Boolean  @default(false)
-  alumniManagement      Boolean  @default(false)
-  certificateGeneration Boolean  @default(false)
-  
+  libraryManagement     Boolean @default(false)
+  transportManagement   Boolean @default(false)
+  hostelManagement      Boolean @default(false)
+  alumniManagement      Boolean @default(false)
+  certificateGeneration Boolean @default(false)
+
   // System Permissions
-  backupRestore         Boolean  @default(true)
-  dataExport            Boolean  @default(true)
-  auditLogs             Boolean  @default(true)
-  apiAccess             Boolean  @default(false)
-  customBranding        Boolean  @default(true)
-  
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  
+  backupRestore  Boolean @default(true)
+  dataExport     Boolean @default(true)
+  auditLogs      Boolean @default(true)
+  apiAccess      Boolean @default(false)
+  customBranding Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([schoolId])
 }
 
 model SchoolSecuritySettings {
-  id                        String   @id @default(cuid())
-  schoolId                  String   @unique
-  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   // Two-Factor Authentication
-  twoFactorEnabled          Boolean  @default(false)
-  twoFactorRequired         Boolean  @default(false)
-  twoFactorMethods          String[] @default(["SMS", "EMAIL"])
-  
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorRequired Boolean  @default(false)
+  twoFactorMethods  String[] @default(["SMS", "EMAIL"])
+
   // Session Management
-  sessionTimeout            Int      @default(480) // minutes
-  maxConcurrentSessions     Int      @default(3)
+  sessionTimeout              Int     @default(480) // minutes
+  maxConcurrentSessions       Int     @default(3)
   forceLogoutOnPasswordChange Boolean @default(true)
-  
+
   // Password Policy
-  passwordMinLength         Int      @default(8)
-  passwordRequireUppercase  Boolean  @default(true)
-  passwordRequireLowercase  Boolean  @default(true)
-  passwordRequireNumbers    Boolean  @default(true)
+  passwordMinLength           Int     @default(8)
+  passwordRequireUppercase    Boolean @default(true)
+  passwordRequireLowercase    Boolean @default(true)
+  passwordRequireNumbers      Boolean @default(true)
   passwordRequireSpecialChars Boolean @default(false)
-  passwordExpiry            Int      @default(90) // days, 0 = never
-  
+  passwordExpiry              Int     @default(90) // days, 0 = never
+
   // IP Whitelisting
-  ipWhitelistEnabled        Boolean  @default(false)
-  allowedIPs                String[] @default([])
-  blockUnknownIPs           Boolean  @default(false)
-  
+  ipWhitelistEnabled Boolean  @default(false)
+  allowedIPs         String[] @default([])
+  blockUnknownIPs    Boolean  @default(false)
+
   // Audit Logging
-  auditLoggingEnabled       Boolean  @default(true)
-  auditLogLevel             String   @default("INFO")
-  auditLogRetention         Int      @default(365) // days
-  
+  auditLoggingEnabled Boolean @default(true)
+  auditLogLevel       String  @default("INFO")
+  auditLogRetention   Int     @default(365) // days
+
   // Data Encryption
-  encryptSensitiveData      Boolean  @default(true)
-  encryptionLevel           String   @default("AES-256")
-  
+  encryptSensitiveData Boolean @default(true)
+  encryptionLevel      String  @default("AES-256")
+
   // API Security
-  rateLimitEnabled          Boolean  @default(true)
-  maxRequestsPerMinute      Int      @default(100)
-  requireApiKey             Boolean  @default(false)
-  
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  
+  rateLimitEnabled     Boolean @default(true)
+  maxRequestsPerMinute Int     @default(100)
+  requireApiKey        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([schoolId])
 }
 
 model SchoolDataManagementSettings {
-  id                        String   @id @default(cuid())
-  schoolId                  String   @unique
-  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   // Backup Settings
-  autoBackupEnabled         Boolean  @default(true)
-  backupFrequency           String   @default("DAILY") // HOURLY, DAILY, WEEKLY, MONTHLY
-  backupRetention           Int      @default(30) // days
-  includeFiles              Boolean  @default(true)
-  encryptBackups            Boolean  @default(true)
-  
+  autoBackupEnabled Boolean @default(true)
+  backupFrequency   String  @default("DAILY") // HOURLY, DAILY, WEEKLY, MONTHLY
+  backupRetention   Int     @default(30) // days
+  includeFiles      Boolean @default(true)
+  encryptBackups    Boolean @default(true)
+
   // Export Settings
-  allowDataExport           Boolean  @default(true)
-  exportFormats             String[] @default(["CSV", "JSON", "PDF"])
-  requireApproval           Boolean  @default(true)
-  
+  allowDataExport Boolean  @default(true)
+  exportFormats   String[] @default(["CSV", "JSON", "PDF"])
+  requireApproval Boolean  @default(true)
+
   // Data Retention
-  studentDataRetention      Int      @default(7) // years
-  auditLogRetention         Int      @default(365) // days
-  messageRetention          Int      @default(90) // days
-  autoCleanup               Boolean  @default(false)
-  
+  studentDataRetention Int     @default(7) // years
+  auditLogRetention    Int     @default(365) // days
+  messageRetention     Int     @default(90) // days
+  autoCleanup          Boolean @default(false)
+
   // Storage Management
-  storageQuota              Int      @default(1) // GB
-  compressionEnabled        Boolean  @default(true)
-  autoArchive               Boolean  @default(true)
-  archiveAfterDays          Int      @default(365)
-  
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  
+  storageQuota       Int     @default(1) // GB
+  compressionEnabled Boolean @default(true)
+  autoArchive        Boolean @default(true)
+  archiveAfterDays   Int     @default(365)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([schoolId])
 }
 
 model SchoolNotificationSettings {
-  id                        String   @id @default(cuid())
-  schoolId                  String   @unique
-  school                    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  schoolId String @unique
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   // Email Notifications
-  emailEnabled              Boolean  @default(true)
-  emailAdmissionUpdates     Boolean  @default(true)
-  emailFeeReminders         Boolean  @default(true)
-  emailExamNotifications    Boolean  @default(true)
-  emailAttendanceAlerts     Boolean  @default(true)
-  emailSystemUpdates        Boolean  @default(true)
-  
+  emailEnabled           Boolean @default(true)
+  emailAdmissionUpdates  Boolean @default(true)
+  emailFeeReminders      Boolean @default(true)
+  emailExamNotifications Boolean @default(true)
+  emailAttendanceAlerts  Boolean @default(true)
+  emailSystemUpdates     Boolean @default(true)
+
   // SMS Notifications
-  smsEnabled                Boolean  @default(false)
-  smsAdmissionUpdates       Boolean  @default(false)
-  smsFeeReminders           Boolean  @default(true)
-  smsExamNotifications      Boolean  @default(true)
-  smsAttendanceAlerts       Boolean  @default(true)
-  smsEmergencyAlerts        Boolean  @default(true)
-  
+  smsEnabled           Boolean @default(false)
+  smsAdmissionUpdates  Boolean @default(false)
+  smsFeeReminders      Boolean @default(true)
+  smsExamNotifications Boolean @default(true)
+  smsAttendanceAlerts  Boolean @default(true)
+  smsEmergencyAlerts   Boolean @default(true)
+
   // WhatsApp Notifications
-  whatsappEnabled           Boolean  @default(false)
-  whatsappAdmissionUpdates  Boolean  @default(false)
-  whatsappFeeReminders      Boolean  @default(true)
-  whatsappExamNotifications Boolean  @default(true)
-  whatsappAttendanceAlerts  Boolean  @default(false)
-  whatsappGeneralUpdates    Boolean  @default(false)
-  
+  whatsappEnabled           Boolean @default(false)
+  whatsappAdmissionUpdates  Boolean @default(false)
+  whatsappFeeReminders      Boolean @default(true)
+  whatsappExamNotifications Boolean @default(true)
+  whatsappAttendanceAlerts  Boolean @default(false)
+  whatsappGeneralUpdates    Boolean @default(false)
+
   // Push Notifications
-  pushEnabled               Boolean  @default(true)
-  pushAdmissionUpdates      Boolean  @default(true)
-  pushFeeReminders          Boolean  @default(true)
-  pushExamNotifications     Boolean  @default(true)
-  pushAttendanceAlerts      Boolean  @default(true)
-  pushSystemMaintenance     Boolean  @default(true)
-  
+  pushEnabled           Boolean @default(true)
+  pushAdmissionUpdates  Boolean @default(true)
+  pushFeeReminders      Boolean @default(true)
+  pushExamNotifications Boolean @default(true)
+  pushAttendanceAlerts  Boolean @default(true)
+  pushSystemMaintenance Boolean @default(true)
+
   // Notification Timing
-  quietHoursEnabled         Boolean  @default(true)
-  quietHoursStart           String   @default("22:00")
-  quietHoursEnd             String   @default("08:00")
-  weekendNotifications      Boolean  @default(false)
-  
+  quietHoursEnabled    Boolean @default(true)
+  quietHoursStart      String  @default("22:00")
+  quietHoursEnd        String  @default("08:00")
+  weekendNotifications Boolean @default(false)
+
   // Delivery Preferences
-  batchNotifications        Boolean  @default(true)
-  immediateEmergency        Boolean  @default(true)
-  digestFrequency           String   @default("DAILY") // IMMEDIATE, HOURLY, DAILY, WEEKLY
-  
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  
+  batchNotifications Boolean @default(true)
+  immediateEmergency Boolean @default(true)
+  digestFrequency    String  @default("DAILY") // IMMEDIATE, HOURLY, DAILY, WEEKLY
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([schoolId])
 }
 
@@ -4341,169 +4360,398 @@ enum PromotionStatus {
 // ============================================================================
 
 model SystemMetric {
-  id            String      @id @default(cuid())
-  metricName    String
-  value         Float
-  unit          String?
-  tags          Json?
-  timestamp     DateTime    @default(now())
-  schoolId      String?
-  
-  school        School?     @relation(fields: [schoolId], references: [id])
-  
-  @@map("system_metrics")
+  id         String   @id @default(cuid())
+  metricName String
+  value      Float
+  unit       String?
+  tags       Json?
+  timestamp  DateTime @default(now())
+  schoolId   String?
+
+  school School? @relation(fields: [schoolId], references: [id])
+
   @@index([metricName, timestamp])
   @@index([schoolId, timestamp])
+  @@map("system_metrics")
 }
 
 model Alert {
-  id            String      @id @default(cuid())
-  alertType     String
-  severity      String      // INFO, WARNING, ERROR, CRITICAL
-  title         String
-  description   String
-  isResolved    Boolean     @default(false)
-  resolvedAt    DateTime?
-  resolvedBy    String?
-  metadata      Json?
-  threshold     Float?
-  currentValue  Float?
-  schoolId      String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
-  resolver      User?       @relation(fields: [resolvedBy], references: [id])
-  school        School?     @relation(fields: [schoolId], references: [id])
-  
-  @@map("alerts")
+  id           String    @id @default(cuid())
+  alertType    String
+  severity     String // INFO, WARNING, ERROR, CRITICAL
+  title        String
+  description  String
+  isResolved   Boolean   @default(false)
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  metadata     Json?
+  threshold    Float?
+  currentValue Float?
+  schoolId     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  resolver User?   @relation(fields: [resolvedBy], references: [id])
+  school   School? @relation(fields: [schoolId], references: [id])
+
   @@index([alertType, isResolved])
   @@index([severity, createdAt])
   @@index([schoolId, isResolved])
+  @@map("alerts")
 }
 
 model AlertConfig {
-  id              String      @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
-  alertType       String      // error_rate, delivery_rate, api_error, critical_error, usage_threshold
+  alertType       String // error_rate, delivery_rate, api_error, critical_error, usage_threshold
   threshold       Float
-  condition       String      // greater, less, equal
-  enabled         Boolean     @default(true)
-  notifyAdmins    Boolean     @default(true)
-  notifyEmail     Boolean     @default(false)
-  emailRecipients String[]    @default([])
+  condition       String // greater, less, equal
+  enabled         Boolean  @default(true)
+  notifyAdmins    Boolean  @default(true)
+  notifyEmail     Boolean  @default(false)
+  emailRecipients String[] @default([])
   metadata        Json?
   schoolId        String?
   createdBy       String
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  creator         User        @relation(fields: [createdBy], references: [id])
-  school          School?     @relation(fields: [schoolId], references: [id])
-  
-  @@map("alert_configs")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  creator User    @relation(fields: [createdBy], references: [id])
+  school  School? @relation(fields: [schoolId], references: [id])
+
   @@index([alertType, enabled])
   @@index([schoolId])
+  @@map("alert_configs")
 }
 
 model SystemHealth {
-  id              String      @id @default(cuid())
-  component       String      @unique // Make component unique for upsert operations
-  status          String      // HEALTHY, DEGRADED, DOWN
-  responseTime    Float?      // in milliseconds
-  errorRate       Float?      // percentage
-  lastChecked     DateTime    @default(now())
-  metadata        Json?
-  
-  @@map("system_health")
+  id           String   @id @default(cuid())
+  component    String   @unique // Make component unique for upsert operations
+  status       String // HEALTHY, DEGRADED, DOWN
+  responseTime Float? // in milliseconds
+  errorRate    Float? // percentage
+  lastChecked  DateTime @default(now())
+  metadata     Json?
+
   @@index([component, lastChecked])
   @@index([status, lastChecked])
+  @@map("system_health")
 }
 
 model PerformanceMetric {
-  id              String      @id @default(cuid())
-  metricType      String      // cpu_usage, memory_usage, disk_usage, response_time, throughput
-  value           Float
-  unit            String?
-  component       String?     // api, database, cache, etc.
-  timestamp       DateTime    @default(now())
-  metadata        Json?
-  
-  @@map("performance_metrics")
+  id         String   @id @default(cuid())
+  metricType String // cpu_usage, memory_usage, disk_usage, response_time, throughput
+  value      Float
+  unit       String?
+  component  String? // api, database, cache, etc.
+  timestamp  DateTime @default(now())
+  metadata   Json?
+
   @@index([metricType, timestamp])
   @@index([component, timestamp])
+  @@map("performance_metrics")
 }
+
 // Rate Limiting and Abuse Protection Models
 // Requirements: 14.1, 14.2, 14.3, 14.4, 14.5
 
 model BlockedIdentifier {
-  id          String   @id @default(cuid())
-  identifier  String   // mobile or email
-  reason      String   // reason for blocking
-  attempts    Int      @default(1)
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("blocked_identifiers")
+  id         String   @id @default(cuid())
+  identifier String // mobile or email
+  reason     String // reason for blocking
+  attempts   Int      @default(1)
+  isActive   Boolean  @default(true)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@index([identifier, isActive, expiresAt])
   @@index([expiresAt, isActive])
+  @@map("blocked_identifiers")
 }
 
 model LoginFailure {
-  id          String   @id @default(cuid())
-  identifier  String   // mobile or email
-  reason      String   // failure reason
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  
-  @@map("login_failures")
+  id         String   @id @default(cuid())
+  identifier String // mobile or email
+  reason     String // failure reason
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
   @@index([identifier, createdAt])
   @@index([createdAt])
+  @@map("login_failures")
 }
 
 model RateLimitLog {
-  id          String   @id @default(cuid())
-  identifier  String   // mobile or email
-  action      String   // action type (RATE_LIMIT_HIT, IDENTIFIER_BLOCKED, etc.)
-  type        String   // rate limit type (OTP_GENERATION, LOGIN_ATTEMPTS, etc.)
-  details     Json?    // additional details
-  createdAt   DateTime @default(now())
-  
-  @@map("rate_limit_logs")
+  id         String   @id @default(cuid())
+  identifier String // mobile or email
+  action     String // action type (RATE_LIMIT_HIT, IDENTIFIER_BLOCKED, etc.)
+  type       String // rate limit type (OTP_GENERATION, LOGIN_ATTEMPTS, etc.)
+  details    Json? // additional details
+  createdAt  DateTime @default(now())
+
   @@index([identifier, action, createdAt])
   @@index([action, createdAt])
   @@index([createdAt])
+  @@map("rate_limit_logs")
 }
 
 model EmergencyAccess {
-  id                  String   @id @default(cuid())
-  targetType          String   // 'USER' or 'SCHOOL'
+  id                  String    @id @default(cuid())
+  targetType          String // 'USER' or 'SCHOOL'
   targetId            String
   targetName          String
-  action              String   // 'DISABLE', 'ENABLE', 'FORCE_DISABLE'
+  action              String // 'DISABLE', 'ENABLE', 'FORCE_DISABLE'
   reason              String
   performedBy         String
   disabledUntil       DateTime?
-  affectedUsers       Int      @default(0)
-  invalidatedSessions Int      @default(0)
-  isReversed          Boolean  @default(false)
+  affectedUsers       Int       @default(0)
+  invalidatedSessions Int       @default(0)
+  isReversed          Boolean   @default(false)
   reversedAt          DateTime?
   reversedBy          String?
   reversedReason      String?
   metadata            Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
   // Relationships
-  performedByUser     User?    @relation("EmergencyAccessPerformedBy", fields: [performedBy], references: [id])
-  reversedByUser      User?    @relation("EmergencyAccessReversedBy", fields: [reversedBy], references: [id])
-  
+  performedByUser User? @relation("EmergencyAccessPerformedBy", fields: [performedBy], references: [id])
+  reversedByUser  User? @relation("EmergencyAccessReversedBy", fields: [reversedBy], references: [id])
+
   @@index([targetType, targetId])
   @@index([performedBy, createdAt])
   @@index([action, createdAt])
   @@index([isReversed, createdAt])
   @@index([targetType, action, isReversed])
   @@map("emergency_access")
+}
+
+// ============================================================================
+// Student Portal Phase 2 Features
+// ============================================================================
+
+model StudentAchievement {
+  id          String                  @id @default(cuid())
+  studentId   String
+  schoolId    String
+  title       String
+  description String?
+  category    AchievementCategoryType
+  points      Int                     @default(0)
+  rarity      RarityType              @default(COMMON)
+  icon        String                  @default("Star")
+  unlocked    Boolean                 @default(false)
+  unlockedAt  DateTime?
+  progress    Int                     @default(0)
+  maxProgress Int                     @default(1)
+  metadata    Json?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([category])
+  @@index([unlocked])
+  @@map("student_achievements")
+}
+
+model StudentXPLevel {
+  id               String    @id @default(cuid())
+  studentId        String    @unique
+  schoolId         String
+  totalXP          Int       @default(0)
+  level            Int       @default(1)
+  currentLevelXP   Int       @default(0)
+  xpToNextLevel    Int       @default(100)
+  streak           Int       @default(0)
+  lastActivityDate DateTime?
+  metadata         Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([level])
+  @@map("student_xp_levels")
+}
+
+model StudentNote {
+  id        String   @id @default(cuid())
+  studentId String
+  schoolId  String
+  title     String
+  content   String
+  subject   String
+  tags      String[]
+  folder    String?
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([subject])
+  @@index([folder])
+  @@map("student_notes")
+}
+
+model FlashcardDeck {
+  id          String   @id @default(cuid())
+  studentId   String
+  schoolId    String
+  name        String
+  description String?
+  subject     String
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  cards   Flashcard[]
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([subject])
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id             String         @id @default(cuid())
+  deckId         String
+  studentId      String
+  schoolId       String
+  front          String
+  back           String
+  difficulty     DifficultyType @default(MEDIUM)
+  correctCount   Int            @default(0)
+  incorrectCount Int            @default(0)
+  lastReviewed   DateTime?
+  tags           String[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  deck    FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([deckId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@map("flashcards")
+}
+
+model MindMap {
+  id          String   @id @default(cuid())
+  studentId   String
+  schoolId    String
+  title       String
+  subject     String
+  nodes       Json
+  connections Json
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([subject])
+  @@map("mind_maps")
+}
+
+model LessonContent {
+  id        String            @id @default(cuid())
+  lessonId  String?
+  courseId  String?
+  schoolId  String
+  title     String
+  type      LessonContentType
+  content   String
+  duration  Int? // in minutes
+  order     Int               @default(0)
+  metadata  Json?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  school          School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentProgress StudentContentProgress[]
+
+  @@index([lessonId])
+  @@index([courseId])
+  @@index([schoolId])
+  @@index([order])
+  @@map("lesson_contents")
+}
+
+model StudentContentProgress {
+  id             String         @id @default(cuid())
+  studentId      String
+  contentId      String
+  schoolId       String
+  status         ProgressStatus @default(NOT_STARTED)
+  progress       Float          @default(0)
+  timeSpent      Int            @default(0) // in seconds
+  completed      Boolean        @default(false)
+  completedAt    DateTime?
+  lastAccessedAt DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  student Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  content LessonContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  school  School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, contentId])
+  @@index([studentId])
+  @@index([contentId])
+  @@index([schoolId])
+  @@map("student_content_progress")
+}
+
+// Add new enum types
+enum AchievementCategoryType {
+  ACADEMIC
+  ATTENDANCE
+  PARTICIPATION
+  STREAK
+  SPECIAL
+}
+
+enum RarityType {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum DifficultyType {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum LessonContentType {
+  VIDEO
+  TEXT
+  AUDIO
+  INTERACTIVE
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
 }

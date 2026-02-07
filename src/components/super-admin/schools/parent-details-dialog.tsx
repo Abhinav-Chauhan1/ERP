@@ -69,13 +69,13 @@ export function ParentDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 dark:text-white">
             <User className="h-5 w-5" />
             {parentName}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="dark:text-gray-400">
             Parent account details and information
           </DialogDescription>
         </DialogHeader>
@@ -156,10 +156,10 @@ export function ParentDetailsDialog({
             {parent.children.length > 0 ? (
               <div className="space-y-3">
                 {parent.children.map((child) => {
-                  const childName = child.student.user.name || 
+                  const childName = child.student.user.name ||
                     `${child.student.user.firstName} ${child.student.user.lastName}`;
                   const className = child.student.enrollments[0]?.class?.name;
-                  
+
                   return (
                     <div
                       key={child.student.id}

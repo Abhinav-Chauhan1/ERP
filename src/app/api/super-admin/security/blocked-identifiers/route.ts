@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (authResult) {
-      return authResult; // Return the error response
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: 401 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -28,9 +31,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Failed to get blocked identifiers:', error);
+    console.error('Get blocked identifiers error:', error);
     return NextResponse.json(
-      { error: 'Failed to get blocked identifiers' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

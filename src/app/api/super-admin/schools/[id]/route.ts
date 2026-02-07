@@ -15,7 +15,7 @@ const updateSchoolSchema = z.object({
   domain: z.string().optional(),
   subdomain: z.string().optional(),
   plan: z.enum(['STARTER', 'GROWTH', 'DOMINATE']).optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'INACTIVE']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
   isOnboarded: z.boolean().optional(),
   tagline: z.string().optional(),
   logo: z.string().optional(),

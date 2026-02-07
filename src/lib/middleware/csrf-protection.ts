@@ -42,7 +42,7 @@ function extractCSRFToken(request: NextRequest): {
   const headerToken = request.headers.get(CSRF_HEADER_NAME);
   const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
 
-  return { headerToken, cookieToken };
+  return { headerToken: headerToken ?? undefined, cookieToken };
 }
 
 /**

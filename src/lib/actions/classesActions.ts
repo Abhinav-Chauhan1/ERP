@@ -260,8 +260,10 @@ export async function getClassById(id: string) {
         capacity: section.capacity,
         students: section._count.enrollments
       })),
-      classTeacher: classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.user.firstName + ' ' +
-        classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.user.lastName,
+      classTeacher: (() => {
+        const classHead = classDetails.teachers.find(t => t.isClassHead && !t.sectionId);
+        return classHead ? `${classHead.teacher.user.firstName} ${classHead.teacher.user.lastName}` : null;
+      })(),
       classTeacherId: classDetails.teachers.find(t => t.isClassHead && !t.sectionId)?.teacher.id,
       teachers: classDetails.teachers.map(teacher => ({
         id: teacher.id,

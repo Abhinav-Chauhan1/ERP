@@ -10,8 +10,11 @@ export async function POST(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (authResult) {
-      return authResult; // Return the error response
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: 401 }
+      );
     }
 
     // Get user info from session since auth succeeded

@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole, PermissionAction } from "@prisma/client";
+import { UserRole, PermissionAction, Prisma } from "@prisma/client";
 import {
   CreateAdministratorFormData,
   CreateTeacherFormData,
@@ -42,7 +42,7 @@ const createBaseUser = async (userData: {
   avatar?: string;
   role: UserRole;
   password?: string;
-}) => {
+}, tx: Prisma.TransactionClient | typeof db = db) => {
   // Only generate password if provided or if role requires it (admin/teacher)
   // Students and parents use phone-only auth (OTP)
   let hashedPassword: string | undefined;
@@ -76,7 +76,7 @@ const createBaseUser = async (userData: {
     sanitizedData.passwordHash = hashedPassword;
   }
 
-  return await db.user.create({
+  return await tx.user.create({
     data: sanitizedData
   });
 };
@@ -89,7 +89,11 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
 
     // Get current school context
     const context = await getCurrentUserSchoolContext();
-    if (!context?.schoolId && !context?.isSuperAdmin) {
+
+    // Determine effective schoolId: Context > SuperAdmin Override
+    const schoolId = context?.schoolId || (context?.isSuperAdmin ? data.schoolId : null);
+
+    if (!schoolId) {
       throw new Error('School context required');
     }
 
@@ -104,14 +108,14 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
         avatar: data.avatar,
         role: UserRole.ADMIN,
         password: data.password
-      });
+      }, tx);
 
       // Create the administrator profile
       const administrator = await tx.administrator.create({
         data: {
           userId: user.id,
           position: data.position,
-          schoolId: context.schoolId!, // Add required schoolId
+          schoolId: schoolId, // Use resolved schoolId
         }
       });
 
@@ -119,7 +123,7 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
       await tx.userSchool.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!,
+          schoolId: schoolId,
           role: UserRole.ADMIN,
           isActive: true,
         }
@@ -155,7 +159,10 @@ export async function createTeacher(data: CreateTeacherFormData) {
 
     // Get current school context
     const context = await getCurrentUserSchoolContext();
-    if (!context?.schoolId && !context?.isSuperAdmin) {
+
+    const schoolId = context?.schoolId || (context?.isSuperAdmin ? data.schoolId : null);
+
+    if (!schoolId) {
       throw new Error('School context required');
     }
 
@@ -170,7 +177,7 @@ export async function createTeacher(data: CreateTeacherFormData) {
         avatar: data.avatar,
         role: UserRole.TEACHER,
         password: data.password
-      });
+      }, tx);
 
       // Create the teacher profile
       const teacher = await tx.teacher.create({
@@ -180,7 +187,7 @@ export async function createTeacher(data: CreateTeacherFormData) {
           qualification: data.qualification,
           joinDate: data.joinDate,
           salary: data.salary,
-          schoolId: context.schoolId!, // Add required schoolId
+          schoolId: schoolId, // Use resolved schoolId
         }
       });
 
@@ -188,7 +195,7 @@ export async function createTeacher(data: CreateTeacherFormData) {
       await tx.userSchool.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!,
+          schoolId: schoolId,
           role: UserRole.TEACHER,
           isActive: true,
         }
@@ -225,7 +232,10 @@ export async function createStudent(data: CreateStudentFormData) {
 
     // Get current school context
     const context = await getCurrentUserSchoolContext();
-    if (!context?.schoolId && !context?.isSuperAdmin) {
+
+    const schoolId = context?.schoolId || (context?.isSuperAdmin ? data.schoolId : null);
+
+    if (!schoolId) {
       throw new Error('School context required');
     }
 
@@ -240,13 +250,13 @@ export async function createStudent(data: CreateStudentFormData) {
         avatar: data.avatar,
         role: UserRole.STUDENT,
         // No password - students use phone/OTP authentication
-      });
+      }, tx);
 
       // Create the student profile
       const student = await tx.student.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!, // Add required schoolId
+          schoolId: schoolId, // Use resolved schoolId
           admissionId: data.admissionId,
           admissionDate: data.admissionDate,
           rollNumber: data.rollNumber,
@@ -295,7 +305,7 @@ export async function createStudent(data: CreateStudentFormData) {
       await tx.userSchool.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!,
+          schoolId: schoolId,
           role: UserRole.STUDENT,
           isActive: true,
         }
@@ -333,7 +343,10 @@ export async function createParent(data: CreateParentFormData) {
 
     // Get current school context
     const context = await getCurrentUserSchoolContext();
-    if (!context?.schoolId && !context?.isSuperAdmin) {
+
+    const schoolId = context?.schoolId || (context?.isSuperAdmin ? data.schoolId : null);
+
+    if (!schoolId) {
       throw new Error('School context required');
     }
 
@@ -348,13 +361,13 @@ export async function createParent(data: CreateParentFormData) {
         avatar: data.avatar,
         role: UserRole.PARENT,
         // No password - parents use phone/OTP authentication
-      });
+      }, tx);
 
       // Create the parent profile
       const parent = await tx.parent.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!, // Add required schoolId
+          schoolId: schoolId, // Use resolved schoolId
           occupation: data.occupation,
           alternatePhone: data.alternatePhone,
           relation: data.relation,
@@ -365,7 +378,7 @@ export async function createParent(data: CreateParentFormData) {
       await tx.userSchool.create({
         data: {
           userId: user.id,
-          schoolId: context.schoolId!,
+          schoolId: schoolId,
           role: UserRole.PARENT,
           isActive: true,
         }
@@ -428,6 +441,7 @@ export async function updateUserDetails(userId: string, userData: {
   phone?: string;
   avatar?: string;
   active?: boolean;
+  passwordHash?: string;
 }) {
   try {
     // Permission check: require USER:UPDATE
@@ -456,7 +470,7 @@ export async function updateUserDetails(userId: string, userData: {
 }
 
 // Update role-specific details
-export async function updateAdministrator(administratorId: string, data: Partial<CreateAdministratorFormData>) {
+export async function updateAdministrator(administratorId: string, data: Partial<CreateAdministratorFormData> & { password?: string }) {
   try {
     const administrator = await db.administrator.findUnique({
       where: { id: administratorId },
@@ -468,8 +482,14 @@ export async function updateAdministrator(administratorId: string, data: Partial
     }
 
     return await db.$transaction(async (tx) => {
+      // Hash password if provided
+      let passwordHash: string | undefined;
+      if (data.password) {
+        passwordHash = await hashPassword(data.password);
+      }
+
       // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar) {
+      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined || passwordHash) {
         await updateUserDetails(administrator.userId, {
           firstName: data.firstName,
           lastName: data.lastName,
@@ -477,6 +497,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
           phone: data.phone,
           avatar: data.avatar,
           active: data.active,
+          passwordHash: passwordHash,
         });
       }
 
@@ -485,7 +506,6 @@ export async function updateAdministrator(administratorId: string, data: Partial
         where: { id: administratorId },
         data: {
           position: data.position,
-
         }
       });
 
@@ -499,7 +519,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
 }
 
 // Update Teacher
-export async function updateTeacher(teacherId: string, data: Partial<CreateTeacherFormData>) {
+export async function updateTeacher(teacherId: string, data: Partial<CreateTeacherFormData> & { password?: string }) {
   try {
     const teacher = await db.teacher.findUnique({
       where: { id: teacherId },
@@ -511,8 +531,14 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
     }
 
     return await db.$transaction(async (tx) => {
+      // Hash password if provided
+      let passwordHash: string | undefined;
+      if (data.password) {
+        passwordHash = await hashPassword(data.password);
+      }
+
       // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined) {
+      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined || passwordHash) {
         await updateUserDetails(teacher.userId, {
           firstName: data.firstName,
           lastName: data.lastName,
@@ -520,6 +546,7 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
           phone: data.phone,
           avatar: data.avatar,
           active: data.active,
+          passwordHash: passwordHash,
         });
       }
 
@@ -777,12 +804,54 @@ export async function getCurrentUser() {
   return user;
 }
 
-// Get users by role
-export async function getUsersByRole(role: UserRole) {
-  return await db.user.findMany({
-    where: { role },
-    orderBy: { createdAt: 'desc' }
-  });
+// Get Student by ID
+export async function getStudentById(studentId: string) {
+  try {
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      include: {
+        user: true,
+        enrollments: {
+          include: {
+            class: true,
+            section: true,
+          }
+        }
+      }
+    });
+    return student;
+  } catch (error) {
+    console.error("Error fetching student:", error);
+    return null;
+  }
+}
+
+// Get Teacher by ID
+export async function getTeacherById(teacherId: string) {
+  try {
+    const teacher = await db.teacher.findUnique({
+      where: { id: teacherId },
+      include: { user: true }
+    });
+    return teacher;
+  } catch (error) {
+    console.error("Error fetching teacher:", error);
+    return null;
+  }
+}
+
+// Get Administrator by ID
+export async function getAdministratorById(administratorId: string) {
+  try {
+    const administrator = await db.administrator.findUnique({
+      where: { id: administratorId },
+      include: { user: true }
+    });
+    return administrator;
+  } catch (error) {
+    console.error("Error fetching administrator:", error);
+    return null;
+  }
 }
 
 // Update user password

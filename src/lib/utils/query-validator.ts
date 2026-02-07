@@ -78,7 +78,7 @@ export function sanitizeString(input: string): string {
   // Remove potentially dangerous characters
   return input
     .replace(/[<>'"]/g, '') // Remove HTML/script injection chars
-    .replace(/[;--]/g, '') // Remove SQL comment chars
+    .replace(/[;-]/g, '') // Remove SQL comment chars
     .trim()
     .substring(0, 1000); // Limit length
 }

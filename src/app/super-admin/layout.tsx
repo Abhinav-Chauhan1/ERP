@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { SuperAdminSidebar } from "@/components/super-admin/layout/super-admin-sidebar";
 import { SuperAdminHeader } from "@/components/super-admin/layout/super-admin-header";
+import { SuperAdminThemeProvider } from "@/components/super-admin/layout/super-admin-theme-provider";
 
 export default async function SuperAdminLayout({
     children,
@@ -22,17 +23,19 @@ export default async function SuperAdminLayout({
     }
 
     return (
-        <div className="theme-sikshamitra min-h-screen bg-[hsl(var(--background))]">
-            {/* Sidebar */}
-            <SuperAdminSidebar />
+        <SuperAdminThemeProvider>
+            <div className="flex h-screen bg-black overflow-hidden relative theme-sikshamitra dark">
+                {/* Sidebar */}
+                <SuperAdminSidebar />
 
-            {/* Main Content Area */}
-            <div className="lg:pl-64 min-h-screen">
-                <SuperAdminHeader />
-                <main className="p-6">
-                    {children}
-                </main>
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pl-64">
+                    <SuperAdminHeader />
+                    <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 relative z-0 bg-black text-white">
+                        {children}
+                    </main>
+                </div>
             </div>
-        </div>
+        </SuperAdminThemeProvider>
     );
 }

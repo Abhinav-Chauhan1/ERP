@@ -11,7 +11,7 @@ import { Upload, X, FileIcon, Loader2, CheckCircle2, AlertCircle } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useFetchCsrfToken } from "@/hooks/use-csrf-token";
+import { useCSRFToken } from "@/hooks/use-csrf-token";
 import {
   ALLOWED_FILE_TYPES,
   MAX_FILE_SIZES,
@@ -64,7 +64,7 @@ export function SecureFileUpload({
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { token: csrfToken } = useFetchCsrfToken();
+  const { token: csrfToken } = useCSRFToken();
 
   // Generate accept attribute from allowed file types
   const acceptAttribute = accept || Object.keys(ALLOWED_FILE_TYPES).join(",");

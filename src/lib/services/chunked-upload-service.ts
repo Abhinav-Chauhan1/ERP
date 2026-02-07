@@ -94,6 +94,10 @@ export class ChunkedUploadService {
   };
 
   constructor() {
+    if (!this.config.accessKeyId || !this.config.secretAccessKey) {
+      throw new Error('S3 credentials are required');
+    }
+    
     this.client = new S3Client({
       region: this.config.region,
       endpoint: this.config.endpoint,

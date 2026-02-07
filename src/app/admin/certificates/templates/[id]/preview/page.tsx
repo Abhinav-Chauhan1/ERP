@@ -38,8 +38,8 @@ export default async function CertificateTemplatePreviewPage({ params }: PagePro
     // Sanitize preview HTML for XSS protection (server-side)
     const rawPreviewHtml = previewResult.success ? previewResult.data : null;
     const window = new JSDOM('').window;
-    const purify = DOMPurify(window as unknown as Window);
-    const previewHtml = rawPreviewHtml ? purify.sanitize(rawPreviewHtml as string) : null;
+    const purify = DOMPurify(window as any);
+    const previewHtml = rawPreviewHtml && typeof rawPreviewHtml === 'string' ? purify.sanitize(rawPreviewHtml) : null;
 
     return (
         <div className="container mx-auto py-6 space-y-6">

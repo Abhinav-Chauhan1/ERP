@@ -218,7 +218,7 @@
   }
 }
 
-/* Accessibility Enhancements */
+/* Mobile-First Accessibility Enhancements */
 @layer utilities {
 
   /* Enhanced Focus Indicators - WCAG 2.1 AA Compliant */
@@ -267,9 +267,19 @@
     white-space: normal;
   }
 
+  /* Mobile-First Touch Targets */
+  /* Primary classes (1-5) - Extra large touch targets */
+  .touch-target-primary {
+    @apply min-h-[60px] min-w-[60px] sm:min-h-[56px] sm:min-w-[56px] lg:min-h-[52px] lg:min-w-[52px];
+  }
+
+  /* Secondary classes (6-12) - Standard touch targets */
+  .touch-target-secondary {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
   /* Ensure minimum touch target size for mobile (44x44px) */
   @media (max-width: 768px) {
-
     button,
     a,
     [role="button"],
@@ -277,6 +287,14 @@
     input[type="radio"] {
       min-height: 44px;
       min-width: 44px;
+    }
+
+    /* Extra large for primary classes on mobile */
+    .primary-class button,
+    .primary-class a,
+    .primary-class [role="button"] {
+      min-height: 60px;
+      min-width: 60px;
     }
   }
 
@@ -294,7 +312,6 @@
 
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
-
     *,
     *::before,
     *::after {
@@ -303,6 +320,50 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  /* Mobile-First Safe Area Support */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-pl {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-pr {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Mobile-First Typography */
+  .text-mobile-primary {
+    @apply text-lg font-bold sm:text-base lg:text-sm;
+  }
+
+  .text-mobile-secondary {
+    @apply text-base font-medium sm:text-sm;
+  }
+
+  /* Mobile-First Spacing */
+  .p-mobile {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+
+  .m-mobile {
+    @apply m-4 sm:m-6 lg:m-8;
+  }
+
+  /* Mobile-First Grid Layouts */
+  .grid-mobile-primary {
+    @apply grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4;
+  }
+
+  .grid-mobile-secondary {
+    @apply grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3;
   }
 
   /* Glassmorphism Utilities */
@@ -323,23 +384,42 @@
     @apply bg-gradient-to-br from-background via-background/95 to-secondary/30;
   }
 
-  /* Micro-animations */
+  /* Mobile-First Micro-animations */
   .hover-lift {
-    @apply transition-transform duration-300 hover:-translate-y-1;
+    @apply transition-transform duration-300 active:scale-95 sm:hover:-translate-y-1;
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-lg hover:shadow-red-500/20;
+    @apply transition-all duration-300 active:shadow-lg active:shadow-primary/20 sm:hover:shadow-lg sm:hover:shadow-primary/20;
   }
 
-  /* Dashboard Grid Layout Utilities */
+  /* Mobile-First Dashboard Grid Layout */
   .dashboard-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6;
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6;
   }
 
-  /* Premium Card Styles */
+  /* Mobile-First Premium Card Styles */
   .premium-card {
-    @apply rounded-2xl p-6 transition-all duration-500 border border-border bg-card hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5;
+    @apply rounded-xl p-4 sm:rounded-2xl sm:p-6 transition-all duration-500 border border-border bg-card active:border-primary/50 active:shadow-lg sm:hover:border-primary/50 sm:hover:shadow-2xl sm:hover:shadow-primary/5;
+  }
+
+  /* Mobile Navigation Utilities */
+  .mobile-nav-item {
+    @apply flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .mobile-nav-bottom {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 safe-area-pb;
+  }
+
+  /* Swipe Gesture Indicators */
+  .swipe-indicator {
+    @apply absolute top-1/2 transform -translate-y-1/2 opacity-0 transition-opacity duration-300;
+  }
+
+  .swipe-left .swipe-indicator-left,
+  .swipe-right .swipe-indicator-right {
+    @apply opacity-100;
   }
 }
 
@@ -355,4 +435,19 @@
 
 ::-webkit-scrollbar-thumb {
   @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30 transition-colors;
+}
+
+/* Mobile-First Media Queries */
+@media (max-width: 640px) {
+  /* Hide desktop-only elements on mobile */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 641px) {
+  /* Hide mobile-only elements on desktop */
+  .mobile-only {
+    display: none !important;
+  }
 }

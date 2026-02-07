@@ -101,8 +101,8 @@ export function composeEnhancedMiddleware(
         }
 
         // Add auth info to context
-        context.user = authResult.user;
-        context.schoolContext = authResult.schoolContext;
+        context.user = authResult.context.user;
+        context.schoolContext = authResult.context.schoolContext;
       }
 
       // Apply request validation if configured
@@ -460,6 +460,7 @@ export function getAuthContext(context: EnhancedMiddlewareContext): Authenticati
 
   return {
     user: context.user,
+    session: null, // Add session property
     schoolContext: context.schoolContext,
     request: context.request,
     ipAddress: context.metadata.ipAddress,
@@ -479,11 +480,11 @@ export function validatePermissionInContext(
   }
 
   // Super admins have all permissions
-  if (context.user.role === UserRole.SUPER_ADMIN || context.user.permissions.includes('*')) {
+  if (context.user.role === UserRole.SUPER_ADMIN || context.user.permissions?.includes('*')) {
     return true;
   }
 
-  return context.user.permissions.includes(permission);
+  return context.user.permissions?.includes(permission) ?? false;
 }
 
 /**
@@ -502,7 +503,7 @@ export function validateSchoolAccessInContext(
     return true;
   }
 
-  return context.user.authorizedSchools.includes(schoolId);
+  return context.user.authorizedSchools?.includes(schoolId) ?? false;
 }
 
 export default composeEnhancedMiddleware;

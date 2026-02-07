@@ -48,7 +48,6 @@ import toast from "react-hot-toast";
 import { subjectSchema, SubjectFormValues } from "@/lib/schemaValidation/subjectsSchemaValidation";
 import {
   getSubjects,
-  getClasses,
   createSubject,
   updateSubject,
   deleteSubject,
@@ -59,8 +58,6 @@ import { STANDARD_SUBJECTS } from "@/lib/constants/academic-standards";
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
-
-  const [classes, setClasses] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -82,15 +79,11 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
-
-      classIds: [],
     },
   });
 
   useEffect(() => {
     fetchSubjects();
-
-    fetchClasses();
   }, []);
 
   async function fetchSubjects() {
@@ -115,22 +108,6 @@ export default function SubjectsPage() {
     }
   }
 
-
-
-  async function fetchClasses() {
-    try {
-      const result = await getClasses();
-
-      if (result.success) {
-        setClasses(result.data || []);
-      } else {
-        toast.error(result.error || "Failed to fetch classes");
-      }
-    } catch (err) {
-      toast.error("An unexpected error occurred");
-      console.error(err);
-    }
-  }
 
   async function onSubmit(values: SubjectFormValues) {
     try {
@@ -165,9 +142,7 @@ export default function SubjectsPage() {
       form.reset({
         code: subjectToEdit.code,
         name: subjectToEdit.name,
-
         description: subjectToEdit.description,
-        classIds: subjectToEdit.classIds,
       });
 
       setSelectedSubjectId(id);
@@ -205,8 +180,6 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
-
-      classIds: []
     });
     setSelectedSubjectId(null);
     setDialogOpen(true);
@@ -361,44 +334,6 @@ export default function SubjectsPage() {
                           />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="classIds"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel>Applicable Classes</FormLabel>
-                        <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-60 overflow-y-auto">
-                          {classes.map((classItem) => (
-                            <div key={classItem.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={classItem.id}
-                                checked={form.watch("classIds").includes(classItem.id)}
-                                onCheckedChange={(checked) => {
-                                  const currentClasses = form.watch("classIds");
-                                  if (checked) {
-                                    form.setValue("classIds", [...currentClasses, classItem.id]);
-                                  } else {
-                                    form.setValue(
-                                      "classIds",
-                                      currentClasses.filter(c => c !== classItem.id)
-                                    );
-                                  }
-                                }}
-                                className="rounded text-primary"
-                              />
-                              <label htmlFor={classItem.id} className="text-sm cursor-pointer">
-                                {classItem.name}
-                                {classItem.academicYear.isCurrent &&
-                                  <span className="ml-1 text-xs text-green-600">(Current)</span>
-                                }
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                        <FormMessage>{form.formState.errors.classIds?.message}</FormMessage>
                       </FormItem>
                     )}
                   />

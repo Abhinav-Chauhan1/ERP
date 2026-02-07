@@ -50,7 +50,13 @@ export async function createSecureAuditLog(data: AuditLogData): Promise<void> {
     
     await db.auditLog.create({
       data: {
-        ...data,
+        action: data.action as any, // Cast to any to handle string to enum conversion
+        resource: data.resource,
+        resourceId: data.resourceId,
+        userId: data.userId ?? undefined,
+        ipAddress: data.ipAddress ?? undefined,
+        userAgent: data.userAgent ?? undefined,
+        schoolId: data.schoolId ?? undefined,
         changes: sanitizedChanges,
         timestamp,
         checksum,
@@ -81,12 +87,12 @@ export async function verifyAuditLogIntegrity(auditLogId: string): Promise<boole
       {
         userId: auditLog.userId,
         action: auditLog.action,
-        resource: auditLog.resource,
-        resourceId: auditLog.resourceId,
+        resource: auditLog.resource ?? "",
+        resourceId: auditLog.resourceId ?? "",
         changes: auditLog.changes,
-        ipAddress: auditLog.ipAddress,
-        userAgent: auditLog.userAgent,
-        schoolId: auditLog.schoolId,
+        ipAddress: auditLog.ipAddress ?? undefined,
+        userAgent: auditLog.userAgent ?? undefined,
+        schoolId: auditLog.schoolId ?? undefined,
       },
       auditLog.timestamp || auditLog.createdAt
     );

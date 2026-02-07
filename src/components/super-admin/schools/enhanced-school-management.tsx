@@ -76,6 +76,13 @@ interface School {
   onboardingCompletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  domain?: string | null;
+  subdomain?: string | null;
+  tagline?: string | null;
+  logo?: string | null;
+  favicon?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
   userCounts: {
     administrators: number;
     teachers: number;
@@ -94,10 +101,13 @@ interface School {
     paymentStatus: string;
   } | null;
   subscriptions: Array<{
+    id: string;
+    isActive: boolean;
+    startDate: Date;
     endDate: Date;
     paymentStatus: string;
   }>;
-  primaryAdmin: {
+  primaryAdmin?: {
     id: string;
     name: string;
     email: string;

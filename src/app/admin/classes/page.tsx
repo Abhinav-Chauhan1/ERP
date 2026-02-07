@@ -1,13 +1,14 @@
 "use client";
 
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  PlusCircle, Search,
+  PlusCircle, Search, X,
   Loader2, AlertCircle, BookOpen
 } from "lucide-react";
 import { ClassesTable } from "@/components/admin/classes-table";
@@ -45,11 +46,15 @@ import { classSchema, ClassFormValues } from "@/lib/schemaValidation/classesSche
 import { getClasses, createClass, updateClass, getAcademicYearsForDropdown } from "@/lib/actions/classesActions";
 
 export default function ClassesPage() {
+  const searchParams = useSearchParams();
+  const tableRef = useRef<HTMLDivElement>(null);
+
   const [classes, setClasses] = useState<any[]>([]);
   const [classesByGrade, setClassesByGrade] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [academicYearFilter, setAcademicYearFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +132,18 @@ export default function ClassesPage() {
     fetchTemplates();
   }, [fetchClasses, fetchAcademicYears, fetchTemplates]);
 
+  // Handle grade filter from URL query parameter
+  useEffect(() => {
+    const gradeParam = searchParams.get("grade");
+    if (gradeParam) {
+      setGradeFilter(gradeParam);
+      // Scroll to the table section
+      setTimeout(() => {
+        tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [searchParams]);
+
   function handleEditClass(id: string) {
     const classToEdit = classes.find(cls => cls.id === id);
 
@@ -184,11 +201,16 @@ export default function ClassesPage() {
     setDialogOpen(true);
   }
 
-  // Filter classes based on search term and academic year filter
+  // Filter classes based on search term, academic year filter, and grade filter
   const filteredClasses = classes.filter(cls => {
     const matchesSearch = cls.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAcademicYear = academicYearFilter === "all" || cls.academicYearId === academicYearFilter;
-    return matchesSearch && matchesAcademicYear;
+
+    // Extract grade from class name (e.g., "Class 1" or "Class 10")
+    const gradeName = cls.name.split(' ')[0] + ' ' + (cls.name.split(' ')[1] || '');
+    const matchesGrade = gradeFilter === "all" || gradeName === gradeFilter;
+
+    return matchesSearch && matchesAcademicYear && matchesGrade;
   });
 
   return (
@@ -370,13 +392,25 @@ export default function ClassesPage() {
           </div>
 
           {classes.length > 0 && (
-            <Card className="mt-6">
+            <Card className="mt-6" ref={tableRef}>
               <CardHeader>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <CardTitle className="text-xl">All Classes</CardTitle>
                     <CardDescription>
                       Manage, search and filter all classes
+                      {gradeFilter !== "all" && (
+                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                          Showing: {gradeFilter}
+                          <button
+                            onClick={() => setGradeFilter("all")}
+                            className="hover:bg-primary/20 rounded p-0.5"
+                            aria-label="Clear grade filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex gap-2 w-full md:w-auto">

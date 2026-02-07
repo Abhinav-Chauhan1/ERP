@@ -7,13 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Save, 
-  Shield, 
-  Users, 
-  BookOpen, 
-  MessageSquare, 
-  Calendar, 
+import {
+  Save,
+  Shield,
+  Users,
+  BookOpen,
+  MessageSquare,
+  Calendar,
   FileText,
   BarChart3,
   Settings,
@@ -66,7 +66,7 @@ const defaultPermissions: Permission[] = [
     icon: <Users className="h-4 w-4" />,
     enabled: true,
   },
-  
+
   // Academic Features
   {
     id: "manage_classes",
@@ -100,7 +100,7 @@ const defaultPermissions: Permission[] = [
     icon: <Calendar className="h-4 w-4" />,
     enabled: true,
   },
-  
+
   // Communication
   {
     id: "send_notifications",
@@ -128,7 +128,7 @@ const defaultPermissions: Permission[] = [
     enabled: false,
     isPremium: true,
   },
-  
+
   // Analytics & Reports
   {
     id: "view_analytics",
@@ -155,7 +155,7 @@ const defaultPermissions: Permission[] = [
     enabled: false,
     isPremium: true,
   },
-  
+
   // System
   {
     id: "manage_settings",
@@ -201,7 +201,7 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
         const data = await response.json();
         // Merge with default permissions - data.permissions is an object, not array
         const updatedPermissions = defaultPermissions.map(perm => {
-          const saved = data.permissions && typeof data.permissions === 'object' 
+          const saved = data.permissions && typeof data.permissions === 'object'
             ? data.permissions[perm.id]
             : undefined;
           return saved !== undefined ? { ...perm, enabled: saved } : perm;
@@ -216,8 +216,8 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
   };
 
   const handlePermissionToggle = (permissionId: string, enabled: boolean) => {
-    setPermissions(prev => 
-      prev.map(perm => 
+    setPermissions(prev =>
+      prev.map(perm =>
         perm.id === permissionId ? { ...perm, enabled } : perm
       )
     );
@@ -278,38 +278,38 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
       {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
         <div key={category} className="space-y-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{category}</h3>
-            <Badge variant="outline">
+            <h3 className="text-lg font-semibold dark:!text-gray-100">{category}</h3>
+            <Badge variant="outline" className="dark:!text-gray-300 dark:border-gray-700">
               {categoryPermissions.filter(p => p.enabled).length} / {categoryPermissions.length}
             </Badge>
           </div>
-          
+
           <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
             {categoryPermissions.map((permission) => (
-              <Card key={permission.id} className="relative">
+              <Card key={permission.id} className="relative dark:bg-gray-900/50 dark:border-gray-800">
                 <CardContent className={`${isMobile ? mobileClasses.card.mobile : 'p-4'}`}>
                   <div className={`flex ${isMobile ? 'flex-col space-y-3' : 'items-start justify-between'}`}>
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="p-2 rounded-lg bg-muted">
+                      <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:!text-gray-100">
                         {permission.icon}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <Label className="font-medium">{permission.name}</Label>
+                          <Label className="font-medium dark:!text-gray-200 text-base">{permission.name}</Label>
                           {permission.isPremium && (
                             <Badge variant="secondary" className="text-xs">
                               Premium
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-gray-500 dark:!text-gray-400 mt-1">
                           {permission.description}
                         </p>
                       </div>
                     </div>
                     <Switch
                       checked={permission.enabled}
-                      onCheckedChange={(enabled) => 
+                      onCheckedChange={(enabled) =>
                         handlePermissionToggle(permission.id, enabled)
                       }
                       className={`${focus.classes.visible} ${isMobile ? 'self-start' : ''}`}
@@ -320,7 +320,7 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
               </Card>
             ))}
           </div>
-          
+
           {category !== Object.keys(groupedPermissions)[Object.keys(groupedPermissions).length - 1] && (
             <Separator className="my-6" />
           )}
@@ -328,8 +328,8 @@ export function SchoolPermissionsManager({ schoolId }: SchoolPermissionsManagerP
       ))}
 
       <div className="flex justify-end pt-6 border-t">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={isSaving}
           className={`${focus.classes.visible} ${isMobile ? 'w-full' : ''}`}
           {...aria.attributes.label("Save permission settings")}

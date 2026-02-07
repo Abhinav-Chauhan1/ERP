@@ -10,6 +10,7 @@ export const baseUserSchema = z.object({
   avatar: z.string().url().optional(),
   role: z.enum([UserRole.ADMIN, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT]),
   active: z.boolean().default(true),
+  schoolId: z.string().optional(),
 });
 
 // Base user schema for students and parents (email optional, phone required for mobile login)
@@ -21,6 +22,7 @@ export const mobileAuthUserSchema = z.object({
   avatar: z.string().url().optional(),
   role: z.enum([UserRole.STUDENT, UserRole.PARENT]),
   active: z.boolean().default(true),
+  schoolId: z.string().optional(),
 });
 
 // Password validation schema
@@ -146,3 +148,36 @@ export type CreateAdministratorFormData = z.infer<typeof createAdministratorSche
 export type CreateTeacherFormData = z.infer<typeof createTeacherSchema>;
 export type CreateStudentFormData = z.infer<typeof createStudentSchema>;
 export type CreateParentFormData = z.infer<typeof createParentSchema>;
+
+// Update Schemas (Password optional for admin/teacher)
+export const updateAdministratorSchema = baseUserSchema
+  .extend({
+    role: z.literal(UserRole.ADMIN),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .and(administratorSchema)
+  .refine(data => !data.password || data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"]
+  });
+
+export const updateTeacherSchema = baseUserSchema
+  .extend({
+    role: z.literal(UserRole.TEACHER),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .and(teacherSchema)
+  .refine(data => !data.password || data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"]
+  });
+
+export const updateStudentSchema = createStudentSchema; // Same as create for now
+export const updateParentSchema = createParentSchema;   // Same as create for now
+
+export type UpdateAdministratorFormData = z.infer<typeof updateAdministratorSchema>;
+export type UpdateTeacherFormData = z.infer<typeof updateTeacherSchema>;
+export type UpdateStudentFormData = z.infer<typeof updateStudentSchema>;
+export type UpdateParentFormData = z.infer<typeof updateParentSchema>;

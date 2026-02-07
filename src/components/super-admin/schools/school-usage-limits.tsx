@@ -115,7 +115,7 @@ export function SchoolUsageLimits({ schoolId, plan }: SchoolUsageLimitsProps) {
     setIsLoading(true);
     try {
       const result = await getSchoolUsageMetrics(schoolId);
-      if (result.success) {
+      if (result.success && result.data) {
         const data = result.data;
         setCurrentUsage({
           students: 0, // Would need to be fetched from school details

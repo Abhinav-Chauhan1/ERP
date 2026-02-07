@@ -242,8 +242,8 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           case "analytics":
             if (!analytics) {
               const result = await getSchoolAnalytics(school.id);
-              if (result.success) {
-                setAnalytics(result.data);
+              if (result.success && result.data) {
+                setAnalytics(result.data as unknown as SchoolAnalytics);
               } else {
                 toast.error("Failed to load school analytics");
               }
@@ -253,7 +253,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           case "usage":
             if (!usageMetrics) {
               const result = await getSchoolUsageMetrics(school.id);
-              if (result.success) {
+              if (result.success && result.data) {
                 setUsageMetrics(result.data);
               } else {
                 toast.error("Failed to load usage metrics");
@@ -264,8 +264,8 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           case "activity":
             if (!activityLog) {
               const result = await getSchoolActivityLog(school.id, 20);
-              if (result.success) {
-                setActivityLog(result.data);
+              if (result.success && result.data) {
+                setActivityLog(result.data as unknown as SchoolActivityLog);
               } else {
                 toast.error("Failed to load activity log");
               }
@@ -275,8 +275,8 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
           case "security":
             if (!securityStatus) {
               const result = await getSchoolSecurityStatus(school.id);
-              if (result.success) {
-                setSecurityStatus(result.data);
+              if (result.success && result.data) {
+                setSecurityStatus(result.data as unknown as SchoolSecurityStatus);
               } else {
                 toast.error("Failed to load security status");
               }

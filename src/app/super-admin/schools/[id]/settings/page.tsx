@@ -57,14 +57,14 @@ export default async function SchoolSettingsPage({ params }: SchoolSettingsPageP
     return (
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild>
+                <Button variant="ghost" size="icon" asChild className="dark:text-gray-100 dark:hover:bg-gray-800">
                     <Link href={`/super-admin/schools/${school.id}`}>
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold">School Settings</h1>
-                    <p className="text-muted-foreground">{school.name} • {school.schoolCode}</p>
+                    <h1 className="text-3xl font-bold dark:!text-white text-gray-900">School Settings</h1>
+                    <p className="text-muted-foreground dark:!text-gray-400">{school.name} • {school.schoolCode}</p>
                 </div>
                 <div className="ml-auto">
                     <Badge variant={school.status === "ACTIVE" ? "default" : "destructive"}>
@@ -74,24 +74,24 @@ export default async function SchoolSettingsPage({ params }: SchoolSettingsPageP
             </div>
 
             <Tabs defaultValue="permissions" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="permissions" className="flex items-center gap-2">
+                <TabsList className="grid w-full grid-cols-5 dark:bg-gray-800 dark:text-gray-400">
+                    <TabsTrigger value="permissions" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:!text-white">
                         <Shield className="h-4 w-4" />
                         Permissions
                     </TabsTrigger>
-                    <TabsTrigger value="limits" className="flex items-center gap-2">
+                    <TabsTrigger value="limits" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:!text-white">
                         <Users className="h-4 w-4" />
                         Usage Limits
                     </TabsTrigger>
-                    <TabsTrigger value="notifications" className="flex items-center gap-2">
+                    <TabsTrigger value="notifications" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:!text-white">
                         <Bell className="h-4 w-4" />
                         Notifications
                     </TabsTrigger>
-                    <TabsTrigger value="security" className="flex items-center gap-2">
+                    <TabsTrigger value="security" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:!text-white">
                         <Key className="h-4 w-4" />
                         Security
                     </TabsTrigger>
-                    <TabsTrigger value="data" className="flex items-center gap-2">
+                    <TabsTrigger value="data" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:!text-white">
                         <Database className="h-4 w-4" />
                         Data
                     </TabsTrigger>

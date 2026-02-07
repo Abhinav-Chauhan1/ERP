@@ -116,7 +116,8 @@ export class R2StorageService {
 
       // Execute upload with retry logic
       const command = new PutObjectCommand(uploadParams);
-      const result = await this.executeWithRetry(() => this.client.send(command));
+      if (!this.client) throw new Error("S3 client not initialized");
+      const result = await this.executeWithRetry(() => this.client!.send(command));
 
       // Generate CDN URL
       const url = generateCdnUrl(schoolKey, this.config.customDomain);
@@ -167,7 +168,8 @@ export class R2StorageService {
       };
 
       const command = new DeleteObjectCommand(deleteParams);
-      await this.executeWithRetry(() => this.client.send(command));
+      if (!this.client) throw new Error("S3 client not initialized");
+      await this.executeWithRetry(() => this.client!.send(command));
     } catch (error) {
       console.error('R2 delete error:', error);
       throw error;
@@ -208,6 +210,7 @@ export class R2StorageService {
         });
       }
 
+      if (!this.client) throw new Error("S3 client not initialized");
       return await getSignedUrl(this.client, command, { expiresIn });
     } catch (error) {
       console.error('Presigned URL generation error:', error);
@@ -242,7 +245,8 @@ export class R2StorageService {
       };
 
       const command = new ListObjectsV2Command(listParams);
-      const result = await this.executeWithRetry(() => this.client.send(command));
+      if (!this.client) throw new Error("S3 client not initialized");
+      const result = await this.executeWithRetry(() => this.client!.send(command));
 
       return {
         files: (result.Contents || []).map(obj => ({
@@ -280,7 +284,8 @@ export class R2StorageService {
       };
 
       const command = new HeadObjectCommand(headParams);
-      const result = await this.executeWithRetry(() => this.client.send(command));
+      if (!this.client) throw new Error("S3 client not initialized");
+      const result = await this.executeWithRetry(() => this.client!.send(command));
 
       const metadata = result.Metadata || {};
       const url = generateCdnUrl(key, this.config.customDomain);
@@ -313,12 +318,16 @@ export class R2StorageService {
    */
   async configureCORS(): Promise<void> {
     try {
+      if (!this.client) {
+        throw new Error('S3 client not initialized');
+      }
+      
       const corsCommand = new PutBucketCorsCommand({
         Bucket: this.config.bucketName,
         CORSConfiguration: corsConfiguration,
       });
 
-      await this.executeWithRetry(() => this.client.send(corsCommand));
+      await this.executeWithRetry(() => this.client!.send(corsCommand));
       console.log('CORS configuration applied successfully');
     } catch (error) {
       console.error('CORS configuration error:', error);

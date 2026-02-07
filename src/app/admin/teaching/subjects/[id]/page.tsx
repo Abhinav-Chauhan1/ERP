@@ -397,7 +397,7 @@ export default function SubjectDetailsPage() {
                   Classes where this subject is taught
                 </CardDescription>
               </div>
-              <Link href={`/admin/curriculum?subject=${subject.id}`}>
+              <Link href={`/admin/academic/curriculum?subject=${subject.id}`}>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
                   Add to Class
@@ -447,7 +447,7 @@ export default function SubjectDetailsPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <p className="mb-4">This subject is not currently assigned to any classes.</p>
-                  <Link href={`/admin/curriculum?subject=${subject.id}`}>
+                  <Link href={`/admin/academic/curriculum?subject=${subject.id}`}>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
                       Add to Class

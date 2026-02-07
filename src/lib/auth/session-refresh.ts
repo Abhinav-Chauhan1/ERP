@@ -306,7 +306,7 @@ export async function validateSessionForSecurityWrapper(): Promise<{
       session: session,
       userId: userId,
       role: role,
-      schoolId: schoolId,
+      schoolId: schoolId ?? undefined,
       debugInfo: {
         ...debugInfo,
         validationStep: "success",

@@ -15,6 +15,33 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { ParentDetailsDialog } from "@/components/super-admin/schools/parent-details-dialog";
+import { AddStudentDialog } from "./add-student-dialog";
+import { AddTeacherDialog } from "./add-teacher-dialog";
+import { AddAdminDialog } from "./add-admin-dialog";
+import { AddParentDialog } from "./add-parent-dialog";
+import { EditStudentDialog } from "./edit-student-dialog";
+import { EditTeacherDialog } from "./edit-teacher-dialog";
+import { EditAdministratorDialog } from "./edit-admin-dialog";
+
+// ... existing imports ...
+
+// Inside the component render:
+
+// 1. Replace Student Button
+// Find: <Button ...> ... Add Student ... </Button>
+// Replace with: <AddStudentDialog schoolId={school.id} />
+
+// 2. Replace Teacher Button
+// Find: <Button ...> ... Add Teacher ... </Button>
+// Replace with: <AddTeacherDialog schoolId={school.id} />
+
+// 3. Replace Admin Button
+// Find: <Button ...> ... Add Administrator ... </Button>
+// Replace with: <AddAdminDialog schoolId={school.id} />
+
+// 4. Replace Parent Button
+// Find: <Button ...> ... Add Parent ... </Button>
+// Replace with: <AddParentDialog schoolId={school.id} />
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -30,8 +57,13 @@ import {
   Edit,
   Trash,
   Shield,
-  Eye
+  Eye,
+  Copy
 } from "lucide-react";
+import { deleteUser } from "@/lib/actions/usersAction";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { DeleteUserDialog } from "./delete-user-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -135,11 +167,45 @@ interface SchoolUsersClientProps {
 
 export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
   const [selectedParent, setSelectedParent] = useState<typeof school.parents[0] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<typeof school.students[0] | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<typeof school.teachers[0] | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<typeof school.administrators[0] | null>(null);
+  const [editStudentOpen, setEditStudentOpen] = useState(false);
+  const [editTeacherOpen, setEditTeacherOpen] = useState(false);
+  const [editAdminOpen, setEditAdminOpen] = useState(false);
   const [parentDialogOpen, setParentDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
 
   const handleParentClick = (parent: typeof school.parents[0]) => {
     setSelectedParent(parent);
     setParentDialogOpen(true);
+  };
+
+  const handleDeleteClick = (id: string, name: string, type: string) => {
+    setUserToDelete({ id, name, type });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      // Wait for the delete action to complete
+      await deleteUser(userToDelete.id);
+      toast.success(`${userToDelete.type} deleted successfully`);
+      router.refresh(); // Refresh the page to show the updated list
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error(error.message || "Failed to delete user");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    }
   };
 
   return (
@@ -250,10 +316,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Student
-                  </Button>
+                  <AddStudentDialog schoolId={school.id} />
                 </div>
               </div>
             </CardHeader>
@@ -299,8 +362,12 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem
-                              onClick={() => navigator.clipboard.writeText(student.id)}
+                              onClick={() => {
+                                navigator.clipboard.writeText(student.user.id);
+                                toast.success("User ID copied to clipboard");
+                              }}
                             >
+                              <Copy className="mr-2 h-4 w-4" />
                               Copy ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -308,12 +375,20 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedStudent(student);
+                                setEditStudentOpen(true);
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Student
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50"
+                              onClick={() => handleDeleteClick(student.user.id, student.user.name || "Student", "Student")}
+                            >
                               <Trash className="mr-2 h-4 w-4" />
                               Delete Student
                             </DropdownMenuItem>
@@ -354,10 +429,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Teacher
-                  </Button>
+                  <AddTeacherDialog schoolId={school.id} />
                 </div>
               </div>
             </CardHeader>
@@ -408,8 +480,12 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem
-                              onClick={() => navigator.clipboard.writeText(teacher.id)}
+                              onClick={() => {
+                                navigator.clipboard.writeText(teacher.user.id);
+                                toast.success("User ID copied to clipboard");
+                              }}
                             >
+                              <Copy className="mr-2 h-4 w-4" />
                               Copy ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -417,12 +493,20 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedTeacher(teacher);
+                                setEditTeacherOpen(true);
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Teacher
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50"
+                              onClick={() => handleDeleteClick(teacher.user.id, teacher.user.name || "Teacher", "Teacher")}
+                            >
                               <Trash className="mr-2 h-4 w-4" />
                               Delete Teacher
                             </DropdownMenuItem>
@@ -463,10 +547,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Administrator
-                  </Button>
+                  <AddAdminDialog schoolId={school.id} />
                 </div>
               </div>
             </CardHeader>
@@ -517,21 +598,35 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem
-                              onClick={() => navigator.clipboard.writeText(admin.id)}
+                              onClick={() => {
+                                navigator.clipboard.writeText(admin.user.id);
+                                toast.success("User ID copied to clipboard");
+                              }}
                             >
+                              <Copy className="mr-2 h-4 w-4" />
                               Copy ID
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => toast("Permissions management coming soon")}
+                            >
                               <Shield className="mr-2 h-4 w-4" />
                               Manage Permissions
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedAdmin(admin);
+                                setEditAdminOpen(true);
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Administrator
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50"
+                              onClick={() => handleDeleteClick(admin.user.id, admin.user.name || "Administrator", "Administrator")}
+                            >
                               <Trash className="mr-2 h-4 w-4" />
                               Delete Administrator
                             </DropdownMenuItem>
@@ -572,10 +667,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
-                  <Button className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))/90] text-primary-foreground">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add Parent
-                  </Button>
+                  <AddParentDialog schoolId={school.id} />
                 </div>
               </div>
             </CardHeader>
@@ -652,42 +744,47 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(parent.id);
-                              }}
-                            >
-                              Copy ID
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleParentClick(parent);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Parent
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600 focus:text-red-600"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Trash className="mr-2 h-4 w-4" />
-                              Delete Parent
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(parent.user.id);
+                                  toast.success("User ID copied to clipboard");
+                                }}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy ID
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleParentClick(parent);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Parent
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(parent.user.id, parent.user.name || "Parent", "Parent");
+                                }}
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Delete Parent
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -706,6 +803,33 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
         parent={selectedParent}
         open={parentDialogOpen}
         onOpenChange={setParentDialogOpen}
+      />
+
+      <DeleteUserDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+        userName={userToDelete?.name || ""}
+        userType={userToDelete?.type || ""}
+      />
+
+      <EditStudentDialog
+        student={selectedStudent}
+        open={editStudentOpen}
+        onOpenChange={setEditStudentOpen}
+      />
+
+      <EditTeacherDialog
+        teacher={selectedTeacher}
+        open={editTeacherOpen}
+        onOpenChange={setEditTeacherOpen}
+      />
+
+      <EditAdministratorDialog
+        administrator={selectedAdmin}
+        open={editAdminOpen}
+        onOpenChange={setEditAdminOpen}
       />
     </div>
   );

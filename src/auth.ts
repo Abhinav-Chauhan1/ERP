@@ -24,12 +24,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         console.log("DEBUG: NextAuth authorize called with keys:", Object.keys(credentials || {}))
+        console.log("DEBUG: Credentials values:", {
+          email: credentials?.email,
+          mobile: credentials?.mobile,
+          hasPassword: !!credentials?.password,
+          hasOtpCode: !!credentials?.otpCode,
+          schoolCode: credentials?.schoolCode
+        });
 
-        const identifier = (credentials?.email || credentials?.mobile) as string
+        // Fix: The login form sends email as string 'undefined' instead of actual undefined
+        // We need to treat 'undefined' string as invalid
+        const email = credentials?.email && credentials.email !== 'undefined' ? credentials.email as string : undefined;
+        const mobile = credentials?.mobile && credentials.mobile !== 'undefined' ? credentials.mobile as string : undefined;
+
+        const identifier = (email || mobile) as string
         const password = credentials?.password as string
         const schoolCode = credentials?.schoolCode as string
         const totpCode = credentials?.totpCode as string
         const otpCode = credentials?.otpCode as string
+
+        console.log("DEBUG: Extracted values:", {
+          identifier,
+          schoolCode,
+          hasPassword: !!password,
+          hasOtpCode: !!otpCode
+        });
 
         if (!identifier) {
           console.log("Login failed: Missing identifier");
@@ -42,19 +61,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const foundUser = await db.user.findFirst({
             where: {
               OR: [
-                { email: currentIdentifier },
-                { mobile: currentIdentifier }
+                { email: identifier },
+                { mobile: identifier }
               ]
             }
           })
 
+          console.log('👤 User lookup (existence check):', foundUser ? {
+            id: foundUser.id,
+            name: foundUser.name,
+            email: foundUser.email,
+            mobile: foundUser.mobile
+          } : 'NOT FOUND');
+
           if (!foundUser) {
+            console.error('❌ No user found with identifier:', identifier);
             return null
           }
 
           // Find user by identifier (email or mobile)
           // The previous user lookup was just to check existence for error message.
           // Now we fetch with full details and active status.
+          console.log('🔍 Looking up user with school filters...', { identifier, schoolCode });
+
           const user = await db.user.findFirst({
             where: {
               OR: [
@@ -80,9 +109,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           })
 
+          console.log('✅ User found with schools:', user ? {
+            id: user.id,
+            name: user.name,
+            mobile: user.mobile,
+            userSchoolsCount: user.userSchools?.length,
+            schools: user.userSchools?.map(us => ({
+              schoolCode: us.school.schoolCode,
+              schoolName: us.school.name,
+              role: us.role
+            }))
+          } : 'USER NOT FOUND OR NO SCHOOLS');
+
           if (!user) {
+            console.error('❌ User not found or has no active schools');
             await logAuditEvent({
-              userId: undefined,
+              userId: null,
               action: AuditAction.LOGIN,
               resource: 'nextauth_login',
               changes: {
@@ -95,10 +137,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null
           }
 
+          // Check if user has UserSchool relationship for this school
+          // SUPER_ADMIN users don't need school relationships (system-wide access)
+          if (user.role !== UserRole.SUPER_ADMIN && (!user.userSchools || user.userSchools.length === 0)) {
+            console.error('❌ User has no UserSchool relationships for school:', schoolCode);
+            await logAuditEvent({
+              userId: user.id,
+              action: AuditAction.LOGIN,
+              resource: 'nextauth_login',
+              changes: {
+                identifier,
+                schoolCode,
+                reason: 'NO_SCHOOL_ASSOCIATION',
+                timestamp: new Date()
+              }
+            })
+            return null
+          }
+
           // For OTP-based authentication (students, parents)
           // Ensure otpCode is a valid non-empty string and not "undefined"
           if (otpCode && typeof otpCode === 'string' && otpCode !== 'undefined' && otpCode.trim() !== '') {
             // Verify OTP code - find by identifier, then verify hash
+            console.log('🔐 OTP Verification - Received OTP:', { otpCode, identifier });
+
             const bcrypt = await import('bcryptjs')
             const otpRecord = await db.oTP.findFirst({
               where: {
@@ -109,7 +171,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               orderBy: { createdAt: 'desc' } // Get the most recent OTP
             })
 
+            console.log('🔍 OTP Record Found:', otpRecord ? {
+              id: otpRecord.id,
+              identifier: otpRecord.identifier,
+              expiresAt: otpRecord.expiresAt,
+              isUsed: otpRecord.isUsed,
+              attempts: otpRecord.attempts
+            } : 'NO RECORD FOUND');
+
             if (!otpRecord) {
+              console.error('❌ OTP verification failed: OTP_NOT_FOUND');
               await logAuditEvent({
                 userId: user.id,
                 action: AuditAction.LOGIN,
@@ -125,7 +196,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             // Verify the OTP code against the stored hash
+            console.log('🔐 Verifying OTP hash...');
             const isValidOtp = await bcrypt.compare(otpCode, otpRecord.codeHash)
+            console.log('✅ OTP Hash Verification Result:', isValidOtp);
+
             if (!isValidOtp) {
               // Increment attempts
               await db.oTP.update({
@@ -133,6 +207,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 data: { attempts: { increment: 1 } }
               })
 
+              console.error('❌ OTP verification failed: INVALID_OTP');
               await logAuditEvent({
                 userId: user.id,
                 action: AuditAction.LOGIN,
@@ -147,6 +222,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               return null
             }
 
+            console.log('✅ OTP verified successfully! Marking as used...');
             // Mark OTP as used
             await db.oTP.update({
               where: { id: otpRecord.id },
@@ -317,7 +393,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             schoolId: user.userSchools[0]?.schoolId || undefined,
             schoolCode: user.userSchools[0]?.school?.schoolCode || undefined,
             schoolName: user.userSchools[0]?.school?.name || undefined,
-            authorizedSchools: user.userSchools.map(us => us.schoolId)
+            authorizedSchools: user.userSchools?.map(us => us.schoolId) || []
           }
 
         } catch (error) {
@@ -328,7 +404,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           await logAuditEvent({
-            userId: undefined,
+            userId: null,
             action: AuditAction.LOGIN,
             resource: 'nextauth_login',
             changes: {

@@ -733,9 +733,9 @@ export default function ClassDetailsPage() {
                   <CardTitle>Subjects</CardTitle>
                   <CardDescription>Subjects taught in this class</CardDescription>
                 </div>
-                <Link href={`/admin/academic/curriculum?classId=${classDetails.id}`}>
-                  <Button>
-                    <PlusCircle className="h-4 w-4 mr-2" />
+                <Link href={`/admin/academic/curriculum?classId=${params.id}`}>
+                  <Button variant="outline" size="sm">
+                    <BookOpen className="mr-2 h-4 w-4" />
                     Manage Subjects
                   </Button>
                 </Link>

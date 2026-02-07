@@ -97,23 +97,33 @@ export async function POST(request: NextRequest) {
 
     // Send OTP via SMS if it's a mobile number
     const isMobile = /^\d{10}$/.test(identifier.trim())
+    console.log('📱 Mobile detection:', { identifier, trimmed: identifier.trim(), isMobile })
+
     if (isMobile) {
       try {
         // Format mobile number to E.164 format
         const formattedMobile = `+91${identifier.trim()}`
         const message = `Your OTP for ${school.name} login is: ${otpCode}. Valid for 5 minutes. Do not share this code.`
 
+        console.log('📤 Attempting to send SMS:', { to: formattedMobile, message })
+
         // Send SMS using MSG91 service
         const smsResult = await sendSMS(formattedMobile, message)
+
+        console.log('✅ SMS Result:', smsResult)
 
         if (!smsResult.success) {
           console.error('Failed to send OTP SMS:', smsResult.error)
           // Continue without failing - OTP is still stored in database
+        } else {
+          console.log('✅ SMS sent successfully! Message ID:', smsResult.messageId)
         }
       } catch (error) {
         console.error('Error sending OTP SMS:', error)
         // Continue without failing - OTP is still stored in database
       }
+    } else {
+      console.log('⚠️ Not sending SMS - identifier is not a 10-digit mobile number')
     }
 
     // For development/testing, also log the OTP

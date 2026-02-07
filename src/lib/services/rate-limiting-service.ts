@@ -154,7 +154,7 @@ class RateLimitingService {
       
       // Add current request
       const requestId = `${now}-${Math.random()}`;
-      pipeline.zadd(key, now, requestId);
+      pipeline.zadd(key, { score: now, member: requestId });
       
       // Set expiration
       pipeline.expire(key, Math.ceil(config.windowMs / 1000));
@@ -203,15 +203,18 @@ class RateLimitingService {
         await redis.zrem(key, requestId);
         
         // Log the rate limit violation
-        await rateLimitLogger.logRateLimit({
-          identifier: key,
-          action: 'RATE_LIMIT_EXCEEDED',
-          attempts: currentCount,
-          windowMs: config.windowMs,
-          maxRequests: config.maxRequests,
-          blocked: true,
-          blockDurationMs: config.blockDurationMs
-        });
+        await rateLimitLogger.logEvent(
+          key,
+          'RATE_LIMIT_EXCEEDED',
+          'RATE_LIMIT',
+          {
+            attempts: currentCount,
+            windowMs: config.windowMs,
+            maxRequests: config.maxRequests,
+            blocked: true,
+            blockDurationMs: config.blockDurationMs
+          }
+        );
 
         return {
           allowed: false,
@@ -322,13 +325,7 @@ class RateLimitingService {
     return this.checkRedisRateLimit(key, RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS);
   }
 
-  /**
-   * Check general rate limiting
-   */
-  async checkRateLimit(identifier: string, type: string, config: RateLimitConfig): Promise<RateLimitResult> {
-    const key = `${type}:${identifier}`;
-    return this.checkRedisRateLimit(key, config);
-  }
+
 
   /**
    * Check login failure rate limiting with exponential backoff
@@ -395,8 +392,8 @@ class RateLimitingService {
       );
 
       // Get last failure time
-      const lastFailures = await redis.zrevrange(key, 0, 0, { withScores: true });
-      const lastFailureTime = lastFailures.length > 0 ? lastFailures[0].score : now;
+      const lastFailures = await redis.zrange(key, 0, 0, { rev: true, withScores: true });
+      const lastFailureTime = lastFailures.length > 0 ? (lastFailures[0] as any).score : now;
       
       const nextAttemptAt = new Date(lastFailureTime + backoffMs);
       const allowed = new Date() >= nextAttemptAt && failures < config.maxRequests;
@@ -445,7 +442,7 @@ class RateLimitingService {
 
     try {
       // Add failure to sorted set
-      await redis.zadd(key, now, `${now}-${Math.random()}`);
+      await redis.zadd(key, { score: now, member: `${now}-${Math.random()}` });
       
       // Set expiration
       await redis.expire(key, Math.ceil(RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs / 1000));
@@ -466,15 +463,18 @@ class RateLimitingService {
       }
 
       // Log the event
-      await rateLimitLogger.logRateLimit({
+      await rateLimitLogger.logEvent(
         identifier,
-        action: 'LOGIN_FAILURE_RECORDED',
-        attempts: rateLimit.attempts,
-        windowMs: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs,
-        maxRequests: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.maxRequests,
-        blocked: rateLimit.isBlocked,
-        blockDurationMs: rateLimit.isBlocked ? RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.blockDurationMs : undefined
-      });
+        'LOGIN_FAILURE_RECORDED',
+        'LOGIN_ATTEMPTS',
+        {
+          attempts: rateLimit.attempts,
+          windowMs: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.windowMs,
+          maxRequests: RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.maxRequests,
+          blocked: rateLimit.isBlocked,
+          blockDurationMs: rateLimit.isBlocked ? RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS.blockDurationMs : undefined
+        }
+      );
 
     } catch (error) {
       console.error('Failed to record login failure:', error);
@@ -482,91 +482,7 @@ class RateLimitingService {
     }
   }
 
-  /**
-   * Block identifier in Redis
-   */
-  async blockIdentifier(identifier: string, reason: string, durationMs: number): Promise<void> {
-    if (!redis) {
-      // Fallback for development
-      const key = `block:${identifier}`;
-      const entry = memoryStore.get(key) || { count: 0, resetTime: 0 };
-      entry.blocked = {
-        expiresAt: Date.now() + durationMs,
-        reason
-      };
-      memoryStore.set(key, entry);
-      return;
-    }
 
-    try {
-      const blockKey = `block:${identifier}`;
-      const blockData = {
-        expiresAt: Date.now() + durationMs,
-        reason,
-        blockedAt: Date.now()
-      };
-
-      await redis.setex(
-        blockKey,
-        Math.ceil(durationMs / 1000),
-        JSON.stringify(blockData)
-      );
-
-      // Log the block
-      await logAuditEvent({
-        userId: null,
-        action: AuditAction.REJECT,
-        resource: 'rate_limiting',
-        resourceId: identifier,
-        changes: {
-          reason,
-          durationMs,
-          expiresAt: new Date(blockData.expiresAt),
-          originalAction: 'IDENTIFIER_BLOCKED'
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to block identifier:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Unblock identifier
-   */
-  async unblockIdentifier(identifier: string): Promise<void> {
-    if (!redis) {
-      // Fallback for development
-      const key = `block:${identifier}`;
-      const entry = memoryStore.get(key);
-      if (entry?.blocked) {
-        delete entry.blocked;
-      }
-      return;
-    }
-
-    try {
-      const blockKey = `block:${identifier}`;
-      await redis.del(blockKey);
-
-      // Log the unblock
-      await logAuditEvent({
-        userId: null,
-        action: AuditAction.UPDATE,
-        resource: 'rate_limiting',
-        resourceId: identifier,
-        changes: {
-          unblockedAt: new Date(),
-          originalAction: 'IDENTIFIER_UNBLOCKED'
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to unblock identifier:', error);
-      throw error;
-    }
-  }
 
   /**
    * Check password reset rate limit
@@ -577,7 +493,8 @@ class RateLimitingService {
       const config = RATE_LIMIT_CONFIGS.LOGIN_ATTEMPTS;
       
       // Get recent password reset attempts
-      const recentAttempts = await db.rateLimitLog.count({
+      if (!db) throw new Error("Database not initialized");
+      const recentAttempts =       await db.rateLimitLog.count({
         where: {
           identifier,
           type: 'PASSWORD_RESET',
@@ -630,7 +547,8 @@ class RateLimitingService {
       const config = RATE_LIMIT_CONFIGS.OTP_GENERATION; // Use OTP config for email verification
       
       // Get recent email verification attempts
-      const recentAttempts = await db.rateLimitLog.count({
+      if (!db) throw new Error("Database not initialized");
+      const recentAttempts =       await db.rateLimitLog.count({
         where: {
           identifier,
           type: 'EMAIL_VERIFICATION',
@@ -687,6 +605,15 @@ class RateLimitingService {
     
     // Check multiple indicators of suspicious activity
     const windowStart = new Date(Date.now() - config.windowMs);
+    
+    if (!db) {
+      return {
+        allowed: true,
+        remaining: config.maxRequests,
+        resetTime: new Date(Date.now() + config.windowMs),
+        isBlocked: false
+      };
+    }
     
     const [otpRequests, loginFailures, rateLimitHits] = await Promise.all([
       // Count OTP requests
@@ -773,7 +700,8 @@ class RateLimitingService {
     
     try {
       // Check if already blocked
-      const existingBlock = await db.blockedIdentifier.findFirst({
+      if (!db) throw new Error("Database not initialized");
+      const existingBlock =       await db.blockedIdentifier.findFirst({
         where: {
           identifier,
           isActive: true,
@@ -783,7 +711,8 @@ class RateLimitingService {
 
       if (existingBlock) {
         // Extend the existing block
-        await db.blockedIdentifier.update({
+        if (!db) throw new Error("Database not initialized");
+      await db.blockedIdentifier.update({
           where: { id: existingBlock.id },
           data: {
             expiresAt,
@@ -793,7 +722,8 @@ class RateLimitingService {
         });
       } else {
         // Create new block
-        await db.blockedIdentifier.create({
+        if (!db) throw new Error("Database not initialized");
+      await db.blockedIdentifier.create({
           data: {
             identifier,
             reason,
@@ -825,7 +755,8 @@ class RateLimitingService {
    * Requirements: 14.3
    */
   async isIdentifierBlocked(identifier: string): Promise<BlockedIdentifier | null> {
-    const block = await db.blockedIdentifier.findFirst({
+    if (!db) throw new Error("Database not initialized");
+    const block =       await db.blockedIdentifier.findFirst({
       where: {
         identifier,
         isActive: true,
@@ -854,7 +785,8 @@ class RateLimitingService {
    */
   async unblockIdentifier(identifier: string, adminUserId: string): Promise<boolean> {
     try {
-      const result = await db.blockedIdentifier.updateMany({
+      if (!db) throw new Error("Database not initialized");
+      const result =       await db.blockedIdentifier.updateMany({
         where: {
           identifier,
           isActive: true
@@ -897,6 +829,14 @@ class RateLimitingService {
     hasMore: boolean;
   }> {
     try {
+      if (!db) {
+        return {
+          identifiers: [],
+          total: 0,
+          hasMore: false
+        };
+      }
+      
       const [identifiers, total] = await Promise.all([
         db.blockedIdentifier.findMany({
           where: {
@@ -943,6 +883,7 @@ class RateLimitingService {
       const now = new Date();
       
       // Deactivate expired blocks
+      if (!db) throw new Error("Database not initialized");
       await db.blockedIdentifier.updateMany({
         where: {
           isActive: true,
@@ -989,7 +930,7 @@ class RateLimitingService {
   /**
    * Generic rate limiting check
    */
-  private async checkRateLimit(
+  async checkRateLimit(
     identifier: string,
     type: string,
     config: RateLimitConfig
@@ -1047,7 +988,8 @@ class RateLimitingService {
   ): Promise<number> {
     switch (type) {
       case 'OTP_GENERATION':
-        return await db.oTP.count({
+        if (!db) throw new Error("Database not initialized");
+        return       await db.oTP.count({
           where: {
             identifier,
             createdAt: { gte: windowStart }
@@ -1055,7 +997,8 @@ class RateLimitingService {
         });
       
       case 'LOGIN_ATTEMPTS':
-        return await db.loginFailure.count({
+        if (!db) throw new Error("Database not initialized");
+        return       await db.loginFailure.count({
           where: {
             identifier,
             createdAt: { gte: windowStart }
@@ -1072,6 +1015,8 @@ class RateLimitingService {
    */
   private async logRateLimitHit(identifier: string, type: string): Promise<void> {
     try {
+      if (!db) return;
+      
       await db.rateLimitLog.create({
         data: {
           identifier,

@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
 
     // Process settings in parallel with controlled concurrency
     const BATCH_SIZE = 5; // Process 5 settings concurrently
-    const updatedSettings = [];
+    const updatedSettings: any[] = [];
     
     for (let i = 0; i < settingsEntries.length; i += BATCH_SIZE) {
       const batch = settingsEntries.slice(i, i + BATCH_SIZE);

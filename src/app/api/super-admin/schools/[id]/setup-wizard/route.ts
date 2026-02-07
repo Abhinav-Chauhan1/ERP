@@ -31,8 +31,9 @@ export async function POST(
     const result = await completeSetup(dataWithSchoolId);
 
     if (!result.success) {
-      console.error("Setup completion failed:", result.error);
-      return NextResponse.json({ error: result.error }, { status: 400 });
+      const errorResult = result as { success: false; error: string };
+      console.error("Setup completion failed:", errorResult.error);
+      return NextResponse.json({ error: errorResult.error }, { status: 400 });
     }
 
     console.log("Setup completion successful");

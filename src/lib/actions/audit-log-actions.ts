@@ -79,7 +79,7 @@ export async function getAuditLogs(params: GetAuditLogsParams = {}): Promise<{
 
         // Check if user is super admin
         const user = await db.user.findUnique({
-            where: { clerkId: userId },
+            where: { id: userId },
             select: { role: true },
         });
 
@@ -352,7 +352,7 @@ export async function exportAuditLogs(params: GetAuditLogsParams & { format: "js
 
         // Check if user is super admin
         const user = await db.user.findUnique({
-            where: { clerkId: userId },
+            where: { id: userId },
             select: { role: true },
         });
 

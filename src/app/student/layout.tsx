@@ -1,10 +1,12 @@
 import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
-import { StudentSidebar, StudentHeader } from "@/components/layout/portal-wrappers";
 import { getUserPermissionNamesCached } from "@/lib/utils/permissions";
 import { PermissionsProvider } from "@/context/permissions-context";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import { MobileBottomNavigation, MobileBottomNavigationSpacer } from "@/components/navigation/mobile-bottom-navigation";
+import { ResponsiveSidebarNavigation, SidebarContentWrapper } from "@/components/navigation/responsive-sidebar-navigation";
+import { prisma } from "@/lib/db";
 
 export default async function StudentLayout({
   children
@@ -20,26 +22,60 @@ export default async function StudentLayout({
   // Get effective permissions including role defaults and DB overrides
   const permissions = await getUserPermissionNamesCached(session.user.id);
 
+  // Fetch school information from the database
+  const schoolId = session.user.schoolId;
+  const school = schoolId ? await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { name: true, logo: true }
+  }) : null;
+
+  // Get student's class information for mobile-first navigation
+  // TODO: Fetch actual class information from database
+  const studentClass = "Class 6"; // This should come from the student's enrollment data
+
   return (
     <PermissionsProvider permissions={permissions}>
       <UserThemeWrapper userRole="student">
-        <nav
-          className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
-          aria-label="Student navigation"
-        >
-          <StudentSidebar userPermissions={permissions} />
-        </nav>
-        <div className="md:pl-72 h-full">
-          <StudentHeader userPermissions={permissions} />
+        {/* Mobile-First Navigation System */}
+        <ResponsiveSidebarNavigation
+          className={studentClass}
+          schoolName={school?.name}
+          schoolLogo={school?.logo}
+        />
+
+        <SidebarContentWrapper className={studentClass}>
+          {/* Mobile-optimized header - simplified for mobile */}
+          <header className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 md:hidden">
+            <div className="flex items-center gap-3 p-4">
+              {school?.logo && (
+                <img
+                  src={school.logo}
+                  alt={`${school.name || 'School'} logo`}
+                  className="h-10 w-10 object-contain flex-shrink-0"
+                />
+              )}
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {school?.name || "Student Portal"}
+              </h1>
+            </div>
+          </header>
+
+          {/* Main content with mobile-first padding */}
           <main
             id="main-content"
-            className="h-[calc(100%-4rem)] overflow-y-auto bg-background p-4 md:p-6"
+            className="min-h-screen bg-background p-4 md:p-6 pb-safe"
             tabIndex={-1}
             aria-label="Student content"
           >
             {children}
+
+            {/* Spacer for mobile bottom navigation */}
+            <MobileBottomNavigationSpacer className={studentClass} />
           </main>
-        </div>
+        </SidebarContentWrapper>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNavigation className={studentClass} />
       </UserThemeWrapper>
     </PermissionsProvider>
   );

@@ -203,7 +203,7 @@ export default async function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {schools.slice(0, 5).map((school) => (
+              {(schools || []).slice(0, 5).map((school) => (
                 <div key={school.id} className="flex items-center justify-between p-3 rounded-lg bg-[hsl(var(--secondary))]">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-red-600/20 flex items-center justify-center">
@@ -225,7 +225,7 @@ export default async function SuperAdminDashboard() {
                   </Badge>
                 </div>
               ))}
-              {schools.length === 0 && (
+              {(schools || []).length === 0 && (
                 <p className="text-center text-gray-500 py-4">No schools registered yet</p>
               )}
             </div>
