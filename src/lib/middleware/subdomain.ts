@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 
 /**
  * Extract subdomain from hostname
@@ -43,27 +42,27 @@ export function getSubdomain(hostname: string): string | null {
 
 /**
  * Validate if subdomain exists and is active
+ * NOTE: This function is now async and calls an API route instead of using Prisma directly
+ * to avoid Edge Runtime compatibility issues
  */
 export async function validateSubdomain(subdomain: string) {
   try {
-    const school = await db.school.findFirst({
-      where: {
-        subdomain: subdomain,
-        status: 'ACTIVE',
+    // Call the API route to validate subdomain (edge-compatible)
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/subdomain/validate?subdomain=${subdomain}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      select: {
-        id: true,
-        name: true,
-        subdomain: true,
-        status: true,
-        isOnboarded: true,
-        primaryColor: true,
-        secondaryColor: true,
-        logo: true,
-        plan: true,
-      },
+      // Add a short timeout to avoid blocking middleware
+      signal: AbortSignal.timeout(3000),
     });
 
+    if (!response.ok) {
+      return null;
+    }
+
+    const school = await response.json();
     return school;
   } catch (error) {
     console.error('Error validating subdomain:', error);
@@ -83,7 +82,7 @@ export async function handleSubdomainRouting(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Validate subdomain
+  // Validate subdomain via API route
   const school = await validateSubdomain(subdomain);
   
   if (!school) {
