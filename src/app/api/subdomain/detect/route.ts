@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSubdomain, validateSubdomain } from '@/lib/middleware/subdomain';
+import { getSubdomain } from '@/lib/middleware/subdomain';
+import { db } from '@/lib/db';
 import { z } from 'zod';
 
 const detectSchema = z.object({
@@ -28,7 +29,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const school = await validateSubdomain(subdomain);
+    // Validate subdomain using database
+    const school = await db.school.findFirst({
+      where: {
+        subdomain: subdomain,
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        name: true,
+        subdomain: true,
+        status: true,
+        isOnboarded: true,
+        primaryColor: true,
+        secondaryColor: true,
+        logo: true,
+        plan: true,
+      },
+    });
     
     if (!school) {
       return NextResponse.json({

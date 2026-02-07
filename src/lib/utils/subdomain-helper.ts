@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
  * This should be called in server components/layouts to validate subdomain access
  */
 export async function getSchoolFromSubdomain() {
-  const headersList = headers();
+  const headersList = await headers();
   const subdomain = headersList.get('x-subdomain');
 
   if (!subdomain) {
@@ -54,15 +54,15 @@ export async function getSchoolFromSubdomain() {
 /**
  * Get subdomain from headers (without validation)
  */
-export function getSubdomainFromHeaders() {
-  const headersList = headers();
+export async function getSubdomainFromHeaders() {
+  const headersList = await headers();
   return headersList.get('x-subdomain');
 }
 
 /**
  * Check if current request is on a subdomain
  */
-export function isSubdomainRequest() {
-  const subdomain = getSubdomainFromHeaders();
+export async function isSubdomainRequest() {
+  const subdomain = await getSubdomainFromHeaders();
   return subdomain !== null && subdomain !== '';
 }
