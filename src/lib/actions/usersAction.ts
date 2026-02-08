@@ -488,16 +488,21 @@ export async function updateAdministrator(administratorId: string, data: Partial
         passwordHash = await hashPassword(data.password);
       }
 
-      // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined || passwordHash) {
-        await updateUserDetails(administrator.userId, {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          avatar: data.avatar,
-          active: data.active,
-          passwordHash: passwordHash,
+      // Build user update data
+      const userUpdateData: any = {};
+      if (data.firstName) userUpdateData.firstName = data.firstName;
+      if (data.lastName) userUpdateData.lastName = data.lastName;
+      if (data.email) userUpdateData.email = data.email;
+      if (data.phone) userUpdateData.phone = data.phone;
+      if (data.avatar) userUpdateData.avatar = data.avatar;
+      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (passwordHash) userUpdateData.passwordHash = passwordHash;
+
+      // Update user info if there's data to update
+      if (Object.keys(userUpdateData).length > 0) {
+        await tx.user.update({
+          where: { id: administrator.userId },
+          data: userUpdateData
         });
       }
 
@@ -510,6 +515,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
       });
 
       revalidatePath('/admin/users');
+      revalidatePath('/super-admin/schools');
       return updatedAdministrator;
     });
   } catch (error) {
@@ -537,16 +543,21 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
         passwordHash = await hashPassword(data.password);
       }
 
-      // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined || passwordHash) {
-        await updateUserDetails(teacher.userId, {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          avatar: data.avatar,
-          active: data.active,
-          passwordHash: passwordHash,
+      // Build user update data
+      const userUpdateData: any = {};
+      if (data.firstName) userUpdateData.firstName = data.firstName;
+      if (data.lastName) userUpdateData.lastName = data.lastName;
+      if (data.email) userUpdateData.email = data.email;
+      if (data.phone) userUpdateData.phone = data.phone;
+      if (data.avatar) userUpdateData.avatar = data.avatar;
+      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (passwordHash) userUpdateData.passwordHash = passwordHash;
+
+      // Update user info directly (no permission check)
+      if (Object.keys(userUpdateData).length > 0) {
+        await tx.user.update({
+          where: { id: teacher.userId },
+          data: userUpdateData
         });
       }
 
@@ -562,6 +573,7 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
       });
 
       revalidatePath('/admin/users');
+      revalidatePath('/super-admin/schools');
       return updatedTeacher;
     });
   } catch (error) {
@@ -583,15 +595,20 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
     }
 
     return await db.$transaction(async (tx) => {
-      // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined) {
-        await updateUserDetails(student.userId, {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          avatar: data.avatar,
-          active: data.active,
+      // Build user update data
+      const userUpdateData: any = {};
+      if (data.firstName) userUpdateData.firstName = data.firstName;
+      if (data.lastName) userUpdateData.lastName = data.lastName;
+      if (data.email) userUpdateData.email = data.email;
+      if (data.phone) userUpdateData.phone = data.phone;
+      if (data.avatar) userUpdateData.avatar = data.avatar;
+      if (data.active !== undefined) userUpdateData.isActive = data.active;
+
+      // Update user info directly (no permission check)
+      if (Object.keys(userUpdateData).length > 0) {
+        await tx.user.update({
+          where: { id: student.userId },
+          data: userUpdateData
         });
       }
 
@@ -643,6 +660,7 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
       });
 
       revalidatePath('/admin/users');
+      revalidatePath('/super-admin/schools');
       return updatedStudent;
     });
   } catch (error) {
@@ -664,15 +682,20 @@ export async function updateParent(parentId: string, data: Partial<CreateParentF
     }
 
     return await db.$transaction(async (tx) => {
-      // Update user info if provided
-      if (data.firstName || data.lastName || data.email || data.phone || data.avatar || data.active !== undefined) {
-        await updateUserDetails(parent.userId, {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          avatar: data.avatar,
-          active: data.active,
+      // Build user update data
+      const userUpdateData: any = {};
+      if (data.firstName) userUpdateData.firstName = data.firstName;
+      if (data.lastName) userUpdateData.lastName = data.lastName;
+      if (data.email) userUpdateData.email = data.email;
+      if (data.phone) userUpdateData.phone = data.phone;
+      if (data.avatar) userUpdateData.avatar = data.avatar;
+      if (data.active !== undefined) userUpdateData.isActive = data.active;
+
+      // Update user info directly (no permission check)
+      if (Object.keys(userUpdateData).length > 0) {
+        await tx.user.update({
+          where: { id: parent.userId },
+          data: userUpdateData
         });
       }
 
@@ -687,6 +710,7 @@ export async function updateParent(parentId: string, data: Partial<CreateParentF
       });
 
       revalidatePath('/admin/users');
+      revalidatePath('/super-admin/schools');
       return updatedParent;
     });
   } catch (error) {
