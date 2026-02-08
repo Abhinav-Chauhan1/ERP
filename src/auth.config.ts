@@ -107,11 +107,20 @@ export const authConfig = {
 
         async redirect({ url, baseUrl }) {
             // Handle redirects after sign in
+            
+            // If URL is relative, prepend baseUrl
             if (url.startsWith("/")) {
                 return `${baseUrl}${url}`
-            } else if (new URL(url).origin === baseUrl) {
+            }
+            
+            // If URL is from the same origin, allow it
+            if (new URL(url).origin === baseUrl) {
                 return url
             }
+            
+            // Default: redirect to baseUrl (home page)
+            // Note: Role-based routing is handled by the login form's router.push()
+            // and the middleware, not by NextAuth's redirect callback
             return baseUrl
         }
     },

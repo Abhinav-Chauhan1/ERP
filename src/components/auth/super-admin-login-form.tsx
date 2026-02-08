@@ -87,11 +87,12 @@ export function SuperAdminLoginForm() {
     setIsLoading(true)
 
     try {
-      // Use NextAuth's signIn function
+      // Use NextAuth's signIn function with explicit callbackUrl
       const result = await signIn('credentials', {
         email: formData.email.trim(),
         password: formData.password,
-        redirect: false
+        redirect: false,
+        callbackUrl: '/super-admin' // Explicitly set the callback URL
       })
 
       if (result?.error) {
@@ -107,8 +108,15 @@ export function SuperAdminLoginForm() {
             setServerError(result.error || "Authentication failed")
         }
       } else if (result?.ok) {
-        // Authentication successful - redirect to super admin dashboard
-        router.push('/super-admin')
+        // Authentication successful - use the callback URL or default to super-admin
+        const redirectUrl = result.url || '/super-admin'
+        
+        // Ensure we're redirecting to the super-admin dashboard, not /sd
+        if (redirectUrl.includes('/sd')) {
+          router.push('/super-admin')
+        } else {
+          router.push(redirectUrl)
+        }
         router.refresh()
       }
     } catch (error) {
