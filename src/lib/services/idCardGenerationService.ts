@@ -287,6 +287,7 @@ export async function getStudentDataForIDCard(studentId: string): Promise<Templa
 
     return {
       studentId: student.id,
+      schoolId: student.schoolId,
       studentName: `${student.user.firstName} ${student.user.lastName}`,
       admissionId: student.admissionId,
       className: enrollment?.class.name,
@@ -354,6 +355,7 @@ export async function getStudentsDataForIDCards(
 
       return {
         studentId: student.id,
+        schoolId: student.schoolId,
         studentName: `${student.user.firstName} ${student.user.lastName}`,
         admissionId: student.admissionId,
         className: enrollment?.class.name,

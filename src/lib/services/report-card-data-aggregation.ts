@@ -38,6 +38,7 @@ export interface StudentInfo {
   id: string;
   name: string;
   admissionId: string;
+  schoolId: string;
   rollNumber: string | null;
   dateOfBirth: Date;
   class: string;
@@ -199,6 +200,7 @@ async function fetchStudentInformation(studentId: string): Promise<StudentInfo> 
     where: { id: studentId },
     select: {
       id: true,
+      schoolId: true,
       admissionId: true,
       rollNumber: true,
       dateOfBirth: true,
@@ -243,6 +245,7 @@ async function fetchStudentInformation(studentId: string): Promise<StudentInfo> 
     id: student.id,
     name: `${student.user.firstName} ${student.user.lastName}`,
     admissionId: student.admissionId,
+    schoolId: student.schoolId,
     rollNumber: student.rollNumber,
     dateOfBirth: student.dateOfBirth,
     class: currentEnrollment.class.name,

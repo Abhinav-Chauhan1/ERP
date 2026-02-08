@@ -5,6 +5,7 @@ export interface IDCardGenerationData {
     studentId: string;
     studentName: string;
     admissionId: string;
+    schoolId?: string;
     className?: string;
     section?: string;
     rollNumber?: string;

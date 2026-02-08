@@ -223,9 +223,6 @@ export async function getParentCalendarEvents(limit: number = 5) {
         children: {
           include: {
             student: {
-              where: {
-                schoolId // CRITICAL: Filter children by school
-              },
               include: {
                 enrollments: {
                   where: {
@@ -244,7 +241,7 @@ export async function getParentCalendarEvents(limit: number = 5) {
       }
     });
 
-    if (!parent || parent.children.length === 0) {
+    if (!parent || !parent.children || parent.children.length === 0) {
       return { success: false, error: "Parent not found or no children", data: [] };
     }
 
@@ -252,12 +249,14 @@ export async function getParentCalendarEvents(limit: number = 5) {
     const classIds: string[] = [];
     const sectionIds: string[] = [];
 
-    parent.children.forEach(childRelation => {
+    parent.children.forEach((childRelation: any) => {
       const child = childRelation.student;
-      child.enrollments.forEach(enrollment => {
-        if (enrollment.classId) classIds.push(enrollment.classId);
-        if (enrollment.sectionId) sectionIds.push(enrollment.sectionId);
-      });
+      if (child && child.enrollments) {
+        child.enrollments.forEach((enrollment: any) => {
+          if (enrollment.classId) classIds.push(enrollment.classId);
+          if (enrollment.sectionId) sectionIds.push(enrollment.sectionId);
+        });
+      }
     });
 
     const now = new Date();

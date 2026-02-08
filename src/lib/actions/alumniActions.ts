@@ -265,9 +265,6 @@ export async function searchAlumni(
       where,
       include: {
         student: {
-          where: {
-            schoolId, // CRITICAL: Filter student by school
-          },
           include: {
             user: true,
           },
@@ -278,19 +275,21 @@ export async function searchAlumni(
       take: pageSize,
     });
 
-    // Format alumni data
-    const formattedAlumni = alumni.map((alumnus) => ({
-      id: alumnus.id,
-      studentName: `${alumnus.student.user.firstName} ${alumnus.student.user.lastName}`,
-      admissionId: alumnus.student.admissionId,
-      graduationDate: alumnus.graduationDate,
-      finalClass: alumnus.finalClass,
-      finalSection: alumnus.finalSection,
-      currentOccupation: alumnus.currentOccupation || undefined,
-      currentCity: alumnus.currentCity || undefined,
-      currentEmail: alumnus.currentEmail || alumnus.student.user.email || undefined,
-      profilePhoto: alumnus.profilePhoto || alumnus.student.user.avatar || undefined,
-    }));
+    // Format alumni data - filter out any without student relation
+    const formattedAlumni = alumni
+      .filter((alumnus) => alumnus.student && alumnus.student.user)
+      .map((alumnus) => ({
+        id: alumnus.id,
+        studentName: `${alumnus.student!.user.firstName} ${alumnus.student!.user.lastName}`,
+        admissionId: alumnus.student!.admissionId,
+        graduationDate: alumnus.graduationDate,
+        finalClass: alumnus.finalClass,
+        finalSection: alumnus.finalSection,
+        currentOccupation: alumnus.currentOccupation || undefined,
+        currentCity: alumnus.currentCity || undefined,
+        currentEmail: alumnus.currentEmail || alumnus.student!.user.email || undefined,
+        profilePhoto: alumnus.profilePhoto || alumnus.student!.user.avatar || undefined,
+      }));
 
     const resultData = {
       alumni: formattedAlumni,
@@ -379,9 +378,6 @@ export async function getAlumniProfile(
       },
       include: {
         student: {
-          where: {
-            schoolId, // CRITICAL: Filter student by school
-          },
           include: {
             user: true,
           },
@@ -393,6 +389,14 @@ export async function getAlumniProfile(
       return {
         success: false,
         error: "Alumni profile not found",
+      };
+    }
+
+    // Verify student relation exists
+    if (!alumnus.student || !alumnus.student.user) {
+      return {
+        success: false,
+        error: "Alumni student data not found",
       };
     }
 

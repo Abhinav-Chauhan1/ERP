@@ -27,7 +27,15 @@ export async function getReportCardData(studentId: string, termId: string) {
       };
     }
 
-    const reportCardData = await aggregateReportCardData(studentId, termId, schoolId);
+    const reportCardData = await aggregateReportCardData(studentId, termId);
+    
+    // Verify student belongs to the school
+    if (reportCardData.student.schoolId !== schoolId) {
+      return {
+        success: false,
+        error: "Student not found in this school",
+      };
+    }
 
     return {
       success: true,
@@ -71,11 +79,21 @@ export async function getBatchReportCardData(studentIds: string[], termId: strin
       };
     }
 
-    const reportCardData = await batchAggregateReportCardData(studentIds, termId, schoolId);
+    const reportCardData = await batchAggregateReportCardData(studentIds, termId);
+    
+    // Filter to only students in this school
+    const filteredData = reportCardData.filter(data => data.student.schoolId === schoolId);
+    
+    if (filteredData.length === 0) {
+      return {
+        success: false,
+        error: "No students found in this school",
+      };
+    }
 
     return {
       success: true,
-      data: reportCardData,
+      data: filteredData,
     };
   } catch (error) {
     console.error("Error getting batch report card data:", error);
@@ -142,11 +160,14 @@ export async function getClassReportCardData(
       };
     }
 
-    const reportCardData = await batchAggregateReportCardData(studentIds, termId, schoolId);
+    const reportCardData = await batchAggregateReportCardData(studentIds, termId);
+    
+    // Filter to only students in this school (should already be filtered by enrollment query)
+    const filteredData = reportCardData.filter(data => data.student.schoolId === schoolId);
 
     return {
       success: true,
-      data: reportCardData,
+      data: filteredData,
     };
   } catch (error) {
     console.error("Error getting class report card data:", error);

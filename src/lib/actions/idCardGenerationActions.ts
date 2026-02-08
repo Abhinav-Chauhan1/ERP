@@ -68,12 +68,20 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
     }
 
     // Get student data with school isolation
-    const studentData = await getStudentDataForIDCard(studentId, schoolId);
+    const studentData = await getStudentDataForIDCard(studentId);
 
     if (!studentData) {
       return {
         success: false,
         error: 'Student not found',
+      };
+    }
+
+    // Verify student belongs to the school
+    if (studentData.schoolId !== schoolId) {
+      return {
+        success: false,
+        error: 'Student not found in this school',
       };
     }
 
@@ -102,8 +110,10 @@ export async function getStudentIDCardPreview(studentId: string, academicYear: s
     const user = await currentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const studentData = await getStudentDataForIDCard(studentId, schoolId);
-    if (!studentData) return { success: false, error: 'Student not found' };
+    const studentData = await getStudentDataForIDCard(studentId);
+    if (!studentData || studentData.schoolId !== schoolId) {
+      return { success: false, error: 'Student not found' };
+    }
 
     const previewUrl = await generateIDCardPreviewService(studentData, academicYear, templateId);
 
@@ -159,9 +169,12 @@ export async function generateBulkStudentIDCards(
     }
 
     // Get students data with school isolation
-    const studentsData = await getStudentsDataForIDCards(studentIds, schoolId);
+    const studentsData = await getStudentsDataForIDCards(studentIds);
+    
+    // Filter to only students in this school
+    const filteredStudentsData = studentsData.filter(s => s.schoolId === schoolId);
 
-    if (studentsData.length === 0) {
+    if (filteredStudentsData.length === 0) {
       return {
         success: false,
         error: 'No valid students found',
@@ -174,7 +187,7 @@ export async function generateBulkStudentIDCards(
 
     // Generate ID cards
     const options: BulkIDCardGenerationOptions = {
-      students: studentsData,
+      students: filteredStudentsData,
       academicYear,
     };
 
