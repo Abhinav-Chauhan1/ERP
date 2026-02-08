@@ -62,6 +62,10 @@ export async function sendBulkToClass(data: {
   notificationType?: NotificationType;
 }): Promise<ActionResult<BulkMessageSummary>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Check authentication
     const session = await auth();
     if (!session?.user) {
@@ -112,8 +116,11 @@ export async function sendBulkToClass(data: {
     }
 
     // Verify class exists
-    const classExists = await db.class.findUnique({
-      where: { id: data.classId },
+    const classExists = await db.class.findFirst({
+      where: { 
+        id: data.classId,
+        schoolId // Add school isolation
+      },
       select: { id: true, name: true },
     });
 
@@ -126,8 +133,11 @@ export async function sendBulkToClass(data: {
 
     // If section is specified, verify it exists
     if (data.sectionId) {
-      const sectionExists = await db.classSection.findUnique({
-        where: { id: data.sectionId },
+      const sectionExists = await db.classSection.findFirst({
+        where: { 
+          id: data.sectionId,
+          schoolId // Add school isolation
+        },
         select: { id: true, name: true },
       });
 
@@ -142,6 +152,7 @@ export async function sendBulkToClass(data: {
     // Get all students in the class (and section if specified)
     const enrollments = await db.classEnrollment.findMany({
       where: {
+        schoolId, // Add school isolation
         classId: data.classId,
         ...(data.sectionId && { sectionId: data.sectionId }),
         status: "ACTIVE",
@@ -263,6 +274,10 @@ export async function sendBulkToAllParents(data: {
   academicYearId?: string; // Optional: filter by academic year
 }): Promise<ActionResult<BulkMessageSummary>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Check authentication
     const session = await auth();
     if (!session?.user) {
@@ -311,8 +326,11 @@ export async function sendBulkToAllParents(data: {
 
     if (data.academicYearId) {
       // Verify academic year exists
-      const academicYear = await db.academicYear.findUnique({
-        where: { id: data.academicYearId },
+      const academicYear = await db.academicYear.findFirst({
+        where: { 
+          id: data.academicYearId,
+          schoolId // Add school isolation
+        },
         select: { id: true, name: true },
       });
 
@@ -326,6 +344,7 @@ export async function sendBulkToAllParents(data: {
       // Get parents of students enrolled in classes of this academic year
       const enrollments = await db.classEnrollment.findMany({
         where: {
+          schoolId, // Add school isolation
           status: "ACTIVE",
           class: {
             academicYearId: data.academicYearId,
@@ -379,6 +398,9 @@ export async function sendBulkToAllParents(data: {
     } else {
       // Get all parents in the system
       parents = await db.parent.findMany({
+        where: {
+          schoolId // Add school isolation
+        },
         include: {
           user: {
             select: {
@@ -715,6 +737,10 @@ export async function sendBulkMessage(
   data: BulkMessageInput
 ): Promise<ActionResult<BulkMessageSummary>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "Unauthorized. Please log in." };
@@ -747,7 +773,10 @@ export async function sendBulkMessage(
     // 2. ALL TEACHERS
     else if (recipientType === "ALL_TEACHERS") {
       const teachers = await db.teacher.findMany({
-        where: { user: { active: true } },
+        where: { 
+          schoolId, // Add school isolation
+          user: { active: true } 
+        },
         select: { userId: true }
       });
       recipients = teachers.map(t => t.userId);
@@ -756,7 +785,10 @@ export async function sendBulkMessage(
     // 3. ALL STUDENTS
     else if (recipientType === "ALL_STUDENTS") {
       const students = await db.student.findMany({
-        where: { user: { active: true } },
+        where: { 
+          schoolId, // Add school isolation
+          user: { active: true } 
+        },
         select: { userId: true }
       });
       recipients = students.map(s => s.userId);
@@ -767,6 +799,7 @@ export async function sendBulkMessage(
       // Find all students in these classes
       const enrollments = await db.classEnrollment.findMany({
         where: {
+          schoolId, // Add school isolation
           classId: { in: data.selectedClasses },
           status: "ACTIVE",
         },
@@ -805,15 +838,33 @@ export async function sendBulkMessage(
       const userIds = new Set<string>();
 
       if (data.selectedRoles.includes("TEACHER")) {
-        const t = await db.teacher.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        const t = await db.teacher.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          select: { userId: true } 
+        });
         t.forEach(x => userIds.add(x.userId));
       }
       if (data.selectedRoles.includes("STUDENT")) {
-        const s = await db.student.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        const s = await db.student.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          select: { userId: true } 
+        });
         s.forEach(x => userIds.add(x.userId));
       }
       if (data.selectedRoles.includes("PARENT")) {
-        const p = await db.parent.findMany({ select: { userId: true }, where: { user: { active: true } } });
+        const p = await db.parent.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          select: { userId: true } 
+        });
         p.forEach(x => userIds.add(x.userId));
       }
       recipients = Array.from(userIds);
@@ -888,6 +939,10 @@ export async function previewRecipients(
   data: Partial<BulkMessageInput>
 ): Promise<ActionResult<BulkMessageRecipient[]>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "Unauthorized. Please log in." };
@@ -906,8 +961,11 @@ export async function previewRecipients(
     // 1. ALL PARENTS
     if (recipientType === "ALL_PARENTS") {
       const parents = await db.parent.findMany({
+        where: { 
+          schoolId, // Add school isolation
+          user: { active: true } 
+        },
         include: { user: true },
-        where: { user: { active: true } }
       });
       recipients = parents.map(p => ({
         id: p.user.id,
@@ -921,8 +979,11 @@ export async function previewRecipients(
     // 2. ALL TEACHERS
     else if (recipientType === "ALL_TEACHERS") {
       const teachers = await db.teacher.findMany({
+        where: { 
+          schoolId, // Add school isolation
+          user: { active: true } 
+        },
         include: { user: true },
-        where: { user: { active: true } }
       });
       recipients = teachers.map(t => ({
         id: t.user.id,
@@ -936,8 +997,11 @@ export async function previewRecipients(
     // 3. ALL STUDENTS
     else if (recipientType === "ALL_STUDENTS") {
       const students = await db.student.findMany({
+        where: { 
+          schoolId, // Add school isolation
+          user: { active: true } 
+        },
         include: { user: true },
-        where: { user: { active: true } }
       });
       recipients = students.map(s => ({
         id: s.user.id,
@@ -952,6 +1016,7 @@ export async function previewRecipients(
     else if (recipientType === "CLASS" && data.selectedClasses?.length) {
       const enrollments = await db.classEnrollment.findMany({
         where: {
+          schoolId, // Add school isolation
           classId: { in: data.selectedClasses },
           status: "ACTIVE",
         },
@@ -992,15 +1057,33 @@ export async function previewRecipients(
       const map = new Map<string, BulkMessageRecipient>();
 
       if (data.selectedRoles.includes("TEACHER")) {
-        const res = await db.teacher.findMany({ include: { user: true }, where: { user: { active: true } } });
+        const res = await db.teacher.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          include: { user: true } 
+        });
         res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Teacher" }));
       }
       if (data.selectedRoles.includes("STUDENT")) {
-        const res = await db.student.findMany({ include: { user: true }, where: { user: { active: true } } });
+        const res = await db.student.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          include: { user: true } 
+        });
         res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Student" }));
       }
       if (data.selectedRoles.includes("PARENT")) {
-        const res = await db.parent.findMany({ include: { user: true }, where: { user: { active: true } } });
+        const res = await db.parent.findMany({ 
+          where: { 
+            schoolId, // Add school isolation
+            user: { active: true } 
+          },
+          include: { user: true } 
+        });
         res.forEach(r => map.set(r.user.id, { id: r.user.id, name: r.user.name || "", email: r.user.email || undefined, role: "Parent" }));
       }
       recipients = Array.from(map.values());
@@ -1028,6 +1111,10 @@ export async function getAvailableClasses(): Promise<
   ActionResult<Array<{ id: string; name: string; section?: string }>>
 > {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "Unauthorized. Please log in." };
@@ -1041,6 +1128,9 @@ export async function getAvailableClasses(): Promise<
     }
 
     const classes = await db.class.findMany({
+      where: {
+        schoolId // Add school isolation
+      },
       select: {
         id: true,
         name: true,
@@ -1076,6 +1166,10 @@ export async function getBulkMessagingStats(): Promise<ActionResult<{
   totalStudents: number;
 }>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     if (!session?.user) {
       return { success: false, error: "Unauthorized. Please log in." };
@@ -1090,9 +1184,9 @@ export async function getBulkMessagingStats(): Promise<ActionResult<{
 
     // Get counts of active users by role
     const [totalParents, totalTeachers, totalStudents] = await Promise.all([
-      db.user.count({ where: { role: "PARENT", active: true } }),
-      db.user.count({ where: { role: "TEACHER", active: true } }),
-      db.user.count({ where: { role: "STUDENT", active: true } }),
+      db.parent.count({ where: { schoolId, user: { active: true } } }),
+      db.teacher.count({ where: { schoolId, user: { active: true } } }),
+      db.student.count({ where: { schoolId, user: { active: true } } }),
     ]);
 
     const totalUsers = totalParents + totalTeachers + totalStudents;

@@ -9,9 +9,15 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, format, addDays } from "d
  */
 export async function getTotalStudents(teacherId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const studentCount = await db.classEnrollment.count({
       where: {
+        schoolId, // Add school isolation
         class: {
+          schoolId, // Add school isolation
           teachers: {
             some: {
               teacherId: teacherId,
@@ -40,8 +46,13 @@ export async function getTotalStudents(teacherId: string) {
  */
 export async function getPendingAssignments(teacherId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const pendingAssignments = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacherId,
         submissions: {
           some: {
@@ -78,6 +89,7 @@ export async function getPendingAssignments(teacherId: string) {
 
     const count = await db.assignment.count({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacherId,
         submissions: {
           some: {
@@ -109,11 +121,16 @@ export async function getPendingAssignments(teacherId: string) {
  */
 export async function getUpcomingExams(teacherId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const today = new Date();
     const nextWeek = addDays(today, 7);
 
     const upcomingExams = await db.exam.findMany({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacherId,
         examDate: {
           gte: today,
@@ -153,13 +170,19 @@ export async function getUpcomingExams(teacherId: string) {
  */
 export async function getTodaysClasses(teacherId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const today = new Date();
     const dayName = format(today, "EEEE").toUpperCase() as any;
 
     const todayClasses = await db.timetableSlot.findMany({
       where: {
+        schoolId, // Add school isolation
         subjectTeacher: {
           teacherId: teacherId,
+          schoolId, // Add school isolation
         },
         day: dayName,
         timetable: {
@@ -224,10 +247,15 @@ export async function getTodaysClasses(teacherId: string) {
  */
 export async function getRecentAnnouncements() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const today = new Date();
 
     const announcements = await db.announcement.findMany({
       where: {
+        schoolId, // Add school isolation
         isActive: true,
         startDate: {
           lte: today,
@@ -277,10 +305,15 @@ export async function getRecentAnnouncements() {
  */
 export async function getUnreadMessagesCount(teacherId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // First get the user associated with this teacher
     const teacher = await db.teacher.findUnique({
       where: {
         id: teacherId,
+        schoolId, // Add school isolation
       },
       include: {
         user: true,
@@ -319,6 +352,10 @@ export async function getUnreadMessagesCount(teacherId: string) {
  */
 export async function getTeacherDashboardData() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -343,10 +380,11 @@ export async function getTeacherDashboardData() {
       };
     }
 
-    // Get teacher record
+    // Get teacher record with school isolation
     const teacher = await db.teacher.findUnique({
       where: {
         userId: user.id,
+        schoolId, // Add school isolation
       },
       include: {
         user: true,
@@ -390,15 +428,18 @@ export async function getTeacherDashboardData() {
     const recentAnnouncements = (recentAnnouncementsResult.success && recentAnnouncementsResult.data) ? recentAnnouncementsResult.data : [];
     const unreadMessagesCount = (unreadMessagesResult.success && unreadMessagesResult.data !== undefined) ? unreadMessagesResult.data : 0;
 
-    // Get weekly attendance average
+    // Get weekly attendance average with school isolation
     const attendanceRecords = await db.studentAttendance.findMany({
       where: {
+        schoolId, // Add school isolation
         date: {
           gte: startOfThisWeek,
           lte: endOfThisWeek,
         },
         section: {
+          schoolId, // Add school isolation
           class: {
+            schoolId, // Add school isolation
             teachers: {
               some: {
                 teacherId: teacher.id,
@@ -417,10 +458,12 @@ export async function getTeacherDashboardData() {
         ? ((presentCount / attendanceRecords.length) * 100).toFixed(1)
         : "0.0";
 
-    // Get recent lessons
+    // Get recent lessons with school isolation
     const recentLessons = await db.lesson.findMany({
       where: {
+        schoolId, // Add school isolation
         subject: {
+          schoolId, // Add school isolation
           teachers: {
             some: {
               teacherId: teacher.id,
@@ -438,9 +481,10 @@ export async function getTeacherDashboardData() {
       take: 3,
     });
 
-    // Get recent assignments
+    // Get recent assignments with school isolation
     const recentAssignments = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacher.id,
       },
       include: {
@@ -463,9 +507,10 @@ export async function getTeacherDashboardData() {
       take: 3,
     });
 
-    // Get pending tasks (assignments needing grading)
+    // Get pending tasks (assignments needing grading) with school isolation
     const pendingTasks = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacher.id,
         dueDate: {
           gte: today,
@@ -497,9 +542,10 @@ export async function getTeacherDashboardData() {
       take: 4,
     });
 
-    // Get class performance data
+    // Get class performance data with school isolation
     const classes = await db.class.findMany({
       where: {
+        schoolId, // Add school isolation
         teachers: {
           some: {
             teacherId: teacher.id,
@@ -544,15 +590,17 @@ export async function getTeacherDashboardData() {
       };
     });
 
-    // Get student attendance data for chart (optimized to prevent N+1 query)
+    // Get student attendance data for chart (optimized to prevent N+1 query) with school isolation
     const classIds = classes.slice(0, 4).map(cls => cls.id);
     const classAttendanceRecords = await db.studentAttendance.findMany({
       where: {
+        schoolId, // Add school isolation
         date: {
           gte: startOfThisWeek,
           lte: endOfThisWeek,
         },
         section: {
+          schoolId, // Add school isolation
           classId: {
             in: classIds,
           },
@@ -585,9 +633,10 @@ export async function getTeacherDashboardData() {
       };
     });
 
-    // Get assignment status data
+    // Get assignment status data with school isolation
     const allAssignments = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         creatorId: teacher.id,
       },
       include: {

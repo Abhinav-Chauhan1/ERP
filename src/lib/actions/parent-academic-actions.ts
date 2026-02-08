@@ -9,6 +9,10 @@ import { UserRole } from "@prisma/client";
  * Get all academic information for a child
  */
 export async function getChildAcademicProcess(childId: string) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
 
@@ -48,9 +52,10 @@ export async function getChildAcademicProcess(childId: string) {
   }
 
   // Get student details with current enrollment
-  const student = await db.student.findUnique({
+  const student = await db.student.findFirst({
     where: {
-      id: childId
+      id: childId,
+      schoolId // Add school isolation
     },
     include: {
       user: true,
@@ -92,6 +97,7 @@ export async function getChildAcademicProcess(childId: string) {
   if (currentEnrollment) {
     const subjectClasses = await db.subjectClass.findMany({
       where: {
+        schoolId, // Add school isolation
         classId: currentEnrollment.classId
       },
       include: {
@@ -130,6 +136,7 @@ export async function getChildAcademicProcess(childId: string) {
   // Get syllabus information with curriculum completion
   const syllabusItems = await db.syllabus.findMany({
     where: {
+      schoolId, // Add school isolation
       subject: {
         classes: {
           some: {
@@ -181,6 +188,7 @@ export async function getChildAcademicProcess(childId: string) {
   // Get recent homework/assignments
   const assignments = await db.assignment.findMany({
     where: {
+      schoolId, // Add school isolation
       classes: {
         some: {
           classId: currentEnrollment?.classId
@@ -204,6 +212,7 @@ export async function getChildAcademicProcess(childId: string) {
   // Get timetable
   const timetable = await db.timetableSlot.findMany({
     where: {
+      schoolId, // Add school isolation
       classId: currentEnrollment?.classId,
       OR: [
         { sectionId: currentEnrollment?.sectionId },
@@ -249,6 +258,10 @@ export async function getChildAcademicProcess(childId: string) {
  * Get class schedule for a child (weekly timetable)
  */
 export async function getClassSchedule(childId: string) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
 
@@ -279,7 +292,10 @@ export async function getClassSchedule(childId: string) {
   const parentChild = await db.studentParent.findFirst({
     where: {
       parentId: parent.id,
-      studentId: childId
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
     }
   });
 
@@ -290,6 +306,7 @@ export async function getClassSchedule(childId: string) {
   // Get student's current enrollment
   const enrollment = await db.classEnrollment.findFirst({
     where: {
+      schoolId, // Add school isolation
       studentId: childId,
       status: "ACTIVE"
     },
@@ -312,6 +329,7 @@ export async function getClassSchedule(childId: string) {
   // Get timetable slots for the class and section
   const schedule = await db.timetableSlot.findMany({
     where: {
+      schoolId, // Add school isolation
       classId: enrollment.classId,
       OR: [
         { sectionId: enrollment.sectionId },
@@ -360,6 +378,10 @@ export async function getHomework(
     toDate?: Date;
   }
 ) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
 
@@ -390,7 +412,10 @@ export async function getHomework(
   const parentChild = await db.studentParent.findFirst({
     where: {
       parentId: parent.id,
-      studentId: childId
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
     }
   });
 
@@ -401,6 +426,7 @@ export async function getHomework(
   // Get student's current enrollment
   const enrollment = await db.classEnrollment.findFirst({
     where: {
+      schoolId, // Add school isolation
       studentId: childId,
       status: "ACTIVE"
     },
@@ -418,6 +444,7 @@ export async function getHomework(
 
   // Build where clause for assignments
   const whereClause: any = {
+    schoolId, // Add school isolation
     classes: {
       some: {
         classId: enrollment.classId
@@ -488,6 +515,10 @@ export async function getHomework(
  * Get full timetable for a child for a specific week
  */
 export async function getFullTimetable(childId: string, week?: Date) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
 
@@ -518,7 +549,10 @@ export async function getFullTimetable(childId: string, week?: Date) {
   const parentChild = await db.studentParent.findFirst({
     where: {
       parentId: parent.id,
-      studentId: childId
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
     }
   });
 
@@ -529,6 +563,7 @@ export async function getFullTimetable(childId: string, week?: Date) {
   // Get student's current enrollment
   const enrollment = await db.classEnrollment.findFirst({
     where: {
+      schoolId, // Add school isolation
       studentId: childId,
       status: "ACTIVE"
     },
@@ -564,6 +599,7 @@ export async function getFullTimetable(childId: string, week?: Date) {
   // Get timetable slots for the class and section
   const timetable = await db.timetableSlot.findMany({
     where: {
+      schoolId, // Add school isolation
       classId: enrollment.classId,
       OR: [
         { sectionId: enrollment.sectionId },
@@ -607,6 +643,10 @@ export async function getFullTimetable(childId: string, week?: Date) {
  * Get subject progress for a child
  */
 export async function getChildSubjectProgress(childId: string, subjectId: string) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
 
@@ -637,7 +677,10 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
   const parentChild = await db.studentParent.findFirst({
     where: {
       parentId: parent.id,
-      studentId: childId
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
     }
   });
 
@@ -646,9 +689,10 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
   }
 
   // Get subject details
-  const subject = await db.subject.findUnique({
+  const subject = await db.subject.findFirst({
     where: {
-      id: subjectId
+      id: subjectId,
+      schoolId // Add school isolation
     }
   });
 
@@ -659,6 +703,7 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
   // Get syllabus units and lessons
   const syllabus = await db.syllabus.findFirst({
     where: {
+      schoolId, // Add school isolation
       subjectId: subjectId
     },
     include: {
@@ -678,6 +723,7 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
     where: {
       studentId: childId,
       exam: {
+        schoolId, // Add school isolation
         subjectId: subjectId
       }
     },
@@ -700,6 +746,7 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
     where: {
       studentId: childId,
       assignment: {
+        schoolId, // Add school isolation
         subjectId: subjectId
       }
     },

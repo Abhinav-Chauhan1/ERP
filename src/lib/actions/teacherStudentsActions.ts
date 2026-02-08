@@ -15,6 +15,10 @@ export async function getTeacherStudents(options?: {
   sortOrder?: "asc" | "desc";
 }) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -22,9 +26,10 @@ export async function getTeacherStudents(options?: {
       throw new Error("Unauthorized");
     }
 
-    // Get the teacher record
+    // Get the teacher record with school isolation
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: {
           id: userId
         }
@@ -269,6 +274,10 @@ export async function getTeacherStudents(options?: {
  */
 export async function getStudentDetails(studentId: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -276,9 +285,10 @@ export async function getStudentDetails(studentId: string) {
       throw new Error("Unauthorized");
     }
 
-    // Get the teacher record
+    // Get the teacher record with school isolation
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: {
           id: userId
         }
@@ -315,10 +325,11 @@ export async function getStudentDetails(studentId: string) {
       throw new Error("Student not found in your classes");
     }
 
-    // Get detailed student info
+    // Get detailed student info with school isolation
     const student = await db.student.findUnique({
       where: {
-        id: studentId
+        id: studentId,
+        schoolId, // Add school isolation
       },
       include: {
         user: {
@@ -571,6 +582,10 @@ export async function getStudentDetails(studentId: string) {
  */
 export async function getClassStudents(classId: string, sectionId?: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -578,9 +593,10 @@ export async function getClassStudents(classId: string, sectionId?: string) {
       throw new Error("Unauthorized");
     }
 
-    // Get the teacher record
+    // Get the teacher record with school isolation
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: {
           id: userId
         }
@@ -603,10 +619,11 @@ export async function getClassStudents(classId: string, sectionId?: string) {
       throw new Error("You are not assigned to this class");
     }
 
-    // Get class and section info
+    // Get class and section info with school isolation
     const classInfo = await db.class.findUnique({
       where: {
-        id: classId
+        id: classId,
+        schoolId, // Add school isolation
       },
       include: {
         sections: true
@@ -617,9 +634,10 @@ export async function getClassStudents(classId: string, sectionId?: string) {
       throw new Error("Class not found");
     }
 
-    // Get students enrolled in this class
+    // Get students enrolled in this class with school isolation
     const students = await db.student.findMany({
       where: {
+        schoolId, // Add school isolation
         enrollments: {
           some: {
             classId: classId,
@@ -723,6 +741,10 @@ export async function getClassStudents(classId: string, sectionId?: string) {
  */
 export async function getTeacherStudentsPerformance() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -730,9 +752,10 @@ export async function getTeacherStudentsPerformance() {
       throw new Error("Unauthorized");
     }
 
-    // Get the teacher record
+    // Get the teacher record with school isolation
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: {
           id: userId
         }
@@ -759,9 +782,10 @@ export async function getTeacherStudentsPerformance() {
 
     const classIds = teacherClasses.map(tc => tc.classId);
 
-    // Get all students in these classes
+    // Get all students in these classes with school isolation
     const students = await db.student.findMany({
       where: {
+        schoolId, // Add school isolation
         enrollments: {
           some: {
             classId: {

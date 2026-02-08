@@ -11,7 +11,13 @@ export interface ParentFilters {
 
 export async function getFilteredParents(filters: ParentFilters) {
   try {
-    const where: Prisma.ParentWhereInput = {};
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: Prisma.ParentWhereInput = {
+      schoolId // Add school isolation
+    };
 
     // Text search across multiple fields
     if (filters.search) {
@@ -98,16 +104,21 @@ export async function getFilteredParents(filters: ParentFilters) {
 
 export async function getParentFilterOptions() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const occupations = await db.parent.findMany({
-      select: {
-        occupation: true,
-      },
-      distinct: ["occupation"],
       where: {
+        schoolId, // Add school isolation
         occupation: {
           not: null,
         },
       },
+      select: {
+        occupation: true,
+      },
+      distinct: ["occupation"],
     });
 
     const uniqueOccupations = occupations

@@ -41,6 +41,10 @@ export async function exportMarksToFile(
   input: ExportMarksInput
 ): Promise<ExportResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get current user
     const session = await auth();
     const userId = session?.user?.id;
@@ -52,9 +56,12 @@ export async function exportMarksToFile(
       };
     }
 
-    // Get exam details
+    // Get exam details with school isolation
     const exam = await db.exam.findUnique({
-      where: { id: input.examId },
+      where: { 
+        id: input.examId,
+        schoolId, // Add school isolation
+      },
       include: {
         subject: {
           select: {
@@ -87,14 +94,16 @@ export async function exportMarksToFile(
       };
     }
 
-    // Build query filters
+    // Build query filters with school isolation
     const whereClause: any = {
       examId: input.examId,
+      schoolId, // Add school isolation
     };
 
     // If class and section are provided, filter by enrollment
     if (input.classId || input.sectionId) {
       whereClause.student = {
+        schoolId, // Add school isolation
         enrollments: {
           some: {
             ...(input.classId && { classId: input.classId }),
@@ -329,6 +338,10 @@ async function generateCSV(data: StudentMarkData[], exam: any, classId?: string,
  */
 export async function getExamsForExport() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -340,6 +353,9 @@ export async function getExamsForExport() {
     }
 
     const exams = await db.exam.findMany({
+      where: {
+        schoolId, // Add school isolation
+      },
       include: {
         subject: {
           select: {

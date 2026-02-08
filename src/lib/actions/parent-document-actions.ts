@@ -48,14 +48,21 @@ async function getCurrentParent() {
 }
 
 /**
- * Helper function to verify parent-child relationship
+ * Helper function to verify parent-child relationship with school isolation
  */
 async function verifyParentChildRelationship(
   parentId: string,
-  childId: string
+  childId: string,
+  schoolId: string
 ): Promise<boolean> {
   const relationship = await db.studentParent.findFirst({
-    where: { parentId, studentId: childId }
+    where: { 
+      parentId, 
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
+    }
   });
   return !!relationship;
 }
@@ -66,6 +73,10 @@ async function verifyParentChildRelationship(
  */
 export async function getDocuments(filters: DocumentFilter) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = documentFilterSchema.parse(filters);
     
@@ -76,14 +87,17 @@ export async function getDocuments(filters: DocumentFilter) {
     }
     
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied", data: [] };
     }
     
     // Get student user ID
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: { 
+        id: validated.childId,
+        schoolId // Add school isolation
+      },
       select: { userId: true }
     });
     
@@ -177,6 +191,10 @@ export async function getDocuments(filters: DocumentFilter) {
  */
 export async function downloadDocument(documentId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
@@ -184,8 +202,11 @@ export async function downloadDocument(documentId: string) {
     }
     
     // Get document
-    const document = await db.document.findUnique({
-      where: { id: documentId },
+    const document = await db.document.findFirst({
+      where: { 
+        id: documentId,
+        schoolId // Add school isolation
+      },
       include: {
         user: {
           include: {
@@ -203,7 +224,8 @@ export async function downloadDocument(documentId: string) {
     if (document.user.student) {
       const hasAccess = await verifyParentChildRelationship(
         parent.id, 
-        document.user.student.id
+        document.user.student.id,
+        schoolId // Add school isolation
       );
       if (!hasAccess) {
         return { success: false, message: "Access denied", url: null };
@@ -231,6 +253,10 @@ export async function downloadDocument(documentId: string) {
  */
 export async function previewDocument(documentId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
@@ -238,8 +264,11 @@ export async function previewDocument(documentId: string) {
     }
     
     // Get document
-    const document = await db.document.findUnique({
-      where: { id: documentId },
+    const document = await db.document.findFirst({
+      where: { 
+        id: documentId,
+        schoolId // Add school isolation
+      },
       include: {
         documentType: true,
         user: {
@@ -258,7 +287,8 @@ export async function previewDocument(documentId: string) {
     if (document.user.student) {
       const hasAccess = await verifyParentChildRelationship(
         parent.id, 
-        document.user.student.id
+        document.user.student.id,
+        schoolId // Add school isolation
       );
       if (!hasAccess) {
         return { success: false, message: "Access denied", data: null };
@@ -307,6 +337,10 @@ export async function previewDocument(documentId: string) {
  */
 export async function getDocumentCategories() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get current parent
     const parent = await getCurrentParent();
     if (!parent) {
@@ -314,6 +348,9 @@ export async function getDocumentCategories() {
     }
     
     const categories = await db.documentType.findMany({
+      where: {
+        schoolId // Add school isolation
+      },
       orderBy: {
         name: 'asc'
       }

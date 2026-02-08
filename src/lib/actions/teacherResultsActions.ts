@@ -10,6 +10,10 @@ import { calculateGrade } from "@/lib/utils/grade-calculator";
  */
 export async function getTeacherResults(classId?: string, subjectId?: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -20,6 +24,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -31,6 +36,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Find all subject-teacher relationships for this teacher
     const subjectTeachers = await db.subjectTeacher.findMany({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
         ...(subjectId ? { subjectId } : {}),
       },
@@ -44,6 +50,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get subjects and classes for these subjects
     const subjects = await db.subject.findMany({
       where: {
+        schoolId, // Add school isolation
         id: {
           in: subjectIds,
         },
@@ -68,6 +75,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get all exams for these subjects
     const exams = await db.exam.findMany({
       where: {
+        schoolId, // Add school isolation
         subjectId: {
           in: subjectIds,
         },
@@ -104,6 +112,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get all assignments for these subjects
     const assignments = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         subjectId: {
           in: subjectIds,
         },
@@ -151,6 +160,7 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Get classes taught by this teacher
     const teacherClasses = await db.classTeacher.findMany({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
       },
       include: {
@@ -249,6 +259,10 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
  */
 export async function getExamResultDetails(examId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -259,6 +273,7 @@ export async function getExamResultDetails(examId: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -268,9 +283,10 @@ export async function getExamResultDetails(examId: string) {
     }
 
     // Find the exam
-    const exam = await db.exam.findUnique({
+    const exam = await db.exam.findFirst({
       where: {
         id: examId,
+        schoolId, // Add school isolation
       },
       include: {
         subject: true,
@@ -301,6 +317,7 @@ export async function getExamResultDetails(examId: string) {
     // Verify that this teacher has access to this exam's subject
     const subjectTeacher = await db.subjectTeacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
         subjectId: exam.subjectId,
       },
@@ -385,6 +402,10 @@ export async function getExamResultDetails(examId: string) {
  */
 export async function getAssignmentResultDetails(assignmentId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -395,6 +416,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -404,9 +426,10 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     }
 
     // Find the assignment
-    const assignment = await db.assignment.findUnique({
+    const assignment = await db.assignment.findFirst({
       where: {
         id: assignmentId,
+        schoolId, // Add school isolation
       },
       include: {
         subject: true,
@@ -440,6 +463,7 @@ export async function getAssignmentResultDetails(assignmentId: string) {
     // Verify that this teacher has access to this assignment's subject
     const subjectTeacher = await db.subjectTeacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
         subjectId: assignment.subjectId,
       },
@@ -528,6 +552,10 @@ export async function getAssignmentResultDetails(assignmentId: string) {
  */
 export async function updateExamResults(examId: string, results: any[]) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -538,6 +566,7 @@ export async function updateExamResults(examId: string, results: any[]) {
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -547,9 +576,10 @@ export async function updateExamResults(examId: string, results: any[]) {
     }
 
     // Find the exam
-    const exam = await db.exam.findUnique({
+    const exam = await db.exam.findFirst({
       where: {
         id: examId,
+        schoolId, // Add school isolation
       },
     });
 
@@ -560,6 +590,7 @@ export async function updateExamResults(examId: string, results: any[]) {
     // Verify that this teacher has access to this exam's subject
     const subjectTeacher = await db.subjectTeacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
         subjectId: exam.subjectId,
       },
@@ -599,6 +630,10 @@ export async function updateExamResults(examId: string, results: any[]) {
  */
 export async function getStudentPerformanceData(studentId: string, subjectId?: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -609,6 +644,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -618,9 +654,10 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     }
 
     // Get the student
-    const student = await db.student.findUnique({
+    const student = await db.student.findFirst({
       where: {
         id: studentId,
+        schoolId, // Add school isolation
       },
       include: {
         user: true,
@@ -640,6 +677,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
     // Find subjects taught by this teacher
     const subjectTeachers = await db.subjectTeacher.findMany({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
         ...(subjectId ? { subjectId } : {}),
       },
@@ -655,6 +693,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
       where: {
         studentId,
         exam: {
+          schoolId, // Add school isolation
           subjectId: {
             in: subjectIds,
           },
@@ -680,6 +719,7 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
       where: {
         studentId,
         assignment: {
+          schoolId, // Add school isolation
           subjectId: {
             in: subjectIds,
           },
@@ -790,6 +830,10 @@ export async function getStudentPerformanceData(studentId: string, subjectId?: s
  */
 export async function getClassPerformanceData(classId: string, subjectId?: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -800,6 +844,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
     // Get the teacher record
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: { id: userId },
       },
     });
@@ -809,9 +854,10 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
     }
 
     // Get the class
-    const classData = await db.class.findUnique({
+    const classData = await db.class.findFirst({
       where: {
         id: classId,
+        schoolId, // Add school isolation
       },
       include: {
         sections: true,
@@ -825,6 +871,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
     // Find subjects taught by this teacher in this class
     const subjectClasses = await db.subjectClass.findMany({
       where: {
+        schoolId, // Add school isolation
         classId,
         subject: {
           teachers: {
@@ -861,6 +908,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
     // Get students in this class
     const students = await db.classEnrollment.findMany({
       where: {
+        schoolId, // Add school isolation
         classId,
         status: 'ACTIVE',
       },
@@ -883,6 +931,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
           in: studentIds,
         },
         exam: {
+          schoolId, // Add school isolation
           subjectId: {
             in: subjectIds,
           },
@@ -917,6 +966,7 @@ export async function getClassPerformanceData(classId: string, subjectId?: strin
           in: studentIds,
         },
         assignment: {
+          schoolId, // Add school isolation
           subjectId: {
             in: subjectIds,
           },

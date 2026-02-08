@@ -15,7 +15,13 @@ export interface StudentFilters {
 
 export async function getFilteredStudents(filters: StudentFilters) {
   try {
-    const where: Prisma.StudentWhereInput = {};
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: Prisma.StudentWhereInput = {
+      schoolId // Add school isolation
+    };
 
     // Text search across multiple fields
     if (filters.search) {
@@ -117,8 +123,15 @@ export async function getFilteredStudents(filters: StudentFilters) {
 
 export async function getFilterOptions() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const [classes, sections] = await Promise.all([
       db.class.findMany({
+        where: {
+          schoolId // Add school isolation
+        },
         select: {
           id: true,
           name: true,
@@ -128,6 +141,9 @@ export async function getFilterOptions() {
         },
       }),
       db.classSection.findMany({
+        where: {
+          schoolId // Add school isolation
+        },
         select: {
           id: true,
           name: true,

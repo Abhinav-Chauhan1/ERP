@@ -1,0 +1,357 @@
+School Isolation Audit Report
+Generated: Sun Feb  8 05:13:28 PM IST 2026
+======================================
+
+⚠️  SUSPICIOUS: src/lib/actions/rankCalculationActions.ts
+   Database queries found:
+39:    const user = await db.user.findUnique({
+55:    const reportCards = await db.reportCard.findMany({
+132:    await db.$transaction(
+134:        db.reportCard.update({
+142:    await db.auditLog.create({
+
+⚠️  SUSPICIOUS: src/lib/actions/idCardGenerationActions.ts
+   Database queries found:
+54:    const dbUser = await db.user.findUnique({
+133:    const dbUser = await db.user.findUnique({
+209:    const dbUser = await db.user.findUnique({
+226:    const enrollments = await db.classEnrollment.findMany({
+278:    const enrollment = await db.classEnrollment.findFirst({
+
+⚠️  SUSPICIOUS: src/lib/actions/attendanceReportActions.ts
+   Database queries found:
+22:    const attendance = await db.studentAttendance.findMany({
+92:    const attendance = await db.studentAttendance.findMany({
+144:    const absences = await db.studentAttendance.findMany({
+218:    const classes = await db.class.findMany({
+278:    const allRecords = await db.studentAttendance.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/assessmentTimelineActions.ts
+   Database queries found:
+9:    const exams = await db.exam.findMany({
+26:    const assignments = await db.assignment.findMany({
+113:      db.exam.count({
+121:      db.assignment.count({
+129:      db.exam.count({
+
+⚠️  SUSPICIOUS: src/lib/actions/parent-document-actions.ts
+   Database queries found:
+33:  const dbUser = await db.user.findUnique({
+41:  const parent = await db.parent.findUnique({
+57:  const relationship = await db.studentParent.findFirst({
+85:    const student = await db.student.findUnique({
+108:      where.createdAt = {};
+
+⚠️  SUSPICIOUS: src/lib/actions/bulkMessagingActions.ts
+   Database queries found:
+115:    const classExists = await db.class.findUnique({
+129:      const sectionExists = await db.classSection.findUnique({
+143:    const enrollments = await db.classEnrollment.findMany({
+213:    await db.auditLog.create({
+314:      const academicYear = await db.academicYear.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/cachedModuleActions.ts
+   Database queries found:
+31:        return await db.module.findMany({
+95:        return await db.subModule.findMany({
+162:          db.module.findMany({
+183:          db.module.count({
+238:        return await db.module.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherProfileActions.ts
+   Database queries found:
+34:    const user = await db.user.findUnique({
+48:    const teacher = await db.teacher.findUnique({
+81:    const todayClasses = await db.timetableSlot.findMany({
+111:    const weeklySlots = await db.timetableSlot.findMany({
+131:    const pendingAssignments = await db.assignment.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/monitoringActions.ts
+   Database queries found:
+86:  createdAt: Date;
+87:  updatedAt: Date;
+127:    const messagesLast24Hours = await db.messageLog.count({
+129:        createdAt: {
+135:    const messagesLastHour = await db.messageLog.count({
+
+⚠️  SUSPICIOUS: src/lib/actions/report-card-aggregation-actions.ts
+   Database queries found:
+116:    const enrollments = await db.classEnrollment.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/gradeCalculationActions.ts
+   Database queries found:
+20:    const gradeScale = await db.gradeScale.findMany({
+103: * This is useful when grade scale is updated
+120:    const exams = await db.exam.findMany({
+140:    const examResults = await db.examResult.findMany({
+150:    const updates = examResults.map((result) => {
+
+⚠️  SUSPICIOUS: src/lib/actions/two-factor-actions.ts
+   Database queries found:
+42:    const user = await prisma.user.findUnique({
+105:    await prisma.user.update({
+134:    const user = await prisma.user.findUnique({
+153:    await prisma.user.update({
+178:    const user = await prisma.user.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/calendar-widget-actions.ts
+   Database queries found:
+27:    const events = await prisma.calendarEvent.findMany({
+62:    const teacher = await prisma.teacher.findUnique({
+71:    const events = await prisma.calendarEvent.findMany({
+118:    const student = await prisma.student.findUnique({
+142:    const events = await prisma.calendarEvent.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/student-performance-actions.ts
+   Database queries found:
+21:  const dbUser = await db.user.findUnique({
+29:  const student = await db.student.findUnique({
+79:  const subjectClasses = await db.subjectClass.findMany({
+91:  const examResults = await db.examResult.findMany({
+120:  const latestReportCard = await db.reportCard.findFirst({
+
+⚠️  SUSPICIOUS: src/lib/actions/billing-actions.ts
+   Database queries found:
+43:      db.subscription.groupBy({
+48:      db.subscription.findMany({
+53:          createdAt: true,
+63:        orderBy: { createdAt: "desc" },
+67:      db.subscription.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/exportMarksActions.ts
+   Database queries found:
+56:    const exam = await db.exam.findUnique({
+109:    const examResults = await db.examResult.findMany({
+154:      const classData = await db.class.findUnique({
+162:      const sectionData = await db.classSection.findUnique({
+193:        const classData = await db.class.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/administratorActions.ts
+   Database queries found:
+18:    const administrator = await db.administrator.findUnique({
+25:            createdAt: 'desc'
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherTimetableActions.ts
+   Database queries found:
+21:    const teacher = await db.teacher.findFirst({
+34:    const subjectTeachers = await db.subjectTeacher.findMany({
+48:    const activeTimetable = await db.timetable.findFirst({
+59:    const timetableSlots = await db.timetableSlot.findMany({
+88:    const timetableConfig = await db.timetableConfig.findFirst({
+
+⚠️  SUSPICIOUS: src/lib/actions/messageAnalyticsActions.ts
+   Database queries found:
+209:      where.createdAt = {};
+211:        where.createdAt.gte = startDate;
+214:        where.createdAt.lte = endDate;
+219:    const logs = await db.messageLog.findMany({
+223:        createdAt: true
+
+⚠️  SUSPICIOUS: src/lib/actions/list-actions.ts
+   Database queries found:
+4:import { getPaginationParams, createPaginationResult, ITEMS_PER_PAGE } from "@/lib/utils/pagination";
+46:    const total = await db.student.count({ where });
+49:    const students = await db.student.findMany({
+90:    return createPaginationResult(students, total, page, limit);
+137:    const total = await db.teacher.count({ where });
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherResultsActions.ts
+   Database queries found:
+21:    const teacher = await db.teacher.findFirst({
+32:    const subjectTeachers = await db.subjectTeacher.findMany({
+45:    const subjects = await db.subject.findMany({
+69:    const exams = await db.exam.findMany({
+105:    const assignments = await db.assignment.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/parent-performance-actions.ts
+   Database queries found:
+38:  const dbUser = await db.user.findUnique({
+46:  const parent = await db.parent.findUnique({
+62:  const relationship = await db.studentParent.findFirst({
+164:    const totalCount = await db.examResult.count({ where });
+168:    const results = await db.examResult.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/consolidatedMarkSheetActions.ts
+   Database queries found:
+60:    const students = await db.student.findMany({
+85:    const exams = await db.exam.findMany({
+105:    const subjectConfigs = await db.subjectMarkConfig.findMany({
+225:      db.term.findMany({
+229:      db.class.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/subjectPerformanceActions.ts
+   Database queries found:
+35:      db.class.findMany({
+42:      db.term.findMany({
+81:      const enrollments = await db.classEnrollment.findMany({
+91:    const examResults = await db.examResult.findMany({
+220:      db.term.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/parent-academic-actions.ts
+   Database queries found:
+20:  const dbUser = await db.user.findUnique({
+28:  const parent = await db.parent.findUnique({
+39:  const parentChild = await db.studentParent.findFirst({
+51:  const student = await db.student.findUnique({
+93:    const subjectClasses = await db.subjectClass.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/emailActions.ts
+   Database queries found:
+43:    const dbUser = await db.user.findUnique({
+80:    // You could create an EmailLog model to track all sent messages
+111:    const dbUser = await db.user.findUnique({
+146:    // You could create a BulkEmailLog model to track bulk operations
+184:    const dbUser = await db.user.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/auth-actions.ts
+   Database queries found:
+113:    const user = await db.user.findUnique({
+213:    loginAttempts.delete(key);
+244:  loginAttempts.delete(key);
+251:      loginAttempts.delete(key);
+263:    const user = await db.user.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/paymentConfigActions.ts
+   Database queries found:
+65:export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
+78:    const user = await db.user.findUnique({
+91:    const settings = await db.systemSettings.findFirst();
+109:    // Prepare update data
+110:    const updateData: Partial<PaymentConfigType> = {};
+
+⚠️  SUSPICIOUS: src/lib/actions/settingsActions.ts
+   Database queries found:
+10:// Get system settings (creates default if doesn't exist)
+21:    const user = await db.user.findUnique({
+35:      settings = await db.systemSettings.create({
+73:      settings = await db.systemSettings.create({
+103:export async function updateSchoolInfo(data: {
+
+⚠️  SUSPICIOUS: src/lib/actions/examAnalyticsActions.ts
+   Database queries found:
+18:    const teacher = await prisma.teacher.findUnique({
+27:    const exam = await prisma.onlineExam.findUnique({
+54:    if (exam.createdBy !== teacher.id) {
+60:    const questions = await prisma.questionBank.findMany({
+284:    const teacher = await prisma.teacher.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/parent-attendance-actions.ts
+   Database queries found:
+24:  const dbUser = await db.user.findUnique({
+32:  const parent = await db.parent.findUnique({
+43:  const parentChild = await db.studentParent.findFirst({
+55:  const attendanceRecords = await db.studentAttendance.findMany({
+122:  const dbUser = await db.user.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/receiptWidgetActions.ts
+   Database queries found:
+19:    const pendingReceipts = await db.paymentReceipt.findMany({
+25:        createdAt: true,
+28:        createdAt: "asc",
+36:      ? Math.floor((now.getTime() - pendingReceipts[0].createdAt.getTime()) / (1000 * 60 * 60 * 24))
+40:    const verifiedToday = await db.paymentReceipt.count({
+
+⚠️  SUSPICIOUS: src/lib/actions/export-actions.ts
+   Database queries found:
+50:    const students = await prisma.student.findMany({
+123:    const teachers = await prisma.teacher.findMany({
+185:    const attendance = await prisma.studentAttendance.findMany({
+257:    const payments = await prisma.feePayment.findMany({
+314:    const results = await prisma.examResult.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/performanceAnalyticsActions.ts
+   Database queries found:
+16:      where.createdAt = {};
+17:      if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;
+18:      if (filters.dateTo) where.createdAt.lte = filters.dateTo;
+22:    const results = await db.examResult.findMany({
+95:    const results = await db.examResult.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherAttendanceOverviewActions.ts
+   Database queries found:
+23:    const user = await db.user.findUnique({
+37:    const teacher = await db.teacher.findUnique({
+57:    const teacherClasses = await db.classTeacher.findMany({
+79:    const todayClasses = await db.timetableSlot.findMany({
+105:    const weeklyAttendance = await db.studentAttendance.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/whatsappActions.ts
+   Database queries found:
+105:    await db.auditLog.create({
+197:    await db.auditLog.create({
+302:    await db.auditLog.create({
+409:    await db.auditLog.create({
+550:    await db.auditLog.create({
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherDashboardActions.ts
+   Database queries found:
+12:    const studentCount = await db.classEnrollment.count({
+43:    const pendingAssignments = await db.assignment.findMany({
+79:    const count = await db.assignment.count({
+115:    const upcomingExams = await db.exam.findMany({
+159:    const todayClasses = await db.timetableSlot.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/alumniActions.ts
+   Database queries found:
+22:  updateAlumniProfileSchema,
+99:    createdAt: Date;
+100:    updatedAt: Date;
+238:    const total = await db.alumni.count({ where });
+252:    } else if (sortBy === "updatedAt") {
+
+⚠️  SUSPICIOUS: src/lib/actions/students-filters.ts
+   Database queries found:
+91:    const students = await db.student.findMany({
+107:        createdAt: "desc",
+121:      db.class.findMany({
+130:      db.classSection.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/two-factor-nextauth-actions.ts
+   Database queries found:
+44:    const user = await db.user.findUnique({
+120:    await db.user.update({
+130:    await db.auditLog.create({
+159:    const user = await db.user.findUnique({
+178:    await db.user.update({
+
+⚠️  SUSPICIOUS: src/lib/actions/parents-filters.ts
+   Database queries found:
+73:    const parents = await db.parent.findMany({
+88:        createdAt: "desc",
+101:    const occupations = await db.parent.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/teachers-filters.ts
+   Database queries found:
+68:    const teachers = await db.teacher.findMany({
+85:        createdAt: "desc",
+98:    const subjects = await db.subject.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/permissionActions.ts
+   Database queries found:
+24:  const createdPermissions = new Map<string, string>();
+26:    const created = await prisma.permission.create({
+36:    createdPermissions.set(permission.name, created.id);
+43:      for (const [permName, permId] of createdPermissions.entries()) {
+44:        await prisma.rolePermission.create({
+
+⚠️  SUSPICIOUS: src/lib/actions/smsActions.ts
+   Database queries found:
+43:    const dbUser = await db.user.findUnique({
+74:    // You could create an SMSLog model to track all sent messages
+105:    const dbUser = await db.user.findUnique({
+147:    // You could create a BulkSMSLog model to track bulk operations
+180:    const dbUser = await db.user.findUnique({
+
+⚠️  SUSPICIOUS: src/lib/actions/teacherStudentsActions.ts
+   Database queries found:
+26:    const teacher = await db.teacher.findFirst({
+39:    const teacherClasses = await db.classTeacher.findMany({
+117:    const students = await db.student.findMany({
+280:    const teacher = await db.teacher.findFirst({
+293:    const teacherClasses = await db.classTeacher.findMany({
+
+⚠️  SUSPICIOUS: src/lib/actions/msg91Actions.ts
+   Database queries found:
+105:    await db.auditLog.create({
+235:    await db.auditLog.create({
+

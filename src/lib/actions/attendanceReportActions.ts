@@ -5,12 +5,17 @@ import { AttendanceStatus } from "@prisma/client";
 
 export async function getDailyAttendanceSummary(date: Date, sectionId?: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
     const where: any = {
+      schoolId, // Add school isolation
       date: {
         gte: startOfDay,
         lte: endOfDay,
@@ -77,10 +82,15 @@ export async function getDailyAttendanceSummary(date: Date, sectionId?: string) 
 
 export async function getMonthlyAttendanceTrends(month: number, year: number, sectionId?: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
     const where: any = {
+      schoolId, // Add school isolation
       date: {
         gte: startDate,
         lte: endDate,
@@ -131,7 +141,13 @@ export async function getAbsenteeismAnalysis(filters?: {
   sectionId?: string;
 }) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -207,7 +223,13 @@ export async function getClassWiseAttendance(filters?: {
   endDate?: Date;
 }) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};
@@ -216,6 +238,9 @@ export async function getClassWiseAttendance(filters?: {
     }
 
     const classes = await db.class.findMany({
+      where: {
+        schoolId, // Add school isolation
+      },
       include: {
         sections: {
           include: {
@@ -264,7 +289,13 @@ export async function getPerfectAttendance(filters?: {
   sectionId?: string;
 }) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
 
     if (filters?.startDate || filters?.endDate) {
       where.date = {};

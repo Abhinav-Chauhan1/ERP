@@ -13,6 +13,10 @@ export async function getChildAttendance(
   startDate: Date, 
   endDate: Date
 ) {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
   
@@ -43,7 +47,10 @@ export async function getChildAttendance(
   const parentChild = await db.studentParent.findFirst({
     where: {
       parentId: parent.id,
-      studentId: childId
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
     }
   });
   
@@ -54,6 +61,7 @@ export async function getChildAttendance(
   // Get attendance records for this child within the date range
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
+      schoolId, // Add school isolation
       studentId: childId,
       date: {
         gte: startDate,
@@ -111,6 +119,10 @@ export async function getChildAttendanceSummary(childId: string) {
  * Get attendance summary statistics for all children of a parent
  */
 export async function getChildrenAttendanceSummary() {
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   // Verify the current user is a parent
   const clerkUser = await currentUser();
   
@@ -140,7 +152,10 @@ export async function getChildrenAttendanceSummary() {
   // Get all children of this parent
   const parentChildren = await db.studentParent.findMany({
     where: {
-      parentId: parent.id
+      parentId: parent.id,
+      student: {
+        schoolId // Add school isolation
+      }
     },
     include: {
       student: {
@@ -164,6 +179,7 @@ export async function getChildrenAttendanceSummary() {
     parentChildren.map(async (pc) => {
       const attendanceRecords = await db.studentAttendance.findMany({
         where: {
+          schoolId, // Add school isolation
           studentId: pc.student.id,
           date: {
             gte: thirtyDaysAgo

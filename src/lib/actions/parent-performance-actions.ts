@@ -53,14 +53,21 @@ async function getCurrentParent() {
 }
 
 /**
- * Helper function to verify parent-child relationship
+ * Helper function to verify parent-child relationship with school isolation
  */
 async function verifyParentChildRelationship(
   parentId: string,
-  childId: string
+  childId: string,
+  schoolId: string
 ): Promise<boolean> {
   const relationship = await db.studentParent.findFirst({
-    where: { parentId, studentId: childId }
+    where: { 
+      parentId, 
+      studentId: childId,
+      student: {
+        schoolId // Add school isolation
+      }
+    }
   });
   return !!relationship;
 }
@@ -107,6 +114,10 @@ function calculateTrend(dataPoints: number[]): "improving" | "declining" | "stab
  */
 export async function getExamResults(input: GetExamResultsInput) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = getExamResultsSchema.parse(input);
 
@@ -117,14 +128,17 @@ export async function getExamResults(input: GetExamResultsInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Build where clause
     const where: any = {
-      studentId: validated.childId
+      studentId: validated.childId,
+      student: {
+        schoolId // Add school isolation
+      }
     };
 
     if (!validated.includeAbsent) {
@@ -132,7 +146,9 @@ export async function getExamResults(input: GetExamResultsInput) {
     }
 
     // Build exam filters
-    const examWhere: any = {};
+    const examWhere: any = {
+      schoolId // Add school isolation
+    };
 
     if (validated.termId) {
       examWhere.termId = validated.termId;
@@ -274,6 +290,10 @@ export async function getExamResults(input: GetExamResultsInput) {
  */
 export async function getProgressReports(input: GetProgressReportsInput) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = getProgressReportsSchema.parse(input);
 
@@ -284,14 +304,17 @@ export async function getProgressReports(input: GetProgressReportsInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student with enrollment info
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: { 
+        id: validated.childId,
+        schoolId // Add school isolation
+      },
       include: {
         user: {
           select: {
@@ -366,6 +389,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
           where: {
             studentId: validated.childId,
             exam: {
+              schoolId, // Add school isolation
               termId: reportCard.termId
             },
             isAbsent: false
@@ -494,6 +518,10 @@ export async function getProgressReports(input: GetProgressReportsInput) {
  */
 export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInput) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = getPerformanceAnalyticsSchema.parse(input);
 
@@ -504,14 +532,17 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student with enrollment info
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    const student = await db.student.findFirst({
+      where: { 
+        id: validated.childId,
+        schoolId // Add school isolation
+      },
       include: {
         user: {
           select: {
@@ -545,7 +576,10 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
     const allResults = await db.examResult.findMany({
       where: {
         studentId: validated.childId,
-        isAbsent: false
+        isAbsent: false,
+        exam: {
+          schoolId // Add school isolation
+        }
       },
       include: {
         exam: {
@@ -610,6 +644,7 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
 
     const currentTerm = await db.term.findFirst({
       where: {
+        schoolId, // Add school isolation
         academicYearId: currentEnrollment.class.academicYearId,
         startDate: { lte: new Date() },
         endDate: { gte: new Date() }
@@ -695,6 +730,7 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
     if (validated.includeTermHistory) {
       const allTerms = await db.term.findMany({
         where: {
+          schoolId, // Add school isolation
           academicYearId: currentEnrollment.class.academicYearId
         },
         orderBy: {
@@ -832,6 +868,10 @@ export async function getPerformanceAnalytics(input: GetPerformanceAnalyticsInpu
  */
 export async function downloadReportCard(input: DownloadReportCardInput) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = downloadReportCardSchema.parse(input);
 
@@ -842,17 +882,18 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get report card with all details
-    const reportCard = await db.reportCard.findUnique({
+    const reportCard = await db.reportCard.findFirst({
       where: {
-        studentId_termId: {
-          studentId: validated.childId,
-          termId: validated.termId
+        studentId: validated.childId,
+        termId: validated.termId,
+        student: {
+          schoolId // Add school isolation
         }
       },
       include: {
@@ -897,6 +938,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
       where: {
         studentId: validated.childId,
         exam: {
+          schoolId, // Add school isolation
           termId: validated.termId
         }
       },
@@ -1022,6 +1064,10 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
  */
 export async function getClassComparison(input: GetClassComparisonInput) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validated = getClassComparisonSchema.parse(input);
 
@@ -1032,17 +1078,18 @@ export async function getClassComparison(input: GetClassComparisonInput) {
     }
 
     // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
     if (!hasAccess) {
       return { success: false, message: "Access denied" };
     }
 
     // Get student's exam result
-    const studentResult = await db.examResult.findUnique({
+    const studentResult = await db.examResult.findFirst({
       where: {
-        examId_studentId: {
-          examId: validated.examId,
-          studentId: validated.childId
+        examId: validated.examId,
+        studentId: validated.childId,
+        exam: {
+          schoolId // Add school isolation
         }
       },
       include: {
@@ -1062,7 +1109,10 @@ export async function getClassComparison(input: GetClassComparisonInput) {
     const allResults = await db.examResult.findMany({
       where: {
         examId: validated.examId,
-        isAbsent: false
+        isAbsent: false,
+        exam: {
+          schoolId // Add school isolation
+        }
       },
       select: {
         marks: true

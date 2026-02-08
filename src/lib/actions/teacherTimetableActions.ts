@@ -10,6 +10,10 @@ import { DayOfWeek } from "@prisma/client";
  */
 export async function getTeacherTimetable() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -20,6 +24,7 @@ export async function getTeacherTimetable() {
     // Get the teacher record for the current user
     const teacher = await db.teacher.findFirst({
       where: {
+        schoolId, // Add school isolation
         user: {
           id: userId,
         },
@@ -33,6 +38,7 @@ export async function getTeacherTimetable() {
     // Get all subject-teacher relationships for this teacher
     const subjectTeachers = await db.subjectTeacher.findMany({
       where: {
+        schoolId, // Add school isolation
         teacherId: teacher.id,
       },
       include: {
@@ -47,6 +53,7 @@ export async function getTeacherTimetable() {
     // Get the active timetable
     const activeTimetable = await db.timetable.findFirst({
       where: {
+        schoolId, // Add school isolation
         isActive: true,
       },
     });
@@ -58,6 +65,7 @@ export async function getTeacherTimetable() {
     // Get timetable slots for this teacher's subject-teacher relationships
     const timetableSlots = await db.timetableSlot.findMany({
       where: {
+        schoolId, // Add school isolation
         timetableId: activeTimetable.id,
         subjectTeacherId: {
           in: subjectTeachers.map(st => st.id),
@@ -87,6 +95,7 @@ export async function getTeacherTimetable() {
     // Get timetable config for working days and periods
     const timetableConfig = await db.timetableConfig.findFirst({
       where: {
+        schoolId, // Add school isolation
         isActive: true,
       },
       include: {
@@ -174,9 +183,14 @@ function formatTime(dateTime: Date): string {
  */
 export async function getTimeSlots() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get active timetable config
     const timetableConfig = await db.timetableConfig.findFirst({
       where: {
+        schoolId, // Add school isolation
         isActive: true,
       },
       include: {

@@ -11,8 +11,15 @@ export async function getExamResults(filters?: ResultFilterValues) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
     // Build the query
-    const where: any = {};
+    const where: any = {
+      schoolId // CRITICAL: Filter by current school
+    };
 
     // Add filters if provided
     if (filters) {
@@ -152,8 +159,16 @@ export async function getExamResultById(examId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
     const exam = await db.exam.findUnique({
-      where: { id: examId },
+      where: { 
+        id: examId,
+        schoolId // CRITICAL: Ensure exam belongs to current school
+      },
       include: {
         subject: true,
         examType: true,
@@ -275,14 +290,27 @@ export async function getStudentResults(studentId: string, termId?: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
     // Build the query
     const where: any = {
-      studentId
+      studentId,
+      student: {
+        schoolId // CRITICAL: Ensure student belongs to current school
+      }
     };
 
     if (termId) {
       where.exam = {
-        termId
+        termId,
+        schoolId // CRITICAL: Ensure exam belongs to current school
+      };
+    } else {
+      where.exam = {
+        schoolId // CRITICAL: Ensure exam belongs to current school
       };
     }
 
@@ -576,14 +604,26 @@ export async function getResultFilters() {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
     const [subjects, examTypes, terms] = await Promise.all([
       db.subject.findMany({
+        where: { schoolId }, // CRITICAL: Filter by current school
         orderBy: { name: 'asc' }
       }),
       db.examType.findMany({
+        where: { schoolId }, // CRITICAL: Filter by current school
         orderBy: { name: 'asc' }
       }),
       db.term.findMany({
+        where: { 
+          academicYear: {
+            schoolId // CRITICAL: Filter by current school
+          }
+        },
         orderBy: { startDate: 'desc' },
         include: {
           academicYear: true
@@ -593,6 +633,7 @@ export async function getResultFilters() {
 
     // For grades/classes, get distinct class names
     const classes = await db.class.findMany({
+      where: { schoolId }, // CRITICAL: Filter by current school
       orderBy: { name: 'asc' },
       distinct: ['name'],
     });

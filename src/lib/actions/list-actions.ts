@@ -16,11 +16,17 @@ export async function getStudentsList(params: {
   status?: string;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, search, classId, sectionId, status } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (search) {
       where.user = {
@@ -105,11 +111,17 @@ export async function getTeachersList(params: {
   subjectId?: string;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, search, departmentId, subjectId } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (search) {
       where.user = {
@@ -194,11 +206,17 @@ export async function getParentsList(params: {
   search?: string;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, search } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (search) {
       where.user = {
@@ -273,11 +291,17 @@ export async function getAttendanceList(params: {
   status?: AttendanceStatus;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, classId, sectionId, startDate, endDate, status } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (classId || sectionId) {
       where.student = {
@@ -358,11 +382,17 @@ export async function getFeePaymentsList(params: {
   endDate?: Date;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, studentId, status, startDate, endDate } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (studentId) {
       where.studentId = studentId;
@@ -428,11 +458,17 @@ export async function getExamsList(params: {
   upcoming?: boolean;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, subjectId, termId, upcoming } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
 
     if (subjectId) {
       where.subjectId = subjectId;
@@ -498,11 +534,17 @@ export async function getAssignmentsList(params: {
   status?: string;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, classId, subjectId, status } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (classId) {
       where.classes = {
@@ -578,11 +620,17 @@ export async function getAnnouncementsList(params: {
   targetRole?: UserRole;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, targetRole } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (targetRole) {
       where.targetAudience = {
@@ -634,11 +682,17 @@ export async function getEventsList(params: {
   type?: string;
 }) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { page = 1, limit = ITEMS_PER_PAGE, upcoming, type } = params;
     const { skip, take } = getPaginationParams(page, limit);
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      schoolId // Add school isolation
+    };
     
     if (upcoming !== undefined) {
       const now = new Date();

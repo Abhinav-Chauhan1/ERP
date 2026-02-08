@@ -17,7 +17,12 @@ export interface ActionResult<T = any> {
  */
 export async function getGradeScale(): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const gradeScale = await db.gradeScale.findMany({
+      where: { schoolId }, // Add school isolation
       orderBy: {
         maxMarks: "desc",
       },
@@ -104,6 +109,10 @@ export async function calculateGradeForMarks(
  */
 export async function recalculateGradesForTerm(termId: string): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Fetch grade scale
     const gradeScaleResult = await getGradeScale();
 
@@ -116,10 +125,11 @@ export async function recalculateGradesForTerm(termId: string): Promise<ActionRe
 
     const gradeScale = gradeScaleResult.data;
 
-    // Get all exams in the term
+    // Get all exams in the term with school isolation
     const exams = await db.exam.findMany({
       where: {
         termId,
+        schoolId, // Add school isolation
       },
       select: {
         id: true,
@@ -193,6 +203,10 @@ export async function recalculateGradesForTerm(termId: string): Promise<ActionRe
  */
 export async function recalculateGradesForExam(examId: string): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Fetch grade scale
     const gradeScaleResult = await getGradeScale();
 
@@ -205,10 +219,11 @@ export async function recalculateGradesForExam(examId: string): Promise<ActionRe
 
     const gradeScale = gradeScaleResult.data;
 
-    // Get exam details
+    // Get exam details with school isolation
     const exam = await db.exam.findUnique({
       where: {
         id: examId,
+        schoolId, // Add school isolation
       },
       select: {
         id: true,

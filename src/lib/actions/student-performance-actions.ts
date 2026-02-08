@@ -9,7 +9,7 @@ import { calculateGrade } from "@/lib/utils/grade-calculator";
 /**
  * Get the current student details based on authenticated user
  */
-async function getCurrentStudent() {
+async function getCurrentStudent(schoolId: string) {
   const session = await auth();
   const clerkUser = session?.user;
 
@@ -26,9 +26,10 @@ async function getCurrentStudent() {
     return null;
   }
 
-  const student = await db.student.findUnique({
+  const student = await db.student.findFirst({
     where: {
-      userId: dbUser.id
+      userId: dbUser.id,
+      schoolId // Add school isolation
     },
     include: {
       enrollments: {
@@ -55,7 +56,11 @@ async function getCurrentStudent() {
  * Get overall performance summary
  */
 export async function getPerformanceSummary() {
-  const student = await getCurrentStudent();
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const student = await getCurrentStudent(schoolId);
 
   if (!student) {
     redirect("/login");
@@ -92,6 +97,7 @@ export async function getPerformanceSummary() {
     where: {
       studentId: student.id,
       exam: {
+        schoolId, // Add school isolation
         subjectId: {
           in: subjectIds
         }
@@ -133,6 +139,7 @@ export async function getPerformanceSummary() {
   // Try to use grade scale from database if available
   const gradeScale = await db.gradeScale.findFirst({
     where: {
+      schoolId, // Add school isolation
       minMarks: { lte: overallPercentage },
       maxMarks: { gte: overallPercentage }
     }
@@ -159,7 +166,11 @@ export async function getPerformanceSummary() {
  * Get subject performance data
  */
 export async function getSubjectPerformance() {
-  const student = await getCurrentStudent();
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const student = await getCurrentStudent(schoolId);
 
   if (!student) {
     redirect("/login");
@@ -175,6 +186,7 @@ export async function getSubjectPerformance() {
   // Get subjects for the student's class
   const subjectClasses = await db.subjectClass.findMany({
     where: {
+      schoolId, // Add school isolation
       classId: currentEnrollment.classId
     },
     include: {
@@ -185,7 +197,10 @@ export async function getSubjectPerformance() {
   // Get all exam results for the student
   const examResults = await db.examResult.findMany({
     where: {
-      studentId: student.id
+      studentId: student.id,
+      exam: {
+        schoolId // Add school isolation
+      }
     },
     include: {
       exam: {
@@ -239,7 +254,11 @@ export async function getSubjectPerformance() {
  * Get performance trends over time
  */
 export async function getPerformanceTrends() {
-  const student = await getCurrentStudent();
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const student = await getCurrentStudent(schoolId);
 
   if (!student) {
     redirect("/login");
@@ -259,6 +278,7 @@ export async function getPerformanceTrends() {
   // Get terms for the academic year
   const terms = await db.term.findMany({
     where: {
+      schoolId, // Add school isolation
       academicYearId: currentEnrollment.class.academicYearId
     },
     orderBy: {
@@ -269,7 +289,10 @@ export async function getPerformanceTrends() {
   // Get exam results grouped by term
   const examResults = await db.examResult.findMany({
     where: {
-      studentId: student.id
+      studentId: student.id,
+      exam: {
+        schoolId // Add school isolation
+      }
     },
     include: {
       exam: {
@@ -330,6 +353,7 @@ export async function getPerformanceTrends() {
   // Get subject trends (performance in each subject over terms)
   const subjects = await db.subjectClass.findMany({
     where: {
+      schoolId, // Add school isolation
       classId: currentEnrollment.classId
     },
     include: {
@@ -397,7 +421,11 @@ export async function getPerformanceTrends() {
  * Get attendance vs performance data
  */
 export async function getAttendanceVsPerformance() {
-  const student = await getCurrentStudent();
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const student = await getCurrentStudent(schoolId);
 
   if (!student) {
     redirect("/login");
@@ -411,6 +439,7 @@ export async function getAttendanceVsPerformance() {
   // Get attendance records by month
   const attendanceRecords = await db.studentAttendance.findMany({
     where: {
+      schoolId, // Add school isolation
       studentId: student.id,
       date: {
         gte: startDate
@@ -423,6 +452,7 @@ export async function getAttendanceVsPerformance() {
     where: {
       studentId: student.id,
       exam: {
+        schoolId, // Add school isolation
         examDate: {
           gte: startDate
         }
@@ -483,7 +513,11 @@ export async function getAttendanceVsPerformance() {
  * Get class rank analysis
  */
 export async function getClassRankAnalysis() {
-  const student = await getCurrentStudent();
+  // Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const student = await getCurrentStudent(schoolId);
 
   if (!student) {
     redirect("/login");
@@ -512,6 +546,7 @@ export async function getClassRankAnalysis() {
   if (currentEnrollment) {
     classSize = await db.classEnrollment.count({
       where: {
+        schoolId, // Add school isolation
         classId: currentEnrollment.classId,
         status: "ACTIVE"
       }

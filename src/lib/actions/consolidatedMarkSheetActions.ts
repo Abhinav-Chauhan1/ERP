@@ -38,6 +38,10 @@ export interface StudentMarkData {
  */
 export async function getConsolidatedMarkSheet(filters: ConsolidatedMarkSheetFilters) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     if (!filters.classId || !filters.sectionId) {
       return {
         success: false,
@@ -45,8 +49,10 @@ export async function getConsolidatedMarkSheet(filters: ConsolidatedMarkSheetFil
       };
     }
 
-    // Build where clause for exams
-    const examWhere: any = {};
+    // Build where clause for exams with school isolation
+    const examWhere: any = {
+      schoolId, // Add school isolation
+    };
 
     if (filters.examId) {
       examWhere.id = filters.examId;
@@ -56,9 +62,10 @@ export async function getConsolidatedMarkSheet(filters: ConsolidatedMarkSheetFil
       examWhere.termId = filters.termId;
     }
 
-    // Get all students in the class/section
+    // Get all students in the class/section with school isolation
     const students = await db.student.findMany({
       where: {
+        schoolId, // Add school isolation
         enrollments: {
           some: {
             classId: filters.classId,
@@ -221,19 +228,27 @@ export async function getConsolidatedMarkSheet(filters: ConsolidatedMarkSheetFil
  */
 export async function getConsolidatedMarkSheetFilters() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const [terms, classes, sections, exams] = await Promise.all([
       db.term.findMany({
+        where: { schoolId }, // Add school isolation
         orderBy: { startDate: 'desc' },
         include: { academicYear: true }
       }),
       db.class.findMany({
+        where: { schoolId }, // Add school isolation
         orderBy: { name: 'asc' },
         include: { academicYear: true }
       }),
       db.classSection.findMany({
+        where: { schoolId }, // Add school isolation
         orderBy: { name: 'asc' }
       }),
       db.exam.findMany({
+        where: { schoolId }, // Add school isolation
         orderBy: { examDate: 'desc' },
         include: {
           subject: true,

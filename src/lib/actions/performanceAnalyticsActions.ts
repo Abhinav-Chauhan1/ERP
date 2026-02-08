@@ -10,7 +10,13 @@ export async function getPerformanceAnalytics(filters?: {
   dateTo?: Date;
 }) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
 
     if (filters?.dateFrom || filters?.dateTo) {
       where.createdAt = {};
@@ -18,18 +24,20 @@ export async function getPerformanceAnalytics(filters?: {
       if (filters.dateTo) where.createdAt.lte = filters.dateTo;
     }
 
-    // Get exam results
+    // Get exam results with school isolation
     const results = await db.examResult.findMany({
       where: {
         ...where,
         ...(filters?.classId && {
           exam: {
             classId: filters.classId,
+            schoolId, // Add school isolation
           },
         }),
         ...(filters?.subjectId && {
           exam: {
             subjectId: filters.subjectId,
+            schoolId, // Add school isolation
           },
         }),
       },
@@ -85,10 +93,17 @@ export async function getPerformanceAnalytics(filters?: {
 // Get subject-wise performance
 export async function getSubjectWisePerformance(classId?: string) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
     if (classId) {
       where.exam = {
         classId,
+        schoolId, // Add school isolation
       };
     }
 
@@ -145,10 +160,17 @@ export async function getSubjectWisePerformance(classId?: string) {
 // Get pass/fail rates
 export async function getPassFailRates(classId?: string) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
     if (classId) {
       where.exam = {
         classId,
+        schoolId, // Add school isolation
       };
     }
 
@@ -190,7 +212,12 @@ export async function getPassFailRates(classId?: string) {
 // Get performance trends
 export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId?: string) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const where: any = {
+      schoolId, // Add school isolation
       createdAt: {
         gte: dateFrom,
         lte: dateTo,
@@ -200,6 +227,7 @@ export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId
     if (classId) {
       where.exam = {
         classId,
+        schoolId, // Add school isolation
       };
     }
 
@@ -251,10 +279,17 @@ export async function getPerformanceTrends(dateFrom: Date, dateTo: Date, classId
 // Get top performers
 export async function getTopPerformers(limit: number = 10, classId?: string) {
   try {
-    const where: any = {};
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // Add school isolation
+    };
     if (classId) {
       where.exam = {
         classId,
+        schoolId, // Add school isolation
       };
     }
 

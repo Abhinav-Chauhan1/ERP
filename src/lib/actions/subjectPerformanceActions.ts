@@ -31,8 +31,13 @@ interface SubjectStats {
 
 export async function getSubjectPerformanceFilters() {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const [classes, terms] = await Promise.all([
       db.class.findMany({
+        where: { schoolId }, // Add school isolation
         include: {
           sections: true,
           academicYear: true,
@@ -40,6 +45,7 @@ export async function getSubjectPerformanceFilters() {
         orderBy: { name: "asc" },
       }),
       db.term.findMany({
+        where: { schoolId }, // Add school isolation
         include: {
           academicYear: true,
         },
@@ -63,18 +69,26 @@ export async function getSubjectPerformanceFilters() {
 
 export async function getSubjectPerformanceReport(filters: SubjectPerformanceFilters) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const { termId, classId, sectionId } = filters;
 
-    // Build the where clause for exam results
+    // Build the where clause for exam results with school isolation
     const whereClause: any = {
+      schoolId, // Add school isolation
       exam: {
         termId,
+        schoolId, // Add school isolation
       },
     };
 
     // If class or section is specified, filter by enrolled students
     if (classId || sectionId) {
-      const enrollmentWhere: any = {};
+      const enrollmentWhere: any = {
+        schoolId, // Add school isolation
+      };
       if (classId) enrollmentWhere.classId = classId;
       if (sectionId) enrollmentWhere.sectionId = sectionId;
 
@@ -208,6 +222,10 @@ export async function getSubjectPerformanceReport(filters: SubjectPerformanceFil
 
 export async function exportSubjectPerformanceToPDF(filters: SubjectPerformanceFilters) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get the performance data
     const result = await getSubjectPerformanceReport(filters);
 
@@ -215,17 +233,17 @@ export async function exportSubjectPerformanceToPDF(filters: SubjectPerformanceF
       return { success: false, error: "Failed to fetch performance data" };
     }
 
-    // Get filter details for the report header
+    // Get filter details for the report header with school isolation
     const [term, classInfo, sectionInfo] = await Promise.all([
       db.term.findUnique({
-        where: { id: filters.termId },
+        where: { id: filters.termId, schoolId }, // Add school isolation
         include: { academicYear: true },
       }),
       filters.classId
-        ? db.class.findUnique({ where: { id: filters.classId } })
+        ? db.class.findUnique({ where: { id: filters.classId, schoolId } }) // Add school isolation
         : null,
       filters.sectionId
-        ? db.classSection.findUnique({ where: { id: filters.sectionId } })
+        ? db.classSection.findUnique({ where: { id: filters.sectionId, schoolId } }) // Add school isolation
         : null,
     ]);
 
@@ -347,6 +365,10 @@ export async function exportSubjectPerformanceToPDF(filters: SubjectPerformanceF
 
 export async function exportSubjectPerformanceToExcel(filters: SubjectPerformanceFilters) {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get the performance data
     const result = await getSubjectPerformanceReport(filters);
 
@@ -354,17 +376,17 @@ export async function exportSubjectPerformanceToExcel(filters: SubjectPerformanc
       return { success: false, error: "Failed to fetch performance data" };
     }
 
-    // Get filter details for the report header
+    // Get filter details for the report header with school isolation
     const [term, classInfo, sectionInfo] = await Promise.all([
       db.term.findUnique({
-        where: { id: filters.termId },
+        where: { id: filters.termId, schoolId }, // Add school isolation
         include: { academicYear: true },
       }),
       filters.classId
-        ? db.class.findUnique({ where: { id: filters.classId } })
+        ? db.class.findUnique({ where: { id: filters.classId, schoolId } }) // Add school isolation
         : null,
       filters.sectionId
-        ? db.classSection.findUnique({ where: { id: filters.sectionId } })
+        ? db.classSection.findUnique({ where: { id: filters.sectionId, schoolId } }) // Add school isolation
         : null,
     ]);
 

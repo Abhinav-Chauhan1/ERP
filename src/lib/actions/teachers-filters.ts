@@ -13,7 +13,13 @@ export interface TeacherFilters {
 
 export async function getFilteredTeachers(filters: TeacherFilters) {
   try {
-    const where: Prisma.TeacherWhereInput = {};
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: Prisma.TeacherWhereInput = {
+      schoolId // Add school isolation
+    };
 
     // Text search across multiple fields
     if (filters.search) {
@@ -95,7 +101,14 @@ export async function getFilteredTeachers(filters: TeacherFilters) {
 
 export async function getTeacherFilterOptions() {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const subjects = await db.subject.findMany({
+      where: {
+        schoolId // Add school isolation
+      },
       select: {
         id: true,
         name: true,

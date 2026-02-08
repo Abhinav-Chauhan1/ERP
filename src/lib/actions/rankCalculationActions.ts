@@ -27,6 +27,10 @@ export async function calculateClassRanks(
   termId: string
 ): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Authenticate user
     const session = await auth();
     const userId = session?.user?.id;
@@ -50,12 +54,14 @@ export async function calculateClassRanks(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    // Fetch all report cards for the class and term
+    // Fetch all report cards for the class and term with school isolation
     // Only include students who have marks (exclude those without totalMarks)
     const reportCards = await db.reportCard.findMany({
       where: {
         termId,
+        schoolId, // Add school isolation
         student: {
+          schoolId, // Add school isolation
           enrollments: {
             some: {
               classId,
@@ -185,6 +191,10 @@ export async function calculateClassRanks(
  */
 export async function getClassesAndTermsForRanks(): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -192,9 +202,10 @@ export async function getClassesAndTermsForRanks(): Promise<ActionResult> {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Fetch classes with current academic year
+    // Fetch classes with current academic year with school isolation
     const classes = await db.class.findMany({
       where: {
+        schoolId, // Add school isolation
         academicYear: {
           isCurrent: true,
         },
@@ -242,6 +253,10 @@ export async function getRankStatistics(
   termId: string
 ): Promise<ActionResult> {
   try {
+    // CRITICAL: Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -249,11 +264,13 @@ export async function getRankStatistics(
       return { success: false, error: "Unauthorized" };
     }
 
-    // Get report cards with ranks
+    // Get report cards with ranks with school isolation
     const reportCards = await db.reportCard.findMany({
       where: {
         termId,
+        schoolId, // Add school isolation
         student: {
+          schoolId, // Add school isolation
           enrollments: {
             some: {
               classId,
