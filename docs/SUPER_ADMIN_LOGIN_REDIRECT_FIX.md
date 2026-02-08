@@ -3,8 +3,27 @@
 ## Problem
 Super admin login redirects to `localhost/sd` in production instead of the correct super-admin dashboard.
 
-## Root Cause
-The issue is caused by incorrect `AUTH_URL` environment variable configuration in production. NextAuth uses this URL as the base for all redirects.
+## Root Causes
+
+There are TWO potential root causes for this issue:
+
+### 1. Missing or Incorrect ROOT_DOMAIN Environment Variable (Most Common)
+
+The middleware redirects super-admin routes from subdomains to the main domain. If `ROOT_DOMAIN` is not set or is set to `localhost`, it will redirect to `localhost` even in production.
+
+**Location:** `middleware.ts` lines 118-122
+
+```typescript
+if (pathname.startsWith('/super-admin')) {
+  const mainDomainUrl = new URL(req.url);
+  mainDomainUrl.hostname = process.env.ROOT_DOMAIN || 'localhost';  // ← ISSUE HERE
+  return NextResponse.redirect(mainDomainUrl);
+}
+```
+
+### 2. Incorrect AUTH_URL Environment Variable
+
+NextAuth uses `AUTH_URL` as the base for all redirects. If this includes path segments or is set to localhost in production, redirects will fail.
 
 ## Solution
 
@@ -13,11 +32,19 @@ The issue is caused by incorrect `AUTH_URL` environment variable configuration i
 Verify your production environment variables (Vercel, Railway, etc.):
 
 ```bash
-# ❌ WRONG - includes /sd in the path
+# ❌ WRONG - ROOT_DOMAIN not set or set to localhost
+ROOT_DOMAIN=localhost  # or missing entirely
+
+# ✅ CORRECT - set to your actual domain
+ROOT_DOMAIN=sikshamitra.com
+NEXT_PUBLIC_ROOT_DOMAIN=sikshamitra.com
+
+# ❌ WRONG - AUTH_URL includes /sd in the path
 AUTH_URL=https://yourdomain.com/sd
 
 # ✅ CORRECT - base domain only
 AUTH_URL=https://yourdomain.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
 ### 2. Update Environment Variables
@@ -25,24 +52,31 @@ AUTH_URL=https://yourdomain.com
 **For Vercel:**
 1. Go to your project settings
 2. Navigate to Environment Variables
-3. Update `AUTH_URL` to your base domain (e.g., `https://yourdomain.com`)
-4. Remove any path segments like `/sd`
-5. Redeploy your application
+3. Add or update these variables:
+   - `ROOT_DOMAIN` = `yourdomain.com` (without https://)
+   - `NEXT_PUBLIC_ROOT_DOMAIN` = `yourdomain.com`
+   - `AUTH_URL` = `https://yourdomain.com` (no path segments)
+   - `NEXT_PUBLIC_APP_URL` = `https://yourdomain.com`
+4. Redeploy your application
 
 **For Railway:**
 1. Go to your project settings
 2. Navigate to Variables
-3. Update `AUTH_URL` to your base domain
+3. Add or update the same variables as above
 4. Redeploy
 
 **For other platforms:**
-Update the `AUTH_URL` in your deployment configuration to match your production domain without any path segments.
+Update these environment variables in your deployment configuration.
 
 ### 3. Verify Other Auth Variables
 
 Ensure these are also correctly set:
 
 ```bash
+# Domain configuration (CRITICAL - prevents localhost redirects)
+ROOT_DOMAIN=yourdomain.com
+NEXT_PUBLIC_ROOT_DOMAIN=yourdomain.com
+
 # Base URL for your application
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 
@@ -78,25 +112,44 @@ After updating environment variables and redeploying:
 
 ### 6. Common Mistakes to Avoid
 
+❌ **Don't forget ROOT_DOMAIN (most common issue):**
+```bash
+# Missing ROOT_DOMAIN causes localhost redirects
+# Add these to your production environment:
+ROOT_DOMAIN=yourdomain.com
+NEXT_PUBLIC_ROOT_DOMAIN=yourdomain.com
+```
+
+❌ **Don't include protocol in ROOT_DOMAIN:**
+```bash
+ROOT_DOMAIN=https://yourdomain.com  # WRONG
+ROOT_DOMAIN=yourdomain.com  # CORRECT
+```
+
 ❌ **Don't include paths in AUTH_URL:**
 ```bash
 AUTH_URL=https://yourdomain.com/sd  # WRONG
 AUTH_URL=https://yourdomain.com/login  # WRONG
+AUTH_URL=https://yourdomain.com  # CORRECT
 ```
 
 ✅ **Use base domain only:**
 ```bash
-AUTH_URL=https://yourdomain.com  # CORRECT
+ROOT_DOMAIN=yourdomain.com
+AUTH_URL=https://yourdomain.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
 ❌ **Don't use localhost in production:**
 ```bash
+ROOT_DOMAIN=localhost  # WRONG for production
 AUTH_URL=http://localhost:3000  # WRONG for production
 ```
 
 ✅ **Use your actual production domain:**
 ```bash
-AUTH_URL=https://yourdomain.com  # CORRECT
+ROOT_DOMAIN=yourdomain.com
+AUTH_URL=https://yourdomain.com
 ```
 
 ### 7. Debugging

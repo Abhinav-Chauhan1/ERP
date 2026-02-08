@@ -157,6 +157,35 @@ if (authUrl && appUrl && isValidUrl(authUrl) && isValidUrl(appUrl)) {
   }
 }
 
+// 6.5. Validate ROOT_DOMAIN (critical for subdomain routing)
+console.log('\n📋 Checking ROOT_DOMAIN...');
+const rootDomain = process.env.ROOT_DOMAIN;
+
+if (!rootDomain) {
+  result.errors.push(
+    'ROOT_DOMAIN is not set\n' +
+    '  This is REQUIRED to prevent super-admin redirects to localhost\n' +
+    '  Set to your production domain (e.g., sikshamitra.com) or localhost for development'
+  );
+  result.valid = false;
+} else if (rootDomain === 'localhost' && process.env.NODE_ENV === 'production') {
+  result.errors.push(
+    'ROOT_DOMAIN is set to "localhost" in production\n' +
+    '  This will cause super-admin redirects to localhost\n' +
+    `  Set to your actual domain (e.g., sikshamitra.com)`
+  );
+  result.valid = false;
+} else if (rootDomain.includes('http://') || rootDomain.includes('https://')) {
+  result.errors.push(
+    `ROOT_DOMAIN should not include protocol: ${rootDomain}\n` +
+    `  ❌ Current: ${rootDomain}\n` +
+    `  ✅ Should be: ${rootDomain.replace(/https?:\/\//, '')}`
+  );
+  result.valid = false;
+} else {
+  console.log(`  ✅ Valid: ${rootDomain}`);
+}
+
 // 7. Validate R2 Storage (if configured)
 console.log('\n📋 Checking R2 Storage configuration...');
 const r2AccountId = process.env.R2_ACCOUNT_ID;
