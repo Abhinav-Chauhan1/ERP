@@ -4,10 +4,11 @@ This document summarizes all fixes implemented to resolve production issues.
 
 ## Overview
 
-Three critical issues were identified and fixed:
+Four critical issues were identified and fixed:
 1. Super-admin login redirecting to localhost in production
 2. CSRF protection blocking legitimate requests
 3. Administrator update failing with Server Components render error
+4. Admin email not verified by default during school onboarding
 
 All fixes have been implemented and tested.
 
@@ -184,6 +185,62 @@ These don't need changes because they're never called from super-admin context.
 
 ---
 
+## Fix 4: Admin Email Not Verified During Onboarding
+
+### Problem
+When creating admin users during school onboarding, the admin email was not verified by default, preventing immediate login.
+
+### Root Cause
+In `src/lib/actions/onboarding/setup-actions.ts`, admin users were created with `emailVerified: null` instead of `new Date()`.
+
+This was inconsistent with the `createBaseUser` function which correctly sets `emailVerified: new Date()` for admin-created users.
+
+### Solution
+Updated both occurrences in `src/lib/actions/onboarding/setup-actions.ts` to set `emailVerified: new Date()`:
+
+1. Line 211: `completeSystemSetup` function
+2. Line 416: Admin creation in setup wizard
+
+### Why This Is Correct
+
+**Admin-Created Users Should Be Pre-Verified:**
+- Trust model: Super-admins create accounts on behalf of the organization
+- Immediate access: Users need to login right after account creation
+- No email loop: Avoids complexity during onboarding
+- Industry standard: Most admin panels pre-verify admin-created accounts
+
+**Self-Registered Users Still Require Verification:**
+- Users who register through `/api/auth/register` still get `emailVerified: null`
+- Must verify email before full access
+- This is correct behavior for self-service registration
+
+### Consistency Across Codebase
+
+All admin creation methods now consistently set `emailVerified: new Date()`:
+1. ✅ `createBaseUser` in `usersAction.ts` - Already correct
+2. ✅ `completeSystemSetup` in `setup-actions.ts` - Fixed
+3. ✅ Admin creation in setup wizard - Fixed
+
+### Files Modified
+- `src/lib/actions/onboarding/setup-actions.ts` (2 occurrences)
+
+### Database Migration (Optional)
+
+If you have existing admin users with unverified emails:
+
+```sql
+-- Verify existing admin users
+UPDATE "User"
+SET "emailVerified" = "createdAt"
+WHERE role = 'ADMIN'
+AND "emailVerified" IS NULL;
+```
+
+### Documentation
+- [EMAIL_VERIFICATION_ONBOARDING_FIX.md](./docs/EMAIL_VERIFICATION_ONBOARDING_FIX.md)
+
+---
+
 ## Testing Checklist
 
 ### Super-Admin Login
@@ -219,6 +276,12 @@ These don't need changes because they're never called from super-admin context.
 - [x] Password is hashed correctly
 - [x] User can login with new password
 - [x] Sessions are invalidated after reset
+
+### Email Verification
+- [x] Admin users created during onboarding have verified emails
+- [x] Admin users can login immediately after creation
+- [x] No verification emails sent for admin-created users
+- [x] Self-registered users still require email verification
 
 ---
 
@@ -263,6 +326,10 @@ If issues occur after deployment:
 - Revert changes to `updateAdministrator`, `updateTeacher`, `updateStudent`, and `updateParent` functions
 - Add school context handling for super-admin operations
 
+### Fix 4: Email Verification
+- Revert changes to `setup-actions.ts`
+- Or run database migration to verify existing admin users
+
 ---
 
 ## Related Files
@@ -273,12 +340,14 @@ If issues occur after deployment:
 - `scripts/validate-env-vars.ts`
 - `src/lib/middleware/csrf-protection.ts`
 - `src/lib/actions/usersAction.ts` (4 functions: `updateAdministrator`, `updateTeacher`, `updateStudent`, `updateParent`)
+- `src/lib/actions/onboarding/setup-actions.ts` (2 occurrences of admin creation)
 
 ### Documentation Files
 - `docs/SUPER_ADMIN_LOGIN_REDIRECT_FIX.md`
 - `SUPER_ADMIN_REDIRECT_FIX_SUMMARY.md`
 - `docs/CSRF_PROTECTION_FIX.md`
 - `docs/ADMINISTRATOR_UPDATE_FIX.md`
+- `docs/EMAIL_VERIFICATION_ONBOARDING_FIX.md`
 - `PRODUCTION_FIXES_SUMMARY.md` (this file)
 
 ### Unchanged Files (Verified Working)

@@ -208,7 +208,7 @@ async function completeSystemSetup(data: SetupData) {
                 phone: data.adminPhone || null,
                 role: "ADMIN",
                 active: true,
-                emailVerified: null, // Require email verification
+                emailVerified: new Date(), // Admin-created users are pre-verified
                 // Set mobile to email if no separate mobile provided (for unified auth)
                 mobile: data.adminEmail?.includes('@') ? null : data.adminEmail,
             },
@@ -413,7 +413,7 @@ async function completeSchoolSetup(schoolId: string, data: SetupData) {
                         phone: data.adminPhone || null,
                         role: "ADMIN", // Explicitly set role
                         active: true,
-                        emailVerified: null, // Require email verification
+                        emailVerified: new Date(), // Admin-created users are pre-verified
                         mobile: data.adminEmail.includes('@') ? null : data.adminEmail,
                     }
                 });

@@ -1,7 +1,7 @@
 # Quick Fix Reference
 
 ## Summary
-Fixed 3 critical production issues affecting super-admin functionality and user management.
+Fixed 4 critical production issues affecting super-admin functionality, user management, and onboarding.
 
 ---
 
@@ -52,6 +52,29 @@ Changed to:
 
 ---
 
+## Issue 4: Admin Email Not Verified During Onboarding
+
+**Symptom**: Admin users created during school onboarding cannot login immediately because email is not verified
+
+**Fix**: Modified 2 occurrences in `src/lib/actions/onboarding/setup-actions.ts`:
+- Changed `emailVerified: null` to `emailVerified: new Date()`
+- Line 211: `completeSystemSetup` function
+- Line 416: Admin creation in setup wizard
+
+**Why**: Admin-created users should be pre-verified for immediate access. Self-registered users still require email verification.
+
+**Files**: `src/lib/actions/onboarding/setup-actions.ts`
+
+**Optional Database Migration**:
+```sql
+UPDATE "User"
+SET "emailVerified" = "createdAt"
+WHERE role = 'ADMIN'
+AND "emailVerified" IS NULL;
+```
+
+---
+
 ## Testing Quick Checklist
 
 ### Super-Admin
@@ -76,6 +99,11 @@ Changed to:
 - [ ] Login flow completes
 - [ ] No CSRF errors in console
 
+### Email Verification
+- [ ] New admin users created during onboarding have verified emails
+- [ ] Admin users can login immediately after creation
+- [ ] Check database: `SELECT email, emailVerified FROM "User" WHERE role = 'ADMIN' ORDER BY "createdAt" DESC LIMIT 10;`
+
 ---
 
 ## Deployment Steps
@@ -90,14 +118,25 @@ Changed to:
 2. **Deploy code changes**:
    - `src/lib/middleware/csrf-protection.ts`
    - `src/lib/actions/usersAction.ts`
+   - `src/lib/actions/onboarding/setup-actions.ts`
    - `scripts/validate-env-vars.ts`
 
-3. **Test immediately after deployment**:
+3. **Optional: Fix existing admin users**:
+   ```sql
+   UPDATE "User"
+   SET "emailVerified" = "createdAt"
+   WHERE role = 'ADMIN'
+   AND "emailVerified" IS NULL;
+   ```
+
+4. **Test immediately after deployment**:
    - Super-admin login
    - School code validation
    - User updates from super-admin panel
+   - Create new school and admin user
+   - Verify admin can login immediately
 
-4. **Monitor error logs** for 24 hours
+5. **Monitor error logs** for 24 hours
 
 ---
 
@@ -108,6 +147,7 @@ If issues occur:
 1. **Environment variables**: Set `ROOT_DOMAIN` to correct value
 2. **CSRF middleware**: Revert `src/lib/middleware/csrf-protection.ts`
 3. **User actions**: Revert `src/lib/actions/usersAction.ts`
+4. **Email verification**: Revert `src/lib/actions/onboarding/setup-actions.ts`
 
 ---
 
@@ -117,6 +157,7 @@ If issues occur:
 - [docs/SUPER_ADMIN_LOGIN_REDIRECT_FIX.md](./docs/SUPER_ADMIN_LOGIN_REDIRECT_FIX.md) - Fix 1 details
 - [docs/CSRF_PROTECTION_FIX.md](./docs/CSRF_PROTECTION_FIX.md) - Fix 2 details
 - [docs/ADMINISTRATOR_UPDATE_FIX.md](./docs/ADMINISTRATOR_UPDATE_FIX.md) - Fix 3 details
+- [docs/EMAIL_VERIFICATION_ONBOARDING_FIX.md](./docs/EMAIL_VERIFICATION_ONBOARDING_FIX.md) - Fix 4 details
 
 ---
 
