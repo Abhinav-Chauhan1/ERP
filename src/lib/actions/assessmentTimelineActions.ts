@@ -5,9 +5,14 @@ import { db } from "@/lib/db";
 // Get assessment timeline
 export async function getAssessmentTimeline(dateFrom: Date, dateTo: Date) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get exams
     const exams = await db.exam.findMany({
       where: {
+        schoolId, // Add school isolation
         examDate: {
           gte: dateFrom,
           lte: dateTo,
@@ -25,6 +30,7 @@ export async function getAssessmentTimeline(dateFrom: Date, dateTo: Date) {
     // Get assignments
     const assignments = await db.assignment.findMany({
       where: {
+        schoolId, // Add school isolation
         dueDate: {
           gte: dateFrom,
           lte: dateTo,
@@ -109,9 +115,14 @@ export async function getUpcomingAssessments() {
 // Get timeline statistics
 export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const [examsCount, assignmentsCount, completedExams, completedAssignments] = await Promise.all([
       db.exam.count({
         where: {
+          schoolId, // Add school isolation
           examDate: {
             gte: dateFrom,
             lte: dateTo,
@@ -120,6 +131,7 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
       }),
       db.assignment.count({
         where: {
+          schoolId, // Add school isolation
           dueDate: {
             gte: dateFrom,
             lte: dateTo,
@@ -128,6 +140,7 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
       }),
       db.exam.count({
         where: {
+          schoolId, // Add school isolation
           examDate: {
             gte: dateFrom,
             lte: new Date(), // Only count past exams as completed
@@ -136,6 +149,7 @@ export async function getTimelineStats(dateFrom: Date, dateTo: Date) {
       }),
       db.assignment.count({
         where: {
+          schoolId, // Add school isolation
           dueDate: {
             gte: dateFrom,
             lte: new Date(), // Only count past assignments as completed

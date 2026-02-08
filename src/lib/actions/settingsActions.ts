@@ -27,13 +27,18 @@ export async function getSystemSettings() {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    // Use cached query
-    let settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
 
-    // Create default settings if none exist
+    // Use cached query with schoolId
+    let settings = await getCachedSystemSettings(schoolId);
+
+    // Create default settings if none exist for this school
     if (!settings) {
       settings = await db.systemSettings.create({
         data: {
+          schoolId, // CRITICAL: Associate with school
           schoolName: "School Name",
           timezone: "UTC",
           defaultGradingScale: "PERCENTAGE",
@@ -51,7 +56,7 @@ export async function getSystemSettings() {
       });
       
       // Invalidate cache after creating new settings
-      await invalidateCache([CACHE_TAGS.SETTINGS]);
+      await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
     }
 
     return { success: true, data: settings };
@@ -65,14 +70,37 @@ export async function getSystemSettings() {
 // This now uses the cached version directly
 export async function getPublicSystemSettings() {
   try {
-    // Use cached query directly
-    let settings = await getCachedSystemSettings();
+    // Try to get school from subdomain for public access
+    const { getSchoolFromSubdomain } = await import('@/lib/utils/subdomain-helper');
+    
+    let school;
+    try {
+      school = await getSchoolFromSubdomain();
+    } catch (error) {
+      // Subdomain not found or error, fall back to first school
+      console.warn("Could not get school from subdomain, using fallback");
+    }
+    
+    let settings;
+    
+    if (school) {
+      // Get settings for subdomain school
+      settings = await getCachedSystemSettings(school.id);
+    } else {
+      // Fallback: get first school's settings
+      settings = await db.systemSettings.findFirst({
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+    }
 
     // Create default settings if none exist
-    if (!settings) {
+    if (!settings && school) {
       settings = await db.systemSettings.create({
         data: {
-          schoolName: "School Name",
+          schoolId: school.id, // CRITICAL: Associate with school
+          schoolName: school.name,
           timezone: "UTC",
           defaultGradingScale: "PERCENTAGE",
           passingGrade: 50,
@@ -89,7 +117,7 @@ export async function getPublicSystemSettings() {
       });
       
       // Invalidate cache after creating new settings
-      await invalidateCache([CACHE_TAGS.SETTINGS]);
+      await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${school.id}`]);
     }
 
     return { success: true, data: settings };
@@ -136,10 +164,16 @@ export async function updateSchoolInfo(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const settings = await db.systemSettings.findUnique({
+      where: { schoolId }, // CRITICAL: Filter by school
+    });
 
     if (!settings) {
-      return { success: false, error: "Settings not found" };
+      return { success: false, error: "Settings not found for this school" };
     }
 
     // Sanitize inputs
@@ -163,12 +197,12 @@ export async function updateSchoolInfo(data: {
     };
 
     const updated = await db.systemSettings.update({
-      where: { id: settings.id },
+      where: { schoolId }, // CRITICAL: Update only current school
       data: sanitizedData,
     });
 
     // Invalidate cache after update
-    await invalidateCache([CACHE_TAGS.SETTINGS]);
+    await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
     
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
@@ -220,14 +254,20 @@ export async function updateAcademicSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const settings = await db.systemSettings.findUnique({
+      where: { schoolId }, // CRITICAL: Filter by school
+    });
 
     if (!settings) {
-      return { success: false, error: "Settings not found" };
+      return { success: false, error: "Settings not found for this school" };
     }
 
     const updated = await db.systemSettings.update({
-      where: { id: settings.id },
+      where: { schoolId }, // CRITICAL: Update only current school
       data: {
         currentAcademicYear: data.currentAcademicYear,
         currentTerm: data.currentTerm,
@@ -240,7 +280,7 @@ export async function updateAcademicSettings(data: {
     });
 
     // Invalidate cache after update
-    await invalidateCache([CACHE_TAGS.SETTINGS]);
+    await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
 
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
@@ -285,14 +325,20 @@ export async function updateNotificationSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const settings = await db.systemSettings.findUnique({
+      where: { schoolId }, // CRITICAL: Filter by school
+    });
 
     if (!settings) {
-      return { success: false, error: "Settings not found" };
+      return { success: false, error: "Settings not found for this school" };
     }
 
     const updated = await db.systemSettings.update({
-      where: { id: settings.id },
+      where: { schoolId }, // CRITICAL: Update only current school
       data: {
         emailEnabled: data.emailEnabled,
         smsEnabled: data.smsEnabled,
@@ -312,7 +358,7 @@ export async function updateNotificationSettings(data: {
     });
 
     // Invalidate cache after update
-    await invalidateCache([CACHE_TAGS.SETTINGS]);
+    await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
 
     revalidatePath("/admin/settings");
     return { success: true, data: updated };
@@ -410,19 +456,25 @@ export async function updateAppearanceSettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const settings = await db.systemSettings.findUnique({
+      where: { schoolId }, // CRITICAL: Filter by school
+    });
 
     if (!settings) {
-      return { success: false, error: "Settings not found" };
+      return { success: false, error: "Settings not found for this school" };
     }
 
     const updated = await db.systemSettings.update({
-      where: { id: settings.id },
+      where: { schoolId }, // CRITICAL: Update only current school
       data,
     });
 
     // Invalidate cache after update
-    await invalidateCache([CACHE_TAGS.SETTINGS]);
+    await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
 
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");

@@ -41,6 +41,10 @@ export type PreviewResponse =
  */
 export async function generateStudentIDCard(studentId: string, academicYear: string, templateId: string = 'STANDARD'): Promise<IDCardGenerationResult | { success: false; error: string }> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
 
     if (!user) {
@@ -63,8 +67,8 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
       };
     }
 
-    // Get student data
-    const studentData = await getStudentDataForIDCard(studentId);
+    // Get student data with school isolation
+    const studentData = await getStudentDataForIDCard(studentId, schoolId);
 
     if (!studentData) {
       return {
@@ -91,10 +95,14 @@ export async function generateStudentIDCard(studentId: string, academicYear: str
  */
 export async function getStudentIDCardPreview(studentId: string, academicYear: string, templateId: string = 'STANDARD'): Promise<PreviewResponse> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const studentData = await getStudentDataForIDCard(studentId);
+    const studentData = await getStudentDataForIDCard(studentId, schoolId);
     if (!studentData) return { success: false, error: 'Student not found' };
 
     const previewUrl = await generateIDCardPreviewService(studentData, academicYear, templateId);
@@ -116,6 +124,10 @@ export async function generateBulkStudentIDCards(
   templateId: string = 'STANDARD'
 ) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
 
     if (!user) {
@@ -146,8 +158,8 @@ export async function generateBulkStudentIDCards(
       };
     }
 
-    // Get students data
-    const studentsData = await getStudentsDataForIDCards(studentIds);
+    // Get students data with school isolation
+    const studentsData = await getStudentsDataForIDCards(studentIds, schoolId);
 
     if (studentsData.length === 0) {
       return {
@@ -192,6 +204,10 @@ export async function generateClassIDCards(
   templateId: string = 'STANDARD'
 ) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
 
     if (!user) {
@@ -222,9 +238,10 @@ export async function generateClassIDCards(
       };
     }
 
-    // Get all students in the class/section
+    // Get all students in the class/section with school isolation
     const enrollments = await db.classEnrollment.findMany({
       where: {
+        schoolId, // Add school isolation
         classId,
         ...(sectionId ? { sectionId } : {}),
         status: "ACTIVE",
@@ -271,12 +288,17 @@ export async function getClassIDCardPreview(
   templateId: string = 'STANDARD'
 ): Promise<PreviewResponse> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    // Get one student from the class
+    // Get one student from the class with school isolation
     const enrollment = await db.classEnrollment.findFirst({
       where: {
+        schoolId, // Add school isolation
         classId,
         status: "ACTIVE",
       },
@@ -304,6 +326,10 @@ export async function getClassIDCardPreview(
  */
 export async function getClassesForIDCardGeneration(): Promise<ActionResponse<ClassData[]>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const user = await currentUser();
 
     if (!user) {
@@ -314,6 +340,9 @@ export async function getClassesForIDCardGeneration(): Promise<ActionResponse<Cl
     }
 
     const classes = await db.class.findMany({
+      where: {
+        schoolId // Add school isolation
+      },
       include: {
         sections: {
           select: {
@@ -359,8 +388,13 @@ export async function getClassesForIDCardGeneration(): Promise<ActionResponse<Cl
  */
 export async function getCurrentAcademicYear(): Promise<ActionResponse<{ id: string; name?: string; year?: string }>> {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const academicYear = await db.academicYear.findFirst({
       where: {
+        schoolId, // Add school isolation
         isCurrent: true,
       },
       select: {

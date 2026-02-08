@@ -137,13 +137,29 @@ export const getActiveAnnouncements = cachedQuery(
 /**
  * Cached query for getting system settings
  * Cache for 1 hour since settings rarely change
+ * 
+ * @param schoolId - Optional school ID. If not provided, will get from context
  */
 export const getSystemSettings = cachedQuery(
-  async () => {
-    return await db.systemSettings.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
+  async (schoolId?: string) => {
+    // If schoolId not provided, get from context
+    if (!schoolId) {
+      try {
+        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+        schoolId = await getRequiredSchoolId();
+      } catch (error) {
+        // If no school context (e.g., public pages), return first settings
+        console.warn("No school context available, returning first settings");
+        return await db.systemSettings.findFirst({
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
+      }
+    }
+    
+    return await db.systemSettings.findUnique({
+      where: { schoolId },
     });
   },
   {

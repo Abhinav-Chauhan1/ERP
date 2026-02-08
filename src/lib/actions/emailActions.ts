@@ -194,11 +194,18 @@ export async function sendEmailToClass(data: {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get all students in the class through enrollments
     const enrollments = await db.classEnrollment.findMany({
       where: {
         classId: data.classId,
         status: "ACTIVE",
+        student: {
+          schoolId, // CRITICAL: Filter by current school
+        },
       },
       include: {
         student: {
@@ -277,8 +284,15 @@ export async function sendEmailToAllParents(data: {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get all parents with email addresses
     const parents = await db.parent.findMany({
+      where: {
+        schoolId, // CRITICAL: Filter by current school
+      },
       include: {
         user: {
           select: {
@@ -339,8 +353,15 @@ export async function sendEmailToAllTeachers(data: {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get all teachers with email addresses
     const teachers = await db.teacher.findMany({
+      where: {
+        schoolId, // CRITICAL: Filter by current school
+      },
       include: {
         user: {
           select: {

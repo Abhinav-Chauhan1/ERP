@@ -177,6 +177,10 @@ export async function searchAlumni(
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validation = alumniSearchSchema.safeParse(input);
     if (!validation.success) {
@@ -212,7 +216,7 @@ export async function searchAlumni(
       currentCity,
       currentOccupation,
       collegeName,
-    })}:page:${page}:size:${pageSize}:sort:${sortBy}:${sortOrder}`;
+    })}:school:${schoolId}:page:${page}:size:${pageSize}:sort:${sortBy}:${sortOrder}`;
 
     // Check cache first (cache for 10 minutes)
     const cached = memoryCache.get(cacheKey);
@@ -233,6 +237,9 @@ export async function searchAlumni(
       currentOccupation,
       collegeName,
     });
+
+    // Add school isolation
+    where.schoolId = schoolId; // CRITICAL: Filter by current school
 
     // Get total count
     const total = await db.alumni.count({ where });
@@ -258,6 +265,9 @@ export async function searchAlumni(
       where,
       include: {
         student: {
+          where: {
+            schoolId, // CRITICAL: Filter student by school
+          },
           include: {
             user: true,
           },
@@ -346,6 +356,10 @@ export async function getAlumniProfile(
       return { success: false, error: authCheck.error || "Unauthorized" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate input
     const validation = getAlumniProfileSchema.safeParse(input);
     if (!validation.success) {
@@ -359,9 +373,15 @@ export async function getAlumniProfile(
 
     // Fetch alumni profile
     const alumnus = await db.alumni.findUnique({
-      where: { id: alumniId },
+      where: { 
+        id: alumniId,
+        schoolId, // CRITICAL: Ensure alumni belongs to current school
+      },
       include: {
         student: {
+          where: {
+            schoolId, // CRITICAL: Filter student by school
+          },
           include: {
             user: true,
           },

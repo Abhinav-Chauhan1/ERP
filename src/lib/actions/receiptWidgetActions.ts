@@ -9,6 +9,10 @@ import { startOfDay, endOfDay, subDays } from "date-fns";
  */
 export async function getReceiptWidgetData() {
   try {
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const now = new Date();
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
@@ -18,6 +22,7 @@ export async function getReceiptWidgetData() {
     // Get pending receipts count
     const pendingReceipts = await db.paymentReceipt.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.PENDING_VERIFICATION,
       },
       select: {
@@ -39,6 +44,7 @@ export async function getReceiptWidgetData() {
     // Get today's verified receipts
     const verifiedToday = await db.paymentReceipt.count({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.VERIFIED,
         verifiedAt: {
           gte: todayStart,
@@ -50,6 +56,7 @@ export async function getReceiptWidgetData() {
     // Get today's rejected receipts
     const rejectedToday = await db.paymentReceipt.count({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.REJECTED,
         verifiedAt: {
           gte: todayStart,
@@ -61,6 +68,7 @@ export async function getReceiptWidgetData() {
     // Get yesterday's rejection rate for trend
     const yesterdayTotal = await db.paymentReceipt.count({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         verifiedAt: {
           gte: yesterdayStart,
           lte: yesterdayEnd,
@@ -73,6 +81,7 @@ export async function getReceiptWidgetData() {
 
     const yesterdayRejected = await db.paymentReceipt.count({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.REJECTED,
         verifiedAt: {
           gte: yesterdayStart,
@@ -89,6 +98,7 @@ export async function getReceiptWidgetData() {
     const sevenDaysAgo = subDays(now, 7);
     const recentVerified = await db.paymentReceipt.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: {
           in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED],
         },
@@ -122,6 +132,7 @@ export async function getReceiptWidgetData() {
     // Simpler approach: get rejection rate from last 7 days
     const recentRejectedCount = await db.paymentReceipt.count({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.REJECTED,
         verifiedAt: {
           gte: sevenDaysAgo,
@@ -177,6 +188,10 @@ export async function getReceiptWidgetData() {
  */
 export async function getReceiptAnalytics() {
   try {
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const now = new Date();
     const todayStart = startOfDay(now);
     const thirtyDaysAgo = subDays(now, 30);
@@ -186,6 +201,7 @@ export async function getReceiptAnalytics() {
     // Average Turnaround Time
     const verifiedReceipts = await db.paymentReceipt.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: { in: [ReceiptStatus.VERIFIED, ReceiptStatus.REJECTED] },
         verifiedAt: { not: null },
         createdAt: { gte: thirtyDaysAgo }
@@ -214,7 +230,10 @@ export async function getReceiptAnalytics() {
 
     // Oldest Pending
     const oldestPending = await db.paymentReceipt.findFirst({
-      where: { status: ReceiptStatus.PENDING_VERIFICATION },
+      where: { 
+        schoolId, // CRITICAL: Filter by current school
+        status: ReceiptStatus.PENDING_VERIFICATION 
+      },
       orderBy: { createdAt: 'asc' },
       select: { createdAt: true }
     });
@@ -248,6 +267,7 @@ export async function getReceiptAnalytics() {
     const rejections = await db.paymentReceipt.groupBy({
       by: ['rejectionReason'],
       where: {
+        schoolId, // CRITICAL: Filter by current school
         status: ReceiptStatus.REJECTED,
         createdAt: { gte: thirtyDaysAgo },
         rejectionReason: { not: null }
@@ -280,18 +300,21 @@ export async function getReceiptAnalytics() {
 
       const verified = await db.paymentReceipt.count({
         where: {
+          schoolId, // CRITICAL: Filter by current school
           status: ReceiptStatus.VERIFIED,
           updatedAt: { gte: monthStart, lte: monthEnd }
         }
       });
       const rejected = await db.paymentReceipt.count({
         where: {
+          schoolId, // CRITICAL: Filter by current school
           status: ReceiptStatus.REJECTED,
           updatedAt: { gte: monthStart, lte: monthEnd }
         }
       });
       const pending = await db.paymentReceipt.count({
         where: {
+          schoolId, // CRITICAL: Filter by current school
           status: ReceiptStatus.PENDING_VERIFICATION,
           createdAt: { gte: monthStart, lte: monthEnd }
         }
@@ -302,7 +325,10 @@ export async function getReceiptAnalytics() {
 
     // 5. Aging Data
     const pendingAll = await db.paymentReceipt.findMany({
-      where: { status: ReceiptStatus.PENDING_VERIFICATION },
+      where: { 
+        schoolId, // CRITICAL: Filter by current school
+        status: ReceiptStatus.PENDING_VERIFICATION 
+      },
       select: { createdAt: true }
     });
 

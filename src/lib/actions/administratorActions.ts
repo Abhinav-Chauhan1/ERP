@@ -15,12 +15,22 @@ export async function getAdministratorWithDetails(administratorId: string) {
   try {
     console.log(`Fetching administrator details for ID: ${administratorId}`);
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const administrator = await db.administrator.findUnique({
-      where: { id: administratorId },
+      where: { 
+        id: administratorId,
+        schoolId, // CRITICAL: Ensure administrator belongs to current school
+      },
       include: {
         user: true,
         // Include related data for administrators
         announcements: {
+          where: {
+            schoolId, // CRITICAL: Filter announcements by school
+          },
           orderBy: {
             createdAt: 'desc'
           },

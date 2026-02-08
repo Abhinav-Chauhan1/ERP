@@ -236,6 +236,7 @@ model School {
   mindMaps                MindMap[]
   lessonContents          LessonContent[]
   studentContentProgress  StudentContentProgress[]
+  systemSettings          SystemSettings?
 
   @@map("schools")
 }
@@ -2494,6 +2495,8 @@ model SchoolNotificationSettings {
 
 model SystemSettings {
   id                             String   @id @default(cuid())
+  schoolId                       String   @unique
+  school                         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   onboardingCompleted            Boolean  @default(false)
   onboardingStep                 Int      @default(0)
   schoolName                     String   @default("School Name")
@@ -2565,6 +2568,7 @@ model SystemSettings {
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
 
+  @@index([schoolId])
   @@map("system_settings")
 }
 

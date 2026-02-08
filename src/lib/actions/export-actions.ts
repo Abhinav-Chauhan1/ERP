@@ -29,8 +29,14 @@ export async function exportStudentsData(
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Build query filters
-    const where: any = {};
+    const where: any = {
+      schoolId, // CRITICAL: Filter by current school
+    };
     
     if (filters?.status === "active") {
       where.user = { active: true };
@@ -60,6 +66,9 @@ export async function exportStudentsData(
           },
         },
         enrollments: {
+          where: {
+            schoolId, // CRITICAL: Filter enrollments by school
+          },
           include: {
             class: { select: { name: true } },
             section: { select: { name: true } },
@@ -104,7 +113,13 @@ export async function exportTeachersData(
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
 
-    const where: any = {};
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const where: any = {
+      schoolId, // CRITICAL: Filter by current school
+    };
     
     if (filters?.status === "active") {
       where.user = { active: true };
@@ -171,10 +186,17 @@ export async function exportAttendanceData(
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const where: any = {
       date: {
         gte: startDate,
         lte: endDate,
+      },
+      student: {
+        schoolId, // CRITICAL: Filter through student relation
       },
     };
 
@@ -243,10 +265,17 @@ export async function exportFeePaymentsData(
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const where: any = {
       paymentDate: {
         gte: startDate,
         lte: endDate,
+      },
+      student: {
+        schoolId, // CRITICAL: Filter through student relation
       },
     };
 
@@ -266,6 +295,9 @@ export async function exportFeePaymentsData(
               },
             },
             enrollments: {
+              where: {
+                schoolId, // CRITICAL: Filter enrollments by school
+              },
               include: {
                 class: {
                   select: {
@@ -311,9 +343,16 @@ export async function exportExamResultsData(
       return { success: false, message: "Unauthorized", error: "User not authenticated" };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const results = await prisma.examResult.findMany({
       where: {
         examId,
+        exam: {
+          schoolId, // CRITICAL: Filter through exam relation
+        },
       },
       include: {
         student: {
@@ -325,6 +364,9 @@ export async function exportExamResultsData(
               },
             },
             enrollments: {
+              where: {
+                schoolId, // CRITICAL: Filter enrollments by school
+              },
               include: {
                 class: {
                   select: {

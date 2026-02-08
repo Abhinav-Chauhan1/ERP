@@ -30,6 +30,10 @@ export async function getTeacherProfile() {
       };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get user first, then teacher record
     const user = await db.user.findUnique({
       where: {
@@ -48,15 +52,22 @@ export async function getTeacherProfile() {
     const teacher = await db.teacher.findUnique({
       where: {
         userId: user.id,
+        schoolId, // CRITICAL: Ensure teacher belongs to current school
       },
       include: {
         user: true,
         subjects: {
+          where: {
+            schoolId, // CRITICAL: Filter subjects by school
+          },
           include: {
             subject: true,
           },
         },
         classes: {
+          where: {
+            schoolId, // CRITICAL: Filter classes by school
+          },
           include: {
             class: {
               include: {
@@ -65,7 +76,11 @@ export async function getTeacherProfile() {
             },
           },
         },
-        departments: true,
+        departments: {
+          where: {
+            schoolId, // CRITICAL: Filter departments by school
+          },
+        },
       },
     });
 
@@ -82,10 +97,12 @@ export async function getTeacherProfile() {
       where: {
         subjectTeacher: {
           teacherId: teacher.id,
+          schoolId, // CRITICAL: Filter by school
         },
         day: format(today, "EEEE").toUpperCase() as any,
         timetable: {
           isActive: true,
+          schoolId, // CRITICAL: Filter timetable by school
         },
       },
       include: {
@@ -112,9 +129,11 @@ export async function getTeacherProfile() {
       where: {
         subjectTeacher: {
           teacherId: teacher.id,
+          schoolId, // CRITICAL: Filter by school
         },
         timetable: {
           isActive: true,
+          schoolId, // CRITICAL: Filter timetable by school
         },
       },
     });
@@ -131,6 +150,7 @@ export async function getTeacherProfile() {
     const pendingAssignments = await db.assignment.findMany({
       where: {
         creatorId: teacher.id,
+        schoolId, // CRITICAL: Filter by school
         dueDate: {
           gte: today,
         },

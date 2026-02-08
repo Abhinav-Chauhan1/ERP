@@ -19,6 +19,10 @@ export async function getTeacherAttendanceOverview() {
       };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get user first, then teacher record
     const user = await db.user.findUnique({
       where: {
@@ -37,6 +41,7 @@ export async function getTeacherAttendanceOverview() {
     const teacher = await db.teacher.findUnique({
       where: {
         userId: user.id,
+        schoolId, // CRITICAL: Ensure teacher belongs to current school
       },
     });
 
@@ -57,15 +62,20 @@ export async function getTeacherAttendanceOverview() {
     const teacherClasses = await db.classTeacher.findMany({
       where: {
         teacherId: teacher.id,
+        schoolId, // CRITICAL: Filter by school
       },
       include: {
         class: {
           include: {
             sections: {
+              where: {
+                schoolId, // CRITICAL: Filter sections by school
+              },
               include: {
                 enrollments: {
                   where: {
                     status: "ACTIVE",
+                    schoolId, // CRITICAL: Filter enrollments by school
                   },
                 },
               },
@@ -80,10 +90,12 @@ export async function getTeacherAttendanceOverview() {
       where: {
         subjectTeacher: {
           teacherId: teacher.id,
+          schoolId, // CRITICAL: Filter by school
         },
         day: format(today, "EEEE").toUpperCase() as any,
         timetable: {
           isActive: true,
+          schoolId, // CRITICAL: Filter timetable by school
         },
       },
       include: {
@@ -108,11 +120,17 @@ export async function getTeacherAttendanceOverview() {
           gte: startOfThisWeek,
           lte: endOfThisWeek,
         },
+        student: {
+          schoolId, // CRITICAL: Filter through student relation
+        },
         section: {
+          schoolId, // CRITICAL: Filter through section relation
           class: {
+            schoolId, // CRITICAL: Filter through class relation
             teachers: {
               some: {
                 teacherId: teacher.id,
+                schoolId, // CRITICAL: Filter by school
               },
             },
           },
@@ -156,11 +174,17 @@ export async function getTeacherAttendanceOverview() {
               gte: dayStart,
               lte: dayEnd,
             },
+            student: {
+              schoolId, // CRITICAL: Filter through student relation
+            },
             section: {
+              schoolId, // CRITICAL: Filter through section relation
               class: {
+                schoolId, // CRITICAL: Filter through class relation
                 teachers: {
                   some: {
                     teacherId: teacher.id,
+                    schoolId, // CRITICAL: Filter by school
                   },
                 },
               },
@@ -188,8 +212,12 @@ export async function getTeacherAttendanceOverview() {
               gte: startOfThisWeek,
               lte: endOfThisWeek,
             },
+            student: {
+              schoolId, // CRITICAL: Filter through student relation
+            },
             section: {
               classId: tc.classId,
+              schoolId, // CRITICAL: Filter by school
             },
           },
         });
@@ -246,6 +274,9 @@ export async function getTeacherAttendanceOverview() {
         const studentAttendance = await db.studentAttendance.findMany({
           where: {
             studentId: student.studentId,
+            student: {
+              schoolId, // CRITICAL: Filter through student relation
+            },
             date: {
               gte: startOfThisWeek,
               lte: endOfThisWeek,

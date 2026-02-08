@@ -13,7 +13,7 @@ import { UserRole } from "@prisma/client";
 
 /**
  * Get upcoming calendar events for admin dashboard widget
- * Admins can see all events
+ * Admins can see all events for their school
  */
 export async function getAdminCalendarEvents(limit: number = 5) {
   try {
@@ -23,9 +23,14 @@ export async function getAdminCalendarEvents(limit: number = 5) {
       return { success: false, error: "Unauthorized", data: [] };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const now = new Date();
     const events = await prisma.calendarEvent.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         startDate: {
           gte: now
         }
@@ -48,7 +53,7 @@ export async function getAdminCalendarEvents(limit: number = 5) {
 
 /**
  * Get upcoming calendar events for teacher dashboard widget
- * Teachers see events visible to their role
+ * Teachers see events visible to their role in their school
  */
 export async function getTeacherCalendarEvents(limit: number = 5) {
   try {
@@ -67,9 +72,14 @@ export async function getTeacherCalendarEvents(limit: number = 5) {
       return { success: false, error: "Teacher not found", data: [] };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const now = new Date();
     const events = await prisma.calendarEvent.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         startDate: {
           gte: now
         },
@@ -104,7 +114,7 @@ export async function getTeacherCalendarEvents(limit: number = 5) {
 
 /**
  * Get upcoming calendar events for student dashboard widget
- * Students see events visible to their role and their class/section
+ * Students see events visible to their role and their class/section in their school
  */
 export async function getStudentCalendarEvents(limit: number = 5) {
   try {
@@ -114,13 +124,21 @@ export async function getStudentCalendarEvents(limit: number = 5) {
       return { success: false, error: "Unauthorized", data: [] };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get student record with enrollment
     const student = await prisma.student.findUnique({
-      where: { userId },
+      where: { 
+        userId,
+        schoolId // CRITICAL: Ensure student belongs to current school
+      },
       include: {
         enrollments: {
           where: {
-            status: 'ACTIVE'
+            status: 'ACTIVE',
+            schoolId // CRITICAL: Filter enrollments by school
           },
           include: {
             class: true,
@@ -141,6 +159,7 @@ export async function getStudentCalendarEvents(limit: number = 5) {
     const now = new Date();
     const events = await prisma.calendarEvent.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         startDate: {
           gte: now
         },
@@ -180,7 +199,7 @@ export async function getStudentCalendarEvents(limit: number = 5) {
 
 /**
  * Get upcoming calendar events for parent dashboard widget
- * Parents see events visible to their children
+ * Parents see events visible to their children in their school
  */
 export async function getParentCalendarEvents(limit: number = 5) {
   try {
@@ -190,17 +209,28 @@ export async function getParentCalendarEvents(limit: number = 5) {
       return { success: false, error: "Unauthorized", data: [] };
     }
 
+    // Get required school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get parent record with children
     const parent = await prisma.parent.findUnique({
-      where: { userId },
+      where: { 
+        userId,
+        schoolId // CRITICAL: Ensure parent belongs to current school
+      },
       include: {
         children: {
           include: {
             student: {
+              where: {
+                schoolId // CRITICAL: Filter children by school
+              },
               include: {
                 enrollments: {
                   where: {
-                    status: 'ACTIVE'
+                    status: 'ACTIVE',
+                    schoolId // CRITICAL: Filter enrollments by school
                   },
                   include: {
                     class: true,
@@ -233,6 +263,7 @@ export async function getParentCalendarEvents(limit: number = 5) {
     const now = new Date();
     const events = await prisma.calendarEvent.findMany({
       where: {
+        schoolId, // CRITICAL: Filter by current school
         startDate: {
           gte: now
         },

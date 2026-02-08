@@ -15,6 +15,10 @@ import {
  */
 export async function getReportCardData(studentId: string, termId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate inputs
     if (!studentId || !termId) {
       return {
@@ -23,7 +27,7 @@ export async function getReportCardData(studentId: string, termId: string) {
       };
     }
 
-    const reportCardData = await aggregateReportCardData(studentId, termId);
+    const reportCardData = await aggregateReportCardData(studentId, termId, schoolId);
 
     return {
       success: true,
@@ -48,6 +52,10 @@ export async function getReportCardData(studentId: string, termId: string) {
  */
 export async function getBatchReportCardData(studentIds: string[], termId: string) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate inputs
     if (!studentIds || studentIds.length === 0) {
       return {
@@ -63,7 +71,7 @@ export async function getBatchReportCardData(studentIds: string[], termId: strin
       };
     }
 
-    const reportCardData = await batchAggregateReportCardData(studentIds, termId);
+    const reportCardData = await batchAggregateReportCardData(studentIds, termId, schoolId);
 
     return {
       success: true,
@@ -92,6 +100,10 @@ export async function getClassReportCardData(
   sectionId?: string
 ) {
   try {
+    // Add school isolation
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Validate inputs
     if (!classId || !termId) {
       return {
@@ -103,8 +115,9 @@ export async function getClassReportCardData(
     // Import db here to avoid circular dependencies
     const { db } = await import("@/lib/db");
 
-    // Get all students in the class
+    // Get all students in the class with school isolation
     const whereClause: any = {
+      schoolId, // Add school isolation
       classId,
       status: "ACTIVE",
     };
@@ -129,7 +142,7 @@ export async function getClassReportCardData(
       };
     }
 
-    const reportCardData = await batchAggregateReportCardData(studentIds, termId);
+    const reportCardData = await batchAggregateReportCardData(studentIds, termId, schoolId);
 
     return {
       success: true,

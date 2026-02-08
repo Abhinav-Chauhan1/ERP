@@ -24,13 +24,17 @@ export interface PaymentConfigType {
  */
 export async function getPaymentConfig() {
   try {
-    // Use cached query for better performance
-    const settings = await getSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+    
+    // Use cached query for better performance with schoolId
+    const settings = await getSystemSettings(schoolId);
     
     if (!settings) {
       return { 
         success: false, 
-        error: "System settings not found" 
+        error: "System settings not found for this school" 
       };
     }
     
@@ -87,13 +91,19 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
       };
     }
 
-    // Get current settings
-    const settings = await db.systemSettings.findFirst();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get current settings for this school
+    const settings = await db.systemSettings.findUnique({
+      where: { schoolId }, // CRITICAL: Filter by school
+    });
     
     if (!settings) {
       return { 
         success: false, 
-        error: "System settings not found" 
+        error: "System settings not found for this school" 
       };
     }
 
@@ -133,9 +143,9 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
       updateData.autoNotifyOnVerification = config.autoNotifyOnVerification;
     }
 
-    // Update settings
+    // Update settings for this school only
     const updated = await db.systemSettings.update({
-      where: { id: settings.id },
+      where: { schoolId }, // CRITICAL: Update only current school
       data: updateData,
     });
 
@@ -145,9 +155,10 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
     revalidatePath("/student/fees");
     revalidatePath("/parent/fees");
     
-    // Also invalidate the settings cache tag
+    // Also invalidate the settings cache tag with schoolId
     const { revalidateTag } = await import("next/cache");
     revalidateTag("settings", "default");
+    revalidateTag(`settings-${schoolId}`, "default");
     
     // Extract payment configuration from updated settings
     const updatedConfig: PaymentConfigType = {

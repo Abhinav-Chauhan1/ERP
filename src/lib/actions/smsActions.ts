@@ -239,10 +239,17 @@ export async function sendSMSToClass(data: {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get all students in the class through enrollments
     const enrollments = await db.classEnrollment.findMany({
       where: {
         classId: data.classId,
+        student: {
+          schoolId, // CRITICAL: Filter by current school
+        },
       },
       include: {
         student: {
@@ -315,8 +322,15 @@ export async function sendSMSToAllParents(message: string) {
       return { success: false, error: "Insufficient permissions" };
     }
 
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Get all parents with phone numbers
     const parents = await db.parent.findMany({
+      where: {
+        schoolId, // CRITICAL: Filter by current school
+      },
       include: {
         user: {
           select: {
