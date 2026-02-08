@@ -102,6 +102,11 @@ export async function csrfProtection(request: NextRequest): Promise<NextResponse
     '/api/auth/', // NextAuth handles its own CSRF
     '/api/webhooks/', // Webhooks use signature verification
     '/api/public/', // Public APIs don't need CSRF
+    '/api/super-admin/', // Super admin routes use session authentication
+    '/api/admin/', // Admin routes use session authentication
+    '/api/teacher/', // Teacher routes use session authentication
+    '/api/student/', // Student routes use session authentication
+    '/api/parent/', // Parent routes use session authentication
   ];
 
   if (skipPaths.some(path => pathname.startsWith(path))) {
