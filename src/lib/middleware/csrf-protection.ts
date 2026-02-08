@@ -96,8 +96,19 @@ export async function csrfProtection(request: NextRequest): Promise<NextResponse
     return null; // Allow request to proceed
   }
 
-  // Skip CSRF for API routes that use other authentication methods
   const pathname = request.nextUrl.pathname;
+  
+  // Skip CSRF for Next.js Server Actions
+  // Server Actions are POST requests with specific headers
+  const isServerAction = request.headers.get('next-action') !== null ||
+                        request.headers.get('content-type')?.includes('multipart/form-data') ||
+                        pathname.startsWith('/_next/');
+  
+  if (isServerAction) {
+    return null; // Allow Server Actions to proceed
+  }
+
+  // Skip CSRF for API routes that use other authentication methods
   const skipPaths = [
     '/api/auth/', // NextAuth handles its own CSRF
     '/api/webhooks/', // Webhooks use signature verification

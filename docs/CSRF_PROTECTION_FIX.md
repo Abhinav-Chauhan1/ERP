@@ -1,20 +1,53 @@
 # CSRF Protection Fix
 
 ## Problem
-API requests to authenticated routes (like `/api/super-admin/schools`) were failing with:
+API requests to authenticated routes were failing with:
 
 ```
 CSRF validation failed for POST /super-admin/schools
 ```
 
+This affected both:
+1. API routes (like `/api/super-admin/schools`)
+2. Next.js Server Actions (POST requests to page routes)
+
 ## Root Cause
-The CSRF protection middleware was blocking all POST/PUT/DELETE/PATCH requests except those in the skip paths. Authenticated API routes were not in the skip paths, causing legitimate requests to be blocked.
+The CSRF protection middleware was blocking:
+1. Authenticated API routes that weren't in the skip paths
+2. Next.js Server Actions (which are POST requests with special headers)
+
+Server Actions are a Next.js feature that allows server-side functions to be called directly from client components. They're identified by the `next-action` header.
 
 ## Solution
-Added authenticated API routes to the CSRF skip paths since they use session-based authentication (NextAuth) which provides its own CSRF protection.
+Added two types of exclusions to the CSRF protection:
+
+### 1. Next.js Server Actions
+Server Actions are automatically excluded by detecting:
+- `next-action` header (Next.js Server Action identifier)
+- `multipart/form-data` content type (form submissions)
+- `/_next/` path prefix (Next.js internal routes)
+
+```typescript
+const isServerAction = request.headers.get('next-action') !== null ||
+                      request.headers.get('content-type')?.includes('multipart/form-data') ||
+                      pathname.startsWith('/_next/');
+
+if (isServerAction) {
+  return null; // Allow Server Actions to proceed
+}
+```
+
+### 2. Authenticated API Routes
+Added authenticated API routes to the skip paths since they use session-based authentication:
 
 ### Updated Skip Paths
 ```typescript
+// Server Actions are automatically detected and skipped
+const isServerAction = request.headers.get('next-action') !== null ||
+                      request.headers.get('content-type')?.includes('multipart/form-data') ||
+                      pathname.startsWith('/_next/');
+
+// API routes that use session authentication
 const skipPaths = [
   '/api/auth/',        // NextAuth handles its own CSRF
   '/api/webhooks/',    // Webhooks use signature verification
@@ -29,10 +62,16 @@ const skipPaths = [
 
 ## Why This Works
 
-1. **Session Authentication**: All these routes are protected by NextAuth session authentication in the middleware
-2. **Same-Origin Policy**: Requests come from the same origin (your app)
-3. **NextAuth CSRF**: NextAuth already implements CSRF protection for authentication flows
-4. **Authorization Checks**: Each route has role-based authorization checks
+1. **Server Actions**: Next.js Server Actions have built-in security:
+   - They can only be called from the same origin
+   - They require the `next-action` header (set automatically by Next.js)
+   - They're tied to the user's session
+   - They use React's built-in security mechanisms
+
+2. **Session Authentication**: All API routes are protected by NextAuth session authentication in the middleware
+3. **Same-Origin Policy**: Requests come from the same origin (your app)
+4. **NextAuth CSRF**: NextAuth already implements CSRF protection for authentication flows
+5. **Authorization Checks**: Each route has role-based authorization checks
 
 ## Security Considerations
 
