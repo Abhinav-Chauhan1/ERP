@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "reportId": "report_1770573442783",
+    "templateName": "Test Report 1770573441268",
+    "generatedAt": "2026-02-08T17:57:22.783Z",
+    "timeRange": {
+      "startDate": "2026-02-06T17:57:21.268Z",
+      "endDate": "2026-02-08T17:57:21.268Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-06T17:57:21.268Z",
+        "endDate": "2026-02-08T17:57:21.268Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "churn_overview",
+      "title": "Churn Analysis",
+      "type": "metrics",
+      "data": {
+        "churnRate": 0,
+        "retentionRate": 100,
+        "customerLifetimeValue": 17988
+      }
+    },
+    {
+      "id": "churn_by_plan",
+      "title": "Churn by Plan",
+      "type": "table",
+      "data": [
+        {
+          "planName": "Starter",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Growth",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Starter Yearly",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Growth Yearly",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Yearly",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "churnRate": 0,
+    "retentionRate": 100
+  }
+}

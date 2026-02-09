@@ -23,9 +23,16 @@ export async function GET(req: NextRequest) {
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
-        // Verify user has permission (admin or teacher)
-        const user = await db.user.findUnique({
-            where: { id: session.user.id },
+        // CRITICAL: Get school context first
+        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+        const schoolId = await getRequiredSchoolId();
+
+        // Verify user has permission (admin or teacher) - CRITICAL: Filter by school
+        const user = await db.user.findFirst({
+            where: { 
+                id: session.user.id,
+                schoolId, // CRITICAL: Filter by school
+            },
             select: { role: true },
         });
 
@@ -43,22 +50,29 @@ export async function GET(req: NextRequest) {
             return new NextResponse('Missing parameters', { status: 400 });
         }
 
-        // Fetch class and section info for naming
-        const classInfo = await db.class.findUnique({
-            where: { id: classId },
+        // Fetch class and section info for naming - CRITICAL: Filter by school
+        const classInfo = await db.class.findFirst({
+            where: { 
+                id: classId,
+                schoolId, // CRITICAL: Ensure class belongs to current school
+            },
             select: { name: true },
         });
 
-        const sectionInfo = await db.classSection.findUnique({
-            where: { id: sectionId },
+        const sectionInfo = await db.classSection.findFirst({
+            where: { 
+                id: sectionId,
+                schoolId, // CRITICAL: Ensure section belongs to current school
+            },
             select: { name: true },
         });
 
-        // Fetch all students in the class and section
+        // Fetch all students in the class and section - CRITICAL: Filter by school
         const enrollments = await db.classEnrollment.findMany({
             where: {
                 classId,
                 sectionId,
+                schoolId, // CRITICAL: Ensure enrollments belong to current school
                 status: 'ACTIVE',
             },
             include: {

@@ -26,11 +26,21 @@ export async function GET() {
       );
     }
 
-    // Get user with school associations
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user with school associations - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         userSchools: {
+          where: {
+            schoolId, // CRITICAL: Filter by school
+          },
           include: {
             school: true
           }
@@ -46,16 +56,19 @@ export async function GET() {
     }
 
     // Get the first school (or handle multiple schools as needed)
-    const schoolId = user.userSchools[0]?.schoolId;
-    if (!schoolId) {
+    const userSchoolId = user.userSchools[0]?.schoolId || schoolId;
+    if (!userSchoolId) {
       return NextResponse.json(
         { error: 'No school association found' },
         { status: 403 }
       );
     }
 
-    let preferences = await db.userCalendarPreferences.findUnique({
-      where: { userId }
+    let preferences = await db.userCalendarPreferences.findFirst({
+      where: { 
+        userId,
+        schoolId: userSchoolId, // CRITICAL: Filter by school
+      }
     });
 
     // Create default preferences if they don't exist
@@ -63,7 +76,7 @@ export async function GET() {
       preferences = await db.userCalendarPreferences.create({
         data: {
           userId,
-          schoolId,
+          schoolId: userSchoolId, // CRITICAL: Use verified schoolId
           defaultView: 'month',
           defaultReminderTime: 1440, // 1 day
           reminderTypes: ['IN_APP']
@@ -97,11 +110,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get user with school associations
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user with school associations - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         userSchools: {
+          where: {
+            schoolId, // CRITICAL: Filter by school
+          },
           include: {
             school: true
           }
@@ -117,8 +140,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Get the first school (or handle multiple schools as needed)
-    const schoolId = user.userSchools[0]?.schoolId;
-    if (!schoolId) {
+    const userSchoolId = user.userSchools[0]?.schoolId || schoolId;
+    if (!userSchoolId) {
       return NextResponse.json(
         { error: 'No school association found' },
         { status: 403 }
@@ -166,7 +189,12 @@ export async function PUT(request: NextRequest) {
 
     // Update or create preferences
     const preferences = await db.userCalendarPreferences.upsert({
-      where: { userId },
+      where: { 
+        userId_schoolId: {
+          userId,
+          schoolId: userSchoolId, // CRITICAL: Use verified schoolId
+        }
+      },
       update: {
         ...(body.defaultView && { defaultView: body.defaultView }),
         ...(body.filterSettings && { filterSettings: body.filterSettings }),
@@ -177,7 +205,7 @@ export async function PUT(request: NextRequest) {
       },
       create: {
         userId,
-        schoolId,
+        schoolId: userSchoolId, // CRITICAL: Use verified schoolId
         defaultView: body.defaultView ?? 'month',
         filterSettings: body.filterSettings,
         defaultReminderTime: body.defaultReminderTime ?? 1440,

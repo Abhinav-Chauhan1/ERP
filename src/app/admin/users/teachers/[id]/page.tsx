@@ -9,8 +9,15 @@ interface TeacherDetailPageProps {
 export default async function TeacherDetailPage({ params }: TeacherDetailPageProps) {
   const { id } = await params;
 
-  const teacher = await db.teacher.findUnique({
-    where: { id },
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const teacher = await db.teacher.findFirst({
+    where: { 
+      id,
+      schoolId, // CRITICAL: Ensure teacher belongs to current school
+    },
     include: {
       user: true,
       subjects: {
@@ -26,12 +33,18 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
       },
       departments: true,
       attendance: {
+        where: {
+          schoolId, // CRITICAL: Filter attendance by school
+        },
         orderBy: {
           date: 'desc'
         },
         take: 10
       },
       payrolls: {
+        where: {
+          schoolId, // CRITICAL: Filter payrolls by school
+        },
         orderBy: [
           { year: 'desc' },
           { month: 'desc' }

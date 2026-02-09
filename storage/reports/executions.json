@@ -58,5 +58,325 @@
     "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1769326761674.json",
     "fileSize": 1420,
     "recordCount": 2
+  },
+  {
+    "id": "exec_1770573434587",
+    "reportId": "report_1770573434587",
+    "templateId": "template_1770573434585",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:14.587Z",
+    "metadata": {
+      "template": "Test Report 1770573434585",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-04T17:57:14.585Z",
+          "endDate": "2026-02-08T17:57:14.585Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:15.670Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573434587.csv",
+    "fileSize": 257,
+    "recordCount": 2
+  },
+  {
+    "id": "exec_1770573435720",
+    "reportId": "report_1770573435720",
+    "templateId": "template_1770573435689",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:15.720Z",
+    "metadata": {
+      "template": "Test Report 1770573435689",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-12T17:57:15.689Z",
+          "endDate": "2026-02-08T17:57:15.689Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:16.838Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573435720.csv",
+    "fileSize": 260,
+    "recordCount": 2
+  },
+  {
+    "id": "exec_1770573436865",
+    "reportId": "report_1770573436865",
+    "templateId": "template_1770573436856",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:16.865Z",
+    "metadata": {
+      "template": "Test Report 1770573436856",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-27T17:57:16.856Z",
+          "endDate": "2026-02-08T17:57:16.856Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:18.134Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573436865.json",
+    "fileSize": 1428,
+    "recordCount": 2
+  },
+  {
+    "id": "exec_1770573438155",
+    "reportId": "report_1770573438155",
+    "templateId": "template_1770573438150",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:18.155Z",
+    "metadata": {
+      "template": "Test Report 1770573438150",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-09T17:57:18.150Z",
+          "endDate": "2026-02-08T17:57:18.150Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:19.462Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573438155.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573439486",
+    "reportId": "report_1770573439486",
+    "templateId": "template_1770573439475",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:19.486Z",
+    "metadata": {
+      "template": "Test Report 1770573439475",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-24T17:57:19.475Z",
+          "endDate": "2026-02-08T17:57:19.475Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:20.406Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573439486.csv",
+    "fileSize": 260,
+    "recordCount": 2
+  },
+  {
+    "id": "exec_1770573440449",
+    "reportId": "report_1770573440449",
+    "templateId": "template_1770573440440",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:20.449Z",
+    "metadata": {
+      "template": "Test Report 1770573440440",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-15T17:57:20.440Z",
+          "endDate": "2026-02-08T17:57:20.440Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:21.252Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573440449.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573441275",
+    "reportId": "report_1770573441275",
+    "templateId": "template_1770573441268",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:21.275Z",
+    "metadata": {
+      "template": "Test Report 1770573441268",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-06T17:57:21.268Z",
+          "endDate": "2026-02-08T17:57:21.268Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:22.785Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573441275.json",
+    "fileSize": 1886,
+    "recordCount": 10
+  },
+  {
+    "id": "exec_1770573442824",
+    "reportId": "report_1770573442824",
+    "templateId": "template_1770573442812",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:22.824Z",
+    "metadata": {
+      "template": "Test Report 1770573442811",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-04T17:57:22.811Z",
+          "endDate": "2026-02-08T17:57:22.811Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:24.258Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573442824.csv",
+    "fileSize": 625,
+    "recordCount": 10
+  },
+  {
+    "id": "exec_1770573444287",
+    "reportId": "report_1770573444287",
+    "templateId": "template_1770573444274",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:24.287Z",
+    "metadata": {
+      "template": "Test Report 1770573444274",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-11T17:57:24.274Z",
+          "endDate": "2026-02-08T17:57:24.274Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:24.294Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573444287.json",
+    "fileSize": 458,
+    "recordCount": 0
+  },
+  {
+    "id": "exec_1770573444353",
+    "reportId": "report_1770573444353",
+    "templateId": "template_1770573444323",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:24.353Z",
+    "metadata": {
+      "template": "Test Report 1770573444323",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-10T17:57:24.323Z",
+          "endDate": "2026-02-08T17:57:24.323Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:25.480Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573444353.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573445518",
+    "reportId": "report_1770573445518",
+    "templateId": "template_1770573445507",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:25.518Z",
+    "metadata": {
+      "template": "Test Report 1770573445507",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-18T17:57:25.507Z",
+          "endDate": "2026-02-08T17:57:25.507Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:26.324Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573445518.csv",
+    "fileSize": 625,
+    "recordCount": 10
+  },
+  {
+    "id": "exec_1770573446348",
+    "reportId": "report_1770573446348",
+    "templateId": "template_1770573446345",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:26.348Z",
+    "metadata": {
+      "template": "Test Report 1770573446345",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-28T17:57:26.345Z",
+          "endDate": "2026-02-08T17:57:26.345Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:26.351Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573446348.json",
+    "fileSize": 458,
+    "recordCount": 0
+  },
+  {
+    "id": "exec_1770573446377",
+    "reportId": "report_1770573446377",
+    "templateId": "template_1770573446357",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:26.377Z",
+    "metadata": {
+      "template": "Test Report 1770573446357",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-04T17:57:26.357Z",
+          "endDate": "2026-02-08T17:57:26.357Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:27.317Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573446377.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573447380",
+    "reportId": "report_1770573447380",
+    "templateId": "template_1770573447359",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:27.380Z",
+    "metadata": {
+      "template": "Test Report 1770573447359",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-04T17:57:27.359Z",
+          "endDate": "2026-02-08T17:57:27.359Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:28.309Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573447380.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573448338",
+    "reportId": "report_1770573448338",
+    "templateId": "template_1770573448331",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:28.338Z",
+    "metadata": {
+      "template": "Test Report 1770573448331",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-01-13T17:57:28.331Z",
+          "endDate": "2026-02-08T17:57:28.331Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:29.670Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573448338.json",
+    "fileSize": 1471,
+    "recordCount": 4
+  },
+  {
+    "id": "exec_1770573449720",
+    "reportId": "report_1770573449720",
+    "templateId": "template_1770573449697",
+    "status": "completed",
+    "startedAt": "2026-02-08T17:57:29.720Z",
+    "metadata": {
+      "template": "Test Report 1770573449697",
+      "filters": {
+        "timeRange": {
+          "startDate": "2026-02-03T17:57:29.697Z",
+          "endDate": "2026-02-08T17:57:29.697Z"
+        }
+      }
+    },
+    "completedAt": "2026-02-08T17:57:30.300Z",
+    "filePath": "/home/ajju/Projects/ERP/storage/reports/report_1770573449720.json",
+    "fileSize": 1420,
+    "recordCount": 2
   }
 ]

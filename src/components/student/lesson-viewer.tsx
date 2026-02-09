@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import DOMPurify from "isomorphic-dompurify";
+import { SafeHtmlRich } from "@/components/ui/safe-html";
 
 interface LessonContent {
   id: string;
@@ -340,15 +340,6 @@ function VideoContent({ content }: { content: LessonContent }) {
 function TextContent({ content }: { content: LessonContent }) {
   if (!content.content) return null;
 
-  const sanitizedContent = DOMPurify.sanitize(content.content, {
-    ALLOWED_TAGS: [
-      "p", "br", "strong", "em", "u", "h1", "h2", "h3", "h4", "h5", "h6",
-      "ul", "ol", "li", "a", "blockquote", "code", "pre", "img", "table",
-      "thead", "tbody", "tr", "th", "td", "hr", "div", "span"
-    ],
-    ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "class", "style"],
-  });
-
   return (
     <Card>
       <CardContent className="p-6">
@@ -361,9 +352,9 @@ function TextContent({ content }: { content: LessonContent }) {
             <Separator className="mb-4" />
           </>
         )}
-        <div
+        <SafeHtmlRich 
+          content={content.content}
           className="prose prose-sm sm:prose-base dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </CardContent>
     </Card>
@@ -476,7 +467,7 @@ function EmbedContent({ content }: { content: LessonContent }) {
               allowFullScreen
             />
           ) : content.content ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content.content) }} />
+            <SafeHtmlRich content={content.content} />
           ) : null}
         </div>
       </CardContent>

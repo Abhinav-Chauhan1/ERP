@@ -99,10 +99,14 @@ async function getAlumniDirectoryData(currentUserId: string) {
     return null;
   }
 
+  // CRITICAL: Add school isolation
+  const schoolId = currentStudent.schoolId;
+
   // Fetch all alumni who allow communication (respecting privacy)
   // In a real implementation, this would also check individual privacy settings
   const alumni = await db.alumni.findMany({
     where: {
+      schoolId, // CRITICAL: Filter by current school
       allowCommunication: true,
     },
     include: {

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Clock, Download, FileText, BookOpen } from "lucide-react";
 import { format } from "date-fns";
-import DOMPurify from "isomorphic-dompurify";
+import { SafeHtmlRich } from "@/components/ui/safe-html";
 
 export const dynamic = 'force-dynamic';
 
@@ -136,7 +136,7 @@ export default async function LessonMaterialPage({
 
             <div className="prose max-w-none">
               {lesson.content ? (
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lesson.content) }} />
+                <SafeHtmlRich content={lesson.content} />
               ) : (
                 <div className="text-center py-12 text-gray-500 border rounded-md">
                   <FileText className="mx-auto h-12 w-12 text-gray-300" />

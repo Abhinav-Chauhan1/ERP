@@ -13,8 +13,15 @@ export const metadata = {
 };
 
 export default async function TeachersPage() {
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   const [teachers, filterOptions] = await Promise.all([
     db.teacher.findMany({
+      where: {
+        schoolId, // CRITICAL: Filter by current school
+      },
       include: {
         user: true,
         subjects: {

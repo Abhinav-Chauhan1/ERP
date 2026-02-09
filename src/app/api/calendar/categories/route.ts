@@ -64,9 +64,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: session.user.id,
+        schoolId, // CRITICAL: Filter by school
+      }
     });
 
     if (!user) {
@@ -80,8 +87,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    // Get all categories
-    const categories = await getAllEventCategories(includeInactive);
+    // Get all categories - CRITICAL: Filter by school
+    const categories = await getAllEventCategories(includeInactive, schoolId);
 
     return NextResponse.json(
       {
@@ -148,12 +155,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database with school information
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: session.user.id,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         userSchools: {
-          where: { isActive: true },
+          where: { 
+            isActive: true,
+            schoolId, // CRITICAL: Filter by school
+          },
           include: { school: true }
         }
       }
@@ -190,7 +207,7 @@ export async function POST(request: NextRequest) {
     const sanitizedData = sanitizeCategoryData(body);
 
     const categoryData: CreateEventCategoryInput = {
-      schoolId: userSchool.schoolId,
+      schoolId: schoolId, // CRITICAL: Use verified schoolId
       name: sanitizedData.name,
       description: sanitizedData.description,
       color: sanitizedData.color,

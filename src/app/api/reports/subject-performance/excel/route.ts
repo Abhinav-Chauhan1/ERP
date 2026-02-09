@@ -4,6 +4,10 @@ import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const searchParams = request.nextUrl.searchParams;
     const termId = searchParams.get("termId");
     const classId = searchParams.get("classId") || undefined;
@@ -30,15 +34,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get filter details for the report header
+    // Get filter details for the report header - CRITICAL: Filter by school
     const [term, classInfo, sectionInfo] = await Promise.all([
-      db.term.findUnique({
-        where: { id: termId },
+      db.term.findFirst({
+        where: { 
+          id: termId,
+          schoolId, // CRITICAL: Ensure term belongs to current school
+        },
         include: { academicYear: true },
       }),
-      classId ? db.class.findUnique({ where: { id: classId } }) : null,
+      classId ? db.class.findFirst({ 
+        where: { 
+          id: classId,
+          schoolId, // CRITICAL: Ensure class belongs to current school
+        } 
+      }) : null,
       sectionId
-        ? db.classSection.findUnique({ where: { id: sectionId } })
+        ? db.classSection.findFirst({ 
+            where: { 
+              id: sectionId,
+              schoolId, // CRITICAL: Ensure section belongs to current school
+            } 
+          })
         : null,
     ]);
 

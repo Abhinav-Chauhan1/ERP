@@ -78,10 +78,11 @@ export const GET = withSchoolAuth(async (request, context) => {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
+    // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
+    const user = await db.user.findFirst({
       where: {
-        id: session.user.id
+        id: session.user.id,
+        schoolId: context.schoolId, // CRITICAL: Filter by school
       }
     });
 
@@ -132,9 +133,9 @@ export const GET = withSchoolAuth(async (request, context) => {
 
     // For parents filtering by specific child (Requirement 4.2)
     if (childId && user.role === UserRole.PARENT) {
-      const parent = await db.parent.findUnique({
+      const parent = await db.parent.findFirst({
         where: {
-          schoolId: context.schoolId,
+          schoolId: context.schoolId, // CRITICAL: Filter by school
           userId: user.id
         }
       });
@@ -239,10 +240,11 @@ export const POST = withSchoolAuth(async (request, context) => {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
+    // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
+    const user = await db.user.findFirst({
       where: {
-        id: session.user.id
+        id: session.user.id,
+        schoolId: context.schoolId, // CRITICAL: Filter by school
       }
     });
 

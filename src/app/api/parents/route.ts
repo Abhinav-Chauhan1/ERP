@@ -12,6 +12,9 @@ export const GET = withSchoolAuth(async (request, context) => {
         }
 
         const parents = await db.parent.findMany({
+            where: {
+                schoolId: context.schoolId, // CRITICAL: Filter by current school
+            },
             include: {
                 user: {
                     select: {

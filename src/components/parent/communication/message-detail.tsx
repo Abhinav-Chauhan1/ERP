@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import DOMPurify from "dompurify";
+import { SafeHtmlStrict } from "@/components/ui/safe-html";
 import {
   ArrowLeft,
   Reply,
@@ -193,9 +193,10 @@ export function MessageDetail({
       <CardContent className="space-y-6">
         {/* Message Content */}
         <div className="prose prose-sm max-w-none">
-          <div
+          <SafeHtmlStrict 
+            content={message.content}
             className="whitespace-pre-wrap text-gray-800 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(message.content) }}
+            preserveLineBreaks
           />
         </div>
 

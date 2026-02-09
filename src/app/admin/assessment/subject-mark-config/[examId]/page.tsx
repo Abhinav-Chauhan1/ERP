@@ -21,9 +21,16 @@ interface PageProps {
 export default async function ExamSubjectMarkConfigPage({ params }: PageProps) {
   const { examId } = await params;
 
-  // Fetch exam details
-  const exam = await db.exam.findUnique({
-    where: { id: examId },
+  // CRITICAL: Add school isolation first
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  // Fetch exam details - CRITICAL: Filter by school
+  const exam = await db.exam.findFirst({
+    where: { 
+      id: examId,
+      schoolId, // CRITICAL: Ensure exam belongs to current school
+    },
     include: {
       subject: true,
       examType: true,
@@ -43,8 +50,11 @@ export default async function ExamSubjectMarkConfigPage({ params }: PageProps) {
   const configsResult = await getSubjectMarkConfigs(examId);
   const configs = configsResult.success ? configsResult.data : [];
 
-  // Fetch all subjects for the form
+  // Fetch all subjects for the form - filtered by school
   const subjects = await db.subject.findMany({
+    where: {
+      schoolId, // CRITICAL: Filter by current school
+    },
     select: {
       id: true,
       name: true,

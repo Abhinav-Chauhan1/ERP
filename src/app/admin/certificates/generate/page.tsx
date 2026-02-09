@@ -18,17 +18,25 @@ async function CertificateGeneratorContent() {
     redirect('/login');
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { id: session.user.id },
+  // CRITICAL: Get school context first
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const dbUser = await db.user.findFirst({
+    where: { 
+      id: session.user.id,
+      schoolId, // CRITICAL: Filter by school
+    },
   });
 
   if (!dbUser || dbUser.role !== 'ADMIN') {
     redirect('/');
   }
 
-  // Fetch active templates
+  // Fetch active templates - CRITICAL: Filter by school
   const templatesData = await db.certificateTemplate.findMany({
     where: {
+      schoolId, // CRITICAL: Ensure templates belong to current school
       isActive: true,
     },
     select: {
@@ -48,8 +56,11 @@ async function CertificateGeneratorContent() {
     category: t.category ?? undefined,
   }));
 
-  // Fetch students with their current enrollment
+  // Fetch students with their current enrollment - CRITICAL: Filter by school
   const students = await db.student.findMany({
+    where: {
+      schoolId, // CRITICAL: Ensure students belong to current school
+    },
     include: {
       user: {
         select: {
@@ -58,6 +69,9 @@ async function CertificateGeneratorContent() {
         },
       },
       enrollments: {
+        where: {
+          schoolId, // CRITICAL: Ensure enrollments belong to current school
+        },
         include: {
           class: {
             select: {

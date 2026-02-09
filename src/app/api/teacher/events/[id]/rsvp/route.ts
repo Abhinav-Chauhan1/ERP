@@ -26,9 +26,16 @@ export async function POST(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },
@@ -43,9 +50,12 @@ export async function POST(
 
     const { id } = await params;
 
-    // Verify event exists
-    const event = await db.event.findUnique({
-      where: { id },
+    // Verify event exists - CRITICAL: Filter by school
+    const event = await db.event.findFirst({
+      where: { 
+        id,
+        schoolId, // CRITICAL: Ensure event belongs to current school
+      },
     });
 
     if (!event) {

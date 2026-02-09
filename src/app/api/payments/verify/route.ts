@@ -25,9 +25,14 @@ async function getCurrentParent() {
     return null;
   }
 
-  const dbUser = await db.user.findUnique({
+  // CRITICAL: Get school context first
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const dbUser = await db.user.findFirst({
     where: {
-      id: clerkUser.id
+      id: clerkUser.id,
+      schoolId, // CRITICAL: Filter by school
     }
   });
 
@@ -35,9 +40,10 @@ async function getCurrentParent() {
     return null;
   }
 
-  const parent = await db.parent.findUnique({
+  const parent = await db.parent.findFirst({
     where: {
-      userId: dbUser.id
+      userId: dbUser.id,
+      schoolId, // CRITICAL: Filter by school
     }
   });
 
@@ -137,10 +143,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if payment already exists with this transaction ID
+    // CRITICAL: Get school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Check if payment already exists with this transaction ID - CRITICAL: Filter by school
     const existingPayment = await db.feePayment.findFirst({
       where: {
-        transactionId: validated.paymentId
+        transactionId: validated.paymentId,
+        schoolId, // CRITICAL: Ensure payment belongs to current school
       }
     });
 
@@ -177,7 +188,7 @@ export async function POST(req: NextRequest) {
         data: {
           studentId: validated.childId,
           feeStructureId: validated.feeStructureId,
-          schoolId: "school-id", // TODO: Get from context
+          schoolId, // CRITICAL: Use actual school context
           amount: validated.amount,
           paidAmount: validated.amount,
           balance: 0,

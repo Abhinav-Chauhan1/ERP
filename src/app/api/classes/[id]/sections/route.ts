@@ -19,9 +19,29 @@ const userId = session?.user?.id;
 
     const { id } = await params;
 
+    // CRITICAL: Add school isolation - verify class belongs to user's school
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // First verify the class belongs to the school
+    const classExists = await db.class.findFirst({
+      where: {
+        id,
+        schoolId, // CRITICAL: Verify class belongs to school
+      },
+    });
+
+    if (!classExists) {
+      return NextResponse.json(
+        { error: "Class not found" },
+        { status: 404 }
+      );
+    }
+
     const sections = await db.classSection.findMany({
       where: {
-        classId: id
+        classId: id,
+        schoolId, // CRITICAL: Filter by current school
       },
       select: {
         id: true,

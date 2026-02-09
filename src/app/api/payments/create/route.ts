@@ -24,9 +24,14 @@ async function getCurrentParent() {
     return null;
   }
 
-  const dbUser = await db.user.findUnique({
+  // CRITICAL: Get school context first
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const dbUser = await db.user.findFirst({
     where: {
-      id: clerkUser.id
+      id: clerkUser.id,
+      schoolId, // CRITICAL: Filter by school
     }
   });
 
@@ -34,9 +39,10 @@ async function getCurrentParent() {
     return null;
   }
 
-  const parent = await db.parent.findUnique({
+  const parent = await db.parent.findFirst({
     where: {
-      userId: dbUser.id
+      userId: dbUser.id,
+      schoolId, // CRITICAL: Filter by school
     }
   });
 
@@ -122,9 +128,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify fee structure exists and is active
-    const feeStructure = await db.feeStructure.findUnique({
-      where: { id: validated.feeStructureId },
+    // CRITICAL: Get school context
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Verify fee structure exists and is active - CRITICAL: Filter by school
+    const feeStructure = await db.feeStructure.findFirst({
+      where: { 
+        id: validated.feeStructureId,
+        schoolId, // CRITICAL: Ensure fee structure belongs to current school
+      },
       include: {
         items: {
           include: {
@@ -155,9 +168,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get student details for receipt
-    const student = await db.student.findUnique({
-      where: { id: validated.childId },
+    // Get student details for receipt - CRITICAL: Filter by school
+    const student = await db.student.findFirst({
+      where: { 
+        id: validated.childId,
+        schoolId, // CRITICAL: Ensure student belongs to current school
+      },
       include: {
         user: {
           select: {

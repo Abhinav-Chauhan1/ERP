@@ -22,9 +22,16 @@ export default async function ParentDetailPage({
   const param = await params;
   const id = param.id;
 
-  // Get parent data with children and meetings
-  const parent = await db.parent.findUnique({
-    where: { id },
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  // Get parent data with children and meetings - CRITICAL: Filter by schoolId
+  const parent = await db.parent.findFirst({
+    where: { 
+      id,
+      schoolId, // CRITICAL: Ensure parent belongs to current school
+    },
     select: {
       id: true,
       schoolId: true,
@@ -45,7 +52,8 @@ export default async function ParentDetailPage({
                   section: true,
                 },
                 where: {
-                  status: "ACTIVE"
+                  status: "ACTIVE",
+                  schoolId, // CRITICAL: Filter enrollments by school
                 },
                 take: 1
               }
@@ -73,9 +81,10 @@ export default async function ParentDetailPage({
     notFound();
   }
 
-  // Get all students that are not associated with this parent
+  // CRITICAL: Add school isolation - Get all students from the same school
   const unassociatedStudents = await db.student.findMany({
     where: {
+      schoolId: parent.schoolId, // CRITICAL: Only students from same school
       NOT: {
         parents: {
           some: {

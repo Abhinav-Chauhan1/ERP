@@ -19,9 +19,16 @@ export async function GET(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },
@@ -36,10 +43,11 @@ export async function GET(
 
     const { id } = await params;
 
-    // Fetch achievement
-    const achievement = await db.achievement.findUnique({
+    // Fetch achievement - CRITICAL: Filter by school
+    const achievement = await db.achievement.findFirst({
       where: {
         id,
+        schoolId, // CRITICAL: Ensure achievement belongs to current school
       },
     });
 
@@ -84,9 +92,16 @@ export async function PUT(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },
@@ -101,10 +116,11 @@ export async function PUT(
 
     const { id } = await params;
 
-    // Check if achievement exists and belongs to teacher
-    const existingAchievement = await db.achievement.findUnique({
+    // Check if achievement exists and belongs to teacher - CRITICAL: Filter by school
+    const existingAchievement = await db.achievement.findFirst({
       where: {
         id,
+        schoolId, // CRITICAL: Ensure achievement belongs to current school
       },
     });
 
@@ -212,9 +228,16 @@ export async function DELETE(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },
@@ -229,10 +252,11 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if achievement exists and belongs to teacher
-    const existingAchievement = await db.achievement.findUnique({
+    // Check if achievement exists and belongs to teacher - CRITICAL: Filter by school
+    const existingAchievement = await db.achievement.findFirst({
       where: {
         id,
+        schoolId, // CRITICAL: Ensure achievement belongs to current school
       },
     });
 

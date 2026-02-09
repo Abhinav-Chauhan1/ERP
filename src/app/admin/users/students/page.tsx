@@ -14,8 +14,15 @@ export const metadata = {
 };
 
 export default async function StudentsPage() {
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   const [students, filterOptions] = await Promise.all([
     db.student.findMany({
+      where: {
+        schoolId, // CRITICAL: Filter by current school
+      },
       include: {
         user: true,
         enrollments: {
@@ -25,6 +32,7 @@ export default async function StudentsPage() {
           },
           where: {
             status: "ACTIVE",
+            schoolId, // CRITICAL: Filter enrollments by school
           },
           take: 1,
         },

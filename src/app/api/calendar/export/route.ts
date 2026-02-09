@@ -66,11 +66,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user with school associations
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user with school associations - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: session.user.id,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         userSchools: {
+          where: {
+            schoolId, // CRITICAL: Filter by school
+          },
           include: {
             school: true
           }
@@ -86,8 +96,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the first school (or handle multiple schools as needed)
-    const schoolId = user.userSchools[0]?.schoolId;
-    if (!schoolId) {
+    const userSchoolId = user.userSchools[0]?.schoolId || schoolId;
+    if (!userSchoolId) {
       return NextResponse.json(
         { error: 'No school association found' },
         { status: 403 }
@@ -97,7 +107,7 @@ export async function GET(request: NextRequest) {
     // Build export options
     const options: ExportOptions = {
       format,
-      schoolId,
+      schoolId: userSchoolId, // CRITICAL: Use verified schoolId
       includeNotes,
       includeReminders
     };

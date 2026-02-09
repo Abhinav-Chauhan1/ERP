@@ -46,5 +46,173 @@
     "nextRun": "2026-01-26T03:30:00.000Z",
     "createdAt": "2026-01-25T07:39:22.567Z",
     "updatedAt": "2026-01-25T07:39:22.567Z"
+  },
+  {
+    "templateId": "template_1770573434585",
+    "name": "Scheduled Test Report 1770573434585",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-04T17:57:14.585Z",
+        "endDate": "2026-02-08T17:57:14.585Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1770573435675",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:15.675Z",
+    "updatedAt": "2026-02-08T17:57:15.675Z"
+  },
+  {
+    "templateId": "template_1770573436856",
+    "name": "Scheduled Test Report 1770573436856",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-27T17:57:16.856Z",
+        "endDate": "2026-02-08T17:57:16.856Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1770573438141",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:18.141Z",
+    "updatedAt": "2026-02-08T17:57:18.141Z"
+  },
+  {
+    "templateId": "template_1770573439475",
+    "name": "Scheduled Test Report 1770573439475",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-24T17:57:19.475Z",
+        "endDate": "2026-02-08T17:57:19.475Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1770573440413",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:20.413Z",
+    "updatedAt": "2026-02-08T17:57:20.413Z"
+  },
+  {
+    "templateId": "template_1770573441268",
+    "name": "Scheduled Test Report 1770573441268",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-06T17:57:21.268Z",
+        "endDate": "2026-02-08T17:57:21.268Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1770573442787",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:22.787Z",
+    "updatedAt": "2026-02-08T17:57:22.787Z"
+  },
+  {
+    "templateId": "template_1770573444274",
+    "name": "Scheduled Test Report 1770573444274",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-11T17:57:24.274Z",
+        "endDate": "2026-02-08T17:57:24.274Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1770573444304",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:24.304Z",
+    "updatedAt": "2026-02-08T17:57:24.304Z"
+  },
+  {
+    "templateId": "template_1770573444323",
+    "name": "Scheduled Test Report 1770573444323",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-10T17:57:24.323Z",
+        "endDate": "2026-02-08T17:57:24.323Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1770573445493",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:25.493Z",
+    "updatedAt": "2026-02-08T17:57:25.493Z"
+  },
+  {
+    "templateId": "template_1770573447359",
+    "name": "Scheduled Test Report 1770573447359",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-04T17:57:27.359Z",
+        "endDate": "2026-02-08T17:57:27.359Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1770573448320",
+    "nextRun": "2026-02-09T03:30:00.000Z",
+    "createdAt": "2026-02-08T17:57:28.320Z",
+    "updatedAt": "2026-02-08T17:57:28.320Z"
   }
 ]

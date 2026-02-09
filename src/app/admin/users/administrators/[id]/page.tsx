@@ -15,8 +15,15 @@ interface AdministratorDetailPageProps {
 export default async function AdministratorDetailPage({ params }: AdministratorDetailPageProps) {
   const { id } = await params;
 
-  const administrator = await db.administrator.findUnique({
-    where: { id },
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
+  const administrator = await db.administrator.findFirst({
+    where: { 
+      id,
+      schoolId, // CRITICAL: Ensure administrator belongs to current school
+    },
     include: {
       user: true,
     },

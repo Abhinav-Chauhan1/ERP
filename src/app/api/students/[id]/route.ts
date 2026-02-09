@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 
-export async function GET(
+export const GET = withSchoolAuth(async (
   request: NextRequest,
+  context,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const session = await auth();
-const userId = session?.user?.id;
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const { id } = await params;
 
-    const student = await db.student.findUnique({
-      where: { id },
+    // CRITICAL: Filter by both id AND schoolId for security
+    const student = await db.student.findFirst({
+      where: { 
+        id,
+        schoolId: context.schoolId, // CRITICAL: Ensure student belongs to current school
+      },
       include: {
         user: true,
         parents: {
@@ -38,7 +33,8 @@ const userId = session?.user?.id;
             section: true,
           },
           where: {
-            status: "ACTIVE"
+            status: "ACTIVE",
+            schoolId: context.schoolId, // CRITICAL: Filter enrollments by school
           },
           take: 1
         },
@@ -50,6 +46,9 @@ const userId = session?.user?.id;
               }
             }
           },
+          where: {
+            schoolId: context.schoolId, // CRITICAL: Filter exam results by school
+          },
           orderBy: {
             exam: {
               examDate: 'desc'
@@ -58,6 +57,9 @@ const userId = session?.user?.id;
           take: 5
         },
         attendance: {
+          where: {
+            schoolId: context.schoolId, // CRITICAL: Filter attendance by school
+          },
           orderBy: {
             date: 'desc'
           },
@@ -81,4 +83,4 @@ const userId = session?.user?.id;
       { status: 500 }
     );
   }
-}
+});

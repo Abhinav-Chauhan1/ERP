@@ -148,13 +148,9 @@ export const getSystemSettings = cachedQuery(
         const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
         schoolId = await getRequiredSchoolId();
       } catch (error) {
-        // If no school context (e.g., public pages), return first settings
-        console.warn("No school context available, returning first settings");
-        return await db.systemSettings.findFirst({
-          orderBy: {
-            createdAt: "desc",
-          },
-        });
+        // CRITICAL FIX: Don't fall back to first settings - this causes wrong school display
+        console.error("No school context available for system settings");
+        return null; // Return null instead of wrong school's settings
       }
     }
     

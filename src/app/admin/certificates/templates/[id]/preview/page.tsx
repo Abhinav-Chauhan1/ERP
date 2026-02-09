@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { JSDOM } from 'jsdom';
 import DOMPurify from 'dompurify';
+import { SafeHtmlRich } from '@/components/ui/safe-html';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,9 +101,9 @@ export default async function CertificateTemplatePreviewPage({ params }: PagePro
                         }}
                     >
                         {previewHtml ? (
-                            <div
+                            <SafeHtmlRich 
+                                content={previewHtml as string}
                                 className="w-full h-full overflow-auto"
-                                dangerouslySetInnerHTML={{ __html: (previewHtml as unknown) as string }}
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-gray-500">

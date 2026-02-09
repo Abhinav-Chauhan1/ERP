@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },
@@ -37,9 +44,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const category = searchParams.get('category');
 
-    // Build where clause
+    // Build where clause - CRITICAL: Filter by school
     const where: any = {
       userId: user.id,
+      schoolId, // CRITICAL: Ensure documents belong to current school
     };
 
     if (search) {
@@ -88,9 +96,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: userId },
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: userId,
+        schoolId, // CRITICAL: Filter by school
+      },
       include: {
         teacher: true,
       },

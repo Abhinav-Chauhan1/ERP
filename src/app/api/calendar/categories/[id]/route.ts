@@ -50,9 +50,16 @@ export async function PUT(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: session.user.id,
+        schoolId, // CRITICAL: Filter by school
+      }
     });
 
     if (!user) {
@@ -67,6 +74,21 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Insufficient permissions. Admin access required.' },
         { status: 403 }
+      );
+    }
+
+    // Verify category belongs to current school
+    const existingCategory = await db.eventCategory.findFirst({
+      where: {
+        id,
+        schoolId, // CRITICAL: Ensure category belongs to current school
+      },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
       );
     }
 
@@ -133,9 +155,16 @@ export async function DELETE(
       );
     }
 
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
+    // CRITICAL: Get school context first
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Get user from database - CRITICAL: Filter by school
+    const user = await db.user.findFirst({
+      where: { 
+        id: session.user.id,
+        schoolId, // CRITICAL: Filter by school
+      }
     });
 
     if (!user) {
@@ -150,6 +179,21 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Insufficient permissions. Admin access required.' },
         { status: 403 }
+      );
+    }
+
+    // Verify category belongs to current school
+    const existingCategory = await db.eventCategory.findFirst({
+      where: {
+        id,
+        schoolId, // CRITICAL: Ensure category belongs to current school
+      },
+    });
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
       );
     }
 

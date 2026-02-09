@@ -12,7 +12,14 @@ export const metadata = {
 };
 
 export default async function AdministratorsPage() {
+  // CRITICAL: Add school isolation
+  const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+  const schoolId = await getRequiredSchoolId();
+
   const administrators = await db.administrator.findMany({
+    where: {
+      schoolId, // CRITICAL: Filter by current school
+    },
     include: {
       user: true
     },
