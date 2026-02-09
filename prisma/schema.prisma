@@ -225,9 +225,7 @@ model School {
   alertConfigs            AlertConfig[]
   auditLogs               AuditLog[]
   permissions             SchoolPermissions?
-  securitySettings        SchoolSecuritySettings?
-  dataManagementSettings  SchoolDataManagementSettings?
-  notificationSettings    SchoolNotificationSettings?
+  settings                SchoolSettings?
   studentAchievements     StudentAchievement[]
   studentXPLevels         StudentXPLevel[]
   studentNotes            StudentNote[]
@@ -236,7 +234,6 @@ model School {
   mindMaps                MindMap[]
   lessonContents          LessonContent[]
   studentContentProgress  StudentContentProgress[]
-  systemSettings          SystemSettings?
 
   @@map("schools")
 }
@@ -2356,22 +2353,47 @@ model SchoolPermissions {
   @@index([schoolId])
 }
 
-model SchoolSecuritySettings {
+model SchoolSettings {
   id       String @id @default(cuid())
   schoolId String @unique
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  // Two-Factor Authentication
+  // ========== ONBOARDING & BASIC INFO ==========
+  onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(0)
+  schoolName          String  @default("School Name")
+  schoolAddress       String?
+  schoolPhone         String?
+  schoolEmail         String?
+  schoolLogo          String?
+  schoolWebsite       String?
+  schoolFax           String?
+  affiliationNumber   String?
+  schoolCode          String?
+  board               String? @default("CBSE")
+  timezone            String  @default("UTC")
+  tagline             String?
+
+  // ========== ACADEMIC SETTINGS ==========
+  currentAcademicYear String  @default("")
+  currentTerm         String  @default("")
+  defaultGradingScale String  @default("PERCENTAGE")
+  attendanceThreshold Int     @default(75)
+  lateArrivalMinutes  Int     @default(15)
+  passingGrade        Int     @default(50)
+  autoAttendance      Boolean @default(false)
+
+  // ========== SECURITY - TWO-FACTOR AUTHENTICATION ==========
   twoFactorEnabled  Boolean  @default(false)
   twoFactorRequired Boolean  @default(false)
   twoFactorMethods  String[] @default(["SMS", "EMAIL"])
 
-  // Session Management
+  // ========== SECURITY - SESSION MANAGEMENT ==========
   sessionTimeout              Int     @default(480) // minutes
   maxConcurrentSessions       Int     @default(3)
   forceLogoutOnPasswordChange Boolean @default(true)
 
-  // Password Policy
+  // ========== SECURITY - PASSWORD POLICY ==========
   passwordMinLength           Int     @default(8)
   passwordRequireUppercase    Boolean @default(true)
   passwordRequireLowercase    Boolean @default(true)
@@ -2379,72 +2401,49 @@ model SchoolSecuritySettings {
   passwordRequireSpecialChars Boolean @default(false)
   passwordExpiry              Int     @default(90) // days, 0 = never
 
-  // IP Whitelisting
+  // ========== SECURITY - IP WHITELISTING ==========
   ipWhitelistEnabled Boolean  @default(false)
   allowedIPs         String[] @default([])
   blockUnknownIPs    Boolean  @default(false)
 
-  // Audit Logging
+  // ========== SECURITY - AUDIT LOGGING ==========
   auditLoggingEnabled Boolean @default(true)
   auditLogLevel       String  @default("INFO")
   auditLogRetention   Int     @default(365) // days
 
-  // Data Encryption
+  // ========== SECURITY - DATA ENCRYPTION ==========
   encryptSensitiveData Boolean @default(true)
   encryptionLevel      String  @default("AES-256")
 
-  // API Security
+  // ========== SECURITY - API SECURITY ==========
   rateLimitEnabled     Boolean @default(true)
   maxRequestsPerMinute Int     @default(100)
   requireApiKey        Boolean @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([schoolId])
-}
-
-model SchoolDataManagementSettings {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  // Backup Settings
+  // ========== DATA MANAGEMENT - BACKUP SETTINGS ==========
   autoBackupEnabled Boolean @default(true)
   backupFrequency   String  @default("DAILY") // HOURLY, DAILY, WEEKLY, MONTHLY
   backupRetention   Int     @default(30) // days
   includeFiles      Boolean @default(true)
   encryptBackups    Boolean @default(true)
 
-  // Export Settings
+  // ========== DATA MANAGEMENT - EXPORT SETTINGS ==========
   allowDataExport Boolean  @default(true)
   exportFormats   String[] @default(["CSV", "JSON", "PDF"])
   requireApproval Boolean  @default(true)
 
-  // Data Retention
+  // ========== DATA MANAGEMENT - DATA RETENTION ==========
   studentDataRetention Int     @default(7) // years
-  auditLogRetention    Int     @default(365) // days
   messageRetention     Int     @default(90) // days
   autoCleanup          Boolean @default(false)
 
-  // Storage Management
+  // ========== DATA MANAGEMENT - STORAGE MANAGEMENT ==========
   storageQuota       Int     @default(1) // GB
   compressionEnabled Boolean @default(true)
   autoArchive        Boolean @default(true)
   archiveAfterDays   Int     @default(365)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([schoolId])
-}
-
-model SchoolNotificationSettings {
-  id       String @id @default(cuid())
-  schoolId String @unique
-  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  // Email Notifications
+  // ========== NOTIFICATIONS - EMAIL ==========
   emailEnabled           Boolean @default(true)
   emailAdmissionUpdates  Boolean @default(true)
   emailFeeReminders      Boolean @default(true)
@@ -2452,7 +2451,7 @@ model SchoolNotificationSettings {
   emailAttendanceAlerts  Boolean @default(true)
   emailSystemUpdates     Boolean @default(true)
 
-  // SMS Notifications
+  // ========== NOTIFICATIONS - SMS ==========
   smsEnabled           Boolean @default(false)
   smsAdmissionUpdates  Boolean @default(false)
   smsFeeReminders      Boolean @default(true)
@@ -2460,7 +2459,7 @@ model SchoolNotificationSettings {
   smsAttendanceAlerts  Boolean @default(true)
   smsEmergencyAlerts   Boolean @default(true)
 
-  // WhatsApp Notifications
+  // ========== NOTIFICATIONS - WHATSAPP ==========
   whatsappEnabled           Boolean @default(false)
   whatsappAdmissionUpdates  Boolean @default(false)
   whatsappFeeReminders      Boolean @default(true)
@@ -2468,7 +2467,7 @@ model SchoolNotificationSettings {
   whatsappAttendanceAlerts  Boolean @default(false)
   whatsappGeneralUpdates    Boolean @default(false)
 
-  // Push Notifications
+  // ========== NOTIFICATIONS - PUSH ==========
   pushEnabled           Boolean @default(true)
   pushAdmissionUpdates  Boolean @default(true)
   pushFeeReminders      Boolean @default(true)
@@ -2476,51 +2475,7 @@ model SchoolNotificationSettings {
   pushAttendanceAlerts  Boolean @default(true)
   pushSystemMaintenance Boolean @default(true)
 
-  // Notification Timing
-  quietHoursEnabled    Boolean @default(true)
-  quietHoursStart      String  @default("22:00")
-  quietHoursEnd        String  @default("08:00")
-  weekendNotifications Boolean @default(false)
-
-  // Delivery Preferences
-  batchNotifications Boolean @default(true)
-  immediateEmergency Boolean @default(true)
-  digestFrequency    String  @default("DAILY") // IMMEDIATE, HOURLY, DAILY, WEEKLY
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([schoolId])
-}
-
-model SystemSettings {
-  id                             String   @id @default(cuid())
-  schoolId                       String   @unique
-  school                         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  onboardingCompleted            Boolean  @default(false)
-  onboardingStep                 Int      @default(0)
-  schoolName                     String   @default("School Name")
-  schoolAddress                  String?
-  schoolPhone                    String?
-  schoolEmail                    String?
-  schoolLogo                     String?
-  schoolWebsite                  String?
-  schoolFax                      String?
-  affiliationNumber              String?
-  schoolCode                     String?
-  board                          String?  @default("CBSE")
-  timezone                       String   @default("UTC")
-  tagline                        String?
-  currentAcademicYear            String?
-  currentTerm                    String?
-  defaultGradingScale            String   @default("PERCENTAGE")
-  attendanceThreshold            Int      @default(75)
-  lateArrivalMinutes             Int      @default(15)
-  passingGrade                   Int      @default(50)
-  autoAttendance                 Boolean  @default(false)
-  emailEnabled                   Boolean  @default(true)
-  smsEnabled                     Boolean  @default(false)
-  pushEnabled                    Boolean  @default(true)
+  // ========== NOTIFICATIONS - LEGACY CHANNELS (for backward compatibility) ==========
   notifyEnrollment               Boolean  @default(true)
   notifyPayment                  Boolean  @default(true)
   notifyAttendance               Boolean  @default(true)
@@ -2531,45 +2486,54 @@ model SystemSettings {
   attendanceNotificationChannels String[] @default(["SMS", "IN_APP"])
   examResultNotificationChannels String[] @default(["EMAIL", "IN_APP"])
   leaveAppNotificationChannels   String[] @default(["EMAIL", "IN_APP"])
-  sessionTimeout                 Int      @default(30)
-  passwordMinLength              Int      @default(8)
-  passwordRequireSpecialChar     Boolean  @default(true)
-  passwordRequireNumber          Boolean  @default(true)
-  passwordRequireUppercase       Boolean  @default(true)
-  twoFactorAuth                  Boolean  @default(false)
-  passwordExpiry                 Int      @default(90)
-  autoBackup                     Boolean  @default(true)
-  backupFrequency                String   @default("daily")
-  defaultTheme                   String   @default("LIGHT")
-  defaultColorTheme              String   @default("blue")
-  primaryColor                   String   @default("#3b82f6")
-  secondaryColor                 String   @default("#8b5cf6")
-  accentColor                    String?
-  language                       String   @default("en")
-  dateFormat                     String   @default("mdy")
-  logoUrl                        String?
-  faviconUrl                     String?
-  emailLogo                      String?
-  emailFooter                    String?
-  emailSignature                 String?
-  letterheadLogo                 String?
-  letterheadText                 String?
-  documentFooter                 String?
-  facebookUrl                    String?
-  twitterUrl                     String?
-  linkedinUrl                    String?
-  instagramUrl                   String?
-  enableOnlinePayment            Boolean  @default(false)
-  enableOfflineVerification      Boolean  @default(true)
-  onlinePaymentGateway           String?
-  maxReceiptSizeMB               Int      @default(5)
-  allowedReceiptFormats          String   @default("jpg,jpeg,png,pdf")
-  autoNotifyOnVerification       Boolean  @default(true)
-  createdAt                      DateTime @default(now())
-  updatedAt                      DateTime @updatedAt
+
+  // ========== NOTIFICATIONS - TIMING & DELIVERY ==========
+  quietHoursEnabled    Boolean @default(true)
+  quietHoursStart      String  @default("22:00")
+  quietHoursEnd        String  @default("08:00")
+  weekendNotifications Boolean @default(false)
+  batchNotifications   Boolean @default(true)
+  immediateEmergency   Boolean @default(true)
+  digestFrequency      String  @default("DAILY") // IMMEDIATE, HOURLY, DAILY, WEEKLY
+
+  // ========== BRANDING & THEME ==========
+  defaultTheme      String  @default("LIGHT")
+  defaultColorTheme String  @default("blue")
+  primaryColor      String  @default("#3b82f6")
+  secondaryColor    String  @default("#8b5cf6")
+  accentColor       String?
+  logoUrl           String?
+  faviconUrl        String?
+  emailLogo         String?
+  emailFooter       String?
+  emailSignature    String?
+  letterheadLogo    String?
+  letterheadText    String?
+  documentFooter    String?
+
+  // ========== SOCIAL MEDIA ==========
+  facebookUrl  String?
+  twitterUrl   String?
+  linkedinUrl  String?
+  instagramUrl String?
+
+  // ========== LOCALIZATION ==========
+  language   String @default("en")
+  dateFormat String @default("mdy")
+
+  // ========== PAYMENT SETTINGS ==========
+  enableOnlinePayment       Boolean @default(false)
+  enableOfflineVerification Boolean @default(true)
+  onlinePaymentGateway      String?
+  maxReceiptSizeMB          Int     @default(5)
+  allowedReceiptFormats     String  @default("jpg,jpeg,png,pdf")
+  autoNotifyOnVerification  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([schoolId])
-  @@map("system_settings")
+  @@map("school_settings")
 }
 
 model ScheduledReport {

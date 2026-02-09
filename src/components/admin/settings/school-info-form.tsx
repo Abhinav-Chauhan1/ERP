@@ -14,10 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { School, Loader2, Upload, X } from "lucide-react";
+import { School, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { updateSchoolInfo } from "@/lib/actions/settingsActions";
-import { R2UploadWidget } from "@/components/upload/r2-upload-widget";
+import { R2UploadWidget, type UploadResult } from "@/components/upload/r2-upload-widget";
 
 interface SchoolInfoFormProps {
   initialData: {
@@ -42,7 +42,6 @@ interface SchoolInfoFormProps {
 
 export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [loading, setLoading] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [schoolName, setSchoolName] = useState(initialData.schoolName || "");
   const [schoolEmail, setSchoolEmail] = useState(initialData.schoolEmail || "");
   const [schoolPhone, setSchoolPhone] = useState(initialData.schoolPhone || "");
@@ -60,34 +59,18 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [schoolCode, setSchoolCode] = useState(initialData.schoolCode || "");
   const [board, setBoard] = useState(initialData.board || "CBSE");
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error("Please upload an image file");
-      return;
+  const handleLogoUpload = async (result: UploadResult) => {
+    if (result.success && result.url) {
+      setSchoolLogo(result.url);
+      toast.success("Logo uploaded successfully");
+    } else {
+      toast.error(result.error || "Failed to upload logo");
     }
+  };
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
-      return;
-    }
-
-    setUploadingLogo(true);
-    try {
-      // Upload logo to R2 storage using R2 upload widget
-      // This has been integrated with the R2 storage service
-      console.warn("Logo upload temporarily disabled during migration to R2 storage");
-      toast.error("Logo upload temporarily disabled during migration to R2 storage");
-    } catch (error) {
-      console.error("Error uploading logo:", error);
-      toast.error("Failed to upload logo");
-    } finally {
-      setUploadingLogo(false);
-    }
+  const handleLogoError = (error: string) => {
+    console.error("Error uploading logo:", error);
+    toast.error(`Failed to upload logo: ${error}`);
   };
 
   const handleRemoveLogo = () => {
@@ -334,44 +317,29 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
                   size="icon"
                   className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                   onClick={handleRemoveLogo}
-                  disabled={uploadingLogo || loading}
+                  disabled={loading}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             )}
 
-            {/* Upload Button */}
-            <div className="flex gap-2">
-              <div className="relative">
-                <Input
-                  id="logoUpload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  disabled={uploadingLogo || loading}
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('logoUpload')?.click()}
-                  disabled={uploadingLogo || loading}
-                >
-                  {uploadingLogo ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Logo
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+            {/* R2 Upload Widget */}
+            <R2UploadWidget
+              onSuccess={handleLogoUpload}
+              onError={handleLogoError}
+              maxFiles={1}
+              accept={['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp']}
+              maxSize={5 * 1024 * 1024} // 5MB
+              folder="logos"
+              category="image"
+              generateThumbnails={true}
+              disabled={loading}
+              multiple={false}
+              uploadText="Upload School Logo"
+              descriptionText="Click or drag and drop your school logo here"
+              showPreviews={true}
+            />
 
             {/* Manual URL Input */}
             <div className="space-y-2">
@@ -383,12 +351,12 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
                 value={schoolLogo}
                 onChange={(e) => setSchoolLogo(e.target.value)}
                 placeholder="https://example.com/logo.png"
-                disabled={uploadingLogo || loading}
+                disabled={loading}
               />
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Recommended size: 200x200px. Max file size: 5MB. Supported formats: JPG, PNG, SVG
+              Recommended size: 200x200px. Max file size: 5MB. Supported formats: JPG, PNG, SVG, WebP
             </p>
           </div>
         </CardContent>
