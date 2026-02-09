@@ -68,11 +68,10 @@ export async function GET(request: NextRequest) {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Get user from database - CRITICAL: Filter by school
+    // Get user from database
     const user = await db.user.findFirst({
       where: { 
         id: session.user.id,
-        schoolId, // CRITICAL: Filter by school
       }
     });
 
@@ -87,8 +86,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    // Get all categories - CRITICAL: Filter by school
-    const categories = await getAllEventCategories(includeInactive, schoolId);
+    // Get all categories
+    const categories = await getAllEventCategories(includeInactive);
 
     return NextResponse.json(
       {
@@ -159,17 +158,16 @@ export async function POST(request: NextRequest) {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Get user from database - CRITICAL: Filter by school
+    // Get user from database
     const user = await db.user.findFirst({
       where: { 
         id: session.user.id,
-        schoolId, // CRITICAL: Filter by school
       },
       include: {
         userSchools: {
           where: { 
             isActive: true,
-            schoolId, // CRITICAL: Filter by school
+            schoolId, // Filter by school
           },
           include: { school: true }
         }

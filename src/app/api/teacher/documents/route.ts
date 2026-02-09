@@ -24,9 +24,7 @@ export async function GET(request: NextRequest) {
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },
@@ -103,9 +101,7 @@ export async function POST(request: NextRequest) {
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },

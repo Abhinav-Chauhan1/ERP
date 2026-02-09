@@ -30,9 +30,7 @@ async function getCurrentParent() {
 
   const dbUser = await db.user.findFirst({
     where: {
-      id: clerkUser.id,
-      schoolId, // CRITICAL: Filter by school
-    }
+      id: clerkUser.id,    }
   });
 
   if (!dbUser || dbUser.role !== UserRole.PARENT) {
@@ -41,9 +39,7 @@ async function getCurrentParent() {
 
   const parent = await db.parent.findFirst({
     where: {
-      userId: dbUser.id,
-      schoolId, // CRITICAL: Filter by school
-    }
+      userId: dbUser.id,    }
   });
 
   return parent;

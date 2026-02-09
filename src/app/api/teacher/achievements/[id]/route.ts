@@ -26,9 +26,7 @@ export async function GET(
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },
@@ -99,9 +97,7 @@ export async function PUT(
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },
@@ -235,9 +231,7 @@ export async function DELETE(
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },

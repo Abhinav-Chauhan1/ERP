@@ -54,11 +54,10 @@ export async function PUT(
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Get user from database - CRITICAL: Filter by school
+    // Get user from database
     const user = await db.user.findFirst({
       where: { 
         id: session.user.id,
-        schoolId, // CRITICAL: Filter by school
       }
     });
 
@@ -78,7 +77,7 @@ export async function PUT(
     }
 
     // Verify category belongs to current school
-    const existingCategory = await db.eventCategory.findFirst({
+    const existingCategory = await db.calendarEventCategory.findFirst({
       where: {
         id,
         schoolId, // CRITICAL: Ensure category belongs to current school
@@ -159,11 +158,10 @@ export async function DELETE(
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    // Get user from database - CRITICAL: Filter by school
+    // Get user from database
     const user = await db.user.findFirst({
       where: { 
         id: session.user.id,
-        schoolId, // CRITICAL: Filter by school
       }
     });
 
@@ -183,7 +181,7 @@ export async function DELETE(
     }
 
     // Verify category belongs to current school
-    const existingCategory = await db.eventCategory.findFirst({
+    const existingCategory = await db.calendarEventCategory.findFirst({
       where: {
         id,
         schoolId, // CRITICAL: Ensure category belongs to current school

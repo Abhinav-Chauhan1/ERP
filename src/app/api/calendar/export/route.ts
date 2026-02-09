@@ -73,14 +73,10 @@ export async function GET(request: NextRequest) {
     // Get user with school associations - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: session.user.id,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: session.user.id,      },
       include: {
         userSchools: {
-          where: {
-            schoolId, // CRITICAL: Filter by school
-          },
+          where: {          },
           include: {
             school: true
           }

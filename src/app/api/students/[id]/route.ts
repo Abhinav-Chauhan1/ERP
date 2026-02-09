@@ -4,11 +4,10 @@ import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 
 export const GET = withSchoolAuth(async (
   request: NextRequest,
-  context,
-  { params }: { params: Promise<{ id: string }> }
+  context: { schoolId: string; userId: string; userRole: string; params: any }
 ) => {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
 
     // CRITICAL: Filter by both id AND schoolId for security
     const student = await db.student.findFirst({

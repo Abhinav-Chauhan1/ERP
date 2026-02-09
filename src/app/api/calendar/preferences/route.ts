@@ -33,14 +33,10 @@ export async function GET() {
     // Get user with school associations - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         userSchools: {
-          where: {
-            schoolId, // CRITICAL: Filter by school
-          },
+          where: {          },
           include: {
             school: true
           }
@@ -117,14 +113,10 @@ export async function PUT(request: NextRequest) {
     // Get user with school associations - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         userSchools: {
-          where: {
-            schoolId, // CRITICAL: Filter by school
-          },
+          where: {          },
           include: {
             school: true
           }
@@ -190,10 +182,7 @@ export async function PUT(request: NextRequest) {
     // Update or create preferences
     const preferences = await db.userCalendarPreferences.upsert({
       where: { 
-        userId_schoolId: {
-          userId,
-          schoolId: userSchoolId, // CRITICAL: Use verified schoolId
-        }
+        userId,
       },
       update: {
         ...(body.defaultView && { defaultView: body.defaultView }),

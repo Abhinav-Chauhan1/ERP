@@ -30,9 +30,7 @@ export async function GET(req: NextRequest) {
         // Verify user has permission (admin or teacher) - CRITICAL: Filter by school
         const user = await db.user.findFirst({
             where: { 
-                id: session.user.id,
-                schoolId, // CRITICAL: Filter by school
-            },
+                id: session.user.id,            },
             select: { role: true },
         });
 

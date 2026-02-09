@@ -25,7 +25,6 @@ async function CertificateGeneratorContent() {
   const dbUser = await db.user.findFirst({
     where: { 
       id: session.user.id,
-      schoolId, // CRITICAL: Filter by school
     },
   });
 

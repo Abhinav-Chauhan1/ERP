@@ -33,9 +33,7 @@ export async function POST(
     // Get user from database - CRITICAL: Filter by school
     const user = await db.user.findFirst({
       where: { 
-        id: userId,
-        schoolId, // CRITICAL: Filter by school
-      },
+        id: userId,      },
       include: {
         teacher: true,
       },

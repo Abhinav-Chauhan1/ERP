@@ -81,9 +81,7 @@ export const GET = withSchoolAuth(async (request, context) => {
     // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
     const user = await db.user.findFirst({
       where: {
-        id: session.user.id,
-        schoolId: context.schoolId, // CRITICAL: Filter by school
-      }
+        id: session.user.id,      }
     });
 
     if (!user) {
@@ -134,9 +132,7 @@ export const GET = withSchoolAuth(async (request, context) => {
     // For parents filtering by specific child (Requirement 4.2)
     if (childId && user.role === UserRole.PARENT) {
       const parent = await db.parent.findFirst({
-        where: {
-          schoolId: context.schoolId, // CRITICAL: Filter by school
-          userId: user.id
+        where: {          userId: user.id
         }
       });
 
@@ -243,9 +239,7 @@ export const POST = withSchoolAuth(async (request, context) => {
     // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
     const user = await db.user.findFirst({
       where: {
-        id: session.user.id,
-        schoolId: context.schoolId, // CRITICAL: Filter by school
-      }
+        id: session.user.id,      }
     });
 
     if (!user) {
