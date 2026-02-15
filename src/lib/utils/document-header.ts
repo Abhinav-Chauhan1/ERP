@@ -1,7 +1,7 @@
-import { SystemSettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 
 interface DocumentHeaderOptions {
-  branding: SystemSettings | null;
+  branding: SchoolSettings | null;
   title?: string;
   includeLetterhead?: boolean;
 }
@@ -59,7 +59,7 @@ export function generateDocumentHeader({
 export function generateDocumentFooter({
   branding,
 }: {
-  branding: SystemSettings | null;
+  branding: SchoolSettings | null;
 }): string {
   const schoolName = branding?.schoolName || "SikshaMitra";
   const footer = branding?.documentFooter || "";
@@ -79,7 +79,7 @@ export function generateDocumentFooter({
 /**
  * Generate CSS styles for branded documents
  */
-export function generateDocumentStyles(branding: SystemSettings | null): string {
+export function generateDocumentStyles(branding: SchoolSettings | null): string {
   const primaryColor = branding?.primaryColor || "#3b82f6";
   const secondaryColor = branding?.secondaryColor || "#8b5cf6";
 

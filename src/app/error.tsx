@@ -35,12 +35,19 @@ export default function GlobalError({
 
       console.error('Error context for monitoring:', errorContext);
 
-      // TODO: Uncomment when Sentry is configured
-      // if (window.Sentry) {
-      //   window.Sentry.captureException(error, {
-      //     extra: errorContext,
-      //   });
-      // }
+      // Send to Sentry if configured
+      const Sentry = (window as any).Sentry;
+      if (Sentry && typeof Sentry.captureException === 'function') {
+        Sentry.captureException(error, {
+          extra: errorContext,
+          tags: {
+            errorBoundary: 'global',
+            hasDigest: !!error.digest
+          }
+        });
+      } else if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+        console.warn('Sentry DSN configured but Sentry not loaded. Install @sentry/nextjs to enable error tracking.');
+      }
     }
   }, [error]);
 

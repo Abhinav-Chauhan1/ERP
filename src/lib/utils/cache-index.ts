@@ -26,7 +26,8 @@ export {
   getClassesForDropdown,
   getSubjectsForDropdown,
   getActiveAnnouncements,
-  getSystemSettings,
+  getSchoolSettings,
+  getSystemSettings, // Backward compatibility alias
   getTeacherClasses,
   getStudentClasses,
   getActiveAcademicYear,

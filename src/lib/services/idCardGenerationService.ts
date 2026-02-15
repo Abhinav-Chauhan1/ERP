@@ -59,7 +59,7 @@ async function generateIDCardPDF(
       compress: true,
     });
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await db.schoolSettings.findFirst();
     const schoolSettings: SchoolSettingsData = {
       schoolName: settings?.schoolName || 'School Name',
       schoolAddress: settings?.schoolAddress || undefined,
@@ -97,7 +97,7 @@ export async function generateIDCardPreview(
       compress: true,
     });
 
-    const settings = await db.systemSettings.findFirst();
+    const settings = await db.schoolSettings.findFirst();
     const schoolSettings: SchoolSettingsData = {
       schoolName: settings?.schoolName || 'School Name',
       schoolAddress: settings?.schoolAddress || undefined,

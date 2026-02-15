@@ -8,7 +8,7 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { logAuditEvent, AuditAction } from "./audit-service";
-import { SchoolNotificationSettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 
 export interface SchoolNotificationSettingsData {
   // Email Notifications
@@ -97,10 +97,10 @@ class SchoolNotificationSettingsService {
   /**
    * Get school notification settings with defaults if not exists
    */
-  async getSchoolNotificationSettings(schoolId: string): Promise<SchoolNotificationSettings> {
+  async getSchoolNotificationSettings(schoolId: string): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
-    let settings = await db.schoolNotificationSettings.findUnique({
+    let settings = await db.schoolSettings.findUnique({
       where: { schoolId },
     });
 
@@ -119,7 +119,7 @@ class SchoolNotificationSettingsService {
     schoolId: string,
     data: SchoolNotificationSettingsData,
     updatedBy: string
-  ): Promise<SchoolNotificationSettings> {
+  ): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
     // Validate school exists
@@ -146,7 +146,7 @@ class SchoolNotificationSettingsService {
     const currentSettings = await this.getSchoolNotificationSettings(schoolId);
 
     // Update settings
-    const updatedSettings = await db.schoolNotificationSettings.upsert({
+    const updatedSettings = await db.schoolSettings.upsert({
       where: { schoolId },
       update: {
         ...data,
@@ -176,7 +176,7 @@ class SchoolNotificationSettingsService {
   /**
    * Create default notification settings for a school
    */
-  async createDefaultNotificationSettings(schoolId: string): Promise<SchoolNotificationSettings> {
+  async createDefaultNotificationSettings(schoolId: string): Promise<SchoolSettings> {
     // Get school plan to set appropriate defaults
     const school = await db.school.findUnique({
       where: { id: schoolId },
@@ -185,7 +185,7 @@ class SchoolNotificationSettingsService {
 
     const planDefaults = this.getDefaultsForPlan(school?.plan || 'STARTER');
 
-    const defaultSettings = await db.schoolNotificationSettings.create({
+    const defaultSettings = await db.schoolSettings.create({
       data: {
         schoolId,
         ...planDefaults,
@@ -457,7 +457,7 @@ class SchoolNotificationSettingsService {
   /**
    * Extract settings changes for audit logging
    */
-  private extractSettingsChanges(settings: SchoolNotificationSettings): Record<string, any> {
+  private extractSettingsChanges(settings: SchoolSettings): Record<string, any> {
     const {
       id, schoolId, createdAt, updatedAt, ...settingsData
     } = settings;

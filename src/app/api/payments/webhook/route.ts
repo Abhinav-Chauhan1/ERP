@@ -193,13 +193,32 @@ async function handlePaymentSuccess(paymentEntity: any) {
     } else {
       // Create new payment record if notes contain required information
       if (notes.studentId && notes.feeStructureId) {
+        // Get schoolId from notes (should be included when creating payment order)
+        let schoolId = notes.schoolId;
+
+        // If not in notes, fetch from student record as fallback
+        if (!schoolId) {
+          const student = await db.student.findUnique({
+            where: { id: notes.studentId },
+            select: { schoolId: true }
+          });
+
+          if (!student) {
+            console.error(`Student not found for payment: ${notes.studentId}`);
+            throw new Error('Student not found for payment processing');
+          }
+
+          schoolId = student.schoolId;
+          console.warn(`SchoolId not in payment notes, fetched from student record: ${schoolId}`);
+        }
+
         const receiptNumber = `RCP-${Date.now()}-${notes.studentId.slice(-6)}`;
 
         await db.feePayment.create({
           data: {
             studentId: notes.studentId,
             feeStructureId: notes.feeStructureId,
-            schoolId: "school-id", // TODO: Get from context
+            schoolId: schoolId,
             amount: amount,
             paidAmount: amount,
             balance: 0,
@@ -212,7 +231,7 @@ async function handlePaymentSuccess(paymentEntity: any) {
           }
         });
 
-        console.log(`Created new payment record for student: ${notes.studentId}`);
+        console.log(`Created new payment record for student: ${notes.studentId}, school: ${schoolId}`);
       }
     }
 

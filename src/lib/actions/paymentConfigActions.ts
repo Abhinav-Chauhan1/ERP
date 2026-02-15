@@ -96,7 +96,7 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
     const schoolId = await getRequiredSchoolId();
 
     // Get current settings for this school
-    const settings = await db.systemSettings.findUnique({
+    const settings = await db.schoolSettings.findUnique({
       where: { schoolId }, // CRITICAL: Filter by school
     });
     
@@ -144,7 +144,7 @@ export async function updatePaymentConfig(config: Partial<PaymentConfigType>) {
     }
 
     // Update settings for this school only
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data: updateData,
     });

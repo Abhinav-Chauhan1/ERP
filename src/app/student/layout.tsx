@@ -29,9 +29,26 @@ export default async function StudentLayout({
     select: { name: true, logo: true }
   }) : null;
 
-  // Get student's class information for mobile-first navigation
-  // TODO: Fetch actual class information from database
-  const studentClass = "Class 6"; // This should come from the student's enrollment data
+  // Get student's class information from active enrollment
+  const student = await prisma.student.findUnique({
+    where: { userId: session.user.id },
+    include: {
+      enrollments: {
+        where: { status: 'ACTIVE' },
+        include: {
+          class: { select: { name: true } },
+          section: { select: { name: true } }
+        },
+        take: 1,
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  });
+
+  const activeEnrollment = student?.enrollments[0];
+  const studentClass = activeEnrollment
+    ? `${activeEnrollment.class.name}${activeEnrollment.section ? ` ${activeEnrollment.section.name}` : ''}`
+    : 'Student';
 
   return (
     <PermissionsProvider permissions={permissions}>

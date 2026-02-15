@@ -8,7 +8,7 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { logAuditEvent, AuditAction } from "./audit-service";
-import { SchoolSecuritySettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 
 export interface SchoolSecuritySettingsData {
   // Two-Factor Authentication
@@ -59,10 +59,10 @@ class SchoolSecuritySettingsService {
   /**
    * Get school security settings with defaults if not exists
    */
-  async getSchoolSecuritySettings(schoolId: string): Promise<SchoolSecuritySettings> {
+  async getSchoolSecuritySettings(schoolId: string): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
-    let settings = await db.schoolSecuritySettings.findUnique({
+    let settings = await db.schoolSettings.findUnique({
       where: { schoolId },
     });
 
@@ -81,7 +81,7 @@ class SchoolSecuritySettingsService {
     schoolId: string,
     data: SchoolSecuritySettingsData,
     updatedBy: string
-  ): Promise<SchoolSecuritySettings> {
+  ): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
     // Validate school exists
@@ -104,7 +104,7 @@ class SchoolSecuritySettingsService {
     const currentSettings = await this.getSchoolSecuritySettings(schoolId);
 
     // Update settings
-    const updatedSettings = await db.schoolSecuritySettings.upsert({
+    const updatedSettings = await db.schoolSettings.upsert({
       where: { schoolId },
       update: {
         ...data,
@@ -134,8 +134,8 @@ class SchoolSecuritySettingsService {
   /**
    * Create default security settings for a school
    */
-  async createDefaultSecuritySettings(schoolId: string): Promise<SchoolSecuritySettings> {
-    const defaultSettings = await db.schoolSecuritySettings.create({
+  async createDefaultSecuritySettings(schoolId: string): Promise<SchoolSettings> {
+    const defaultSettings = await db.schoolSettings.create({
       data: {
         schoolId,
         // Using schema defaults
@@ -353,7 +353,7 @@ class SchoolSecuritySettingsService {
   /**
    * Extract settings changes for audit logging
    */
-  private extractSettingsChanges(settings: SchoolSecuritySettings): Record<string, any> {
+  private extractSettingsChanges(settings: SchoolSettings): Record<string, any> {
     const {
       id, schoolId, createdAt, updatedAt, ...settingsData
     } = settings;

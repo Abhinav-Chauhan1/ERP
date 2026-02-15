@@ -191,26 +191,34 @@ async function sendGraduationNotifications(
 
 /**
  * Generate graduation certificates for students
+ *
+ * NOTE: Certificate generation is not yet implemented.
+ * This is a stub that logs the request for tracking purposes.
+ *
+ * To implement certificate generation:
+ * 1. Install a PDF generation library (e.g., @react-pdf/renderer, puppeteer, or pdfkit)
+ * 2. Create certificate templates in the database (CertificateTemplate model)
+ * 3. Implement PDF generation logic with school branding
+ * 4. Store generated certificates in R2 storage
+ * 5. Update database with certificate URLs
+ * 6. Send certificates via email to students
+ *
+ * See docs/CERTIFICATE_GENERATION.md for implementation guide.
  */
 async function generateGraduationCertificates(
   studentIds: string[],
   graduationDate: Date
 ): Promise<number> {
   try {
-    // This is a placeholder for certificate generation
-    // In a real implementation, this would integrate with a certificate generation service
-    // For now, we'll just log the request
-    console.log(`Certificate generation requested for ${studentIds.length} students`);
+    console.warn(`Certificate generation is not implemented. Request logged for ${studentIds.length} students on ${graduationDate.toISOString()}`);
 
-    // TODO: Integrate with certificate generation service
-    // - Fetch certificate template
-    // - Generate PDF certificates
-    // - Store certificate URLs in database
-    // - Return count of successfully generated certificates
+    // Log to audit for tracking certificate generation requests
+    // This helps identify demand for the feature
 
-    return studentIds.length;
+    // Return 0 to indicate no certificates were actually generated
+    return 0;
   } catch (error) {
-    console.error("Error generating certificates:", error);
+    console.error("Error in certificate generation stub:", error);
     return 0;
   }
 }

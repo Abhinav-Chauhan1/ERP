@@ -1047,7 +1047,7 @@ export async function updateSchoolNotificationSettings(schoolId: string, data: S
     const currentMetadata = (school.metadata as any) || {};
     const updatedMetadata = {
       ...currentMetadata,
-      notificationSettings: {
+      settings: {
         ...currentMetadata.notificationSettings,
         ...data,
       },
@@ -1116,7 +1116,7 @@ export async function updateSchoolSecuritySettings(schoolId: string, data: Schoo
     const currentMetadata = (school.metadata as any) || {};
     const updatedMetadata = {
       ...currentMetadata,
-      securitySettings: {
+      settings: {
         ...currentMetadata.securitySettings,
         ...data,
       },

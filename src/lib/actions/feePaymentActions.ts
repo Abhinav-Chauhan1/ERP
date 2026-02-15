@@ -765,7 +765,7 @@ export async function getPaymentReceiptHTML(paymentId: string) {
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.systemSettings.findFirst();
+    const systemSettings = await db.schoolSettings.findFirst();
     if (systemSettings) {
       (receiptData as any).school = {
         name: systemSettings.schoolName,
@@ -911,7 +911,7 @@ export async function getConsolidatedReceiptHTML(
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.systemSettings.findFirst();
+    const systemSettings = await db.schoolSettings.findFirst();
     if (systemSettings) {
       (receiptData as any).school = {
         name: systemSettings.schoolName,

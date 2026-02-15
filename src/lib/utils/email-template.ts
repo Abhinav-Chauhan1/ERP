@@ -1,9 +1,9 @@
-import { SystemSettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 
 interface EmailTemplateOptions {
   subject: string;
   body: string;
-  branding: SystemSettings | null;
+  branding: SchoolSettings | null;
 }
 
 /**

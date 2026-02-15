@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SystemSettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 import Image from "next/image";
 import { updateSchoolInfo, updateAppearanceSettings } from "@/lib/actions/settingsActions";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ColorThemeToggle } from "@/components/ui/color-theme-toggle";
 
 interface BrandingFormProps {
-  initialData: SystemSettings | null;
+  initialData: SchoolSettings | null;
 }
 
 export default function BrandingForm({ initialData }: BrandingFormProps) {

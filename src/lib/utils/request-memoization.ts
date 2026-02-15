@@ -6,13 +6,16 @@
 import { cache } from "react";
 
 /**
- * Memoized version of getSystemSettings for request-level caching
+ * Memoized version of getSchoolSettings for request-level caching
  * This prevents duplicate queries within the same request (e.g., layout + page)
  */
-export const getSystemSettingsRequestMemo = cache(async () => {
-  const { getSystemSettings } = await import("@/lib/utils/cached-queries");
-  return getSystemSettings();
+export const getSchoolSettingsRequestMemo = cache(async () => {
+  const { getSchoolSettings } = await import("@/lib/utils/cached-queries");
+  return getSchoolSettings();
 });
+
+// Backward compatibility alias
+export const getSystemSettingsRequestMemo = getSchoolSettingsRequestMemo;
 
 /**
  * Generic request-level memoization wrapper

@@ -9,7 +9,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRole } from '@prisma/client';
-import { 
+import { auth } from '@/auth';
+import {
   r2SecurityService,
   type FileAccessContext,
   type FileOperation
@@ -50,46 +51,49 @@ export function createR2SecurityMiddleware(config: R2SecurityConfig) {
         );
 
         if (authRequired) {
-          // TODO: Integrate with enhanced-auth middleware for proper authentication
-          // For now, skip authentication check
-          // const user = null;
-          // if (!user) {
-          //   return NextResponse.json(
-          //     { error: 'Authentication required' },
-          //     { status: 401 }
-          //   );
-          // }
+          // Get authenticated user session
+          const session = await auth();
+
+          if (!session?.user) {
+            return NextResponse.json(
+              { error: 'Authentication required' },
+              { status: 401 }
+            );
+          }
+
+          const user = session.user;
+
+          // Get user permissions - simplified version
+          const permissions: string[] = [];
 
           // Create file access context
-          // const context: FileAccessContext = {
-          //   userId: user.id,
-          //   userRole: user.role,
-          //   schoolId: user.activeSchoolId || '',
-          //   authorizedSchools: user.authorizedSchools,
-          //   permissions: user.permissions,
-          //   ipAddress: getClientIP(request),
-          //   userAgent: request.headers.get('user-agent') || 'Unknown'
-          // };
+          const context: FileAccessContext = {
+            userId: user.id,
+            userRole: user.role as UserRole,
+            schoolId: user.schoolId || '',
+            authorizedSchools: [user.schoolId || ''],
+            permissions: permissions,
+            ipAddress: getClientIP(request),
+            userAgent: request.headers.get('user-agent') || 'Unknown'
+          };
 
           // Validate file access
-          // TODO: Re-enable once authentication is integrated
-          // const accessResult = await r2SecurityService.validateFileAccess(
-          //   context,
-          //   fileKey,
-          //   config.operation
-          // );
+          const accessResult = await r2SecurityService.validateFileAccess(
+            context,
+            fileKey,
+            config.operation
+          );
 
-          // if (!accessResult.allowed) {
-          //   const statusCode = accessResult.requiresAdditionalAuth ? 403 : 403;
-          //   return NextResponse.json(
-          //     { 
-          //       error: accessResult.reason || 'Access denied',
-          //       requiresAdditionalAuth: accessResult.requiresAdditionalAuth,
-          //       additionalAuthType: accessResult.additionalAuthType
-          //     },
-          //     { status: statusCode }
-          //   );
-          // }
+          if (!accessResult.allowed) {
+            return NextResponse.json(
+              {
+                error: accessResult.reason || 'Access denied',
+                requiresAdditionalAuth: accessResult.requiresAdditionalAuth,
+                additionalAuthType: accessResult.additionalAuthType
+              },
+              { status: 403 }
+            );
+          }
         }
       }
 

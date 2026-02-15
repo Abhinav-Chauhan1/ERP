@@ -188,7 +188,7 @@ interface SchoolSecurityStatus {
   };
   securityScore: number;
   maxScore: number;
-  securitySettings: {
+  settings: {
     twoFactorRequired?: boolean;
     sessionTimeoutMinutes?: number;
     passwordPolicy?: {
@@ -1123,7 +1123,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                       <div className="space-y-2">
                         <h4 className="font-medium">Authentication</h4>
                         <div className="flex items-center gap-2">
-                          {securityStatus.securitySettings.twoFactorRequired ? (
+                          {securityStatus.settings?.twoFactorRequired ? (
                             <CheckCircle className="h-4 w-4 text-green-600" />
                           ) : (
                             <AlertCircle className="h-4 w-4 text-yellow-600" />
@@ -1131,8 +1131,8 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                           <span className="text-sm">Two-Factor Authentication</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {securityStatus.securitySettings.sessionTimeoutMinutes && 
-                           securityStatus.securitySettings.sessionTimeoutMinutes <= 60 ? (
+                          {securityStatus.settings?.sessionTimeoutMinutes && 
+                           securityStatus.settings?.sessionTimeoutMinutes <= 60 ? (
                             <CheckCircle className="h-4 w-4 text-green-600" />
                           ) : (
                             <AlertCircle className="h-4 w-4 text-yellow-600" />
@@ -1142,13 +1142,13 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                       </div>
                     </div>
 
-                    {securityStatus.securitySettings.passwordPolicy && (
+                    {securityStatus.settings?.passwordPolicy && (
                       <div className="space-y-2">
                         <h4 className="font-medium">Password Policy</h4>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div className="flex items-center gap-2">
-                            {securityStatus.securitySettings.passwordPolicy.minLength && 
-                             securityStatus.securitySettings.passwordPolicy.minLength >= 8 ? (
+                            {securityStatus.settings?.passwordPolicy.minLength && 
+                             securityStatus.settings?.passwordPolicy.minLength >= 8 ? (
                               <CheckCircle className="h-3 w-3 text-green-600" />
                             ) : (
                               <AlertCircle className="h-3 w-3 text-red-600" />
@@ -1156,7 +1156,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                             <span>Minimum Length (8+)</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {securityStatus.securitySettings.passwordPolicy.requireUppercase ? (
+                            {securityStatus.settings?.passwordPolicy.requireUppercase ? (
                               <CheckCircle className="h-3 w-3 text-green-600" />
                             ) : (
                               <AlertCircle className="h-3 w-3 text-yellow-600" />
@@ -1164,7 +1164,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                             <span>Uppercase Required</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {securityStatus.securitySettings.passwordPolicy.requireNumbers ? (
+                            {securityStatus.settings?.passwordPolicy.requireNumbers ? (
                               <CheckCircle className="h-3 w-3 text-green-600" />
                             ) : (
                               <AlertCircle className="h-3 w-3 text-yellow-600" />
@@ -1172,7 +1172,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                             <span>Numbers Required</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {securityStatus.securitySettings.passwordPolicy.requireSpecialChars ? (
+                            {securityStatus.settings?.passwordPolicy.requireSpecialChars ? (
                               <CheckCircle className="h-3 w-3 text-green-600" />
                             ) : (
                               <AlertCircle className="h-3 w-3 text-yellow-600" />

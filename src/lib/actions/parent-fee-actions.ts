@@ -821,7 +821,7 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.systemSettings.findFirst({
+    const systemSettings = await db.schoolSettings.findFirst({
       where: { id: (parent as any).schoolId }
     });
     if (systemSettings) {

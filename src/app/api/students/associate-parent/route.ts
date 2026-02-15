@@ -35,6 +35,39 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Get schoolId from student record
+        const student = await db.student.findUnique({
+            where: { id: studentId },
+            select: { schoolId: true }
+        });
+
+        if (!student) {
+            return NextResponse.json(
+                { message: "Student not found" },
+                { status: 404 }
+            );
+        }
+
+        // Verify parent exists and belongs to same school
+        const parent = await db.parent.findUnique({
+            where: { id: parentId },
+            select: { schoolId: true }
+        });
+
+        if (!parent) {
+            return NextResponse.json(
+                { message: "Parent not found" },
+                { status: 404 }
+            );
+        }
+
+        if (parent.schoolId !== student.schoolId) {
+            return NextResponse.json(
+                { message: "Parent and student must belong to the same school" },
+                { status: 400 }
+            );
+        }
+
         // If setting as primary, unset any existing primary parent
         if (isPrimary) {
             await db.studentParent.updateMany({
@@ -53,7 +86,7 @@ export async function POST(request: NextRequest) {
             data: {
                 studentId,
                 parentId,
-                schoolId: "school-id", // TODO: Get from context
+                schoolId: student.schoolId,
                 isPrimary: isPrimary || false,
             },
             include: {

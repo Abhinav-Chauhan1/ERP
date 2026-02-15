@@ -36,7 +36,7 @@ export async function getSystemSettings() {
 
     // Create default settings if none exist for this school
     if (!settings) {
-      settings = await db.systemSettings.create({
+      settings = await db.schoolSettings.create({
         data: {
           schoolId, // CRITICAL: Associate with school
           schoolName: "School Name",
@@ -88,7 +88,7 @@ export async function getPublicSystemSettings() {
       settings = await getCachedSystemSettings(school.id);
     } else {
       // Fallback: get first school's settings
-      settings = await db.systemSettings.findFirst({
+      settings = await db.schoolSettings.findFirst({
         orderBy: {
           createdAt: "desc",
         },
@@ -97,7 +97,7 @@ export async function getPublicSystemSettings() {
 
     // Create default settings if none exist
     if (!settings && school) {
-      settings = await db.systemSettings.create({
+      settings = await db.schoolSettings.create({
         data: {
           schoolId: school.id, // CRITICAL: Associate with school
           schoolName: school.name,
@@ -168,7 +168,7 @@ export async function updateSchoolInfo(data: {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    const settings = await db.systemSettings.findUnique({
+    const settings = await db.schoolSettings.findUnique({
       where: { schoolId }, // CRITICAL: Filter by school
     });
 
@@ -196,7 +196,7 @@ export async function updateSchoolInfo(data: {
       board: data.board ? sanitizeText(data.board) : undefined,
     };
 
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data: sanitizedData,
     });
@@ -258,7 +258,7 @@ export async function updateAcademicSettings(data: {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    const settings = await db.systemSettings.findUnique({
+    const settings = await db.schoolSettings.findUnique({
       where: { schoolId }, // CRITICAL: Filter by school
     });
 
@@ -266,7 +266,7 @@ export async function updateAcademicSettings(data: {
       return { success: false, error: "Settings not found for this school" };
     }
 
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data: {
         currentAcademicYear: data.currentAcademicYear,
@@ -329,7 +329,7 @@ export async function updateNotificationSettings(data: {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    const settings = await db.systemSettings.findUnique({
+    const settings = await db.schoolSettings.findUnique({
       where: { schoolId }, // CRITICAL: Filter by school
     });
 
@@ -337,7 +337,7 @@ export async function updateNotificationSettings(data: {
       return { success: false, error: "Settings not found for this school" };
     }
 
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data: {
         emailEnabled: data.emailEnabled,
@@ -404,7 +404,7 @@ export async function updateSecuritySettings(data: {
       return { success: false, error: "Settings not found" };
     }
 
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { id: settings.id },
       data,
     });
@@ -460,7 +460,7 @@ export async function updateAppearanceSettings(data: {
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();
 
-    const settings = await db.systemSettings.findUnique({
+    const settings = await db.schoolSettings.findUnique({
       where: { schoolId }, // CRITICAL: Filter by school
     });
 
@@ -468,7 +468,7 @@ export async function updateAppearanceSettings(data: {
       return { success: false, error: "Settings not found for this school" };
     }
 
-    const updated = await db.systemSettings.update({
+    const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data,
     });

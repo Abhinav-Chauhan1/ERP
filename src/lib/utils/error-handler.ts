@@ -261,10 +261,21 @@ export function logError(error: Error | AppError, context?: Record<string, any>)
     console.error('Error logged:', errorData);
   }
 
-  // TODO: Send to monitoring service (Sentry, etc.)
-  // if (typeof window !== 'undefined' && window.Sentry) {
-  //   window.Sentry.captureException(error, { extra: errorData });
-  // }
+  // Send to Sentry if configured
+  if (typeof window !== 'undefined') {
+    // Check if Sentry is loaded (when @sentry/nextjs is installed and configured)
+    const Sentry = (window as any).Sentry;
+    if (Sentry && typeof Sentry.captureException === 'function') {
+      Sentry.captureException(error, {
+        extra: errorData,
+        tags: {
+          errorType: error instanceof ApplicationError ? error.type : 'unknown'
+        }
+      });
+    } else if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      console.warn('Sentry DSN configured but Sentry not loaded. Install @sentry/nextjs to enable error tracking.');
+    }
+  }
 }
 
 /**

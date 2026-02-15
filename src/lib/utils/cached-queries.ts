@@ -135,12 +135,12 @@ export const getActiveAnnouncements = cachedQuery(
 );
 
 /**
- * Cached query for getting system settings
+ * Cached query for getting school settings
  * Cache for 1 hour since settings rarely change
  * 
  * @param schoolId - Optional school ID. If not provided, will get from context
  */
-export const getSystemSettings = cachedQuery(
+export const getSchoolSettings = cachedQuery(
   async (schoolId?: string) => {
     // If schoolId not provided, get from context
     if (!schoolId) {
@@ -149,21 +149,24 @@ export const getSystemSettings = cachedQuery(
         schoolId = await getRequiredSchoolId();
       } catch (error) {
         // CRITICAL FIX: Don't fall back to first settings - this causes wrong school display
-        console.error("No school context available for system settings");
+        console.error("No school context available for school settings");
         return null; // Return null instead of wrong school's settings
       }
     }
     
-    return await db.systemSettings.findUnique({
+    return await db.schoolSettings.findUnique({
       where: { schoolId },
     });
   },
   {
-    name: "system-settings",
+    name: "school-settings",
     tags: [CACHE_TAGS.SETTINGS],
     revalidate: CACHE_DURATION.SETTINGS,
   }
 );
+
+// Backward compatibility alias
+export const getSystemSettings = getSchoolSettings;
 
 /**
  * Cached query for getting teacher's classes

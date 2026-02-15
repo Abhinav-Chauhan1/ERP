@@ -8,7 +8,7 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { logAuditEvent, AuditAction } from "./audit-service";
-import { SchoolDataManagementSettings } from "@prisma/client";
+import { SchoolSettings } from "@prisma/client";
 
 export interface SchoolDataManagementSettingsData {
   // Backup Settings
@@ -59,16 +59,21 @@ class SchoolDataManagementService {
   /**
    * Get school data management settings with defaults if not exists
    */
-  async getSchoolDataManagementSettings(schoolId: string): Promise<SchoolDataManagementSettings> {
+  async getSchoolDataManagementSettings(schoolId: string): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
-    let settings = await db.schoolDataManagementSettings.findUnique({
+    let settings = await db.schoolSettings.findUnique({
       where: { schoolId },
     });
 
     // Create default settings if not exists
     if (!settings) {
       settings = await this.createDefaultDataManagementSettings(schoolId);
+    }
+
+    // TypeScript guard - settings should never be null after creation
+    if (!settings) {
+      throw new Error(`Failed to get or create settings for school: ${schoolId}`);
     }
 
     return settings;
@@ -81,7 +86,7 @@ class SchoolDataManagementService {
     schoolId: string,
     data: SchoolDataManagementSettingsData,
     updatedBy: string
-  ): Promise<SchoolDataManagementSettings> {
+  ): Promise<SchoolSettings> {
     await requireSuperAdminAccess();
 
     // Validate school exists
@@ -104,7 +109,7 @@ class SchoolDataManagementService {
     const currentSettings = await this.getSchoolDataManagementSettings(schoolId);
 
     // Update settings
-    const updatedSettings = await db.schoolDataManagementSettings.upsert({
+    const updatedSettings = await db.schoolSettings.upsert({
       where: { schoolId },
       update: {
         ...data,
@@ -134,7 +139,7 @@ class SchoolDataManagementService {
   /**
    * Create default data management settings for a school
    */
-  async createDefaultDataManagementSettings(schoolId: string): Promise<SchoolDataManagementSettings> {
+  async createDefaultDataManagementSettings(schoolId: string): Promise<SchoolSettings> {
     // Get school plan to set appropriate defaults
     const school = await db.school.findUnique({
       where: { id: schoolId },
@@ -143,7 +148,7 @@ class SchoolDataManagementService {
 
     const planDefaults = this.getDefaultsForPlan(school?.plan || 'STARTER');
 
-    const defaultSettings = await db.schoolDataManagementSettings.create({
+    const defaultSettings = await db.schoolSettings.create({
       data: {
         schoolId,
         ...planDefaults,
@@ -419,7 +424,7 @@ class SchoolDataManagementService {
   /**
    * Extract settings changes for audit logging
    */
-  private extractSettingsChanges(settings: SchoolDataManagementSettings): Record<string, any> {
+  private extractSettingsChanges(settings: SchoolSettings): Record<string, any> {
     const {
       id, schoolId, createdAt, updatedAt, ...settingsData
     } = settings;
