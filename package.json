@@ -31,7 +31,8 @@
     "cleanup:sessions:verbose": "tsx scripts/cleanup-expired-sessions.ts --verbose --stats",
     "setup:r2": "tsx scripts/setup-r2-bucket.ts",
     "test:r2": "vitest src/test/r2-setup-validation.test.ts --run",
-    "validate-env": "tsx scripts/validate-env-vars.ts"
+    "validate-env": "tsx scripts/validate-env-vars.ts",
+    "verify:production": "tsx scripts/verify-production-readiness.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.1",

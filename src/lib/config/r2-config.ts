@@ -218,14 +218,22 @@ export function generateCdnUrl(key: string, customDomain?: string): string {
   let baseUrl: string;
   
   if (customDomain) {
-    baseUrl = `https://${customDomain}`;
+    // Remove trailing slash if present
+    baseUrl = customDomain.replace(/\/$/, '');
   } else if (config.customDomain) {
-    baseUrl = `https://${config.customDomain}`;
+    // Remove trailing slash if present
+    baseUrl = config.customDomain.replace(/\/$/, '');
+  } else if (config.accountId) {
+    // Use R2 public URL format: https://pub-{accountId}.r2.dev
+    baseUrl = `https://pub-${config.accountId}.r2.dev`;
   } else {
-    // For development/testing, use the R2 endpoint directly
-    // Note: This requires the bucket to have public access enabled
-    // In production, you should use a custom domain or signed URLs
+    // Fallback to endpoint (requires bucket to have public access enabled)
     baseUrl = config.endpoint || `https://${config.accountId}.r2.cloudflarestorage.com`;
+  }
+  
+  // Ensure baseUrl starts with https://
+  if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+    baseUrl = `https://${baseUrl}`;
   }
   
   return `${baseUrl}/${key}`;

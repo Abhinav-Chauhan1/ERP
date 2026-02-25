@@ -119,7 +119,9 @@ export async function csrfProtection(request: NextRequest): Promise<NextResponse
     '/api/admin/', // Admin routes use session authentication
     '/api/teacher/', // Teacher routes use session authentication
     '/api/student/', // Student routes use session authentication
+    '/api/students/', // Student management routes use session authentication
     '/api/parent/', // Parent routes use session authentication
+    '/api/parents/', // Parent management routes use session authentication
   ];
 
   if (skipPaths.some(path => pathname.startsWith(path) || pathname === path)) {

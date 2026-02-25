@@ -26,6 +26,16 @@ const nextConfig = {
         protocol: 'http',
         hostname: '*.localhost',
       },
+      // Cloudflare R2 public URLs
+      {
+        protocol: 'https',
+        hostname: 'pub-*.r2.dev',
+      },
+      // Cloudflare R2 storage endpoint
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 14400, // 4 hours

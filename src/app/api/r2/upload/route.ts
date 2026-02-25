@@ -87,9 +87,21 @@ export async function POST(request: NextRequest) {
 
     await s3Client.send(command);
 
-    // Generate public URL
-    const publicDomain = process.env.R2_PUBLIC_DOMAIN || `${bucketName}.r2.dev`;
-    const url = `https://${publicDomain}/${key}`;
+    // Generate public URL using R2_CUSTOM_DOMAIN or default to pub-{accountId}.r2.dev
+    let publicUrl: string;
+    if (process.env.R2_CUSTOM_DOMAIN) {
+      // Use custom domain (remove trailing slash if present)
+      const customDomain = process.env.R2_CUSTOM_DOMAIN.replace(/\/$/, '');
+      // Ensure it starts with https://
+      publicUrl = customDomain.startsWith('http') 
+        ? customDomain 
+        : `https://${customDomain}`;
+    } else {
+      // Use R2 public URL format: https://pub-{accountId}.r2.dev
+      publicUrl = `https://pub-${accountId}.r2.dev`;
+    }
+    
+    const url = `${publicUrl}/${key}`;
 
     // Return success response
     return NextResponse.json({
