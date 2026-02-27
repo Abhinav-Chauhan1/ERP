@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
+import { SkeletonTable } from "@/components/shared/loading/skeleton-table";
 
 export default function AcademicYearDetailLoading() {
   return (
@@ -41,92 +42,10 @@ export default function AcademicYearDetailLoading() {
       </div>
 
       {/* Terms Table */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-24 mb-2" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-accent border-b">
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-24" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-20" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-20" />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-32" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-24" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-24" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SkeletonTable rows={3} columns={3} showHeader={true} showPagination={false} />
 
       {/* Classes Table */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-24 mb-2" />
-          <Skeleton className="h-4 w-56" />
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-accent border-b">
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-24" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-20" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-24" />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-32" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-8" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-8" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SkeletonTable rows={3} columns={3} showHeader={true} showPagination={false} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonUserTable } from "@/components/shared/loading/skeleton-user-table";
 
 export default function AdminUsersLoading() {
   return (
@@ -26,46 +27,13 @@ export default function AdminUsersLoading() {
         ))}
       </div>
 
-      {/* Recent Users Table */}
       <Card>
         <CardHeader>
           <Skeleton className="h-6 w-48 mb-1" />
           <Skeleton className="h-4 w-56" />
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-accent border-b">
-                    <th className="py-3 px-4 text-left"><Skeleton className="h-4 w-16" /></th>
-                    <th className="py-3 px-4 text-left"><Skeleton className="h-4 w-20" /></th>
-                    <th className="py-3 px-4 text-left"><Skeleton className="h-4 w-12" /></th>
-                    <th className="py-3 px-4 text-left"><Skeleton className="h-4 w-16" /></th>
-                    <th className="py-3 px-4 text-left"><Skeleton className="h-4 w-14" /></th>
-                    <th className="py-3 px-4 text-right"><Skeleton className="h-4 w-16 ml-auto" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="py-3 px-4"><Skeleton className="h-4 w-32" /></td>
-                      <td className="py-3 px-4"><Skeleton className="h-4 w-40" /></td>
-                      <td className="py-3 px-4"><Skeleton className="h-6 w-20 rounded-full" /></td>
-                      <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
-                      <td className="py-3 px-4"><Skeleton className="h-6 w-16 rounded-full" /></td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-12" />
-                          <Skeleton className="h-8 w-12" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <SkeletonUserTable rows={5} showAvatar={false} />
         </CardContent>
       </Card>
     </div>

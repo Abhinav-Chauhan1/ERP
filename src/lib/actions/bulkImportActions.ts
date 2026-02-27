@@ -147,6 +147,37 @@ export async function validateImportData(
 }
 
 /**
+ * Helper to initialize import result
+ */
+function initImportResult(total: number): ImportResult {
+  return {
+    success: true,
+    summary: { total, created: 0, updated: 0, skipped: 0, failed: 0 },
+    errors: [],
+  };
+}
+
+/**
+ * Helper to handle import row errors
+ */
+function handleImportError(error: unknown, rowNumber: number, result: ImportResult) {
+  result.summary.failed++;
+  if (error instanceof z.ZodError) {
+    error.errors.forEach((err) => {
+      result.errors.push({
+        row: rowNumber,
+        field: err.path.join("."),
+        message: err.message,
+      });
+    });
+  } else if (error instanceof Error) {
+    result.errors.push({ row: rowNumber, message: error.message });
+  } else {
+    result.errors.push({ row: rowNumber, message: "Unknown error occurred" });
+  }
+}
+
+/**
  * Import students in bulk
  * Requirement 26.2: Support bulk student enrollment with class assignments
  * Requirement 26.3: Provide detailed error messages with row numbers
@@ -170,17 +201,7 @@ export async function importStudents(
     };
   }
 
-  const result: ImportResult = {
-    success: true,
-    summary: {
-      total: data.length,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-    },
-    errors: [],
-  };
+  const result = initImportResult(data.length);
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
@@ -340,27 +361,7 @@ export async function importStudents(
 
       result.summary.created++;
     } catch (error) {
-      result.summary.failed++;
-
-      if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          result.errors.push({
-            row: rowNumber,
-            field: err.path.join("."),
-            message: err.message,
-          });
-        });
-      } else if (error instanceof Error) {
-        result.errors.push({
-          row: rowNumber,
-          message: error.message,
-        });
-      } else {
-        result.errors.push({
-          row: rowNumber,
-          message: "Unknown error occurred",
-        });
-      }
+      handleImportError(error, rowNumber, result);
     }
   }
 
@@ -386,17 +387,7 @@ export async function importTeachers(
     };
   }
 
-  const result: ImportResult = {
-    success: true,
-    summary: {
-      total: data.length,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-    },
-    errors: [],
-  };
+  const result = initImportResult(data.length);
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
@@ -494,27 +485,7 @@ export async function importTeachers(
 
       result.summary.created++;
     } catch (error) {
-      result.summary.failed++;
-
-      if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          result.errors.push({
-            row: rowNumber,
-            field: err.path.join("."),
-            message: err.message,
-          });
-        });
-      } else if (error instanceof Error) {
-        result.errors.push({
-          row: rowNumber,
-          message: error.message,
-        });
-      } else {
-        result.errors.push({
-          row: rowNumber,
-          message: "Unknown error occurred",
-        });
-      }
+      handleImportError(error, rowNumber, result);
     }
   }
 
@@ -540,17 +511,7 @@ export async function importParents(
     };
   }
 
-  const result: ImportResult = {
-    success: true,
-    summary: {
-      total: data.length,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      failed: 0,
-    },
-    errors: [],
-  };
+  const result = initImportResult(data.length);
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
@@ -666,28 +627,7 @@ export async function importParents(
 
       result.summary.created++;
     } catch (error) {
-      result.summary.failed++;
-
-      if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          result.errors.push({
-            row: rowNumber,
-            field: err.path.join("."),
-            message: err.message,
-          });
-        });
-      } else if (error instanceof Error) {
-        result.errors.push({
-          row: rowNumber,
-          message: error.message,
-        });
-      } else {
-        result.errors.push({
-          row: rowNumber,
-
-          message: "Unknown error occurred",
-        });
-      }
+      handleImportError(error, rowNumber, result);
     }
   }
 

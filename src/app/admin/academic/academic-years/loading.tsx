@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
+import { SkeletonTable } from "@/components/shared/loading/skeleton-table";
 
 export default function AcademicYearsLoading() {
   return (
@@ -19,76 +20,7 @@ export default function AcademicYearsLoading() {
       </div>
 
       {/* Academic Years Table */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40 mb-2" />
-          <Skeleton className="h-4 w-64" />
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-accent border-b">
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-24" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-20" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-20" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-16" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-16" />
-                    </th>
-                    <th className="py-3 px-4 text-left">
-                      <Skeleton className="h-4 w-16" />
-                    </th>
-                    <th className="py-3 px-4 text-right">
-                      <Skeleton className="h-4 w-16 ml-auto" />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-32" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-24" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-24" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-8" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <Skeleton className="h-4 w-8" />
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-1 justify-end">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SkeletonTable rows={5} columns={7} showHeader={true} showPagination={false} />
     </div>
   );
 }
