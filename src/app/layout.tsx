@@ -28,9 +28,18 @@ const inter = Inter({
 export async function generateMetadata() {
   const settings = await getSystemSettingsRequestMemo();
 
+  const title = settings?.schoolName || "SikshaMitra";
+  const description = settings?.tagline || "The Digital Partner of Modern Schools";
+
   return {
-    title: settings?.schoolName || "SikshaMitra",
-    description: settings?.tagline || "The Digital Partner of Modern Schools",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: title,
+    },
   };
 }
 

@@ -26,7 +26,7 @@ async function testSchoolCreationAPI() {
       isOnboarded: false, // API explicitly sets this to false
       onboardingStep: 0,
       primaryColor: '#3b82f6',
-      secondaryColor: '#8b5cf6'
+      secondaryColor: '#14b8a6'
     };
 
     const school = await prisma.school.create({
@@ -66,7 +66,7 @@ async function testSchoolCreationAPI() {
         isOnboarded: serviceData.isOnboarded || false, // This is what the service does
         onboardingStep: 0,
         primaryColor: '#3b82f6',
-        secondaryColor: '#8b5cf6'
+        secondaryColor: '#14b8a6'
       }
     });
 

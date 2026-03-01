@@ -50,7 +50,7 @@ export function UserThemeWrapper({
         "theme-blue",
         "theme-red",
         "theme-green",
-        "theme-purple",
+        "theme-teal",
         "theme-orange",
         "theme-teal"
       );

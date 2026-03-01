@@ -370,7 +370,7 @@ export async function RecentActivitySection() {
                 xKey="status"
                 yKey="count"
                 categories={["count"]}
-                colors={["#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444"]}
+                colors={["#3b82f6", "#f59e0b", "#14b8a6", "#ef4444"]}
               />
             </div>
           </CardContent>
@@ -409,8 +409,8 @@ export async function RecentActivitySection() {
                 <div key={task.id} className="flex items-center justify-between p-4 border rounded-2xl hover:bg-accent/50 transition-all duration-300">
                   <div className="flex items-start gap-3">
                     <div className={`p-2.5 rounded-xl ${task.priority === 'high' ? 'bg-rose-500/10 text-rose-600' :
-                        task.priority === 'medium' ? 'bg-amber-500/10 text-amber-600' :
-                          'bg-primary/10 text-primary'
+                      task.priority === 'medium' ? 'bg-amber-500/10 text-amber-600' :
+                        'bg-primary/10 text-primary'
                       }`}>
                       <FileSpreadsheet className="h-5 w-5" />
                     </div>
@@ -537,7 +537,7 @@ export function QuickActionsSection() {
         </Link>
         <Link href="/teacher/teaching/lessons/create" className="group">
           <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
-            <div className="p-3 rounded-2xl bg-violet-500/10 text-violet-600 group-hover:scale-110 transition-transform">
+            <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 group-hover:scale-110 transition-transform">
               <BookOpen className="h-6 w-6" />
             </div>
             <span className="text-sm font-bold">Lesson</span>

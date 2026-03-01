@@ -70,7 +70,7 @@ async function CertificateTemplatesList() {
       case 'PARTICIPATION':
         return 'bg-green-100 text-green-800';
       case 'MERIT':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-teal-100 text-teal-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }

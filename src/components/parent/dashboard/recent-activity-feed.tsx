@@ -52,7 +52,7 @@ const getActivityColor = (type: string) => {
     case 'assignment':
       return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-500';
     case 'exam':
-      return 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-500';
+      return 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-500';
     case 'announcement':
       return 'bg-primary/10 text-primary';
     case 'meeting':

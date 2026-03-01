@@ -96,8 +96,8 @@ export function ChildOverviewCard({ child }: ChildOverviewCardProps) {
               </div>
               
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center" aria-hidden="true">
-                  <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-500" />
+                <div className="h-10 w-10 rounded-full bg-teal-100 dark:bg-teal-950 flex items-center justify-center" aria-hidden="true">
+                  <Calendar className="h-5 w-5 text-teal-600 dark:text-teal-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground font-medium">Admission ID</p>

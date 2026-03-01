@@ -190,7 +190,7 @@ export function ReceiptUploadGuidelines() {
             <AccordionItem value="upload-process">
               <AccordionTrigger>
                 <div className="flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-purple-600" />
+                  <Camera className="h-5 w-5 text-teal-600" />
                   <span>Step-by-Step Upload Process</span>
                 </div>
               </AccordionTrigger>

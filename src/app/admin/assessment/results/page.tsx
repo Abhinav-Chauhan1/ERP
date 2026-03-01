@@ -622,8 +622,8 @@ export default function ResultsPage() {
                   <div className="text-green-700 font-medium text-sm mb-1">Pass Percentage</div>
                   <div className="text-2xl font-bold">{selectedExamDetails.passPercentage.toFixed(1)}%</div>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-purple-700 font-medium text-sm mb-1">Highest Score</div>
+                <div className="bg-teal-50 rounded-lg p-4">
+                  <div className="text-teal-700 font-medium text-sm mb-1">Highest Score</div>
                   <div className="text-2xl font-bold">{selectedExamDetails.highestScore}%</div>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4">
@@ -789,8 +789,8 @@ export default function ResultsPage() {
                   <div className="text-green-700 font-medium text-sm mb-1">Overall Grade</div>
                   <div className="text-2xl font-bold">{selectedStudentDetails.summary.grade}</div>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-purple-700 font-medium text-sm mb-1">Exams Taken</div>
+                <div className="bg-teal-50 rounded-lg p-4">
+                  <div className="text-teal-700 font-medium text-sm mb-1">Exams Taken</div>
                   <div className="text-2xl font-bold">{selectedStudentDetails.summary.totalExams}</div>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4">

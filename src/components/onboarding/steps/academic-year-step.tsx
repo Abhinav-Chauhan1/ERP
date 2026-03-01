@@ -101,8 +101,8 @@ export function AcademicYearStep({ data, updateData, onNext, onPrev }: AcademicY
         <div className="space-y-6">
             <div className="text-center space-y-2">
                 <div className="flex justify-center">
-                    <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Calendar className="h-6 w-6 text-purple-600" />
+                    <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-teal-600" />
                     </div>
                 </div>
                 <h2 className="text-2xl font-bold">Academic Year</h2>

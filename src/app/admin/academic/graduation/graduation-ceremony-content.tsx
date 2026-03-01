@@ -784,7 +784,7 @@ export function GraduationCeremonyContent({ userId }: GraduationCeremonyContentP
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-purple-600">
+                      <p className="text-2xl font-bold text-teal-600">
                         {executionResults.certificatesGenerated}
                       </p>
                       <p className="text-sm text-muted-foreground">Certificates</p>

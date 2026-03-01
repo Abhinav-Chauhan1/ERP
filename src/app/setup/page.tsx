@@ -88,7 +88,7 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     });
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
             <SetupWizard
                 currentStep={onboardingStatus.onboardingStep}
                 hasExistingAdmin={!!existingAdmin} // Dynamically check for existing admin

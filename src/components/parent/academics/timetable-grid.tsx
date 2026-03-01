@@ -43,7 +43,7 @@ const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sat
 const SUBJECT_COLORS: Record<string, string> = {
   Mathematics: "bg-blue-100 text-blue-700 border-blue-200",
   Science: "bg-green-100 text-green-700 border-green-200",
-  English: "bg-purple-100 text-purple-700 border-purple-200",
+  English: "bg-teal-100 text-teal-700 border-teal-200",
   History: "bg-amber-100 text-amber-700 border-amber-200",
   Geography: "bg-teal-100 text-teal-700 border-teal-200",
   Physics: "bg-indigo-100 text-indigo-700 border-indigo-200",
@@ -346,7 +346,7 @@ export function TimetableGrid({ schedule, studentName, className }: TimetableGri
               <div className="flex gap-1">
                 <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
                 <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
-                <div className="w-3 h-3 bg-purple-100 border border-purple-200 rounded"></div>
+                <div className="w-3 h-3 bg-teal-100 border border-teal-200 rounded"></div>
               </div>
               <span className="text-gray-600">Subject Color Coding</span>
             </div>

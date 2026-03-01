@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       onboardingStep: 0, // Track onboarding progress
       // Authentication system defaults
       primaryColor: "#3b82f6",
-      secondaryColor: "#8b5cf6",
+      secondaryColor: "#14b8a6",
       metadata: {
         subscriptionPlanId: subscriptionPlan.id,
         subscriptionPlanName: subscriptionPlan.name,

@@ -105,7 +105,7 @@ export function SubdomainManagement({
       case "DNS_CONFIGURED":
         return <Badge className="bg-blue-100 text-blue-800">DNS Configured</Badge>;
       case "SSL_CONFIGURED":
-        return <Badge className="bg-purple-100 text-purple-800">SSL Configured</Badge>;
+        return <Badge className="bg-teal-100 text-teal-800">SSL Configured</Badge>;
       case "PENDING":
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
       case "FAILED":

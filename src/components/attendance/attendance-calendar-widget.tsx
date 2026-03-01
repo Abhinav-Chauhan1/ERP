@@ -80,7 +80,7 @@ export function AttendanceCalendarWidget({ events, className }: AttendanceCalend
       case "event":
         return "bg-primary";
       case "meeting":
-        return "bg-purple-500";
+        return "bg-teal-500";
       case "success":
         return "bg-green-500";
       case "danger":

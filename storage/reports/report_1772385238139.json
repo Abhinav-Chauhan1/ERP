@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "reportId": "report_1772385240398",
+    "templateName": "Test Report 1772385238130",
+    "generatedAt": "2026-03-01T17:14:00.398Z",
+    "timeRange": {
+      "startDate": "2026-01-30T17:13:58.129Z",
+      "endDate": "2026-03-01T17:13:58.129Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:13:58.129Z",
+        "endDate": "2026-03-01T17:13:58.129Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "usage_overview",
+      "title": "Usage Overview",
+      "type": "metrics",
+      "data": {
+        "totalSchools": 55,
+        "activeSchools": 54
+      }
+    },
+    {
+      "id": "usage_by_feature",
+      "title": "Usage by Feature",
+      "type": "chart",
+      "data": [
+        {
+          "feature": "api_call",
+          "usage": 1,
+          "schools": 1
+        },
+        {
+          "feature": "feature_usage",
+          "usage": 1,
+          "schools": 1
+        },
+        {
+          "feature": "user_login",
+          "usage": 1,
+          "schools": 1
+        }
+      ],
+      "visualization": {
+        "id": "usage_chart",
+        "type": "chart",
+        "title": "Feature Usage",
+        "config": {
+          "chartType": "bar",
+          "xAxis": "feature",
+          "yAxis": "usage"
+        },
+        "position": {
+          "x": 0,
+          "y": 0,
+          "width": 12,
+          "height": 6
+        }
+      }
+    }
+  ],
+  "summary": {
+    "totalSchools": 55,
+    "activeSchools": 54
+  }
+}

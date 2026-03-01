@@ -51,13 +51,13 @@ export default async function ChildDetailPage({
       </Button>
       
       {/* Profile Header */}
-      <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-8 mb-8 border border-blue-100">
+      <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-teal-50 rounded-xl p-8 mb-8 border border-blue-100">
         <div className="flex flex-col md:flex-row gap-8 items-start">
           {/* Avatar */}
           <div className="flex flex-col items-center gap-3">
             <Avatar className="h-40 w-40 border-4 border-white shadow-xl">
               <AvatarImage src={studentWithUser.user.avatar || ""} alt={studentWithUser.user.firstName || 'Student'} />
-              <AvatarFallback className="text-5xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              <AvatarFallback className="text-5xl bg-gradient-to-br from-blue-500 to-teal-600 text-white">
                 {(studentWithUser.user.firstName || 'S').charAt(0)}{(studentWithUser.user.lastName || 'T').charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -94,8 +94,8 @@ export default async function ChildDetailPage({
               </div>
               
               <div className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
-                <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <School className="h-5 w-5 text-purple-600" />
+                <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+                  <School className="h-5 w-5 text-teal-600" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Roll Number</p>

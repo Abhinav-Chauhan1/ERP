@@ -231,7 +231,7 @@ export async function ActivitySection() {
             yKey="value"
             categories={["value"]}
             type="pie"
-            colors={["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#8b5cf6", "#06b6d4"]}
+            colors={["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#14b8a6", "#06b6d4"]}
           />
         </CardContent>
       </Card>

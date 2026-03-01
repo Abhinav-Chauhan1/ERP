@@ -92,7 +92,7 @@ const teachingQuickActions = [
     icon: <Calendar className="h-5 w-5" />,
     description: "Academic planning & calendars",
     href: "/admin/teaching/planning",
-    color: "bg-purple-50 text-purple-600"
+    color: "bg-teal-50 text-teal-600"
   },
   {
     title: "Resources",

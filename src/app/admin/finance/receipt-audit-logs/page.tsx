@@ -162,7 +162,7 @@ export default function ReceiptAuditLogsPage() {
         return "bg-blue-100 text-blue-800";
       case "ADD_NOTE":
       case "DELETE_NOTE":
-        return "bg-purple-100 text-purple-800";
+        return "bg-teal-100 text-teal-800";
       case "VIEW":
         return "bg-gray-100 text-gray-800";
       case "EXPORT":

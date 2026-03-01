@@ -86,7 +86,7 @@ export function RolePermissionsManager({ permissions }: RolePermissionsManagerPr
       case UserRole.STUDENT:
         return "bg-green-500";
       case UserRole.PARENT:
-        return "bg-purple-500";
+        return "bg-teal-500";
       default:
         return "bg-gray-500";
     }

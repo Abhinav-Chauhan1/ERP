@@ -253,7 +253,7 @@ export default function CertificatesPage() {
                             </div>
                         </div>
                         <div className="flex items-start gap-3 p-3 rounded-lg border">
-                            <Star className="h-5 w-5 text-purple-600 mt-0.5" />
+                            <Star className="h-5 w-5 text-teal-600 mt-0.5" />
                             <div>
                                 <h4 className="font-medium">Merit</h4>
                                 <p className="text-sm text-muted-foreground">For academic excellence</p>

@@ -782,7 +782,7 @@ export default function ScholarshipsPage() {
                 <div className="text-3xl font-bold">{stats?.totalPrograms || scholarshipPrograms.length}</div>
                 <div className="text-sm text-muted-foreground">Different programs</div>
               </div>
-              <div className="p-2 bg-purple-50 rounded-md text-purple-700">
+              <div className="p-2 bg-teal-50 rounded-md text-teal-700">
                 <BarChart4 className="h-6 w-6" />
               </div>
             </div>
@@ -919,7 +919,7 @@ export default function ScholarshipsPage() {
                     type="pie"
                     xKey="type"
                     yKey="count"
-                    colors={["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#8b5cf6"]}
+                    colors={["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6"]}
                   />
                 ) : (
                   <div className="text-center py-10 text-muted-foreground">
@@ -1113,9 +1113,9 @@ export default function ScholarshipsPage() {
               </div>
 
               <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 bg-purple-50 p-4 rounded-lg">
-                  <div className="text-sm text-purple-700 font-medium mb-1">Scholarship</div>
-                  <div className="text-lg font-bold text-purple-800">{selectedRecipient.scholarship?.name || selectedRecipient.scholarshipName}</div>
+                <div className="flex-1 bg-teal-50 p-4 rounded-lg">
+                  <div className="text-sm text-teal-700 font-medium mb-1">Scholarship</div>
+                  <div className="text-lg font-bold text-teal-800">{selectedRecipient.scholarship?.name || selectedRecipient.scholarshipName}</div>
                 </div>
                 <div className="flex-1 bg-green-50 p-4 rounded-lg">
                   <div className="text-sm text-green-700 font-medium mb-1">Amount</div>

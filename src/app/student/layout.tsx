@@ -1,4 +1,15 @@
+import type { Metadata } from "next";
 import { UserThemeWrapper } from "@/components/layout/user-theme-wrapper";
+
+export const metadata: Metadata = {
+  title: "Student Portal | SikshaMitra",
+  description: "Access your academic dashboard, attendance, timetable, and assignments through the SikshaMitra Student Portal.",
+  openGraph: {
+    title: "Student Portal | SikshaMitra",
+    description: "Access your academic dashboard through the SikshaMitra Student Portal.",
+    type: "website",
+  },
+};
 import { getUserPermissionNamesCached } from "@/lib/utils/permissions";
 import { PermissionsProvider } from "@/context/permissions-context";
 import { auth } from "@/auth";

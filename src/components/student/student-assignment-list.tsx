@@ -93,7 +93,7 @@ export function StudentAssignmentList({
       case "submitted":
         return "text-green-600";
       case "graded":
-        return "text-purple-600";
+        return "text-teal-600";
       case "overdue":
         return "text-red-600";
       default:
@@ -109,7 +109,7 @@ export function StudentAssignmentList({
       case "submitted":
         return "border-green-200";
       case "graded":
-        return "border-purple-200";
+        return "border-teal-200";
       case "overdue":
         return "border-red-200";
       default:
@@ -161,7 +161,7 @@ export function StudentAssignmentList({
                         <Badge className="bg-green-100 text-green-800">Submitted</Badge>
                       )}
                       {type === "graded" && (
-                        <Badge className="bg-purple-100 text-purple-800">Graded</Badge>
+                        <Badge className="bg-teal-100 text-teal-800">Graded</Badge>
                       )}
                       {type === "overdue" && (
                         <Badge className="bg-red-100 text-red-800">Overdue</Badge>
@@ -172,7 +172,7 @@ export function StudentAssignmentList({
                   <CardContent className="pb-2">
                     <div className="space-y-3">
                       {type === "graded" && assignment.submissions[0]?.marks && (
-                        <div className="flex items-center justify-between p-2 bg-purple-50 rounded-md">
+                        <div className="flex items-center justify-between p-2 bg-teal-50 rounded-md">
                           <span className="text-sm font-medium">Your Score:</span>
                           <span className="font-bold">
                             {assignment.submissions[0].marks}/{assignment.totalMarks}

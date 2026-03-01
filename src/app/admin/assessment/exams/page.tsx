@@ -696,7 +696,7 @@ export default function ExamsPage() {
 
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-3 mb-1">
-                  <div className="p-2 bg-purple-50 rounded-md text-purple-600">
+                  <div className="p-2 bg-teal-50 rounded-md text-teal-600">
                     <School className="h-5 w-5" />
                   </div>
                   <h3 className="font-medium">Highest Performers</h3>

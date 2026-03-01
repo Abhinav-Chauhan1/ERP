@@ -35,7 +35,7 @@ const statusConfig: Record<SyllabusStatus, { label: string; className: string }>
   },
   ARCHIVED: {
     label: "Archived",
-    className: "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-100/80",
+    className: "bg-teal-100 text-teal-700 border-teal-300 hover:bg-teal-100/80",
   },
   DEPRECATED: {
     label: "Deprecated",

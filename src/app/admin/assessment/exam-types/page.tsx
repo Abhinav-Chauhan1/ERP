@@ -466,7 +466,7 @@ export default function ExamTypesPage() {
                           </Badge>
                         )}
                         {examType.includeInGradeCard && (
-                          <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700">
                             In Report Card
                           </Badge>
                         )}

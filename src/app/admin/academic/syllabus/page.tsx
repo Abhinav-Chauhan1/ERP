@@ -656,7 +656,7 @@ function SyllabusContent() {
                       )}
 
                       {syllabus.section && (
-                        <div className="flex items-center gap-1 text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                        <div className="flex items-center gap-1 text-sm bg-teal-100 text-teal-700 px-2 py-1 rounded">
                           <span>📚 Section {syllabus.section.name}</span>
                         </div>
                       )}

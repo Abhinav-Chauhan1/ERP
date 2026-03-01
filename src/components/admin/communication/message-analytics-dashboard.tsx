@@ -64,7 +64,7 @@ const CHANNEL_COLORS = {
   SMS: '#3b82f6',
   WHATSAPP: '#10b981',
   EMAIL: '#f59e0b',
-  IN_APP: '#8b5cf6'
+  IN_APP: '#14b8a6'
 };
 
 const STATUS_COLORS = {
@@ -72,7 +72,7 @@ const STATUS_COLORS = {
   SENT: '#3b82f6',
   FAILED: '#ef4444',
   QUEUED: '#f59e0b',
-  SENDING: '#8b5cf6',
+  SENDING: '#14b8a6',
   READ: '#06b6d4'
 };
 

@@ -54,7 +54,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
   const [theme, setTheme] = useState(initialData.defaultTheme || "LIGHT");
   const [colorTheme, setColorTheme] = useState(initialData.defaultColorTheme || "blue");
   const [primaryColor, setPrimaryColor] = useState(initialData.primaryColor || "#3b82f6");
-  const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor || "#8b5cf6");
+  const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor || "#14b8a6");
   const [accentColor, setAccentColor] = useState(initialData.accentColor || "");
   const [language, setLanguage] = useState(initialData.language || "en");
   const [dateFormat, setDateFormat] = useState(initialData.dateFormat || "mdy");
@@ -148,7 +148,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
     { value: "blue", label: "Blue", color: "bg-blue-500" },
     { value: "red", label: "Red", color: "bg-red-500" },
     { value: "green", label: "Green", color: "bg-green-500" },
-    { value: "purple", label: "Purple", color: "bg-purple-500" },
+    { value: "purple", label: "Purple", color: "bg-teal-500" },
     { value: "orange", label: "Orange", color: "bg-orange-500" },
     { value: "teal", label: "Teal", color: "bg-teal-500" },
   ];
@@ -311,7 +311,7 @@ export function AppearanceSettingsForm({ initialData }: AppearanceSettingsFormPr
                 <Input
                   value={secondaryColor}
                   onChange={(e) => setSecondaryColor(e.target.value)}
-                  placeholder="#8b5cf6"
+                  placeholder="#14b8a6"
                 />
               </div>
             </div>

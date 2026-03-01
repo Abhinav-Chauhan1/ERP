@@ -143,7 +143,7 @@ export default function AttendanceReportsPage() {
       title: "Class-wise Attendance",
       description: "Attendance breakdown by class and section",
       icon: Users,
-      color: "bg-purple-500",
+      color: "bg-teal-500",
     },
     {
       title: "Perfect Attendance",
@@ -364,8 +364,8 @@ export default function AttendanceReportsPage() {
                       <div className="text-sm text-orange-600">High Absenteeism Students</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.studentsWithHighAbsenteeism || 0}</div>
                     </div>
-                    <div className="bg-purple-50 p-3 rounded">
-                      <div className="text-sm text-purple-600">Threshold</div>
+                    <div className="bg-teal-50 p-3 rounded">
+                      <div className="text-sm text-teal-600">Threshold</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.threshold || 0} days</div>
                     </div>
                   </div>

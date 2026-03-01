@@ -108,7 +108,7 @@ export function AlumniActivityTimeline({
         return "bg-yellow-500";
       case "COMMUNICATION_SENT":
       case "COMMUNICATION_PREFERENCE_UPDATED":
-        return "bg-purple-500";
+        return "bg-teal-500";
       case "NOTE_ADDED":
         return "bg-gray-500";
       default:

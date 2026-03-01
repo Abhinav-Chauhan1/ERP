@@ -29,7 +29,7 @@ const quickActions: QuickAction[] = [
     label: "Schedule Meeting",
     icon: Calendar,
     href: "/parent/meetings/schedule",
-    color: "text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-500",
+    color: "text-teal-600 bg-teal-100 dark:bg-teal-900/30 dark:text-teal-500",
   },
   {
     label: "View Reports",

@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "reportId": "report_1772385771250",
+    "templateName": "Test Report 1772385770135",
+    "generatedAt": "2026-03-01T17:22:51.250Z",
+    "timeRange": {
+      "startDate": "2026-01-31T17:22:50.135Z",
+      "endDate": "2026-03-01T17:22:50.135Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-31T17:22:50.135Z",
+        "endDate": "2026-03-01T17:22:50.135Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "churn_overview",
+      "title": "Churn Analysis",
+      "type": "metrics",
+      "data": {
+        "churnRate": 0,
+        "retentionRate": 100,
+        "customerLifetimeValue": 15988
+      }
+    },
+    {
+      "id": "churn_by_plan",
+      "title": "Churn by Plan",
+      "type": "table",
+      "data": [
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Test Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "churnRate": 0,
+    "retentionRate": 100
+  }
+}

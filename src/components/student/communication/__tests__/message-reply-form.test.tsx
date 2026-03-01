@@ -322,7 +322,7 @@ describe("MessageReplyForm", () => {
     );
 
     const badge = screen.getByText("ADMIN");
-    expect(badge).toHaveClass("bg-purple-100", "text-purple-700", "border-purple-200");
+    expect(badge).toHaveClass("bg-teal-100", "text-teal-700", "border-teal-200");
   });
 
   it("should clear form after successful submission", async () => {

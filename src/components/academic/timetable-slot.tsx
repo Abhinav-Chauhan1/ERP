@@ -22,7 +22,7 @@ export function TimetableSlot({
         "p-2 m-0.5 rounded h-full cursor-pointer transition-colors",
         type === 'class' && "bg-blue-50 border-blue-200 border hover:bg-blue-100",
         type === 'duty' && "bg-amber-50 border-amber-200 border hover:bg-amber-100",
-        type === 'meeting' && "bg-purple-50 border-purple-200 border hover:bg-purple-100",
+        type === 'meeting' && "bg-teal-50 border-teal-200 border hover:bg-teal-100",
         type === 'break' && "bg-gray-50 border-gray-200 border"
       )}
       onClick={onClick}

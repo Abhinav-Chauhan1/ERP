@@ -48,7 +48,7 @@ export const COLOR_SCHEMES = {
     home: 'bg-blue-500 hover:bg-blue-600 text-white',
     learn: 'bg-green-500 hover:bg-green-600 text-white',
     tasks: 'bg-orange-500 hover:bg-orange-600 text-white',
-    progress: 'bg-purple-500 hover:bg-purple-600 text-white',
+    progress: 'bg-teal-500 hover:bg-teal-600 text-white',
     messages: 'bg-pink-500 hover:bg-pink-600 text-white',
     settings: 'bg-gray-500 hover:bg-gray-600 text-white'
   },

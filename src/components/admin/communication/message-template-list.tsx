@@ -131,7 +131,7 @@ export function MessageTemplateList() {
       case "EMAIL":
         return "bg-green-500";
       case "BOTH":
-        return "bg-purple-500";
+        return "bg-teal-500";
     }
   }
 

@@ -45,7 +45,7 @@ const getActivityIcon = (action: string, entityType: string) => {
     return <Settings className="h-4 w-4 text-blue-600" />;
   }
   if (entityType === "SCHOOL") {
-    return <Building2 className="h-4 w-4 text-purple-600" />;
+    return <Building2 className="h-4 w-4 text-teal-600" />;
   }
   if (entityType === "USER") {
     return <User className="h-4 w-4 text-indigo-600" />;

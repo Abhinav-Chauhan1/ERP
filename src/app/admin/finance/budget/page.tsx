@@ -539,7 +539,7 @@ export default function BudgetPage() {
                 <div className="text-3xl font-bold">8</div>
                 <div className="text-sm text-muted-foreground">Different categories</div>
               </div>
-              <div className="p-2 bg-purple-50 rounded-md text-purple-700">
+              <div className="p-2 bg-teal-50 rounded-md text-teal-700">
                 <BarChart4 className="h-6 w-6" />
               </div>
             </div>
@@ -658,7 +658,7 @@ export default function BudgetPage() {
                     type="pie"
                     xKey="category"
                     yKey="allocated"
-                    colors={["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#6b7280"]}
+                    colors={["#3b82f6", "#14b8a6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6", "#6b7280"]}
                   />
                 ) : (
                   <div className="text-center py-10 text-muted-foreground">
@@ -714,7 +714,7 @@ export default function BudgetPage() {
 
                 <div className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-purple-50 rounded-md text-purple-600">
+                    <div className="p-2 bg-teal-50 rounded-md text-teal-600">
                       <Building className="h-5 w-5" />
                     </div>
                     <h3 className="font-medium">Department Budget Report</h3>

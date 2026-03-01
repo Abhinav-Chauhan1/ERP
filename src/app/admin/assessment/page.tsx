@@ -112,7 +112,7 @@ export default async function AssessmentPage() {
     },
     {
       title: "Report Cards",
-      icon: <BadgeIcon className="h-5 w-5 text-purple-600" />,
+      icon: <BadgeIcon className="h-5 w-5 text-teal-600" />,
       description: "Student performance reports",
       href: "/admin/assessment/report-cards",
       count: overview.reportCards

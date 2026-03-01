@@ -84,7 +84,7 @@ export function AchievementSystem({
     switch (rarity.toLowerCase()) {
       case 'common': return 'bg-gray-100 text-gray-800 border-gray-300';
       case 'rare': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'epic': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'epic': return 'bg-teal-100 text-teal-800 border-teal-300';
       case 'legendary': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
@@ -234,7 +234,7 @@ export function AchievementSystem({
     <div className="space-y-6">
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+        <Card className="bg-gradient-to-br from-blue-500 to-teal-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -276,14 +276,14 @@ export function AchievementSystem({
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+        <Card className="bg-gradient-to-br from-teal-500 to-pink-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                 <Award className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-purple-100 text-sm">Achievements</p>
+                <p className="text-teal-100 text-sm">Achievements</p>
                 <p className="text-2xl font-bold">{stats.unlockedAchievements}/{stats.totalAchievements}</p>
               </div>
             </div>

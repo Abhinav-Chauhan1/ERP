@@ -104,9 +104,9 @@ export function UsageAnalyticsChart() {
                 <Line 
                   type="monotone" 
                   dataKey="storage" 
-                  stroke="#8b5cf6" 
+                  stroke="#14b8a6" 
                   strokeWidth={2}
-                  dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: '#14b8a6', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
@@ -159,7 +159,7 @@ export function UsageAnalyticsChart() {
               <div className="text-sm text-muted-foreground">SMS Messages</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-purple-600">
+              <div className="text-xl font-bold text-teal-600">
                 {usageData[usageData.length - 1].storage}GB
               </div>
               <div className="text-sm text-muted-foreground">Storage Used</div>

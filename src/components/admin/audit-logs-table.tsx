@@ -36,7 +36,7 @@ const getActionColor = (action: string) => {
         case "READ":
             return "bg-gray-500 hover:bg-gray-500";
         case "LOGIN":
-            return "bg-purple-500 hover:bg-purple-500";
+            return "bg-teal-500 hover:bg-teal-500";
         case "LOGOUT":
             return "bg-orange-500 hover:bg-orange-500";
         case "EXPORT":

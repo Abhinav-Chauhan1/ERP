@@ -279,14 +279,14 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
             <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                  <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(data.kpiData.totalUsers)}</div>
                 <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  <Badge variant="secondary" className="bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
                     <Users className="h-3 w-3 mr-1" />
                     {formatNumber(data.kpiData.totalStudents)} students
                   </Badge>
@@ -437,7 +437,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
             <Card className="bg-[hsl(var(--card))]/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-purple-600" />
+                  <Users className="h-5 w-5 text-teal-600" />
                   <span>User Growth</span>
                 </CardTitle>
                 <CardDescription>User acquisition and growth trends</CardDescription>
@@ -446,9 +446,9 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                 {isLoading ? (
                   <Skeleton className="h-64 w-full" />
                 ) : (
-                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg">
+                  <div className="h-64 flex items-center justify-center bg-gradient-to-br from-teal-50 to-pink-50 dark:from-teal-950/20 dark:to-pink-950/20 rounded-lg">
                     <div className="text-center">
-                      <BarChart3 className="h-12 w-12 text-purple-400 mx-auto mb-2" />
+                      <BarChart3 className="h-12 w-12 text-teal-400 mx-auto mb-2" />
                       <p className="text-sm text-slate-600 dark:text-slate-400">User growth chart will be displayed here</p>
                     </div>
                   </div>
@@ -476,7 +476,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                         <div className="flex items-center space-x-3">
                           <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-blue-500' :
                               index === 1 ? 'bg-emerald-500' :
-                                index === 2 ? 'bg-purple-500' : 'bg-orange-500'
+                                index === 2 ? 'bg-teal-500' : 'bg-orange-500'
                             }`} />
                           <span className="font-medium">{item.plan}</span>
                         </div>
@@ -550,9 +550,9 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
         <TabsContent value="users">
           <Card className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 shadow-lg">
             <CardContent className="p-8">
-              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-lg">
+              <div className="h-96 flex items-center justify-center bg-gradient-to-br from-teal-50 to-pink-50 dark:from-teal-950/20 dark:to-pink-950/20 rounded-lg">
                 <div className="text-center">
-                  <Users className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+                  <Users className="h-16 w-16 text-teal-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">User Analytics</h3>
                   <p className="text-slate-600 dark:text-slate-400">User growth and engagement metrics will be displayed here</p>
                 </div>

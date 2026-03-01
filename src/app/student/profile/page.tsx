@@ -89,7 +89,7 @@ export default async function StudentProfilePage() {
 
       {/* Profile Header Card */}
       <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-        <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+        <div className="h-32 bg-gradient-to-r from-blue-500 to-teal-600"></div>
         <div className="relative px-6 pb-6">
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-end -mt-16 md:-mt-12">
             <div className="relative">
@@ -130,7 +130,7 @@ export default async function StudentProfilePage() {
                   </>
                 )}
                 {student.rollNumber && (
-                  <span className="inline-flex items-center rounded-md bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+                  <span className="inline-flex items-center rounded-md bg-teal-100 px-2.5 py-0.5 text-xs font-medium text-teal-800">
                     Roll No: {student.rollNumber}
                   </span>
                 )}

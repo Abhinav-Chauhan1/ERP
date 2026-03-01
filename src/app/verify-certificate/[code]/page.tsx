@@ -124,7 +124,7 @@ async function CertificateVerificationResult({ code }: { code: string }) {
 
       {/* Certificate Details Card */}
       <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-teal-50 dark:from-blue-950/20 dark:to-teal-950/20">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <CardTitle className="text-2xl">Certificate Details</CardTitle>
@@ -159,8 +159,8 @@ async function CertificateVerificationResult({ code }: { code: string }) {
 
             {/* Student Name */}
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <User className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-lg">
+                <User className="h-5 w-5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Issued To</p>
@@ -283,7 +283,7 @@ export default async function VerifyCertificateResultPage({ params }: PageProps)
   const code = decodeURIComponent(rawCode);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-12">
@@ -292,7 +292,7 @@ export default async function VerifyCertificateResultPage({ params }: PageProps)
               <Shield className="h-12 w-12 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
             Certificate Verification Result
           </h1>
           <p className="text-lg text-muted-foreground">

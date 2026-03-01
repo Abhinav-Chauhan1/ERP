@@ -41,7 +41,7 @@ export default function ReportsPage() {
       title: "Attendance Reports",
       description: "Student and staff attendance tracking and analysis",
       icon: Users,
-      color: "bg-purple-500",
+      color: "bg-teal-500",
       href: "/admin/reports/attendance",
       reports: [
         "Daily Attendance Summary",

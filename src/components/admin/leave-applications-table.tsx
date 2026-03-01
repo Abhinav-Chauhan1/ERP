@@ -95,7 +95,7 @@ export function LeaveApplicationsTable({
                     className={
                         leave.applicantType === "STUDENT"
                             ? "bg-primary/10 text-primary border-primary/30"
-                            : "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-teal-50 text-teal-700 border-teal-200"
                     }
                 >
                     {leave.applicantType === "STUDENT" ? "Student" : "Teacher"}
@@ -106,7 +106,7 @@ export function LeaveApplicationsTable({
                     variant="outline"
                     className={`text-xs ${leave.applicantType === "STUDENT"
                             ? "bg-primary/10 text-primary border-primary/30"
-                            : "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-teal-50 text-teal-700 border-teal-200"
                         }`}
                 >
                     {leave.applicantType === "STUDENT" ? "Student" : "Teacher"}

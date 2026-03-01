@@ -7,6 +7,18 @@
  * Requirements: 12.1, 12.2, 12.3, 12.7
  */
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Alumni Portal | SikshaMitra",
+  description: "Connect with your alma mater through the SikshaMitra Alumni Portal. Access your profile, directory, and school events.",
+  openGraph: {
+    title: "Alumni Portal | SikshaMitra",
+    description: "Connect with your alma mater through the SikshaMitra Alumni Portal.",
+    type: "website",
+  },
+};
+
 import { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";

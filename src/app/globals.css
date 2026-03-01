@@ -109,17 +109,17 @@
     --ring: 142.1 70.6% 45.3%;
   }
 
-  /* Purple Theme */
-  .theme-purple {
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 20% 98%;
-    --ring: 262.1 83.3% 57.8%;
+  /* Teal Alt Theme (replaced per UX audit) */
+  .theme-teal {
+    --primary: 173 80% 40%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 173 80% 40%;
   }
 
-  .dark.theme-purple {
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 20% 98%;
-    --ring: 263.4 70% 50.4%;
+  .dark.theme-teal {
+    --primary: 172.5 66% 50.4%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 172.5 66% 50.4%;
   }
 
   /* Orange Theme */
@@ -280,6 +280,7 @@
 
   /* Ensure minimum touch target size for mobile (44x44px) */
   @media (max-width: 768px) {
+
     button,
     a,
     [role="button"],
@@ -312,6 +313,7 @@
 
   /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -439,6 +441,7 @@
 
 /* Mobile-First Media Queries */
 @media (max-width: 640px) {
+
   /* Hide desktop-only elements on mobile */
   .desktop-only {
     display: none !important;
@@ -446,6 +449,7 @@
 }
 
 @media (min-width: 641px) {
+
   /* Hide mobile-only elements on desktop */
   .mobile-only {
     display: none !important;

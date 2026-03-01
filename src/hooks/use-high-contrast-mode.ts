@@ -92,7 +92,7 @@ export function useHighContrastMode() {
       "#ef4444": "#FF0000", // red -> pure red
       "#10b981": "#00FF00", // green -> pure green
       "#f59e0b": "#FFFF00", // amber -> yellow
-      "#8b5cf6": "#FF00FF", // violet -> magenta
+      "#14b8a6": "#FF00FF", // violet -> magenta
       "#ec4899": "#FF00FF", // pink -> magenta
       "#06b6d4": "#00FFFF", // cyan -> cyan
     };

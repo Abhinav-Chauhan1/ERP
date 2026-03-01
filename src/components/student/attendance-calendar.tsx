@@ -70,7 +70,7 @@ export function AttendanceCalendar({ attendanceData }: AttendanceCalendarProps) 
         );
       case "HALF_DAY":
         return (
-          <Badge className="h-7 w-7 rounded-full flex items-center justify-center bg-purple-100 text-purple-600 hover:bg-purple-100">
+          <Badge className="h-7 w-7 rounded-full flex items-center justify-center bg-teal-100 text-teal-600 hover:bg-teal-100">
             H
           </Badge>
         );

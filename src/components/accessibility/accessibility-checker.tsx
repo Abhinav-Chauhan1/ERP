@@ -100,7 +100,7 @@ export function AccessibilityChecker() {
     <>
       <button
         onClick={() => setIsVisible(!isVisible)}
-        className="fixed bottom-4 right-4 z-[9999] rounded-full bg-purple-600 p-3 text-white shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        className="fixed bottom-4 right-4 z-[9999] rounded-full bg-teal-600 p-3 text-white shadow-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
         aria-label="Toggle accessibility checker"
         title="Accessibility Checker"
       >

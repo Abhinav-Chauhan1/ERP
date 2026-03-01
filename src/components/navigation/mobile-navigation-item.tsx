@@ -120,7 +120,7 @@ export function SimplifiedNavigationItem({
         ${id === 'home' ? 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-300' : ''}
         ${id === 'learn' ? 'bg-green-500 hover:bg-green-600 focus:ring-green-300' : ''}
         ${id === 'tasks' ? 'bg-orange-500 hover:bg-orange-600 focus:ring-orange-300' : ''}
-        ${id === 'progress' ? 'bg-purple-500 hover:bg-purple-600 focus:ring-purple-300' : ''}
+        ${id === 'progress' ? 'bg-teal-500 hover:bg-teal-600 focus:ring-teal-300' : ''}
         ${id === 'messages' ? 'bg-pink-500 hover:bg-pink-600 focus:ring-pink-300' : ''}
         ${id === 'settings' ? 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-300' : ''}
         ${isActive ? 'ring-4 ring-offset-2 ring-yellow-400' : ''}

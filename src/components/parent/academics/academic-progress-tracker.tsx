@@ -140,7 +140,7 @@ export function AcademicProgressTracker({
 
       <CardContent className="space-y-6">
         {/* Overall Progress Card */}
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-100">
+        <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-lg p-6 border border-blue-100">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Overall Academic Progress</h3>

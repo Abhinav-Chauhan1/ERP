@@ -142,8 +142,8 @@ export default async function AssessmentsPage() {
       title: "Report Cards",
       count: reportCardsCount,
       icon: GraduationCap,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
+      iconBg: "bg-teal-100",
+      iconColor: "text-teal-600",
       subtitle: "Available reports"
     }
   ];
@@ -177,8 +177,8 @@ export default async function AssessmentsPage() {
       title: "Report Cards",
       description: "Access report cards",
       icon: GraduationCap,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
+      iconBg: "bg-teal-100",
+      iconColor: "text-teal-600",
       href: "/student/assessments/report-cards"
     }
   ];

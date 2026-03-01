@@ -77,7 +77,7 @@ export default async function StudentFeesPage() {
       description: "View and apply for available scholarships",
       icon: Award,
       href: "/student/fees/scholarships",
-      color: "bg-purple-50 text-purple-600",
+      color: "bg-teal-50 text-teal-600",
     },
   ];
 

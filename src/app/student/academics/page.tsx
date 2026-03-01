@@ -42,7 +42,7 @@ export default async function AcademicsPage() {
       description: "Find and download all your learning resources",
       icon: Presentation,
       href: "/student/academics/materials",
-      color: "bg-purple-50 text-purple-600",
+      color: "bg-teal-50 text-teal-600",
     },
   ];
 

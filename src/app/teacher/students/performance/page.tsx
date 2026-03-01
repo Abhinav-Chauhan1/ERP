@@ -218,7 +218,7 @@ export default function TeacherStudentsPerformancePage() {
                 xKey="subject"
                 yKey="average"
                 categories={["average"]}
-                colors={["#8b5cf6"]}
+                colors={["#14b8a6"]}
               />
             ) : (
               <div className="text-center py-8 text-muted-foreground">

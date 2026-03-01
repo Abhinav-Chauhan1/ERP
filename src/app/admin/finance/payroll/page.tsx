@@ -630,9 +630,9 @@ export default function PayrollPage() {
                   <div className="text-sm text-amber-700 font-medium mb-1">Pending</div>
                   <div className="text-2xl font-bold text-amber-800">{stats?.pendingPayrolls || 0}</div>
                 </div>
-                <div className="border rounded-md p-3 text-center bg-purple-50">
-                  <div className="text-sm text-purple-700 font-medium mb-1">Total Amount</div>
-                  <div className="text-2xl font-bold text-purple-800">₹{stats?.totalPaid?._sum?.netSalary?.toLocaleString() || '0'}</div>
+                <div className="border rounded-md p-3 text-center bg-teal-50">
+                  <div className="text-sm text-teal-700 font-medium mb-1">Total Amount</div>
+                  <div className="text-2xl font-bold text-teal-800">₹{stats?.totalPaid?._sum?.netSalary?.toLocaleString() || '0'}</div>
                 </div>
               </div>
             </CardContent>

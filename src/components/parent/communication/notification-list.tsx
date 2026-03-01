@@ -76,7 +76,7 @@ const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
 const NOTIFICATION_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
   ATTENDANCE: { bg: "bg-blue-50", text: "text-blue-700", icon: "text-blue-600" },
   FEE: { bg: "bg-green-50", text: "text-green-700", icon: "text-green-600" },
-  GRADE: { bg: "bg-purple-50", text: "text-purple-700", icon: "text-purple-600" },
+  GRADE: { bg: "bg-teal-50", text: "text-teal-700", icon: "text-teal-600" },
   MESSAGE: { bg: "bg-orange-50", text: "text-orange-700", icon: "text-orange-600" },
   ANNOUNCEMENT: { bg: "bg-yellow-50", text: "text-yellow-700", icon: "text-yellow-600" },
   MEETING: { bg: "bg-pink-50", text: "text-pink-700", icon: "text-pink-600" },

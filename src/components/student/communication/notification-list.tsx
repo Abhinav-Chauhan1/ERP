@@ -161,7 +161,7 @@ export function NotificationList({
       case "GRADE":
         return "text-green-600 bg-green-100";
       case "ASSIGNMENT":
-        return "text-purple-600 bg-purple-100";
+        return "text-teal-600 bg-teal-100";
       case "MESSAGE":
         return "text-orange-600 bg-orange-100";
       case "ANNOUNCEMENT":

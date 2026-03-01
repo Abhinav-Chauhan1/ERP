@@ -473,7 +473,7 @@ export default function TeacherResultsPage() {
             </div>
             
             <div className="p-4 border rounded-lg flex flex-col items-center text-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600 mb-3">
+              <div className="p-3 rounded-full bg-teal-100 text-teal-600 mb-3">
                 <ArrowUpRight className="h-5 w-5" />
               </div>
               <h3 className="font-medium mb-1">Subject Analysis</h3>

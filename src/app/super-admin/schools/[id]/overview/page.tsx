@@ -174,7 +174,7 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-purple-600" />
+              <BookOpen className="h-4 w-4 text-teal-600" />
               <div>
                 <p className="text-2xl font-bold">{school._count.classes}</p>
                 <p className="text-xs text-muted-foreground">Classes</p>

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,17 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { isSystemSetupRequired, isSetupRequired } from "@/lib/utils/setup-check";
 import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
+
+export const metadata: Metadata = {
+  title: "SikshaMitra | The Digital Partner of Modern Schools",
+  description: "A comprehensive ERP solution for educational institutions to manage students, teachers, classes, assessments, finances, and more.",
+  openGraph: {
+    title: "SikshaMitra | The Digital Partner of Modern Schools",
+    description: "Comprehensive school management ERP — manage students, teachers, classes, assessments, and finances.",
+    type: "website",
+    siteName: "SikshaMitra",
+  },
+};
 
 export default async function Home() {
   // Check if system setup is required (no schools exist)

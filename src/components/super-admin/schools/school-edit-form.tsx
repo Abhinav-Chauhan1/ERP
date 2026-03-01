@@ -454,7 +454,7 @@ export function SchoolEditForm({ school }: SchoolEditFormProps) {
                     <Input
                       value={formData.secondaryColor}
                       onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                      placeholder="#8b5cf6"
+                      placeholder="#14b8a6"
                     />
                   </div>
                 </div>

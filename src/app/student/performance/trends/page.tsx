@@ -35,7 +35,7 @@ export default async function PerformanceTrendsPage() {
     "Mathematics": "#3b82f6", // blue
     "Science": "#22c55e",     // green
     "English": "#f59e0b",     // amber
-    "History": "#8b5cf6",     // purple
+    "History": "#14b8a6",     // purple
     "Geography": "#ec4899",   // pink
     "Physics": "#06b6d4",     // cyan
     "Chemistry": "#14b8a6",   // teal
@@ -143,7 +143,7 @@ export default async function PerformanceTrendsPage() {
                           <defs>
                             <linearGradient id="lineStatusGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                               <stop offset="0%" stopColor="#3b82f6" />
-                              <stop offset="100%" stopColor="#8b5cf6" />
+                              <stop offset="100%" stopColor="#14b8a6" />
                             </linearGradient>
                             <linearGradient id="areaStatusGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                               <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
@@ -235,7 +235,7 @@ export default async function PerformanceTrendsPage() {
                   <div className="mt-4 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-teal-500"></div>
                         <span className="text-gray-600">Performance Trend</span>
                       </div>
                     </div>

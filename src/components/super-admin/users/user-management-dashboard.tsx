@@ -460,7 +460,7 @@ export function UserManagementDashboard({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>

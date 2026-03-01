@@ -74,7 +74,7 @@ export function GradeTrendChart({ termHistory, studentName }: GradeTrendChartPro
   const getBarColor = (percentage: number) => {
     if (percentage >= 90) return "#10b981";
     if (percentage >= 80) return "#3b82f6";
-    if (percentage >= 70) return "#8b5cf6";
+    if (percentage >= 70) return "#14b8a6";
     if (percentage >= 60) return "#f59e0b";
     if (percentage >= 50) return "#f97316";
     return "#ef4444";
@@ -128,7 +128,7 @@ export function GradeTrendChart({ termHistory, studentName }: GradeTrendChartPro
         {viewMode === "subjects" && currentTerm && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div className="bg-blue-50 p-3 rounded-lg"><p className="text-xs text-blue-600 mb-1">Term Average</p><p className="text-lg font-bold text-blue-700">{currentTerm.averagePercentage.toFixed(1)}%</p></div>
-            <div className="bg-purple-50 p-3 rounded-lg"><p className="text-xs text-purple-600 mb-1">Overall Grade</p><p className="text-lg font-bold text-purple-700">{currentTerm.grade || "N/A"}</p></div>
+            <div className="bg-teal-50 p-3 rounded-lg"><p className="text-xs text-teal-600 mb-1">Overall Grade</p><p className="text-lg font-bold text-teal-700">{currentTerm.grade || "N/A"}</p></div>
             <div className="bg-gray-50 p-3 rounded-lg"><p className="text-xs text-gray-600 mb-1">Total Subjects</p><p className="text-lg font-bold text-gray-700">{currentTerm.subjects.length}</p></div>
             {currentTerm.rank && <div className="bg-yellow-50 p-3 rounded-lg"><p className="text-xs text-yellow-600 mb-1">Class Rank</p><p className="text-lg font-bold text-yellow-700">#{currentTerm.rank}</p></div>}
           </div>
@@ -137,7 +137,7 @@ export function GradeTrendChart({ termHistory, studentName }: GradeTrendChartPro
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
             <div className="bg-blue-50 p-3 rounded-lg"><p className="text-xs text-blue-600 mb-1">Total Terms</p><p className="text-lg font-bold text-blue-700">{termHistory.length}</p></div>
             <div className="bg-green-50 p-3 rounded-lg"><p className="text-xs text-green-600 mb-1">Best Performance</p><p className="text-lg font-bold text-green-700">{Math.max(...termHistory.map(t => t.averagePercentage)).toFixed(1)}%</p></div>
-            <div className="bg-purple-50 p-3 rounded-lg"><p className="text-xs text-purple-600 mb-1">Latest Grade</p><p className="text-lg font-bold text-purple-700">{termHistory[termHistory.length - 1]?.grade || "N/A"}</p></div>
+            <div className="bg-teal-50 p-3 rounded-lg"><p className="text-xs text-teal-600 mb-1">Latest Grade</p><p className="text-lg font-bold text-teal-700">{termHistory[termHistory.length - 1]?.grade || "N/A"}</p></div>
           </div>
         )}
         <AnimatedBarChart data={viewMode === "subjects" ? subjectData : termComparisonData} getBarColor={getBarColor} />
@@ -159,7 +159,7 @@ export function GradeTrendChart({ termHistory, studentName }: GradeTrendChartPro
           <div className="flex flex-wrap gap-3 text-xs">
             <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#10b981" }}></div><span>90-100% (A+/A)</span></div>
             <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#3b82f6" }}></div><span>80-89% (B+/B)</span></div>
-            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#8b5cf6" }}></div><span>70-79% (C+/C)</span></div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#14b8a6" }}></div><span>70-79% (C+/C)</span></div>
             <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#f59e0b" }}></div><span>60-69% (D)</span></div>
             <div className="flex items-center gap-2"><div className="w-4 h-4 rounded" style={{ backgroundColor: "#ef4444" }}></div><span>Below 60% (F)</span></div>
           </div>

@@ -204,7 +204,7 @@ export default function HostelRoomsPage() {
       case "MAINTENANCE":
         return "bg-yellow-100 text-yellow-800";
       case "RESERVED":
-        return "bg-purple-100 text-purple-800";
+        return "bg-teal-100 text-teal-800";
       default:
         return "bg-gray-100 text-gray-800";
     }

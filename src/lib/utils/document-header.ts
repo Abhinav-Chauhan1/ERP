@@ -81,7 +81,7 @@ export function generateDocumentFooter({
  */
 export function generateDocumentStyles(branding: SchoolSettings | null): string {
   const primaryColor = branding?.primaryColor || "#3b82f6";
-  const secondaryColor = branding?.secondaryColor || "#8b5cf6";
+  const secondaryColor = branding?.secondaryColor || "#14b8a6";
 
   return `
     <style>

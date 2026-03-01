@@ -100,8 +100,8 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
       value: stats.issuedBooks,
       description: "Currently borrowed",
       icon: BookMarked,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-teal-600",
+      bgColor: "bg-teal-100",
     },
     {
       title: "Overdue",
@@ -227,8 +227,8 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
                       key={issue.id}
                       className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent"
                     >
-                      <div className="rounded-full bg-purple-100 p-2">
-                        <ArrowDownCircle className="h-4 w-4 text-purple-600" />
+                      <div className="rounded-full bg-teal-100 p-2">
+                        <ArrowDownCircle className="h-4 w-4 text-teal-600" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-start justify-between">
@@ -243,7 +243,7 @@ export function LibraryDashboard({ stats, recentActivity }: LibraryDashboardProp
                           <span
                             className={`rounded-full px-2 py-1 text-xs font-medium ${issue.status === "OVERDUE"
                                 ? "bg-red-100 text-red-700"
-                                : "bg-purple-100 text-purple-700"
+                                : "bg-teal-100 text-teal-700"
                               }`}
                           >
                             {issue.status}

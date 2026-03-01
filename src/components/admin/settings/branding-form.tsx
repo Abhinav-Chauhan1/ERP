@@ -29,7 +29,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
     logo: initialData?.schoolLogo || "",
     favicon: initialData?.faviconUrl || "",
     primaryColor: initialData?.primaryColor || "#3b82f6",
-    secondaryColor: initialData?.secondaryColor || "#8b5cf6",
+    secondaryColor: initialData?.secondaryColor || "#14b8a6",
     accentColor: initialData?.accentColor || "",
     emailLogo: initialData?.emailLogo || "",
     emailFooter: initialData?.emailFooter || "",
@@ -256,7 +256,7 @@ export default function BrandingForm({ initialData }: BrandingFormProps) {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, secondaryColor: e.target.value }))
                 }
-                placeholder="#8b5cf6"
+                placeholder="#14b8a6"
               />
             </div>
           </div>

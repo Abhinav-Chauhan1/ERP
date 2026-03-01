@@ -177,9 +177,9 @@ export function SystemHealthOverview({ systemHealth }: SystemHealthOverviewProps
               <Database className="h-5 w-5 text-green-600 mb-2" />
               <p className="text-sm font-medium text-green-900 dark:text-green-100">DB Status</p>
             </button>
-            <button className="p-3 text-left rounded-lg bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors">
-              <Server className="h-5 w-5 text-purple-600 mb-2" />
-              <p className="text-sm font-medium text-purple-900 dark:text-purple-100">Server Info</p>
+            <button className="p-3 text-left rounded-lg bg-teal-50 dark:bg-teal-950 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors">
+              <Server className="h-5 w-5 text-teal-600 mb-2" />
+              <p className="text-sm font-medium text-teal-900 dark:text-teal-100">Server Info</p>
             </button>
             <button className="p-3 text-left rounded-lg bg-orange-50 dark:bg-orange-950 hover:bg-orange-100 dark:hover:bg-orange-900 transition-colors">
               <Zap className="h-5 w-5 text-orange-600 mb-2" />

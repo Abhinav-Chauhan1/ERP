@@ -17,7 +17,7 @@ interface ChartProps {
   className?: string;
 }
 
-const defaultColors = ["#2563eb", "#16a34a", "#db2777", "#ea580c", "#8b5cf6", "#0ea5e9"];
+const defaultColors = ["#2563eb", "#16a34a", "#db2777", "#ea580c", "#14b8a6", "#0ea5e9"];
 
 // Helper for Pie Chart Math
 function getCoordinatesForPercent(percent: number) {

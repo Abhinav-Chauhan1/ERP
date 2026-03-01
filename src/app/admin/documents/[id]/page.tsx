@@ -262,7 +262,7 @@ export default function DocumentDetailPage(props: { params: Promise<{ id: string
 
             {/* Document Type */}
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-full bg-purple-50 text-purple-600">
+              <div className="p-2 rounded-full bg-teal-50 text-teal-600">
                 <FolderOpen className="h-4 w-4" />
               </div>
               <div>

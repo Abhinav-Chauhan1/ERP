@@ -548,7 +548,7 @@ export default function AttendanceReportsPage() {
         <Card>
           <CardHeader className="pb-1">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-purple-50 rounded-md text-purple-700">
+              <div className="p-2 bg-teal-50 rounded-md text-teal-700">
                 <User className="h-5 w-5" />
               </div>
               <CardTitle className="text-base">Teacher Attendance</CardTitle>
@@ -558,7 +558,7 @@ export default function AttendanceReportsPage() {
           <CardContent>
             <div className="flex flex-col gap-2 items-center justify-center">
               <div className="text-3xl font-bold">{teacherAttendanceRate}%</div>
-              <Badge className="bg-purple-100 text-purple-800">
+              <Badge className="bg-teal-100 text-teal-800">
                 Today: {todayStats?.teachers?.present || 0} / {todayStats?.teachers?.total || 0}
               </Badge>
               <Progress value={parseFloat(teacherAttendanceRate)} className="w-full mt-2" />

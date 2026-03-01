@@ -103,7 +103,7 @@ export function MessageReplyForm({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-purple-100 text-purple-700 border-purple-200";
+        return "bg-teal-100 text-teal-700 border-teal-200";
       case "TEACHER":
         return "bg-blue-100 text-blue-700 border-blue-200";
       case "STUDENT":

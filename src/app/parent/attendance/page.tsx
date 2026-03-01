@@ -258,7 +258,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-purple-600 dark:bg-purple-700 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-teal-600 dark:bg-teal-700 flex items-center justify-center">
                 <AlertCircle className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -344,7 +344,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
                     ${record?.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-950 text-green-900 dark:text-green-100' : ''}
                     ${record?.status === 'ABSENT' ? 'bg-red-100 dark:bg-red-950 text-red-900 dark:text-red-100' : ''}
                     ${record?.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-100' : ''}
-                    ${record?.status === 'LEAVE' ? 'bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-100' : ''}
+                    ${record?.status === 'LEAVE' ? 'bg-teal-100 dark:bg-teal-950 text-teal-900 dark:text-teal-100' : ''}
                     ${!record ? 'bg-muted text-muted-foreground' : ''}
                   `}
                 >
@@ -377,7 +377,7 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
               <span className="text-sm">Late</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 rounded bg-purple-100 dark:bg-purple-950 border-2 border-purple-200 dark:border-purple-800" />
+              <div className="h-4 w-4 rounded bg-teal-100 dark:bg-teal-950 border-2 border-teal-200 dark:border-teal-800" />
               <span className="text-sm">Leave</span>
             </div>
             <div className="flex items-center gap-2">
@@ -402,12 +402,12 @@ export default async function ParentAttendancePage({ searchParams: searchParamsP
                   <div className="flex items-center gap-3">
                     <div className={`h-10 w-10 rounded-full flex items-center justify-center ${record.status === 'PRESENT' ? 'bg-green-100 dark:bg-green-950' :
                         record.status === 'ABSENT' ? 'bg-red-100 dark:bg-red-950' :
-                          record.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-950' : 'bg-purple-100 dark:bg-purple-950'
+                          record.status === 'LATE' ? 'bg-amber-100 dark:bg-amber-950' : 'bg-teal-100 dark:bg-teal-950'
                       }`}>
                       {record.status === 'PRESENT' && <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />}
                       {record.status === 'ABSENT' && <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />}
                       {record.status === 'LATE' && <Clock className="h-5 w-5 text-amber-600 dark:text-amber-500" />}
-                      {record.status === 'LEAVE' && <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-500" />}
+                      {record.status === 'LEAVE' && <AlertCircle className="h-5 w-5 text-teal-600 dark:text-teal-500" />}
                     </div>
                     <div>
                       <p className="font-medium">{format(new Date(record.date), "EEEE, MMMM d, yyyy")}</p>

@@ -59,7 +59,7 @@ export function MindMapCreator({
   });
 
   const subjects = ['Math', 'Science', 'English', 'History', 'Geography', 'Other'];
-  const nodeColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+  const nodeColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#14B8A6', '#06B6D4'];
 
   const createNewMindMap = () => {
     if (!newMapForm.title || !newMapForm.rootText) return;
@@ -289,7 +289,7 @@ export function MindMapCreator({
     return (
       <div className="space-y-4">
         {/* Simple Header */}
-        <Card className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+        <Card className="bg-gradient-to-r from-indigo-500 to-teal-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>

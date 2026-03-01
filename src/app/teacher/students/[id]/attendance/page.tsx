@@ -79,7 +79,7 @@ export default function StudentAttendanceReportPage(props: { params: Promise<{ i
       case "LEAVE":
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Leave</Badge>;
       case "HALF_DAY":
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Half Day</Badge>;
+        return <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100">Half Day</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }

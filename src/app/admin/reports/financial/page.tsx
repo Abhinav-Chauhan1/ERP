@@ -138,7 +138,7 @@ export default function FinancialReportsPage() {
       title: "Income Statement",
       description: "Comprehensive income and expenditure statement",
       icon: Receipt,
-      color: "bg-purple-500",
+      color: "bg-teal-500",
     },
     {
       title: "Cash Flow Report",
@@ -296,8 +296,8 @@ export default function FinancialReportsPage() {
                       <div className="text-sm text-orange-600">Pending Amount</div>
                       <div className="text-xl font-bold">₹{reportData.data.summary?.pendingAmount?.toLocaleString() || 0}</div>
                     </div>
-                    <div className="bg-purple-50 p-3 rounded">
-                      <div className="text-sm text-purple-600">Collection Rate</div>
+                    <div className="bg-teal-50 p-3 rounded">
+                      <div className="text-sm text-teal-600">Collection Rate</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.collectionRate?.toFixed(1) || 0}%</div>
                     </div>
                   </div>
@@ -316,8 +316,8 @@ export default function FinancialReportsPage() {
                       <div className="text-sm text-primary">Total Count</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.totalCount || 0}</div>
                     </div>
-                    <div className="bg-purple-50 p-3 rounded">
-                      <div className="text-sm text-purple-600">Average Expense</div>
+                    <div className="bg-teal-50 p-3 rounded">
+                      <div className="text-sm text-teal-600">Average Expense</div>
                       <div className="text-xl font-bold">₹{reportData.data.summary?.averageExpense?.toLocaleString() || 0}</div>
                     </div>
                   </div>
@@ -352,8 +352,8 @@ export default function FinancialReportsPage() {
                       <div className="text-sm text-primary">Total Count</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.totalCount || 0}</div>
                     </div>
-                    <div className="bg-purple-50 p-3 rounded">
-                      <div className="text-sm text-purple-600">Overdue Count</div>
+                    <div className="bg-teal-50 p-3 rounded">
+                      <div className="text-sm text-teal-600">Overdue Count</div>
                       <div className="text-xl font-bold">{reportData.data.summary?.overdueCount || 0}</div>
                     </div>
                   </div>

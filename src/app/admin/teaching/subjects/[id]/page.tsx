@@ -156,8 +156,8 @@ export default function SubjectDetailsPage() {
                 <span className="text-xs block text-muted-foreground">Teachers</span>
                 <span className="font-medium">{subject.teachers?.length || 0}</span>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg text-center">
-                <GraduationCap className="h-6 w-6 text-purple-600 mx-auto mb-1" />
+              <div className="p-4 bg-teal-50 rounded-lg text-center">
+                <GraduationCap className="h-6 w-6 text-teal-600 mx-auto mb-1" />
                 <span className="text-xs block text-muted-foreground">Classes</span>
                 <span className="font-medium">{subject.classes?.length || 0}</span>
               </div>

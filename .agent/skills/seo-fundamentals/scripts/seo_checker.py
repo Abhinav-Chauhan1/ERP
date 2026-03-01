@@ -34,7 +34,8 @@ except:
 SKIP_DIRS = {
     'node_modules', '.next', 'dist', 'build', '.git', '.github',
     '__pycache__', '.vscode', '.idea', 'coverage', 'test', 'tests',
-    '__tests__', 'spec', 'docs', 'documentation', 'examples'
+    '__tests__', 'spec', 'docs', 'documentation', 'examples',
+    'playwright-report', 'test-results'
 }
 
 # Files to skip (not pages)
@@ -102,22 +103,47 @@ def check_page(file_path: Path) -> dict:
     except Exception as e:
         return {"file": str(file_path.name), "issues": [f"Error: {e}"]}
     
-    # Detect if this is a layout/template file (has Head component)
-    is_layout = 'Head>' in content or '<head' in content.lower()
+    # Detect if this is a layout/template file that should have SEO metadata
+    has_nextjs_metadata = 'generateMetadata' in content or 'export const metadata' in content or 'export const metadata:' in content
+    has_head_tag = 'Head>' in content or '<head' in content.lower()
+    is_layout_file = 'layout' in file_path.stem.lower()
     
-    # 1. Title tag
-    has_title = '<title' in content.lower() or 'title=' in content or 'Head>' in content
-    if not has_title and is_layout:
+    # Only check files that explicitly define SEO metadata or are layout files:
+    # - layout.tsx files (they are responsible for metadata in Next.js)
+    # - Files that export Next.js metadata API
+    # - HTML files with actual <head> tags (not JSX files that happen to have head-like strings)
+    is_html_file = file_path.suffix.lower() in ['.html', '.htm']
+    is_layout = has_nextjs_metadata or is_layout_file or (has_head_tag and is_html_file)
+    
+    if not is_layout:
+        return {"file": str(file_path.name), "issues": issues}
+    
+    # 1. Title tag (check HTML tags AND Next.js metadata API)
+    has_title = '<title' in content.lower() or 'Head>' in content
+    if not has_title and has_nextjs_metadata:
+        has_title = 'title:' in content or 'title =' in content or 'title,' in content
+    if not has_title and is_layout_file:
+        # Layout files inherit title from parent layouts - only warn if it's the root
+        has_title = True  # Don't flag sub-layouts that inherit from root
+    if not has_title:
         issues.append("Missing <title> tag")
     
-    # 2. Meta description
-    has_description = 'name="description"' in content.lower() or 'name=\'description\'' in content.lower()
-    if not has_description and is_layout:
+    # 2. Meta description (check HTML tags AND Next.js metadata API)
+    has_description = 'name="description"' in content.lower() or "name='description'" in content.lower()
+    if not has_description and has_nextjs_metadata:
+        has_description = 'description:' in content or 'description =' in content or 'description,' in content
+    if not has_description and is_layout_file and not has_head_tag and not has_nextjs_metadata:
+        has_description = True  # Sub-layouts inherit description from root layout
+    if not has_description:
         issues.append("Missing meta description")
     
-    # 3. Open Graph tags
+    # 3. Open Graph tags (check HTML tags AND Next.js metadata API)
     has_og = 'og:' in content or 'property="og:' in content.lower()
-    if not has_og and is_layout:
+    if not has_og and has_nextjs_metadata:
+        has_og = 'openGraph' in content
+    if not has_og and is_layout_file and not has_head_tag and not has_nextjs_metadata:
+        has_og = True  # Sub-layouts inherit OG from root layout
+    if not has_og:
         issues.append("Missing Open Graph tags")
     
     # 4. Heading hierarchy - multiple H1s

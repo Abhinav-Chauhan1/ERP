@@ -606,5 +606,1154 @@
     "id": "template_1772382607390",
     "createdAt": "2026-03-01T16:30:07.390Z",
     "updatedAt": "2026-03-01T16:30:07.390Z"
+  },
+  {
+    "name": "Test Report 1772385238130",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:13:58.129Z",
+        "endDate": "2026-03-01T17:13:58.129Z"
+      }
+    },
+    "metrics": [
+      ":+&FD",
+      ")lf$)/zeWz2"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385238130",
+    "createdAt": "2026-03-01T17:13:58.130Z",
+    "updatedAt": "2026-03-01T17:13:58.130Z"
+  },
+  {
+    "name": "Test Report 1772385240405",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:14:00.405Z",
+        "endDate": "2026-03-01T17:14:00.405Z"
+      }
+    },
+    "metrics": [
+      "m!/Ez0BQz",
+      "+3yAu3",
+      "$`-Sa",
+      "X"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385240405",
+    "createdAt": "2026-03-01T17:14:00.405Z",
+    "updatedAt": "2026-03-01T17:14:00.405Z"
+  },
+  {
+    "name": "Test Report 1772385241909",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-14T17:14:01.909Z",
+        "endDate": "2026-03-01T17:14:01.909Z"
+      }
+    },
+    "metrics": [
+      "xJ#"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385241909",
+    "createdAt": "2026-03-01T17:14:01.909Z",
+    "updatedAt": "2026-03-01T17:14:01.909Z"
+  },
+  {
+    "name": "Test Report 1772385244991",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:14:04.991Z",
+        "endDate": "2026-03-01T17:14:04.991Z"
+      }
+    },
+    "metrics": [
+      "HxwzIaX",
+      "cM/^JjtX6Y",
+      "gZ>>zf+5+$p",
+      "eXc;V\"_`Anp"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385244991",
+    "createdAt": "2026-03-01T17:14:04.991Z",
+    "updatedAt": "2026-03-01T17:14:04.991Z"
+  },
+  {
+    "name": "Test Report 1772385247026",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-16T17:14:07.026Z",
+        "endDate": "2026-03-01T17:14:07.026Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385247026",
+    "createdAt": "2026-03-01T17:14:07.026Z",
+    "updatedAt": "2026-03-01T17:14:07.026Z"
+  },
+  {
+    "name": "Test Report 1772385248258",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-28T17:14:08.258Z",
+        "endDate": "2026-03-01T17:14:08.258Z"
+      }
+    },
+    "metrics": [
+      "+U4e",
+      "7nw%{F-VRWS"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385248258",
+    "createdAt": "2026-03-01T17:14:08.258Z",
+    "updatedAt": "2026-03-01T17:14:08.258Z"
+  },
+  {
+    "name": "Test Report 1772385250338",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-14T17:14:10.338Z",
+        "endDate": "2026-03-01T17:14:10.338Z"
+      }
+    },
+    "metrics": [
+      "ref",
+      "#H$DOsYp^Zt_"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385250338",
+    "createdAt": "2026-03-01T17:14:10.338Z",
+    "updatedAt": "2026-03-01T17:14:10.338Z"
+  },
+  {
+    "name": "Test Report 1772385251233",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-31T17:14:11.233Z",
+        "endDate": "2026-03-01T17:14:11.233Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385251233",
+    "createdAt": "2026-03-01T17:14:11.233Z",
+    "updatedAt": "2026-03-01T17:14:11.233Z"
+  },
+  {
+    "name": "Test Report 1772385253887",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:14:13.887Z",
+        "endDate": "2026-03-01T17:14:13.887Z"
+      }
+    },
+    "metrics": [
+      ":"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385253887",
+    "createdAt": "2026-03-01T17:14:13.887Z",
+    "updatedAt": "2026-03-01T17:14:13.887Z"
+  },
+  {
+    "name": "Test Report 1772385766229",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T17:22:46.228Z",
+        "endDate": "2026-03-01T17:22:46.228Z"
+      }
+    },
+    "metrics": [
+      "Z",
+      ">E1\\1`Ru-e"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385766229",
+    "createdAt": "2026-03-01T17:22:46.229Z",
+    "updatedAt": "2026-03-01T17:22:46.229Z"
+  },
+  {
+    "name": "Test Report 1772385767375",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-02T17:22:47.375Z",
+        "endDate": "2026-03-01T17:22:47.375Z"
+      }
+    },
+    "metrics": [
+      "\\"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385767375",
+    "createdAt": "2026-03-01T17:22:47.375Z",
+    "updatedAt": "2026-03-01T17:22:47.375Z"
+  },
+  {
+    "name": "Test Report 1772385768890",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-05T17:22:48.890Z",
+        "endDate": "2026-03-01T17:22:48.890Z"
+      }
+    },
+    "metrics": [
+      "51:",
+      "*d2",
+      "^*Z6{xl}"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385768890",
+    "createdAt": "2026-03-01T17:22:48.890Z",
+    "updatedAt": "2026-03-01T17:22:48.890Z"
+  },
+  {
+    "name": "Test Report 1772385770135",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-31T17:22:50.135Z",
+        "endDate": "2026-03-01T17:22:50.135Z"
+      }
+    },
+    "metrics": [
+      "|)^}L-,",
+      "Y;$"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385770135",
+    "createdAt": "2026-03-01T17:22:50.135Z",
+    "updatedAt": "2026-03-01T17:22:50.135Z"
+  },
+  {
+    "name": "Test Report 1772385771260",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-13T17:22:51.260Z",
+        "endDate": "2026-03-01T17:22:51.260Z"
+      }
+    },
+    "metrics": [
+      "X%Rw2;(X",
+      "dRYu",
+      "F%"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385771260",
+    "createdAt": "2026-03-01T17:22:51.260Z",
+    "updatedAt": "2026-03-01T17:22:51.260Z"
+  },
+  {
+    "name": "Test Report 1772385772721",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:22:52.721Z",
+        "endDate": "2026-03-01T17:22:52.721Z"
+      }
+    },
+    "metrics": [
+      "~d",
+      "Z_[juvd",
+      "ref",
+      "apply",
+      "OT"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385772721",
+    "createdAt": "2026-03-01T17:22:52.721Z",
+    "updatedAt": "2026-03-01T17:22:52.721Z"
+  },
+  {
+    "name": "Test Report 1772385774304",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-28T17:22:54.304Z",
+        "endDate": "2026-03-01T17:22:54.304Z"
+      }
+    },
+    "metrics": [
+      "1@-uF"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385774304",
+    "createdAt": "2026-03-01T17:22:54.304Z",
+    "updatedAt": "2026-03-01T17:22:54.304Z"
+  },
+  {
+    "name": "Test Report 1772385774325",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-02T17:22:54.325Z",
+        "endDate": "2026-03-01T17:22:54.325Z"
+      }
+    },
+    "metrics": [
+      "<'<HYu|4ao",
+      "V1% <e|i",
+      "MeQ$-P5RhTCt",
+      "wfh'm",
+      "=r+=b"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385774325",
+    "createdAt": "2026-03-01T17:22:54.325Z",
+    "updatedAt": "2026-03-01T17:22:54.325Z"
+  },
+  {
+    "name": "Test Report 1772385775470",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:22:55.470Z",
+        "endDate": "2026-03-01T17:22:55.470Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385775470",
+    "createdAt": "2026-03-01T17:22:55.470Z",
+    "updatedAt": "2026-03-01T17:22:55.470Z"
+  },
+  {
+    "name": "Test Report 1772385775478",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-03T17:22:55.478Z",
+        "endDate": "2026-03-01T17:22:55.478Z"
+      }
+    },
+    "metrics": [
+      "{owL?@",
+      "p?A`wK3ETZXC",
+      "tPxw'_R)+J\"",
+      "BO=n0MN{FPU+"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385775478",
+    "createdAt": "2026-03-01T17:22:55.478Z",
+    "updatedAt": "2026-03-01T17:22:55.478Z"
+  },
+  {
+    "name": "Test Report 1772385777217",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-24T17:22:57.217Z",
+        "endDate": "2026-03-01T17:22:57.217Z"
+      }
+    },
+    "metrics": [
+      "}!,L",
+      "Inkcd{",
+      "`h~/\"xZ"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385777217",
+    "createdAt": "2026-03-01T17:22:57.217Z",
+    "updatedAt": "2026-03-01T17:22:57.217Z"
+  },
+  {
+    "name": "Test Report 1772385778057",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-28T17:22:58.057Z",
+        "endDate": "2026-03-01T17:22:58.057Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385778057",
+    "createdAt": "2026-03-01T17:22:58.057Z",
+    "updatedAt": "2026-03-01T17:22:58.057Z"
+  },
+  {
+    "name": "Test Report 1772385779420",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-08T17:22:59.420Z",
+        "endDate": "2026-03-01T17:22:59.420Z"
+      }
+    },
+    "metrics": [
+      "k[",
+      "ySV!I!-,cZ"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385779420",
+    "createdAt": "2026-03-01T17:22:59.420Z",
+    "updatedAt": "2026-03-01T17:22:59.420Z"
+  },
+  {
+    "name": "Test Report 1772385781101",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-04T17:23:01.101Z",
+        "endDate": "2026-03-01T17:23:01.101Z"
+      }
+    },
+    "metrics": [
+      "&z{g5~A[;",
+      "n-1t?pcbt|nl",
+      "<z~",
+      "#9vUz6/",
+      "x"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385781101",
+    "createdAt": "2026-03-01T17:23:01.101Z",
+    "updatedAt": "2026-03-01T17:23:01.101Z"
+  },
+  {
+    "name": "Test Report 1772385781114",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-25T17:23:01.114Z",
+        "endDate": "2026-03-01T17:23:01.114Z"
+      }
+    },
+    "metrics": [
+      "*9e)R5F&{",
+      "~U%bH\"lisJ-^",
+      "H=W",
+      "vaE^VL(;"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385781114",
+    "createdAt": "2026-03-01T17:23:01.114Z",
+    "updatedAt": "2026-03-01T17:23:01.114Z"
+  },
+  {
+    "name": "Test Report 1772385781701",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:23:01.701Z",
+        "endDate": "2026-03-01T17:23:01.701Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772385781701",
+    "createdAt": "2026-03-01T17:23:01.701Z",
+    "updatedAt": "2026-03-01T17:23:01.701Z"
+  },
+  {
+    "name": "Test Report 1772388140782",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-19T18:02:20.782Z",
+        "endDate": "2026-03-01T18:02:20.782Z"
+      }
+    },
+    "metrics": [
+      "?3=tUxtjg?8"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388140782",
+    "createdAt": "2026-03-01T18:02:20.782Z",
+    "updatedAt": "2026-03-01T18:02:20.782Z"
+  },
+  {
+    "name": "Test Report 1772388140801",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-20T18:02:20.801Z",
+        "endDate": "2026-03-01T18:02:20.801Z"
+      }
+    },
+    "metrics": [
+      "!2R"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388140801",
+    "createdAt": "2026-03-01T18:02:20.801Z",
+    "updatedAt": "2026-03-01T18:02:20.801Z"
+  },
+  {
+    "name": "Test Report 1772388140812",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-30T18:02:20.812Z",
+        "endDate": "2026-03-01T18:02:20.812Z"
+      }
+    },
+    "metrics": [
+      "'1Xh,#,",
+      "I5-",
+      "ySv>:N\\m",
+      "yy/.lEe,\""
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388140813",
+    "createdAt": "2026-03-01T18:02:20.813Z",
+    "updatedAt": "2026-03-01T18:02:20.813Z"
+  },
+  {
+    "name": "Test Report 1772388140837",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:02:20.837Z",
+        "endDate": "2026-03-01T18:02:20.837Z"
+      }
+    },
+    "metrics": [
+      "%",
+      "J\"~$\"|",
+      "`stdJ"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388140837",
+    "createdAt": "2026-03-01T18:02:20.837Z",
+    "updatedAt": "2026-03-01T18:02:20.837Z"
+  },
+  {
+    "name": "Test Report 1772388142228",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:02:22.228Z",
+        "endDate": "2026-03-01T18:02:22.228Z"
+      }
+    },
+    "metrics": [
+      "%!3#arg"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388142228",
+    "createdAt": "2026-03-01T18:02:22.228Z",
+    "updatedAt": "2026-03-01T18:02:22.228Z"
+  },
+  {
+    "name": "Test Report 1772388143532",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-11T18:02:23.532Z",
+        "endDate": "2026-03-01T18:02:23.532Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388143532",
+    "createdAt": "2026-03-01T18:02:23.532Z",
+    "updatedAt": "2026-03-01T18:02:23.532Z"
+  },
+  {
+    "name": "Test Report 1772388143555",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-08T18:02:23.555Z",
+        "endDate": "2026-03-01T18:02:23.555Z"
+      }
+    },
+    "metrics": [
+      "X7@F2JG{^3;",
+      "}ref"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388143555",
+    "createdAt": "2026-03-01T18:02:23.555Z",
+    "updatedAt": "2026-03-01T18:02:23.555Z"
+  },
+  {
+    "name": "Test Report 1772388144568",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-03T18:02:24.568Z",
+        "endDate": "2026-03-01T18:02:24.568Z"
+      }
+    },
+    "metrics": [
+      "bD[=^] TSZ",
+      "P53aDlqU()yD",
+      "kINV",
+      "}`KL7E>.",
+      ">X@?r4"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388144568",
+    "createdAt": "2026-03-01T18:02:24.568Z",
+    "updatedAt": "2026-03-01T18:02:24.568Z"
+  },
+  {
+    "name": "Test Report 1772388145579",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:02:25.579Z",
+        "endDate": "2026-03-01T18:02:25.579Z"
+      }
+    },
+    "metrics": [
+      "G\"la\\JO%",
+      "plJia9l,Pn#"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388145579",
+    "createdAt": "2026-03-01T18:02:25.579Z",
+    "updatedAt": "2026-03-01T18:02:25.579Z"
+  },
+  {
+    "name": "Test Report 1772388145595",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-03T18:02:25.595Z",
+        "endDate": "2026-03-01T18:02:25.595Z"
+      }
+    },
+    "metrics": [
+      "X)Vo[YB36(,y",
+      "%U",
+      "xPvCr+nP$",
+      "8N)e)"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388145595",
+    "createdAt": "2026-03-01T18:02:25.595Z",
+    "updatedAt": "2026-03-01T18:02:25.595Z"
+  },
+  {
+    "name": "Test Report 1772388147309",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-02T18:02:27.309Z",
+        "endDate": "2026-03-01T18:02:27.309Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388147309",
+    "createdAt": "2026-03-01T18:02:27.309Z",
+    "updatedAt": "2026-03-01T18:02:27.309Z"
+  },
+  {
+    "name": "Test Report 1772388148527",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-20T18:02:28.527Z",
+        "endDate": "2026-03-01T18:02:28.527Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388148527",
+    "createdAt": "2026-03-01T18:02:28.527Z",
+    "updatedAt": "2026-03-01T18:02:28.527Z"
+  },
+  {
+    "name": "Test Report 1772388148539",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-26T18:02:28.539Z",
+        "endDate": "2026-03-01T18:02:28.539Z"
+      }
+    },
+    "metrics": [
+      "|L:`L`}+6,",
+      "*U!o",
+      "caghP",
+      "[nQ",
+      "e:#~Hk4D:"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388148539",
+    "createdAt": "2026-03-01T18:02:28.539Z",
+    "updatedAt": "2026-03-01T18:02:28.539Z"
+  },
+  {
+    "name": "Test Report 1772388149208",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:02:29.208Z",
+        "endDate": "2026-03-01T18:02:29.208Z"
+      }
+    },
+    "metrics": [
+      "l:"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388149208",
+    "createdAt": "2026-03-01T18:02:29.208Z",
+    "updatedAt": "2026-03-01T18:02:29.208Z"
+  },
+  {
+    "name": "Test Report 1772388150446",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-02T18:02:30.446Z",
+        "endDate": "2026-03-01T18:02:30.446Z"
+      }
+    },
+    "metrics": [
+      "yPHsXf9ro",
+      ")m*h8:=B",
+      "6*OmhmZ",
+      "]._Q9UPwF",
+      "Qkw2o5`]fR~Y"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388150446",
+    "createdAt": "2026-03-01T18:02:30.446Z",
+    "updatedAt": "2026-03-01T18:02:30.446Z"
+  },
+  {
+    "name": "Test Report 1772388152012",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-06T18:02:32.012Z",
+        "endDate": "2026-03-01T18:02:32.012Z"
+      }
+    },
+    "metrics": [
+      "7",
+      "0nzJ>~d3d."
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388152012",
+    "createdAt": "2026-03-01T18:02:32.012Z",
+    "updatedAt": "2026-03-01T18:02:32.012Z"
+  },
+  {
+    "name": "Test Report 1772388153855",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-04T18:02:33.855Z",
+        "endDate": "2026-03-01T18:02:33.855Z"
+      }
+    },
+    "metrics": [
+      "Ks}8Sam&\\bPj",
+      "qYMl:j6#u~",
+      "^XL:L9C9",
+      "OW;-~S",
+      "ERH[Iv49"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388153855",
+    "createdAt": "2026-03-01T18:02:33.855Z",
+    "updatedAt": "2026-03-01T18:02:33.855Z"
+  },
+  {
+    "name": "Test Report 1772388155257",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-02T18:02:35.257Z",
+        "endDate": "2026-03-01T18:02:35.257Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388155257",
+    "createdAt": "2026-03-01T18:02:35.257Z",
+    "updatedAt": "2026-03-01T18:02:35.257Z"
+  },
+  {
+    "name": "Test Report 1772388156623",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-21T18:02:36.623Z",
+        "endDate": "2026-03-01T18:02:36.623Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388156623",
+    "createdAt": "2026-03-01T18:02:36.623Z",
+    "updatedAt": "2026-03-01T18:02:36.623Z"
+  },
+  {
+    "name": "Test Report 1772388606551",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-09T18:10:06.551Z",
+        "endDate": "2026-03-01T18:10:06.551Z"
+      }
+    },
+    "metrics": [
+      "&"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388606551",
+    "createdAt": "2026-03-01T18:10:06.551Z",
+    "updatedAt": "2026-03-01T18:10:06.551Z"
+  },
+  {
+    "name": "Test Report 1772388608574",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:10:08.573Z",
+        "endDate": "2026-03-01T18:10:08.573Z"
+      }
+    },
+    "metrics": [
+      "n(w\\^Ab?",
+      "\"{&5SR4Z6"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388608574",
+    "createdAt": "2026-03-01T18:10:08.574Z",
+    "updatedAt": "2026-03-01T18:10:08.574Z"
+  },
+  {
+    "name": "Test Report 1772388610680",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:10:10.680Z",
+        "endDate": "2026-03-01T18:10:10.680Z"
+      }
+    },
+    "metrics": [
+      "d)Vvz\"X4'Q",
+      "  dwW@Q",
+      ";0*~YEh_g~PY",
+      "M:"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388610680",
+    "createdAt": "2026-03-01T18:10:10.680Z",
+    "updatedAt": "2026-03-01T18:10:10.680Z"
+  },
+  {
+    "name": "Test Report 1772388612290",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:12.290Z",
+        "endDate": "2026-03-01T18:10:12.290Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388612290",
+    "createdAt": "2026-03-01T18:10:12.290Z",
+    "updatedAt": "2026-03-01T18:10:12.290Z"
+  },
+  {
+    "name": "Test Report 1772388613094",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:13.094Z",
+        "endDate": "2026-03-01T18:10:13.094Z"
+      }
+    },
+    "metrics": [
+      "ng",
+      "#/hM2p"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388613094",
+    "createdAt": "2026-03-01T18:10:13.094Z",
+    "updatedAt": "2026-03-01T18:10:13.094Z"
+  },
+  {
+    "name": "Test Report 1772388613869",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:13.869Z",
+        "endDate": "2026-03-01T18:10:13.869Z"
+      }
+    },
+    "metrics": [
+      "Ro=a@>f}",
+      "f>{+2;6FdCr+",
+      "xBAT7b&v[d6#",
+      "ij_6`"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388613869",
+    "createdAt": "2026-03-01T18:10:13.869Z",
+    "updatedAt": "2026-03-01T18:10:13.869Z"
+  },
+  {
+    "name": "Test Report 1772388615331",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:15.331Z",
+        "endDate": "2026-03-01T18:10:15.331Z"
+      }
+    },
+    "metrics": [
+      "Iy<",
+      "jznMP"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388615331",
+    "createdAt": "2026-03-01T18:10:15.331Z",
+    "updatedAt": "2026-03-01T18:10:15.331Z"
+  },
+  {
+    "name": "Test Report 1772388615349",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-09T18:10:15.349Z",
+        "endDate": "2026-03-01T18:10:15.349Z"
+      }
+    },
+    "metrics": [
+      ",\"9iqI`E0pI7",
+      "?$.w\"Z\"_(T"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388615349",
+    "createdAt": "2026-03-01T18:10:15.349Z",
+    "updatedAt": "2026-03-01T18:10:15.349Z"
+  },
+  {
+    "name": "Test Report 1772388615365",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-25T18:10:15.365Z",
+        "endDate": "2026-03-01T18:10:15.365Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388615365",
+    "createdAt": "2026-03-01T18:10:15.365Z",
+    "updatedAt": "2026-03-01T18:10:15.365Z"
+  },
+  {
+    "name": "Test Report 1772388617832",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-06T18:10:17.832Z",
+        "endDate": "2026-03-01T18:10:17.832Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388617832",
+    "createdAt": "2026-03-01T18:10:17.832Z",
+    "updatedAt": "2026-03-01T18:10:17.832Z"
+  },
+  {
+    "name": "Test Report 1772388619196",
+    "description": "Property test generated report",
+    "type": "revenue",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-01-30T18:10:19.196Z",
+        "endDate": "2026-03-01T18:10:19.196Z"
+      }
+    },
+    "metrics": [
+      "iZBo"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388619197",
+    "createdAt": "2026-03-01T18:10:19.197Z",
+    "updatedAt": "2026-03-01T18:10:19.197Z"
+  },
+  {
+    "name": "Test Report 1772388620509",
+    "description": "Property test generated report",
+    "type": "custom",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-07T18:10:20.509Z",
+        "endDate": "2026-03-01T18:10:20.509Z"
+      }
+    },
+    "metrics": [
+      "J 6~",
+      "/[vz",
+      "dWqV~M9"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388620509",
+    "createdAt": "2026-03-01T18:10:20.509Z",
+    "updatedAt": "2026-03-01T18:10:20.509Z"
+  },
+  {
+    "name": "Test Report 1772388620518",
+    "description": "Property test generated report",
+    "type": "churn",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-28T18:10:20.518Z",
+        "endDate": "2026-03-01T18:10:20.518Z"
+      }
+    },
+    "metrics": [],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388620518",
+    "createdAt": "2026-03-01T18:10:20.518Z",
+    "updatedAt": "2026-03-01T18:10:20.518Z"
+  },
+  {
+    "name": "Test Report 1772388621984",
+    "description": "Property test generated report",
+    "type": "usage",
+    "defaultFilters": {
+      "timeRange": {
+        "startDate": "2026-02-10T18:10:21.984Z",
+        "endDate": "2026-03-01T18:10:21.984Z"
+      }
+    },
+    "metrics": [
+      ">-!"
+    ],
+    "visualizations": [],
+    "isActive": true,
+    "id": "template_1772388621984",
+    "createdAt": "2026-03-01T18:10:21.984Z",
+    "updatedAt": "2026-03-01T18:10:21.984Z"
   }
 ]

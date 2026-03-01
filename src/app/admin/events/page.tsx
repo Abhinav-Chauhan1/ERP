@@ -280,7 +280,7 @@ export default function EventsPage() {
       case "ONGOING":
         return "bg-green-100 text-green-800";
       case "COMPLETED":
-        return "bg-purple-100 text-purple-800";
+        return "bg-teal-100 text-teal-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
       case "POSTPONED":

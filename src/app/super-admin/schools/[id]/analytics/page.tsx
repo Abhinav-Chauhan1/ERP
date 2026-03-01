@@ -137,7 +137,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-purple-600" />
+                  <Users className="h-4 w-4 text-teal-600" />
                   <div>
                     <p className="text-2xl font-bold">{school._count.classes}</p>
                     <p className="text-xs text-muted-foreground">Total Classes</p>
@@ -206,7 +206,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
                   </div>
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-purple-600" />
+                      <FileText className="h-4 w-4 text-teal-600" />
                       <span className="text-sm">Reports Generated</span>
                     </div>
                     <span className="text-sm text-muted-foreground">12 this week</span>
@@ -254,7 +254,7 @@ export default async function SchoolAnalyticsPage({ params }: SchoolAnalyticsPag
                     <span>2.3 GB / 5 GB</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: '46%' }}></div>
+                    <div className="bg-teal-600 h-2 rounded-full" style={{ width: '46%' }}></div>
                   </div>
                 </div>
               </div>

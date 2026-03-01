@@ -50,7 +50,7 @@ export default async function PerformancePage() {
       description: "View your class rank and percentile standing",
       icon: Award,
       href: "/student/performance/rank",
-      color: "bg-purple-50 text-purple-600",
+      color: "bg-teal-50 text-teal-600",
     },
   ];
   

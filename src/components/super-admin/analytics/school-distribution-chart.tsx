@@ -16,7 +16,7 @@ export function SchoolDistributionChart({ data }: SchoolDistributionChartProps) 
   const planDistribution = data.map((item, index) => ({
     name: item.plan,
     value: item.count,
-    color: ['#f59e0b', '#3b82f6', '#8b5cf6'][index % 3],
+    color: ['#f59e0b', '#3b82f6', '#14b8a6'][index % 3],
   }));
 
   const statusDistribution = [
@@ -188,7 +188,7 @@ export function SchoolDistributionChart({ data }: SchoolDistributionChartProps) 
               <div className="text-sm text-muted-foreground">Active Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-teal-600">
                 {formatNumber(schoolsByRegion.reduce((sum, item) => sum + item.students, 0))}
               </div>
               <div className="text-sm text-muted-foreground">Total Students</div>

@@ -112,15 +112,15 @@ export function PlansAndBillingManagement({ initialBillingData }: PlansAndBillin
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-600 to-purple-700 text-white border-0">
+          <Card className="bg-gradient-to-br from-teal-600 to-teal-700 text-white border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Active Subscriptions</p>
+                  <p className="text-teal-100 text-sm font-medium">Active Subscriptions</p>
                   <p className="text-2xl font-bold">
                     {metrics.activeSubscriptions || 0}
                   </p>
-                  <p className="text-purple-200 text-xs mt-1">
+                  <p className="text-teal-200 text-xs mt-1">
                     Current active plans
                   </p>
                 </div>

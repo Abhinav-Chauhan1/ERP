@@ -254,7 +254,7 @@ export function SchoolUsersClient({ school }: SchoolUsersClientProps) {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-purple-600" />
+              <UserCheck className="h-4 w-4 text-teal-600" />
               <div>
                 <p className="text-2xl font-bold">{school._count.administrators}</p>
                 <p className="text-xs text-muted-foreground">Administrators</p>

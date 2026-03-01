@@ -114,7 +114,7 @@ export function PerformanceMetrics() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Throughput</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
+            <TrendingUp className="h-4 w-4 text-teal-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -189,7 +189,7 @@ export function PerformanceMetrics() {
 
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-600" />
+                  <Shield className="h-4 w-4 text-teal-600" />
                   <span className="text-sm font-medium">Security Score</span>
                 </div>
                 <span className="text-lg font-bold text-green-600">{performanceData.security.securityScore}/100</span>
@@ -224,8 +224,8 @@ export function PerformanceMetrics() {
               <div className="text-sm text-muted-foreground">Cache Hit Rate</div>
             </div>
 
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="text-center p-4 bg-teal-50 rounded-lg">
+              <div className="text-2xl font-bold text-teal-600">
                 {performanceData.database.indexEfficiency}%
               </div>
               <div className="text-sm text-muted-foreground">Index Efficiency</div>

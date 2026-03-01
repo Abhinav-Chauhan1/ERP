@@ -472,8 +472,8 @@ export default function ClassDetailsPage() {
                 <span className="text-sm font-medium text-gray-500">Class Teacher</span>
                 <span className="text-xl font-bold">{classDetails.classTeacher || 'Not Assigned'}</span>
               </div>
-              <div className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg">
-                <BookOpen className="h-8 w-8 text-purple-500 mb-2" />
+              <div className="flex flex-col items-center justify-center p-4 bg-teal-50 rounded-lg">
+                <BookOpen className="h-8 w-8 text-teal-500 mb-2" />
                 <span className="text-sm font-medium text-gray-500">Subjects</span>
                 <span className="text-xl font-bold">{classDetails.subjects?.length || 0}</span>
               </div>

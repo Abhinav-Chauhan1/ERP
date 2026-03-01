@@ -236,7 +236,7 @@ export default function StudentDashboard() {
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-purple-500" />
+                <BookOpen className="h-5 w-5 text-teal-500" />
                 Study Tools
               </CardTitle>
             </CardHeader>
@@ -257,8 +257,8 @@ export default function StudentDashboard() {
                   <p className="text-xs text-muted-foreground">{mockLearningProgress.studyStats.flashcardsCount}</p>
                 </div>
                 <div className="space-y-1">
-                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mx-auto">
-                    <Lightbulb className="h-4 w-4 text-purple-600" />
+                  <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center mx-auto">
+                    <Lightbulb className="h-4 w-4 text-teal-600" />
                   </div>
                   <p className="text-xs font-medium">Maps</p>
                   <p className="text-xs text-muted-foreground">{mockLearningProgress.studyStats.mindMapsCount}</p>

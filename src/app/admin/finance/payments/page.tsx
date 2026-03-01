@@ -457,7 +457,7 @@ export default function PaymentsPage() {
                   <p className="text-sm text-muted-foreground">Total Payments</p>
                   <p className="text-2xl font-bold">{stats.totalPayments}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-purple-500" />
+                <DollarSign className="h-8 w-8 text-teal-500" />
               </div>
             </CardContent>
           </Card>

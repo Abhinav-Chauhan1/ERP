@@ -9,7 +9,7 @@ import { ResponsiveTable } from "@/components/shared/responsive-table";
 // Budget categories (mirrored from page)
 export const budgetCategories = [
     { id: "salaries", name: "Staff Salaries", color: "bg-primary/10 text-primary" },
-    { id: "infrastructure", name: "Infrastructure", color: "bg-purple-100 text-purple-800" },
+    { id: "infrastructure", name: "Infrastructure", color: "bg-teal-100 text-teal-800" },
     { id: "utilities", name: "Utilities", color: "bg-green-100 text-green-800" },
     { id: "supplies", name: "Educational Supplies", color: "bg-amber-100 text-amber-800" },
     { id: "events", name: "School Events", color: "bg-pink-100 text-pink-800" },

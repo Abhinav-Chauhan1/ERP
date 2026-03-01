@@ -94,7 +94,7 @@ export function InteractiveLessonViewer({
   const getContentTypeColor = (type: string) => {
     switch (type) {
       case 'video': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'audio': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'audio': return 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200';
       case 'text': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'interactive': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
@@ -128,7 +128,7 @@ export function InteractiveLessonViewer({
     return (
       <div className="space-y-4">
         {/* Simple Progress */}
-        <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+        <Card className="bg-gradient-to-r from-blue-500 to-teal-600 text-white">
           <CardContent className="p-4">
             <h2 className="text-xl font-bold mb-2">{title}</h2>
             <div className="flex items-center gap-2">

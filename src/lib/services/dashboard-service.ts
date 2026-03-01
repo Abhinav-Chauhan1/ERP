@@ -486,7 +486,7 @@ export class DashboardService {
             current: 0,
             target: 100000,
             unit: '$',
-            color: '#8b5cf6',
+            color: '#14b8a6',
             showPercentage: true,
           },
         },

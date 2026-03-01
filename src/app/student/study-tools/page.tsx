@@ -155,7 +155,7 @@ const mockMindMaps = [
         text: 'Asteroids',
         x: 400,
         y: 400,
-        color: '#8B5CF6',
+        color: '#14B8A6',
         isRoot: false,
         parentId: 'root',
         children: []

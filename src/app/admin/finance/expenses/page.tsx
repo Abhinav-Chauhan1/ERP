@@ -66,7 +66,7 @@ const expenseCategories = [
   { id: "utilities", name: "Utilities", color: "bg-primary/10 text-primary", icon: <Receipt className="h-4 w-4" /> },
   { id: "supplies", name: "School Supplies", color: "bg-green-100 text-green-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "maintenance", name: "Maintenance", color: "bg-amber-100 text-amber-800", icon: <Receipt className="h-4 w-4" /> },
-  { id: "salary", name: "Staff Salary", color: "bg-purple-100 text-purple-800", icon: <Receipt className="h-4 w-4" /> },
+  { id: "salary", name: "Staff Salary", color: "bg-teal-100 text-teal-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "events", name: "Events", color: "bg-pink-100 text-pink-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "transport", name: "Transportation", color: "bg-indigo-100 text-indigo-800", icon: <Receipt className="h-4 w-4" /> },
   { id: "other", name: "Other", color: "bg-muted text-gray-800", icon: <Receipt className="h-4 w-4" /> },
@@ -719,7 +719,7 @@ export default function ExpensesPage() {
                     type="pie"
                     xKey="category"
                     yKey="amount"
-                    colors={["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#6366f1", "#6b7280"]}
+                    colors={["#3b82f6", "#10b981", "#f59e0b", "#14b8a6", "#ec4899", "#6366f1", "#6b7280"]}
                   />
                 ) : (
                   <div className="text-center py-10 text-muted-foreground">

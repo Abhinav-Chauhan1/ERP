@@ -51,7 +51,7 @@ export const chartColors = {
   warning: ['#f59e0b', '#d97706', '#b45309', '#92400e'],
   error: ['#ef4444', '#dc2626', '#b91c1c', '#991b1b'],
   neutral: ['#6b7280', '#4b5563', '#374151', '#1f2937'],
-  rainbow: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'],
+  rainbow: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#14b8a6', '#06b6d4', '#84cc16', '#f97316'],
 } as const;
 
 // Chart data interfaces

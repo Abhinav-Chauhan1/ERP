@@ -310,5 +310,677 @@
     "nextRun": "2026-03-02T03:30:00.000Z",
     "createdAt": "2026-03-01T16:30:07.383Z",
     "updatedAt": "2026-03-01T16:30:07.383Z"
+  },
+  {
+    "templateId": "template_1772385238130",
+    "name": "Scheduled Test Report 1772385238130",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:13:58.129Z",
+        "endDate": "2026-03-01T17:13:58.129Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385240401",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:14:00.401Z",
+    "updatedAt": "2026-03-01T17:14:00.401Z"
+  },
+  {
+    "templateId": "template_1772385240405",
+    "name": "Scheduled Test Report 1772385240405",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:14:00.405Z",
+        "endDate": "2026-03-01T17:14:00.405Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385241903",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:14:01.903Z",
+    "updatedAt": "2026-03-01T17:14:01.903Z"
+  },
+  {
+    "templateId": "template_1772385244991",
+    "name": "Scheduled Test Report 1772385244991",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:14:04.991Z",
+        "endDate": "2026-03-01T17:14:04.991Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385247019",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:14:07.019Z",
+    "updatedAt": "2026-03-01T17:14:07.019Z"
+  },
+  {
+    "templateId": "template_1772385247026",
+    "name": "Scheduled Test Report 1772385247026",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-16T17:14:07.026Z",
+        "endDate": "2026-03-01T17:14:07.026Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385248253",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:14:08.253Z",
+    "updatedAt": "2026-03-01T17:14:08.253Z"
+  },
+  {
+    "templateId": "template_1772385251233",
+    "name": "Scheduled Test Report 1772385251233",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-31T17:14:11.233Z",
+        "endDate": "2026-03-01T17:14:11.233Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385253884",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:14:13.884Z",
+    "updatedAt": "2026-03-01T17:14:13.884Z"
+  },
+  {
+    "templateId": "template_1772385766229",
+    "name": "Scheduled Test Report 1772385766229",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-27T17:22:46.228Z",
+        "endDate": "2026-03-01T17:22:46.228Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385767365",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:47.365Z",
+    "updatedAt": "2026-03-01T17:22:47.365Z"
+  },
+  {
+    "templateId": "template_1772385767375",
+    "name": "Scheduled Test Report 1772385767375",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-02T17:22:47.375Z",
+        "endDate": "2026-03-01T17:22:47.375Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385768887",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:48.887Z",
+    "updatedAt": "2026-03-01T17:22:48.887Z"
+  },
+  {
+    "templateId": "template_1772385771260",
+    "name": "Scheduled Test Report 1772385771260",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-13T17:22:51.260Z",
+        "endDate": "2026-03-01T17:22:51.260Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385772717",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:52.717Z",
+    "updatedAt": "2026-03-01T17:22:52.717Z"
+  },
+  {
+    "templateId": "template_1772385774325",
+    "name": "Scheduled Test Report 1772385774325",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-02T17:22:54.325Z",
+        "endDate": "2026-03-01T17:22:54.325Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385775463",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:55.463Z",
+    "updatedAt": "2026-03-01T17:22:55.463Z"
+  },
+  {
+    "templateId": "template_1772385775470",
+    "name": "Scheduled Test Report 1772385775470",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-30T17:22:55.470Z",
+        "endDate": "2026-03-01T17:22:55.470Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385775476",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:55.476Z",
+    "updatedAt": "2026-03-01T17:22:55.476Z"
+  },
+  {
+    "templateId": "template_1772385778057",
+    "name": "Scheduled Test Report 1772385778057",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-28T17:22:58.057Z",
+        "endDate": "2026-03-01T17:22:58.057Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772385779414",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:22:59.414Z",
+    "updatedAt": "2026-03-01T17:22:59.414Z"
+  },
+  {
+    "templateId": "template_1772385779420",
+    "name": "Scheduled Test Report 1772385779420",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-08T17:22:59.420Z",
+        "endDate": "2026-03-01T17:22:59.420Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385781097",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:23:01.097Z",
+    "updatedAt": "2026-03-01T17:23:01.097Z"
+  },
+  {
+    "templateId": "template_1772385781114",
+    "name": "Scheduled Test Report 1772385781114",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-25T17:23:01.114Z",
+        "endDate": "2026-03-01T17:23:01.114Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772385781694",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T17:23:01.694Z",
+    "updatedAt": "2026-03-01T17:23:01.694Z"
+  },
+  {
+    "templateId": "template_1772388140801",
+    "name": "Scheduled Test Report 1772388140801",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-20T18:02:20.801Z",
+        "endDate": "2026-03-01T18:02:20.801Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388140807",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:20.807Z",
+    "updatedAt": "2026-03-01T18:02:20.807Z"
+  },
+  {
+    "templateId": "template_1772388142228",
+    "name": "Scheduled Test Report 1772388142228",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:02:22.228Z",
+        "endDate": "2026-03-01T18:02:22.228Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388143525",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:23.525Z",
+    "updatedAt": "2026-03-01T18:02:23.525Z"
+  },
+  {
+    "templateId": "template_1772388143555",
+    "name": "Scheduled Test Report 1772388143555",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-08T18:02:23.555Z",
+        "endDate": "2026-03-01T18:02:23.555Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388144564",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:24.564Z",
+    "updatedAt": "2026-03-01T18:02:24.564Z"
+  },
+  {
+    "templateId": "template_1772388144568",
+    "name": "Scheduled Test Report 1772388144568",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-03T18:02:24.568Z",
+        "endDate": "2026-03-01T18:02:24.568Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388145577",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:25.577Z",
+    "updatedAt": "2026-03-01T18:02:25.577Z"
+  },
+  {
+    "templateId": "template_1772388149208",
+    "name": "Scheduled Test Report 1772388149208",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:02:29.208Z",
+        "endDate": "2026-03-01T18:02:29.208Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388150439",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:30.439Z",
+    "updatedAt": "2026-03-01T18:02:30.439Z"
+  },
+  {
+    "templateId": "template_1772388150446",
+    "name": "Scheduled Test Report 1772388150446",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-02T18:02:30.446Z",
+        "endDate": "2026-03-01T18:02:30.446Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388152008",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:32.008Z",
+    "updatedAt": "2026-03-01T18:02:32.008Z"
+  },
+  {
+    "templateId": "template_1772388152012",
+    "name": "Scheduled Test Report 1772388152012",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-06T18:02:32.012Z",
+        "endDate": "2026-03-01T18:02:32.012Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388153847",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:02:33.847Z",
+    "updatedAt": "2026-03-01T18:02:33.847Z"
+  },
+  {
+    "templateId": "template_1772388606551",
+    "name": "Scheduled Test Report 1772388606551",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-09T18:10:06.551Z",
+        "endDate": "2026-03-01T18:10:06.551Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388608566",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:08.566Z",
+    "updatedAt": "2026-03-01T18:10:08.566Z"
+  },
+  {
+    "templateId": "template_1772388608574",
+    "name": "Scheduled Test Report 1772388608574",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:10:08.573Z",
+        "endDate": "2026-03-01T18:10:08.573Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388610669",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:10.669Z",
+    "updatedAt": "2026-03-01T18:10:10.669Z"
+  },
+  {
+    "templateId": "template_1772388610680",
+    "name": "Scheduled Test Report 1772388610680",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-24T18:10:10.680Z",
+        "endDate": "2026-03-01T18:10:10.680Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388612281",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:12.281Z",
+    "updatedAt": "2026-03-01T18:10:12.281Z"
+  },
+  {
+    "templateId": "template_1772388612290",
+    "name": "Scheduled Test Report 1772388612290",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:12.290Z",
+        "endDate": "2026-03-01T18:10:12.290Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388613080",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:13.080Z",
+    "updatedAt": "2026-03-01T18:10:13.080Z"
+  },
+  {
+    "templateId": "template_1772388613869",
+    "name": "Scheduled Test Report 1772388613869",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:13.869Z",
+        "endDate": "2026-03-01T18:10:13.869Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388615327",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:15.327Z",
+    "updatedAt": "2026-03-01T18:10:15.327Z"
+  },
+  {
+    "templateId": "template_1772388615331",
+    "name": "Scheduled Test Report 1772388615331",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-27T18:10:15.331Z",
+        "endDate": "2026-03-01T18:10:15.331Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388615338",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:15.338Z",
+    "updatedAt": "2026-03-01T18:10:15.338Z"
+  },
+  {
+    "templateId": "template_1772388615349",
+    "name": "Scheduled Test Report 1772388615349",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-09T18:10:15.349Z",
+        "endDate": "2026-03-01T18:10:15.349Z"
+      }
+    },
+    "format": "csv",
+    "isActive": true,
+    "id": "scheduled_1772388615363",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:15.363Z",
+    "updatedAt": "2026-03-01T18:10:15.363Z"
+  },
+  {
+    "templateId": "template_1772388619197",
+    "name": "Scheduled Test Report 1772388619196",
+    "schedule": {
+      "frequency": "daily",
+      "time": "09:00",
+      "timezone": "UTC"
+    },
+    "recipients": [
+      "test@example.com"
+    ],
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-01-30T18:10:19.196Z",
+        "endDate": "2026-03-01T18:10:19.196Z"
+      }
+    },
+    "format": "json",
+    "isActive": true,
+    "id": "scheduled_1772388620502",
+    "nextRun": "2026-03-02T03:30:00.000Z",
+    "createdAt": "2026-03-01T18:10:20.502Z",
+    "updatedAt": "2026-03-01T18:10:20.502Z"
   }
 ]

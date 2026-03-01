@@ -12,7 +12,7 @@ const expenseCategories = [
     { id: "utilities", name: "Utilities", color: "bg-primary/10 text-primary" },
     { id: "supplies", name: "School Supplies", color: "bg-green-100 text-green-800" },
     { id: "maintenance", name: "Maintenance", color: "bg-amber-100 text-amber-800" },
-    { id: "salary", name: "Staff Salary", color: "bg-purple-100 text-purple-800" },
+    { id: "salary", name: "Staff Salary", color: "bg-teal-100 text-teal-800" },
     { id: "events", name: "Events", color: "bg-pink-100 text-pink-800" },
     { id: "transport", name: "Transportation", color: "bg-indigo-100 text-indigo-800" },
     { id: "other", name: "Other", color: "bg-muted text-gray-800" },

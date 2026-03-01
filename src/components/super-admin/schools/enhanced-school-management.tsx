@@ -571,7 +571,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                         </TableCell>
                         <TableCell {...tableAccessibility.getCellProps(true)}>
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
                               {school.name.charAt(0)}
                             </div>
                             <div>
@@ -703,7 +703,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                               }
                               {...aria.attributes.label(`Select ${school.name}`)}
                             />
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-teal-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
                               {school.name.charAt(0)}
                             </div>
                             <div className="flex-1 min-w-0">

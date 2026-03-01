@@ -12,7 +12,7 @@ import { CommunicationChannel } from '@prisma/client';
 import { SimpleLineChart, MultiBarChart } from '@/components/ui/charts';
 import { format, subDays } from 'date-fns';
 
-const CHANNEL_COLORS = { SMS: '#3b82f6', WHATSAPP: '#10b981', EMAIL: '#f59e0b', IN_APP: '#8b5cf6' };
+const CHANNEL_COLORS = { SMS: '#3b82f6', WHATSAPP: '#10b981', EMAIL: '#f59e0b', IN_APP: '#14b8a6' };
 const SEVERITY_COLORS = { LOW: '#10b981', MEDIUM: '#f59e0b', HIGH: '#ef4444', CRITICAL: '#dc2626' };
 const AUTO_REFRESH_INTERVAL = 30000;
 

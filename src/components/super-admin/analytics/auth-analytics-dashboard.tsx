@@ -364,7 +364,7 @@ export function AuthAnalyticsDashboard({
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-                    <Activity className="h-4 w-4 text-purple-600" />
+                    <Activity className="h-4 w-4 text-teal-600" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{formatNumber(overviewData.overview.totalSessions)}</div>
@@ -548,7 +548,7 @@ export function AuthAnalyticsDashboard({
                       <div className="text-sm text-slate-600 dark:text-slate-400">New Users</div>
                     </div>
                     <div className="text-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{formatNumber(detailedData.authentication.returningUsers)}</div>
+                      <div className="text-2xl font-bold text-teal-600">{formatNumber(detailedData.authentication.returningUsers)}</div>
                       <div className="text-sm text-slate-600 dark:text-slate-400">Returning Users</div>
                     </div>
                   </div>
@@ -570,7 +570,7 @@ export function AuthAnalyticsDashboard({
                             <div className={`w-3 h-3 rounded-full ${
                               index === 0 ? 'bg-blue-500' : 
                               index === 1 ? 'bg-green-500' : 
-                              index === 2 ? 'bg-purple-500' : 
+                              index === 2 ? 'bg-teal-500' : 
                               index === 3 ? 'bg-orange-500' : 'bg-gray-500'
                             }`} />
                             <span className="font-medium capitalize">{roleData.role.toLowerCase()}</span>
@@ -600,7 +600,7 @@ export function AuthAnalyticsDashboard({
                           <div className="flex items-center justify-center mb-2">
                             {method.method === 'OTP' && <Smartphone className="h-6 w-6 text-blue-600" />}
                             {method.method === 'PASSWORD' && <Lock className="h-6 w-6 text-green-600" />}
-                            {method.method === 'TOKEN' && <Unlock className="h-6 w-6 text-purple-600" />}
+                            {method.method === 'TOKEN' && <Unlock className="h-6 w-6 text-teal-600" />}
                           </div>
                           <div className="text-lg font-bold">{formatNumber(method.count)}</div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">{method.method}</div>

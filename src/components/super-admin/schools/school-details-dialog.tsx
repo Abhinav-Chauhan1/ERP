@@ -465,7 +465,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Administrators</CardTitle>
-                  <Users className="h-4 w-4 text-purple-600" />
+                  <Users className="h-4 w-4 text-teal-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{school._count.administrators}</div>
@@ -516,7 +516,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Classes</CardTitle>
-                      <Building className="h-4 w-4 text-purple-600" />
+                      <Building className="h-4 w-4 text-teal-600" />
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{analytics.metrics.classes}</div>
@@ -769,12 +769,12 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Users className="h-5 w-5 text-purple-600" />
+                    <Users className="h-5 w-5 text-teal-600" />
                     Administrators
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-purple-600">{school._count.administrators}</div>
+                  <div className="text-3xl font-bold text-teal-600">{school._count.administrators}</div>
                   <p className="text-sm text-muted-foreground mt-2">
                     Administrative users
                   </p>
@@ -882,7 +882,7 @@ export function SchoolDetailsDialog({ school, open, onOpenChange, onSchoolUpdate
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Storage Space</CardTitle>
-                      <HardDrive className="h-4 w-4 text-purple-600" />
+                      <HardDrive className="h-4 w-4 text-teal-600" />
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">

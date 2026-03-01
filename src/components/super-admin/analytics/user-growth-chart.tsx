@@ -130,9 +130,9 @@ export function UserGrowthChart({ data }: UserGrowthChartProps) {
                 <Line 
                   type="monotone" 
                   dataKey="activeUsers" 
-                  stroke="#8b5cf6" 
+                  stroke="#14b8a6" 
                   strokeWidth={2}
-                  dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: '#14b8a6', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
@@ -154,7 +154,7 @@ export function UserGrowthChart({ data }: UserGrowthChartProps) {
               <div className="text-sm text-muted-foreground">New Users</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-purple-600">
+              <div className="text-xl font-bold text-teal-600">
                 {formatNumber(userGrowthData[userGrowthData.length - 1].activeUsers)}
               </div>
               <div className="text-sm text-muted-foreground">Active Users</div>

@@ -364,7 +364,7 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                             <div className="flex flex-col">
                                                 <span className="font-medium">{classTeacher.class.name}</span>
                                                 {classTeacher.isClassHead && (
-                                                    <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 w-fit mt-1">
+                                                    <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100 w-fit mt-1">
                                                         Class Head
                                                     </Badge>
                                                 )}

@@ -176,12 +176,12 @@ export function FlashcardSystem({
     return (
       <div className="space-y-4">
         {/* Simple Header */}
-        <Card className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+        <Card className="bg-gradient-to-r from-teal-500 to-pink-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">Flashcards</h2>
-                <p className="text-purple-100">{decks.length} decks</p>
+                <p className="text-teal-100">{decks.length} decks</p>
               </div>
               <Button
                 onClick={handleCreateDeck}
@@ -395,14 +395,14 @@ export function FlashcardSystem({
     <div className="space-y-6">
       {/* Header with Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+        <Card className="bg-gradient-to-br from-teal-500 to-pink-600 text-white">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
                 <Play className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-purple-100 text-sm">Total Decks</p>
+                <p className="text-teal-100 text-sm">Total Decks</p>
                 <p className="text-2xl font-bold">{decks.length}</p>
               </div>
             </div>

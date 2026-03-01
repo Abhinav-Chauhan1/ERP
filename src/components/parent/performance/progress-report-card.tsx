@@ -66,9 +66,9 @@ export function ProgressReportCard({ report }: ProgressReportCardProps) {
             </p>
           </div>
 
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <p className="text-xs text-purple-600 mb-1">Percentage</p>
-            <p className="text-2xl font-bold text-purple-700">
+          <div className="bg-teal-50 p-4 rounded-lg">
+            <p className="text-xs text-teal-600 mb-1">Percentage</p>
+            <p className="text-2xl font-bold text-teal-700">
               {academicPercentage.toFixed(1)}%
             </p>
           </div>
@@ -219,8 +219,8 @@ export function ProgressReportCard({ report }: ProgressReportCardProps) {
               )}
 
               {report.principalRemarks && (
-                <div className="border-l-4 border-purple-500 pl-4 py-2">
-                  <h3 className="font-semibold text-sm mb-2 text-purple-700">Principal's Remarks</h3>
+                <div className="border-l-4 border-teal-500 pl-4 py-2">
+                  <h3 className="font-semibold text-sm mb-2 text-teal-700">Principal's Remarks</h3>
                   <p className="text-sm text-gray-700 leading-relaxed">{report.principalRemarks}</p>
                 </div>
               )}

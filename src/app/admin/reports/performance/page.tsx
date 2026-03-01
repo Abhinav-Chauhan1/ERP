@@ -120,7 +120,7 @@ export default function PerformanceAnalyticsPage() {
       title: "Student Progress Tracking",
       description: "Monitor individual student growth over time",
       icon: Activity,
-      color: "bg-purple-500",
+      color: "bg-teal-500",
     },
     {
       title: "Comparative Analysis",
@@ -298,8 +298,8 @@ export default function PerformanceAnalyticsPage() {
                       <div className="text-sm text-green-600">Average Marks</div>
                       <div className="text-xl font-bold">{reportData.data.statistics?.averageMarks?.toFixed(1) || 0}%</div>
                     </div>
-                    <div className="bg-purple-50 p-3 rounded">
-                      <div className="text-sm text-purple-600">Pass Rate</div>
+                    <div className="bg-teal-50 p-3 rounded">
+                      <div className="text-sm text-teal-600">Pass Rate</div>
                       <div className="text-xl font-bold">{reportData.data.statistics?.passPercentage?.toFixed(1) || 0}%</div>
                     </div>
                     <div className="bg-orange-50 p-3 rounded">

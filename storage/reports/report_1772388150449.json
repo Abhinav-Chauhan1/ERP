@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "reportId": "report_1772388152003",
+    "templateName": "Test Report 1772388150446",
+    "generatedAt": "2026-03-01T18:02:32.003Z",
+    "timeRange": {
+      "startDate": "2026-02-02T18:02:30.446Z",
+      "endDate": "2026-03-01T18:02:30.446Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-02T18:02:30.446Z",
+        "endDate": "2026-03-01T18:02:30.446Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "churn_overview",
+      "title": "Churn Analysis",
+      "type": "metrics",
+      "data": {
+        "churnRate": 0,
+        "retentionRate": 100,
+        "customerLifetimeValue": 16488
+      }
+    },
+    {
+      "id": "churn_by_plan",
+      "title": "Churn by Plan",
+      "type": "table",
+      "data": [
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Test Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "churnRate": 0,
+    "retentionRate": 100
+  }
+}

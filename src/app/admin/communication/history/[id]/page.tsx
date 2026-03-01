@@ -40,7 +40,7 @@ export default async function MessageHistoryDetailPage({
     const colors: Record<string, string> = {
       SMS: "bg-blue-100 text-blue-800",
       EMAIL: "bg-green-100 text-green-800",
-      BOTH: "bg-purple-100 text-purple-800",
+      BOTH: "bg-teal-100 text-teal-800",
     };
 
     return (

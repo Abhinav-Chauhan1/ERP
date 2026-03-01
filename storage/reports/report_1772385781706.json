@@ -1,0 +1,95 @@
+{
+  "metadata": {
+    "reportId": "report_1772385782744",
+    "templateName": "Test Report 1772385781701",
+    "generatedAt": "2026-03-01T17:23:02.744Z",
+    "timeRange": {
+      "startDate": "2026-02-26T17:23:01.701Z",
+      "endDate": "2026-03-01T17:23:01.701Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-26T17:23:01.701Z",
+        "endDate": "2026-03-01T17:23:01.701Z"
+      }
+    }
+  },
+  "sections": [
+    {
+      "id": "churn_overview",
+      "title": "Churn Analysis",
+      "type": "metrics",
+      "data": {
+        "churnRate": 0,
+        "retentionRate": 100,
+        "customerLifetimeValue": 14388
+      }
+    },
+    {
+      "id": "churn_by_plan",
+      "title": "Churn by Plan",
+      "type": "table",
+      "data": [
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Premium Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Enterprise Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Basic Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Test Plan",
+          "churnRate": 0,
+          "retentionRate": 100
+        },
+        {
+          "planName": "Test Plan for Failures",
+          "churnRate": 0,
+          "retentionRate": 100
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "churnRate": 0,
+    "retentionRate": 100
+  }
+}

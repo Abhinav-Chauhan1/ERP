@@ -157,7 +157,7 @@ export class SchoolService {
         logo: data.logo,
         favicon: data.favicon,
         primaryColor: data.primaryColor || "#3b82f6",
-        secondaryColor: data.secondaryColor || "#8b5cf6",
+        secondaryColor: data.secondaryColor || "#14b8a6",
         isOnboarded: false,
         onboardingStep: 0,
       }
@@ -1281,7 +1281,7 @@ export class SchoolService {
         isOnboarded: data.isOnboarded || false,
         onboardingStep: 0,
         primaryColor: "#3b82f6",
-        secondaryColor: "#8b5cf6",
+        secondaryColor: "#14b8a6",
         // Store additional metadata
         ...(data.metadata && { 
           // We'll need to add a metadata field to the schema or store in a separate table

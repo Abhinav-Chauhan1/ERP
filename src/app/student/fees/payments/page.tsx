@@ -30,7 +30,7 @@ export default async function PaymentHistoryPage() {
       case PaymentStatus.FAILED:
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Failed</Badge>;
       case PaymentStatus.REFUNDED:
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Refunded</Badge>;
+        return <Badge className="bg-teal-100 text-teal-800 hover:bg-teal-100">Refunded</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

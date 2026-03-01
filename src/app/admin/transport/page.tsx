@@ -87,7 +87,7 @@ export default async function TransportPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Drivers</CardTitle>
-            <UserCheck className="h-4 w-4 text-purple-600" />
+            <UserCheck className="h-4 w-4 text-teal-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{driversData.total}</div>
@@ -293,9 +293,9 @@ export default async function TransportPage() {
                   {routeStats.active}
                 </p>
               </div>
-              <div className="p-2 bg-purple-50 dark:bg-purple-950 rounded">
+              <div className="p-2 bg-teal-50 dark:bg-teal-950 rounded">
                 <p className="text-muted-foreground">Students</p>
-                <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                <p className="text-lg font-bold text-teal-600 dark:text-teal-400">
                   {routeStats.totalStudents}
                 </p>
               </div>

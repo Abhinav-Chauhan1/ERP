@@ -168,7 +168,7 @@ export function AssignmentDetailCard({
               <div className="flex-1">
                 <CardTitle className="text-xl mb-1">{assignment.title}</CardTitle>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
                     {assignment.subject.name}
                   </Badge>
                   <span>•</span>
@@ -235,11 +235,11 @@ export function AssignmentDetailCard({
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-            <Award className="h-5 w-5 text-purple-600 mt-0.5" />
+          <div className="flex items-start gap-3 p-3 bg-teal-50 rounded-lg">
+            <Award className="h-5 w-5 text-teal-600 mt-0.5" />
             <div>
-              <p className="text-xs text-purple-600 mb-1">Total Marks</p>
-              <p className="text-sm font-medium text-purple-700">{assignment.totalMarks}</p>
+              <p className="text-xs text-teal-600 mb-1">Total Marks</p>
+              <p className="text-sm font-medium text-teal-700">{assignment.totalMarks}</p>
             </div>
           </div>
         </div>

@@ -107,7 +107,7 @@ export default function CommunicationsPage() {
       description: "School-wide announcements",
       href: "/admin/communication/announcements",
       count: announcementStats?.activeAnnouncements || 0,
-      color: "bg-purple-50 text-purple-700"
+      color: "bg-teal-50 text-teal-700"
     },
     {
       title: "Bulk Messaging",
@@ -161,7 +161,7 @@ export default function CommunicationsPage() {
   const getCommunicationColor = (type: string) => {
     switch (type) {
       case 'message': return 'bg-primary/10 text-primary';
-      case 'announcement': return 'bg-purple-100 text-purple-700';
+      case 'announcement': return 'bg-teal-100 text-teal-700';
       case 'meeting': return 'bg-green-100 text-green-700';
       default: return 'bg-amber-100 text-amber-700';
     }
@@ -266,13 +266,13 @@ export default function CommunicationsPage() {
                     {/* Recent Announcements */}
                     {recentAnnouncements.slice(0, 2).map((announcement) => (
                       <div key={announcement.id} className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
-                        <div className="p-2 rounded-full bg-purple-100 text-purple-700">
+                        <div className="p-2 rounded-full bg-teal-100 text-teal-700">
                           <Megaphone className="h-4 w-4" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <p className="font-medium text-sm">{announcement.title}</p>
-                            {announcement.isPinned && <Badge className="bg-purple-100 text-purple-800">Pinned</Badge>}
+                            {announcement.isPinned && <Badge className="bg-teal-100 text-teal-800">Pinned</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
                             To: {announcement.targetAudience?.join(", ") || "All"}
@@ -331,15 +331,15 @@ export default function CommunicationsPage() {
                   </Link>
 
                   <Link href="/admin/communication/templates" className="block group">
-                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-purple-500/50 transition-all cursor-pointer">
-                      <div className="p-2 rounded-md bg-purple-100 text-purple-700 shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent hover:border-teal-500/50 transition-all cursor-pointer">
+                      <div className="p-2 rounded-md bg-teal-100 text-teal-700 shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-colors">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">Use Template</p>
                         <p className="text-xs text-muted-foreground">For emails and messages</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors shrink-0" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-teal-600 transition-colors shrink-0" />
                     </div>
                   </Link>
 
@@ -472,7 +472,7 @@ export default function CommunicationsPage() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-full bg-purple-100 text-purple-700">
+                      <div className="p-3 rounded-full bg-teal-100 text-teal-700">
                         <Megaphone className="h-6 w-6" />
                       </div>
                       <div className="flex-1">

@@ -92,10 +92,10 @@ export default async function ResultsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
                   <CardContent className="pt-6">
-                    <div className="text-sm font-medium text-purple-900 mb-1">Total Exams</div>
-                    <div className="text-3xl font-bold text-purple-900">{totalResults}</div>
+                    <div className="text-sm font-medium text-teal-900 mb-1">Total Exams</div>
+                    <div className="text-3xl font-bold text-teal-900">{totalResults}</div>
                   </CardContent>
                 </Card>
               </div>

@@ -39,7 +39,7 @@ export default function ReceiptAnalyticsPage() {
   const [monthlyTrends, setMonthlyTrends] = useState<any[]>([]);
   const [agingData, setAgingData] = useState<any[]>([]);
 
-  const COLORS = ["#10b981", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6"];
+  const COLORS = ["#10b981", "#ef4444", "#f59e0b", "#3b82f6", "#14b8a6"];
 
   useEffect(() => {
     async function loadAnalytics() {

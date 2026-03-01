@@ -374,7 +374,7 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
       case "ONGOING":
         return "bg-green-100 text-green-800";
       case "COMPLETED":
-        return "bg-purple-100 text-purple-800";
+        return "bg-teal-100 text-teal-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
       case "POSTPONED":
@@ -861,8 +861,8 @@ export default function EventDetailPage(props: { params: Promise<{ id: string }>
                 {/* Organizer */}
                 {event.organizer && (
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-full bg-purple-50">
-                      <User className="h-5 w-5 text-purple-600" />
+                    <div className="p-2 rounded-full bg-teal-50">
+                      <User className="h-5 w-5 text-teal-600" />
                     </div>
                     <div>
                       <h3 className="font-medium">Organizer</h3>

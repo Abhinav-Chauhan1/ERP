@@ -303,20 +303,20 @@ export default async function AttendancePage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-50">
+        <Card className="bg-teal-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">
+            <CardTitle className="text-sm font-medium text-teal-800">
               Teacher Attendance
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-purple-800">Track and manage staff attendance</p>
+              <p className="text-sm text-teal-800">Track and manage staff attendance</p>
               <Link href="/admin/attendance/teachers">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full border-purple-600 text-purple-600 hover:bg-purple-100"
+                  className="w-full border-teal-600 text-teal-600 hover:bg-teal-100"
                 >
                   View Teachers
                 </Button>
