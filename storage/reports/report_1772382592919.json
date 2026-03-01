@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "reportId": "report_1772382592919",
+    "templateName": "Test Report 1772382592918",
+    "generatedAt": "2026-03-01T16:29:52.919Z",
+    "timeRange": {
+      "startDate": "2026-02-02T16:29:52.918Z",
+      "endDate": "2026-03-01T16:29:52.918Z"
+    },
+    "filters": {
+      "timeRange": {
+        "startDate": "2026-02-02T16:29:52.918Z",
+        "endDate": "2026-03-01T16:29:52.918Z"
+      }
+    }
+  },
+  "sections": [],
+  "summary": {}
+}
