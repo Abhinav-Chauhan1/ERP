@@ -428,7 +428,17 @@ export async function sendNotification(
     const { userId, type, title, message, data, channels: overrideChannels, schoolId } = params;
 
     // 1. Get System Settings to determine globally allowed channels for this event type
-    const systemSettings = await getSystemSettings();
+    // Resolve schoolId outside cache scope to avoid headers() inside unstable_cache()
+    let resolvedSchoolId = schoolId;
+    if (!resolvedSchoolId) {
+      try {
+        const { getCurrentSchoolId } = await import('@/lib/auth/tenant');
+        resolvedSchoolId = await getCurrentSchoolId() || undefined;
+      } catch {
+        // No auth context available
+      }
+    }
+    const systemSettings = resolvedSchoolId ? await getSystemSettings(resolvedSchoolId) : null;
     let allowedSystemChannels: CommunicationChannel[] = [];
 
     // Default to all channels if settings missing (fallback)

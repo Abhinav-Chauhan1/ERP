@@ -54,7 +54,7 @@ export async function getSystemSettings() {
           autoNotifyOnVerification: true,
         },
       });
-      
+
       // Invalidate cache after creating new settings
       await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
     }
@@ -72,7 +72,7 @@ export async function getPublicSystemSettings() {
   try {
     // Try to get school from subdomain for public access
     const { getSchoolFromSubdomain } = await import('@/lib/utils/subdomain-helper');
-    
+
     let school;
     try {
       school = await getSchoolFromSubdomain();
@@ -80,9 +80,9 @@ export async function getPublicSystemSettings() {
       // Subdomain not found or error, fall back to first school
       console.warn("Could not get school from subdomain, using fallback");
     }
-    
+
     let settings;
-    
+
     if (school) {
       // Get settings for subdomain school
       settings = await getCachedSystemSettings(school.id);
@@ -115,7 +115,7 @@ export async function getPublicSystemSettings() {
           autoNotifyOnVerification: true,
         },
       });
-      
+
       // Invalidate cache after creating new settings
       await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${school.id}`]);
     }
@@ -203,7 +203,7 @@ export async function updateSchoolInfo(data: {
 
     // Invalidate cache after update
     await invalidateCache([CACHE_TAGS.SETTINGS, `settings-${schoolId}`]);
-    
+
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
     return { success: true, data: updated };
@@ -398,7 +398,11 @@ export async function updateSecuritySettings(data: {
       return { success: false, error: "Unauthorized - Admin access required" };
     }
 
-    const settings = await getCachedSystemSettings();
+    // Get required school context - CRITICAL for multi-tenancy
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const settings = await getCachedSystemSettings(schoolId);
 
     if (!settings) {
       return { success: false, error: "Settings not found" };

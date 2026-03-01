@@ -80,7 +80,7 @@ export const getSubjectsForDropdown = cachedQuery(
 export const getActiveAnnouncements = cachedQuery(
   async (targetAudience: string) => {
     const today = new Date();
-    
+
     return await db.announcement.findMany({
       where: {
         isActive: true,
@@ -138,22 +138,10 @@ export const getActiveAnnouncements = cachedQuery(
  * Cached query for getting school settings
  * Cache for 1 hour since settings rarely change
  * 
- * @param schoolId - Optional school ID. If not provided, will get from context
+ * @param schoolId - Required school ID. Must be resolved outside the cache scope.
  */
 export const getSchoolSettings = cachedQuery(
-  async (schoolId?: string) => {
-    // If schoolId not provided, get from context
-    if (!schoolId) {
-      try {
-        const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-        schoolId = await getRequiredSchoolId();
-      } catch (error) {
-        // CRITICAL FIX: Don't fall back to first settings - this causes wrong school display
-        console.error("No school context available for school settings");
-        return null; // Return null instead of wrong school's settings
-      }
-    }
-    
+  async (schoolId: string) => {
     return await db.schoolSettings.findUnique({
       where: { schoolId },
     });

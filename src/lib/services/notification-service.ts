@@ -263,7 +263,7 @@ export async function sendAttendanceNotification(
     }
 
     // 1. Check System Settings
-    const systemSettings = await getSystemSettings();
+    const systemSettings = await getSystemSettings(schoolId);
 
     // Default to true if settings don't exist (safety fallback)
     const smsEnabledSystem = systemSettings?.smsEnabled ?? false;
@@ -347,7 +347,7 @@ export async function sendAttendanceNotification(
       link: string;
       schoolId: string;
     }> = [];
-    
+
     const smsRecipients: Array<{ phone: string; body: string }> = [];
 
     // Process parents to collect batch data
@@ -390,16 +390,16 @@ export async function sendAttendanceNotification(
     if (smsRecipients.length > 0) {
       try {
         // Send SMS messages in parallel with rate limiting
-        const smsPromises = smsRecipients.map(({ phone, body }) => 
+        const smsPromises = smsRecipients.map(({ phone, body }) =>
           sendSMS(phone, body).catch(error => {
             console.error(`Failed to send SMS to ${phone}:`, error);
             return { success: false, error: error.message };
           })
         );
-        
+
         // Use Promise.allSettled to handle partial failures gracefully
         const smsResults = await Promise.allSettled(smsPromises);
-        smsSent = smsResults.some(result => 
+        smsSent = smsResults.some(result =>
           result.status === 'fulfilled' && result.value.success !== false
         );
       } catch (error) {
