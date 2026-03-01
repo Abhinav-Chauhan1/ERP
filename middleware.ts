@@ -71,9 +71,9 @@ export default auth(async (req) => {
 
   // Check if request should bypass rate limiting (Vercel infrastructure, monitoring, etc.)
   const bypassRateLimit = shouldBypassRateLimit(req);
-  
+
   // Skip rate limiting for whitelisted sources and specific routes
-  const shouldSkipRateLimit = 
+  const shouldSkipRateLimit =
     bypassRateLimit ||
     pathname.startsWith('/api/health') ||
     pathname.startsWith('/api/status') ||
@@ -209,8 +209,6 @@ export default auth(async (req) => {
   // Default dashboard route
   // Handle /dashboard and /dashboard/ explicitly
   if (pathname === '/dashboard' || pathname === '/dashboard/') {
-    console.log(`[Middleware] Handling /dashboard redirect for user: ${user.id}, role: ${user.role}`);
-
     // Redirect to role-specific dashboard
     switch (user.role) {
       case UserRole.SUPER_ADMIN:
@@ -224,7 +222,6 @@ export default auth(async (req) => {
       case UserRole.PARENT:
         return NextResponse.redirect(new URL("/parent", req.url));
       default:
-        console.log(`[Middleware] No matching role for /dashboard, redirecting to login. Role: ${user.role}`);
         return NextResponse.redirect(new URL("/login", req.url));
     }
   }

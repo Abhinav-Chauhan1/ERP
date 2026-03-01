@@ -17,6 +17,12 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  // RBAC: Only ADMIN and SUPER_ADMIN can access admin routes
+  const allowedRoles = ["ADMIN", "SUPER_ADMIN"];
+  if (!allowedRoles.includes(session.user.role)) {
+    redirect("/dashboard");
+  }
+
   // Redirect Super Admin to their own dashboard if they hit the root /admin
   // unless they are explicitly viewing a school context (which we'd handle differently later)
   if (session.user.role === "SUPER_ADMIN" && !session.user.schoolId) {

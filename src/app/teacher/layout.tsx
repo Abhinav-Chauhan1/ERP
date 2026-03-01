@@ -17,6 +17,12 @@ export default async function TeacherLayout({
     redirect("/login");
   }
 
+  // RBAC: Only TEACHER, ADMIN, and SUPER_ADMIN can access teacher routes
+  const allowedRoles = ["TEACHER", "ADMIN", "SUPER_ADMIN"];
+  if (!allowedRoles.includes(session.user.role)) {
+    redirect("/dashboard");
+  }
+
   // Get effective permissions including role defaults and DB overrides
   const permissions = await getUserPermissionNamesCached(session.user.id);
 

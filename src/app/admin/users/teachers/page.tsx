@@ -52,11 +52,11 @@ export default async function TeachersPage() {
             Manage teaching staff and subject assignments
           </p>
         </div>
-        <Link href="/admin/users/teachers/create">
-          <Button>
+        <Button asChild>
+          <Link href="/admin/users/teachers/create">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Teacher
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <Card>
@@ -65,9 +65,8 @@ export default async function TeachersPage() {
         </CardHeader>
         <CardContent>
           <TeachersWithFilters
-            initialTeachers={teachers}
+            initialTeachers={JSON.parse(JSON.stringify(teachers))}
             subjects={filterOptions.subjects}
-
           />
         </CardContent>
       </Card>

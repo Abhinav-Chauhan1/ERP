@@ -98,7 +98,7 @@ export default async function UsersPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentUsersTable users={recentUsers} />
+            <RecentUsersTable users={JSON.parse(JSON.stringify(recentUsers))} />
           </CardContent>
         </Card>
       </div>

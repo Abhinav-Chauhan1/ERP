@@ -47,6 +47,14 @@ export async function getFilteredParents(filters: ParentFilters) {
           },
         },
         {
+          user: {
+            phone: {
+              contains: filters.search,
+              mode: "insensitive",
+            },
+          },
+        },
+        {
           occupation: {
             contains: filters.search,
             mode: "insensitive",
@@ -95,7 +103,7 @@ export async function getFilteredParents(filters: ParentFilters) {
       },
     });
 
-    return { success: true, parents };
+    return { success: true, parents: JSON.parse(JSON.stringify(parents)) };
   } catch (error) {
     console.error("Error fetching filtered parents:", error);
     return { success: false, error: "Failed to fetch parents", parents: [] };

@@ -50,11 +50,11 @@ async function sendReportEmail(
 /**
  * Generate and send daily report
  */
-export async function runDailyReport(recipients: string[]): Promise<void> {
+export async function runDailyReport(recipients: string[], schoolId?: string): Promise<void> {
   try {
     console.log("Generating daily receipt report...");
 
-    const report = await generateDailyReport();
+    const report = await generateDailyReport(new Date(), schoolId);
     const htmlContent = formatReportAsHTML(report);
     const textContent = formatReportAsText(report);
 
@@ -72,11 +72,11 @@ export async function runDailyReport(recipients: string[]): Promise<void> {
 /**
  * Generate and send weekly report
  */
-export async function runWeeklyReport(recipients: string[]): Promise<void> {
+export async function runWeeklyReport(recipients: string[], schoolId?: string): Promise<void> {
   try {
     console.log("Generating weekly receipt report...");
 
-    const report = await generateWeeklyReport();
+    const report = await generateWeeklyReport(new Date(), schoolId);
     const htmlContent = formatReportAsHTML(report);
     const textContent = formatReportAsText(report);
 
@@ -94,11 +94,11 @@ export async function runWeeklyReport(recipients: string[]): Promise<void> {
 /**
  * Generate and send monthly report
  */
-export async function runMonthlyReport(recipients: string[]): Promise<void> {
+export async function runMonthlyReport(recipients: string[], schoolId?: string): Promise<void> {
   try {
     console.log("Generating monthly receipt report...");
 
-    const report = await generateMonthlyReport();
+    const report = await generateMonthlyReport(new Date(), schoolId);
     const htmlContent = formatReportAsHTML(report);
     const textContent = formatReportAsText(report);
 

@@ -90,12 +90,14 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
     // Get current school context
     const context = await getCurrentUserSchoolContext();
 
-    // Determine effective schoolId: Context > SuperAdmin Override
     const schoolId = context?.schoolId || (context?.isSuperAdmin ? data.schoolId : null);
 
     if (!schoolId) {
       throw new Error('School context required');
     }
+
+    const actorId = context?.user?.id;
+    if (!actorId) throw new Error('Unauthorized');
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
@@ -129,9 +131,9 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
         }
       });
 
-      // Log the creation
+      // Log the creation using the actor ID
       await logCreate(
-        user.id,
+        actorId,
         'administrator',
         administrator.id,
         {
@@ -143,7 +145,7 @@ export async function createAdministrator(data: CreateAdministratorFormData) {
       );
 
       revalidatePath('/admin/users');
-      return { user, administrator };
+      return { success: true, id: user.id };
     });
   } catch (error: any) {
     console.error('Error creating administrator:', error);
@@ -165,6 +167,9 @@ export async function createTeacher(data: CreateTeacherFormData) {
     if (!schoolId) {
       throw new Error('School context required');
     }
+
+    const actorId = context?.user?.id;
+    if (!actorId) throw new Error('Unauthorized');
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
@@ -201,9 +206,9 @@ export async function createTeacher(data: CreateTeacherFormData) {
         }
       });
 
-      // Log the creation
+      // Log the creation using the actor ID
       await logCreate(
-        user.id,
+        actorId,
         'teacher',
         teacher.id,
         {
@@ -216,7 +221,7 @@ export async function createTeacher(data: CreateTeacherFormData) {
       );
 
       revalidatePath('/admin/users');
-      return { user, teacher };
+      return { success: true, id: user.id };
     });
   } catch (error: any) {
     console.error('Error creating teacher:', error);
@@ -238,6 +243,9 @@ export async function createStudent(data: CreateStudentFormData) {
     if (!schoolId) {
       throw new Error('School context required');
     }
+
+    const actorId = context?.user?.id;
+    if (!actorId) throw new Error('Unauthorized');
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
@@ -313,7 +321,7 @@ export async function createStudent(data: CreateStudentFormData) {
 
       // Log the creation
       await logCreate(
-        user.id,
+        actorId,
         'student',
         student.id,
         {
@@ -327,7 +335,7 @@ export async function createStudent(data: CreateStudentFormData) {
       );
 
       revalidatePath('/admin/users');
-      return { user, student };
+      return { success: true, id: user.id };
     });
   } catch (error: any) {
     console.error('Error creating student:', error);
@@ -349,6 +357,9 @@ export async function createParent(data: CreateParentFormData) {
     if (!schoolId) {
       throw new Error('School context required');
     }
+
+    const actorId = context?.user?.id;
+    if (!actorId) throw new Error('Unauthorized');
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
@@ -386,7 +397,7 @@ export async function createParent(data: CreateParentFormData) {
 
       // Log the creation
       await logCreate(
-        user.id,
+        actorId,
         'parent',
         parent.id,
         {
@@ -399,7 +410,7 @@ export async function createParent(data: CreateParentFormData) {
       );
 
       revalidatePath('/admin/users');
-      return { user, parent };
+      return { success: true, id: user.id };
     });
   } catch (error: any) {
     console.error('Error creating parent:', error);
@@ -516,7 +527,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
 
       revalidatePath('/admin/users');
       revalidatePath('/super-admin/schools');
-      return updatedAdministrator;
+      return { success: true };
     });
   } catch (error) {
     console.error('Error updating administrator:', error);
@@ -574,7 +585,7 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
 
       revalidatePath('/admin/users');
       revalidatePath('/super-admin/schools');
-      return updatedTeacher;
+      return { success: true };
     });
   } catch (error) {
     console.error('Error updating teacher:', error);
@@ -661,7 +672,7 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
 
       revalidatePath('/admin/users');
       revalidatePath('/super-admin/schools');
-      return updatedStudent;
+      return { success: true };
     });
   } catch (error) {
     console.error('Error updating student:', error);
@@ -711,7 +722,7 @@ export async function updateParent(parentId: string, data: Partial<CreateParentF
 
       revalidatePath('/admin/users');
       revalidatePath('/super-admin/schools');
-      return updatedParent;
+      return { success: true };
     });
   } catch (error) {
     console.error('Error updating parent:', error);

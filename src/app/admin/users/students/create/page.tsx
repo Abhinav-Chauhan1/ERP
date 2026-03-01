@@ -142,13 +142,13 @@ export default function CreateStudentPage() {
       const result = await createStudent(data);
 
       // Create enrollment if class and section are selected
-      if (selectedClassId && selectedSectionId && result.student) {
+      if (selectedClassId && selectedSectionId && result.id) {
         try {
           const enrollmentResponse = await fetch('/api/students/enroll', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              studentId: result.student.id,
+              studentId: result.id,
               classId: selectedClassId,
               sectionId: selectedSectionId,
             }),

@@ -43,6 +43,14 @@ export async function getFilteredStudents(filters: StudentFilters) {
           },
         },
         {
+          user: {
+            phone: {
+              contains: filters.search,
+              mode: "insensitive",
+            },
+          },
+        },
+        {
           admissionId: {
             contains: filters.search,
             mode: "insensitive",
@@ -114,7 +122,7 @@ export async function getFilteredStudents(filters: StudentFilters) {
       },
     });
 
-    return { success: true, students };
+    return { success: true, students: JSON.parse(JSON.stringify(students)) };
   } catch (error) {
     console.error("Error fetching filtered students:", error);
     return { success: false, error: "Failed to fetch students", students: [] };

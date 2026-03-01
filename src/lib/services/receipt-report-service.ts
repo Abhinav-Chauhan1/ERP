@@ -48,31 +48,31 @@ interface ReportData {
 /**
  * Generate daily verification summary report
  */
-export async function generateDailyReport(date: Date = new Date()): Promise<ReportData> {
+export async function generateDailyReport(date: Date = new Date(), schoolId?: string): Promise<ReportData> {
   const startDate = startOfDay(date);
   const endDate = endOfDay(date);
 
-  return await generateReport("Daily", startDate, endDate);
+  return await generateReport("Daily", startDate, endDate, schoolId);
 }
 
 /**
  * Generate weekly pending receipts reminder
  */
-export async function generateWeeklyReport(date: Date = new Date()): Promise<ReportData> {
+export async function generateWeeklyReport(date: Date = new Date(), schoolId?: string): Promise<ReportData> {
   const startDate = startOfWeek(date, { weekStartsOn: 1 }); // Monday
   const endDate = endOfWeek(date, { weekStartsOn: 1 }); // Sunday
 
-  return await generateReport("Weekly", startDate, endDate);
+  return await generateReport("Weekly", startDate, endDate, schoolId);
 }
 
 /**
  * Generate monthly collection report
  */
-export async function generateMonthlyReport(date: Date = new Date()): Promise<ReportData> {
+export async function generateMonthlyReport(date: Date = new Date(), schoolId?: string): Promise<ReportData> {
   const startDate = startOfMonth(date);
   const endDate = endOfMonth(date);
 
-  return await generateReport("Monthly", startDate, endDate);
+  return await generateReport("Monthly", startDate, endDate, schoolId);
 }
 
 /**
@@ -81,12 +81,14 @@ export async function generateMonthlyReport(date: Date = new Date()): Promise<Re
 async function generateReport(
   period: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  schoolId?: string
 ): Promise<ReportData> {
   try {
     // Fetch all receipts in the period
     const receipts = await db.paymentReceipt.findMany({
       where: {
+        ...(schoolId ? { schoolId } : {}),
         createdAt: {
           gte: startDate,
           lte: endDate,
@@ -176,6 +178,7 @@ async function generateReport(
     // First fetch relevant receipts
     const verifiedOrRejectedReceipts = await db.paymentReceipt.findMany({
       where: {
+        ...(schoolId ? { schoolId } : {}),
         verifiedAt: {
           gte: startDate,
           lte: endDate,

@@ -28,6 +28,19 @@ export default async function AdministratorsPage() {
     }
   });
 
+  // Serialize to avoid Next.js stream 'transformAlgorithm' errors with Prisma objects
+  const serializedAdministrators = administrators.map(admin => ({
+    ...admin,
+    createdAt: admin.createdAt.toISOString(),
+    updatedAt: admin.updatedAt.toISOString(),
+    user: {
+      ...admin.user,
+      createdAt: admin.user.createdAt.toISOString(),
+      updatedAt: admin.user.updatedAt.toISOString(),
+      emailVerified: admin.user.emailVerified ? admin.user.emailVerified.toISOString() : null,
+    }
+  })) as any;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -37,11 +50,11 @@ export default async function AdministratorsPage() {
             Manage administrative staff and system access
           </p>
         </div>
-        <Link href="/admin/users/administrators/create">
-          <Button>
+        <Button asChild>
+          <Link href="/admin/users/administrators/create">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Administrator
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <Card>
@@ -49,7 +62,7 @@ export default async function AdministratorsPage() {
           <CardTitle className="text-xl">All Administrators ({administrators.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <AdministratorsTable administrators={administrators} />
+          <AdministratorsTable administrators={serializedAdministrators} />
         </CardContent>
       </Card>
     </div>

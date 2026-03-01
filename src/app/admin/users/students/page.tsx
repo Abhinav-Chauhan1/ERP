@@ -73,7 +73,7 @@ export default async function StudentsPage() {
         </CardHeader>
         <CardContent>
           <StudentsWithFilters
-            initialStudents={students}
+            initialStudents={JSON.parse(JSON.stringify(students))}
             classes={filterOptions.classes}
             sections={filterOptions.sections}
           />

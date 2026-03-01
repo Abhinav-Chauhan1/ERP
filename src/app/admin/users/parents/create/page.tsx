@@ -105,14 +105,14 @@ export default function CreateParentPage() {
 
       // If we need to associate with a student
       const targetStudentId = studentId || selectedStudentId;
-      if (associateWithStudent && targetStudentId && result.parent) {
+      if (associateWithStudent && targetStudentId && result.id) {
         try {
           const response = await fetch("/api/students/associate-parent", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               studentId: targetStudentId,
-              parentId: result.parent.id,
+              parentId: result.id,
               isPrimary: isPrimaryContact
             })
           });

@@ -348,10 +348,12 @@ export async function getAllReceiptAuditLogs(filters?: {
   endDate?: Date;
   limit?: number;
   offset?: number;
+  schoolId?: string;
 }) {
   try {
     const where: any = {
       resource: "PAYMENT_RECEIPT",
+      ...(filters?.schoolId ? { schoolId: filters.schoolId } : {})
     };
 
     if (filters?.action) {
