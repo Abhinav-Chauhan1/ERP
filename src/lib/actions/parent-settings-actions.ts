@@ -27,11 +27,11 @@ import { CACHE_TAGS } from "@/lib/utils/cache";
  */
 async function getCurrentParent() {
   const session = await auth();
-  
+
   if (!session?.user) {
     return null;
   }
-  
+
   const dbUser = await db.user.findUnique({
     where: {
       id: session.user.id
@@ -40,13 +40,57 @@ async function getCurrentParent() {
       parent: true
     }
   });
-  
+
   if (!dbUser || dbUser.role !== UserRole.PARENT || !dbUser.parent) {
     return null;
   }
-  
+
   return { user: dbUser, parent: dbUser.parent };
 }
+
+// Cached function to fetch settings data
+const getCachedSettingsData = unstable_cache(
+  async (parentId: string, fallbackSchoolId: string) => {
+    // Get or create parent settings
+    let settings = await db.parentSettings.findUnique({
+      where: { parentId }
+    });
+
+    // Create default settings if they don't exist
+    if (!settings) {
+      settings = await db.parentSettings.create({
+        data: {
+          parentId,
+          schoolId: fallbackSchoolId,
+        }
+      });
+    }
+
+    // Get parent profile with user data
+    const profile = await db.parent.findUnique({
+      where: { id: parentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatar: true
+          }
+        }
+      }
+    });
+
+    return { settings, profile };
+  },
+  ['parent-settings-data'],
+  {
+    tags: [CACHE_TAGS.SETTINGS, CACHE_TAGS.PARENTS],
+    revalidate: 600 // 10 minutes
+  }
+);
 
 /**
  * Get settings for a parent including profile and preferences
@@ -60,64 +104,20 @@ export async function getSettings(input?: GetSettingsInput, schoolId?: string) {
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user, parent } = parentData;
-    
+
     // If parentId is provided, verify it matches current parent
     if (input?.parentId && input.parentId !== parent.id) {
       return { success: false, message: "Access denied" };
     }
-    
-    // Cached function to fetch settings data
-    const getCachedSettingsData = unstable_cache(
-      async (parentId: string) => {
-        // Get or create parent settings
-        let settings = await db.parentSettings.findUnique({
-          where: { parentId }
-        });
-        
-        // Create default settings if they don't exist
-        if (!settings) {
-          settings = await db.parentSettings.create({
-            data: {
-              parentId,
-              schoolId: schoolId || parent.schoolId,
-            }
-          });
-        }
-        
-        // Get parent profile with user data
-        const profile = await db.parent.findUnique({
-          where: { id: parentId },
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
-                avatar: true
-              }
-            }
-          }
-        });
-        
-        return { settings, profile };
-      },
-      [`parent-settings-${parent.id}`],
-      {
-        tags: [CACHE_TAGS.SETTINGS, CACHE_TAGS.PARENTS, `parent-${parent.id}`],
-        revalidate: 600 // 10 minutes
-      }
-    );
-    
-    const { settings, profile } = await getCachedSettingsData(parent.id);
-    
+
+    const { settings, profile } = await getCachedSettingsData(parent.id, schoolId || parent.schoolId);
+
     if (!profile) {
       return { success: false, message: "Profile not found" };
     }
-    
+
     return {
       success: true,
       data: {
@@ -171,28 +171,28 @@ export async function updateProfile(input: UpdateProfileInput) {
   try {
     // Validate input
     const validated = updateProfileSchema.parse(input);
-    
+
     // Get current parent
     const parentData = await getCurrentParent();
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user, parent } = parentData;
-    
+
     // Prepare update data for User table
     const userUpdateData: any = {};
     if (validated.firstName !== undefined) userUpdateData.firstName = validated.firstName;
     if (validated.lastName !== undefined) userUpdateData.lastName = validated.lastName;
     if (validated.email !== undefined) userUpdateData.email = validated.email;
     if (validated.phone !== undefined) userUpdateData.phone = validated.phone;
-    
+
     // Prepare update data for Parent table
     const parentUpdateData: any = {};
     if (validated.alternatePhone !== undefined) parentUpdateData.alternatePhone = validated.alternatePhone;
     if (validated.occupation !== undefined) parentUpdateData.occupation = validated.occupation;
     if (validated.relation !== undefined) parentUpdateData.relation = validated.relation;
-    
+
     // Update user in database
     if (Object.keys(userUpdateData).length > 0) {
       await db.user.update({
@@ -200,7 +200,7 @@ export async function updateProfile(input: UpdateProfileInput) {
         data: userUpdateData
       });
     }
-    
+
     // Update parent in database
     if (Object.keys(parentUpdateData).length > 0) {
       await db.parent.update({
@@ -208,13 +208,13 @@ export async function updateProfile(input: UpdateProfileInput) {
         data: parentUpdateData
       });
     }
-    
+
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS, "default");
     revalidateTag(CACHE_TAGS.PARENTS, "default");
     revalidateTag(`parent-${parent.id}`, "default");
     revalidatePath("/parent/settings");
-    
+
     return {
       success: true,
       message: "Profile updated successfully"
@@ -237,30 +237,30 @@ export async function changePassword(input: ChangePasswordInput) {
   try {
     // Validate input
     const validated = changePasswordSchema.parse(input);
-    
+
     // Get current parent
     const parentData = await getCurrentParent();
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = parentData;
-    
+
     // Verify current password
     const isValidPassword = await bcrypt.compare(validated.currentPassword, user.password || "");
     if (!isValidPassword) {
       return { success: false, message: "Current password is incorrect" };
     }
-    
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(validated.newPassword, 10);
-    
+
     // Update password in database
     await db.user.update({
       where: { id: user.id },
       data: { password: hashedPassword }
     });
-    
+
     return {
       success: true,
       message: "Password changed successfully"
@@ -283,20 +283,20 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
   try {
     // Validate input
     const validated = updateNotificationPreferencesSchema.parse(input);
-    
+
     // Get current parent
     const parentData = await getCurrentParent();
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { parent } = parentData;
-    
+
     // Get or create parent settings
     let settings = await db.parentSettings.findUnique({
       where: { parentId: parent.id }
     });
-    
+
     if (!settings) {
       // Create default settings first
       settings = await db.parentSettings.create({
@@ -306,7 +306,7 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
         }
       });
     }
-    
+
     // Prepare update data
     const updateData: any = {};
     if (validated.emailNotifications !== undefined) updateData.emailNotifications = validated.emailNotifications;
@@ -323,7 +323,7 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
     if (validated.whatsappOptIn !== undefined) updateData.whatsappOptIn = validated.whatsappOptIn;
     if (validated.whatsappNumber !== undefined) updateData.whatsappNumber = validated.whatsappNumber;
     if (validated.preferredLanguage !== undefined) updateData.preferredLanguage = validated.preferredLanguage;
-    
+
     // Update settings
     if (Object.keys(updateData).length > 0) {
       await db.parentSettings.update({
@@ -331,13 +331,13 @@ export async function updateNotificationPreferences(input: UpdateNotificationPre
         data: updateData
       });
     }
-    
+
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS, "default");
     revalidateTag(CACHE_TAGS.PARENTS, "default");
     revalidateTag(`parent-${parent.id}`, "default");
     revalidatePath("/parent/settings");
-    
+
     return {
       success: true,
       message: "Notification preferences updated successfully"
@@ -364,29 +364,29 @@ export async function uploadAvatar(formData: FormData) {
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user, parent } = parentData;
-    
+
     // Rate limiting for file uploads
     const rateLimitKey = `file-upload:${user.id}`;
     const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.FILE_UPLOAD);
     if (!rateLimitResult) {
       return { success: false, message: "Too many upload requests. Please try again later." };
     }
-    
+
     // Extract file from FormData
     const file = formData.get("file") as File;
-    
+
     if (!file) {
       return { success: false, message: "No file provided" };
     }
-    
+
     // Validate file using security utility
     const validation = validateImageFile(file);
     if (!validation.valid) {
       return { success: false, message: validation.error || "Invalid file" };
     }
-    
+
     // Upload to R2 storage
     try {
       const uploadResult = await uploadHandler.uploadImage(file, {
@@ -402,12 +402,12 @@ export async function uploadAvatar(formData: FormData) {
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || 'Failed to upload avatar');
       }
-      
+
       console.warn("Avatar upload temporarily disabled during migration to R2 storage");
-      
-      return { 
-        success: false, 
-        message: "Avatar upload temporarily disabled during migration to R2 storage" 
+
+      return {
+        success: false,
+        message: "Avatar upload temporarily disabled during migration to R2 storage"
       };
     } catch (uploadError) {
       console.error("Error uploading to R2 storage:", uploadError);
@@ -431,27 +431,27 @@ export async function updateAvatarUrl(input: AvatarUrlInput) {
   try {
     // Validate input
     const validated = avatarUrlSchema.parse(input);
-    
+
     // Get current parent
     const parentData = await getCurrentParent();
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = parentData;
-    
+
     // Update user avatar in database
     await db.user.update({
       where: { id: user.id },
       data: { avatar: validated.avatarUrl }
     });
-    
+
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS, "default");
     revalidateTag(CACHE_TAGS.PARENTS, "default");
     revalidateTag(CACHE_TAGS.USERS, "default");
     revalidatePath("/parent/settings");
-    
+
     return {
       success: true,
       data: {
@@ -480,21 +480,21 @@ export async function removeAvatar() {
     if (!parentData) {
       return { success: false, message: "Unauthorized" };
     }
-    
+
     const { user } = parentData;
-    
+
     // Update user avatar to null in database
     await db.user.update({
       where: { id: user.id },
       data: { avatar: null }
     });
-    
+
     // Invalidate cache and revalidate settings page
     revalidateTag(CACHE_TAGS.SETTINGS, "default");
     revalidateTag(CACHE_TAGS.PARENTS, "default");
     revalidateTag(CACHE_TAGS.USERS, "default");
     revalidatePath("/parent/settings");
-    
+
     return {
       success: true,
       message: "Avatar removed successfully"

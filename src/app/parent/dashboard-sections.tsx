@@ -17,6 +17,53 @@ import { RecentActivityFeed } from "@/components/parent/dashboard/recent-activit
 import { CACHE_TAGS } from "@/lib/utils/cache";
 import { getParentCalendarEvents } from "@/lib/actions/calendar-widget-actions";
 
+// Cached function to fetch dashboard data
+const getCachedDashboardData = unstable_cache(
+  async (parentId: string) => {
+    const parentChildren = await db.studentParent.findMany({
+      where: {
+        parentId
+      },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                avatar: true,
+              }
+            },
+            enrollments: {
+              orderBy: {
+                enrollDate: 'desc'
+              },
+              take: 1,
+              include: {
+                class: true,
+                section: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const children = parentChildren.map(pc => ({
+      ...pc.student,
+      isPrimary: pc.isPrimary
+    }));
+
+    return children;
+  },
+  ['parent-dashboard-data'],
+  {
+    tags: [CACHE_TAGS.DASHBOARD, CACHE_TAGS.PARENTS, CACHE_TAGS.STUDENTS],
+    revalidate: 300 // 5 minutes
+  }
+);
+
 /**
  * Get parent data and children
  * Cached for 5 minutes (300 seconds) as per requirements 9.5
@@ -47,53 +94,6 @@ async function getParentData() {
   if (!parent) {
     return null;
   }
-
-  // Cached function to fetch dashboard data
-  const getCachedDashboardData = unstable_cache(
-    async (parentId: string) => {
-      const parentChildren = await db.studentParent.findMany({
-        where: {
-          parentId
-        },
-        include: {
-          student: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  avatar: true,
-                }
-              },
-              enrollments: {
-                orderBy: {
-                  enrollDate: 'desc'
-                },
-                take: 1,
-                include: {
-                  class: true,
-                  section: true
-                }
-              }
-            }
-          }
-        }
-      });
-
-      const children = parentChildren.map(pc => ({
-        ...pc.student,
-        isPrimary: pc.isPrimary
-      }));
-
-      return children;
-    },
-    [`parent-dashboard-${parent.id}`],
-    {
-      tags: [CACHE_TAGS.DASHBOARD, CACHE_TAGS.PARENTS, CACHE_TAGS.STUDENTS, `parent-${parent.id}`],
-      revalidate: 300 // 5 minutes
-    }
-  );
 
   const children = await getCachedDashboardData(parent.id);
 
