@@ -41,6 +41,7 @@ import {
   calculateClassRanks,
 } from "@/lib/actions/reportCardsActions";
 import { getPerformanceColor } from "@/lib/utils/grade-calculator";
+import { GenerateReportCardDialog } from "@/components/admin/report-cards";
 
 export default function ReportCardsPage() {
   const [viewReportCardDialogOpen, setViewReportCardDialogOpen] = useState(false);
@@ -690,10 +691,20 @@ export default function ReportCardsPage() {
             <Button variant="outline" onClick={() => setViewReportCardDialogOpen(false)}>
               Close
             </Button>
-            <Button variant="outline">
-              <Printer className="h-4 w-4 mr-2" />
-              Print Report Card
-            </Button>
+            {selectedReportCard && (
+              <GenerateReportCardDialog
+                studentId={selectedReportCard.studentId}
+                studentName={selectedReportCard.studentName}
+                termId={selectedReportCard.termId}
+                termName={selectedReportCard.term}
+                trigger={
+                  <Button variant="outline">
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print / Generate PDF
+                  </Button>
+                }
+              />
+            )}
             {selectedReportCard && !selectedReportCard.isPublished && (
               <Button onClick={() => handleOpenPublishDialog(selectedReportCard)}>
                 Publish

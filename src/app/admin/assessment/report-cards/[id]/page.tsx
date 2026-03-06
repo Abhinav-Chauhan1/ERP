@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import { getPerformanceColor } from "@/lib/utils/grade-calculator";
 
 import { getReportCardById, publishReportCard } from "@/lib/actions/reportCardsActions";
+import { GenerateReportCardDialog } from "@/components/admin/report-cards";
 
 export default function ReportCardDetailPage() {
   const params = useParams();
@@ -79,10 +80,6 @@ export default function ReportCardDetailPage() {
       console.error("Error publishing report card:", err);
       toast.error("An unexpected error occurred");
     }
-  }
-
-  function handlePrint() {
-    window.print();
   }
 
   function handleSendEmail() {
@@ -155,14 +152,18 @@ export default function ReportCardDetailPage() {
           <h1 className="text-2xl font-bold tracking-tight">Report Card</h1>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={handlePrint} className="w-full sm:w-auto">
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-          <Button variant="outline" className="w-full sm:w-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
+          <GenerateReportCardDialog
+            studentId={reportCard.studentId}
+            studentName={reportCard.studentName}
+            termId={reportCard.termId}
+            termName={reportCard.term}
+            trigger={
+              <Button variant="outline" className="w-full sm:w-auto">
+                <Printer className="h-4 w-4 mr-2" />
+                Print / Download PDF
+              </Button>
+            }
+          />
           {!reportCard.isPublished && (
             <Button onClick={() => setPublishDialogOpen(true)} className="w-full sm:w-auto">
               <CheckCircle className="h-4 w-4 mr-2" />
