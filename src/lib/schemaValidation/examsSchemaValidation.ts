@@ -9,6 +9,9 @@ const baseExamSchema = z.object({
   subjectId: z.string({
     required_error: "Please select a subject",
   }),
+  classId: z.string({
+    required_error: "Please select a class",
+  }),
   termId: z.string({
     required_error: "Please select a term",
   }),

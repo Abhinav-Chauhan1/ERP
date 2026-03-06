@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { SubjectFormValues, UpdateSubjectFormValues, LessonFormValues, UpdateLessonFormValues } from "../schemaValidation/teachingSchemaValidation";
+import { SubjectFormValues, UpdateSubjectFormValues } from "../schemaValidation/teachingSchemaValidation";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
 
 // Get teaching dashboard stats
@@ -16,15 +16,13 @@ export const getTeachingStats = withSchoolAuthAction(async (schoolId) => {
     });
     const classCount = await db.class.count({ where: { schoolId } });
     const subjectCount = await db.subject.count({ where: { schoolId } });
-    const lessonCount = await db.lesson.count({ where: { schoolId } });
 
     return {
       success: true,
       data: {
         activeTeachers: teacherCount,
         totalClasses: classCount,
-        subjects: subjectCount,
-        lessons: lessonCount
+        subjects: subjectCount
       }
     };
   } catch (error) {
@@ -181,7 +179,7 @@ export const createSubject = withSchoolAuthAction(async (schoolId, userId, userR
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } },
-            school: { connect: { id: schoolId } } // Add required school connection
+            school: { connect: { id: schoolId } }
           }))
         }
       }
@@ -202,16 +200,6 @@ export const createSubject = withSchoolAuthAction(async (schoolId, userId, userR
 // Get recent teaching activities
 export const getRecentTeachingActivities = withSchoolAuthAction(async (schoolId, userId, userRole, limit = 5) => {
   try {
-    // Get recent lessons
-    const recentLessons = await db.lesson.findMany({
-      where: { schoolId },
-      take: limit,
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        subject: true
-      }
-    });
-
     // Get recent syllabi
     const recentSyllabi = await db.syllabus.findMany({
       where: {
@@ -226,25 +214,14 @@ export const getRecentTeachingActivities = withSchoolAuthAction(async (schoolId,
       }
     });
 
-    // Combine and sort activities
-    const activities = [
-      ...recentLessons.map(lesson => ({
-        id: `lesson-${lesson.id}`,
-        type: 'lesson',
-        action: lesson.createdAt.getTime() === lesson.updatedAt.getTime() ? 'created' : 'updated',
-        entityName: lesson.title,
-        subjectName: lesson.subject.name,
-        timestamp: lesson.updatedAt
-      })),
-      ...recentSyllabi.map(syllabus => ({
-        id: `syllabus-${syllabus.id}`,
-        type: 'syllabus',
-        action: syllabus.createdAt.getTime() === syllabus.updatedAt.getTime() ? 'created' : 'updated',
-        entityName: syllabus.title,
-        subjectName: syllabus.subject.name,
-        timestamp: syllabus.updatedAt
-      }))
-    ]
+    const activities = recentSyllabi.map(syllabus => ({
+      id: `syllabus-${syllabus.id}`,
+      type: 'syllabus',
+      action: syllabus.createdAt.getTime() === syllabus.updatedAt.getTime() ? 'created' : 'updated',
+      entityName: syllabus.title,
+      subjectName: syllabus.subject.name,
+      timestamp: syllabus.updatedAt
+    }))
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
 

@@ -150,7 +150,7 @@ export async function getEnrolledStudentsForMarks(
 /**
  * Calculate grade based on percentage using the configured grade scale
  */
-async function calculateGradeForPercentage(percentage: number): Promise<string> {
+export async function calculateGradeForPercentage(percentage: number): Promise<string> {
   // Fetch grade scale
   const gradeScaleResult = await getGradeScale();
 

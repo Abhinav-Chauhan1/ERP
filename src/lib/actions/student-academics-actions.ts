@@ -142,9 +142,7 @@ export async function getSubjectDetails(subjectId: string) {
             orderBy: {
               order: "asc",
             },
-            include: {
-              lessons: true,
-            },
+
           },
           modules: {
             orderBy: {
@@ -186,11 +184,7 @@ export async function getSubjectDetails(subjectId: string) {
           },
         },
       },
-      lessons: {
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
+
     },
   });
 
@@ -259,7 +253,7 @@ export async function getSubjectDetails(subjectId: string) {
       name: `${relation.teacher.user.firstName || ''} ${relation.teacher.user.lastName || ''}`.trim() || 'Unnamed Teacher',
       email: relation.teacher.user.email || '',
     })),
-    lessons: subject.lessons,
+
     assignments: assignments.map((assignment) => ({
       id: assignment.id,
       title: assignment.title,
@@ -363,43 +357,7 @@ export async function getStudentTimetable() {
   };
 }
 
-/**
- * Get all lesson materials for a subject
- */
-export async function getSubjectMaterials(subjectId: string) {
-  const { student, currentEnrollment } = await getStudentAcademicDetails();
 
-  // Verify that this subject belongs to the student's class
-  const subjectClass = await db.subjectClass.findFirst({
-    where: {
-      subjectId,
-      classId: currentEnrollment.classId,
-    },
-  });
-
-  if (!subjectClass) {
-    throw new Error("Subject not found or not enrolled");
-  }
-
-  const lessons = await db.lesson.findMany({
-    where: {
-      subjectId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  return lessons.map((lesson) => ({
-    id: lesson.id,
-    title: lesson.title,
-    description: lesson.description,
-    content: lesson.content,
-    resources: lesson.resources,
-    duration: lesson.duration,
-    createdAt: lesson.createdAt,
-  }));
-}
 
 /**
  * Get the curriculum/syllabus structure for a specific subject
@@ -428,9 +386,7 @@ export async function getSubjectCurriculum(subjectId: string) {
         orderBy: {
           order: "asc",
         },
-        include: {
-          lessons: true,
-        },
+
       },
     },
   });
@@ -449,12 +405,6 @@ export async function getSubjectCurriculum(subjectId: string) {
       title: unit.title,
       description: unit.description,
       order: unit.order,
-      lessons: unit.lessons.map((lesson) => ({
-        id: lesson.id,
-        title: lesson.title,
-        description: lesson.description,
-        duration: lesson.duration,
-      })),
     })),
   };
 }

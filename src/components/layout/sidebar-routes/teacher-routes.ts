@@ -26,7 +26,6 @@ export const teacherRoutes: RouteItem[] = [
         submenu: [
             { label: "Subjects", href: "/teacher/teaching/subjects" },
             { label: "Classes", href: "/teacher/teaching/classes" },
-            { label: "Lessons", href: "/teacher/teaching/lessons" },
             { label: "Timetable", href: "/teacher/teaching/timetable" },
             { label: "Syllabus", href: "/teacher/teaching/syllabus" },
         ],

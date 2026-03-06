@@ -56,7 +56,7 @@ export async function generateSingleReportCard(
     // Verify user has permission (admin or teacher)
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { 
+      select: {
         role: true,
         userSchools: {
           select: { schoolId: true },
@@ -172,7 +172,7 @@ export async function generateBatchReportCards(
     // Verify user has permission (admin or teacher)
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { 
+      select: {
         role: true,
         userSchools: {
           select: { schoolId: true },
@@ -483,39 +483,10 @@ export async function generateBatchReportCardsZip(
 }
 
 /**
- * Get report card templates
- * 
- * @returns List of available templates
+ * Re-export getReportCardTemplates from canonical source
+ * Canonical implementation is in reportCardTemplateActions.ts
  */
-export async function getReportCardTemplates(): Promise<ActionResult<any[]>> {
-  try {
-    const templates = await db.reportCardTemplate.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        type: true,
-        isDefault: true,
-      },
-      orderBy: [
-        { isDefault: 'desc' },
-        { name: 'asc' },
-      ],
-    });
-
-    return {
-      success: true,
-      data: templates,
-    };
-  } catch (error) {
-    console.error('Error fetching report card templates:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
+export { getReportCardTemplates } from './reportCardTemplateActions';
 
 /**
  * Preview report card data without generating PDF
@@ -577,7 +548,7 @@ async function uploadPDFToStorage(pdfBuffer: Buffer, filename: string): Promise<
     }
 
     return uploadResult.url!;
-    
+
     // For now, return a placeholder URL
     return `r2://report-cards/${filename}`;
   } catch (error) {
@@ -611,7 +582,7 @@ async function uploadZIPToStorage(zipBuffer: Buffer, filename: string): Promise<
     }
 
     return uploadResult.url!;
-    
+
     // For now, return a placeholder URL
     const filenameWithExt = filename.endsWith('.zip') ? filename : `${filename}.zip`;
     return `r2://report-cards-batch/${filenameWithExt}`;

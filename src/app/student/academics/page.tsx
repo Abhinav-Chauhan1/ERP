@@ -36,14 +36,6 @@ export default async function AcademicsPage() {
       href: "/student/academics/subjects",
       color: "bg-green-50 text-green-600",
     },
-
-    {
-      title: "Learning Materials",
-      description: "Find and download all your learning resources",
-      icon: Presentation,
-      href: "/student/academics/materials",
-      color: "bg-teal-50 text-teal-600",
-    },
   ];
 
   return (

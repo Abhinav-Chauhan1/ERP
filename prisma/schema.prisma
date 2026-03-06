@@ -128,7 +128,7 @@ model School {
   FeeTypeClassAmount      FeeTypeClassAmount[]
   GradeScale              GradeScale[]
   LeaveApplication        LeaveApplication[]
-  Lesson                  Lesson[]
+
   MeritList               MeritList[]
   MeritListConfig         MeritListConfig[]
   MeritListEntry          MeritListEntry[]
@@ -778,6 +778,7 @@ model Class {
   reportCardTemplate    ReportCardTemplate?    @relation(fields: [reportCardTemplateId], references: [id])
   school                School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   enrollments           ClassEnrollment[]
+  exams                 Exam[]
   sections              ClassSection[]
   teachers              ClassTeacher[]
   feeStructures         FeeStructureClass[]
@@ -889,7 +890,7 @@ model Subject {
   schoolId          String
   assignments       Assignment[]
   exams             Exam[]
-  lessons           Lesson[]
+
   department        Department?           @relation(fields: [departmentId], references: [id])
   school            School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes           SubjectClass[]
@@ -1042,31 +1043,14 @@ model SyllabusUnit {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   schoolId    String
-  lessons     Lesson[]
+
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   syllabus    Syllabus @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
 }
 
-model Lesson {
-  id             String        @id @default(cuid())
-  title          String
-  description    String?
-  subjectId      String
-  syllabusUnitId String?
-  content        String?
-  resources      String?
-  duration       Int?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  schoolId       String
-  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject        Subject       @relation(fields: [subjectId], references: [id])
-  syllabusUnit   SyllabusUnit? @relation(fields: [syllabusUnitId], references: [id])
 
-  @@index([schoolId])
-}
 
 model Module {
   id            String             @id @default(cuid())
@@ -1248,6 +1232,7 @@ model Exam {
   title             String
   examTypeId        String
   subjectId         String
+  classId           String
   termId            String
   examDate          DateTime
   startTime         DateTime
@@ -1259,6 +1244,7 @@ model Exam {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   schoolId          String
+  class             Class               @relation(fields: [classId], references: [id])
   creator           Teacher?            @relation(fields: [creatorId], references: [id])
   examType          ExamType            @relation(fields: [examTypeId], references: [id])
   school            School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -1268,6 +1254,7 @@ model Exam {
   subjectMarkConfig SubjectMarkConfig[]
 
   @@index([schoolId])
+  @@index([classId])
 }
 
 model ExamResult {
@@ -3179,9 +3166,10 @@ model Course {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   schoolId    String
-  discussions CourseDiscussion[]
-  enrollments CourseEnrollment[]
-  modules     CourseModule[]
+  discussions    CourseDiscussion[]
+  enrollments    CourseEnrollment[]
+  modules        CourseModule[]
+  lessonContents LessonContent[]
   class       Class?             @relation(fields: [classId], references: [id])
   school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subject     Subject?           @relation(fields: [subjectId], references: [id])
@@ -3225,11 +3213,12 @@ model CourseLesson {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   schoolId    String
-  contents    CourseContent[]
-  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  progress    LessonProgress[]
-  quizzes     LessonQuiz[]
+  contents       CourseContent[]
+  module         CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  school         School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  progress       LessonProgress[]
+  quizzes        LessonQuiz[]
+  lessonContents LessonContent[]
 
   @@index([moduleId, sequence])
   @@index([schoolId])
@@ -4654,6 +4643,8 @@ model LessonContent {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 
+  lesson          CourseLesson?            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  course          Course?                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   school          School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentProgress StudentContentProgress[]
 

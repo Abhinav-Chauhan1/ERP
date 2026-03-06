@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  BarChart3, 
-  BookOpen, 
-  Calendar, 
-  Clock, 
-  FileText, 
-  User, 
+import {
+  BarChart3,
+  BookOpen,
+  Calendar,
+  Clock,
+  FileText,
+  User,
   Download,
   ChevronRight,
   ListChecks,
@@ -38,7 +38,7 @@ interface SubjectDetailProps {
     name: string;
     email: string;
   }[];
-  lessons: any[];
+
   assignments: {
     id: string;
     title: string;
@@ -57,16 +57,15 @@ interface SubjectDetailProps {
   }[];
 }
 
-export function SubjectDetail({ 
+export function SubjectDetail({
   subject,
   syllabus,
   teachers,
-  lessons,
   assignments,
   exams
 }: SubjectDetailProps) {
   const enhancedSyllabusEnabled = useEnhancedSyllabusClient();
-  
+
   return (
     <div className="space-y-6">
       <Card>
@@ -119,13 +118,13 @@ export function SubjectDetail({
                 <p className="text-muted-foreground text-sm">{subject.description}</p>
               </div>
             )}
-            
+
             <div>
               <h3 className="text-sm font-medium mb-1">Instructors</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                 {teachers.map(teacher => (
-                  <div 
-                    key={teacher.id} 
+                  <div
+                    key={teacher.id}
                     className="flex items-center p-3 rounded-md border"
                   >
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -138,9 +137,9 @@ export function SubjectDetail({
                         {teacher.email}
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="ml-auto text-primary"
                       asChild
                     >
@@ -166,7 +165,7 @@ export function SubjectDetail({
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
           <TabsTrigger value="exams">Exams</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="overview" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-2">
@@ -183,7 +182,7 @@ export function SubjectDetail({
                     {assignments.filter(a => new Date(a.dueDate) > new Date()).length}
                   </p>
                 </div>
-                
+
                 <div className="p-4 rounded-lg bg-secondary/50 border">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium">Pending Exams</h3>
@@ -193,77 +192,63 @@ export function SubjectDetail({
                     {exams.filter(e => new Date(e.examDate) > new Date()).length}
                   </p>
                 </div>
-                
+
                 <div className="p-4 rounded-lg bg-accent border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Available Materials</h3>
+                    <h3 className="text-sm font-medium">Syllabus Units</h3>
                     <School className="h-5 w-5 text-accent-foreground" />
                   </div>
                   <p className="text-2xl font-bold mt-2">
-                    {lessons.length}
+                    {syllabus?.units?.length ?? 0}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Latest Materials</CardTitle>
+                <CardTitle className="text-base">Syllabus</CardTitle>
               </CardHeader>
               <CardContent>
-                {lessons.slice(0, 3).length > 0 ? (
+                {syllabus ? (
                   <div className="space-y-3">
-                    {lessons.slice(0, 3).map(lesson => (
-                      <div key={lesson.id} className="flex items-start p-3 rounded-md border">
-                        <BookOpen className="h-5 w-5 text-primary mt-0.5" />
-                        <div className="ml-3">
-                          <h4 className="font-medium text-sm">{lesson.title}</h4>
-                          {lesson.description && (
-                            <p className="text-muted-foreground text-sm line-clamp-1">{lesson.description}</p>
-                          )}
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="ml-auto text-primary"
-                          asChild
-                        >
-                          <Link href={`/student/academics/materials/${lesson.id}`}>
-                            View
-                          </Link>
-                        </Button>
+                    <h4 className="font-medium text-sm">{syllabus.title}</h4>
+                    {syllabus.description && (
+                      <p className="text-muted-foreground text-sm">{syllabus.description}</p>
+                    )}
+                    {syllabus.units && syllabus.units.length > 0 && (
+                      <div className="space-y-2">
+                        {syllabus.units.slice(0, 3).map((unit: any) => (
+                          <div key={unit.id} className="flex items-start p-3 rounded-md border">
+                            <ListChecks className="h-5 w-5 text-primary mt-0.5" />
+                            <div className="ml-3">
+                              <h4 className="font-medium text-sm">Unit {unit.order}: {unit.title}</h4>
+                              {unit.description && (
+                                <p className="text-muted-foreground text-sm line-clamp-1">{unit.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    <div className="flex justify-end">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-primary"
-                        asChild
-                      >
-                        <Link href={`/student/academics/materials?subject=${subject.id}`}>
-                          All Materials <ChevronRight className="h-4 w-4 ml-1" />
-                        </Link>
-                      </Button>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">
-                    No materials available yet
+                    No syllabus available yet
                   </div>
                 )}
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Upcoming Activities</CardTitle>
               </CardHeader>
               <CardContent>
-                {[...assignments.filter(a => new Date(a.dueDate) > new Date()), 
-                  ...exams.filter(e => new Date(e.examDate) > new Date())]
+                {[...assignments.filter(a => new Date(a.dueDate) > new Date()),
+                ...exams.filter(e => new Date(e.examDate) > new Date())]
                   .sort((a, b) => {
                     const dateA = 'dueDate' in a ? new Date(a.dueDate) : new Date(a.examDate);
                     const dateB = 'dueDate' in b ? new Date(b.dueDate) : new Date(b.examDate);
@@ -272,8 +257,8 @@ export function SubjectDetail({
                   .slice(0, 3)
                   .length > 0 ? (
                   <div className="space-y-3">
-                    {[...assignments.filter(a => new Date(a.dueDate) > new Date()), 
-                      ...exams.filter(e => new Date(e.examDate) > new Date())]
+                    {[...assignments.filter(a => new Date(a.dueDate) > new Date()),
+                    ...exams.filter(e => new Date(e.examDate) > new Date())]
                       .sort((a, b) => {
                         const dateA = 'dueDate' in a ? new Date(a.dueDate) : new Date(a.examDate);
                         const dateB = 'dueDate' in b ? new Date(b.dueDate) : new Date(b.examDate);
@@ -283,8 +268,8 @@ export function SubjectDetail({
                       .map(item => {
                         const isAssignment = 'dueDate' in item;
                         return (
-                          <div 
-                            key={item.id} 
+                          <div
+                            key={item.id}
                             className="flex items-start p-3 rounded-md border"
                           >
                             {isAssignment ? (
@@ -306,15 +291,15 @@ export function SubjectDetail({
                                 </Badge>
                               </div>
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="ml-auto text-primary"
                               asChild
                             >
                               <Link href={
-                                isAssignment 
-                                  ? `/student/assessments/assignments/${item.id}` 
+                                isAssignment
+                                  ? `/student/assessments/assignments/${item.id}`
                                   : `/student/assessments/exams/${item.id}`
                               }>
                                 View
@@ -333,7 +318,7 @@ export function SubjectDetail({
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="curriculum" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -359,7 +344,7 @@ export function SubjectDetail({
                             <p className="text-muted-foreground text-sm mt-1">{syllabus.description}</p>
                           )}
                         </div>
-                        
+
                         {syllabus.document && (
                           <Button size="sm">
                             <Download className="h-4 w-4 mr-2" />
@@ -367,7 +352,7 @@ export function SubjectDetail({
                           </Button>
                         )}
                       </div>
-                      
+
                       <div className="space-y-4">
                         {syllabus.units.map((unit: any) => (
                           <div key={unit.id} className="border rounded-md overflow-hidden">
@@ -377,41 +362,12 @@ export function SubjectDetail({
                                 <p className="text-muted-foreground text-sm mt-1">{unit.description}</p>
                               )}
                             </div>
-                            {unit.lessons.length > 0 ? (
-                              <div className="divide-y">
-                                {unit.lessons.map((lesson: any) => (
-                                  <div key={lesson.id} className="flex items-center p-3">
-                                    <BookOpen className="h-4 w-4 text-primary" />
-                                    <div className="ml-3">
-                                      <h4 className="text-sm font-medium">{lesson.title}</h4>
-                                      {lesson.duration && (
-                                        <div className="flex items-center text-muted-foreground text-xs mt-1">
-                                          <Clock className="h-3 w-3 mr-1" />
-                                          {lesson.duration} minutes
-                                        </div>
-                                      )}
-                                    </div>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="ml-auto text-primary"
-                                      asChild
-                                    >
-                                      <Link href={`/student/academics/materials/${lesson.id}`}>
-                                        View
-                                      </Link>
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="p-4 text-center text-muted-foreground text-sm">
-                                No lessons available for this unit
-                              </div>
-                            )}
+                            <div className="p-4 text-center text-muted-foreground text-sm">
+                              No details available for this unit
+                            </div>
                           </div>
                         ))}
-                        
+
                         {syllabus.units.length === 0 && (
                           <div className="text-center py-8 text-muted-foreground">
                             <BookMarked className="h-12 w-12 text-muted-foreground/30 mx-auto" />
@@ -433,7 +389,7 @@ export function SubjectDetail({
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="assignments" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -473,13 +429,12 @@ export function SubjectDetail({
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`${
-                                new Date(assignment.dueDate) < new Date() && 
-                                assignment.status !== "SUBMITTED" && 
-                                assignment.status !== "GRADED" 
-                                  ? "text-destructive" 
+                              <span className={`${new Date(assignment.dueDate) < new Date() &&
+                                  assignment.status !== "SUBMITTED" &&
+                                  assignment.status !== "GRADED"
+                                  ? "text-destructive"
                                   : "text-muted-foreground"
-                              }`}>
+                                }`}>
                                 {format(new Date(assignment.dueDate), "MMM dd, yyyy")}
                               </span>
                             </td>
@@ -491,20 +446,20 @@ export function SubjectDetail({
                                 assignment.status === "GRADED" || assignment.status === "SUBMITTED"
                                   ? "secondary"
                                   : new Date(assignment.dueDate) < new Date()
-                                  ? "destructive"
-                                  : "default"
+                                    ? "destructive"
+                                    : "default"
                               }>
-                                {assignment.status === "GRADED" 
-                                  ? "Graded" 
-                                  : assignment.status === "SUBMITTED" 
-                                  ? "Submitted"
-                                  : new Date(assignment.dueDate) < new Date()
-                                  ? "Overdue"
-                                  : "Pending"}
+                                {assignment.status === "GRADED"
+                                  ? "Graded"
+                                  : assignment.status === "SUBMITTED"
+                                    ? "Submitted"
+                                    : new Date(assignment.dueDate) < new Date()
+                                      ? "Overdue"
+                                      : "Pending"}
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <Button 
+                              <Button
                                 size="sm"
                                 variant={
                                   assignment.status === "SUBMITTED" || assignment.status === "GRADED"
@@ -514,11 +469,11 @@ export function SubjectDetail({
                                 asChild
                               >
                                 <Link href={`/student/assessments/assignments/${assignment.id}`}>
-                                  {assignment.status === "SUBMITTED" 
-                                    ? "View Submission" 
+                                  {assignment.status === "SUBMITTED"
+                                    ? "View Submission"
                                     : assignment.status === "GRADED"
-                                    ? "View Feedback"
-                                    : "Submit"}
+                                      ? "View Feedback"
+                                      : "Submit"}
                                 </Link>
                               </Button>
                             </td>
@@ -538,7 +493,7 @@ export function SubjectDetail({
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="exams" className="mt-4">
           <Card>
             <CardHeader className="pb-2">
@@ -596,25 +551,25 @@ export function SubjectDetail({
                                 exam.result
                                   ? "secondary"
                                   : new Date(exam.examDate) < new Date()
-                                  ? "default"
-                                  : "outline"
+                                    ? "default"
+                                    : "outline"
                               }>
                                 {exam.result
-                                  ? "Results Available" 
+                                  ? "Results Available"
                                   : new Date(exam.examDate) < new Date()
-                                  ? "Completed"
-                                  : "Upcoming"}
+                                    ? "Completed"
+                                    : "Upcoming"}
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <Button 
+                              <Button
                                 size="sm"
                                 variant={exam.result ? "default" : "outline"}
                                 asChild
                               >
                                 <Link href={`/student/assessments/exams/${exam.id}`}>
-                                  {exam.result 
-                                    ? "View Results" 
+                                  {exam.result
+                                    ? "View Results"
                                     : "View Details"}
                                 </Link>
                               </Button>

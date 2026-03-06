@@ -13,44 +13,44 @@ export const metadata: Metadata = {
   description: "View your child's performance in a specific subject",
 };
 
-export default async function SubjectDetailPage({ 
-  params, 
-  searchParams 
-}: { 
-  params: Promise<{ id: string }>, searchParams: Promise<{ childId?: string }> 
+export default async function SubjectDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>, searchParams: Promise<{ childId?: string }>
 }) {
   // Await both params and searchParams before using them
   const pathParams = await params;
   const queryParams = await searchParams;
-  
+
   const subjectId = pathParams.id;
   const childId = queryParams.childId;
-  
+
   if (!childId) {
     redirect("/parent/academics/subjects");
   }
-  
+
   const subjectData = await getChildSubjectProgress(childId, subjectId);
-  
+
   // Calculate overall performance
   const totalExams = subjectData.examResults.length;
   let totalMarks = 0;
   let obtainedMarks = 0;
-  
+
   subjectData.examResults.forEach((result: any) => {
     totalMarks += result.exam.totalMarks;
     obtainedMarks += result.marks;
   });
-  
+
   const performancePercentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-  
+
   // Calculate assignment completion
   const totalAssignments = subjectData.assignments.length;
   const completedAssignments = subjectData.assignments.filter(
     (assignment: any) => assignment.status === "GRADED" || assignment.status === "SUBMITTED"
   ).length;
   const completionPercentage = totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0;
-  
+
   return (
     <div className="container p-6">
       <div className="flex items-center mb-6">
@@ -63,7 +63,7 @@ export default async function SubjectDetailPage({
         <h1 className="text-2xl font-bold">{subjectData.subject.name}</h1>
         <Badge className="ml-2">{subjectData.subject.code}</Badge>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {/* Performance overview */}
         <Card>
@@ -91,22 +91,22 @@ export default async function SubjectDetailPage({
                 <span>Grade</span>
                 <Badge className={
                   performancePercentage >= 90 ? "bg-green-100 text-green-800" :
-                  performancePercentage >= 80 ? "bg-blue-100 text-blue-800" :
-                  performancePercentage >= 70 ? "bg-yellow-100 text-yellow-800" :
-                  performancePercentage >= 60 ? "bg-orange-100 text-orange-800" :
-                  "bg-red-100 text-red-800"
+                    performancePercentage >= 80 ? "bg-blue-100 text-blue-800" :
+                      performancePercentage >= 70 ? "bg-yellow-100 text-yellow-800" :
+                        performancePercentage >= 60 ? "bg-orange-100 text-orange-800" :
+                          "bg-red-100 text-red-800"
                 }>
                   {performancePercentage >= 90 ? 'A+' :
-                   performancePercentage >= 80 ? 'A' :
-                   performancePercentage >= 70 ? 'B' :
-                   performancePercentage >= 60 ? 'C' :
-                   performancePercentage >= 50 ? 'D' : 'F'}
+                    performancePercentage >= 80 ? 'A' :
+                      performancePercentage >= 70 ? 'B' :
+                        performancePercentage >= 60 ? 'C' :
+                          performancePercentage >= 50 ? 'D' : 'F'}
                 </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Assignment completion */}
         <Card>
           <CardHeader>
@@ -118,7 +118,7 @@ export default async function SubjectDetailPage({
                 <Progress value={completionPercentage} className="h-2 mb-2" />
                 <p className="text-sm text-gray-500">{completedAssignments} of {totalAssignments} assignments completed</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="bg-green-50 p-3 rounded-md text-center">
                   <div className="flex justify-center mb-1">
@@ -138,7 +138,7 @@ export default async function SubjectDetailPage({
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Syllabus progress */}
         <Card>
           <CardHeader>
@@ -152,10 +152,10 @@ export default async function SubjectDetailPage({
                   {subjectData.syllabus.units.slice(0, 3).map((unit: any) => (
                     <div key={unit.id} className="text-sm">
                       <p className="font-medium">{unit.title}</p>
-                      <p className="text-xs text-gray-500">{unit.lessons.length} lessons</p>
+                      <p className="text-xs text-gray-500">Unit {unit.order || ''}</p>
                     </div>
                   ))}
-                  
+
                   {subjectData.syllabus.units.length > 3 && (
                     <p className="text-xs text-blue-600">
                       + {subjectData.syllabus.units.length - 3} more units
@@ -169,7 +169,7 @@ export default async function SubjectDetailPage({
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Exam results */}
         <Card>
@@ -205,8 +205,8 @@ export default async function SubjectDetailPage({
                           <td className="py-2 text-right">
                             <Badge className={
                               percentage >= 80 ? "bg-green-100 text-green-800" :
-                              percentage >= 60 ? "bg-yellow-100 text-yellow-800" :
-                              "bg-red-100 text-red-800"
+                                percentage >= 60 ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
                             }>
                               {percentage.toFixed(1)}%
                             </Badge>
@@ -222,7 +222,7 @@ export default async function SubjectDetailPage({
             )}
           </CardContent>
         </Card>
-        
+
         {/* Assignments */}
         <Card>
           <CardHeader>
@@ -248,20 +248,20 @@ export default async function SubjectDetailPage({
                       </div>
                       <Badge className={
                         assignment.status === "GRADED" ? "bg-green-100 text-green-800" :
-                        assignment.status === "SUBMITTED" ? "bg-blue-100 text-blue-800" :
-                        assignment.status === "LATE" ? "bg-orange-100 text-orange-800" :
-                        "bg-gray-100 text-gray-800"
+                          assignment.status === "SUBMITTED" ? "bg-blue-100 text-blue-800" :
+                            assignment.status === "LATE" ? "bg-orange-100 text-orange-800" :
+                              "bg-gray-100 text-gray-800"
                       }>
                         {assignment.status}
                       </Badge>
                     </div>
-                    
+
                     {assignment.status === "GRADED" && (
                       <div className="mt-2 text-xs border-t pt-2 flex justify-between">
                         <span>Marks: {assignment.marks}/{assignment.assignment.totalMarks}</span>
                         <span className={
-                          (assignment.marks / assignment.assignment.totalMarks) * 100 >= 70 
-                            ? "text-green-600" 
+                          (assignment.marks / assignment.assignment.totalMarks) * 100 >= 70
+                            ? "text-green-600"
                             : "text-orange-600"
                         }>
                           {((assignment.marks / assignment.assignment.totalMarks) * 100).toFixed(1)}%

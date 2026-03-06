@@ -148,9 +148,7 @@ export async function getChildAcademicProcess(childId: string) {
     include: {
       subject: true,
       units: {
-        include: {
-          lessons: true
-        },
+
         orderBy: {
           order: 'asc'
         }
@@ -161,7 +159,7 @@ export async function getChildAcademicProcess(childId: string) {
   // Calculate curriculum completion for each subject
   const curriculumCompletion = syllabusItems.map(syllabus => {
     const totalUnits = syllabus.units.length;
-    const totalLessons = syllabus.units.reduce((sum, unit) => sum + unit.lessons.length, 0);
+    const totalLessons = 0;
 
     // For now, we'll calculate completion based on current date vs academic year
     // In a real system, this would track actual lesson completion
@@ -708,9 +706,7 @@ export async function getChildSubjectProgress(childId: string, subjectId: string
     },
     include: {
       units: {
-        include: {
-          lessons: true
-        },
+
         orderBy: {
           order: 'asc'
         }

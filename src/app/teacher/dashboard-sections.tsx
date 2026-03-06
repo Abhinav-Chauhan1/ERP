@@ -183,7 +183,7 @@ export async function RecentActivitySection() {
   const { data } = result;
   const recentAnnouncements = data.recentAnnouncements ?? [];
   const unreadMessagesCount = data.stats?.unreadMessagesCount ?? 0;
-  const recentLessons = data.recentLessons ?? [];
+
   const studentAttendanceData = data.studentAttendanceData ?? [];
   const assignmentData = data.assignmentData ?? [];
   const pendingTasks = data.pendingTasks ?? [];
@@ -286,50 +286,6 @@ export async function RecentActivitySection() {
         </Card>
       </div>
 
-      {/* Recent Lessons section */}
-      <Card className="premium-card">
-        <CardHeader className="px-0 pt-0">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-xl font-bold">Recent Lessons</CardTitle>
-              <CardDescription>Your latest instructional content</CardDescription>
-            </div>
-            <Link href="/teacher/teaching/lessons">
-              <Button variant="outline" size="sm" className="hover-lift">
-                All Lessons
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-0 pt-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentLessons.map((lesson) => (
-              <Link href={`/teacher/teaching/lessons/${lesson.id}`} key={lesson.id} className="group">
-                <div className="p-5 border rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 h-full flex flex-col justify-between shadow-sm hover:shadow-md">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="secondary" className="bg-primary/10 text-primary border-none">{lesson.subject}</Badge>
-                      <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                        <Clock className="h-3 w-3" />
-                        {lesson.duration} min
-                      </div>
-                    </div>
-                    <h4 className="font-bold group-hover:text-primary transition-colors">{lesson.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{lesson.unit}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-        <CardFooter className="px-0 pt-6 border-t mt-4">
-          <Link href="/teacher/teaching/lessons/create" className="w-full">
-            <Button variant="outline" className="w-full h-12 font-bold hover:bg-primary hover:text-primary-foreground transition-all duration-300">
-              <FileText className="mr-2 h-5 w-5" /> Create New Lesson
-            </Button>
-          </Link>
-        </CardFooter>
-      </Card>
 
       {/* Charts and Upcoming Content */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -535,12 +491,12 @@ export function QuickActionsSection() {
             <span className="text-sm font-bold">Assignment</span>
           </div>
         </Link>
-        <Link href="/teacher/teaching/lessons/create" className="group">
+        <Link href="/teacher/teaching/syllabus" className="group">
           <div className="flex flex-col items-center gap-3 p-6 rounded-2xl border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-center hover-lift shadow-sm hover:shadow-md">
             <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 group-hover:scale-110 transition-transform">
               <BookOpen className="h-6 w-6" />
             </div>
-            <span className="text-sm font-bold">Lesson</span>
+            <span className="text-sm font-bold">Syllabus</span>
           </div>
         </Link>
         <Link href="/teacher/communication/messages/compose" className="group">

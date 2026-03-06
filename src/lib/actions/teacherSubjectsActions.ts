@@ -231,12 +231,7 @@ export const getTeacherSubjectDetails = withSchoolAuthAction(async (schoolId, us
             class: true,
           },
         },
-        lessons: {
-          where: { schoolId },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
+
       },
     });
 
@@ -300,14 +295,7 @@ export const getTeacherSubjectDetails = withSchoolAuthAction(async (schoolId, us
     }));
 
     // Get recent lessons
-    const recentLessons = subject.lessons.slice(0, 5).map((lesson: { id: string; title: string; description: string | null; syllabusUnitId: string | null; duration: number | null; createdAt: Date }) => ({
-      id: lesson.id,
-      title: lesson.title,
-      description: lesson.description || "",
-      unit: lesson.syllabusUnitId || "",
-      duration: lesson.duration || 45,
-      createdAt: lesson.createdAt.toISOString(),
-    }));
+    const recentLessons: any[] = [];
 
     // Calculate overall syllabus progress
     const allUnits = syllabusData.flatMap((s: { units: { totalTopics: number; completedTopics: number }[] }) => s.units);

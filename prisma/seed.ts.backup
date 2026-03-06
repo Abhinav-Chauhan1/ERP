@@ -1,0 +1,2475 @@
+﻿import { PrismaClient } from '@prisma/client';
+import { seedSubscriptionPlans } from './seed-subscription-plans';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Starting database seeding...');
+  // 0. Create Default School
+  console.log('🏫 Creating default school...');
+  const school = await prisma.school.upsert({
+    where: { schoolCode: 'SPRINGFIELD' },
+    update: {},
+    create: {
+      name: 'Springfield High School',
+      schoolCode: 'SPRINGFIELD',
+      plan: 'STARTER',
+      status: 'ACTIVE',
+      isOnboarded: true,
+    }
+  });
+  const defaultSchool = school; // Alias for convenience
+  console.log(`   Created school: ${school.name} (${school.id})`);
+
+
+  // Clear existing data (in reverse order of dependencies)
+  console.log('🧹 Cleaning existing data...');
+  await prisma.eventParticipant.deleteMany();
+  await prisma.event.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.documentType.deleteMany();
+  await prisma.parentMeeting.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.announcement.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.payroll.deleteMany();
+  await prisma.expense.deleteMany();
+  await prisma.budget.deleteMany();
+  await prisma.scholarshipRecipient.deleteMany();
+  await prisma.scholarship.deleteMany();
+  await prisma.feePayment.deleteMany();
+  await prisma.feeStructureItem.deleteMany();
+  await prisma.feeStructure.deleteMany();
+  await prisma.feeType.deleteMany();
+  await prisma.leaveApplication.deleteMany();
+  await prisma.teacherAttendance.deleteMany();
+  await prisma.studentAttendance.deleteMany();
+  await prisma.reportCard.deleteMany();
+  await prisma.assignmentSubmission.deleteMany();
+  await prisma.assignmentClass.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.examResult.deleteMany();
+  await prisma.exam.deleteMany();
+  await prisma.gradeScale.deleteMany();
+  await prisma.examType.deleteMany();
+  await prisma.timetableSlot.deleteMany();
+  await prisma.timetable.deleteMany();
+  await prisma.timetablePeriod.deleteMany();
+  await prisma.timetableConfig.deleteMany();
+  await prisma.lesson.deleteMany();
+  await prisma.syllabusUnit.deleteMany();
+  await prisma.syllabus.deleteMany();
+  await prisma.subjectClass.deleteMany();
+  await prisma.subjectTeacher.deleteMany();
+  await prisma.subject.deleteMany();
+  await prisma.classEnrollment.deleteMany();
+  await prisma.classTeacher.deleteMany();
+  await prisma.classRoom.deleteMany();
+  await prisma.classSection.deleteMany();
+  await prisma.class.deleteMany();
+  await prisma.department.deleteMany();
+  await prisma.term.deleteMany();
+  await prisma.academicYear.deleteMany();
+  await prisma.studentParent.deleteMany();
+  await prisma.parentSettings.deleteMany();
+  await prisma.parent.deleteMany();
+  await prisma.studentSettings.deleteMany();
+  await prisma.student.deleteMany();
+  await prisma.teacher.deleteMany();
+  await prisma.administrator.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.systemSettings.deleteMany();
+
+
+  // Create UserSchool relationships for all users
+  console.log('🔗 Creating UserSchool relationships...');
+  const allUsers = await prisma.user.findMany();
+  for (const user of allUsers) {
+    await prisma.userSchool.create({
+      data: {
+        userId: user.id,
+        schoolId: school.id,
+        role: user.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'STUDENT', // Default to STUDENT, adjust if needed
+        isActive: true,
+      }
+    });
+  }
+
+  // 1. Create System Settings
+  console.log('⚙️  Creating system settings...');
+  const systemSettings = await prisma.systemSettings.create({
+    data: {
+      schoolName: 'Springfield High School',
+      schoolEmail: 'info@springfieldhigh.edu',
+      schoolPhone: '+1-555-0100',
+      schoolAddress: '123 Education Lane, Springfield, ST 12345',
+      schoolWebsite: 'https://springfieldhigh.edu',
+      timezone: 'America/New_York',
+      defaultGradingScale: 'PERCENTAGE',
+      passingGrade: 50,
+      emailEnabled: true,
+      defaultTheme: 'LIGHT',
+      defaultColorTheme: 'blue',
+      primaryColor: '#3b82f6',
+      language: 'en',
+      // Payment Configuration (Requirements: 7.2, 7.3)
+      enableOfflineVerification: true,
+      enableOnlinePayment: false,
+      maxReceiptSizeMB: 5,
+      allowedReceiptFormats: 'jpg,jpeg,png,pdf',
+      autoNotifyOnVerification: true,
+    },
+  });
+
+  // 2. Create Academic Year and Terms
+  console.log('📅 Creating academic years and terms...');
+  const academicYear = await prisma.academicYear.create({
+    data: {
+      schoolId: school.id,
+      name: '2024-2025',
+      startDate: new Date('2024-09-01'),
+      endDate: new Date('2025-06-30'),
+      isCurrent: true,
+    },
+  });
+
+  const term1 = await prisma.term.create({
+    data: {
+      schoolId: school.id,
+      name: 'Fall Semester',
+      academicYearId: academicYear.id,
+      startDate: new Date('2024-09-01'),
+      endDate: new Date('2024-12-20'),
+    },
+  });
+
+  const term2 = await prisma.term.create({
+    data: {
+      schoolId: school.id,
+      name: 'Spring Semester',
+      academicYearId: academicYear.id,
+      startDate: new Date('2025-01-06'),
+      endDate: new Date('2025-06-30'),
+    },
+  });
+
+  // 3. Create Departments
+  console.log('🏢 Creating departments...');
+  const departments = await Promise.all([
+    prisma.department.create({
+      data: {
+        schoolId: school.id, name: 'Mathematics', description: 'Math and Statistics'
+      }
+    }),
+    prisma.department.create({
+      data: {
+        schoolId: school.id, name: 'Science', description: 'Physics, Chemistry, Biology'
+      }
+    }),
+    prisma.department.create({
+      data: {
+        schoolId: school.id, name: 'Languages', description: 'English, Spanish, French'
+      }
+    }),
+    prisma.department.create({
+      data: {
+        schoolId: school.id, name: 'Social Studies', description: 'History, Geography, Civics'
+      }
+    }),
+    prisma.department.create({
+      data: {
+        schoolId: school.id, name: 'Arts', description: 'Music, Drama, Visual Arts'
+      }
+    }),
+  ]);
+
+  // 4. Create Users (Admin, Teachers, Students, Parents)
+  console.log('👥 Creating users...');
+
+  // Admin Users
+  const adminUser = await prisma.user.create({
+    data: {
+      email: 'admin@springfieldhigh.edu',
+      firstName: 'John',
+      lastName: 'Administrator',
+      name: 'John Administrator',
+      phone: '+1-555-0101',
+      role: 'ADMIN',
+      active: true,
+    },
+  });
+
+  const admin = await prisma.administrator.create({
+    data: {
+      schoolId: school.id,
+      userId: adminUser.id,
+      position: 'Principal',
+    },
+  });
+
+  // Teacher Users
+  const teacherUsers = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: 'sarah.johnson@springfieldhigh.edu',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        name: 'Sarah Johnson',
+        phone: '+1-555-0201',
+        role: 'TEACHER',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'michael.chen@springfieldhigh.edu',
+        firstName: 'Michael',
+        lastName: 'Chen',
+        name: 'Michael Chen',
+        phone: '+1-555-0202',
+        role: 'TEACHER',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'emily.rodriguez@springfieldhigh.edu',
+        firstName: 'Emily',
+        lastName: 'Rodriguez',
+        name: 'Emily Rodriguez',
+        phone: '+1-555-0203',
+        role: 'TEACHER',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'david.williams@springfieldhigh.edu',
+        firstName: 'David',
+        lastName: 'Williams',
+        name: 'David Williams',
+        phone: '+1-555-0204',
+        role: 'TEACHER',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'lisa.anderson@springfieldhigh.edu',
+        firstName: 'Lisa',
+        lastName: 'Anderson',
+        name: 'Lisa Anderson',
+        phone: '+1-555-0205',
+        role: 'TEACHER',
+      },
+    }),
+  ]);
+
+  const teachers = await Promise.all([
+    prisma.teacher.create({
+      data: {
+        schoolId: school.id,
+        userId: teacherUsers[0].id,
+        employeeId: 'EMP001',
+        qualification: 'M.Sc. Mathematics',
+        joinDate: new Date('2020-08-15'),
+        salary: 55000,
+      },
+    }),
+    prisma.teacher.create({
+      data: {
+        schoolId: school.id,
+        userId: teacherUsers[1].id,
+        employeeId: 'EMP002',
+        qualification: 'Ph.D. Physics',
+        joinDate: new Date('2019-07-01'),
+        salary: 62000,
+      },
+    }),
+    prisma.teacher.create({
+      data: {
+        schoolId: school.id,
+        userId: teacherUsers[2].id,
+        employeeId: 'EMP003',
+        qualification: 'M.A. English Literature',
+        joinDate: new Date('2021-09-01'),
+        salary: 52000,
+      },
+    }),
+    prisma.teacher.create({
+      data: {
+        schoolId: school.id,
+        userId: teacherUsers[3].id,
+        employeeId: 'EMP004',
+        qualification: 'M.Sc. Chemistry',
+        joinDate: new Date('2018-08-20'),
+        salary: 58000,
+      },
+    }),
+    prisma.teacher.create({
+      data: {
+        schoolId: school.id,
+        userId: teacherUsers[4].id,
+        employeeId: 'EMP005',
+        qualification: 'M.A. History',
+        joinDate: new Date('2022-01-10'),
+        salary: 50000,
+      },
+    }),
+  ]);
+
+  // Parent Users
+  const parentUsers = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: 'robert.smith@email.com',
+        firstName: 'Robert',
+        lastName: 'Smith',
+        name: 'Robert Smith',
+        phone: '+1-555-0301',
+        role: 'PARENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'jennifer.smith@email.com',
+        firstName: 'Jennifer',
+        lastName: 'Smith',
+        name: 'Jennifer Smith',
+        phone: '+1-555-0302',
+        role: 'PARENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'james.brown@email.com',
+        firstName: 'James',
+        lastName: 'Brown',
+        name: 'James Brown',
+        phone: '+1-555-0303',
+        role: 'PARENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'maria.garcia@email.com',
+        firstName: 'Maria',
+        lastName: 'Garcia',
+        name: 'Maria Garcia',
+        phone: '+1-555-0304',
+        role: 'PARENT',
+      },
+    }),
+  ]);
+
+  const parents = await Promise.all([
+    prisma.parent.create({
+      data: {
+        schoolId: school.id,
+        userId: parentUsers[0].id,
+        occupation: 'Software Engineer',
+        relation: 'Father',
+      },
+    }),
+    prisma.parent.create({
+      data: {
+        schoolId: school.id,
+        userId: parentUsers[1].id,
+        occupation: 'Teacher',
+        relation: 'Mother',
+      },
+    }),
+    prisma.parent.create({
+      data: {
+        schoolId: school.id,
+        userId: parentUsers[2].id,
+        occupation: 'Business Owner',
+        relation: 'Father',
+      },
+    }),
+    prisma.parent.create({
+      data: {
+        schoolId: school.id,
+        userId: parentUsers[3].id,
+        occupation: 'Nurse',
+        relation: 'Mother',
+      },
+    }),
+  ]);
+
+  // Student Users
+  const studentUsers = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: 'alex.smith@student.springfieldhigh.edu',
+        firstName: 'Alex',
+        lastName: 'Smith',
+        name: 'Alex Smith',
+        phone: '+1-555-0401',
+        role: 'STUDENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'emma.smith@student.springfieldhigh.edu',
+        firstName: 'Emma',
+        lastName: 'Smith',
+        name: 'Emma Smith',
+        phone: '+1-555-0402',
+        role: 'STUDENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'noah.brown@student.springfieldhigh.edu',
+        firstName: 'Noah',
+        lastName: 'Brown',
+        name: 'Noah Brown',
+        phone: '+1-555-0403',
+        role: 'STUDENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'sophia.garcia@student.springfieldhigh.edu',
+        firstName: 'Sophia',
+        lastName: 'Garcia',
+        name: 'Sophia Garcia',
+        phone: '+1-555-0404',
+        role: 'STUDENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'liam.johnson@student.springfieldhigh.edu',
+        firstName: 'Liam',
+        lastName: 'Johnson',
+        name: 'Liam Johnson',
+        phone: '+1-555-0405',
+        role: 'STUDENT',
+      },
+    }),
+    prisma.user.create({
+      data: {
+        email: 'olivia.martinez@student.springfieldhigh.edu',
+        firstName: 'Olivia',
+        lastName: 'Martinez',
+        name: 'Olivia Martinez',
+        phone: '+1-555-0406',
+        role: 'STUDENT',
+      },
+    }),
+  ]);
+
+  const students = await Promise.all([
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[0].id,
+        admissionId: 'ADM2024001',
+        admissionDate: new Date('2024-08-15'),
+        rollNumber: '10A001',
+        dateOfBirth: new Date('2009-03-15'),
+        gender: 'Male',
+        address: '456 Oak Street, Springfield',
+        bloodGroup: 'O+',
+        emergencyContact: '+1-555-0301',
+      },
+    }),
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[1].id,
+        admissionId: 'ADM2024002',
+        admissionDate: new Date('2024-08-15'),
+        rollNumber: '10A002',
+        dateOfBirth: new Date('2009-05-20'),
+        gender: 'Female',
+        address: '456 Oak Street, Springfield',
+        bloodGroup: 'A+',
+        emergencyContact: '+1-555-0302',
+      },
+    }),
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[2].id,
+        admissionId: 'ADM2024003',
+        admissionDate: new Date('2024-08-15'),
+        rollNumber: '10B001',
+        dateOfBirth: new Date('2009-07-10'),
+        gender: 'Male',
+        address: '789 Pine Avenue, Springfield',
+        bloodGroup: 'B+',
+        emergencyContact: '+1-555-0303',
+      },
+    }),
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[3].id,
+        admissionId: 'ADM2024004',
+        admissionDate: new Date('2024-08-15'),
+        rollNumber: '10B002',
+        dateOfBirth: new Date('2009-09-25'),
+        gender: 'Female',
+        address: '321 Maple Drive, Springfield',
+        bloodGroup: 'AB+',
+        emergencyContact: '+1-555-0304',
+      },
+    }),
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[4].id,
+        admissionId: 'ADM2023005',
+        admissionDate: new Date('2023-08-20'),
+        rollNumber: '11A001',
+        dateOfBirth: new Date('2008-11-12'),
+        gender: 'Male',
+        address: '654 Elm Street, Springfield',
+        bloodGroup: 'O-',
+        emergencyContact: '+1-555-0305',
+      },
+    }),
+    prisma.student.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[5].id,
+        admissionId: 'ADM2023006',
+        admissionDate: new Date('2023-08-20'),
+        rollNumber: '11A002',
+        dateOfBirth: new Date('2008-12-30'),
+        gender: 'Female',
+        address: '987 Cedar Lane, Springfield',
+        bloodGroup: 'A-',
+        emergencyContact: '+1-555-0306',
+      },
+    }),
+  ]);
+
+  // Create Student-Parent relationships
+  console.log('👨‍👩‍👧‍👦 Creating student-parent relationships...');
+  await Promise.all([
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[0].id, parentId: parents[0].id, isPrimary: true
+      },
+    }),
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[0].id, parentId: parents[1].id, isPrimary: false
+      },
+    }),
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[1].id, parentId: parents[0].id, isPrimary: false
+      },
+    }),
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[1].id, parentId: parents[1].id, isPrimary: true
+      },
+    }),
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[2].id, parentId: parents[2].id, isPrimary: true
+      },
+    }),
+    prisma.studentParent.create({
+      data: {
+        schoolId: school.id, studentId: students[3].id, parentId: parents[3].id, isPrimary: true
+      },
+    }),
+  ]);
+
+  // 5. Create Classes and Sections
+  console.log('🏫 Creating classes and sections...');
+  const class10 = await prisma.class.create({
+    data: {
+      schoolId: school.id,
+      name: 'Grade 10',
+      academicYearId: academicYear.id,
+    },
+  });
+
+  const class11 = await prisma.class.create({
+    data: {
+      schoolId: school.id,
+      name: 'Grade 11',
+      academicYearId: academicYear.id,
+    },
+  });
+
+  const section10A = await prisma.classSection.create({
+    data: {
+      schoolId: school.id,
+      name: 'Section A',
+      classId: class10.id,
+      capacity: 30,
+    },
+  });
+
+  const section10B = await prisma.classSection.create({
+    data: {
+      schoolId: school.id,
+      name: 'Section B',
+      classId: class10.id,
+      capacity: 30,
+    },
+  });
+
+  const section11A = await prisma.classSection.create({
+    data: {
+      schoolId: school.id,
+      name: 'Section A',
+      classId: class11.id,
+      capacity: 30,
+    },
+  });
+
+  // 6. Create Subjects
+  console.log('📚 Creating subjects...');
+  const subjects = await Promise.all([
+    prisma.subject.create({
+      data: {
+        schoolId: school.id,
+        name: 'Mathematics',
+        code: 'MATH101',
+        description: 'Algebra, Geometry, Trigonometry',
+        departmentId: departments[0].id,
+      },
+    }),
+    prisma.subject.create({
+      data: {
+        schoolId: school.id,
+        name: 'Physics',
+        code: 'PHY101',
+        description: 'Mechanics, Thermodynamics, Optics',
+        departmentId: departments[1].id,
+      },
+    }),
+    prisma.subject.create({
+      data: {
+        schoolId: school.id,
+        name: 'Chemistry',
+        code: 'CHEM101',
+        description: 'Organic, Inorganic, Physical Chemistry',
+        departmentId: departments[1].id,
+      },
+    }),
+    prisma.subject.create({
+      data: {
+        schoolId: school.id,
+        name: 'English',
+        code: 'ENG101',
+        description: 'Literature, Grammar, Composition',
+        departmentId: departments[2].id,
+      },
+    }),
+    prisma.subject.create({
+      data: {
+        schoolId: school.id,
+        name: 'History',
+        code: 'HIST101',
+        description: 'World History, American History',
+        departmentId: departments[3].id,
+      },
+    }),
+  ]);
+
+  // 7. Assign Teachers to Subjects
+  console.log('👨‍🏫 Assigning teachers to subjects...');
+  const subjectTeachers = await Promise.all([
+    prisma.subjectTeacher.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[0].id, teacherId: teachers[0].id
+      },
+    }),
+    prisma.subjectTeacher.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[1].id, teacherId: teachers[1].id
+      },
+    }),
+    prisma.subjectTeacher.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[2].id, teacherId: teachers[3].id
+      },
+    }),
+    prisma.subjectTeacher.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[3].id, teacherId: teachers[2].id
+      },
+    }),
+    prisma.subjectTeacher.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[4].id, teacherId: teachers[4].id
+      },
+    }),
+  ]);
+
+  // 8. Assign Subjects to Classes
+  console.log('📖 Assigning subjects to classes...');
+  await Promise.all([
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[0].id, classId: class10.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[1].id, classId: class10.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[2].id, classId: class10.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[3].id, classId: class10.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[4].id, classId: class10.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[0].id, classId: class11.id
+      },
+    }),
+    prisma.subjectClass.create({
+      data: {
+        schoolId: school.id, subjectId: subjects[1].id, classId: class11.id
+      },
+    }),
+  ]);
+
+  // 9. Assign Teachers to Classes
+  console.log('🎓 Assigning teachers to classes...');
+  await Promise.all([
+    prisma.classTeacher.create({
+      data: {
+        schoolId: school.id, classId: class10.id, teacherId: teachers[0].id, isClassHead: true
+      },
+    }),
+    prisma.classTeacher.create({
+      data: {
+        schoolId: school.id, classId: class11.id, teacherId: teachers[1].id, isClassHead: true
+      },
+    }),
+  ]);
+
+  // 10. Enroll Students in Classes
+  console.log('📝 Enrolling students in classes...');
+  await Promise.all([
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[0].id,
+        classId: class10.id,
+        sectionId: section10A.id,
+        rollNumber: '10A001',
+        status: 'ACTIVE',
+        enrollDate: new Date('2024-09-01'),
+      },
+    }),
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[1].id,
+        classId: class10.id,
+        sectionId: section10A.id,
+        rollNumber: '10A002',
+        status: 'ACTIVE',
+        enrollDate: new Date('2024-09-01'),
+      },
+    }),
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[2].id,
+        classId: class10.id,
+        sectionId: section10B.id,
+        rollNumber: '10B001',
+        status: 'ACTIVE',
+        enrollDate: new Date('2024-09-01'),
+      },
+    }),
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[3].id,
+        classId: class10.id,
+        sectionId: section10B.id,
+        rollNumber: '10B002',
+        status: 'ACTIVE',
+        enrollDate: new Date('2024-09-01'),
+      },
+    }),
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[4].id,
+        classId: class11.id,
+        sectionId: section11A.id,
+        rollNumber: '11A001',
+        status: 'ACTIVE',
+        enrollDate: new Date('2023-09-01'),
+      },
+    }),
+    prisma.classEnrollment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[5].id,
+        classId: class11.id,
+        sectionId: section11A.id,
+        rollNumber: '11A002',
+        status: 'ACTIVE',
+        enrollDate: new Date('2023-09-01'),
+      },
+    }),
+  ]);
+
+  // 11. Create Exam Types
+  console.log('📋 Creating exam types...');
+  const examTypes = await Promise.all([
+    prisma.examType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Mid-term Exam',
+        description: 'Mid-semester examination',
+        weight: 30,
+        isActive: true,
+        includeInGradeCard: true,
+      },
+    }),
+    prisma.examType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Final Exam',
+        description: 'End of semester examination',
+        weight: 50,
+        isActive: true,
+        includeInGradeCard: true,
+      },
+    }),
+    prisma.examType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Quiz',
+        description: 'Short assessment',
+        weight: 10,
+        isActive: true,
+        includeInGradeCard: true,
+      },
+    }),
+  ]);
+
+  // 12. Create Exams
+  console.log('📝 Creating exams...');
+  const exams = await Promise.all([
+    prisma.exam.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mathematics Mid-term',
+        examTypeId: examTypes[0].id,
+        subjectId: subjects[0].id,
+        termId: term1.id,
+        examDate: new Date('2024-10-15'),
+        startTime: new Date('2024-10-15T09:00:00'),
+        endTime: new Date('2024-10-15T11:00:00'),
+        totalMarks: 100,
+        passingMarks: 50,
+        creatorId: teachers[0].id,
+      },
+    }),
+    prisma.exam.create({
+      data: {
+        schoolId: school.id,
+        title: 'Physics Mid-term',
+        examTypeId: examTypes[0].id,
+        subjectId: subjects[1].id,
+        termId: term1.id,
+        examDate: new Date('2024-10-16'),
+        startTime: new Date('2024-10-16T09:00:00'),
+        endTime: new Date('2024-10-16T11:00:00'),
+        totalMarks: 100,
+        passingMarks: 50,
+        creatorId: teachers[1].id,
+      },
+    }),
+    prisma.exam.create({
+      data: {
+        schoolId: school.id,
+        title: 'English Final',
+        examTypeId: examTypes[1].id,
+        subjectId: subjects[3].id,
+        termId: term1.id,
+        examDate: new Date('2024-12-10'),
+        startTime: new Date('2024-12-10T09:00:00'),
+        endTime: new Date('2024-12-10T12:00:00'),
+        totalMarks: 100,
+        passingMarks: 50,
+        creatorId: teachers[2].id,
+      },
+    }),
+  ]);
+
+  // 13. Create Exam Results
+  console.log('📊 Creating exam results...');
+  await Promise.all([
+    prisma.examResult.create({
+      data: {
+        schoolId: school.id,
+        examId: exams[0].id,
+        studentId: students[0].id,
+        marks: 85,
+        grade: 'A',
+        remarks: 'Excellent performance',
+      },
+    }),
+    prisma.examResult.create({
+      data: {
+        schoolId: school.id,
+        examId: exams[0].id,
+        studentId: students[1].id,
+        marks: 78,
+        grade: 'B+',
+        remarks: 'Good work',
+      },
+    }),
+    prisma.examResult.create({
+      data: {
+        schoolId: school.id,
+        examId: exams[1].id,
+        studentId: students[0].id,
+        marks: 92,
+        grade: 'A+',
+        remarks: 'Outstanding',
+      },
+    }),
+    prisma.examResult.create({
+      data: {
+        schoolId: school.id,
+        examId: exams[1].id,
+        studentId: students[2].id,
+        marks: 65,
+        grade: 'C+',
+        remarks: 'Satisfactory',
+      },
+    }),
+  ]);
+
+  // 14. Create Grade Scale
+  console.log('📈 Creating grade scale...');
+  await Promise.all([
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'A+', minMarks: 90, maxMarks: 100, gpa: 4.0, description: 'Outstanding'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'A', minMarks: 80, maxMarks: 89, gpa: 3.7, description: 'Excellent'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'B+', minMarks: 70, maxMarks: 79, gpa: 3.3, description: 'Very Good'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'B', minMarks: 60, maxMarks: 69, gpa: 3.0, description: 'Good'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'C+', minMarks: 55, maxMarks: 59, gpa: 2.7, description: 'Above Average'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'C', minMarks: 50, maxMarks: 54, gpa: 2.3, description: 'Average'
+      },
+    }),
+    prisma.gradeScale.create({
+      data: {
+        schoolId: school.id, grade: 'F', minMarks: 0, maxMarks: 49, gpa: 0.0, description: 'Fail'
+      },
+    }),
+  ]);
+
+  // 15. Create Assignments
+  console.log('📄 Creating assignments...');
+  const assignments = await Promise.all([
+    prisma.assignment.create({
+      data: {
+        schoolId: school.id,
+        title: 'Algebra Problem Set',
+        description: 'Complete exercises 1-20 from Chapter 5',
+        subjectId: subjects[0].id,
+        assignedDate: new Date('2024-09-15'),
+        dueDate: new Date('2024-09-22'),
+        totalMarks: 50,
+        creatorId: teachers[0].id,
+        instructions: 'Show all work. Submit handwritten or typed solutions.',
+      },
+    }),
+    prisma.assignment.create({
+      data: {
+        schoolId: school.id,
+        title: 'Physics Lab Report',
+        description: 'Write a report on the pendulum experiment',
+        subjectId: subjects[1].id,
+        assignedDate: new Date('2024-09-20'),
+        dueDate: new Date('2024-09-27'),
+        totalMarks: 30,
+        creatorId: teachers[1].id,
+        instructions: 'Include hypothesis, procedure, observations, and conclusion.',
+      },
+    }),
+    prisma.assignment.create({
+      data: {
+        schoolId: school.id,
+        title: 'Essay on Shakespeare',
+        description: 'Write a 500-word essay on Hamlet',
+        subjectId: subjects[3].id,
+        assignedDate: new Date('2024-09-18'),
+        dueDate: new Date('2024-09-25'),
+        totalMarks: 40,
+        creatorId: teachers[2].id,
+        instructions: 'Use MLA format. Include citations.',
+      },
+    }),
+  ]);
+
+  // Link assignments to classes
+  await Promise.all([
+    prisma.assignmentClass.create({
+      data: {
+        schoolId: school.id, assignmentId: assignments[0].id, classId: class10.id
+      },
+    }),
+    prisma.assignmentClass.create({
+      data: {
+        schoolId: school.id, assignmentId: assignments[1].id, classId: class10.id
+      },
+    }),
+    prisma.assignmentClass.create({
+      data: {
+        schoolId: school.id, assignmentId: assignments[2].id, classId: class10.id
+      },
+    }),
+  ]);
+
+  // 16. Create Assignment Submissions
+  console.log('✍️ Creating assignment submissions...');
+  await Promise.all([
+    prisma.assignmentSubmission.create({
+      data: {
+        schoolId: school.id,
+        assignmentId: assignments[0].id,
+        studentId: students[0].id,
+        submissionDate: new Date('2024-09-21'),
+        content: 'Completed all 20 problems',
+        marks: 48,
+        feedback: 'Excellent work!',
+        status: 'GRADED',
+      },
+    }),
+    prisma.assignmentSubmission.create({
+      data: {
+        schoolId: school.id,
+        assignmentId: assignments[0].id,
+        studentId: students[1].id,
+        submissionDate: new Date('2024-09-22'),
+        content: 'Completed all problems',
+        marks: 42,
+        feedback: 'Good effort',
+        status: 'GRADED',
+      },
+    }),
+    prisma.assignmentSubmission.create({
+      data: {
+        schoolId: school.id,
+        assignmentId: assignments[1].id,
+        studentId: students[0].id,
+        submissionDate: new Date('2024-09-26'),
+        content: 'Lab report submitted',
+        status: 'SUBMITTED',
+      },
+    }),
+  ]);
+
+  // 17. Create Attendance Records
+  console.log('✅ Creating attendance records...');
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  await Promise.all([
+    prisma.studentAttendance.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[0].id,
+        date: yesterday,
+        sectionId: section10A.id,
+        status: 'PRESENT',
+        markedBy: teacherUsers[0].id,
+      },
+    }),
+    prisma.studentAttendance.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[1].id,
+        date: yesterday,
+        sectionId: section10A.id,
+        status: 'PRESENT',
+        markedBy: teacherUsers[0].id,
+      },
+    }),
+    prisma.studentAttendance.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[2].id,
+        date: yesterday,
+        sectionId: section10B.id,
+        status: 'ABSENT',
+        reason: 'Sick',
+        markedBy: teacherUsers[0].id,
+      },
+    }),
+    prisma.teacherAttendance.create({
+      data: {
+        schoolId: school.id,
+        teacherId: teachers[0].id,
+        date: yesterday,
+        status: 'PRESENT',
+        markedBy: adminUser.id,
+      },
+    }),
+    prisma.teacherAttendance.create({
+      data: {
+        schoolId: school.id,
+        teacherId: teachers[1].id,
+        date: yesterday,
+        status: 'PRESENT',
+        markedBy: adminUser.id,
+      },
+    }),
+  ]);
+
+  // 18. Create Fee Types and Structure
+  console.log('💰 Creating fee structure...');
+  const feeTypes = await Promise.all([
+    prisma.feeType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Tuition Fee',
+        description: 'Annual tuition fee',
+        amount: 5000,
+        frequency: 'ANNUAL',
+        isOptional: false,
+      },
+    }),
+    prisma.feeType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Library Fee',
+        description: 'Annual library access fee',
+        amount: 200,
+        frequency: 'ANNUAL',
+        isOptional: false,
+      },
+    }),
+    prisma.feeType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Sports Fee',
+        description: 'Sports and athletics fee',
+        amount: 300,
+        frequency: 'ANNUAL',
+        isOptional: true,
+      },
+    }),
+    prisma.feeType.create({
+      data: {
+        schoolId: school.id,
+        name: 'Lab Fee',
+        description: 'Science laboratory fee',
+        amount: 400,
+        frequency: 'ANNUAL',
+        isOptional: false,
+      },
+    }),
+  ]);
+
+  const feeStructure = await prisma.feeStructure.create({
+    data: {
+      schoolId: school.id,
+      name: '2024-2025 Fee Structure',
+      academicYearId: academicYear.id,
+      applicableClasses: 'Grade 10, Grade 11',
+      description: 'Standard fee structure for academic year 2024-2025',
+      validFrom: new Date('2024-09-01'),
+      isActive: true,
+    },
+  });
+
+  await Promise.all([
+    prisma.feeStructureItem.create({
+      data: {
+        schoolId: school.id,
+        feeStructureId: feeStructure.id,
+        feeTypeId: feeTypes[0].id,
+        amount: 5000,
+        dueDate: new Date('2024-10-01'),
+      },
+    }),
+    prisma.feeStructureItem.create({
+      data: {
+        schoolId: school.id,
+        feeStructureId: feeStructure.id,
+        feeTypeId: feeTypes[1].id,
+        amount: 200,
+        dueDate: new Date('2024-10-01'),
+      },
+    }),
+    prisma.feeStructureItem.create({
+      data: {
+        schoolId: school.id,
+        feeStructureId: feeStructure.id,
+        feeTypeId: feeTypes[2].id,
+        amount: 300,
+        dueDate: new Date('2024-10-01'),
+      },
+    }),
+    prisma.feeStructureItem.create({
+      data: {
+        schoolId: school.id,
+        feeStructureId: feeStructure.id,
+        feeTypeId: feeTypes[3].id,
+        amount: 400,
+        dueDate: new Date('2024-10-01'),
+      },
+    }),
+  ]);
+
+  // 19. Create Fee Payments
+  console.log('💳 Creating fee payments...');
+  await Promise.all([
+    prisma.feePayment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[0].id,
+        feeStructureId: feeStructure.id,
+        amount: 5900,
+        paidAmount: 5900,
+        balance: 0,
+        paymentDate: new Date('2024-09-15'),
+        paymentMethod: 'BANK_TRANSFER',
+        transactionId: 'TXN001',
+        receiptNumber: 'RCP001',
+        status: 'COMPLETED',
+      },
+    }),
+    prisma.feePayment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[1].id,
+        feeStructureId: feeStructure.id,
+        amount: 5900,
+        paidAmount: 3000,
+        balance: 2900,
+        paymentDate: new Date('2024-09-20'),
+        paymentMethod: 'CASH',
+        receiptNumber: 'RCP002',
+        status: 'PARTIAL',
+      },
+    }),
+    prisma.feePayment.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[2].id,
+        feeStructureId: feeStructure.id,
+        amount: 5900,
+        paidAmount: 0,
+        balance: 5900,
+        paymentDate: new Date('2024-09-01'),
+        paymentMethod: 'CASH',
+        status: 'PENDING',
+      },
+    }),
+  ]);
+
+  // 20. Create Scholarships
+  console.log('🎓 Creating scholarships...');
+  const scholarship = await prisma.scholarship.create({
+    data: {
+      schoolId: school.id,
+      name: 'Merit Scholarship',
+      description: 'For students with excellent academic performance',
+      amount: 2000,
+      percentage: 50,
+      criteria: 'GPA above 3.5',
+      duration: '1 Academic Year',
+      fundedBy: 'School Foundation',
+    },
+  });
+
+  await prisma.scholarshipRecipient.create({
+    data: {
+      schoolId: school.id,
+      scholarshipId: scholarship.id,
+      studentId: students[0].id,
+      awardDate: new Date('2024-09-01'),
+      endDate: new Date('2025-06-30'),
+      amount: 2000,
+      status: 'Active',
+    },
+  });
+
+  // 21. Create Budget and Expenses
+  console.log('📊 Creating budget and expenses...');
+  const budget = await prisma.budget.create({
+    data: {
+      schoolId: school.id,
+      title: 'Academic Year 2024-2025 Budget',
+      description: 'Annual budget for operations',
+      academicYearId: academicYear.id,
+      category: 'Operations',
+      allocatedAmount: 500000,
+      startDate: new Date('2024-09-01'),
+      endDate: new Date('2025-06-30'),
+      status: 'Active',
+    },
+  });
+
+  await Promise.all([
+    prisma.expense.create({
+      data: {
+        schoolId: school.id,
+        title: 'Office Supplies',
+        description: 'Stationery and office materials',
+        amount: 1500,
+        date: new Date('2024-09-10'),
+        category: 'Supplies',
+        paymentMethod: 'CREDIT_CARD',
+        paymentStatus: 'COMPLETED',
+        paidTo: 'Office Depot',
+        receiptNumber: 'EXP001',
+        budgetId: budget.id,
+      },
+    }),
+    prisma.expense.create({
+      data: {
+        schoolId: school.id,
+        title: 'Lab Equipment',
+        description: 'Chemistry lab equipment',
+        amount: 5000,
+        date: new Date('2024-09-15'),
+        category: 'Equipment',
+        paymentMethod: 'BANK_TRANSFER',
+        paymentStatus: 'COMPLETED',
+        paidTo: 'Science Supply Co.',
+        receiptNumber: 'EXP002',
+        budgetId: budget.id,
+      },
+    }),
+  ]);
+
+  // 22. Create Payroll
+  console.log('💵 Creating payroll records...');
+  await Promise.all([
+    prisma.payroll.create({
+      data: {
+        schoolId: school.id,
+        teacherId: teachers[0].id,
+        month: 9,
+        year: 2024,
+        basicSalary: 55000,
+        allowances: 5000,
+        deductions: 3000,
+        netSalary: 57000,
+        paymentDate: new Date('2024-09-30'),
+        paymentMethod: 'BANK_TRANSFER',
+        transactionId: 'PAY001',
+        status: 'COMPLETED',
+      },
+    }),
+    prisma.payroll.create({
+      data: {
+        schoolId: school.id,
+        teacherId: teachers[1].id,
+        month: 9,
+        year: 2024,
+        basicSalary: 62000,
+        allowances: 5000,
+        deductions: 3500,
+        netSalary: 63500,
+        paymentDate: new Date('2024-09-30'),
+        paymentMethod: 'BANK_TRANSFER',
+        transactionId: 'PAY002',
+        status: 'COMPLETED',
+      },
+    }),
+  ]);
+
+  // 23. Create Messages
+  console.log('💬 Creating messages...');
+  await Promise.all([
+    prisma.message.create({
+      data: {
+        schoolId: school.id,
+        senderId: teacherUsers[0].id,
+        recipientId: parentUsers[0].id,
+        subject: 'Student Progress Update',
+        content: 'Alex is doing excellent in Mathematics. Keep up the good work!',
+        isRead: true,
+        readAt: new Date('2024-09-16'),
+      },
+    }),
+    prisma.message.create({
+      data: {
+        schoolId: school.id,
+        senderId: adminUser.id,
+        recipientId: teacherUsers[0].id,
+        subject: 'Staff Meeting',
+        content: 'Please attend the staff meeting on Friday at 3 PM.',
+        isRead: false,
+      },
+    }),
+    prisma.message.create({
+      data: {
+        schoolId: school.id,
+        senderId: studentUsers[0].id,
+        recipientId: teacherUsers[0].id,
+        subject: 'Assignment Submission',
+        content: 'Please find attached my assignment for review.',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+          'https://res.cloudinary.com/demo/image/upload/docs/sample.pdf'
+        ]),
+        isRead: false,
+      },
+    }),
+    prisma.message.create({
+      data: {
+        schoolId: school.id,
+        senderId: teacherUsers[0].id,
+        recipientId: studentUsers[0].id,
+        subject: 'Homework Materials',
+        content: 'Here are the materials for this week\'s homework.',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/docs/homework.pdf'
+        ]),
+        isRead: true,
+        readAt: new Date('2024-09-17'),
+      },
+    }),
+    prisma.message.create({
+      data: {
+        schoolId: school.id,
+        senderId: parentUsers[0].id,
+        recipientId: teacherUsers[1].id,
+        subject: 'Hello',
+        content: 'Testing',
+        attachments: JSON.stringify([
+          'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+          'https://res.cloudinary.com/demo/raw/upload/sample.pdf'
+        ]),
+        isRead: false,
+      },
+    }),
+  ]);
+
+  // 24. Create Announcements
+  console.log('📢 Creating announcements...');
+  await Promise.all([
+    prisma.announcement.create({
+      data: {
+        schoolId: school.id,
+        title: 'School Reopening',
+        content: 'School will reopen on September 1st, 2024. All students are expected to attend.',
+        publisherId: admin.id,
+        targetAudience: ['STUDENT', 'PARENT', 'TEACHER'],
+        startDate: new Date('2024-08-15'),
+        isActive: true,
+      },
+    }),
+    prisma.announcement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Parent-Teacher Meeting',
+        content: 'Parent-teacher meeting scheduled for October 15th, 2024.',
+        publisherId: admin.id,
+        targetAudience: ['PARENT', 'TEACHER'],
+        startDate: new Date('2024-10-01'),
+        endDate: new Date('2024-10-15'),
+        isActive: true,
+      },
+    }),
+  ]);
+
+  // 25. Create Notifications
+  console.log('🔔 Creating notifications...');
+  await Promise.all([
+    prisma.notification.create({
+      data: {
+        schoolId: school.id,
+        userId: studentUsers[0].id,
+        title: 'Assignment Due',
+        message: 'Your Algebra assignment is due tomorrow',
+        type: 'WARNING',
+        isRead: false,
+        updatedAt: new Date(),
+      },
+    }),
+    prisma.notification.create({
+      data: {
+        schoolId: school.id,
+        userId: parentUsers[0].id,
+        title: 'Fee Payment Reminder',
+        message: 'Please complete the fee payment by October 1st',
+        type: 'INFO',
+        isRead: false,
+        updatedAt: new Date(),
+      },
+    }),
+  ]);
+
+  // 26. Create Parent Meetings
+  console.log('👨‍👩‍👧 Creating parent meetings...');
+  await Promise.all([
+    prisma.parentMeeting.create({
+      data: {
+        schoolId: school.id,
+        title: 'Discuss Academic Progress',
+        description: 'Meeting to discuss Alex\'s academic performance',
+        parentId: parents[0].id,
+        teacherId: teachers[0].id,
+        scheduledDate: new Date('2024-10-20T14:00:00'),
+        duration: 30,
+        status: 'SCHEDULED',
+        location: 'Room 101',
+      },
+    }),
+    prisma.parentMeeting.create({
+      data: {
+        schoolId: school.id,
+        title: 'Behavioral Discussion',
+        description: 'Meeting to discuss student behavior',
+        parentId: parents[2].id,
+        teacherId: teachers[1].id,
+        scheduledDate: new Date('2024-10-22T15:00:00'),
+        duration: 30,
+        status: 'SCHEDULED',
+        location: 'Room 102',
+      },
+    }),
+  ]);
+
+  // 27. Create Document Types and Documents
+  console.log('📁 Creating documents...');
+  const docType = await prisma.documentType.create({
+    data: {
+      schoolId: school.id,
+      name: 'Academic Records',
+      description: 'Student academic records and transcripts',
+    },
+  });
+
+  await Promise.all([
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Student Handbook 2024-2025',
+        description: 'Official student handbook',
+        fileName: 'student-handbook-2024.pdf',
+        fileUrl: '/documents/student-handbook-2024.pdf',
+        fileType: 'application/pdf',
+        fileSize: 2048000,
+        userId: adminUser.id,
+        documentTypeId: docType.id,
+        isPublic: true,
+        tags: 'handbook,rules,policies',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Academic Calendar',
+        description: '2024-2025 Academic Calendar',
+        fileName: 'academic-calendar-2024.pdf',
+        fileUrl: '/documents/academic-calendar-2024.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1024000,
+        userId: adminUser.id,
+        isPublic: true,
+        tags: 'calendar,schedule',
+      },
+    }),
+  ]);
+
+  // 28. Create Events
+  console.log('🎉 Creating events...');
+  const events = await Promise.all([
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Annual Sports Day',
+        description: 'School annual sports competition',
+        startDate: new Date('2024-11-15T08:00:00'),
+        endDate: new Date('2024-11-15T17:00:00'),
+        location: 'School Sports Ground',
+        organizer: 'Sports Department',
+        type: 'Sports',
+        category: 'SCHOOL_EVENT',
+        status: 'UPCOMING',
+        maxParticipants: 200,
+        registrationDeadline: new Date('2024-11-10'),
+        isPublic: true,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Science Fair',
+        description: 'Annual science project exhibition',
+        startDate: new Date('2024-12-05T09:00:00'),
+        endDate: new Date('2024-12-05T16:00:00'),
+        location: 'School Auditorium',
+        organizer: 'Science Department',
+        type: 'Academic',
+        category: 'SCHOOL_EVENT',
+        status: 'UPCOMING',
+        maxParticipants: 100,
+        registrationDeadline: new Date('2024-11-30'),
+        isPublic: true,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mathematics Department Meeting',
+        description: 'Monthly department meeting to discuss curriculum updates and student progress',
+        startDate: new Date('2024-11-20T14:00:00'),
+        endDate: new Date('2024-11-20T16:00:00'),
+        location: 'Conference Room A',
+        organizer: 'Mathematics Department',
+        type: 'Meeting',
+        category: 'TEACHER_MEETING',
+        status: 'UPCOMING',
+        maxParticipants: 20,
+        registrationDeadline: new Date('2024-11-18'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Parent-Teacher Conference - Fall 2024',
+        description: 'Scheduled meetings with parents to discuss student progress and concerns',
+        startDate: new Date('2024-11-25T09:00:00'),
+        endDate: new Date('2024-11-25T17:00:00'),
+        location: 'Various Classrooms',
+        organizer: 'Administration',
+        type: 'Conference',
+        category: 'PARENT_TEACHER_CONFERENCE',
+        status: 'UPCOMING',
+        maxParticipants: 150,
+        registrationDeadline: new Date('2024-11-22'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Professional Development Workshop: Modern Teaching Methods',
+        description: 'Workshop on integrating technology and modern pedagogical approaches in the classroom',
+        startDate: new Date('2024-12-10T09:00:00'),
+        endDate: new Date('2024-12-10T15:00:00'),
+        location: 'Main Auditorium',
+        organizer: 'Professional Development Committee',
+        type: 'Workshop',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        status: 'UPCOMING',
+        maxParticipants: 50,
+        registrationDeadline: new Date('2024-12-05'),
+        isPublic: false,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Winter Break',
+        description: 'School closed for winter holidays',
+        startDate: new Date('2024-12-21T00:00:00'),
+        endDate: new Date('2025-01-05T23:59:59'),
+        location: 'N/A',
+        organizer: 'Administration',
+        type: 'Holiday',
+        category: 'HOLIDAY',
+        status: 'UPCOMING',
+        isPublic: true,
+      },
+    }),
+    prisma.event.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mid-term Examinations',
+        description: 'Mid-term examinations for all grades',
+        startDate: new Date('2024-10-14T09:00:00'),
+        endDate: new Date('2024-10-18T15:00:00'),
+        location: 'All Classrooms',
+        organizer: 'Examination Department',
+        type: 'Examination',
+        category: 'EXAM',
+        status: 'COMPLETED',
+        isPublic: true,
+      },
+    }),
+  ]);
+
+  // 29. Create Event Participants
+  console.log('🎯 Creating event participants...');
+  await Promise.all([
+    prisma.eventParticipant.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[0].id,
+        userId: studentUsers[0].id,
+        role: 'ATTENDEE',
+        registrationDate: new Date('2024-11-01'),
+      },
+    }),
+    prisma.eventParticipant.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[0].id,
+        userId: studentUsers[1].id,
+        role: 'ATTENDEE',
+        registrationDate: new Date('2024-11-02'),
+      },
+    }),
+    prisma.eventParticipant.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[1].id,
+        userId: studentUsers[0].id,
+        role: 'ATTENDEE',
+        registrationDate: new Date('2024-11-20'),
+      },
+    }),
+  ]);
+
+  // 29a. Create Event RSVPs for Teachers
+  console.log('📅 Creating event RSVPs for teachers...');
+  await Promise.all([
+    // Mathematics Department Meeting RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[2].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[2].id,
+        userId: teacherUsers[1].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    // Parent-Teacher Conference RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[3].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[3].id,
+        userId: teacherUsers[1].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[3].id,
+        userId: teacherUsers[2].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[3].id,
+        userId: teacherUsers[3].id,
+        status: 'DECLINED',
+      },
+    }),
+    // Professional Development Workshop RSVPs
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[4].id,
+        userId: teacherUsers[0].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[4].id,
+        userId: teacherUsers[1].id,
+        status: 'MAYBE',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[4].id,
+        userId: teacherUsers[2].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[4].id,
+        userId: teacherUsers[3].id,
+        status: 'ACCEPTED',
+      },
+    }),
+    prisma.eventRSVP.create({
+      data: {
+        schoolId: school.id,
+        eventId: events[4].id,
+        userId: teacherUsers[4].id,
+        status: 'PENDING',
+      },
+    }),
+  ]);
+
+  // 30. Create Leave Applications
+  console.log('📝 Creating leave applications...');
+  await Promise.all([
+    prisma.leaveApplication.create({
+      data: {
+        schoolId: school.id,
+        applicantId: studentUsers[2].id,
+        applicantType: 'STUDENT',
+        fromDate: new Date('2024-10-10'),
+        toDate: new Date('2024-10-12'),
+        reason: 'Family emergency',
+        status: 'APPROVED',
+        approvedById: adminUser.id,
+        approvedOn: new Date('2024-10-08'),
+        remarks: 'Approved',
+      },
+    }),
+    prisma.leaveApplication.create({
+      data: {
+        schoolId: school.id,
+        applicantId: teacherUsers[2].id,
+        applicantType: 'TEACHER',
+        fromDate: new Date('2024-10-25'),
+        toDate: new Date('2024-10-26'),
+        reason: 'Medical appointment',
+        status: 'PENDING',
+      },
+    }),
+  ]);
+
+  // 31. Create Classrooms
+  console.log('🏫 Creating classrooms...');
+  await Promise.all([
+    prisma.classRoom.create({
+      data: {
+        schoolId: school.id,
+        name: 'Room 101',
+        capacity: 35,
+        building: 'Main Building',
+        floor: '1st Floor',
+        description: 'Standard classroom with projector',
+      },
+    }),
+    prisma.classRoom.create({
+      data: {
+        schoolId: school.id,
+        name: 'Science Lab 1',
+        capacity: 30,
+        building: 'Science Block',
+        floor: '2nd Floor',
+        description: 'Physics and Chemistry laboratory',
+      },
+    }),
+    prisma.classRoom.create({
+      data: {
+        schoolId: school.id,
+        name: 'Computer Lab',
+        capacity: 40,
+        building: 'Main Building',
+        floor: '3rd Floor',
+        description: 'Computer lab with 40 workstations',
+      },
+    }),
+  ]);
+
+  // 32. Create Student and Parent Settings
+  console.log('⚙️  Creating user settings...');
+  await Promise.all([
+    prisma.studentSettings.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[0].id,
+        emailNotifications: true,
+        assignmentReminders: true,
+        examReminders: true,
+        attendanceAlerts: true,
+        profileVisibility: 'PRIVATE',
+        theme: 'LIGHT',
+        language: 'en',
+      },
+    }),
+    prisma.studentSettings.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[1].id,
+        emailNotifications: true,
+        assignmentReminders: true,
+        examReminders: true,
+        theme: 'DARK',
+        language: 'en',
+      },
+    }),
+    prisma.parentSettings.create({
+      data: {
+        schoolId: school.id,
+        parentId: parents[0].id,
+        emailNotifications: true,
+        smsNotifications: true,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        examResultNotifications: true,
+        preferredContactMethod: 'EMAIL',
+        notificationFrequency: 'IMMEDIATE',
+        theme: 'LIGHT',
+        language: 'en',
+      },
+    }),
+    prisma.parentSettings.create({
+      data: {
+        schoolId: school.id,
+        parentId: parents[1].id,
+        emailNotifications: true,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        preferredContactMethod: 'BOTH',
+        notificationFrequency: 'DAILY_DIGEST',
+        theme: 'SYSTEM',
+        language: 'en',
+      },
+    }),
+    prisma.parentSettings.create({
+      data: {
+        schoolId: school.id,
+        parentId: parents[2].id,
+        emailNotifications: true,
+        smsNotifications: false,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        examResultNotifications: true,
+        announcementNotifications: true,
+        meetingReminders: true,
+        preferredContactMethod: 'EMAIL',
+        notificationFrequency: 'IMMEDIATE',
+        theme: 'LIGHT',
+        language: 'en',
+      },
+    }),
+    prisma.parentSettings.create({
+      data: {
+        schoolId: school.id,
+        parentId: parents[3].id,
+        emailNotifications: true,
+        smsNotifications: true,
+        pushNotifications: true,
+        feeReminders: true,
+        attendanceAlerts: true,
+        examResultNotifications: true,
+        announcementNotifications: true,
+        meetingReminders: true,
+        preferredContactMethod: 'SMS',
+        notificationFrequency: 'WEEKLY_DIGEST',
+        theme: 'DARK',
+        language: 'en',
+      },
+    }),
+  ]);
+
+  // 33. Create Syllabus and Lessons
+  console.log('📖 Creating syllabus and lessons...');
+  const syllabus = await prisma.syllabus.create({
+    data: {
+      schoolId: school.id,
+      title: 'Mathematics Grade 10 Syllabus',
+      description: 'Complete syllabus for Grade 10 Mathematics',
+      subjectId: subjects[0].id,
+      createdBy: adminUser.id,
+    },
+  });
+
+  const syllabusUnit = await prisma.syllabusUnit.create({
+    data: {
+      schoolId: school.id,
+      title: 'Algebra',
+      description: 'Introduction to algebraic expressions and equations',
+      syllabusId: syllabus.id,
+      order: 1,
+    },
+  });
+
+  await Promise.all([
+    prisma.lesson.create({
+      data: {
+        schoolId: school.id,
+        title: 'Linear Equations',
+        description: 'Solving linear equations in one variable',
+        subjectId: subjects[0].id,
+        syllabusUnitId: syllabusUnit.id,
+        content: 'Introduction to linear equations and methods to solve them',
+        duration: 45,
+      },
+    }),
+    prisma.lesson.create({
+      data: {
+        schoolId: school.id,
+        title: 'Quadratic Equations',
+        description: 'Solving quadratic equations using various methods',
+        subjectId: subjects[0].id,
+        syllabusUnitId: syllabusUnit.id,
+        content: 'Factorization, completing the square, and quadratic formula',
+        duration: 60,
+      },
+    }),
+  ]);
+
+  // 34. Create Report Cards
+  console.log('📊 Creating report cards...');
+  await Promise.all([
+    prisma.reportCard.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[0].id,
+        termId: term1.id,
+        totalMarks: 450,
+        averageMarks: 90,
+        percentage: 90,
+        grade: 'A+',
+        rank: 1,
+        attendance: 95,
+        teacherRemarks: 'Excellent performance throughout the term',
+        principalRemarks: 'Keep up the outstanding work',
+        isPublished: true,
+        publishDate: new Date('2024-12-25'),
+      },
+    }),
+    prisma.reportCard.create({
+      data: {
+        schoolId: school.id,
+        studentId: students[1].id,
+        termId: term1.id,
+        totalMarks: 390,
+        averageMarks: 78,
+        percentage: 78,
+        grade: 'B+',
+        rank: 2,
+        attendance: 92,
+        teacherRemarks: 'Good progress, needs improvement in Physics',
+        principalRemarks: 'Well done',
+        isPublished: true,
+        publishDate: new Date('2024-12-25'),
+      },
+    }),
+  ]);
+
+  // 35. Create Teacher Documents
+  console.log('📄 Creating teacher documents...');
+  await Promise.all([
+    // Sarah Johnson's documents
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mathematics Teaching Certificate',
+        description: 'State Board Teaching Certificate for Mathematics',
+        fileName: 'math-teaching-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/sample-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 524288,
+        userId: teacherUsers[0].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,qualification,mathematics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Algebra Lesson Plan - Grade 10',
+        description: 'Comprehensive lesson plan for teaching algebra to Grade 10 students',
+        fileName: 'algebra-lesson-plan.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/lesson-plan.pdf',
+        fileType: 'application/pdf',
+        fileSize: 256000,
+        userId: teacherUsers[0].id,
+        category: 'LESSON_PLAN',
+        isPublic: false,
+        tags: 'lesson plan,algebra,grade 10',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mathematics Curriculum 2024-2025',
+        description: 'Updated mathematics curriculum for the academic year',
+        fileName: 'math-curriculum-2024.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/curriculum.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1048576,
+        userId: teacherUsers[0].id,
+        category: 'CURRICULUM',
+        isPublic: false,
+        tags: 'curriculum,mathematics,2024-2025',
+      },
+    }),
+    // Michael Chen's documents
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Physics PhD Certificate',
+        description: 'Doctorate degree in Physics from State University',
+        fileName: 'phd-certificate.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/phd-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 614400,
+        userId: teacherUsers[1].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,phd,physics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Physics Lab Safety Guidelines',
+        description: 'Safety protocols and guidelines for physics laboratory',
+        fileName: 'lab-safety.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/safety.pdf',
+        fileType: 'application/pdf',
+        fileSize: 204800,
+        userId: teacherUsers[1].id,
+        category: 'POLICY',
+        isPublic: false,
+        tags: 'safety,laboratory,physics',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Mechanics Teaching Materials',
+        description: 'Supplementary teaching materials for mechanics unit',
+        fileName: 'mechanics-materials.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/teaching-materials.pdf',
+        fileType: 'application/pdf',
+        fileSize: 819200,
+        userId: teacherUsers[1].id,
+        category: 'TEACHING_MATERIAL',
+        isPublic: false,
+        tags: 'teaching materials,mechanics,physics',
+      },
+    }),
+    // Emily Rodriguez's documents
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'English Literature MA Certificate',
+        description: 'Master of Arts in English Literature',
+        fileName: 'ma-english-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/ma-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 491520,
+        userId: teacherUsers[2].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,english',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Shakespeare Unit Lesson Plans',
+        description: 'Complete lesson plans for teaching Shakespeare',
+        fileName: 'shakespeare-lessons.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/shakespeare.pdf',
+        fileType: 'application/pdf',
+        fileSize: 358400,
+        userId: teacherUsers[2].id,
+        category: 'LESSON_PLAN',
+        isPublic: false,
+        tags: 'lesson plan,shakespeare,literature',
+      },
+    }),
+    // David Williams's documents
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Chemistry MSc Certificate',
+        description: 'Master of Science in Chemistry',
+        fileName: 'msc-chemistry-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/msc-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 512000,
+        userId: teacherUsers[3].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,chemistry',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'Organic Chemistry Lab Manual',
+        description: 'Laboratory manual for organic chemistry experiments',
+        fileName: 'organic-chem-lab.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/lab-manual.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1536000,
+        userId: teacherUsers[3].id,
+        category: 'TEACHING_MATERIAL',
+        isPublic: false,
+        tags: 'lab manual,organic chemistry,experiments',
+      },
+    }),
+    // Lisa Anderson's documents
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'History MA Certificate',
+        description: 'Master of Arts in History',
+        fileName: 'ma-history-cert.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/history-cert.pdf',
+        fileType: 'application/pdf',
+        fileSize: 460800,
+        userId: teacherUsers[4].id,
+        category: 'CERTIFICATE',
+        isPublic: false,
+        tags: 'certificate,masters,history',
+      },
+    }),
+    prisma.document.create({
+      data: {
+        schoolId: school.id,
+        title: 'World History Curriculum Guide',
+        description: 'Comprehensive curriculum guide for world history',
+        fileName: 'world-history-curriculum.pdf',
+        fileUrl: 'https://res.cloudinary.com/demo/image/upload/history-curriculum.pdf',
+        fileType: 'application/pdf',
+        fileSize: 921600,
+        userId: teacherUsers[4].id,
+        category: 'CURRICULUM',
+        isPublic: false,
+        tags: 'curriculum,world history,guide',
+      },
+    }),
+  ]);
+
+  // 36. Create Teacher Achievements
+  console.log('🏆 Creating teacher achievements...');
+  await Promise.all([
+    // Sarah Johnson's achievements
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Best Mathematics Teacher Award 2023',
+        description: 'Awarded for outstanding contribution to mathematics education and student success',
+        category: 'AWARD',
+        date: new Date('2023-06-15'),
+        teacherId: teachers[0].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/award-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Advanced Teaching Methods Certification',
+        description: 'Completed 40-hour certification program on modern teaching methodologies',
+        category: 'CERTIFICATION',
+        date: new Date('2024-03-20'),
+        teacherId: teachers[0].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/teaching-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'STEM Education Workshop',
+        description: 'Attended 3-day workshop on integrating STEM principles in mathematics education',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-07-10'),
+        teacherId: teachers[0].id,
+        documents: [],
+      },
+    }),
+    // Michael Chen's achievements
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Published Research Paper on Quantum Mechanics',
+        description: 'Research paper published in Journal of Physics Education',
+        category: 'PUBLICATION',
+        date: new Date('2024-02-28'),
+        teacherId: teachers[1].id,
+        documents: [
+          'https://res.cloudinary.com/demo/image/upload/research-paper.pdf',
+          'https://res.cloudinary.com/demo/image/upload/journal-acceptance.pdf',
+        ],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Excellence in Science Teaching Award',
+        description: 'State-level recognition for innovative physics teaching methods',
+        category: 'AWARD',
+        date: new Date('2023-11-05'),
+        teacherId: teachers[1].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/state-award.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Laboratory Safety Certification',
+        description: 'Advanced certification in laboratory safety and management',
+        category: 'CERTIFICATION',
+        date: new Date('2024-01-15'),
+        teacherId: teachers[1].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/safety-cert.pdf'],
+      },
+    }),
+    // Emily Rodriguez's achievements
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Creative Writing Workshop Facilitator',
+        description: 'Led summer creative writing workshop for advanced students',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-06-25'),
+        teacherId: teachers[2].id,
+        documents: [],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Outstanding Educator Recognition',
+        description: 'Recognized by Parent-Teacher Association for exceptional dedication',
+        category: 'RECOGNITION',
+        date: new Date('2024-05-10'),
+        teacherId: teachers[2].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/pta-recognition.pdf'],
+      },
+    }),
+    // David Williams's achievements
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Chemistry Olympiad Coach Certification',
+        description: 'Certified to coach students for national chemistry olympiad',
+        category: 'CERTIFICATION',
+        date: new Date('2024-04-12'),
+        teacherId: teachers[3].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/olympiad-cert.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Green Chemistry Initiative',
+        description: 'Implemented eco-friendly chemistry lab practices',
+        category: 'RECOGNITION',
+        date: new Date('2024-08-20'),
+        teacherId: teachers[3].id,
+        documents: [],
+      },
+    }),
+    // Lisa Anderson's achievements
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Historical Research Grant',
+        description: 'Received grant for research on local historical sites',
+        category: 'AWARD',
+        date: new Date('2024-01-30'),
+        teacherId: teachers[4].id,
+        documents: ['https://res.cloudinary.com/demo/image/upload/grant-award.pdf'],
+      },
+    }),
+    prisma.achievement.create({
+      data: {
+        schoolId: school.id,
+        title: 'Digital History Tools Workshop',
+        description: 'Completed training on using digital tools for history education',
+        category: 'PROFESSIONAL_DEVELOPMENT',
+        date: new Date('2024-09-05'),
+        teacherId: teachers[4].id,
+        documents: [],
+      },
+    }),
+  ]);
+
+  // Seed subscription plans and enhanced billing data
+  await seedSubscriptionPlans();
+
+  console.log('✅ Database seeding completed successfully!');
+  console.log('\n📊 Summary:');
+  console.log('- System Settings: 1');
+  console.log('- Academic Years: 1');
+  console.log('- Terms: 2');
+  console.log('- Departments: 5');
+  console.log('- Users: 16 (1 Admin, 5 Teachers, 6 Students, 4 Parents)');
+  console.log('- Classes: 2');
+  console.log('- Sections: 3');
+  console.log('- Subjects: 5');
+  console.log('- Exams: 3');
+  console.log('- Assignments: 3');
+  console.log('- Events: 7 (including teacher-specific events)');
+  console.log('- Event RSVPs: 11 (teacher RSVPs for meetings and workshops)');
+  console.log('- Teacher Documents: 12 (certificates, lesson plans, curricula)');
+  console.log('- Teacher Achievements: 12 (awards, certifications, publications)');
+  console.log('- And much more...\n');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Error seeding database:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -61,6 +61,7 @@ export async function getTeacherExams(subjectId?: string) {
         subject: true,
         examType: true,
         term: true,
+        class: true,
         results: true,
       },
       orderBy: {
@@ -111,7 +112,7 @@ export async function getTeacherExams(subjectId?: string) {
         title: exam.title,
         subject: exam.subject.name,
         subjectId: exam.subjectId,
-        grade: classesMap[exam.subjectId]?.[0]?.name || "Unknown Class",
+        grade: exam.class?.name || "Unknown Class",
         section: "All", // This is a simplification. You'd need to get the actual sections.
         examType: exam.examType.name,
         date: exam.examDate,
@@ -306,6 +307,7 @@ export async function createExam(formData: FormData) {
     // Extract form data
     const title = formData.get('title') as string;
     const subjectId = formData.get('subjectId') as string;
+    const classId = formData.get('classId') as string;
     const examTypeId = formData.get('examTypeId') as string;
     const termId = formData.get('termId') as string;
     const examDate = new Date(formData.get('examDate') as string);
@@ -336,6 +338,7 @@ export async function createExam(formData: FormData) {
       data: {
         title,
         subjectId,
+        classId,
         examTypeId,
         termId,
         examDate,

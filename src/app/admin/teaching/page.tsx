@@ -63,13 +63,7 @@ const teachingCategories = [
     href: "/admin/teaching/subjects",
     countKey: "subjects"
   },
-  {
-    title: "Lessons",
-    icon: <ClipboardList className="h-5 w-5" />,
-    description: "Create and manage lessons",
-    href: "/admin/teaching/lessons",
-    countKey: "lessons"
-  },
+
   {
     title: "Timetable",
     icon: <Clock className="h-5 w-5" />,
@@ -607,17 +601,7 @@ export default function TeachingPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-md text-gray-700">
-                      <Layers className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Lessons</p>
-                      <p className="text-2xl font-bold">{stats.lessons || 0}</p>
-                    </div>
-                  </div>
-                </div>
+
               </>
             )}
           </CardContent>

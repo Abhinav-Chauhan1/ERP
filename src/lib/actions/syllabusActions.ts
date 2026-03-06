@@ -256,9 +256,6 @@ export const getSyllabusBySubject = withSchoolAuthAction(async (schoolId: string
         units: {
           orderBy: {
             order: 'asc',
-          },
-          include: {
-            lessons: true
           }
         }
       }
@@ -561,11 +558,7 @@ export const cloneSyllabus = withSchoolAuthAction(async (schoolId: string, userI
         id: sourceId
       },
       include: {
-        units: {
-          include: {
-            lessons: true
-          }
-        },
+        units: true,
         modules: true,
       }
     });
@@ -752,7 +745,7 @@ export const getSyllabusWithFallback = withSchoolAuthAction(async (schoolId: str
           section: { select: { id: true, name: true } },
           units: {
             orderBy: { order: 'asc' },
-            include: { lessons: true }
+
           },
           modules: true,
         }
@@ -807,7 +800,7 @@ export const getSyllabusByScope = withSchoolAuthAction(async (schoolId: string, 
         academicYear: { select: { id: true, name: true } },
         class: { select: { id: true, name: true } },
         section: { select: { id: true, name: true } },
-        units: { orderBy: { order: 'asc' }, include: { lessons: true } },
+        units: { orderBy: { order: 'asc' } },
         modules: {
           orderBy: { order: 'asc' },
           include: {

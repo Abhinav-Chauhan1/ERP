@@ -112,9 +112,7 @@ export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, user
           where: { schoolId },
           include: {
             units: {
-              include: {
-                lessons: true
-              },
+
               orderBy: {
                 order: 'asc'
               }
@@ -168,12 +166,7 @@ export const getSubjectById = withSchoolAuthAction(async (schoolId, userId, user
           title: unit.title,
           description: unit.description,
           order: unit.order,
-          lessons: unit.lessons.map(lesson => ({
-            id: lesson.id,
-            title: lesson.title,
-            description: lesson.description,
-            duration: lesson.duration ? `${lesson.duration} mins` : "Not specified"
-          }))
+
         }))
       };
     }

@@ -458,28 +458,7 @@ export async function getTeacherDashboardData() {
         ? ((presentCount / attendanceRecords.length) * 100).toFixed(1)
         : "0.0";
 
-    // Get recent lessons with school isolation
-    const recentLessons = await db.lesson.findMany({
-      where: {
-        schoolId, // Add school isolation
-        subject: {
-          schoolId, // Add school isolation
-          teachers: {
-            some: {
-              teacherId: teacher.id,
-            },
-          },
-        },
-      },
-      include: {
-        subject: true,
-        syllabusUnit: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 3,
-    });
+
 
     // Get recent assignments with school isolation
     const recentAssignments = await db.assignment.findMany({
@@ -699,14 +678,7 @@ export async function getTeacherDashboardData() {
           startDate: format(announcement.startDate, "MMM dd, yyyy"),
           createdAt: format(announcement.createdAt, "MMM dd, yyyy"),
         })),
-        recentLessons: recentLessons.map((lesson) => ({
-          id: lesson.id,
-          title: lesson.title,
-          subject: lesson.subject.name,
-          date: format(lesson.createdAt, "yyyy-MM-dd"),
-          duration: lesson.duration || 45,
-          unit: lesson.syllabusUnit?.title || "General",
-        })),
+        recentLessons: [],
         recentAssignments: recentAssignments.map((assignment) => {
           const totalSubmissions = assignment.submissions.length;
           const submittedSubmissions = assignment.submissions.filter(

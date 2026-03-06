@@ -62,6 +62,7 @@ import {
   getPastExams,
   getExamTypes,
   getSubjects,
+  getClasses,
   getTerms,
   createExam,
   updateExam,
@@ -86,6 +87,7 @@ export default function ExamsPage() {
   const [pastExams, setPastExams] = useState<any[]>([]);
   const [examTypes, setExamTypes] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +153,12 @@ export default function ExamsPage() {
         setSubjects(subjectsResult.data || []);
       }
 
+      // Fetch classes
+      const classesResult = await getClasses();
+      if (classesResult.success) {
+        setClasses(classesResult.data || []);
+      }
+
       // Fetch terms
       const termsResult = await getTerms();
       if (termsResult.success) {
@@ -187,6 +195,7 @@ export default function ExamsPage() {
       endTime: undefined,
       examTypeId: "",
       subjectId: "",
+      classId: "",
       termId: "",
     });
     setSelectedExamId(null);
@@ -201,6 +210,7 @@ export default function ExamsPage() {
         title: examToEdit.title,
         examTypeId: examToEdit.examTypeId,
         subjectId: examToEdit.subjectId,
+        classId: examToEdit.classId,
         termId: examToEdit.termId,
         examDate: new Date(examToEdit.examDate),
         startTime: new Date(examToEdit.startTime),
@@ -416,30 +426,57 @@ export default function ExamsPage() {
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="termId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Term</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select term" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {terms.map(term => (
-                            <SelectItem key={term.id} value={term.id}>
-                              {term.name} ({term.academicYear.name})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="classId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select class" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {classes.map(cls => (
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="termId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Term</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select term" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {terms.map(term => (
+                              <SelectItem key={term.id} value={term.id}>
+                                {term.name} ({term.academicYear.name})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <FormField

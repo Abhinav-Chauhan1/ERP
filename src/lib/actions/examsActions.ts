@@ -51,6 +51,7 @@ export const getUpcomingExams = withSchoolAuthAction(async (schoolId: string, us
       include: {
         examType: true,
         subject: true,
+        class: true,
         term: {
           include: {
             academicYear: true
@@ -104,6 +105,7 @@ export const getPastExams = withSchoolAuthAction(async (schoolId: string, userId
       include: {
         examType: true,
         subject: true,
+        class: true,
         term: {
           include: {
             academicYear: true
@@ -156,6 +158,7 @@ export const getExamById = withSchoolAuthAction(async (schoolId: string, userId:
       include: {
         examType: true,
         subject: true,
+        class: true,
         term: {
           include: {
             academicYear: true
@@ -283,6 +286,31 @@ export const getTerms = withSchoolAuthAction(async (schoolId: string, userId: st
   }
 });
 
+// Get classes for dropdown
+export const getClasses = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const classes = await db.class.findMany({
+      where: { schoolId },
+      include: {
+        academicYear: true
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    return { success: true, data: classes };
+  } catch (error) {
+    console.error("Error fetching classes:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch classes"
+    };
+  }
+});
+
 // Create a new exam
 export const createExam = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, data: ExamFormValues, creatorId?: string) => {
   try {
@@ -317,6 +345,7 @@ export const createExam = withSchoolAuthAction(async (schoolId: string, userId: 
       schoolId, // Explicitly add schoolId
       examTypeId: data.examTypeId,
       subjectId: data.subjectId,
+      classId: data.classId,
       termId: data.termId,
       examDate: data.examDate,
       startTime: data.startTime,
@@ -336,6 +365,7 @@ export const createExam = withSchoolAuthAction(async (schoolId: string, userId: 
       include: {
         subject: true,
         examType: true,
+        class: true,
         term: {
           include: {
             academicYear: true
@@ -396,6 +426,7 @@ export const updateExam = withSchoolAuthAction(async (schoolId: string, userId: 
         title: data.title,
         examTypeId: data.examTypeId,
         subjectId: data.subjectId,
+        classId: data.classId,
         termId: data.termId,
         examDate: data.examDate,
         startTime: data.startTime,
@@ -407,6 +438,7 @@ export const updateExam = withSchoolAuthAction(async (schoolId: string, userId: 
       include: {
         subject: true,
         examType: true,
+        class: true,
         term: {
           include: {
             academicYear: true

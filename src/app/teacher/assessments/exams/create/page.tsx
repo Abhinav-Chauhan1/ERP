@@ -34,7 +34,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { getTeacherSubjects, getSubjectSyllabusUnits } from "@/lib/actions/teacherSubjectsActions";
-import { getExamTypes, getActiveTerms, createExam } from "@/lib/actions/teacherExamsActions";
+import { getExamTypes, getActiveTerms, createExam, getStudentsForExam } from "@/lib/actions/teacherExamsActions";
+import { getClasses } from "@/lib/actions/examsActions";
 import { toast } from "react-hot-toast";
 
 export default function CreateExamPage() {
@@ -45,6 +46,7 @@ export default function CreateExamPage() {
   // Form state
   const [title, setTitle] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
   const [selectedExamType, setSelectedExamType] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
@@ -57,6 +59,7 @@ export default function CreateExamPage() {
 
   // Options for selects
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [allClasses, setAllClasses] = useState<any[]>([]);
   const [examTypes, setExamTypes] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
@@ -77,6 +80,15 @@ export default function CreateExamPage() {
         // Fetch terms
         const { terms } = await getActiveTerms();
         setTerms(terms);
+
+        // Fetch classes
+        const classesResult = await getClasses();
+        if (classesResult.success) {
+          setAllClasses(classesResult.data || []);
+          if (classesResult.data && classesResult.data.length > 0) {
+            setSelectedClass(classesResult.data[0].id);
+          }
+        }
 
         // Set default values
         if (subjects.length > 0) {
@@ -153,6 +165,7 @@ export default function CreateExamPage() {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("subjectId", selectedSubject);
+      formData.append("classId", selectedClass);
       formData.append("examTypeId", selectedExamType);
       formData.append("termId", selectedTerm);
       formData.append("examDate", examDate.toISOString());
@@ -294,6 +307,25 @@ export default function CreateExamPage() {
                     {terms.map((term) => (
                       <SelectItem key={term.id} value={term.id}>
                         {term.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="class">Class</Label>
+                <Select
+                  value={selectedClass}
+                  onValueChange={setSelectedClass}
+                >
+                  <SelectTrigger id="class">
+                    <SelectValue placeholder="Select a class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allClasses.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

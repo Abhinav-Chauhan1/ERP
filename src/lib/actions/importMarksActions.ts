@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { AuditAction } from "@prisma/client";
 import { calculatePercentage, calculateGradeFromScale, calculateGrade } from "@/lib/utils/grade-calculator";
 import { getGradeScale } from "./gradeCalculationActions";
+import { calculateGradeForPercentage } from "./marksEntryActions";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import {
   validateMarkEntry,
@@ -45,23 +46,7 @@ export interface ImportResult {
   error?: string;
 }
 
-/**
- * Calculate grade based on percentage using the configured grade scale
- */
-async function calculateGradeForPercentage(percentage: number): Promise<string> {
-  // Fetch grade scale
-  const gradeScaleResult = await getGradeScale();
 
-  if (!gradeScaleResult.success || !gradeScaleResult.data) {
-    // Fallback to default grade calculation
-    return calculateGrade(percentage);
-  }
-
-  const grade = calculateGradeFromScale(percentage, gradeScaleResult.data);
-
-  // If no grade found in scale, use default
-  return grade || calculateGrade(percentage);
-}
 
 
 /**

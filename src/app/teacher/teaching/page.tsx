@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { Chart } from "@/components/dashboard/chart";
-import { 
-  BookOpen, Users, Calendar, Clock, FileText, 
+import {
+  BookOpen, Users, Calendar, Clock, FileText,
   TrendingUp, CheckCircle, AlertCircle, Play
 } from "lucide-react";
 import { getTeacherClasses } from "@/lib/actions/teacherClassesActions";
@@ -66,7 +66,7 @@ async function TeachingStats() {
   const totalClasses = classes.length;
   const totalStudents = classes.reduce((sum, cls) => sum + cls.studentCount, 0);
   const totalLessons = subjects.reduce((sum, subject) => sum + (subject.totalClasses || 0), 0);
-  
+
   // Calculate average syllabus progress
   const avgProgress = subjects.length > 0
     ? Math.round(subjects.reduce((sum, subject) => sum + subject.progress, 0) / subjects.length)
@@ -153,8 +153,8 @@ async function SubjectsOverview() {
               </div>
               <div className="mt-3">
                 <div className="w-full bg-muted rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all" 
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${subject.progress}%` }}
                   ></div>
                 </div>
@@ -307,11 +307,10 @@ async function TimetableOverview() {
                 const daySlots = slotsByDay[day] || [];
                 const isToday = day === today;
                 return (
-                  <div 
-                    key={day} 
-                    className={`p-3 border rounded-lg text-center ${
-                      isToday ? 'bg-primary/10 border-primary' : 'bg-background'
-                    }`}
+                  <div
+                    key={day}
+                    className={`p-3 border rounded-lg text-center ${isToday ? 'bg-primary/10 border-primary' : 'bg-background'
+                      }`}
                   >
                     <p className="text-xs font-medium mb-1">{day.slice(0, 3)}</p>
                     <p className="text-2xl font-bold">{daySlots.length}</p>
@@ -430,13 +429,7 @@ function QuickNavigationSection() {
       icon: Calendar,
       color: "bg-secondary text-secondary-foreground"
     },
-    {
-      title: "Lessons",
-      description: "Create and manage lessons",
-      href: "/teacher/teaching/lessons",
-      icon: Play,
-      color: "bg-warning/10 text-warning"
-    },
+
     {
       title: "Syllabus",
       description: "Track syllabus progress",

@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function SubjectDetailsPage(
-  props: { 
-    params: Promise<{ id: string }> 
+  props: {
+    params: Promise<{ id: string }>
   }
 ) {
   const params = await props.params;
@@ -32,11 +32,10 @@ export default async function SubjectDetailsPage(
         </Button>
       </div>
 
-      <SubjectDetail 
+      <SubjectDetail
         subject={subjectDetails.subject}
         syllabus={subjectDetails.syllabus}
         teachers={subjectDetails.teachers}
-        lessons={subjectDetails.lessons}
         assignments={subjectDetails.assignments}
         exams={subjectDetails.exams}
       />
