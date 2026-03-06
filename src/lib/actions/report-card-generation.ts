@@ -482,11 +482,7 @@ export async function generateBatchReportCardsZip(
   }
 }
 
-/**
- * Re-export getReportCardTemplates from canonical source
- * Canonical implementation is in reportCardTemplateActions.ts
- */
-export { getReportCardTemplates } from './reportCardTemplateActions';
+
 
 /**
  * Preview report card data without generating PDF

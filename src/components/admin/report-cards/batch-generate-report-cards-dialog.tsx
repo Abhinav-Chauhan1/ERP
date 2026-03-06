@@ -35,10 +35,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, FileText, Download, Users, Archive, FileCheck } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  generateBatchReportCards,
-  getReportCardTemplates,
-} from '@/lib/actions/report-card-generation';
+import { generateBatchReportCards } from '@/lib/actions/report-card-generation';
+import { getReportCardTemplates } from '@/lib/actions/reportCardTemplateActions';
 
 interface BatchGenerateReportCardsDialogProps {
   classes: Array<{ id: string; name: string }>;

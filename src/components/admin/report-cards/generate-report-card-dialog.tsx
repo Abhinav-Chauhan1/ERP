@@ -35,9 +35,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, FileText, Download, Eye } from 'lucide-react';
 import {
   generateSingleReportCard,
-  getReportCardTemplates,
   previewReportCard,
 } from '@/lib/actions/report-card-generation';
+import { getReportCardTemplates } from '@/lib/actions/reportCardTemplateActions';
 import { getPerformanceColor } from '@/lib/utils/grade-calculator';
 
 interface GenerateReportCardDialogProps {
