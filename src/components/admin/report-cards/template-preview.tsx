@@ -86,7 +86,12 @@ export function TemplatePreview({
     footerImage,
     schoolLogo,
 }: TemplatePreviewProps) {
-    const enabledSections = sections.filter((s) => s.enabled).sort((a, b) => a.order - b.order);
+    // Ensure sections is an array since Prisma might return JSON objects
+    const parsedSections = Array.isArray(sections)
+        ? sections
+        : (sections && typeof sections === 'object' ? Object.values(sections) as TemplateSectionConfig[] : []);
+
+    const enabledSections = parsedSections.filter((s) => s.enabled).sort((a, b) => a.order - b.order);
 
     // Default values for new styling properties
     const tableHeaderBg = styling.tableHeaderBg || styling.primaryColor;

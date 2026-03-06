@@ -216,12 +216,21 @@ async function fetchTemplate(templateId: string): Promise<ReportCardTemplate | n
     return null;
   }
 
+  // Ensure sections is parsed as an array, defaulting to an empty array if not present or not an array
+  let parsedSections: TemplateSectionConfig[] = [];
+  if (Array.isArray(template.sections)) {
+    parsedSections = template.sections as unknown as TemplateSectionConfig[];
+  } else if (typeof template.sections === 'object' && template.sections !== null) {
+    // In case it's stored as an object with numerical keys (sometimes happens with JSON serialization)
+    parsedSections = Object.values(template.sections) as unknown as TemplateSectionConfig[];
+  }
+
   return {
     ...template,
     type: template.type as 'CBSE' | 'STATE_BOARD' | 'CUSTOM',
     pageSize: template.pageSize as 'A4' | 'LETTER' | 'LEGAL',
     orientation: template.orientation as 'PORTRAIT' | 'LANDSCAPE',
-    sections: template.sections as unknown as TemplateSectionConfig[],
+    sections: parsedSections,
     styling: template.styling as unknown as TemplateStyles,
     signatures: template.signatures as unknown as SignatoryConfig[],
     gradingConfig: template.gradingConfig as unknown as GradingConfig,

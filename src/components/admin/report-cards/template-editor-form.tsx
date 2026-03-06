@@ -119,8 +119,15 @@ export function TemplateEditorForm({ template, mode }: TemplateEditorFormProps) 
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  // Ensure sections is populated as an array
+  const initialSections = Array.isArray(template?.sections)
+    ? template.sections
+    : (template?.sections && typeof template.sections === 'object'
+      ? Object.values(template.sections)
+      : DEFAULT_SECTIONS);
+
   const [sections, setSections] = useState<TemplateSectionConfig[]>(
-    template?.sections || DEFAULT_SECTIONS
+    initialSections as TemplateSectionConfig[]
   );
   const [styling, setStyling] = useState<TemplateStyles>(
     template?.styling || DEFAULT_STYLING
