@@ -1,3 +1,9 @@
+#Agent
+*.agent
+*.cursor
+*.antigravity
+*.claude
+
 # Logs
 logs
 *.log
