@@ -234,6 +234,8 @@ model School {
   mindMaps                MindMap[]
   lessonContents          LessonContent[]
   studentContentProgress  StudentContentProgress[]
+  ExamComponent           ExamComponent[]
+  ExamComponentMark       ExamComponentMark[]
 
   @@map("schools")
 }
@@ -587,6 +589,7 @@ model Student {
   settings              StudentSettings?
   alumni                Alumni?
   coScholasticGrades    CoScholasticGrade[]
+  examComponentMarks    ExamComponentMark[]
   courseDiscussions     CourseDiscussion[]
   courseEnrollments     CourseEnrollment[]
   examAttempts          ExamAttempt[]
@@ -725,6 +728,7 @@ model AcademicYear {
   feeStructures FeeStructure[]
   syllabi       Syllabus[]
   terms         Term[]
+  reportCards   ReportCard[]
 
   @@index([schoolId])
 }
@@ -882,6 +886,7 @@ model Subject {
   description       String?
   departmentId      String?
   type              SubjectType           @default(CORE)
+  category          SubjectCategory       @default(SCHOLASTIC)
   isCompulsory      Boolean               @default(false)
   hasTheory         Boolean               @default(true)
   hasPractical      Boolean               @default(false)
@@ -1251,6 +1256,7 @@ model Exam {
   subject           Subject             @relation(fields: [subjectId], references: [id])
   term              Term                @relation(fields: [termId], references: [id])
   results           ExamResult[]
+  components        ExamComponent[]
   subjectMarkConfig SubjectMarkConfig[]
 
   @@index([schoolId])
@@ -1282,6 +1288,45 @@ model ExamResult {
   @@index([examId, marks])
   @@index([studentId, createdAt])
   @@index([schoolId])
+}
+
+model ExamComponent {
+  id        String             @id @default(cuid())
+  examId    String
+  name      String
+  shortName String
+  maxMarks  Float
+  order     Int                @default(0)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  schoolId  String
+  exam      Exam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  school    School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  marks     ExamComponentMark[]
+
+  @@unique([examId, name])
+  @@index([examId])
+  @@index([schoolId])
+  @@map("exam_components")
+}
+
+model ExamComponentMark {
+  id          String        @id @default(cuid())
+  componentId String
+  studentId   String
+  marks       Float
+  isAbsent    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  schoolId    String
+  component   ExamComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([componentId, studentId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@map("exam_component_marks")
 }
 
 model GradeScale {
@@ -1387,7 +1432,8 @@ model AssignmentSubmission {
 model ReportCard {
   id               String              @id @default(cuid())
   studentId        String
-  termId           String
+  termId           String?
+  academicYearId   String?
   templateId       String?
   totalMarks       Float?
   averageMarks     Float?
@@ -1398,21 +1444,25 @@ model ReportCard {
   coScholasticData Json?
   teacherRemarks   String?
   principalRemarks String?
+  resultStatus     String?
+  remarkType       String?
   pdfUrl           String?
   isPublished      Boolean             @default(false)
   publishDate      DateTime?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @default(now())
   schoolId         String
+  academicYear     AcademicYear?       @relation(fields: [academicYearId], references: [id])
   school           School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student          Student             @relation(fields: [studentId], references: [id])
   template         ReportCardTemplate? @relation(fields: [templateId], references: [id])
-  term             Term                @relation(fields: [termId], references: [id])
+  term             Term?               @relation(fields: [termId], references: [id])
 
-  @@unique([studentId, termId])
+  @@unique([studentId, termId, academicYearId])
   @@index([templateId])
   @@index([isPublished])
   @@index([schoolId])
+  @@index([academicYearId])
 }
 
 model StudentAttendance {
@@ -3878,6 +3928,11 @@ enum SubjectType {
   ADDITIONAL
   VOCATIONAL
   SKILL_BASED
+}
+
+enum SubjectCategory {
+  SCHOLASTIC
+  ADDITIONAL
 }
 
 enum DayOfWeek {

@@ -79,6 +79,7 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
+      category: "SCHOLASTIC",
     },
   });
 
@@ -143,6 +144,7 @@ export default function SubjectsPage() {
         code: subjectToEdit.code,
         name: subjectToEdit.name,
         description: subjectToEdit.description,
+        category: subjectToEdit.category || "SCHOLASTIC",
       });
 
       setSelectedSubjectId(id);
@@ -180,6 +182,7 @@ export default function SubjectsPage() {
       code: "",
       name: "",
       description: "",
+      category: "SCHOLASTIC",
     });
     setSelectedSubjectId(null);
     setDialogOpen(true);
@@ -337,6 +340,28 @@ export default function SubjectsPage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="SCHOLASTIC">Scholastic</SelectItem>
+                            <SelectItem value="ADDITIONAL">Additional (Co-Scholastic)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <DialogFooter>
                     <Button type="submit">
                       {selectedSubjectId ? "Save Changes" : "Add Subject"}
@@ -390,7 +415,9 @@ export default function SubjectsPage() {
                         <p className="text-xs text-muted-foreground">{subject.code}</p>
                       </div>
                     </div>
-
+                    <Badge variant={subject.category === "ADDITIONAL" ? "secondary" : "default"} className="text-xs">
+                      {subject.category === "ADDITIONAL" ? "Co-Scholastic" : "Scholastic"}
+                    </Badge>
                   </div>
                   <CardDescription className="mt-2 line-clamp-2">{subject.description}</CardDescription>
                 </CardHeader>

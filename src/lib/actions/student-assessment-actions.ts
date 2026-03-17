@@ -474,8 +474,8 @@ export async function getReportCards() {
 
   return reportCards.map((report) => ({
     id: report.id,
-    term: report.term.name,
-    academicYear: report.term.academicYear.name,
+    term: report.term?.name ?? "",
+    academicYear: report.term?.academicYear.name ?? "",
     totalMarks: report.totalMarks,
     averageMarks: report.averageMarks,
     percentage: report.percentage,
@@ -518,7 +518,7 @@ export async function getReportCardDetails(reportCardId: string) {
     where: {
       studentId: student.id,
       exam: {
-        termId: reportCard.termId,
+        termId: reportCard.termId ?? undefined,
       },
     },
     include: {
@@ -571,10 +571,10 @@ export async function getReportCardDetails(reportCardId: string) {
 
   return {
     id: reportCard.id,
-    term: reportCard.term.name,
-    academicYear: reportCard.term.academicYear.name,
-    startDate: reportCard.term.startDate,
-    endDate: reportCard.term.endDate,
+    term: reportCard.term?.name ?? "",
+    academicYear: reportCard.term?.academicYear.name ?? "",
+    startDate: reportCard.term?.startDate ?? new Date(),
+    endDate: reportCard.term?.endDate ?? new Date(),
     totalMarks: reportCard.totalMarks,
     averageMarks: reportCard.averageMarks,
     percentage: reportCard.percentage,

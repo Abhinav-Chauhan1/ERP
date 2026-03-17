@@ -66,28 +66,32 @@ describe('Grade Calculator Utilities', () => {
     });
   });
 
-  describe('calculateGrade (default fallback)', () => {
-    it('should return correct default grades', () => {
-      expect(calculateGrade(95)).toBe('A+');
-      expect(calculateGrade(85)).toBe('A');
-      expect(calculateGrade(75)).toBe('B+');
-      expect(calculateGrade(65)).toBe('B');
-      expect(calculateGrade(55)).toBe('C+');
-      expect(calculateGrade(45)).toBe('C');
+  describe('calculateGrade (CBSE default fallback)', () => {
+    it('should return correct CBSE grades', () => {
+      expect(calculateGrade(95)).toBe('A1');
+      expect(calculateGrade(85)).toBe('A2');
+      expect(calculateGrade(75)).toBe('B1');
+      expect(calculateGrade(65)).toBe('B2');
+      expect(calculateGrade(55)).toBe('C1');
+      expect(calculateGrade(45)).toBe('C2');
       expect(calculateGrade(35)).toBe('D');
-      expect(calculateGrade(25)).toBe('F');
+      expect(calculateGrade(25)).toBe('E');
     });
 
     it('should handle boundary values', () => {
-      expect(calculateGrade(90)).toBe('A+');
-      expect(calculateGrade(80)).toBe('A');
+      expect(calculateGrade(91)).toBe('A1');
+      expect(calculateGrade(81)).toBe('A2');
+      expect(calculateGrade(71)).toBe('B1');
+      expect(calculateGrade(61)).toBe('B2');
+      expect(calculateGrade(51)).toBe('C1');
+      expect(calculateGrade(41)).toBe('C2');
       expect(calculateGrade(33)).toBe('D');
-      expect(calculateGrade(32)).toBe('F');
+      expect(calculateGrade(32)).toBe('E');
     });
 
     it('should handle edge cases', () => {
-      expect(calculateGrade(0)).toBe('F');
-      expect(calculateGrade(100)).toBe('A+');
+      expect(calculateGrade(0)).toBe('E');
+      expect(calculateGrade(100)).toBe('A1');
     });
   });
 });

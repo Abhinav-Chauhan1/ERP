@@ -60,6 +60,7 @@ export const getSubjects = withSchoolAuthAction(async (schoolId) => {
       code: subject.code,
       name: subject.name,
       description: subject.description || "",
+      category: subject.category || "SCHOLASTIC",
       hasLabs: subject.description?.toLowerCase().includes("lab") || false,
       grades: subject.classes.map(sc => sc.class.name),
       classIds: subject.classes.map(sc => sc.classId),
@@ -257,6 +258,7 @@ export const createSubject = withSchoolAuthAction(async (schoolId, userId, userR
         name: data.name,
         code: data.code,
         description: data.description,
+        category: data.category || "SCHOLASTIC",
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } },
@@ -314,6 +316,7 @@ export const updateSubject = withSchoolAuthAction(async (schoolId, userId, userR
         name: data.name,
         code: data.code,
         description: data.description,
+        category: data.category || "SCHOLASTIC",
         classes: {
           create: data.classIds.map(classId => ({
             class: { connect: { id: classId } },
@@ -427,6 +430,7 @@ export const autoGenerateSubjects = withSchoolAuthAction(async (schoolId, userId
         name: s.name,
         code: s.code,
         description: s.description,
+        category: s.category,
       })),
       skipDuplicates: true,
     });

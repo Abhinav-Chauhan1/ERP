@@ -141,8 +141,8 @@ export const getStudentReportCards = withSchoolAuthAction(async (
 
     const reportCardList: ReportCardListItem[] = reportCards.map((rc) => ({
       id: rc.id,
-      termName: rc.term.name,
-      academicYear: rc.term.academicYear.name,
+      termName: rc.term?.name ?? "",
+      academicYear: rc.term?.academicYear.name ?? "",
       percentage: rc.percentage,
       grade: rc.grade,
       rank: rc.rank,
@@ -250,8 +250,8 @@ export const getParentChildrenReportCards = withSchoolAuthAction(async (
 
       reportCardsMap[child.id] = reportCards.map((rc) => ({
         id: rc.id,
-        termName: rc.term.name,
-        academicYear: rc.term.academicYear.name,
+        termName: rc.term?.name ?? "",
+        academicYear: rc.term?.academicYear.name ?? "",
         percentage: rc.percentage,
         grade: rc.grade,
         rank: rc.rank,
@@ -346,7 +346,7 @@ export const getReportCardDetails = withSchoolAuthAction(async (
     // Aggregate report card data (must ensure this service is also school-aware or we pass context)
     const reportCardData = await aggregateReportCardData(
       reportCard.studentId,
-      reportCard.termId
+      reportCard.termId ?? ""
     );
 
     return {

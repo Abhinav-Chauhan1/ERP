@@ -555,7 +555,7 @@ export async function getClassRankAnalysis() {
 
   // Format rank data
   const rankData = reportCards.map(rc => ({
-    term: rc.term.name,
+    term: rc.term?.name ?? "",
     rank: rc.rank,
     totalStudents: classSize,
     percentile: rc.rank && classSize

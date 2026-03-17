@@ -75,6 +75,13 @@ export async function generateSingleReportCard(
       return { success: false, error: 'No school association found' };
     }
 
+    // Resolve academicYearId from term
+    const term = await db.term.findUnique({
+      where: { id: termId },
+      select: { academicYearId: true },
+    });
+    const academicYearId = term?.academicYearId;
+
     // Aggregate report card data
     const reportCardData = await aggregateReportCardData(studentId, termId);
 
@@ -102,9 +109,10 @@ export async function generateSingleReportCard(
     // Update or create report card record with PDF URL
     const reportCard = await db.reportCard.upsert({
       where: {
-        studentId_termId: {
+        studentId_termId_academicYearId: {
           studentId,
           termId,
+          academicYearId: academicYearId ?? '',
         },
       },
       update: {
@@ -115,9 +123,10 @@ export async function generateSingleReportCard(
       create: {
         studentId,
         termId,
+        academicYearId,
         templateId,
         pdfUrl,
-        schoolId: schoolId, // Add schoolId
+        schoolId: schoolId,
         totalMarks: reportCardData.overallPerformance.obtainedMarks,
         averageMarks: reportCardData.overallPerformance.obtainedMarks / reportCardData.subjects.length,
         percentage: reportCardData.overallPerformance.percentage,
@@ -236,13 +245,21 @@ export async function generateBatchReportCards(
       `report-cards-batch-${classId}-${sectionId}-${termId}`
     );
 
+    // Resolve academicYearId from term
+    const batchTerm = await db.term.findUnique({
+      where: { id: termId },
+      select: { academicYearId: true },
+    });
+    const batchAcademicYearId = batchTerm?.academicYearId;
+
     // Update or create report card records for all students
     const updatePromises = reportCardsData.map(async (data) => {
       return db.reportCard.upsert({
         where: {
-          studentId_termId: {
+          studentId_termId_academicYearId: {
             studentId: data.student.id,
             termId,
+            academicYearId: batchAcademicYearId ?? '',
           },
         },
         update: {
@@ -253,9 +270,10 @@ export async function generateBatchReportCards(
         create: {
           studentId: data.student.id,
           termId,
+          academicYearId: batchAcademicYearId,
           templateId,
           pdfUrl,
-          schoolId: schoolId, // Add schoolId
+          schoolId: schoolId,
           totalMarks: data.overallPerformance.obtainedMarks,
           averageMarks: data.overallPerformance.obtainedMarks / data.subjects.length,
           percentage: data.overallPerformance.percentage,
@@ -431,13 +449,21 @@ export async function generateBatchReportCardsZip(
     // Convert ZIP buffer to base64 for direct browser download
     const zipData = zipBuffer.toString('base64');
 
+    // Resolve academicYearId from term
+    const zipTerm = await db.term.findUnique({
+      where: { id: termId },
+      select: { academicYearId: true },
+    });
+    const zipAcademicYearId = zipTerm?.academicYearId;
+
     // Update report card records for all students
     const updatePromises = validPdfs.map(async (pdf) => {
       return db.reportCard.upsert({
         where: {
-          studentId_termId: {
+          studentId_termId_academicYearId: {
             studentId: pdf.studentId,
             termId,
+            academicYearId: zipAcademicYearId ?? '',
           },
         },
         update: {
@@ -447,8 +473,9 @@ export async function generateBatchReportCardsZip(
         create: {
           studentId: pdf.studentId,
           termId,
+          academicYearId: zipAcademicYearId,
           templateId,
-          schoolId: schoolId, // Add required schoolId
+          schoolId: schoolId,
           totalMarks: pdf.reportCardData.overallPerformance.obtainedMarks,
           averageMarks: pdf.reportCardData.overallPerformance.obtainedMarks / pdf.reportCardData.subjects.length,
           percentage: pdf.reportCardData.overallPerformance.percentage,

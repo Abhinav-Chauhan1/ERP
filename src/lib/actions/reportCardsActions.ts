@@ -14,6 +14,14 @@ import {
   type AttendanceData
 } from "../utils/attendance-calculator";
 import { calculateGrade } from "../utils/grade-calculator";
+import {
+  aggregateMultiTermReportCardData,
+  type MultiTermReportCardData,
+} from "../services/report-card-data-aggregation";
+import {
+  generateCBSEReportCardPDF,
+  generateBatchCBSEReportCards,
+} from "../services/report-card-cbse-renderer";
 
 // Get all report cards with optional filtering
 export async function getReportCards(filters?: {
@@ -85,8 +93,8 @@ export async function getReportCards(filters?: {
         studentName: `${rc.student.user.firstName} ${rc.student.user.lastName}`,
         studentAdmissionId: rc.student.admissionId,
         termId: rc.termId,
-        term: rc.term.name,
-        academicYear: rc.term.academicYear.name,
+        term: rc.term?.name ?? "",
+        academicYear: rc.term?.academicYear.name ?? "",
         grade: currentEnrollment?.class.name || "",
         section: currentEnrollment?.section.name || "",
         totalMarks: rc.totalMarks,
@@ -181,7 +189,7 @@ export async function getReportCardById(id: string) {
 
     // Group exam results by subject
     const subjectResults: Record<string, any> = {};
-    reportCard.term.exams.forEach(exam => {
+    reportCard.term?.exams.forEach(exam => {
       const result = exam.results[0]; // There should be only one result per student per exam
 
       if (!result) return;
@@ -230,8 +238,8 @@ export async function getReportCardById(id: string) {
       studentAdmissionId: reportCard.student.admissionId,
       studentAvatar: reportCard.student.user.avatar,
       termId: reportCard.termId,
-      term: reportCard.term.name,
-      academicYear: reportCard.term.academicYear.name,
+      term: reportCard.term?.name ?? "",
+      academicYear: reportCard.term?.academicYear.name ?? "",
       grade: currentEnrollment?.class.name || "",
       section: currentEnrollment?.section.name || "",
       totalMarks: reportCard.totalMarks || 0,
@@ -262,12 +270,20 @@ export async function getReportCardById(id: string) {
 // Create a new report card (usually generated from exam results)
 export async function createReportCard(data: ReportCardCreateValues) {
   try {
-    // Check if a report card already exists for this student and term
+    // Resolve academicYearId from term
+    const term = await db.term.findUnique({
+      where: { id: data.termId },
+      select: { academicYearId: true },
+    });
+    const academicYearId = term?.academicYearId;
+
+    // Check if a report card already exists for this student, term, and academic year
     const existingReportCard = await db.reportCard.findUnique({
       where: {
-        studentId_termId: {
+        studentId_termId_academicYearId: {
           studentId: data.studentId,
-          termId: data.termId
+          termId: data.termId,
+          academicYearId: academicYearId ?? ''
         }
       }
     });
@@ -288,13 +304,14 @@ export async function createReportCard(data: ReportCardCreateValues) {
       data: {
         studentId: data.studentId,
         termId: data.termId,
+        academicYearId,
         totalMarks: data.totalMarks,
         averageMarks: data.averageMarks,
         percentage: data.percentage,
         grade: data.grade,
         rank: data.rank,
         attendance: data.attendance,
-        schoolId, // Add required schoolId
+        schoolId,
       }
     });
 
@@ -309,24 +326,44 @@ export async function createReportCard(data: ReportCardCreateValues) {
   }
 }
 
-// Generate report card for a student
-export async function generateReportCard(studentId: string, termId: string) {
+// Generate report card for a student (single-term or annual)
+export async function generateReportCard(
+  studentId: string,
+  termId: string,
+  academicYearId?: string,
+) {
   try {
     // Import the aggregation service
-    const { aggregateReportCardData } = await import("@/lib/services/report-card-data-aggregation");
-    
+    const {
+      aggregateReportCardData,
+      calculateResultStatus,
+    } = await import("@/lib/services/report-card-data-aggregation");
+
     // Get required school context
-    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const { getRequiredSchoolId } = await import(
+      "@/lib/utils/school-context-helper"
+    );
     const schoolId = await getRequiredSchoolId();
 
-    // Check if a report card already exists for this student and term
+    // Resolve academicYearId from term when not explicitly provided
+    let resolvedAcademicYearId = academicYearId;
+    if (!resolvedAcademicYearId) {
+      const term = await db.term.findUnique({
+        where: { id: termId },
+        select: { academicYearId: true },
+      });
+      resolvedAcademicYearId = term?.academicYearId;
+    }
+
+    // Check if a report card already exists using the new composite key
     const existingReportCard = await db.reportCard.findUnique({
       where: {
-        studentId_termId: {
+        studentId_termId_academicYearId: {
           studentId,
-          termId
-        }
-      }
+          termId,
+          academicYearId: resolvedAcademicYearId ?? "",
+        },
+      },
     });
 
     // Aggregate all report card data using the service
@@ -336,16 +373,23 @@ export async function generateReportCard(studentId: string, termId: string) {
     if (reportCardData.subjects.length === 0) {
       return {
         success: false,
-        error: "No exam results found for this student in the selected term"
+        error:
+          "No exam results found for this student in the selected term",
       };
     }
 
     // Extract values from aggregated data
     const { overallPerformance, attendance, coScholastic } = reportCardData;
-    const presentSubjectsCount = reportCardData.subjects.filter(s => !s.isAbsent).length;
+    const presentSubjectsCount = reportCardData.subjects.filter(
+      (s) => !s.isAbsent,
+    ).length;
 
     // Format co-scholastic data for JSON storage
-    const coScholasticData = coScholastic.length > 0 ? coScholastic : null;
+    const coScholasticData =
+      coScholastic.length > 0 ? coScholastic : null;
+
+    // Determine pass / fail
+    const resultStatus = calculateResultStatus(reportCardData.subjects as any);
 
     let reportCard;
     if (existingReportCard) {
@@ -354,13 +398,17 @@ export async function generateReportCard(studentId: string, termId: string) {
         where: { id: existingReportCard.id },
         data: {
           totalMarks: overallPerformance.totalMarks,
-          averageMarks: overallPerformance.obtainedMarks / presentSubjectsCount || 0,
+          averageMarks:
+            overallPerformance.obtainedMarks / presentSubjectsCount || 0,
           percentage: overallPerformance.percentage,
           grade: overallPerformance.grade,
           attendance: attendance.percentage,
           coScholasticData: coScholasticData as any,
-          templateId: (reportCardData.student as any).reportCardTemplateId || existingReportCard.templateId,
-        }
+          resultStatus,
+          templateId:
+            (reportCardData.student as any).reportCardTemplateId ||
+            existingReportCard.templateId,
+        },
       });
     } else {
       // Create new report card
@@ -368,15 +416,19 @@ export async function generateReportCard(studentId: string, termId: string) {
         data: {
           studentId,
           termId,
-          schoolId, // Add required schoolId (from context above)
+          academicYearId: resolvedAcademicYearId,
+          schoolId,
           totalMarks: overallPerformance.totalMarks,
-          averageMarks: overallPerformance.obtainedMarks / presentSubjectsCount || 0,
+          averageMarks:
+            overallPerformance.obtainedMarks / presentSubjectsCount || 0,
           percentage: overallPerformance.percentage,
           grade: overallPerformance.grade,
           attendance: attendance.percentage,
           coScholasticData: coScholasticData as any,
-          templateId: (reportCardData.student as any).reportCardTemplateId,
-        }
+          resultStatus,
+          templateId: (reportCardData.student as any)
+            .reportCardTemplateId,
+        },
       });
     }
 
@@ -386,7 +438,10 @@ export async function generateReportCard(studentId: string, termId: string) {
     console.error("Error generating report card:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to generate report card"
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to generate report card",
     };
   }
 }
@@ -491,7 +546,7 @@ export async function publishReportCard(data: ReportCardPublishValues) {
           data: {
             userId: reportCard.student.userId,
             title: "Report Card Published",
-            message: `Your report card for ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published and is now available for viewing.`,
+            message: `Your report card for ${reportCard.term?.name ?? ""} (${reportCard.term?.academicYear.name ?? ""}) has been published and is now available for viewing.`,
             type: "ACADEMIC",
             isRead: false,
             schoolId, // Add required schoolId
@@ -504,7 +559,7 @@ export async function publishReportCard(data: ReportCardPublishValues) {
             data: {
               userId: studentParent.parent.userId,
               title: "Report Card Published",
-              message: `Report card for ${reportCard.student.user.firstName} ${reportCard.student.user.lastName} - ${reportCard.term.name} (${reportCard.term.academicYear.name}) has been published.`,
+              message: `Report card for ${reportCard.student.user.firstName} ${reportCard.student.user.lastName} - ${reportCard.term?.name ?? ""} (${reportCard.term?.academicYear.name ?? ""}) has been published.`,
               type: "ACADEMIC",
               isRead: false,
               schoolId, // Add required schoolId
@@ -517,8 +572,8 @@ export async function publishReportCard(data: ReportCardPublishValues) {
 
         if (isEmailConfigured()) {
           const studentName = `${reportCard.student.user.firstName} ${reportCard.student.user.lastName}`;
-          const termName = reportCard.term.name;
-          const academicYear = reportCard.term.academicYear.name;
+          const termName = reportCard.term?.name ?? "";
+          const academicYear = reportCard.term?.academicYear.name ?? "";
 
           // Send email to student if they have an email
           if (reportCard.student.user.email) {
@@ -757,6 +812,153 @@ export async function getAttendanceForReportCard(studentId: string, termId: stri
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch attendance data"
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CBSE Multi-Term Report Card Actions
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a single CBSE multi-term report card PDF.
+ *
+ * Aggregates data across all terms for the given academic year,
+ * then feeds it into the dedicated CBSE renderer.
+ *
+ * @returns Base64-encoded PDF string (for client-side download)
+ */
+export async function generateCBSEReportCardAction(params: {
+  studentId: string;
+  academicYearId: string;
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  schoolLogo?: string;
+  affiliationNo?: string;
+  schoolCode?: string;
+}) {
+  try {
+    // 1. Aggregate multi-term data
+    const data = await aggregateMultiTermReportCardData(
+      params.studentId,
+      params.academicYearId,
+    );
+
+    // 2. Generate PDF via CBSE renderer
+    const pdfBuffer = await generateCBSEReportCardPDF(data, {
+      schoolName: params.schoolName,
+      schoolAddress: params.schoolAddress,
+      schoolPhone: params.schoolPhone,
+      schoolEmail: params.schoolEmail,
+      schoolLogo: params.schoolLogo,
+      affiliationNo: params.affiliationNo,
+      schoolCode: params.schoolCode,
+    });
+
+    // 3. Return as base64 so the client can trigger a download
+    return {
+      success: true,
+      pdfBase64: pdfBuffer.toString("base64"),
+      fileName: `CBSE_Report_Card_${data.student.name.replace(/\s+/g, "_")}_${data.academicYear}.pdf`,
+    };
+  } catch (error) {
+    console.error("Error generating CBSE report card:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate CBSE report card",
+    };
+  }
+}
+
+/**
+ * Generate CBSE report cards in batch for multiple students.
+ *
+ * Returns a single PDF with one report card per student.
+ */
+export async function generateBatchCBSEReportCardsAction(params: {
+  studentIds: string[];
+  academicYearId: string;
+  schoolName?: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolEmail?: string;
+  schoolLogo?: string;
+  affiliationNo?: string;
+  schoolCode?: string;
+}) {
+  try {
+    // 1. Aggregate data for every student in parallel
+    const dataList: MultiTermReportCardData[] = await Promise.all(
+      params.studentIds.map((sid) =>
+        aggregateMultiTermReportCardData(sid, params.academicYearId),
+      ),
+    );
+
+    // 2. Generate combined PDF
+    const pdfBuffer = await generateBatchCBSEReportCards(dataList, {
+      schoolName: params.schoolName,
+      schoolAddress: params.schoolAddress,
+      schoolPhone: params.schoolPhone,
+      schoolEmail: params.schoolEmail,
+      schoolLogo: params.schoolLogo,
+      affiliationNo: params.affiliationNo,
+      schoolCode: params.schoolCode,
+    });
+
+    return {
+      success: true,
+      pdfBase64: pdfBuffer.toString("base64"),
+      fileName: `CBSE_Report_Cards_Batch_${params.academicYearId}.pdf`,
+    };
+  } catch (error) {
+    console.error("Error generating batch CBSE report cards:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate batch CBSE report cards",
+    };
+  }
+}
+
+/**
+ * Preview a CBSE report card — identical to generate but returns data
+ * the UI can render without triggering a download.
+ */
+export async function previewCBSEReportCardAction(params: {
+  studentId: string;
+  academicYearId: string;
+  schoolName?: string;
+  schoolAddress?: string;
+}) {
+  try {
+    const data = await aggregateMultiTermReportCardData(
+      params.studentId,
+      params.academicYearId,
+    );
+
+    const pdfBuffer = await generateCBSEReportCardPDF(data, {
+      schoolName: params.schoolName,
+      schoolAddress: params.schoolAddress,
+    });
+
+    return {
+      success: true,
+      pdfBase64: pdfBuffer.toString("base64"),
+      reportData: {
+        studentName: data.student.name,
+        className: data.student.class,
+        section: data.student.section,
+        academicYear: data.academicYear,
+        resultStatus: data.resultStatus,
+        percentage: data.overallPerformance.percentage,
+      },
+    };
+  } catch (error) {
+    console.error("Error previewing CBSE report card:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to preview CBSE report card",
     };
   }
 }

@@ -390,7 +390,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
             studentId: validated.childId,
             exam: {
               schoolId, // Add school isolation
-              termId: reportCard.termId
+              termId: reportCard.termId ?? undefined
             },
             isAbsent: false
           },
@@ -429,7 +429,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
         });
 
         // Get attendance for this term
-        const attendanceRecords = await db.studentAttendance.findMany({
+        const attendanceRecords = reportCard.term ? await db.studentAttendance.findMany({
           where: {
             studentId: validated.childId,
             date: {
@@ -437,7 +437,7 @@ export async function getProgressReports(input: GetProgressReportsInput) {
               lte: reportCard.term.endDate
             }
           }
-        });
+        }) : [];
 
         const totalDays = attendanceRecords.length;
         const presentDays = attendanceRecords.filter(a => a.status === "PRESENT").length;
@@ -463,11 +463,11 @@ export async function getProgressReports(input: GetProgressReportsInput) {
             avatar: student.user.avatar
           },
           term: {
-            id: reportCard.term.id,
-            name: reportCard.term.name,
-            startDate: reportCard.term.startDate,
-            endDate: reportCard.term.endDate,
-            academicYear: reportCard.term.academicYear.name
+            id: reportCard.term?.id ?? "",
+            name: reportCard.term?.name ?? "",
+            startDate: reportCard.term?.startDate ?? new Date(),
+            endDate: reportCard.term?.endDate ?? new Date(),
+            academicYear: reportCard.term?.academicYear.name ?? ""
           },
           academicPerformance: {
             totalMarks: reportCard.totalMarks,
@@ -991,7 +991,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
     });
 
     // Get attendance for this term
-    const attendanceRecords = await db.studentAttendance.findMany({
+    const attendanceRecords = reportCard.term ? await db.studentAttendance.findMany({
       where: {
         studentId: validated.childId,
         date: {
@@ -999,7 +999,7 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
           lte: reportCard.term.endDate
         }
       }
-    });
+    }) : [];
 
     const totalDays = attendanceRecords.length;
     const presentDays = attendanceRecords.filter(a => a.status === "PRESENT").length;
@@ -1018,10 +1018,10 @@ export async function downloadReportCard(input: DownloadReportCardInput) {
         avatar: reportCard.student.user.avatar
       },
       term: {
-        name: reportCard.term.name,
-        academicYear: reportCard.term.academicYear.name,
-        startDate: reportCard.term.startDate,
-        endDate: reportCard.term.endDate
+        name: reportCard.term?.name ?? "",
+        academicYear: reportCard.term?.academicYear.name ?? "",
+        startDate: reportCard.term?.startDate ?? new Date(),
+        endDate: reportCard.term?.endDate ?? new Date()
       },
       academicPerformance: {
         totalMarks: reportCard.totalMarks,
