@@ -10,12 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     // Verify super admin authentication
     const authResult = await superAdminAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: 401 }
-      );
-    }
+    if (authResult) return authResult;
 
     const now = new Date();
 
