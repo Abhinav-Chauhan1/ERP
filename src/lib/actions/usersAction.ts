@@ -43,17 +43,15 @@ const createBaseUser = async (userData: {
   role: UserRole;
   password?: string;
 }, tx: Prisma.TransactionClient | typeof db = db) => {
-  // Only generate password if provided or if role requires it (admin/teacher)
-  // Students and parents use phone-only auth (OTP)
+  // Hash provided password, or generate a default one for all roles
   let hashedPassword: string | undefined;
   if (userData.password) {
     hashedPassword = await hashPassword(userData.password);
-  } else if (userData.role === UserRole.ADMIN || userData.role === UserRole.TEACHER) {
-    // Generate default password for admin/teacher: {firstName}@123
+  } else {
+    // Default password for all roles when none is provided: {firstName}@123
     const defaultPassword = `${userData.firstName.toLowerCase()}@123`;
     hashedPassword = await hashPassword(defaultPassword);
   }
-  // For students/parents, passwordHash remains undefined (phone/OTP auth)
 
   // Sanitize inputs
   const sanitizedData: any = {
@@ -249,7 +247,7 @@ export async function createStudent(data: CreateStudentFormData) {
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
-      // Create the base user (email optional, no password for students)
+      // Create the base user (email optional, password required for login)
       const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
@@ -257,7 +255,7 @@ export async function createStudent(data: CreateStudentFormData) {
         phone: data.phone,
         avatar: data.avatar,
         role: UserRole.STUDENT,
-        // No password - students use phone/OTP authentication
+        password: data.password,
       }, tx);
 
       // Create the student profile
@@ -363,7 +361,7 @@ export async function createParent(data: CreateParentFormData) {
 
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
-      // Create the base user (email optional, no password for parents)
+      // Create the base user (email optional, password required for login)
       const user = await createBaseUser({
         firstName: data.firstName,
         lastName: data.lastName,
@@ -371,7 +369,7 @@ export async function createParent(data: CreateParentFormData) {
         phone: data.phone,
         avatar: data.avatar,
         role: UserRole.PARENT,
-        // No password - parents use phone/OTP authentication
+        password: data.password,
       }, tx);
 
       // Create the parent profile

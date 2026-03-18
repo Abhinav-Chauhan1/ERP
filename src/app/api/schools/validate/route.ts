@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         name: true,
-        schoolCode: true
+        schoolCode: true,
+        logo: true
       }
     })
 

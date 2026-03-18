@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     })
 
     const emailResult = await sendEmail({
-      to: email.toLowerCase(),
+      to: [email.toLowerCase()],
       subject: "Password Reset Request - SikshaMitra",
       html: emailHtml
     })

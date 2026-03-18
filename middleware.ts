@@ -136,8 +136,27 @@ export default auth(async (req) => {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Note: School access validation will happen in the application layer
-    // where we can safely use Prisma to check if the user has access to this school
+    // Validate that the authenticated user is authorised for this subdomain's school.
+    // authorizedSchools is an array of schoolIds; isSuperAdmin bypasses the check.
+    if (!session.user.isSuperAdmin) {
+      const authorizedSchools: string[] = session.user.authorizedSchools || []
+      // We store schoolCode in the token — compare against the subdomain.
+      // If the user's schoolCode doesn't match the subdomain they're accessing,
+      // redirect them to their own school or to login.
+      const userSchoolCode = session.user.schoolCode?.toLowerCase()
+      if (userSchoolCode && userSchoolCode !== subdomain.toLowerCase()) {
+        const loginUrl = new URL("/login", req.url)
+        loginUrl.searchParams.set("error", "school_mismatch")
+        return NextResponse.redirect(loginUrl)
+      }
+
+      // If the user has no school context at all, deny access
+      if (!userSchoolCode && authorizedSchools.length === 0) {
+        const loginUrl = new URL("/login", req.url)
+        loginUrl.searchParams.set("error", "no_school_access")
+        return NextResponse.redirect(loginUrl)
+      }
+    }
 
     return subdomainResponse;
   }

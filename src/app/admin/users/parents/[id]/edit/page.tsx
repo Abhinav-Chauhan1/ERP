@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 
 // Create a standalone edit schema instead of using omit
 const editParentSchema = z.object({
@@ -47,6 +48,25 @@ export default function EditParentPage({ params }: EditParentPageProps) {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [parentEmail, setParentEmail] = useState<string | null>(null);
+
+  const handlePasswordUpdate = async () => {
+    if (!newPassword || !userId) return;
+    setPasswordLoading(true);
+    try {
+      const { updateUserPassword } = await import("@/lib/actions/usersAction");
+      await updateUserPassword(userId, newPassword);
+      toast.success("Password updated successfully");
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const form = useForm<EditParentFormData>({
     resolver: zodResolver(editParentSchema),
@@ -78,6 +98,9 @@ export default function EditParentPage({ params }: EditParentPageProps) {
           router.push("/admin/users/parents");
           return;
         }
+
+        setUserId(parent.userId);
+        setParentEmail(parent.user.email || null);
 
         form.reset({
           firstName: parent.user.firstName || "",
@@ -330,14 +353,26 @@ export default function EditParentPage({ params }: EditParentPageProps) {
           <CardDescription>Manage account security settings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-between items-center">
+          <div className="space-y-4">
             <div>
-              <h3 className="font-medium">Reset Password</h3>
-              <p className="text-sm text-muted-foreground">
-                Send a password reset link to the parent
-              </p>
+              <h3 className="font-medium">Change Password</h3>
+              <p className="text-sm text-muted-foreground">Manually set a new password for this parent</p>
             </div>
-            <Button variant="outline">Send Reset Link</Button>
+            <div className="flex items-end gap-4 max-w-md">
+              <div className="grid w-full gap-1.5">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="text"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <Button onClick={handlePasswordUpdate} disabled={passwordLoading || !newPassword}>
+                {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

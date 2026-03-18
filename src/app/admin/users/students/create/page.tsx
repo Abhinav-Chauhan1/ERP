@@ -55,7 +55,8 @@ export default function CreateStudentPage() {
       weight: undefined,
       emergencyContact: "",
       emergencyPhone: "",
-      // No password - mobile-only authentication
+      password: "",
+      confirmPassword: "",
       // Parent/Guardian details
       aadhaarNumber: "",
       apaarId: "",
@@ -918,6 +919,41 @@ export default function CreateStudentPage() {
                   />
                 </div>
 
+              </div>
+
+              <Separator className="my-4" />
+
+              <h3 className="text-lg font-medium">Account Security</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Must be at least 8 characters with uppercase, lowercase, and number
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className="flex justify-end gap-2">

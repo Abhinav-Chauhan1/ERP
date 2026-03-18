@@ -13,7 +13,7 @@ export const baseUserSchema = z.object({
   schoolId: z.string().optional(),
 });
 
-// Base user schema for students and parents (email optional, phone required for mobile login)
+// Base user schema for students and parents (email optional, phone required for login)
 export const mobileAuthUserSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
@@ -130,18 +130,20 @@ export const createTeacherSchema = baseUserSchema
   .and(teacherSchema)
   .and(passwordSchema);
 
-// Students and parents use mobile-only authentication (no password)
+// Students and parents use password authentication (same as admin/teacher)
 export const createStudentSchema = mobileAuthUserSchema
   .extend({
     role: z.literal(UserRole.STUDENT),
   })
-  .and(studentSchema);
+  .and(studentSchema)
+  .and(passwordSchema);
 
 export const createParentSchema = mobileAuthUserSchema
   .extend({
     role: z.literal(UserRole.PARENT),
   })
-  .and(parentSchema);
+  .and(parentSchema)
+  .and(passwordSchema);
 
 // Types for form data
 export type CreateAdministratorFormData = z.infer<typeof createAdministratorSchema>;
@@ -174,8 +176,29 @@ export const updateTeacherSchema = baseUserSchema
     path: ["confirmPassword"]
   });
 
-export const updateStudentSchema = createStudentSchema; // Same as create for now
-export const updateParentSchema = createParentSchema;   // Same as create for now
+export const updateStudentSchema = mobileAuthUserSchema
+  .extend({
+    role: z.literal(UserRole.STUDENT),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .and(studentSchema)
+  .refine(data => !data.password || data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const updateParentSchema = mobileAuthUserSchema
+  .extend({
+    role: z.literal(UserRole.PARENT),
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .and(parentSchema)
+  .refine(data => !data.password || data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export type UpdateAdministratorFormData = z.infer<typeof updateAdministratorSchema>;
 export type UpdateTeacherFormData = z.infer<typeof updateTeacherSchema>;
