@@ -123,9 +123,8 @@ export async function DELETE(request: NextRequest) {
   const { enhancedAuthenticate } = await import('@/lib/middleware/enhanced-auth');
   
   const authResult = await enhancedAuthenticate(request, {
-    requiredRole: UserRole.ADMIN,
+    requiredRoles: [UserRole.ADMIN],
     requireSchoolContext: true,
-    auditAction: 'RESOURCE_DELETE'
   });
 
   if (!authResult.success) {
@@ -139,7 +138,7 @@ export async function DELETE(request: NextRequest) {
   return NextResponse.json({
     message: 'Resource deleted successfully',
     user: authResult.context.user?.id,
-    school: authResult.context.schoolContext?.schoolCode
+    school: authResult.context.user?.schoolCode
   });
 }
 
@@ -151,10 +150,8 @@ import { enhancedAuthenticate } from '@/lib/middleware/enhanced-auth';
 export async function customHandler(request: NextRequest) {
   // Manual authentication with custom configuration
   const authResult = await enhancedAuthenticate(request, {
-    requiredRole: UserRole.TEACHER,
-    requiredPermissions: ['custom:permission'],
+    requiredRoles: [UserRole.TEACHER],
     requireSchoolContext: true,
-    auditAction: 'CUSTOM_API_ACCESS'
   });
 
   if (!authResult.success) {
@@ -165,11 +162,11 @@ export async function customHandler(request: NextRequest) {
   }
 
   // Use authenticated user and school context
-  const { user, schoolContext } = authResult.context;
+  const { user } = authResult.context;
   
   return NextResponse.json({
     message: 'Custom authentication successful',
     user: user!.id,
-    school: schoolContext?.schoolCode
+    school: user!.schoolCode
   });
 }
