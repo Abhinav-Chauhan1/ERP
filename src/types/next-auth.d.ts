@@ -48,7 +48,7 @@ declare module "@auth/core/adapters" {
 declare module "next-auth/jwt" {
     interface JWT {
         id: string
-        role: UserRole
+        role: UserRole | null
         mobile?: string | null
         schoolId?: string | null
         schoolName?: string | null

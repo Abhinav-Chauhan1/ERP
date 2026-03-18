@@ -31,10 +31,9 @@ export const GET = createSchoolAdminRoute(
     });
   },
   {
-    additionalPermissions: ['school:read', 'user:read'],
     rateLimit: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 50 // Limit each IP to 50 requests per windowMs
+      windowMs: 15 * 60 * 1000,
+      max: 50
     }
   }
 );
@@ -67,9 +66,7 @@ export const POST = createTeacherRoute(
       );
     }
   },
-  {
-    additionalPermissions: ['student:read', 'class:write']
-  }
+  {}
 );
 
 // Example 3: Multi-role route (Teacher or School Admin)
@@ -94,7 +91,6 @@ export const PUT = createMultiRoleRoute(
     }
   },
   {
-    additionalPermissions: ['data:write'],
     requireSchoolContext: true
   }
 );
@@ -114,7 +110,6 @@ export const PATCH = createTenantIsolatedRoute(
   },
   {
     requiredRole: [UserRole.ADMIN, UserRole.TEACHER],
-    additionalPermissions: ['special:access']
   }
 );
 

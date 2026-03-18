@@ -32,7 +32,7 @@ export const authConfig = {
             // Add user data to token on sign in
             if (user) {
                 token.role = user.role
-                token.id = user.id
+                token.id = user.id!
                 token.mobile = user.mobile
                 token.schoolId = user.schoolId
                 token.schoolCode = user.schoolCode
