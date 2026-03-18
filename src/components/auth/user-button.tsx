@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,6 @@ interface UserButtonProps {
  */
 export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
   const { data: session } = useSession();
-  const router = useRouter();
   const pathname = usePathname();
 
   if (!session?.user) {
@@ -58,8 +57,7 @@ export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
   const hasProfilePage = basePath === "/student" || basePath === "/alumni";
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    router.push(afterSignOutUrl);
+    await signOut({ callbackUrl: afterSignOutUrl });
   };
 
   return (

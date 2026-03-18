@@ -164,6 +164,28 @@ export default auth(async (req) => {
   // Main domain logic (no subdomain)
   // Skip middleware for public routes
   if (publicRoutes.some(pattern => pattern.test(pathname))) {
+    // If the user is already authenticated and tries to visit a login page,
+    // redirect them to their role-specific dashboard instead.
+    const loginRoutes = [/^\/login/, /^\/sd$/];
+    if (loginRoutes.some(pattern => pattern.test(pathname))) {
+      const session = req.auth;
+      if (session?.user?.id) {
+        switch (session.user.role) {
+          case UserRole.SUPER_ADMIN:
+            return NextResponse.redirect(new URL("/super-admin", req.url));
+          case UserRole.ADMIN:
+            return NextResponse.redirect(new URL("/admin", req.url));
+          case UserRole.TEACHER:
+            return NextResponse.redirect(new URL("/teacher", req.url));
+          case UserRole.STUDENT:
+            return NextResponse.redirect(new URL("/student", req.url));
+          case UserRole.PARENT:
+            return NextResponse.redirect(new URL("/parent", req.url));
+          default:
+            break;
+        }
+      }
+    }
     return NextResponse.next();
   }
 
