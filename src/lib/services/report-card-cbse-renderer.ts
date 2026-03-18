@@ -1,16 +1,20 @@
 /**
- * CBSE Report Card PDF Renderer
+ * CBSE Annual Report Card PDF Renderer
  *
- * Renders a multi-term (Term-1 / Term-2 / Annual) CBSE report card
- * following the standard CBSE format:
- *   1. School header with logo
- *   2. Student details box (name, class, section, DOB, parent info)
- *   3. Scholastic subjects table with dual-term columns
- *   4. Additional subjects table
- *   5. Co-scholastic areas table with dual-term grades
- *   6. Attendance row per term
- *   7. Result summary (grade/CGPA, pass/fail)
- *   8. Remarks and signatures
+ * Layout matches the ClassON-style CBSE annual report card design:
+ *   - Decorative red border
+ *   - School header: logo | school name + address + helpline | emblem
+ *   - "Annual Term (Session YYYY-YYYY)" title bar
+ *   - Student info grid with photo placeholder (right)
+ *   - Scholastic subjects table:
+ *       Term-1 cols: Periodic Test(10), Multiple Assessment(5), Portfolio(5), Half Yearly(80), Total(100)
+ *       Term-2 cols: same
+ *       Overall: Marks Obtained, Grade
+ *   - Summary bar: Attendance | Total Marks | Percentage | Grade
+ *   - Co-scholastic split table (left: subjects, right: activities) with Term1/Term2 grades
+ *   - Grade scale table
+ *   - Remarks + Promotion line
+ *   - Three signature lines
  *
  * Requirements: 10.1, 10.2, 10.3
  */
@@ -29,38 +33,35 @@ import type {
 import { getCBSEGradeScale } from "./report-card-data-aggregation";
 
 // ---------------------------------------------------------------------------
-// Config & styling constants
+// Layout constants
 // ---------------------------------------------------------------------------
 
-/** Page dimensions (A4, mm) */
 const PAGE = { width: 210, height: 297 } as const;
-const MARGIN = { left: 10, right: 10, top: 10, bottom: 10 } as const;
+const MARGIN = { left: 8, right: 8, top: 8, bottom: 8 } as const;
 const CONTENT_WIDTH = PAGE.width - MARGIN.left - MARGIN.right;
 
-/** Color palette — muted institutional blue/grey */
-const COLORS = {
-  primary: "#1a3a6b",       // dark navy
-  secondary: "#3d6098",     // mid blue
-  sectionHeader: "#2c5282", // blue for section titles
-  headerText: "#FFFFFF",
-  bodyText: "#1a1a1a",
-  muted: "#6b7280",
-  border: "#c8d6e5",
-  altRow: "#f0f4f8",
-  pass: "#16a34a",
-  fail: "#dc2626",
-  compartment: "#d97706",
+const C = {
+  red:        "#C0392B",
+  redLight:   "#E74C3C",
+  redBg:      "#FDEDEC",
+  navy:       "#1a3a6b",
+  black:      "#1a1a1a",
+  white:      "#FFFFFF",
+  grey:       "#6b7280",
+  greyLight:  "#f5f5f5",
+  border:     "#C0392B",
+  headerBg:   "#C0392B",
+  sectionBg:  "#C0392B",
+  altRow:     "#FEF9F9",
+  pass:       "#16a34a",
+  fail:       "#dc2626",
+  compartment:"#d97706",
 } as const;
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Generate a complete CBSE report card PDF for one student.
- *
- * @returns PDF as a Buffer (Node) that can be stored / streamed.
- */
 export async function generateCBSEReportCardPDF(
   data: MultiTermReportCardData,
   options: {
@@ -68,62 +69,19 @@ export async function generateCBSEReportCardPDF(
     schoolAddress?: string;
     schoolPhone?: string;
     schoolEmail?: string;
-    schoolLogo?: string; // base64 data-URI
+    schoolWebsite?: string;
+    schoolLogo?: string;
+    schoolEmblem?: string;
     affiliationNo?: string;
     schoolCode?: string;
   } = {},
 ): Promise<Buffer> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-  // Fetch grade scale for the school
   const gradeScale = await getCBSEGradeScale(data.student.schoolId);
-
-  let y: number = MARGIN.top;
-
-  // ── 1. Header ──────────────────────────────────────────────────────────
-  y = renderHeader(doc, data, options, y);
-
-  // ── 2. Student info box ────────────────────────────────────────────────
-  y = renderStudentInfo(doc, data.student, y);
-
-  // ── 3. Scholastic subjects (dual-term table) ───────────────────────────
-  y = renderScholasticTable(doc, data, gradeScale, y);
-
-  // ── Page break check ───────────────────────────────────────────────────
-  y = checkPageBreak(doc, y, 60);
-
-  // ── 4. Additional subjects ─────────────────────────────────────────────
-  if (data.annualAdditionalSubjects.length > 0) {
-    y = renderAdditionalSubjectsTable(doc, data, gradeScale, y);
-    y = checkPageBreak(doc, y, 50);
-  }
-
-  // ── 5. Co-scholastic areas ─────────────────────────────────────────────
-  y = renderCoScholasticTable(doc, data, y);
-  y = checkPageBreak(doc, y, 50);
-
-  // ── 6. Attendance ──────────────────────────────────────────────────────
-  y = renderAttendanceRow(doc, data, y);
-
-  // ── 7. Result summary ──────────────────────────────────────────────────
-  y = renderResultSummary(doc, data, y);
-
-  // ── 8. Remarks ─────────────────────────────────────────────────────────
-  y = renderRemarks(doc, data, y);
-
-  // ── 9. Signatures ──────────────────────────────────────────────────────
-  renderSignatures(doc, y);
-
-  // ── 10. Grade scale footer ─────────────────────────────────────────────
-  renderGradeScaleFooter(doc, gradeScale);
-
+  await renderPage(doc, data, options, gradeScale);
   return Buffer.from(doc.output("arraybuffer"));
 }
 
-/**
- * Generate CBSE report cards in batch for multiple students.
- * Returns a single PDF with one report card per page-set.
- */
 export async function generateBatchCBSEReportCards(
   dataList: MultiTermReportCardData[],
   options: {
@@ -131,7 +89,9 @@ export async function generateBatchCBSEReportCards(
     schoolAddress?: string;
     schoolPhone?: string;
     schoolEmail?: string;
+    schoolWebsite?: string;
     schoolLogo?: string;
+    schoolEmblem?: string;
     affiliationNo?: string;
     schoolCode?: string;
   } = {},
@@ -141,51 +101,53 @@ export async function generateBatchCBSEReportCards(
 
   for (let i = 0; i < dataList.length; i++) {
     const data = dataList[i];
-
-    // Cache grade scale (same school)
     if (!gradeScaleCache) {
       gradeScaleCache = await getCBSEGradeScale(data.student.schoolId);
     }
-
     if (i > 0) doc.addPage();
-
-    let y: number = MARGIN.top;
-    y = renderHeader(doc, data, options, y);
-    y = renderStudentInfo(doc, data.student, y);
-    y = renderScholasticTable(doc, data, gradeScaleCache, y);
-    y = checkPageBreak(doc, y, 60);
-
-    if (data.annualAdditionalSubjects.length > 0) {
-      y = renderAdditionalSubjectsTable(doc, data, gradeScaleCache, y);
-      y = checkPageBreak(doc, y, 50);
-    }
-
-    y = renderCoScholasticTable(doc, data, y);
-    y = checkPageBreak(doc, y, 50);
-    y = renderAttendanceRow(doc, data, y);
-    y = renderResultSummary(doc, data, y);
-    y = renderRemarks(doc, data, y);
-    renderSignatures(doc, y);
-    renderGradeScaleFooter(doc, gradeScaleCache);
+    await renderPage(doc, data, options, gradeScaleCache);
   }
 
   return Buffer.from(doc.output("arraybuffer"));
 }
 
 // ---------------------------------------------------------------------------
-// Render helpers
+// Page renderer
 // ---------------------------------------------------------------------------
 
-/** Utility: add a new page if content won't fit */
-function checkPageBreak(doc: jsPDF, y: number, neededHeight: number): number {
-  if (y + neededHeight > PAGE.height - MARGIN.bottom - 30) {
-    doc.addPage();
-    return MARGIN.top;
-  }
-  return y;
+async function renderPage(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  opts: {
+    schoolName?: string;
+    schoolAddress?: string;
+    schoolPhone?: string;
+    schoolEmail?: string;
+    schoolWebsite?: string;
+    schoolLogo?: string;
+    schoolEmblem?: string;
+    affiliationNo?: string;
+    schoolCode?: string;
+  },
+  gradeScale: CBSEGradeEntry[],
+): Promise<void> {
+  renderDecorativeBorder(doc);
+
+  let y = MARGIN.top + 2;
+  y = renderHeader(doc, data, opts, y);
+  y = renderStudentInfo(doc, data.student, y);
+  y = renderScholasticTable(doc, data, gradeScale, y);
+  y = renderSummaryBar(doc, data, y);
+  y = renderCoScholasticSection(doc, data, y);
+  y = renderGradeScaleTable(doc, gradeScale, y);
+  y = renderRemarks(doc, data, y);
+  renderSignatures(doc, y);
 }
 
-/** Utility: hex → RGB tuple */
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
 function hex(color: string): [number, number, number] {
   const h = color.replace("#", "");
   return [
@@ -195,18 +157,37 @@ function hex(color: string): [number, number, number] {
   ];
 }
 
-/** Utility: draw a colored section title bar */
-function sectionTitle(doc: jsPDF, text: string, y: number): number {
-  doc.setFillColor(...hex(COLORS.sectionHeader));
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 7, "F");
-  doc.setTextColor(...hex(COLORS.headerText));
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(text, MARGIN.left + 3, y + 5);
-  return y + 9;
+function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
+  if (y + needed > PAGE.height - MARGIN.bottom - 20) {
+    doc.addPage();
+    renderDecorativeBorder(doc);
+    return MARGIN.top + 4;
+  }
+  return y;
 }
 
-// ── 1. Header ────────────────────────────────────────────────────────────
+function formatDate(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
+// 0. Decorative border
+// ---------------------------------------------------------------------------
+
+function renderDecorativeBorder(doc: jsPDF): void {
+  // Outer red border
+  doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(1.5);
+  doc.rect(4, 4, PAGE.width - 8, PAGE.height - 8);
+  // Inner thin border
+  doc.setLineWidth(0.4);
+  doc.rect(5.5, 5.5, PAGE.width - 11, PAGE.height - 11);
+}
+
+// ---------------------------------------------------------------------------
+// 1. Header
+// ---------------------------------------------------------------------------
 
 function renderHeader(
   doc: jsPDF,
@@ -216,627 +197,286 @@ function renderHeader(
     schoolAddress?: string;
     schoolPhone?: string;
     schoolEmail?: string;
+    schoolWebsite?: string;
     schoolLogo?: string;
-    affiliationNo?: string;
-    schoolCode?: string;
+    schoolEmblem?: string;
   },
   startY: number,
 ): number {
   let y = startY;
-  const centerX = PAGE.width / 2;
+  const logoW = 22;
+  const logoH = 22;
+  const emblemW = 22;
+  const textX = MARGIN.left + logoW + 3;
+  const textW = CONTENT_WIDTH - logoW - emblemW - 6;
+  const centerX = textX + textW / 2;
 
-  // Logo (if provided)
+  // School logo (left)
   if (opts.schoolLogo) {
     try {
-      doc.addImage(opts.schoolLogo, "PNG", centerX - 10, y, 20, 20);
-      y += 22;
-    } catch {
-      // skip bad logo
-    }
+      doc.addImage(opts.schoolLogo, "PNG", MARGIN.left, y, logoW, logoH);
+    } catch { /* skip */ }
+  } else {
+    // Placeholder circle
+    doc.setDrawColor(...hex(C.red));
+    doc.setLineWidth(0.5);
+    doc.circle(MARGIN.left + logoW / 2, y + logoH / 2, logoW / 2 - 1);
+    doc.setFontSize(6);
+    doc.setTextColor(...hex(C.red));
+    doc.text("LOGO", MARGIN.left + logoW / 2, y + logoH / 2 + 1, { align: "center" });
+  }
+
+  // School emblem (right)
+  const emblemX = PAGE.width - MARGIN.right - emblemW;
+  if (opts.schoolEmblem) {
+    try {
+      doc.addImage(opts.schoolEmblem, "PNG", emblemX, y, emblemW, logoH);
+    } catch { /* skip */ }
+  } else {
+    doc.setDrawColor(...hex(C.red));
+    doc.setLineWidth(0.5);
+    doc.circle(emblemX + emblemW / 2, y + logoH / 2, emblemW / 2 - 1);
+    doc.setFontSize(6);
+    doc.setTextColor(...hex(C.red));
+    doc.text("EMBLEM", emblemX + emblemW / 2, y + logoH / 2 + 1, { align: "center" });
   }
 
   // School name
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...hex(COLORS.primary));
-  doc.text(opts.schoolName || "School Name", centerX, y, { align: "center" });
-  y += 6;
+  doc.setTextColor(...hex(C.red));
+  doc.text(opts.schoolName || "School Name", centerX, y + 6, { align: "center" });
 
   // Address
   if (opts.schoolAddress) {
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...hex(COLORS.muted));
-    doc.text(opts.schoolAddress, centerX, y, { align: "center" });
-    y += 4;
-  }
-
-  // Affiliation / school code
-  if (opts.affiliationNo || opts.schoolCode) {
     doc.setFontSize(8);
-    const parts: string[] = [];
-    if (opts.affiliationNo) parts.push(`Affiliation No: ${opts.affiliationNo}`);
-    if (opts.schoolCode) parts.push(`School Code: ${opts.schoolCode}`);
-    doc.text(parts.join("  |  "), centerX, y, { align: "center" });
-    y += 4;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...hex(C.black));
+    doc.text(opts.schoolAddress, centerX, y + 11, { align: "center" });
   }
 
-  // Title
-  y += 2;
-  doc.setFillColor(...hex(COLORS.primary));
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 8, "F");
-  doc.setTextColor(...hex(COLORS.headerText));
-  doc.setFontSize(12);
+  // Helpline / phone
+  if (opts.schoolPhone) {
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...hex(C.red));
+    doc.text(`Helpline ${opts.schoolPhone}`, centerX, y + 16, { align: "center" });
+  }
+
+  // Email + website
+  const contactParts: string[] = [];
+  if (opts.schoolEmail) contactParts.push(`Email : ${opts.schoolEmail}`);
+  if (opts.schoolWebsite) contactParts.push(`Website : ${opts.schoolWebsite}`);
+  if (contactParts.length > 0) {
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...hex(C.black));
+    doc.text(contactParts.join("    "), centerX, y + 21, { align: "center" });
+  }
+
+  y += logoH + 3;
+
+  // "Annual Term (Session ...)" title bar
+  doc.setFillColor(...hex(C.red));
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 7, "F");
+  doc.setTextColor(...hex(C.white));
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text(
-    `REPORT CARD — ACADEMIC SESSION ${data.academicYear}`,
-    centerX,
-    y + 5.5,
+    `Annual Term (Session ${data.academicYear})`,
+    PAGE.width / 2,
+    y + 4.8,
     { align: "center" },
   );
-  y += 12;
+  y += 9;
 
   return y;
 }
 
-// ── 2. Student Info ──────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// 2. Student Info
+// ---------------------------------------------------------------------------
 
 function renderStudentInfo(
   doc: jsPDF,
   student: StudentInfoExtended,
   startY: number,
 ): number {
-  let y = startY;
+  const y = startY;
+  const photoW = 25;
+  const photoH = 30;
+  const photoX = PAGE.width - MARGIN.right - photoW;
+  const infoW = CONTENT_WIDTH - photoW - 4;
 
-  // Draw a bordered box
-  doc.setDrawColor(...hex(COLORS.border));
+  // Border around entire student info area
+  doc.setDrawColor(...hex(C.red));
   doc.setLineWidth(0.3);
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 32);
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, photoH + 2);
 
-  doc.setFontSize(9);
-  doc.setTextColor(...hex(COLORS.bodyText));
-
-  const col1 = MARGIN.left + 3;
-  const col2 = MARGIN.left + 100;
-  const rowH = 5;
-
-  y += 5;
-
-  // Row 1
-  infoRow(doc, "Student Name", student.name, col1, y);
-  infoRow(doc, "Admission No", student.admissionId, col2, y);
-  y += rowH;
-
-  // Row 2
-  infoRow(doc, "Class / Section", `${student.class} - ${student.section}`, col1, y);
-  infoRow(doc, "Roll No", student.rollNumber || "-", col2, y);
-  y += rowH;
-
-  // Row 3
-  infoRow(doc, "Date of Birth", formatDate(student.dateOfBirth), col1, y);
-  infoRow(doc, "Gender", student.gender || "-", col2, y);
-  y += rowH;
-
-  // Row 4 — parent info
-  const fatherName = student.parent?.fatherName || "-";
-  const motherName = student.parent?.motherName || "-";
-  infoRow(doc, "Father's Name", fatherName, col1, y);
-  infoRow(doc, "Mother's Name", motherName, col2, y);
-  y += rowH;
-
-  // Row 5
-  if (student.parent?.guardianName) {
-    infoRow(doc, "Guardian", `${student.parent.guardianName} (${student.parent.guardianRelation || ""})`, col1, y);
-    y += rowH;
+  // Photo box
+  doc.setDrawColor(...hex(C.grey));
+  doc.setLineWidth(0.3);
+  doc.rect(photoX, y + 1, photoW, photoH);
+  if (student.avatar) {
+    try {
+      doc.addImage(student.avatar, "JPEG", photoX + 0.5, y + 1.5, photoW - 1, photoH - 1);
+    } catch { /* skip */ }
+  } else {
+    doc.setFontSize(6);
+    doc.setTextColor(...hex(C.grey));
+    doc.text("Photo", photoX + photoW / 2, y + photoH / 2 + 1, { align: "center" });
   }
 
-  return startY + 36;
+  doc.setFontSize(8);
+  doc.setTextColor(...hex(C.black));
+
+  const col1X = MARGIN.left + 2;
+  const col2X = MARGIN.left + infoW / 2 + 2;
+  const rowH = 5;
+  let iy = y + 5;
+
+  const fatherName = student.parent?.fatherName || "-";
+  const motherName = student.parent?.motherName || "-";
+
+  const rows: [string, string, string, string][] = [
+    ["Student's Name", student.name,          "Class",        student.class],
+    ["Father's Name",  fatherName,             "Section",      student.section],
+    ["Mother's Name",  motherName,             "Roll No",      student.rollNumber || "-"],
+    ["D.O.B.",         formatDate(student.dateOfBirth), "Admission No.", student.admissionId],
+    ["Gender",         student.gender || "-",  "Aadhaar No.",  student.aadhaarNumber || "-"],
+  ];
+
+  for (const [l1, v1, l2, v2] of rows) {
+    infoCell(doc, l1, v1, col1X, iy);
+    infoCell(doc, l2, v2, col2X, iy);
+    iy += rowH;
+  }
+
+  return y + photoH + 4;
 }
 
-function infoRow(doc: jsPDF, label: string, value: string, x: number, y: number): void {
+function infoCell(doc: jsPDF, label: string, value: string, x: number, y: number): void {
   doc.setFont("helvetica", "bold");
-  doc.text(`${label}: `, x, y);
-  const labelWidth = doc.getTextWidth(`${label}: `);
+  doc.setTextColor(...hex(C.black));
+  doc.text(`${label} : `, x, y);
+  const lw = doc.getTextWidth(`${label} : `);
   doc.setFont("helvetica", "normal");
-  doc.text(value, x + labelWidth, y);
+  doc.text(value, x + lw, y);
 }
 
-function formatDate(d: Date | string): string {
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
+// ---------------------------------------------------------------------------
+// 3. Scholastic Subjects Table
+// ---------------------------------------------------------------------------
+// Columns per the design:
+//   Subject | T1: PT(10) MA(5) Port(5) HY(80) Total(100) | T2: same | Overall: Marks Grade
 
-// ── 3. Scholastic Subjects Table ─────────────────────────────────────────
-
-/**
- * Builds a dual-term table like:
- *
- * | Subject | Term-1 | Grade | Term-2 | Grade | Total | Grade | GP |
- */
 function renderScholasticTable(
   doc: jsPDF,
   data: MultiTermReportCardData,
   gradeScale: CBSEGradeEntry[],
   startY: number,
 ): number {
-  let y = sectionTitle(doc, "PART I — SCHOLASTIC AREAS", startY);
+  // Section header bar
+  doc.setFillColor(...hex(C.sectionBg));
+  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
+  doc.setTextColor(...hex(C.white));
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Scholastic Subjects", MARGIN.left + 3, startY + 4.2);
+  let y = startY + 6;
 
   const term1 = data.terms[0];
   const term2 = data.terms.length > 1 ? data.terms[1] : null;
-  const term1Label = term1?.term.name || "Term-1";
-  const term2Label = term2?.term.name || "Term-2";
+  const t1Label = term1?.term.name || "Term 1";
+  const t2Label = term2?.term.name || "Term 2";
 
-  // Build header (nested-style via colspan strings)
-  const headers = [
+  // Build header rows (3 levels)
+  const head: any[][] = [
     [
-      { content: "Subject", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
-      { content: term1Label, colSpan: 2, styles: { halign: "center" as const } },
-      ...(term2
-        ? [{ content: term2Label, colSpan: 2, styles: { halign: "center" as const } }]
-        : []),
-      { content: "Annual", colSpan: 3, styles: { halign: "center" as const } },
+      { content: "Subjects", rowSpan: 3, styles: { halign: "center", valign: "middle" } },
+      { content: t1Label, colSpan: 5, styles: { halign: "center" } },
+      { content: t2Label, colSpan: 5, styles: { halign: "center" } },
+      { content: "Overall", colSpan: 2, styles: { halign: "center" } },
     ],
     [
-      { content: "Marks", styles: { halign: "center" as const } },
-      { content: "Grade", styles: { halign: "center" as const } },
-      ...(term2
-        ? [
-            { content: "Marks", styles: { halign: "center" as const } },
-            { content: "Grade", styles: { halign: "center" as const } },
-          ]
-        : []),
-      { content: "Total", styles: { halign: "center" as const } },
-      { content: "Grade", styles: { halign: "center" as const } },
-      { content: "GP", styles: { halign: "center" as const } },
+      { content: "Periodic\nTest\n(10)", styles: { halign: "center" } },
+      { content: "Multiple\nAssessment\n(5)", styles: { halign: "center" } },
+      { content: "Portfolio\n(5)", styles: { halign: "center" } },
+      { content: "Half\nYearly\n(80)", styles: { halign: "center" } },
+      { content: "Total\n(100)", styles: { halign: "center" } },
+      { content: "Periodic\nTest\n(10)", styles: { halign: "center" } },
+      { content: "Multiple\nAssessment\n(5)", styles: { halign: "center" } },
+      { content: "Portfolio\n(5)", styles: { halign: "center" } },
+      { content: "Final\n(80)", styles: { halign: "center" } },
+      { content: "Total\n(100)", styles: { halign: "center" } },
+      { content: "Marks\nObtained", styles: { halign: "center" } },
+      { content: "Grade", styles: { halign: "center" } },
     ],
   ];
 
-  // Build body rows
   const subjects = data.annualSubjects;
   const body = subjects.map((subj) => {
-    const t1 = findTermSubject(term1, subj.subjectId);
-    const t2 = term2 ? findTermSubject(term2, subj.subjectId) : null;
+    const t1s = findTermSubject(term1, subj.subjectId);
+    const t2s = term2 ? findTermSubject(term2, subj.subjectId) : null;
 
-    const row: (string | { content: string; styles?: Record<string, unknown> })[] = [
-      subj.subjectName,
-      marksCell(t1),
-      gradeCell(t1),
-    ];
+    // Extract component marks by short name / position
+    const t1pt   = getComponent(t1s, 0);
+    const t1ma   = getComponent(t1s, 1);
+    const t1port = getComponent(t1s, 2);
+    const t1hy   = getComponent(t1s, 3) ?? (t1s && !t1s.isAbsent ? t1s.theoryMarks?.toString() ?? "-" : "-");
+    const t1tot  = t1s && !t1s.isAbsent ? `${t1s.totalMarks}` : (t1s?.isAbsent ? "AB" : "-");
 
-    if (term2) {
-      row.push(marksCell(t2));
-      row.push(gradeCell(t2));
-    }
+    const t2pt   = getComponent(t2s, 0);
+    const t2ma   = getComponent(t2s, 1);
+    const t2port = getComponent(t2s, 2);
+    const t2hy   = getComponent(t2s, 3) ?? (t2s && !t2s.isAbsent ? t2s.theoryMarks?.toString() ?? "-" : "-");
+    const t2tot  = t2s && !t2s.isAbsent ? `${t2s.totalMarks}` : (t2s?.isAbsent ? "AB" : "-");
 
-    row.push(`${subj.totalMarks}/${subj.maxMarks}`);
-    row.push(subj.grade || "-");
-    row.push(subj.gradePoint?.toString() || "-");
+    const overall = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
+    const grade   = subj.grade || "-";
 
-    return row;
+    return [subj.subjectName, t1pt, t1ma, t1port, t1hy, t1tot, t2pt, t2ma, t2port, t2hy, t2tot, overall, grade];
   });
 
   autoTable(doc, {
     startY: y,
-    head: headers,
+    head,
     body,
     theme: "grid",
     headStyles: {
-      fillColor: hex(COLORS.secondary),
-      textColor: hex(COLORS.headerText),
+      fillColor: hex(C.red),
+      textColor: hex(C.white),
       fontStyle: "bold",
       halign: "center",
-      fontSize: 8,
+      fontSize: 6.5,
+      cellPadding: 1,
     },
     bodyStyles: {
-      fontSize: 8,
-      textColor: hex(COLORS.bodyText),
+      fontSize: 7,
+      textColor: hex(C.black),
       halign: "center",
+      cellPadding: 1.5,
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 50 },
+      0: { halign: "left", cellWidth: 28 },
     },
-    alternateRowStyles: {
-      fillColor: hex(COLORS.altRow),
-    },
+    alternateRowStyles: { fillColor: hex(C.altRow) },
     styles: {
-      lineColor: hex(COLORS.border),
-      lineWidth: 0.15,
-      cellPadding: 2,
+      lineColor: hex(C.border),
+      lineWidth: 0.2,
     },
     margin: { left: MARGIN.left, right: MARGIN.right },
   });
 
-  return (doc as any).lastAutoTable.finalY + 4;
+  return (doc as any).lastAutoTable.finalY + 2;
 }
 
-// ── 4. Additional Subjects ───────────────────────────────────────────────
-
-function renderAdditionalSubjectsTable(
-  doc: jsPDF,
-  data: MultiTermReportCardData,
-  gradeScale: CBSEGradeEntry[],
-  startY: number,
-): number {
-  let y = sectionTitle(doc, "ADDITIONAL SUBJECTS", startY);
-
-  const term1 = data.terms[0];
-  const term2 = data.terms.length > 1 ? data.terms[1] : null;
-
-  const headers: any[][] = [
-    [
-      "Subject",
-      "Marks",
-      "Grade",
-      ...(term2 ? ["Marks", "Grade"] : []),
-      "Total",
-      "Grade",
-      "GP",
-    ],
-  ];
-
-  const body = data.annualAdditionalSubjects.map((subj) => {
-    const t1 = findTermSubject(term1, subj.subjectId);
-    const t2 = term2 ? findTermSubject(term2, subj.subjectId) : null;
-
-    return [
-      subj.subjectName,
-      marksCell(t1),
-      gradeCell(t1),
-      ...(term2 ? [marksCell(t2), gradeCell(t2)] : []),
-      `${subj.totalMarks}/${subj.maxMarks}`,
-      subj.grade || "-",
-      subj.gradePoint?.toString() || "-",
-    ];
-  });
-
-  autoTable(doc, {
-    startY: y,
-    head: headers,
-    body,
-    theme: "grid",
-    headStyles: {
-      fillColor: hex(COLORS.secondary),
-      textColor: hex(COLORS.headerText),
-      fontStyle: "bold",
-      halign: "center",
-      fontSize: 8,
-    },
-    bodyStyles: {
-      fontSize: 8,
-      textColor: hex(COLORS.bodyText),
-      halign: "center",
-    },
-    columnStyles: {
-      0: { halign: "left", cellWidth: 50 },
-    },
-    alternateRowStyles: {
-      fillColor: hex(COLORS.altRow),
-    },
-    styles: {
-      lineColor: hex(COLORS.border),
-      lineWidth: 0.15,
-      cellPadding: 2,
-    },
-    margin: { left: MARGIN.left, right: MARGIN.right },
-  });
-
-  return (doc as any).lastAutoTable.finalY + 4;
+function getComponent(subj: TermSubjectResult | null, index: number): string {
+  if (!subj || subj.isAbsent) return subj?.isAbsent ? "AB" : "-";
+  const comp = subj.components?.[index];
+  if (!comp) return "-";
+  return comp.isAbsent ? "AB" : `${comp.obtainedMarks}`;
 }
-
-// ── 5. Co-Scholastic Table ───────────────────────────────────────────────
-
-function renderCoScholasticTable(
-  doc: jsPDF,
-  data: MultiTermReportCardData,
-  startY: number,
-): number {
-  let y = sectionTitle(doc, "PART II — CO-SCHOLASTIC AREAS", startY);
-
-  const term1 = data.terms[0];
-  const term2 = data.terms.length > 1 ? data.terms[1] : null;
-  const term1Label = term1?.term.name || "Term-1";
-  const term2Label = term2?.term.name || "Term-2";
-
-  // Merge all co-scholastic activity names from both terms
-  const activityMap = new Map<string, { name: string; t1Grade: string; t2Grade: string }>();
-
-  if (term1) {
-    for (const cs of term1.coScholastic) {
-      activityMap.set(cs.activityId, {
-        name: cs.activityName,
-        t1Grade: cs.grade || "-",
-        t2Grade: "-",
-      });
-    }
-  }
-  if (term2) {
-    for (const cs of term2.coScholastic) {
-      const existing = activityMap.get(cs.activityId);
-      if (existing) {
-        existing.t2Grade = cs.grade || "-";
-      } else {
-        activityMap.set(cs.activityId, {
-          name: cs.activityName,
-          t1Grade: "-",
-          t2Grade: cs.grade || "-",
-        });
-      }
-    }
-  }
-
-  if (activityMap.size === 0) return y;
-
-  const headers: string[][] = [
-    [
-      "Activity",
-      `${term1Label} Grade`,
-      ...(term2 ? [`${term2Label} Grade`] : []),
-    ],
-  ];
-
-  const body = Array.from(activityMap.values()).map((a) => [
-    a.name,
-    a.t1Grade,
-    ...(term2 ? [a.t2Grade] : []),
-  ]);
-
-  autoTable(doc, {
-    startY: y,
-    head: headers,
-    body,
-    theme: "grid",
-    headStyles: {
-      fillColor: hex(COLORS.secondary),
-      textColor: hex(COLORS.headerText),
-      fontStyle: "bold",
-      halign: "center",
-      fontSize: 8,
-    },
-    bodyStyles: {
-      fontSize: 8,
-      textColor: hex(COLORS.bodyText),
-      halign: "center",
-    },
-    columnStyles: {
-      0: { halign: "left", cellWidth: 80 },
-    },
-    styles: {
-      lineColor: hex(COLORS.border),
-      lineWidth: 0.15,
-      cellPadding: 2,
-    },
-    margin: { left: MARGIN.left, right: MARGIN.right },
-  });
-
-  return (doc as any).lastAutoTable.finalY + 4;
-}
-
-// ── 6. Attendance ────────────────────────────────────────────────────────
-
-function renderAttendanceRow(
-  doc: jsPDF,
-  data: MultiTermReportCardData,
-  startY: number,
-): number {
-  let y = sectionTitle(doc, "ATTENDANCE", startY);
-
-  const term1 = data.terms[0];
-  const term2 = data.terms.length > 1 ? data.terms[1] : null;
-
-  const headers: string[][] = [
-    [
-      "",
-      "Total Days",
-      "Present",
-      "Absent",
-      "Percentage",
-    ],
-  ];
-
-  const body: string[][] = [];
-
-  if (term1) {
-    body.push([
-      term1.term.name || "Term-1",
-      term1.attendance.totalDays.toString(),
-      term1.attendance.daysPresent.toString(),
-      term1.attendance.daysAbsent.toString(),
-      `${term1.attendance.percentage.toFixed(1)}%`,
-    ]);
-  }
-
-  if (term2) {
-    body.push([
-      term2.term.name || "Term-2",
-      term2.attendance.totalDays.toString(),
-      term2.attendance.daysPresent.toString(),
-      term2.attendance.daysAbsent.toString(),
-      `${term2.attendance.percentage.toFixed(1)}%`,
-    ]);
-  }
-
-  // Annual total
-  const totalDays = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
-  const totalPresent = data.terms.reduce((s, t) => s + t.attendance.daysPresent, 0);
-  const totalAbsent = data.terms.reduce((s, t) => s + t.attendance.daysAbsent, 0);
-  const annualPct = totalDays > 0 ? ((totalPresent / totalDays) * 100) : 0;
-
-  body.push([
-    "Annual",
-    totalDays.toString(),
-    totalPresent.toString(),
-    totalAbsent.toString(),
-    `${annualPct.toFixed(1)}%`,
-  ]);
-
-  autoTable(doc, {
-    startY: y,
-    head: headers,
-    body,
-    theme: "grid",
-    headStyles: {
-      fillColor: hex(COLORS.secondary),
-      textColor: hex(COLORS.headerText),
-      fontStyle: "bold",
-      halign: "center",
-      fontSize: 8,
-    },
-    bodyStyles: {
-      fontSize: 8,
-      textColor: hex(COLORS.bodyText),
-      halign: "center",
-    },
-    columnStyles: {
-      0: { halign: "left", fontStyle: "bold" },
-    },
-    styles: {
-      lineColor: hex(COLORS.border),
-      lineWidth: 0.15,
-      cellPadding: 2,
-    },
-    margin: { left: MARGIN.left, right: MARGIN.right },
-  });
-
-  return (doc as any).lastAutoTable.finalY + 4;
-}
-
-// ── 7. Result Summary ────────────────────────────────────────────────────
-
-function renderResultSummary(
-  doc: jsPDF,
-  data: MultiTermReportCardData,
-  startY: number,
-): number {
-  let y = sectionTitle(doc, "RESULT", startY);
-
-  const perf = data.overallPerformance;
-  const col1 = MARGIN.left + 5;
-  const col2 = MARGIN.left + 100;
-
-  doc.setFontSize(10);
-  doc.setTextColor(...hex(COLORS.bodyText));
-
-  // Row 1
-  infoRow(doc, "Total Marks", `${perf.obtainedMarks} / ${perf.maxMarks}`, col1, y);
-  infoRow(doc, "Percentage", `${perf.percentage.toFixed(2)}%`, col2, y);
-  y += 6;
-
-  // Row 2
-  infoRow(doc, "Overall Grade", perf.grade || "-", col1, y);
-  infoRow(doc, "CGPA", perf.cgpa?.toFixed(1) || "-", col2, y);
-  y += 6;
-
-  // Result status with color
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Result: ", col1, y);
-
-  const status = data.resultStatus || "-";
-  const statusColor =
-    status === "PASS"
-      ? COLORS.pass
-      : status === "FAIL"
-        ? COLORS.fail
-        : status === "COMPARTMENT"
-          ? COLORS.compartment
-          : COLORS.bodyText;
-
-  doc.setTextColor(...hex(statusColor));
-  doc.text(status, col1 + doc.getTextWidth("Result: "), y);
-  doc.setTextColor(...hex(COLORS.bodyText));
-  y += 8;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  return y;
-}
-
-// ── 8. Remarks ───────────────────────────────────────────────────────────
-
-function renderRemarks(
-  doc: jsPDF,
-  data: MultiTermReportCardData,
-  startY: number,
-): number {
-  let y = checkPageBreak(doc, startY, 30);
-  y = sectionTitle(doc, "REMARKS", y);
-
-  doc.setFontSize(9);
-  doc.setTextColor(...hex(COLORS.bodyText));
-
-  if (data.remarks.teacherRemarks) {
-    doc.setFont("helvetica", "bold");
-    doc.text("Class Teacher:", MARGIN.left + 3, y);
-    doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(data.remarks.teacherRemarks, CONTENT_WIDTH - 30);
-    doc.text(lines, MARGIN.left + 35, y);
-    y += Math.max(lines.length * 4, 5) + 3;
-  }
-
-  if (data.remarks.principalRemarks) {
-    doc.setFont("helvetica", "bold");
-    doc.text("Principal:", MARGIN.left + 3, y);
-    doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(data.remarks.principalRemarks, CONTENT_WIDTH - 30);
-    doc.text(lines, MARGIN.left + 35, y);
-    y += Math.max(lines.length * 4, 5) + 3;
-  }
-
-  return y + 2;
-}
-
-// ── 9. Signatures ────────────────────────────────────────────────────────
-
-function renderSignatures(doc: jsPDF, startY: number): void {
-  const y = Math.max(startY + 5, PAGE.height - 40);
-
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...hex(COLORS.bodyText));
-
-  const positions = [
-    { x: 35, label: "Class Teacher" },
-    { x: PAGE.width / 2, label: "Parent/Guardian" },
-    { x: PAGE.width - 35, label: "Principal" },
-  ];
-
-  for (const pos of positions) {
-    doc.text("_________________", pos.x, y, { align: "center" });
-    doc.text(pos.label, pos.x, y + 5, { align: "center" });
-  }
-}
-
-// ── 10. Grade Scale Footer ───────────────────────────────────────────────
-
-function renderGradeScaleFooter(doc: jsPDF, gradeScale: CBSEGradeEntry[]): void {
-  const y = PAGE.height - 18;
-
-  doc.setDrawColor(...hex(COLORS.border));
-  doc.setLineWidth(0.2);
-  doc.line(MARGIN.left, y - 3, PAGE.width - MARGIN.right, y - 3);
-
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(...hex(COLORS.muted));
-
-  // Build grade scale string
-  const scaleStr = gradeScale
-    .map((g) => `${g.grade}(${g.minMarks}-${g.maxMarks})=${g.gradePoint}GP`)
-    .join("  |  ");
-
-  doc.text(`Grade Scale: ${scaleStr}`, MARGIN.left, y);
-  doc.text(
-    "This is a computer-generated report card.",
-    PAGE.width - MARGIN.right,
-    y + 4,
-    { align: "right" },
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Data look-up helpers
-// ---------------------------------------------------------------------------
 
 function findTermSubject(
   termSlice: TermSlice | null | undefined,
@@ -846,14 +486,296 @@ function findTermSubject(
   return termSlice.subjects.find((s) => s.subjectId === subjectId) ?? null;
 }
 
-function marksCell(subj: TermSubjectResult | null): string {
-  if (!subj) return "-";
-  if (subj.isAbsent) return "AB";
-  return `${subj.totalMarks}/${subj.maxMarks}`;
+// ---------------------------------------------------------------------------
+// 4. Summary bar: Attendance | Total Marks | Percentage | Grade
+// ---------------------------------------------------------------------------
+
+function renderSummaryBar(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  startY: number,
+): number {
+  const y = startY;
+  const barH = 8;
+  const perf = data.overallPerformance;
+
+  // Total attendance across terms
+  const totalDays = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
+  const totalPresent = data.terms.reduce((s, t) => s + t.attendance.daysPresent, 0);
+
+  const cells = [
+    { label: "Attendance", value: `${totalPresent}/${totalDays}` },
+    { label: "Total Marks", value: `${perf.obtainedMarks}/${perf.maxMarks}` },
+    { label: "Percentage", value: `${perf.percentage.toFixed(2)} %` },
+    { label: "Grade", value: perf.grade || "-" },
+  ];
+
+  const cellW = CONTENT_WIDTH / cells.length;
+
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(...hex(C.red));
+
+  cells.forEach((cell, i) => {
+    const cx = MARGIN.left + i * cellW;
+
+    // Alternating fill
+    if (i % 2 === 0) {
+      doc.setFillColor(...hex(C.redBg));
+    } else {
+      doc.setFillColor(...hex(C.white));
+    }
+    doc.rect(cx, y, cellW, barH, "FD");
+
+    // Label
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...hex(C.red));
+    doc.text(cell.label, cx + cellW / 2, y + 3, { align: "center" });
+
+    // Value
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...hex(C.black));
+    doc.text(cell.value, cx + cellW / 2, y + 6.5, { align: "center" });
+  });
+
+  return y + barH + 3;
 }
 
-function gradeCell(subj: TermSubjectResult | null): string {
-  if (!subj) return "-";
-  if (subj.isAbsent) return "AB";
-  return subj.grade || "-";
+// ---------------------------------------------------------------------------
+// 5. Co-scholastic section (split two-column layout)
+// ---------------------------------------------------------------------------
+
+function renderCoScholasticSection(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  startY: number,
+): number {
+  let y = checkPageBreak(doc, startY, 40);
+
+  const term1 = data.terms[0];
+  const term2 = data.terms.length > 1 ? data.terms[1] : null;
+  const t1Label = term1?.term.name || "Term 1";
+  const t2Label = term2?.term.name || "Term 2";
+
+  // Collect all co-scholastic activities
+  const activityMap = new Map<string, { name: string; t1: string; t2: string; isSkill: boolean }>();
+
+  if (term1) {
+    for (const cs of term1.coScholastic) {
+      activityMap.set(cs.activityId, {
+        name: cs.activityName,
+        t1: cs.grade || "-",
+        t2: "-",
+        isSkill: isSkillActivity(cs.activityName),
+      });
+    }
+  }
+  if (term2) {
+    for (const cs of term2.coScholastic) {
+      const ex = activityMap.get(cs.activityId);
+      if (ex) {
+        ex.t2 = cs.grade || "-";
+      } else {
+        activityMap.set(cs.activityId, {
+          name: cs.activityName,
+          t1: "-",
+          t2: cs.grade || "-",
+          isSkill: isSkillActivity(cs.activityName),
+        });
+      }
+    }
+  }
+
+  const allActivities = Array.from(activityMap.values());
+  const coScholastic = allActivities.filter((a) => !a.isSkill);
+  const skillActivities = allActivities.filter((a) => a.isSkill);
+
+  if (allActivities.length === 0) return y;
+
+  const halfW = (CONTENT_WIDTH - 2) / 2;
+
+  // Left header
+  doc.setFillColor(...hex(C.sectionBg));
+  doc.rect(MARGIN.left, y, halfW, 6, "F");
+  doc.setTextColor(...hex(C.white));
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text("Co scholastic Subjects Area (on a 5 point grade scale)", MARGIN.left + 2, y + 4.2);
+
+  // Right header
+  const rightX = MARGIN.left + halfW + 2;
+  doc.setFillColor(...hex(C.sectionBg));
+  doc.rect(rightX, y, halfW, 6, "F");
+  doc.text("Activities/Skill Subjects Areas (on a 3 point grade scale)", rightX + 2, y + 4.2);
+
+  y += 6;
+
+  // Left table
+  const leftHead = [["SUBJECTS", t1Label, t2Label]];
+  const leftBody = coScholastic.length > 0
+    ? coScholastic.map((a) => [a.name, a.t1, a.t2])
+    : [["—", "—", "—"]];
+
+  autoTable(doc, {
+    startY: y,
+    head: leftHead,
+    body: leftBody,
+    theme: "grid",
+    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), cellPadding: 1.5 },
+    columnStyles: { 0: { cellWidth: halfW - 20, halign: "left" }, 1: { cellWidth: 10, halign: "center" }, 2: { cellWidth: 10, halign: "center" } },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    margin: { left: MARGIN.left, right: PAGE.width - MARGIN.left - halfW },
+  });
+
+  const leftFinalY = (doc as any).lastAutoTable.finalY;
+
+  // Right table
+  const rightHead = [["SUBJECTS", t1Label, t2Label]];
+  const rightBody = skillActivities.length > 0
+    ? skillActivities.map((a) => [a.name, a.t1, a.t2])
+    : [["—", "—", "—"]];
+
+  autoTable(doc, {
+    startY: y,
+    head: rightHead,
+    body: rightBody,
+    theme: "grid",
+    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), cellPadding: 1.5 },
+    columnStyles: { 0: { cellWidth: halfW - 20, halign: "left" }, 1: { cellWidth: 10, halign: "center" }, 2: { cellWidth: 10, halign: "center" } },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    margin: { left: rightX, right: MARGIN.right },
+  });
+
+  const rightFinalY = (doc as any).lastAutoTable.finalY;
+
+  return Math.max(leftFinalY, rightFinalY) + 3;
 }
+
+function isSkillActivity(name: string): boolean {
+  const skillKeywords = ["neatness", "speaking", "listening", "music", "dance", "art", "craft", "sport", "yoga", "activity", "skill"];
+  return skillKeywords.some((k) => name.toLowerCase().includes(k));
+}
+
+// ---------------------------------------------------------------------------
+// 6. Grade Scale Table
+// ---------------------------------------------------------------------------
+
+function renderGradeScaleTable(
+  doc: jsPDF,
+  gradeScale: CBSEGradeEntry[],
+  startY: number,
+): number {
+  let y = checkPageBreak(doc, startY, 20);
+
+  // Section label
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...hex(C.black));
+  doc.text(
+    "Grade Scale For Scholastic Areas (Grades are awarded on 8 Point Grade Scale As Follows) :",
+    MARGIN.left,
+    y + 4,
+  );
+  y += 6;
+
+  const head = [["Marks Range (%)", ...gradeScale.map((g) => g.minMarks + "-" + g.maxMarks)]];
+  const body = [["Grade", ...gradeScale.map((g) => g.grade)]];
+
+  autoTable(doc, {
+    startY: y,
+    head,
+    body,
+    theme: "grid",
+    headStyles: { fillColor: hex(C.redBg), textColor: hex(C.black), fontStyle: "bold", fontSize: 7, cellPadding: 1.5, halign: "center" },
+    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
+    columnStyles: { 0: { halign: "left", fontStyle: "bold" } },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    margin: { left: MARGIN.left, right: MARGIN.right },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 3;
+}
+
+// ---------------------------------------------------------------------------
+// 7. Remarks + Promotion
+// ---------------------------------------------------------------------------
+
+function renderRemarks(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  startY: number,
+): number {
+  let y = checkPageBreak(doc, startY, 20);
+
+  doc.setFontSize(8);
+  doc.setTextColor(...hex(C.black));
+
+  if (data.remarks.teacherRemarks) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Remarks: ", MARGIN.left, y);
+    const lw = doc.getTextWidth("Remarks: ");
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(data.remarks.teacherRemarks, CONTENT_WIDTH - lw - 2);
+    doc.text(lines, MARGIN.left + lw, y);
+    y += Math.max(lines.length * 4.5, 5) + 2;
+  }
+
+  if (data.remarks.principalRemarks) {
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(data.remarks.principalRemarks, CONTENT_WIDTH - 2);
+    doc.text(lines, MARGIN.left, y);
+    y += Math.max(lines.length * 4.5, 5) + 2;
+  }
+
+  // Promotion line
+  const status = data.resultStatus;
+  if (status === "PASS") {
+    const nextClass = getNextClass(data.student.class);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Congratulations! You are promoted to ${nextClass}`, MARGIN.left, y);
+    y += 6;
+  }
+
+  return y + 2;
+}
+
+function getNextClass(currentClass: string): string {
+  const match = currentClass.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    return currentClass.replace(/\d+/, String(num + 1));
+  }
+  return currentClass;
+}
+
+// ---------------------------------------------------------------------------
+// 8. Signatures
+// ---------------------------------------------------------------------------
+
+function renderSignatures(doc: jsPDF, startY: number): void {
+  const y = Math.max(startY + 6, PAGE.height - 28);
+
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...hex(C.black));
+
+  const positions = [
+    { x: MARGIN.left + 20, label: "Parent's Signature" },
+    { x: PAGE.width / 2, label: "Class Incharge Signature" },
+    { x: PAGE.width - MARGIN.right - 20, label: "Principal Signature" },
+  ];
+
+  for (const pos of positions) {
+    // Signature line
+    doc.setDrawColor(...hex(C.black));
+    doc.setLineWidth(0.3);
+    doc.line(pos.x - 18, y, pos.x + 18, y);
+    doc.text(pos.label, pos.x, y + 5, { align: "center" });
+  }
+}
+
+// (emblemH removed — logoH is used directly in renderHeader)
