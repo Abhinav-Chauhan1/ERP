@@ -222,7 +222,7 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
 
                 <FormField
                   control={form.control}
-                  name="active"
+                  name="isActive"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                       <div className="space-y-0.5">
