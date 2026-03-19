@@ -1236,16 +1236,15 @@ export async function getSchoolAnalytics(schoolId: string) {
     });
 
     // Get subscription history
-    const subscriptions = await db.subscription.findMany({
+    const subscriptions = await db.enhancedSubscription.findMany({
       where: { schoolId },
       orderBy: { createdAt: 'desc' },
       take: 10,
       select: {
         id: true,
-        isActive: true,
-        startDate: true,
-        endDate: true,
-        paymentStatus: true,
+        status: true,
+        currentPeriodStart: true,
+        currentPeriodEnd: true,
         createdAt: true,
       },
     });

@@ -64,8 +64,8 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
         _count: { id: true },
       }),
       // Single query for subscription statistics
-      db.subscription.groupBy({
-        by: ['isActive'],
+      db.enhancedSubscription.groupBy({
+        by: ['status'],
         _count: { id: true },
       }),
       // Recent schools count
@@ -78,7 +78,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
         },
       }),
       // Get subscriptions with school data for revenue calculations - OPTIMIZED
-      db.subscription.findMany({
+      db.enhancedSubscription.findMany({
         where: {
           createdAt: {
             gte: startDate,
@@ -87,7 +87,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
         },
         select: {
           id: true,
-          isActive: true,
+          status: true,
           createdAt: true,
           school: {
             select: {
@@ -174,7 +174,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
 
     // Process subscription statistics
     const totalSubscriptions = subscriptionStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const activeSubscriptions = subscriptionStats.find(s => s.isActive === true)?._count.id || 0;
+    const activeSubscriptions = subscriptionStats.find(s => s.status === 'ACTIVE' === true)?._count.id || 0;
 
     // Calculate revenue metrics (mock calculation - in real app would use actual payment data)
     const planPricing = {
@@ -189,7 +189,7 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
     subscriptionsWithSchools.forEach((sub) => {
       const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
       totalRevenue += planPrice;
-      if (sub.isActive) {
+      if (sub.status === 'ACTIVE') {
         monthlyRecurringRevenue += planPrice;
       }
     });
@@ -326,7 +326,7 @@ export async function getRevenueAnalytics(timeRange: string = "30d") {
     };
 
     // Single query to get all subscriptions for the time range
-    const allSubscriptions = await db.subscription.findMany({
+    const allSubscriptions = await db.enhancedSubscription.findMany({
       where: {
         createdAt: {
           gte: startDate,

@@ -16,11 +16,6 @@ export async function seedBillingAndSubscriptions(schoolId: string) {
         createdPlans.push(created);
     }
 
-    // Subscription for the school
-    const sub = await prisma.subscription.create({
-        data: { schoolId, endDate: new Date('2025-03-31') }, // simplified since many fields don't exist
-    });
-
     // Enhanced Subscription
     const enhancedSub = await prisma.enhancedSubscription.create({
         data: { schoolId, planId: createdPlans[2].id, status: 'ACTIVE', currentPeriodStart: new Date('2024-04-01'), currentPeriodEnd: new Date('2025-03-31') },

@@ -40,18 +40,17 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       monthlySubscriptions
     ] = await Promise.all([
       // Get all subscription counts in a single query
-      db.subscription.groupBy({
-        by: ['isActive', 'paymentStatus'],
+      db.enhancedSubscription.groupBy({
+        by: ['status'],
         _count: { id: true },
       }),
       // Get all subscriptions with school data for calculations
-      db.subscription.findMany({
+      db.enhancedSubscription.findMany({
         select: {
           id: true,
-          isActive: true,
-          paymentStatus: true,
+          status: true,
+          currentPeriodEnd: true,
           createdAt: true,
-          endDate: true,
           school: {
             select: {
               name: true,
@@ -64,7 +63,7 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
         take: 100, // Limit for performance
       }),
       // Get subscriptions for the last 12 months for trend analysis
-      db.subscription.findMany({
+      db.enhancedSubscription.findMany({
         where: {
           createdAt: {
             gte: startOfMonth(subDays(now, 11 * 30)),
@@ -85,13 +84,13 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
     // Process subscription counts
     const totalSubscriptions = subscriptionCounts.reduce((sum, stat) => sum + stat._count.id, 0);
     const activeSubscriptions = subscriptionCounts
-      .filter(s => s.isActive === true)
+      .filter(s => s.status === 'ACTIVE')
       .reduce((sum, stat) => sum + stat._count.id, 0);
     const expiredSubscriptions = subscriptionCounts
-      .filter(s => s.isActive === false)
+      .filter(s => s.status !== 'ACTIVE')
       .reduce((sum, stat) => sum + stat._count.id, 0);
     const pendingSubscriptions = subscriptionCounts
-      .filter(s => s.paymentStatus === "PENDING")
+      .filter(s => s.status === 'TRIALING')
       .reduce((sum, stat) => sum + stat._count.id, 0);
 
     // Calculate revenue metrics
@@ -109,7 +108,7 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
     allSubscriptions.forEach((sub) => {
       const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
       totalRevenue += planPrice;
-      if (sub.isActive) {
+      if (sub.status === 'ACTIVE') {
         monthlyRecurringRevenue += planPrice;
       }
       // Calculate revenue for the selected period
@@ -121,7 +120,7 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
     // Get revenue by plan
     const revenueByPlan = Object.entries(planPricing).map(([plan, price]) => {
       const planSubscriptions = allSubscriptions.filter(sub => 
-        sub.school.plan === plan && sub.isActive
+        sub.school.plan === plan && sub.status === 'ACTIVE'
       );
       return {
         plan,
@@ -157,23 +156,23 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
 
     // Get recent payments/invoices (using subscription data)
     const recentPayments = allSubscriptions
-      .filter(sub => sub.isActive)
+      .filter(sub => sub.status === 'ACTIVE')
       .slice(0, 10)
       .map(sub => ({
         id: sub.id,
         schoolName: sub.school.name,
         amount: planPricing[sub.school.plan as keyof typeof planPricing] || 0,
-        status: sub.paymentStatus,
+        status: 'COMPLETED',
         date: sub.createdAt,
         plan: sub.school.plan,
       }));
 
     // Calculate churn metrics
     const churnedSubscriptions = allSubscriptions.filter(sub => 
-      !sub.isActive && 
-      sub.endDate && 
-      sub.endDate >= startDate && 
-      sub.endDate <= endDate
+      sub.status !== 'ACTIVE' && 
+      sub.currentPeriodEnd && 
+      sub.currentPeriodEnd >= startDate && 
+      sub.currentPeriodEnd <= endDate
     );
 
     const churnRate = totalSubscriptions > 0 ? 
@@ -226,7 +225,7 @@ export async function getPaymentHistory(limit: number = 50) {
 
   try {
     // Since we don't have actual payment records yet, we'll use subscription data
-    const subscriptions = await db.subscription.findMany({
+    const subscriptions = await db.enhancedSubscription.findMany({
       include: {
         school: {
           select: {
@@ -249,7 +248,7 @@ export async function getPaymentHistory(limit: number = 50) {
       id: sub.id,
       schoolName: sub.school.name,
       amount: planPricing[sub.school.plan as keyof typeof planPricing] || 0,
-      status: sub.paymentStatus,
+      status: 'COMPLETED',
       date: sub.createdAt,
       plan: sub.school.plan,
       subscriptionId: sub.id,
