@@ -126,7 +126,7 @@ export async function convertAdmissionToStudent(
           phone: application.parentPhone,
           role: UserRole.STUDENT,
           isActive: true,
-          password: hashedPassword,
+          passwordHash: hashedPassword,
           emailVerified: new Date(), // Admin-converted users are pre-verified
         },
       });

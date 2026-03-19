@@ -355,7 +355,7 @@ async function handlePasswordUpdate(user: any, body: any) {
         id: user.id
       },
       data: {
-        password: hashedPassword
+        passwordHash: hashedPassword
       }
     })
 

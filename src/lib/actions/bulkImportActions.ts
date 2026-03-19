@@ -328,7 +328,7 @@ export async function importStudents(
               email: validated.email,
               phone: validated.phone,
               role: "STUDENT" as UserRole,
-              password: hashedPassword,
+              passwordHash: hashedPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
@@ -469,7 +469,7 @@ export async function importTeachers(
               email: validated.email,
               phone: validated.phone,
               role: "TEACHER" as UserRole,
-              password: hashedTeacherPassword,
+              passwordHash: hashedTeacherPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },
@@ -604,7 +604,7 @@ export async function importParents(
               email: validated.email,
               phone: validated.phone,
               role: "PARENT" as UserRole,
-              password: hashedParentPassword,
+              passwordHash: hashedParentPassword,
               emailVerified: new Date(), // Admin-imported users are pre-verified
             }
           },

@@ -288,7 +288,7 @@ export async function changePassword({
     // Update password
     await db.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: { passwordHash: hashedPassword }
     });
 
     // Log password change
