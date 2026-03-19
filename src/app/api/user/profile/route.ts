@@ -50,7 +50,6 @@ export const GET = withSchoolAuth(async (request, context) => {
         name: true,
         phone: true,
         avatar: true,
-        image: true,
         role: true,
         emailVerified: true,
         twoFactorEnabled: true,
@@ -456,7 +455,6 @@ async function handleProfileUpdate(user: any, body: any) {
         name: true,
         phone: true,
         avatar: true,
-        image: true,
         role: true
       }
     })

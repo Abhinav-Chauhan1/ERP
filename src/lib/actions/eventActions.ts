@@ -664,7 +664,7 @@ export async function getEventParticipants(eventId: string) {
         lastName: true,
         email: true,
         role: true,
-        image: true,
+        avatar: true,
         student: {
           select: {
             enrollments: {
