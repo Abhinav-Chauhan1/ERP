@@ -66,7 +66,7 @@ export function UserButton({ afterSignOutUrl = "/login" }: UserButtonProps) {
       <DropdownMenuTrigger asChild>
         <button className="relative h-8 w-8 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.avatar || undefined} alt={user.name || user.email} />
+            <AvatarImage src={user.image || undefined} alt={user.name || user.email} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </button>

@@ -34,7 +34,7 @@ export async function currentUser() {
     firstName,
     lastName,
     role: session.user.role,
-    image: session.user.avatar,
+    image: session.user.image,
     schoolId: session.user.schoolId, // Add schoolId from session
     schoolName: session.user.schoolName,
     schoolCode: session.user.schoolCode,

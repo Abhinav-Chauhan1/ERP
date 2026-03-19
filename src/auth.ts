@@ -253,7 +253,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               user.role === UserRole.SUPER_ADMIN
                 ? UserRole.SUPER_ADMIN
                 : (activeUserSchools[0]?.role || UserRole.STUDENT),
-            image: user.avatar || user.avatar,
+            image: user.avatar || undefined,
             schoolId: activeUserSchools[0]?.schoolId || undefined,
             schoolCode: activeUserSchools[0]?.school?.schoolCode || undefined,
             schoolName: activeUserSchools[0]?.school?.name || undefined,
