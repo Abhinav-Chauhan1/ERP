@@ -217,7 +217,7 @@ async function checkScheduledReports() {
     // Find all active reports that are due
     const dueReports = await prisma.scheduledReport.findMany({
       where: {
-        isActive: true,
+        active: true,
         nextRunAt: {
           lte: now,
         },

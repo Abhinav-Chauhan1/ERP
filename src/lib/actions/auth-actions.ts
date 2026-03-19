@@ -262,7 +262,7 @@ export async function changePassword({
     // Get user with password
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { password: true }
+      select: { passwordHash: true }
     });
 
     if (!user || !user.passwordHash) {

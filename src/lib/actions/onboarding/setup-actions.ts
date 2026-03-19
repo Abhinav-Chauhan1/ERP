@@ -233,20 +233,8 @@ async function completeSystemSetup(data: SetupData) {
             },
         });
 
-        // 5. Create default subscription (free trial)
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 30); // 30 days trial
-
-        await tx.subscription.create({
-            data: {
-                schoolId: school.id,
-                billingCycle: "MONTHLY",
-                startDate: new Date(),
-                endDate: trialEndDate,
-                isActive: true,
-                paymentStatus: "PAID", // Trial is free
-            },
-        });
+        // 5. Subscription is managed separately via EnhancedSubscription/billing flow
+        // Schools start without a subscription and can be assigned a plan by super admin
 
         // 6. Create usage counter
         await tx.usageCounter.create({

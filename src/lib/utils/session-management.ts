@@ -68,15 +68,20 @@ export async function updateUserProfile(
     name?: string
     email?: string
     image?: string
+    avatar?: string
     firstName?: string
     lastName?: string
   }
 ): Promise<void> {
   try {
+    // Map image -> avatar for Prisma (User model uses avatar, not image)
+    const { image, ...rest } = updates
+    const dbUpdates = { ...rest, ...(image !== undefined ? { avatar: image } : {}) }
+
     // Update user profile in database
     await db.user.update({
       where: { id: userId },
-      data: updates
+      data: dbUpdates
     })
 
     // Log the profile update for audit purposes

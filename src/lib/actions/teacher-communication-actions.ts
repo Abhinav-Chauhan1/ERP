@@ -227,7 +227,7 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
       return { success: false, message: "Recipient not found" };
     }
 
-    if (!recipient.active) {
+    if (!recipient.isActive) {
       return { success: false, message: "Recipient is not active" };
     }
 

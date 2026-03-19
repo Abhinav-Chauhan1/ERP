@@ -86,19 +86,18 @@ export async function getSchoolsWithFilters(filters: SchoolFilters = {}) {
             administrators: true,
             teachers: true,
             students: true,
-            subscriptions: true,
+            enhancedSubscriptions: true,
           },
         },
-        subscriptions: {
-          where: { isActive: true },
+        enhancedSubscriptions: {
+          where: { status: 'ACTIVE' },
           take: 1,
           orderBy: { createdAt: 'desc' },
           select: {
             id: true,
-            isActive: true,
-            startDate: true,
-            endDate: true,
-            paymentStatus: true,
+            status: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
           },
         },
         administrators: {
@@ -136,7 +135,7 @@ export async function getSchoolsWithFilters(filters: SchoolFilters = {}) {
     // Apply subscription filter
     if (filters.hasActiveSubscription !== undefined) {
       filteredSchools = filteredSchools.filter((school) => {
-        const hasActiveSubscription = school.subscriptions.length > 0;
+        const hasActiveSubscription = school.enhancedSubscriptions.length > 0;
         return hasActiveSubscription === filters.hasActiveSubscription;
       });
     }
@@ -159,7 +158,7 @@ export async function getSchoolsWithFilters(filters: SchoolFilters = {}) {
           students: school._count.students,
           total: school._count.administrators + school._count.teachers + school._count.students,
         },
-        subscription: school.subscriptions[0] || null,
+        subscription: school.enhancedSubscriptions[0] || null,
         primaryAdmin: school.administrators[0] ? {
           id: school.administrators[0].id,
           name: school.administrators[0].user.name,
@@ -337,15 +336,14 @@ export async function getSchoolDetails(schoolId: string) {
           },
           take: 10, // Limit for performance
         },
-        subscriptions: {
+        enhancedSubscriptions: {
           orderBy: { createdAt: "desc" },
           take: 5,
           select: {
             id: true,
-            isActive: true,
-            startDate: true,
-            endDate: true,
-            paymentStatus: true,
+            status: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
             createdAt: true,
           },
         },
@@ -354,7 +352,7 @@ export async function getSchoolDetails(schoolId: string) {
             administrators: true,
             teachers: true,
             students: true,
-            subscriptions: true,
+            enhancedSubscriptions: true,
           },
         },
       },
@@ -1577,7 +1575,7 @@ export async function exportSchoolData(schoolId: string, format: 'json' | 'csv' 
         Course: true,
         Announcement: true,
         Event: true,
-        subscriptions: true,
+        enhancedSubscriptions: true,
         usageCounters: true,
       },
     });

@@ -263,7 +263,7 @@ export async function sendMessage(input: SendMessageInput & { csrfToken?: string
       return { success: false, message: "Recipient not found" };
     }
 
-    if (!recipient.active) {
+    if (!recipient.isActive) {
       return { success: false, message: "Recipient is not active" };
     }
 
