@@ -29,7 +29,7 @@ interface Exam {
   totalMarks: number;
   examDate: Date;
   subject: { name: string };
-  examType: { name: string };
+  examType: { name: string; cbseComponent?: string | null };
   term: {
     name: string;
     academicYear: { name: string };
@@ -267,6 +267,15 @@ export function MarksEntryForm() {
                 <p className="text-xs text-muted-foreground">
                   {selectedExam.subject.name}
                 </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Type</p>
+                <p className="font-medium">{selectedExam.examType.name}</p>
+                {(selectedExam.examType as any).cbseComponent && (
+                  <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 mt-1">
+                    CBSE: {(selectedExam.examType as any).cbseComponent}
+                  </Badge>
+                )}
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Class</p>

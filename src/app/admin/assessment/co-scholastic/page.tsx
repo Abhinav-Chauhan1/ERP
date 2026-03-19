@@ -86,6 +86,7 @@ export default async function CoScholasticActivitiesPage() {
                   <thead>
                     <tr className="bg-accent border-b">
                       <th className="py-3 px-4 text-left font-medium text-muted-foreground">Activity Name</th>
+                      <th className="py-3 px-4 text-left font-medium text-muted-foreground">Section</th>
                       <th className="py-3 px-4 text-left font-medium text-muted-foreground">Assessment Type</th>
                       <th className="py-3 px-4 text-left font-medium text-muted-foreground">Max Marks</th>
                       <th className="py-3 px-4 text-left font-medium text-muted-foreground">Grades Count</th>
@@ -98,6 +99,11 @@ export default async function CoScholasticActivitiesPage() {
                       <tr key={activity.id} className="border-b hover:bg-accent/50">
                         <td className="py-3 px-4 align-middle">
                           <div className="font-medium">{activity.name}</div>
+                        </td>
+                        <td className="py-3 px-4 align-middle">
+                          <Badge variant={activity.category === "SKILL_ACTIVITY" ? "secondary" : "outline"} className={activity.category === "SKILL_ACTIVITY" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}>
+                            {activity.category === "SKILL_ACTIVITY" ? "Activities/Skills (3pt)" : "Co-Scholastic (5pt)"}
+                          </Badge>
                         </td>
                         <td className="py-3 px-4 align-middle">
                           <Badge variant={activity.assessmentType === "GRADE" ? "default" : "secondary"}>

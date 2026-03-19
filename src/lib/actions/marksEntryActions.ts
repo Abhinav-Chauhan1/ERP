@@ -55,6 +55,7 @@ export async function getEnrolledStudentsForMarks(
       where: { id: examId },
       include: {
         subject: true,
+        examType: true,
         subjectMarkConfig: {
           where: {
             subjectId: {
@@ -109,6 +110,21 @@ export async function getEnrolledStudentsForMarks(
       },
     });
 
+    // For CBSE exams with cbseComponent mapping, auto-generate a mark config if none exists
+    const effectiveMarkConfig = markConfig || (
+      (exam.examType as any)?.cbseComponent
+        ? {
+            id: "auto",
+            examId,
+            subjectId: exam.subjectId,
+            theoryMaxMarks: exam.totalMarks,
+            practicalMaxMarks: null,
+            internalMaxMarks: null,
+            totalMarks: exam.totalMarks,
+          }
+        : null
+    );
+
     // Format student data with existing marks if any
     const studentsWithMarks = students.map((student) => {
       const existingResult = student.examResults[0];
@@ -135,7 +151,7 @@ export async function getEnrolledStudentsForMarks(
       data: {
         students: studentsWithMarks,
         exam,
-        markConfig,
+        markConfig: effectiveMarkConfig,
       },
     };
   } catch (error) {
@@ -514,6 +530,7 @@ export async function getExamsForMarksEntry(): Promise<ActionResult> {
         examType: {
           select: {
             name: true,
+            cbseComponent: true,
           },
         },
         term: {

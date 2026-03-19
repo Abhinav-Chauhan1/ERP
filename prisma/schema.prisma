@@ -1201,6 +1201,8 @@ model ExamType {
   isActive           Boolean  @default(true)
   canRetest          Boolean  @default(false)
   includeInGradeCard Boolean  @default(true)
+  /// CBSE column mapping: PT | MA | PORTFOLIO | HALF_YEARLY | ANNUAL | null
+  cbseComponent      String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   schoolId           String
@@ -3444,6 +3446,8 @@ model CoScholasticActivity {
   assessmentType String
   maxMarks       Float?
   isActive       Boolean             @default(true)
+  /// CO_SCHOLASTIC (5-point scale) | SKILL_ACTIVITY (3-point scale)
+  category       String              @default("CO_SCHOLASTIC")
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   schoolId       String

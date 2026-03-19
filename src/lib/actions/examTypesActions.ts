@@ -116,6 +116,7 @@ export async function createExamType(data: ExamTypeFormValues) {
         isActive: data.isActive,
         canRetest: data.canRetest,
         includeInGradeCard: data.includeInGradeCard,
+        cbseComponent: data.cbseComponent || null,
         school: {
           connect: { id: schoolId }
         }
@@ -162,6 +163,7 @@ export async function updateExamType(data: ExamTypeUpdateFormValues) {
         isActive: data.isActive,
         canRetest: data.canRetest,
         includeInGradeCard: data.includeInGradeCard,
+        cbseComponent: data.cbseComponent || null,
       }
     });
 

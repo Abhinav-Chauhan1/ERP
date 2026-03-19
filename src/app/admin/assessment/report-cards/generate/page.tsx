@@ -46,7 +46,6 @@ export default function GenerateSingleReportCardPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [selectedTermId, setSelectedTermId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [canGenerate, setCanGenerate] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -97,6 +96,7 @@ export default function GenerateSingleReportCardPage() {
 
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
   const selectedTerm = terms.find((t) => t.id === selectedTermId);
+  const canGenerate = !!selectedStudentId && !!selectedTermId;
 
   return (
     <div className="flex flex-col gap-6">

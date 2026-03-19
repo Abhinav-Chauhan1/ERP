@@ -29,6 +29,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   DropdownMenu,
@@ -39,6 +40,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -53,6 +61,7 @@ import {
   getExamStatsByType
 } from "@/lib/actions/examTypesActions";
 import { getGrades } from "@/lib/actions/gradesActions";
+import { CBSE_COMPONENTS } from "@/lib/schemaValidation/examTypesSchemaValidation";
 
 export default function ExamTypesPage() {
   const [examTypes, setExamTypes] = useState<any[]>([]);
@@ -75,6 +84,7 @@ export default function ExamTypesPage() {
       isActive: true,
       canRetest: false,
       includeInGradeCard: true,
+      cbseComponent: null,
     },
   });
 
@@ -162,6 +172,7 @@ export default function ExamTypesPage() {
       isActive: true,
       canRetest: false,
       includeInGradeCard: true,
+      cbseComponent: null,
     });
     setEditingExamType(null);
     setDialogOpen(true);
@@ -175,6 +186,7 @@ export default function ExamTypesPage() {
       isActive: examType.isActive,
       canRetest: examType.canRetest,
       includeInGradeCard: examType.includeInGradeCard,
+      cbseComponent: examType.cbseComponent || null,
     });
     setEditingExamType(examType);
     setDialogOpen(true);
@@ -299,6 +311,36 @@ export default function ExamTypesPage() {
                           }}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="cbseComponent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CBSE Report Card Column</FormLabel>
+                      <Select
+                        onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Not mapped (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Not mapped</SelectItem>
+                          {CBSE_COMPONENTS.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Maps this exam type to a CBSE report card column (PT, MA, Portfolio, etc.)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -470,6 +512,11 @@ export default function ExamTypesPage() {
                             In Report Card
                           </Badge>
                         )}
+                        {examType.cbseComponent && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                            CBSE: {examType.cbseComponent}
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
@@ -600,15 +647,6 @@ export default function ExamTypesPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-// Helper component for FormDescription
-function FormDescription({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[0.8rem] text-muted-foreground">
-      {children}
-    </p>
   );
 }
 

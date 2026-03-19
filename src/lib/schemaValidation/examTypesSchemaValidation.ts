@@ -1,5 +1,14 @@
 import * as z from "zod";
 
+// CBSE component options for exam type mapping
+export const CBSE_COMPONENTS = [
+  { value: "PT", label: "Periodic Test (PT)" },
+  { value: "MA", label: "Multiple Assessment (MA)" },
+  { value: "PORTFOLIO", label: "Portfolio" },
+  { value: "HALF_YEARLY", label: "Half Yearly Exam" },
+  { value: "ANNUAL", label: "Annual / Final Exam" },
+] as const;
+
 // Base schema for exam types
 const examTypeBaseSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -8,6 +17,8 @@ const examTypeBaseSchema = z.object({
   isActive: z.boolean().default(true),
   canRetest: z.boolean().default(false),
   includeInGradeCard: z.boolean().default(true),
+  /** Maps this exam type to a CBSE report card column */
+  cbseComponent: z.string().nullable().optional(),
 });
 
 // Schema for creating a new exam type

@@ -37,6 +37,7 @@ interface CoScholasticActivityDialogProps {
     assessmentType: string;
     maxMarks: number | null;
     isActive: boolean;
+    category?: string;
   };
 }
 
@@ -48,6 +49,7 @@ export function CoScholasticActivityDialog({ children, activity }: CoScholasticA
     assessmentType: (activity?.assessmentType as "GRADE" | "MARKS") || "GRADE",
     maxMarks: activity?.maxMarks || undefined,
     isActive: activity?.isActive !== undefined ? activity.isActive : true,
+    category: (activity?.category as "CO_SCHOLASTIC" | "SKILL_ACTIVITY") || "CO_SCHOLASTIC",
   });
 
   const router = useRouter();
@@ -99,6 +101,7 @@ export function CoScholasticActivityDialog({ children, activity }: CoScholasticA
           assessmentType: "GRADE",
           maxMarks: undefined,
           isActive: true,
+          category: "CO_SCHOLASTIC",
         });
       }
     }
@@ -133,6 +136,28 @@ export function CoScholasticActivityDialog({ children, activity }: CoScholasticA
                 required
                 disabled={loading}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="category">Report Card Section *</Label>
+              <Select
+                value={formData.category || "CO_SCHOLASTIC"}
+                onValueChange={(value: "CO_SCHOLASTIC" | "SKILL_ACTIVITY") =>
+                  setFormData({ ...formData, category: value })
+                }
+                disabled={loading}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select section" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CO_SCHOLASTIC">Co-Scholastic Subjects (5-point scale)</SelectItem>
+                  <SelectItem value="SKILL_ACTIVITY">Activities / Skill Subjects (3-point scale)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Determines which section of the CBSE report card this appears in
+              </p>
             </div>
 
             <div className="grid gap-2">

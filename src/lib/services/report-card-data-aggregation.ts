@@ -87,6 +87,8 @@ export interface CoScholasticResult {
   marks: number | null;
   maxMarks: number | null;
   remarks: string | null;
+  /** CO_SCHOLASTIC (5-point scale) | SKILL_ACTIVITY (3-point scale) */
+  category: string;
 }
 
 export interface OverallPerformance {
@@ -175,6 +177,8 @@ export interface StudentInfoExtended extends StudentInfo {
   parent: ParentInfo;
   gender: string;
   aadhaarNumber: string | null;
+  height: number | null;
+  weight: number | null;
 }
 
 /** Term-level slice used inside MultiTermReportCardData */
@@ -545,6 +549,8 @@ export async function fetchStudentParentInfo(studentId: string): Promise<Student
       dateOfBirth: true,
       gender: true,
       aadhaarNumber: true,
+      height: true,
+      weight: true,
       fatherName: true,
       fatherOccupation: true,
       fatherPhone: true,
@@ -603,6 +609,8 @@ export async function fetchStudentParentInfo(studentId: string): Promise<Student
     reportCardTemplateId: currentEnrollment.class.reportCardTemplateId,
     gender: student.gender,
     aadhaarNumber: student.aadhaarNumber,
+    height: (student as any).height ?? null,
+    weight: (student as any).weight ?? null,
     parent: {
       fatherName: student.fatherName,
       fatherOccupation: student.fatherOccupation,
@@ -826,6 +834,11 @@ async function fetchExamResultsWithComponents(
           category: true,
         },
       },
+      examType: {
+        select: {
+          cbseComponent: true,
+        },
+      },
       results: {
         where: { studentId },
         select: {
@@ -914,9 +927,24 @@ async function fetchExamResultsWithComponents(
           totalMax += comp.maxMarks;
         }
       } else {
-        // Fallback to ExamResult totals
-        totalObtained += result?.totalMarks ?? result?.marks ?? 0;
-        totalMax += config?.totalMarks ?? exam.totalMarks ?? 100;
+        // Fallback: create a synthetic component from the exam type's cbseComponent
+        const cbseComp = (exam as any).examType?.cbseComponent;
+        const result = exam.results[0];
+        const config = exam.subjectMarkConfig[0];
+        const obtained = result?.totalMarks ?? result?.marks ?? 0;
+        const max = config?.totalMarks ?? exam.totalMarks ?? 100;
+        if (cbseComp) {
+          components.push({
+            componentId: exam.id,
+            componentName: cbseComp,
+            shortName: cbseComp,
+            maxMarks: max,
+            obtainedMarks: obtained,
+            isAbsent: result?.isAbsent ?? false,
+          });
+        }
+        totalObtained += obtained;
+        totalMax += max;
       }
 
       // Aggregate theory/practical/internal from ExamResult
@@ -1074,6 +1102,7 @@ async function fetchCoScholasticGrades(
           name: true,
           assessmentType: true,
           maxMarks: true,
+          category: true,
         },
       },
       grade: true,
@@ -1090,6 +1119,7 @@ async function fetchCoScholasticGrades(
     marks: cg.marks,
     maxMarks: cg.activity.maxMarks,
     remarks: cg.remarks,
+    category: (cg.activity as any).category || "CO_SCHOLASTIC",
   }));
 }
 

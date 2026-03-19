@@ -9,6 +9,8 @@ export interface CoScholasticActivityInput {
   assessmentType: "GRADE" | "MARKS";
   maxMarks?: number;
   isActive?: boolean;
+  /** CO_SCHOLASTIC (5-point scale) | SKILL_ACTIVITY (3-point scale) */
+  category?: "CO_SCHOLASTIC" | "SKILL_ACTIVITY";
 }
 
 export interface CoScholasticGradeInput {
@@ -137,6 +139,7 @@ export async function createCoScholasticActivity(input: CoScholasticActivityInpu
         assessmentType: input.assessmentType,
         maxMarks: input.assessmentType === "MARKS" ? input.maxMarks : null,
         isActive: input.isActive !== undefined ? input.isActive : true,
+        category: input.category || "CO_SCHOLASTIC",
       },
     });
 
@@ -207,6 +210,7 @@ export async function updateCoScholasticActivity(id: string, input: CoScholastic
         assessmentType: input.assessmentType,
         maxMarks: input.assessmentType === "MARKS" ? input.maxMarks : null,
         isActive: input.isActive !== undefined ? input.isActive : existing.isActive,
+        category: input.category || existing.category,
       },
     });
 

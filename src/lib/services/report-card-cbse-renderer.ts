@@ -343,7 +343,7 @@ function renderStudentInfo(
     ["Father's Name",  fatherName,             "Section",      student.section],
     ["Mother's Name",  motherName,             "Roll No",      student.rollNumber || "-"],
     ["D.O.B.",         formatDate(student.dateOfBirth), "Admission No.", student.admissionId],
-    ["Gender",         student.gender || "-",  "Aadhaar No.",  student.aadhaarNumber || "-"],
+    ["Height",         student.height ? `${student.height} CM` : "-", "Weight", student.weight ? `${student.weight} KG` : "-"],
   ];
 
   for (const [l1, v1, l2, v2] of rows) {
@@ -419,17 +419,17 @@ function renderScholasticTable(
     const t1s = findTermSubject(term1, subj.subjectId);
     const t2s = term2 ? findTermSubject(term2, subj.subjectId) : null;
 
-    // Extract component marks by short name / position
-    const t1pt   = getComponent(t1s, 0);
-    const t1ma   = getComponent(t1s, 1);
-    const t1port = getComponent(t1s, 2);
-    const t1hy   = getComponent(t1s, 3) ?? (t1s && !t1s.isAbsent ? t1s.theoryMarks?.toString() ?? "-" : "-");
+    // Extract component marks by CBSE component name
+    const t1pt   = getComponentByName(t1s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
+    const t1ma   = getComponentByName(t1s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
+    const t1port = getComponentByName(t1s, "PORTFOLIO");
+    const t1hy   = getComponentByName(t1s, "HALF_YEARLY", "HALF YEARLY", "HY");
     const t1tot  = t1s && !t1s.isAbsent ? `${t1s.totalMarks}` : (t1s?.isAbsent ? "AB" : "-");
 
-    const t2pt   = getComponent(t2s, 0);
-    const t2ma   = getComponent(t2s, 1);
-    const t2port = getComponent(t2s, 2);
-    const t2hy   = getComponent(t2s, 3) ?? (t2s && !t2s.isAbsent ? t2s.theoryMarks?.toString() ?? "-" : "-");
+    const t2pt   = getComponentByName(t2s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
+    const t2ma   = getComponentByName(t2s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
+    const t2port = getComponentByName(t2s, "PORTFOLIO");
+    const t2hy   = getComponentByName(t2s, "ANNUAL", "FINAL", "HALF_YEARLY", "HY");
     const t2tot  = t2s && !t2s.isAbsent ? `${t2s.totalMarks}` : (t2s?.isAbsent ? "AB" : "-");
 
     const overall = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
@@ -475,6 +475,22 @@ function getComponent(subj: TermSubjectResult | null, index: number): string {
   if (!subj || subj.isAbsent) return subj?.isAbsent ? "AB" : "-";
   const comp = subj.components?.[index];
   if (!comp) return "-";
+  return comp.isAbsent ? "AB" : `${comp.obtainedMarks}`;
+}
+
+/** Look up a component by CBSE shortName (PT, MA, PORTFOLIO, HALF_YEARLY, ANNUAL) */
+function getComponentByName(subj: TermSubjectResult | null, ...names: string[]): string {
+  if (!subj || subj.isAbsent) return subj?.isAbsent ? "AB" : "-";
+  const comp = subj.components?.find((c) =>
+    names.some((n) => c.shortName?.toUpperCase() === n || c.componentName?.toUpperCase() === n)
+  );
+  if (!comp) {
+    // Fallback to index if no named component found
+    const idx = names.includes("PT") ? 0 : names.includes("MA") ? 1 : names.includes("PORTFOLIO") ? 2 : 3;
+    const fallback = subj.components?.[idx];
+    if (!fallback) return "-";
+    return fallback.isAbsent ? "AB" : `${fallback.obtainedMarks}`;
+  }
   return comp.isAbsent ? "AB" : `${comp.obtainedMarks}`;
 }
 
@@ -567,7 +583,7 @@ function renderCoScholasticSection(
         name: cs.activityName,
         t1: cs.grade || "-",
         t2: "-",
-        isSkill: isSkillActivity(cs.activityName),
+        isSkill: cs.category === "SKILL_ACTIVITY",
       });
     }
   }
@@ -581,7 +597,7 @@ function renderCoScholasticSection(
           name: cs.activityName,
           t1: "-",
           t2: cs.grade || "-",
-          isSkill: isSkillActivity(cs.activityName),
+          isSkill: cs.category === "SKILL_ACTIVITY",
         });
       }
     }
@@ -652,11 +668,6 @@ function renderCoScholasticSection(
   const rightFinalY = (doc as any).lastAutoTable.finalY;
 
   return Math.max(leftFinalY, rightFinalY) + 3;
-}
-
-function isSkillActivity(name: string): boolean {
-  const skillKeywords = ["neatness", "speaking", "listening", "music", "dance", "art", "craft", "sport", "yoga", "activity", "skill"];
-  return skillKeywords.some((k) => name.toLowerCase().includes(k));
 }
 
 // ---------------------------------------------------------------------------
