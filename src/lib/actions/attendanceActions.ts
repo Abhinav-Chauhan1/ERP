@@ -691,7 +691,7 @@ export async function getTeachersForDropdown() {
       where: {
         schoolId,
         user: {
-          active: true,
+          isActive: true,
         },
       },
       include: {
@@ -727,7 +727,7 @@ export async function getStudentsForDropdown() {
       where: {
         schoolId,
         user: {
-          active: true,
+          isActive: true,
         },
       },
       include: {

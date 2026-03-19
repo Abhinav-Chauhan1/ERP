@@ -494,7 +494,7 @@ export async function getContacts() {
         id: {
           not: dbUser.id,
         },
-        active: true,
+        isActive: true,
       },
       select: {
         id: true,

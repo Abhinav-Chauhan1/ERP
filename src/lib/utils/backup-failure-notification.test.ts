@@ -116,14 +116,14 @@ describe('Backup Failure Notification', () => {
         id: 'admin-1',
         user: {
           email: 'admin1@school.com',
-          active: true
+          isActive: true
         }
       },
       {
         id: 'admin-2',
         user: {
           email: 'admin2@school.com',
-          active: true
+          isActive: true
         }
       }
     ]);
@@ -183,19 +183,19 @@ describe('Backup Failure Notification', () => {
       expect(emailCall.html).toContain('Error Message:');
     });
 
-    it('should send to all active administrators', async () => {
+    it('should send to all isActive administrators', async () => {
       mockFindMany.mockResolvedValue([
         {
           id: 'admin-1',
-          user: { email: 'admin1@school.com', active: true }
+          user: { email: 'admin1@school.com', isActive: true }
         },
         {
           id: 'admin-2',
-          user: { email: 'admin2@school.com', active: true }
+          user: { email: 'admin2@school.com', isActive: true }
         },
         {
           id: 'admin-3',
-          user: { email: 'admin3@school.com', active: false } // Inactive
+          user: { email: 'admin3@school.com', isActive: false } // Inactive
         }
       ]);
       
@@ -211,7 +211,7 @@ describe('Backup Failure Notification', () => {
       expect(mockSendEmail).toHaveBeenCalled();
       
       const emailCall = mockSendEmail.mock.calls[0][0];
-      // Should only include active admins
+      // Should only include isActive admins
       expect(emailCall.to).toEqual(['admin1@school.com', 'admin2@school.com']);
       expect(emailCall.to).not.toContain('admin3@school.com');
     });

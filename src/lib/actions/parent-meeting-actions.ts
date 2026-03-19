@@ -769,7 +769,7 @@ export async function getTeachersForMeetings() {
     const teachers = await db.teacher.findMany({
       where: {
         user: {
-          active: true,
+          isActive: true,
         },
       },
       include: {

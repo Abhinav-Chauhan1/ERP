@@ -125,7 +125,7 @@ export async function convertAdmissionToStudent(
           lastName,
           phone: application.parentPhone,
           role: UserRole.STUDENT,
-          active: true,
+          isActive: true,
           password: hashedPassword,
           emailVerified: new Date(), // Admin-converted users are pre-verified
         },
@@ -352,7 +352,7 @@ export async function getStudentFromApplication(applicationId: string) {
                 lastName: true,
                 phone: true,
                 avatar: true,
-                active: true,
+                isActive: true,
               },
             },
             enrollments: {

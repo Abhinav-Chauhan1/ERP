@@ -21,7 +21,7 @@ interface Administrator {
     lastName: string | null;
     email: string | null;
     avatar: string | null;
-    active: boolean;
+    isActive: boolean;
   };
 }
 

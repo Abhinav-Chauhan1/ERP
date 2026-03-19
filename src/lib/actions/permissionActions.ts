@@ -395,7 +395,7 @@ export async function getUsersForPermissionManagement() {
         firstName: true,
         lastName: true,
         role: true,
-        active: true,
+        isActive: true,
       },
       orderBy: [
         { role: 'asc' },

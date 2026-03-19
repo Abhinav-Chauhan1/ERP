@@ -43,7 +43,7 @@ export default function CreateStudentPage() {
       email: "",
       phone: "",
       role: UserRole.STUDENT,
-      active: true,
+      isActive: true,
       admissionId: "",
       admissionDate: new Date(),
       rollNumber: "",

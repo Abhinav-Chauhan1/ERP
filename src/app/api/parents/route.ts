@@ -24,7 +24,7 @@ export const GET = withSchoolAuth(async (request, context) => {
                         email: true,
                         phone: true,
                         avatar: true,
-                        active: true,
+                        isActive: true,
                     },
                 },
                 children: {

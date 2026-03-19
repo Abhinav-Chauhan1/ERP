@@ -45,7 +45,7 @@ export default function CreateParentPage() {
       email: "",
       phone: "",
       role: UserRole.PARENT,
-      active: true,
+      isActive: true,
       occupation: "",
       alternatePhone: "",
       relation: "",

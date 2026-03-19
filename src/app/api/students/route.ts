@@ -18,7 +18,7 @@ export const GET = withSchoolAuth(async (request: NextRequest, context) => {
                         email: true,
                         phone: true,
                         avatar: true,
-                        active: true,
+                        isActive: true,
                     },
                 },
                 enrollments: {

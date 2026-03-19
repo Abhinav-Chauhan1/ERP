@@ -8,14 +8,14 @@ import { cachedQuery, CACHE_CONFIG, CACHE_DURATION, CACHE_TAGS } from "./cache";
 import { USER_SELECT_MINIMAL, CLASS_SELECT_MINIMAL, SUBJECT_SELECT_MINIMAL } from "./query-optimization";
 
 /**
- * Cached query for getting active users (for dropdowns)
+ * Cached query for getting isActive users (for dropdowns)
  * Cache for 10 minutes since user list doesn't change frequently
  */
 export const getActiveUsersForDropdown = cachedQuery(
   async (role?: string) => {
     return await db.user.findMany({
       where: {
-        active: true,
+        isActive: true,
         ...(role && { role: role as any }),
       },
       select: USER_SELECT_MINIMAL,
@@ -74,7 +74,7 @@ export const getSubjectsForDropdown = cachedQuery(
 );
 
 /**
- * Cached query for getting active announcements
+ * Cached query for getting isActive announcements
  * Cache for 5 minutes since announcements change occasionally
  */
 export const getActiveAnnouncements = cachedQuery(
@@ -225,7 +225,7 @@ export const getStudentClasses = cachedQuery(
 );
 
 /**
- * Cached query for getting active academic year
+ * Cached query for getting isActive academic year
  * Cache for 1 hour since academic year rarely changes
  */
 export const getActiveAcademicYear = cachedQuery(
@@ -288,8 +288,8 @@ export const getTermsByAcademicYear = cachedQuery(
 );
 
 /**
- * Cached query for getting active term
- * Cache for 1 hour since active term rarely changes
+ * Cached query for getting isActive term
+ * Cache for 1 hour since isActive term rarely changes
  */
 export const getActiveTerm = cachedQuery(
   async () => {

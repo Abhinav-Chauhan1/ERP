@@ -993,7 +993,7 @@ export async function getAvailableStudentsForClass(classId: string) {
         id: {
           notIn: enrolledStudentIds
         },
-        user: { active: true },
+        user: { isActive: true },
       },
       select: {
         id: true,

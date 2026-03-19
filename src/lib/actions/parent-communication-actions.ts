@@ -246,7 +246,7 @@ export async function sendMessage(input: SendMessageInput & { csrfToken?: string
     const recipient = await db.user.findUnique({
       where: {
         id: validated.recipientId,
-        active: true,
+        isActive: true,
         OR: [
           { administrator: { schoolId } },
           { teacher: { schoolId } }
@@ -255,7 +255,7 @@ export async function sendMessage(input: SendMessageInput & { csrfToken?: string
       select: {
         id: true,
         role: true,
-        active: true
+        isActive: true
       }
     });
 
@@ -942,7 +942,7 @@ export async function getAvailableRecipients() {
               { teacher: { schoolId } }
             ]
           },
-          { active: true }
+          { isActive: true }
         ]
       },
       select: {

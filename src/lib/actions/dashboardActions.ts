@@ -18,17 +18,13 @@ export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, u
       db.student.count({
         where: {
           schoolId,
-          user: {
-            active: true
-          }
+          user: { isActive: true }
         }
       }),
       db.teacher.count({
         where: {
           schoolId,
-          user: {
-            active: true
-          }
+          user: { isActive: true }
         }
       }),
       db.class.count({ where: { schoolId } }),
@@ -61,7 +57,7 @@ export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, us
         schoolId,
 
         user: {
-          active: true,
+          isActive: true,
 
         },
       },
@@ -86,7 +82,7 @@ export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, us
         schoolId,
 
         user: {
-          active: true,
+          isActive: true,
 
         },
       },

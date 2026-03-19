@@ -47,7 +47,7 @@ export function EditAdministratorDialog({ administrator, open, onOpenChange }: E
             email: "",
             phone: "",
             role: UserRole.ADMIN,
-            active: true,
+            isActive: true,
             position: "",
             schoolId: "",
         },
@@ -65,7 +65,7 @@ export function EditAdministratorDialog({ administrator, open, onOpenChange }: E
                         email: fullAdmin.user.email || "",
                         phone: fullAdmin.user.phone || "",
                         role: UserRole.ADMIN,
-                        active: fullAdmin.user.isActive ?? true,
+                        isActive: fullAdmin.user.isActive ?? true,
                         position: fullAdmin.position || "",
                         schoolId: fullAdmin.schoolId || "",
                     });

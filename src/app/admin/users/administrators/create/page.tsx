@@ -32,7 +32,7 @@ export default function CreateAdministratorPage() {
       email: "",
       phone: "",
       role: UserRole.ADMIN,
-      active: true,
+      isActive: true,
       position: "",
 
       password: "",

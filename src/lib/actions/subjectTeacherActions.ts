@@ -97,9 +97,7 @@ export async function getTeachersForAssignment(subjectId: string) {
         id: {
           notIn: assignedTeacherIds
         },
-        user: {
-          active: true
-        }
+        user: { isActive: true }
       },
       include: {
         user: {

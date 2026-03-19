@@ -9,7 +9,7 @@ export const baseUserSchema = z.object({
   phone: z.string().optional(),
   avatar: z.string().url().optional(),
   role: z.enum([UserRole.ADMIN, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT]),
-  active: z.boolean().default(true),
+  isActive: z.boolean().default(true),
   schoolId: z.string().optional(),
 });
 
@@ -21,7 +21,7 @@ export const mobileAuthUserSchema = z.object({
   phone: z.string().min(10, "Phone number is required for login"),
   avatar: z.string().url().optional(),
   role: z.enum([UserRole.STUDENT, UserRole.PARENT]),
-  active: z.boolean().default(true),
+  isActive: z.boolean().default(true),
   schoolId: z.string().optional(),
 });
 

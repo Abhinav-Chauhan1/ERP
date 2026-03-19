@@ -55,13 +55,13 @@ async function getAdministratorEmails(): Promise<string[]> {
         user: {
           select: {
             email: true,
-            active: true
+            isActive: true
           }
         }
       }
     });
 
-    // Filter active admins and extract emails, filtering out null emails
+    // Filter isActive admins and extract emails, filtering out null emails
     return admins
       .filter(admin => admin.user.isActive && admin.user.email)
       .map(admin => admin.user.email!);

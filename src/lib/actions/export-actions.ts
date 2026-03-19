@@ -39,9 +39,9 @@ export async function exportStudentsData(
     };
     
     if (filters?.status === "active") {
-      where.user = { active: true };
+      where.user = { isActive: true };
     } else if (filters?.status === "inactive") {
-      where.user = { active: false };
+      where.user = { isActive: false };
     }
 
     if (filters?.searchQuery) {
@@ -62,7 +62,7 @@ export async function exportStudentsData(
             lastName: true,
             email: true,
             phone: true,
-            active: true,
+            isActive: true,
           },
         },
         enrollments: {
@@ -122,9 +122,9 @@ export async function exportTeachersData(
     };
     
     if (filters?.status === "active") {
-      where.user = { active: true };
+      where.user = { isActive: true };
     } else if (filters?.status === "inactive") {
-      where.user = { active: false };
+      where.user = { isActive: false };
     }
 
     if (filters?.searchQuery) {
@@ -144,7 +144,7 @@ export async function exportTeachersData(
             lastName: true,
             email: true,
             phone: true,
-            active: true,
+            isActive: true,
           },
         },
       },

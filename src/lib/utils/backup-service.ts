@@ -196,7 +196,7 @@ async function getAdministratorEmails(): Promise<string[]> {
         user: {
           select: {
             email: true,
-            active: true
+            isActive: true
           }
         }
       }

@@ -46,7 +46,7 @@ export function AddAdminDialog({ schoolId }: AddAdminDialogProps) {
             email: "",
             phone: "",
             role: UserRole.ADMIN,
-            active: true,
+            isActive: true,
             position: "Administrator",
             schoolId: schoolId,
             password: "",

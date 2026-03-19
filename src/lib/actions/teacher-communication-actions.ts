@@ -216,7 +216,7 @@ export async function sendMessage(input: z.infer<typeof sendMessageSchema> & { c
       select: {
         id: true,
         role: true,
-        active: true,
+        isActive: true,
         firstName: true,
         lastName: true,
         email: true
@@ -570,7 +570,7 @@ export async function getContacts() {
           id: {
             not: user.id
           },
-          active: true
+          isActive: true
         },
         select: USER_SELECT_MINIMAL,
         orderBy: [

@@ -41,7 +41,7 @@ async function ensureSystemUser(): Promise<string | null> {
     if (!systemUser) {
       // Try to find any admin user to use for system operations
       const adminUser = await db.user.findFirst({
-        where: { role: "ADMIN", active: true }
+        where: { role: "ADMIN", isActive: true }
       })
 
       if (adminUser) {
@@ -58,7 +58,7 @@ async function ensureSystemUser(): Promise<string | null> {
             firstName: "System",
             lastName: "Automated",
             role: "ADMIN",
-            active: false,
+            isActive: false,
             emailVerified: new Date()
           }
         })

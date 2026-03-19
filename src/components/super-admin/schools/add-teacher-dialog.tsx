@@ -53,7 +53,7 @@ export function AddTeacherDialog({ schoolId }: AddTeacherDialogProps) {
             email: "",
             phone: "",
             role: UserRole.TEACHER,
-            active: true,
+            isActive: true,
             employeeId: "",
             qualification: "",
             joinDate: new Date(),

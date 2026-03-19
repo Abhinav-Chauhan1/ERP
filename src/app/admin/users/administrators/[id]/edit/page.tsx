@@ -27,7 +27,7 @@ const editAdministratorSchema = z.object({
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
   role: z.literal(UserRole.ADMIN),
-  active: z.boolean(),
+  isActive: z.boolean(),
   position: z.string().optional(),
 
 });
@@ -54,7 +54,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
       email: "",
       phone: "",
       role: UserRole.ADMIN,
-      active: true,
+      isActive: true,
       position: "",
 
     },
@@ -78,7 +78,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
           email: administrator.user.email || "",
           phone: administrator.user.phone || "",
           role: UserRole.ADMIN,
-          active: administrator.user.isActive,
+          isActive: administrator.user.isActive,
           position: administrator.position || "",
 
         });

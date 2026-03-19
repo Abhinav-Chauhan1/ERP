@@ -22,7 +22,7 @@ interface Parent {
     email: string;
     phone: string | null;
     avatar: string | null;
-    active: boolean;
+    isActive: boolean;
   };
   children: Array<{
     id: string;

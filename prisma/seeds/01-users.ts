@@ -22,14 +22,14 @@ export async function seedUsers(schoolId: string): Promise<Omit<SeedContext, 'sc
 
     // Super Admin
     const superAdminUser = await prisma.user.create({
-        data: { email: 'superadmin@dpsvk.edu.in', firstName: 'Super', lastName: 'Admin', name: 'Super Admin', phone: '+91-9000000000', role: 'SUPER_ADMIN', active: true, passwordHash: superAdminPwHash, emailVerified: new Date() },
+        data: { email: 'superadmin@dpsvk.edu.in', firstName: 'Super', lastName: 'Admin', name: 'Super Admin', phone: '+91-9000000000', role: 'SUPER_ADMIN', isActive: true, passwordHash: superAdminPwHash, emailVerified: new Date() },
     });
     await prisma.userSchool.create({ data: { userId: superAdminUser.id, schoolId, role: 'SUPER_ADMIN', isActive: true } });
 
     // Admin
     const adminName = indianName('male');
     const adminUser = await prisma.user.create({
-        data: { email: 'admin@dpsvk.edu.in', firstName: adminName.first, lastName: adminName.last, name: adminName.full, phone: '+91-9876543210', role: 'ADMIN', active: true, passwordHash: adminPwHash, emailVerified: new Date() },
+        data: { email: 'admin@dpsvk.edu.in', firstName: adminName.first, lastName: adminName.last, name: adminName.full, phone: '+91-9876543210', role: 'ADMIN', isActive: true, passwordHash: adminPwHash, emailVerified: new Date() },
     });
     const admin = await prisma.administrator.create({ data: { schoolId, userId: adminUser.id, position: 'Principal' } });
     await prisma.userSchool.create({ data: { userId: adminUser.id, schoolId, role: 'ADMIN', isActive: true } });
@@ -44,7 +44,7 @@ export async function seedUsers(schoolId: string): Promise<Omit<SeedContext, 'sc
         const g = i % 2 === 0 ? 'male' : 'female';
         const n = indianName(g as 'male' | 'female');
         const u = await prisma.user.create({
-            data: { email: `teacher${i + 1}@dpsvk.edu.in`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-98765${String(i).padStart(5, '0')}`, role: 'TEACHER', active: true, passwordHash: teacherPwHash, emailVerified: new Date() },
+            data: { email: `teacher${i + 1}@dpsvk.edu.in`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-98765${String(i).padStart(5, '0')}`, role: 'TEACHER', isActive: true, passwordHash: teacherPwHash, emailVerified: new Date() },
         });
         teacherUserIds.push(u.id);
         await prisma.userSchool.create({ data: { userId: u.id, schoolId, role: 'TEACHER', isActive: true } });
@@ -67,7 +67,7 @@ export async function seedUsers(schoolId: string): Promise<Omit<SeedContext, 'sc
         const g = i % 2 === 0 ? 'male' : 'female';
         const n = indianName(g as 'male' | 'female');
         const u = await prisma.user.create({
-            data: { email: `student${i + 1}@dpsvk.edu.in`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-87654${String(i).padStart(5, '0')}`, role: 'STUDENT', active: true, passwordHash: studentPwHash, emailVerified: new Date() },
+            data: { email: `student${i + 1}@dpsvk.edu.in`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-87654${String(i).padStart(5, '0')}`, role: 'STUDENT', isActive: true, passwordHash: studentPwHash, emailVerified: new Date() },
         });
         studentUserIds.push(u.id);
         await prisma.userSchool.create({ data: { userId: u.id, schoolId, role: 'STUDENT', isActive: true } });
@@ -96,7 +96,7 @@ export async function seedUsers(schoolId: string): Promise<Omit<SeedContext, 'sc
         const g = i % 2 === 0 ? 'male' : 'female';
         const n = indianName(g as 'male' | 'female');
         const u = await prisma.user.create({
-            data: { email: `parent${i + 1}@gmail.com`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-76543${String(i).padStart(5, '0')}`, role: 'PARENT', active: true, passwordHash: parentPwHash, emailVerified: new Date() },
+            data: { email: `parent${i + 1}@gmail.com`, firstName: n.first, lastName: n.last, name: n.full, phone: `+91-76543${String(i).padStart(5, '0')}`, role: 'PARENT', isActive: true, passwordHash: parentPwHash, emailVerified: new Date() },
         });
         parentUserIds.push(u.id);
         await prisma.userSchool.create({ data: { userId: u.id, schoolId, role: 'PARENT', isActive: true } });

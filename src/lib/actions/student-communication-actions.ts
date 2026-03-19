@@ -1174,7 +1174,7 @@ export async function getAvailableRecipients() {
               { role: UserRole.ADMIN },
             ]
           },
-          { active: true }
+          { isActive: true }
         ]
       },
       select: {

@@ -21,7 +21,7 @@ interface Teacher {
     lastName: string;
     email: string;
     avatar: string | null;
-    active: boolean;
+    isActive: boolean;
   };
   subjects: Array<{
     id: string;

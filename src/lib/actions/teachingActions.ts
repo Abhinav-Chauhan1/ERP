@@ -11,7 +11,7 @@ export const getTeachingStats = withSchoolAuthAction(async (schoolId) => {
     const teacherCount = await db.teacher.count({
       where: {
         schoolId,
-        user: { active: true }
+        user: { isActive: true }
       }
     });
     const classCount = await db.class.count({ where: { schoolId } });

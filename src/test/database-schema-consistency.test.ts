@@ -59,7 +59,7 @@ class TestFixtures {
         firstName: data.firstName,
         lastName: data.lastName,
         role: role as any,
-        active: true
+        isActive: true
       }
     });
   }
@@ -274,7 +274,7 @@ describe('Database Schema Consistency', () => {
                 firstName: 'Test',
                 lastName: 'User',
                 role: 'SUPER_ADMIN',
-                active: true
+                isActive: true
               }
             });
 
@@ -377,7 +377,7 @@ describe('Database Schema Consistency', () => {
                 firstName: 'Test',
                 lastName: 'User',
                 role: 'ADMIN',
-                active: true
+                isActive: true
               }
             });
 
@@ -528,7 +528,7 @@ describe('Database Schema Consistency', () => {
                 firstName: testData.userData.firstName,
                 lastName: testData.userData.lastName,
                 role: 'SUPER_ADMIN',
-                active: true
+                isActive: true
               }
             });
 

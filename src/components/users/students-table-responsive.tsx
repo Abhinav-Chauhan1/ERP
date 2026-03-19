@@ -21,7 +21,7 @@ interface Student {
     firstName: string;
     lastName: string;
     avatar: string | null;
-    active: boolean;
+    isActive: boolean;
   };
   enrollments: Array<{
     class: { name: string };

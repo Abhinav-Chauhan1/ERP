@@ -34,11 +34,11 @@ async function ScheduleMeetingContent() {
     redirect("/parent");
   }
 
-  // Fetch all active teachers
+  // Fetch all isActive teachers
   const rawTeachers = await db.teacher.findMany({
     where: {
       user: {
-        active: true,
+        isActive: true,
       },
     },
     include: {

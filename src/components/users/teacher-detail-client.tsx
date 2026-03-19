@@ -28,7 +28,7 @@ interface TeacherDetailClientProps {
             email: string | null;
             phone: string | null;
             avatar: string | null;
-            active: boolean;
+            isActive: boolean;
         };
         subjects: Array<{
             id: string;

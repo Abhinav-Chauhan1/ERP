@@ -455,7 +455,7 @@ class SecurityService {
             await db.user.update({
               where: { id: event.userId },
               data: { 
-                active: false,
+                isActive: false,
                 // Store lockout info in permissions JSON field
                 permissions: {
                   lockedUntil: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes

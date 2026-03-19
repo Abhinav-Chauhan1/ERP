@@ -49,7 +49,7 @@ export function AddParentDialog({ schoolId }: AddParentDialogProps) {
             email: "",
             phone: "",
             role: UserRole.PARENT,
-            active: true,
+            isActive: true,
             relation: "Father",
             occupation: "",
             alternatePhone: "",

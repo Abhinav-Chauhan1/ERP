@@ -775,7 +775,7 @@ export async function sendBulkMessage(
       const teachers = await db.teacher.findMany({
         where: { 
           schoolId, // Add school isolation
-          user: { active: true } 
+          user: { isActive: true } 
         },
         select: { userId: true }
       });
@@ -787,7 +787,7 @@ export async function sendBulkMessage(
       const students = await db.student.findMany({
         where: { 
           schoolId, // Add school isolation
-          user: { active: true } 
+          user: { isActive: true } 
         },
         select: { userId: true }
       });
@@ -841,7 +841,7 @@ export async function sendBulkMessage(
         const t = await db.teacher.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           select: { userId: true } 
         });
@@ -851,7 +851,7 @@ export async function sendBulkMessage(
         const s = await db.student.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           select: { userId: true } 
         });
@@ -861,7 +861,7 @@ export async function sendBulkMessage(
         const p = await db.parent.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           select: { userId: true } 
         });
@@ -963,7 +963,7 @@ export async function previewRecipients(
       const parents = await db.parent.findMany({
         where: { 
           schoolId, // Add school isolation
-          user: { active: true } 
+          user: { isActive: true } 
         },
         include: { user: true },
       });
@@ -981,7 +981,7 @@ export async function previewRecipients(
       const teachers = await db.teacher.findMany({
         where: { 
           schoolId, // Add school isolation
-          user: { active: true } 
+          user: { isActive: true } 
         },
         include: { user: true },
       });
@@ -999,7 +999,7 @@ export async function previewRecipients(
       const students = await db.student.findMany({
         where: { 
           schoolId, // Add school isolation
-          user: { active: true } 
+          user: { isActive: true } 
         },
         include: { user: true },
       });
@@ -1060,7 +1060,7 @@ export async function previewRecipients(
         const res = await db.teacher.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           include: { user: true } 
         });
@@ -1070,7 +1070,7 @@ export async function previewRecipients(
         const res = await db.student.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           include: { user: true } 
         });
@@ -1080,7 +1080,7 @@ export async function previewRecipients(
         const res = await db.parent.findMany({ 
           where: { 
             schoolId, // Add school isolation
-            user: { active: true } 
+            user: { isActive: true } 
           },
           include: { user: true } 
         });
@@ -1184,9 +1184,9 @@ export async function getBulkMessagingStats(): Promise<ActionResult<{
 
     // Get counts of active users by role
     const [totalParents, totalTeachers, totalStudents] = await Promise.all([
-      db.parent.count({ where: { schoolId, user: { active: true } } }),
-      db.teacher.count({ where: { schoolId, user: { active: true } } }),
-      db.student.count({ where: { schoolId, user: { active: true } } }),
+      db.parent.count({ where: { schoolId, user: { isActive: true } } }),
+      db.teacher.count({ where: { schoolId, user: { isActive: true } } }),
+      db.student.count({ where: { schoolId, user: { isActive: true } } }),
     ]);
 
     const totalUsers = totalParents + totalTeachers + totalStudents;

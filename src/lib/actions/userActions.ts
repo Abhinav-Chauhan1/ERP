@@ -16,7 +16,7 @@ export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, us
       db.user.count({
         where: {
           role: UserRole.ADMIN,
-          active: true,
+          isActive: true,
           userSchools: {
             some: {
               schoolId,
@@ -28,7 +28,7 @@ export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, us
       db.user.count({
         where: {
           role: UserRole.TEACHER,
-          active: true,
+          isActive: true,
           userSchools: {
             some: {
               schoolId,
@@ -40,7 +40,7 @@ export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, us
       db.user.count({
         where: {
           role: UserRole.STUDENT,
-          active: true,
+          isActive: true,
           userSchools: {
             some: {
               schoolId,
@@ -52,7 +52,7 @@ export const getUsersOverview = withSchoolAuthAction(async (schoolId: string, us
       db.user.count({
         where: {
           role: UserRole.PARENT,
-          active: true,
+          isActive: true,
           userSchools: {
             some: {
               schoolId,
@@ -100,7 +100,7 @@ export const getRecentUsers = withSchoolAuthAction(async (schoolId: string, user
         lastName: true,
         email: true,
         role: true,
-        active: true,
+        isActive: true,
         createdAt: true,
       },
     });
@@ -147,7 +147,7 @@ export const getAllUsers = withSchoolAuthAction(async (schoolId: string, userId:
         email: true,
         phone: true,
         role: true,
-        active: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -246,7 +246,7 @@ export const updateUserStatus = withSchoolAuthAction(async (schoolId: string, us
 
     const user = await db.user.update({
       where: { id },
-      data: { active },
+      data: { isActive: active },
     });
 
     revalidatePath("/admin/users");
@@ -322,7 +322,7 @@ export const getUsersForDropdown = withSchoolAuthAction(async (schoolId: string,
   try {
     const users = await db.user.findMany({
       where: {
-        active: true,
+        isActive: true,
         ...(role ? { role } : {}),
         userSchools: {
           some: {
