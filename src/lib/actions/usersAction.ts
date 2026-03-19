@@ -449,7 +449,7 @@ export async function updateUserDetails(userId: string, userData: {
   email?: string;
   phone?: string;
   avatar?: string;
-  active?: boolean;
+  isActive?: boolean;
   passwordHash?: string;
 }) {
   try {
@@ -504,7 +504,7 @@ export async function updateAdministrator(administratorId: string, data: Partial
       if (data.email) userUpdateData.email = data.email;
       if (data.phone) userUpdateData.phone = data.phone;
       if (data.avatar) userUpdateData.avatar = data.avatar;
-      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (data.isActive !== undefined) userUpdateData.isActive = data.isActive;
       if (passwordHash) userUpdateData.passwordHash = passwordHash;
 
       // Update user info if there's data to update
@@ -559,7 +559,7 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
       if (data.email) userUpdateData.email = data.email;
       if (data.phone) userUpdateData.phone = data.phone;
       if (data.avatar) userUpdateData.avatar = data.avatar;
-      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (data.isActive !== undefined) userUpdateData.isActive = data.isActive;
       if (passwordHash) userUpdateData.passwordHash = passwordHash;
 
       // Update user info directly (no permission check)
@@ -611,7 +611,7 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
       if (data.email) userUpdateData.email = data.email;
       if (data.phone) userUpdateData.phone = data.phone;
       if (data.avatar) userUpdateData.avatar = data.avatar;
-      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (data.isActive !== undefined) userUpdateData.isActive = data.isActive;
 
       // Update user info directly (no permission check)
       if (Object.keys(userUpdateData).length > 0) {
@@ -698,7 +698,7 @@ export async function updateParent(parentId: string, data: Partial<CreateParentF
       if (data.email) userUpdateData.email = data.email;
       if (data.phone) userUpdateData.phone = data.phone;
       if (data.avatar) userUpdateData.avatar = data.avatar;
-      if (data.active !== undefined) userUpdateData.isActive = data.active;
+      if (data.isActive !== undefined) userUpdateData.isActive = data.isActive;
 
       // Update user info directly (no permission check)
       if (Object.keys(userUpdateData).length > 0) {

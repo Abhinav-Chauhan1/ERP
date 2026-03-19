@@ -60,7 +60,7 @@ export const authConfig = {
                   token.email = dbUser.email
                   token.mobile = dbUser.mobile
                   token.name = dbUser.name
-                  token.picture = dbUser.image || dbUser.avatar
+                  token.picture = dbUser.avatar
 
                   // Update school context and role based on current user-school relationships
                   // For super-admin users, preserve their role and skip school context

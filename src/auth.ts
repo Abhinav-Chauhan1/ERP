@@ -320,7 +320,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.email = dbUser.email
           token.mobile = dbUser.mobile ?? undefined
           token.name = dbUser.name
-          token.picture = dbUser.image || dbUser.avatar
+          token.picture = dbUser.avatar ?? undefined
 
           if (dbUser.role === UserRole.SUPER_ADMIN) {
             token.role = UserRole.SUPER_ADMIN
