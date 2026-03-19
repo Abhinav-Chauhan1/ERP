@@ -92,9 +92,9 @@ export default async function AdministratorDetailPage({ params }: AdministratorD
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
                 <Badge
-                  className={administrator.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+                  className={administrator.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                 >
-                  {administrator.user.active ? "Active" : "Inactive"}
+                  {administrator.user.isActive ? "Active" : "Inactive"}
                 </Badge>
               </div>
               <div>

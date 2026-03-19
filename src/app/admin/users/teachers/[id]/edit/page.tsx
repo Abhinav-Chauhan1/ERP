@@ -88,7 +88,7 @@ export default function EditTeacherPage({ params }: EditTeacherPageProps) {
           email: teacher.user.email || "",
           phone: teacher.user.phone || "",
           role: UserRole.TEACHER,
-          active: teacher.user.active,
+          active: teacher.user.isActive,
           employeeId: teacher.employeeId,
           qualification: teacher.qualification || "",
           joinDate: new Date(teacher.joinDate),

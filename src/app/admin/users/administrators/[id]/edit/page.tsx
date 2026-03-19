@@ -78,7 +78,7 @@ export default function EditAdministratorPage({ params }: EditAdministratorPageP
           email: administrator.user.email || "",
           phone: administrator.user.phone || "",
           role: UserRole.ADMIN,
-          active: administrator.user.active,
+          active: administrator.user.isActive,
           position: administrator.position || "",
 
         });

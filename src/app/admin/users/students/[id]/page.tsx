@@ -555,9 +555,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                     )}
                     <div className="text-center">
                       <Badge
-                        className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+                        className={student.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                       >
-                        {student.user.active ? "Active" : "Inactive"}
+                        {student.user.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                   </div>

@@ -821,7 +821,7 @@ export async function sendBulkMessage(
       const parentIds = new Set<string>();
       enrollments.forEach(enrollment => {
         enrollment.student.parents.forEach(p => {
-          if (p.parent.user.active) {
+          if (p.parent.user.isActive) {
             parentIds.add(p.parent.user.id);
           }
         });
@@ -1038,7 +1038,7 @@ export async function previewRecipients(
       const uniqueMap = new Map<string, BulkMessageRecipient>();
       enrollments.forEach(enrollment => {
         enrollment.student.parents.forEach(p => {
-          if (p.parent.user.active && !uniqueMap.has(p.parent.user.id)) {
+          if (p.parent.user.isActive && !uniqueMap.has(p.parent.user.id)) {
             uniqueMap.set(p.parent.user.id, {
               id: p.parent.user.id,
               name: p.parent.user.name || "Unknown Parent",

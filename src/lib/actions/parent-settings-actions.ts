@@ -247,7 +247,7 @@ export async function changePassword(input: ChangePasswordInput) {
     const { user } = parentData;
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(validated.currentPassword, user.password || "");
+    const isValidPassword = await bcrypt.compare(validated.currentPassword, user.passwordHash || "");
     if (!isValidPassword) {
       return { success: false, message: "Current password is incorrect" };
     }

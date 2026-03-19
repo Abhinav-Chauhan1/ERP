@@ -40,10 +40,10 @@ export function ActivityFeed({
             {activities.map((activity) => (
               <div key={activity.id} className="flex gap-3">
                 <div className="relative mt-1">
-                  {activity.user.image ? (
+                  {activity.user.avatar ? (
                     <div className="h-8 w-8 rounded-full bg-muted overflow-hidden">
                       <OptimizedImage
-                        src={activity.user.image}
+                        src={activity.user.avatar}
                         alt={activity.user.name}
                         width={32}
                         height={32}

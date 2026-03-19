@@ -159,14 +159,14 @@ async function handleEmailUpdate(user: any, body: any) {
     const { email, currentPassword } = validation.data
 
     // Verify current password
-    if (!user.password) {
+    if (!user.passwordHash) {
       return NextResponse.json(
         { success: false, error: "Password authentication not available for OAuth users" },
         { status: 400 }
       )
     }
 
-    const isValidPassword = await verifyPassword(currentPassword, user.password)
+    const isValidPassword = await verifyPassword(currentPassword, user.passwordHash)
     if (!isValidPassword) {
       return NextResponse.json(
         { success: false, error: "Invalid current password" },
@@ -300,7 +300,7 @@ async function handlePasswordUpdate(user: any, body: any) {
     const { currentPassword, newPassword } = validation.data
 
     // Check if user has password (not OAuth-only)
-    if (!user.password) {
+    if (!user.passwordHash) {
       return NextResponse.json(
         { success: false, error: "Password authentication not available for OAuth users" },
         { status: 400 }
@@ -308,7 +308,7 @@ async function handlePasswordUpdate(user: any, body: any) {
     }
 
     // Verify current password
-    const isValidPassword = await verifyPassword(currentPassword, user.password)
+    const isValidPassword = await verifyPassword(currentPassword, user.passwordHash)
     if (!isValidPassword) {
       return NextResponse.json(
         { success: false, error: "Invalid current password" },
@@ -330,7 +330,7 @@ async function handlePasswordUpdate(user: any, body: any) {
     }
 
     // Check if new password is same as current
-    const isSamePassword = await verifyPassword(newPassword, user.password)
+    const isSamePassword = await verifyPassword(newPassword, user.passwordHash)
     if (isSamePassword) {
       return NextResponse.json(
         { success: false, error: "New password must be different from current password" },

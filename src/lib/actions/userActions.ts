@@ -113,7 +113,7 @@ export const getRecentUsers = withSchoolAuthAction(async (schoolId: string, user
         email: user.email,
         role: user.role,
         date: user.createdAt.toISOString().split("T")[0],
-        status: user.active ? "active" : "inactive",
+        status: user.isActive ? "active" : "inactive",
       })),
     };
   } catch (error) {

@@ -71,7 +71,7 @@ export default async function TeacherDetailPage({ params }: TeacherDetailPagePro
       email: teacher.user.email,
       phone: teacher.user.phone,
       avatar: teacher.user.avatar,
-      active: teacher.user.active,
+      active: teacher.user.isActive,
     },
     subjects: teacher.subjects.map(st => ({
       id: st.id,

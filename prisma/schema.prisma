@@ -17,22 +17,16 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Legacy fields for backward compatibility
   emailVerified            DateTime?
-  password                 String?
-  image                    String?
   firstName                String?
   lastName                 String?
   phone                    String?
   avatar                   String?
   role                     UserRole               @default(STUDENT)
-  active                   Boolean                @default(true)
   twoFactorEnabled         Boolean                @default(false)
   twoFactorSecret          String?
   twoFactorBackupCodes     String?
   lastLoginAt              DateTime?
-  mfaEnabled               Boolean                @default(false)
-  mfaSecret                String?
   permissions              Json?
   accounts                 Account[]
   administrator            Administrator?
@@ -212,7 +206,6 @@ model School {
   ScheduledReport         ScheduledReport[]
   StudentRoute            StudentRoute[]
   SubjectMarkConfig       SubjectMarkConfig[]
-  subscriptions           Subscription[]
   supportTickets          SupportTicket[]
   TransportAttendance     TransportAttendance[]
   usageCounters           UsageCounter[]
@@ -240,21 +233,6 @@ model School {
   @@map("schools")
 }
 
-model Subscription {
-  id            String   @id @default(cuid())
-  schoolId      String
-  billingCycle  String   @default("MONTHLY")
-  startDate     DateTime @default(now())
-  endDate       DateTime
-  isActive      Boolean  @default(true)
-  paymentStatus String   @default("PAID")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@index([schoolId])
-  @@map("subscriptions")
-}
 
 model SubscriptionPlan {
   id             String                 @id @default(cuid())
@@ -2054,7 +2032,6 @@ model AuditLog {
   userAgent String?
   createdAt DateTime    @default(now())
 
-  // Legacy fields for backward compatibility
   resource   String?
   resourceId String?
   changes    Json?
@@ -2890,7 +2867,7 @@ model TransportAttendance {
   date           DateTime
   stopName       String
   attendanceType TransportAttendanceType
-  status         TransportAttendanceStatus @default(PRESENT)
+  status         AttendanceStatus @default(PRESENT)
   recordedAt     DateTime                  @default(now())
   recordedBy     String?
   remarks        String?
@@ -3178,7 +3155,7 @@ model HostelComplaint {
   category    ComplaintCategory
   subject     String
   description String
-  priority    ComplaintPriority @default(MEDIUM)
+  priority    TicketPriority @default(MEDIUM)
   status      ComplaintStatus   @default(PENDING)
   assignedTo  String?
   resolvedBy  String?
@@ -4215,11 +4192,6 @@ enum TransportAttendanceType {
   ALIGHTING
 }
 
-enum TransportAttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-}
 
 enum QuestionType {
   MCQ
@@ -4283,12 +4255,6 @@ enum ComplaintCategory {
   OTHER
 }
 
-enum ComplaintPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
 
 enum ComplaintStatus {
   PENDING
@@ -4645,7 +4611,7 @@ model Flashcard {
   schoolId       String
   front          String
   back           String
-  difficulty     DifficultyType @default(MEDIUM)
+  difficulty     Difficulty @default(MEDIUM)
   correctCount   Int            @default(0)
   incorrectCount Int            @default(0)
   lastReviewed   DateTime?
@@ -4715,7 +4681,7 @@ model StudentContentProgress {
   studentId      String
   contentId      String
   schoolId       String
-  status         ProgressStatus @default(NOT_STARTED)
+  status         LessonProgressStatus @default(NOT_STARTED)
   progress       Float          @default(0)
   timeSpent      Int            @default(0) // in seconds
   completed      Boolean        @default(false)
@@ -4751,11 +4717,6 @@ enum RarityType {
   LEGENDARY
 }
 
-enum DifficultyType {
-  EASY
-  MEDIUM
-  HARD
-}
 
 enum LessonContentType {
   VIDEO
@@ -4764,8 +4725,3 @@ enum LessonContentType {
   INTERACTIVE
 }
 
-enum ProgressStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-}

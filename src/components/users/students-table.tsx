@@ -48,8 +48,8 @@ export function StudentsTable({ students }: StudentsTableProps) {
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && student.user.active) ||
-        (statusFilter === "inactive" && !student.user.active);
+        (statusFilter === "active" && student.user.isActive) ||
+        (statusFilter === "inactive" && !student.user.isActive);
 
       return matchesSearch && matchesStatus;
     });
@@ -107,9 +107,9 @@ export function StudentsTable({ students }: StudentsTableProps) {
             </div>
           </div>
           <Badge
-            className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+            className={student.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
           >
-            {student.user.active ? "Active" : "Inactive"}
+            {student.user.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
       ),
@@ -163,9 +163,9 @@ export function StudentsTable({ students }: StudentsTableProps) {
       mobilePriority: "low" as const, // Already shown in header on mobile
       render: (student: Student) => (
         <Badge
-          className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+          className={student.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
-          {student.user.active ? "Active" : "Inactive"}
+          {student.user.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },

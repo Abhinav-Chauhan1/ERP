@@ -50,11 +50,11 @@ export async function initiateTwoFactorSetup(
     }
 
     // Verify password
-    if (!user.password) {
+    if (!user.passwordHash) {
       return { success: false, error: "Password authentication not available for OAuth users" }
     }
 
-    const isValidPassword = await verifyPassword(password, user.password)
+    const isValidPassword = await verifyPassword(password, user.passwordHash)
     if (!isValidPassword) {
       return { success: false, error: "Invalid password" }
     }

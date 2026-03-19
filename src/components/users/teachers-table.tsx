@@ -55,8 +55,8 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && teacher.user.active) ||
-        (statusFilter === "inactive" && !teacher.user.active);
+        (statusFilter === "active" && teacher.user.isActive) ||
+        (statusFilter === "inactive" && !teacher.user.isActive);
 
       return matchesSearch && matchesStatus;
     });
@@ -113,9 +113,9 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
             </div>
           </div>
           <Badge
-            className={teacher.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+            className={teacher.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
           >
-            {teacher.user.active ? "Active" : "Inactive"}
+            {teacher.user.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
       ),
@@ -217,9 +217,9 @@ export function TeachersTable({ teachers }: TeachersTableProps) {
       mobilePriority: "low" as const, // Already shown in header on mobile
       render: (teacher: Teacher) => (
         <Badge
-          className={teacher.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+          className={teacher.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
-          {teacher.user.active ? "Active" : "Inactive"}
+          {teacher.user.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },

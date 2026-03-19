@@ -190,9 +190,9 @@ export default async function ParentDetailPage({
               <div>
                 <p className="text-sm text-muted-foreground">Status</p>
                 <Badge
-                  className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+                  className={parent.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                 >
-                  {parent.user.active ? "Active" : "Inactive"}
+                  {parent.user.isActive ? "Active" : "Inactive"}
                 </Badge>
               </div>
               <div>

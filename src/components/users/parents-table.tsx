@@ -55,8 +55,8 @@ export function ParentsTable({ parents }: ParentsTableProps) {
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && parent.user.active) ||
-        (statusFilter === "inactive" && !parent.user.active);
+        (statusFilter === "active" && parent.user.isActive) ||
+        (statusFilter === "inactive" && !parent.user.isActive);
 
       return matchesSearch && matchesStatus;
     });
@@ -113,9 +113,9 @@ export function ParentsTable({ parents }: ParentsTableProps) {
             </div>
           </div>
           <Badge
-            className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+            className={parent.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
           >
-            {parent.user.active ? "Active" : "Inactive"}
+            {parent.user.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
       ),
@@ -192,9 +192,9 @@ export function ParentsTable({ parents }: ParentsTableProps) {
       mobilePriority: "low" as const, // Already shown in header on mobile
       render: (parent: Parent) => (
         <Badge
-          className={parent.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+          className={parent.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
-          {parent.user.active ? "Active" : "Inactive"}
+          {parent.user.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },

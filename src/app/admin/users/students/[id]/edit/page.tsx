@@ -203,7 +203,7 @@ export default function EditStudentPage() {
           email: student.user.email || "",
           phone: student.user.phone || "",
           role: UserRole.STUDENT,
-          active: student.user.active ?? true,
+          active: student.user.isActive ?? true,
           admissionId: student.admissionId,
           admissionDate: new Date(student.admissionDate),
           rollNumber: student.rollNumber || "",

@@ -108,7 +108,7 @@ export default function EditParentPage({ params }: EditParentPageProps) {
           email: parent.user.email || "",
           phone: parent.user.phone || "",
           role: UserRole.PARENT,
-          active: parent.user.active,
+          active: parent.user.isActive,
           occupation: parent.occupation || "",
           alternatePhone: parent.alternatePhone || "",
           relation: parent.relation || "",

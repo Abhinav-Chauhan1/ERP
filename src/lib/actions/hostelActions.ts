@@ -8,7 +8,7 @@ import {
   RoomType,
   AllocationStatus,
   ComplaintCategory,
-  ComplaintPriority,
+  TicketPriority,
   ComplaintStatus,
   PaymentMethod,
   PaymentStatus,
@@ -790,7 +790,7 @@ export async function createHostelComplaint(data: {
   category: ComplaintCategory;
   subject: string;
   description: string;
-  priority?: ComplaintPriority;
+  priority?: TicketPriority;
   attachments?: string;
 }) {
   try {
@@ -806,7 +806,7 @@ export async function createHostelComplaint(data: {
         category: data.category,
         subject: data.subject,
         description: data.description,
-        priority: data.priority || ComplaintPriority.MEDIUM,
+        priority: data.priority || TicketPriority.MEDIUM,
         attachments: data.attachments,
       },
     });

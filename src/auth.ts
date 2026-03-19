@@ -74,7 +74,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               throw new Error("SCHOOL_INACTIVE")
             }
 
-            schoolFilter = { school: { schoolCode: schoolCode.toUpperCase().trim() } }
+            schoolFilter = { schoolCode: schoolCode.toUpperCase().trim() }
           }
 
           // ── 2. Look up user ──────────────────────────────────────────────────
@@ -253,7 +253,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               user.role === UserRole.SUPER_ADMIN
                 ? UserRole.SUPER_ADMIN
                 : (activeUserSchools[0]?.role || UserRole.STUDENT),
-            image: user.image || user.avatar,
+            image: user.avatar || user.avatar,
             schoolId: activeUserSchools[0]?.schoolId || undefined,
             schoolCode: activeUserSchools[0]?.school?.schoolCode || undefined,
             schoolName: activeUserSchools[0]?.school?.name || undefined,

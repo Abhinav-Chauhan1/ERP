@@ -185,9 +185,9 @@ export function TeacherDetailClient({ teacher }: TeacherDetailClientProps) {
                                 )}
                                 <div className="text-center">
                                     <Badge
-                                        className={teacher.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+                                        className={teacher.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
                                     >
-                                        {teacher.user.active ? "Active" : "Inactive"}
+                                        {teacher.user.isActive ? "Active" : "Inactive"}
                                     </Badge>
                                 </div>
                             </div>

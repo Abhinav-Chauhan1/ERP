@@ -265,7 +265,7 @@ export async function changePassword({
       select: { password: true }
     });
 
-    if (!user || !user.password) {
+    if (!user || !user.passwordHash) {
       return {
         success: false,
         error: "User not found or password not set"
@@ -273,7 +273,7 @@ export async function changePassword({
     }
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
 
     if (!isValidPassword) {
       return {

@@ -563,7 +563,7 @@ class SecurityService {
       await db.user.update({
         where: { id: userId },
         data: {
-          mfaSecret: secret.base32,
+          twoFactorSecret: secret.base32,
           twoFactorBackupCodes: backupCodes.join(',')
         }
       });
@@ -574,7 +574,7 @@ class SecurityService {
         action: 'CREATE',
         resource: 'mfa_setup',
         details: {
-          mfaEnabled: true,
+          twoFactorEnabled: true,
           backupCodesGenerated: backupCodes.length
         }
       });
@@ -599,13 +599,13 @@ class SecurityService {
       const user = await db.user.findUnique({
         where: { id: userId },
         select: { 
-          mfaSecret: true, 
+          twoFactorSecret: true, 
           twoFactorBackupCodes: true,
           permissions: true 
         }
       });
 
-      if (!user || !user.mfaSecret) {
+      if (!user || !user.twoFactorSecret) {
         return { isValid: false };
       }
 
@@ -620,7 +620,7 @@ class SecurityService {
 
       // Verify TOTP token
       const verified = speakeasy.totp.verify({
-        secret: user.mfaSecret,
+        secret: user.twoFactorSecret,
         encoding: 'base32',
         token,
         window: 2 // Allow 2 time steps (60 seconds) of drift
@@ -756,7 +756,7 @@ class SecurityService {
         where: { id: userId },
         select: { 
           role: true, 
-          mfaEnabled: true,
+          twoFactorEnabled: true,
           permissions: true 
         }
       });

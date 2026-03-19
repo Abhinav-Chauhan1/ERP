@@ -326,8 +326,8 @@ describe('Permission System Properties', () => {
           email: userData.email,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          mfaEnabled: true,
-          mfaSecret: 'MOCK_SECRET_BASE32',
+          twoFactorEnabled: true,
+          twoFactorSecret: 'MOCK_SECRET_BASE32',
           twoFactorBackupCodes: 'CODE1,CODE2,CODE3',
           permissions: {}
         });

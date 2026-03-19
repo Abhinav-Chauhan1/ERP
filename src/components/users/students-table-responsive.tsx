@@ -48,8 +48,8 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && student.user.active) ||
-        (statusFilter === "inactive" && !student.user.active);
+        (statusFilter === "active" && student.user.isActive) ||
+        (statusFilter === "inactive" && !student.user.isActive);
 
       return matchesSearch && matchesStatus;
     });
@@ -129,9 +129,9 @@ export function StudentsTableResponsive({ students }: StudentsTableProps) {
       label: "Status",
       render: (student: Student) => (
         <Badge
-          className={student.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+          className={student.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
-          {student.user.active ? "Active" : "Inactive"}
+          {student.user.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },

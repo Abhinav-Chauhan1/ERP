@@ -45,8 +45,8 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
 
       const matchesStatus =
         statusFilter === "all" ||
-        (statusFilter === "active" && admin.user.active) ||
-        (statusFilter === "inactive" && !admin.user.active);
+        (statusFilter === "active" && admin.user.isActive) ||
+        (statusFilter === "inactive" && !admin.user.isActive);
 
       return matchesSearch && matchesStatus;
     });
@@ -103,9 +103,9 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
             </div>
           </div>
           <Badge
-            className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
+            className={admin.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100 text-xs' : 'bg-red-100 text-red-800 hover:bg-red-100 text-xs'}
           >
-            {admin.user.active ? "Active" : "Inactive"}
+            {admin.user.isActive ? "Active" : "Inactive"}
           </Badge>
         </div>
       ),
@@ -136,9 +136,9 @@ export function AdministratorsTable({ administrators }: AdministratorsTableProps
       mobilePriority: "low" as const, // Already shown in header on mobile
       render: (admin: Administrator) => (
         <Badge
-          className={admin.user.active ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
+          className={admin.user.isActive ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-red-100 text-red-800 hover:bg-red-100'}
         >
-          {admin.user.active ? "Active" : "Inactive"}
+          {admin.user.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },

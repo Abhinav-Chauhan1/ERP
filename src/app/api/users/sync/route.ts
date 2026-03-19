@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        active: user.active,
+        active: user.isActive,
       },
     });
   } catch (error) {
