@@ -760,7 +760,7 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
     const term = await db.term.findFirst({
       where: { id: input.termId, schoolId },
     });
-    if (!term) return { success: false, error: "Term not found" };
+    if (!term) return { success: false, error: `Term not found (id: ${input.termId}, schoolId: ${schoolId})` };
 
     // 2. Determine schedule
     let schedule = input.cbseLevel === "CBSE_SENIOR"
@@ -815,7 +815,6 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
       }
 
       if (classSubjectIds.length === 0) continue;
-
       // 5. For each schedule entry × subject, create exam if not exists
       for (const entry of schedule) {
         const examType = examTypeMap.get(entry.examTypeName)!;

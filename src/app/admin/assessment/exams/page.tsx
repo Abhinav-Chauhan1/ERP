@@ -343,6 +343,18 @@ export default function ExamsPage() {
     return matchesSearch && matchesSubject && matchesTerm;
   });
 
+  const filteredPastExams = pastExams.filter(exam => {
+    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
+    const matchesTerm = termFilter === "all" || exam.termId === termFilter;
+
+    return matchesSearch && matchesSubject && matchesTerm;
+  });
+
+  const allFilteredExams = [...filteredUpcomingExams, ...filteredPastExams];
+
   // Utility function to format date-time
   const formatDateTime = (date: string | Date) => {
     if (!date) return "";
@@ -718,9 +730,9 @@ export default function ExamsPage() {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : filteredUpcomingExams.length > 0 ? (
+          ) : allFilteredExams.length > 0 ? (
             <ExamsTable
-              exams={filteredUpcomingExams}
+              exams={allFilteredExams}
               onEdit={handleEditExam}
               onDelete={handleDeleteExam}
               emptyMessage="No exams found"
