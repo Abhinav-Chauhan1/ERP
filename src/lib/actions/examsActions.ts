@@ -566,7 +566,11 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
           const key = `${classId}|${subjectId}|${examType.id}`;
           if (existingSet.has(key)) { skipped++; continue; }
 
-          const examDate = new Date(term.startDate);
+          // Base date: whichever is later — term start or (today + 15 days)
+          const earliest = new Date();
+          earliest.setDate(earliest.getDate() + 15);
+          const base = earliest > term.startDate ? earliest : new Date(term.startDate);
+          const examDate = new Date(base);
           examDate.setDate(examDate.getDate() + entry.dayOffset);
           if (examDate > term.endDate) examDate.setTime(term.endDate.getTime());
 
