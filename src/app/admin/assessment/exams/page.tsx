@@ -828,24 +828,24 @@ export default function ExamsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Schedule</Label>
+                <Label>Exam Schedule</Label>
                 <Select value={String(autoGenTermNumber)} onValueChange={(v) => setAutoGenTermNumber(Number(v) as 1 | 2)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Term 1 (Half Yearly)</SelectItem>
-                    <SelectItem value="2">Term 2 (Annual)</SelectItem>
+                    <SelectItem value="1">Half Yearly Pattern</SelectItem>
+                    <SelectItem value="2">Annual Pattern</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Term</Label>
+              <Label>Academic Term</Label>
               <Select value={autoGenTermId} onValueChange={setAutoGenTermId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select term..." />
+                  <SelectValue placeholder="Select academic term..." />
                 </SelectTrigger>
                 <SelectContent>
                   {allTerms.map((term) => (
