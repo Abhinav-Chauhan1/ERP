@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { GenerateReportCardDialog, BatchGenerateReportCardsDialog } from "@/components/admin/report-cards";
 import {
-  getStudentsForReportCard,
+  getStudentsForCBSEReportCard,
   getReportCardFilters,
 } from "@/lib/actions/reportCardsActions";
 
@@ -54,7 +54,7 @@ export default function GenerateSingleReportCardPage() {
 
       try {
         const [studentsResult, filtersResult] = await Promise.all([
-          getStudentsForReportCard(),
+          getStudentsForCBSEReportCard(),
           getReportCardFilters(),
         ]);
 
@@ -225,6 +225,7 @@ export default function GenerateSingleReportCardPage() {
                       studentName={selectedStudent.name}
                       termId={selectedTermId}
                       termName={selectedTerm.name}
+                      defaultMode={selectedStudent.hasCBSETemplate ? 'cbse' : 'term'}
                       trigger={
                         <Button className="w-full" size="lg">
                           <FileText className="mr-2 h-4 w-4" />

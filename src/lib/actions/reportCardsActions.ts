@@ -821,6 +821,26 @@ export async function getAttendanceForReportCard(studentId: string, termId: stri
 // ---------------------------------------------------------------------------
 
 /**
+ * Fetch school settings for the given schoolId — used to populate the PDF header.
+ */
+async function fetchSchoolSettingsForPDF(schoolId: string) {
+  const settings = await db.schoolSettings.findUnique({
+    where: { schoolId },
+    select: {
+      schoolName: true,
+      schoolAddress: true,
+      schoolPhone: true,
+      schoolEmail: true,
+      schoolWebsite: true,
+      schoolLogo: true,
+      affiliationNumber: true,
+      schoolCode: true,
+    },
+  });
+  return settings;
+}
+
+/**
  * Generate a single CBSE multi-term report card PDF.
  *
  * Aggregates data across all terms for the given academic year,
@@ -859,23 +879,28 @@ export async function generateCBSEReportCardAction(params: {
       }
     }
 
-    // 3. Generate PDF via CBSE renderer
+    // 3. Auto-fetch school settings if caller didn't supply them
+    const schoolSettings = await fetchSchoolSettingsForPDF(data.student.schoolId);
+
+    // 4. Generate PDF via CBSE renderer
     const pdfBuffer = await generateCBSEReportCardPDF(data, {
-      schoolName: params.schoolName,
-      schoolAddress: params.schoolAddress,
-      schoolPhone: params.schoolPhone,
-      schoolEmail: params.schoolEmail,
-      schoolLogo: params.schoolLogo,
-      affiliationNo: params.affiliationNo,
-      schoolCode: params.schoolCode,
+      schoolName: params.schoolName ?? schoolSettings?.schoolName ?? undefined,
+      schoolAddress: params.schoolAddress ?? schoolSettings?.schoolAddress ?? undefined,
+      schoolPhone: params.schoolPhone ?? schoolSettings?.schoolPhone ?? undefined,
+      schoolEmail: params.schoolEmail ?? schoolSettings?.schoolEmail ?? undefined,
+      schoolWebsite: schoolSettings?.schoolWebsite ?? undefined,
+      schoolLogo: params.schoolLogo ?? schoolSettings?.schoolLogo ?? undefined,
+      affiliationNo: params.affiliationNo ?? schoolSettings?.affiliationNumber ?? undefined,
+      schoolCode: params.schoolCode ?? schoolSettings?.schoolCode ?? undefined,
       cbseLevel,
     });
 
-    // 3. Return as base64 so the client can trigger a download
+    // 5. Return as base64 so the client can trigger a download
     return {
       success: true,
       pdfBase64: pdfBuffer.toString("base64"),
       fileName: `CBSE_Report_Card_${data.student.name.replace(/\s+/g, "_")}_${data.academicYear}.pdf`,
+      resultStatus: data.resultStatus,
     };
   } catch (error) {
     console.error("Error generating CBSE report card:", error);
@@ -910,15 +935,21 @@ export async function generateBatchCBSEReportCardsAction(params: {
       ),
     );
 
-    // 2. Generate combined PDF
+    // 2. Auto-fetch school settings from first student's school
+    const schoolSettings = dataList.length > 0
+      ? await fetchSchoolSettingsForPDF(dataList[0].student.schoolId)
+      : null;
+
+    // 3. Generate combined PDF
     const pdfBuffer = await generateBatchCBSEReportCards(dataList, {
-      schoolName: params.schoolName,
-      schoolAddress: params.schoolAddress,
-      schoolPhone: params.schoolPhone,
-      schoolEmail: params.schoolEmail,
-      schoolLogo: params.schoolLogo,
-      affiliationNo: params.affiliationNo,
-      schoolCode: params.schoolCode,
+      schoolName: params.schoolName ?? schoolSettings?.schoolName ?? undefined,
+      schoolAddress: params.schoolAddress ?? schoolSettings?.schoolAddress ?? undefined,
+      schoolPhone: params.schoolPhone ?? schoolSettings?.schoolPhone ?? undefined,
+      schoolEmail: params.schoolEmail ?? schoolSettings?.schoolEmail ?? undefined,
+      schoolWebsite: schoolSettings?.schoolWebsite ?? undefined,
+      schoolLogo: params.schoolLogo ?? schoolSettings?.schoolLogo ?? undefined,
+      affiliationNo: params.affiliationNo ?? schoolSettings?.affiliationNumber ?? undefined,
+      schoolCode: params.schoolCode ?? schoolSettings?.schoolCode ?? undefined,
     });
 
     return {
@@ -951,9 +982,28 @@ export async function previewCBSEReportCardAction(params: {
       params.academicYearId,
     );
 
+    // Resolve cbseLevel from assigned template
+    let cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR" | undefined;
+    if (data.templateId) {
+      const tpl = await db.reportCardTemplate.findUnique({
+        where: { id: data.templateId },
+        select: { cbseLevel: true },
+      });
+      if (tpl?.cbseLevel) cbseLevel = tpl.cbseLevel as typeof cbseLevel;
+    }
+
+    const schoolSettings = await fetchSchoolSettingsForPDF(data.student.schoolId);
+
     const pdfBuffer = await generateCBSEReportCardPDF(data, {
-      schoolName: params.schoolName,
-      schoolAddress: params.schoolAddress,
+      schoolName: params.schoolName ?? schoolSettings?.schoolName ?? undefined,
+      schoolAddress: params.schoolAddress ?? schoolSettings?.schoolAddress ?? undefined,
+      schoolPhone: schoolSettings?.schoolPhone ?? undefined,
+      schoolEmail: schoolSettings?.schoolEmail ?? undefined,
+      schoolWebsite: schoolSettings?.schoolWebsite ?? undefined,
+      schoolLogo: schoolSettings?.schoolLogo ?? undefined,
+      affiliationNo: schoolSettings?.affiliationNumber ?? undefined,
+      schoolCode: schoolSettings?.schoolCode ?? undefined,
+      cbseLevel,
     });
 
     return {
@@ -966,6 +1016,8 @@ export async function previewCBSEReportCardAction(params: {
         academicYear: data.academicYear,
         resultStatus: data.resultStatus,
         percentage: data.overallPerformance.percentage,
+        grade: data.overallPerformance.grade,
+        totalSubjects: data.annualSubjects.length,
       },
     };
   } catch (error) {
@@ -973,6 +1025,134 @@ export async function previewCBSEReportCardAction(params: {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to preview CBSE report card",
+    };
+  }
+}
+
+/**
+ * Save (upsert) an annual CBSE report card record with the generated PDF URL.
+ * Called after generateCBSEReportCardAction to persist the result.
+ */
+export async function saveAnnualReportCard(params: {
+  studentId: string;
+  academicYearId: string;
+  pdfUrl: string;
+  resultStatus?: string;
+  teacherRemarks?: string;
+  principalRemarks?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Annual cards have termId = null — use findFirst + update/create
+    const existing = await db.reportCard.findFirst({
+      where: {
+        studentId: params.studentId,
+        academicYearId: params.academicYearId,
+        termId: null,
+      },
+    });
+
+    if (existing) {
+      await db.reportCard.update({
+        where: { id: existing.id },
+        data: {
+          pdfUrl: params.pdfUrl,
+          resultStatus: params.resultStatus,
+          ...(params.teacherRemarks !== undefined && { teacherRemarks: params.teacherRemarks }),
+          ...(params.principalRemarks !== undefined && { principalRemarks: params.principalRemarks }),
+        },
+      });
+    } else {
+      await db.reportCard.create({
+        data: {
+          studentId: params.studentId,
+          academicYearId: params.academicYearId,
+          termId: null,
+          schoolId,
+          pdfUrl: params.pdfUrl,
+          resultStatus: params.resultStatus,
+          teacherRemarks: params.teacherRemarks,
+          principalRemarks: params.principalRemarks,
+          isPublished: false,
+          totalMarks: 0,
+          averageMarks: 0,
+        },
+      });
+    }
+
+    revalidatePath("/admin/assessment/report-cards");
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving annual report card:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save report card",
+    };
+  }
+}
+
+/**
+ * Get students with their class CBSE template info — used to auto-detect
+ * whether to default to CBSE mode in the generate dialog.
+ */
+export async function getStudentsForCBSEReportCard() {
+  try {
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const students = await db.student.findMany({
+      where: { schoolId },
+      select: {
+        id: true,
+        admissionId: true,
+        rollNumber: true,
+        user: { select: { firstName: true, lastName: true } },
+        enrollments: {
+          where: { status: "ACTIVE" },
+          select: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+                reportCardTemplateId: true,
+                reportCardTemplate: {
+                  select: { cbseLevel: true, isPreBuilt: true },
+                },
+              },
+            },
+            section: { select: { name: true } },
+          },
+          take: 1,
+        },
+      },
+      orderBy: { user: { firstName: "asc" } },
+    });
+
+    return {
+      success: true,
+      data: students.map((s) => {
+        const enrollment = s.enrollments[0];
+        const tpl = enrollment?.class?.reportCardTemplate;
+        return {
+          id: s.id,
+          name: `${s.user.firstName} ${s.user.lastName}`,
+          admissionId: s.admissionId,
+          rollNumber: s.rollNumber ?? "",
+          class: enrollment?.class?.name ?? "",
+          classId: enrollment?.class?.id ?? "",
+          section: enrollment?.section?.name ?? "",
+          cbseLevel: tpl?.cbseLevel ?? null,
+          hasCBSETemplate: !!tpl?.isPreBuilt,
+        };
+      }),
+    };
+  } catch (error) {
+    console.error("Error fetching students for CBSE report card:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch students",
     };
   }
 }

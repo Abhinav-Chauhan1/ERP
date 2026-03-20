@@ -1,6 +1,5 @@
-
-
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 import { aggregateMultiTermReportCardData } from "@/lib/services/report-card-data-aggregation";
 import {
   generateCBSEReportCardPDF,
@@ -12,6 +11,7 @@ import {
  *
  * Streams a CBSE multi-term report card PDF back to the browser.
  * Supports both single and batch modes via query params.
+ * School settings (name, address, logo, etc.) are auto-fetched from the DB.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -19,10 +19,6 @@ export async function GET(req: NextRequest) {
     const studentId = searchParams.get("studentId");
     const studentIds = searchParams.get("studentIds"); // comma-separated for batch
     const academicYearId = searchParams.get("academicYearId");
-    const schoolName = searchParams.get("schoolName") ?? undefined;
-    const schoolAddress = searchParams.get("schoolAddress") ?? undefined;
-    const affiliationNo = searchParams.get("affiliationNo") ?? undefined;
-    const schoolCode = searchParams.get("schoolCode") ?? undefined;
 
     if (!academicYearId) {
       return NextResponse.json(
@@ -30,8 +26,6 @@ export async function GET(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    const options = { schoolName, schoolAddress, affiliationNo, schoolCode };
 
     let pdfBuffer: Buffer;
     let fileName: string;
@@ -42,16 +36,68 @@ export async function GET(req: NextRequest) {
       const dataList = await Promise.all(
         ids.map((id) => aggregateMultiTermReportCardData(id, academicYearId)),
       );
-      pdfBuffer = await generateBatchCBSEReportCards(dataList, options);
+
+      // Fetch school settings from first student's school
+      const schoolSettings = dataList.length > 0
+        ? await db.schoolSettings.findUnique({
+            where: { schoolId: dataList[0].student.schoolId },
+            select: {
+              schoolName: true, schoolAddress: true, schoolPhone: true,
+              schoolEmail: true, schoolWebsite: true, schoolLogo: true,
+              affiliationNumber: true, schoolCode: true,
+            },
+          })
+        : null;
+
+      pdfBuffer = await generateBatchCBSEReportCards(dataList, {
+        schoolName: schoolSettings?.schoolName ?? undefined,
+        schoolAddress: schoolSettings?.schoolAddress ?? undefined,
+        schoolPhone: schoolSettings?.schoolPhone ?? undefined,
+        schoolEmail: schoolSettings?.schoolEmail ?? undefined,
+        schoolWebsite: schoolSettings?.schoolWebsite ?? undefined,
+        schoolLogo: schoolSettings?.schoolLogo ?? undefined,
+        affiliationNo: schoolSettings?.affiliationNumber ?? undefined,
+        schoolCode: schoolSettings?.schoolCode ?? undefined,
+      });
       fileName = `CBSE_Report_Cards_Batch.pdf`;
+
     } else if (studentId) {
       // Single student
-      const data = await aggregateMultiTermReportCardData(
-        studentId,
-        academicYearId,
-      );
-      pdfBuffer = await generateCBSEReportCardPDF(data, options);
+      const data = await aggregateMultiTermReportCardData(studentId, academicYearId);
+
+      // Fetch school settings
+      const schoolSettings = await db.schoolSettings.findUnique({
+        where: { schoolId: data.student.schoolId },
+        select: {
+          schoolName: true, schoolAddress: true, schoolPhone: true,
+          schoolEmail: true, schoolWebsite: true, schoolLogo: true,
+          affiliationNumber: true, schoolCode: true,
+        },
+      });
+
+      // Resolve cbseLevel from assigned template
+      let cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR" | undefined;
+      if (data.templateId) {
+        const tpl = await db.reportCardTemplate.findUnique({
+          where: { id: data.templateId },
+          select: { cbseLevel: true },
+        });
+        if (tpl?.cbseLevel) cbseLevel = tpl.cbseLevel as typeof cbseLevel;
+      }
+
+      pdfBuffer = await generateCBSEReportCardPDF(data, {
+        schoolName: schoolSettings?.schoolName ?? undefined,
+        schoolAddress: schoolSettings?.schoolAddress ?? undefined,
+        schoolPhone: schoolSettings?.schoolPhone ?? undefined,
+        schoolEmail: schoolSettings?.schoolEmail ?? undefined,
+        schoolWebsite: schoolSettings?.schoolWebsite ?? undefined,
+        schoolLogo: schoolSettings?.schoolLogo ?? undefined,
+        affiliationNo: schoolSettings?.affiliationNumber ?? undefined,
+        schoolCode: schoolSettings?.schoolCode ?? undefined,
+        cbseLevel,
+      });
       fileName = `CBSE_Report_Card_${data.student.name.replace(/\s+/g, "_")}.pdf`;
+
     } else {
       return NextResponse.json(
         { error: "Either studentId or studentIds is required" },
@@ -71,10 +117,7 @@ export async function GET(req: NextRequest) {
     console.error("Error generating CBSE report card PDF:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate report card",
+        error: error instanceof Error ? error.message : "Failed to generate report card",
       },
       { status: 500 },
     );
