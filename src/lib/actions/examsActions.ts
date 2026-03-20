@@ -263,11 +263,11 @@ export const getExamStatistics = withSchoolAuthAction(async (schoolId: string) =
 
     if (classPerf.length > 0) {
       const studentIds = classPerf.map((r) => r.studentId);
-      const enrollments = await db.studentEnrollment.findMany({
+      const enrollments = await db.classEnrollment.findMany({
         where: { studentId: { in: studentIds }, schoolId },
         select: { studentId: true, class: { select: { name: true } } },
         distinct: ["studentId"],
-        orderBy: { enrollmentDate: "desc" },
+        orderBy: { enrollDate: "desc" },
       });
 
       const studentClassMap = new Map(enrollments.map((e) => [e.studentId, e.class.name]));
