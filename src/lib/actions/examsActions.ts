@@ -250,7 +250,7 @@ export const getSubjects = withSchoolAuthAction(async (schoolId: string, userId:
   }
 });
 
-// Get terms for dropdown
+// Get terms for dropdown (upcoming/current only — for exam creation)
 export const getTerms = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
     const session = await auth();
@@ -284,6 +284,26 @@ export const getTerms = withSchoolAuthAction(async (schoolId: string, userId: st
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch terms"
     };
+  }
+});
+
+// Get ALL terms for dropdown (no date filter — used by auto-generate dialog)
+export const getAllTerms = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    const terms = await db.term.findMany({
+      where: { schoolId },
+      include: { academicYear: true },
+      orderBy: [
+        { academicYear: { isCurrent: 'desc' } },
+        { startDate: 'desc' }
+      ]
+    });
+    return { success: true, data: terms };
+  } catch (error) {
+    console.error("Error fetching all terms:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to fetch terms" };
   }
 });
 

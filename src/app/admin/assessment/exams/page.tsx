@@ -67,6 +67,7 @@ import {
   getSubjects,
   getClasses,
   getTerms,
+  getAllTerms,
   createExam,
   updateExam,
   deleteExam,
@@ -94,6 +95,7 @@ export default function ExamsPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
+  const [allTerms, setAllTerms] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,6 +178,12 @@ export default function ExamsPage() {
       const termsResult = await getTerms();
       if (termsResult.success) {
         setTerms(termsResult.data || []);
+      }
+
+      // Fetch all terms (for auto-generate dialog)
+      const allTermsResult = await getAllTerms();
+      if (allTermsResult.success) {
+        setAllTerms(allTermsResult.data || []);
       }
     } catch (err) {
       console.error("Error fetching metadata:", err);
@@ -820,7 +828,7 @@ export default function ExamsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label>Term Number</Label>
+                <Label>Schedule</Label>
                 <Select value={String(autoGenTermNumber)} onValueChange={(v) => setAutoGenTermNumber(Number(v) as 1 | 2)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -840,7 +848,7 @@ export default function ExamsPage() {
                   <SelectValue placeholder="Select term..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {terms.map((term) => (
+                  {allTerms.map((term) => (
                     <SelectItem key={term.id} value={term.id}>
                       {term.name} ({term.academicYear.name})
                     </SelectItem>
