@@ -81,6 +81,8 @@ export default function ExamsPage() {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [termFilter, setTermFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [classFilter, setClassFilter] = useState("all");
+  const [examTypeFilter, setExamTypeFilter] = useState("all");
 
   const [examDialogOpen, setExamDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -333,27 +335,30 @@ export default function ExamsPage() {
   }
 
   // Filter exams based on search and filters
-  const filteredUpcomingExams = upcomingExams.filter(exam => {
-    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  function applyFilters(exam: any) {
+    const matchesSearch =
+      exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
     const matchesTerm = termFilter === "all" || exam.termId === termFilter;
+    const matchesClass = classFilter === "all" || exam.classId === classFilter;
+    const matchesExamType = examTypeFilter === "all" || exam.examTypeId === examTypeFilter;
+    const now = new Date();
+    const examDate = new Date(exam.examDate);
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    const examStatus =
+      examDate < now ? "completed" :
+      examDate.getTime() - now.getTime() < oneDayInMs ? "today" : "upcoming";
+    const matchesStatus = statusFilter === "all" || examStatus === statusFilter;
+    return matchesSearch && matchesSubject && matchesTerm && matchesClass && matchesExamType && matchesStatus;
+  }
 
-    return matchesSearch && matchesSubject && matchesTerm;
-  });
-
-  const filteredPastExams = pastExams.filter(exam => {
-    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.subject.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesSubject = subjectFilter === "all" || exam.subjectId === subjectFilter;
-    const matchesTerm = termFilter === "all" || exam.termId === termFilter;
-
-    return matchesSearch && matchesSubject && matchesTerm;
-  });
-
+  const filteredUpcomingExams = upcomingExams.filter(applyFilters);
+  const filteredPastExams = pastExams.filter(applyFilters);
   const allFilteredExams = [...filteredUpcomingExams, ...filteredPastExams];
+
+  const activeFilterCount = [subjectFilter, termFilter, classFilter, examTypeFilter, statusFilter]
+    .filter(v => v !== "all").length;
 
   // Utility function to format date-time
   const formatDateTime = (date: string | Date) => {
@@ -676,9 +681,9 @@ export default function ExamsPage() {
       )}
 
       {/* Search and filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-1/2">
-          <div className="relative">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -688,23 +693,62 @@ export default function ExamsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground self-center"
+              onClick={() => {
+                setSubjectFilter("all");
+                setTermFilter("all");
+                setClassFilter("all");
+                setExamTypeFilter("all");
+                setStatusFilter("all");
+              }}
+            >
+              Clear filters ({activeFilterCount})
+            </Button>
+          )}
         </div>
-        <div className="w-full md:w-1/2 flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Select value={classFilter} onValueChange={setClassFilter}>
+            <SelectTrigger className={`w-[140px] ${classFilter !== "all" ? "border-primary text-primary" : ""}`}>
+              <SelectValue placeholder="Class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {classes.map(cls => (
+                <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectTrigger className={`w-[150px] ${subjectFilter !== "all" ? "border-primary text-primary" : ""}`}>
               <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
               {subjects.map(subject => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name}
-                </SelectItem>
+                <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={examTypeFilter} onValueChange={setExamTypeFilter}>
+            <SelectTrigger className={`w-[160px] ${examTypeFilter !== "all" ? "border-primary text-primary" : ""}`}>
+              <SelectValue placeholder="Exam Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Exam Types</SelectItem>
+              {examTypes.map(type => (
+                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={termFilter} onValueChange={setTermFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className={`w-[180px] ${termFilter !== "all" ? "border-primary text-primary" : ""}`}>
               <SelectValue placeholder="Term" />
             </SelectTrigger>
             <SelectContent>
@@ -714,6 +758,18 @@ export default function ExamsPage() {
                   {term.name} ({term.academicYear.name})
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className={`w-[140px] ${statusFilter !== "all" ? "border-primary text-primary" : ""}`}>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="today">Today / Tomorrow</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
         </div>
