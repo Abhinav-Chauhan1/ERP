@@ -801,6 +801,7 @@ export async function getSubjectsForMarksEntry(): Promise<ActionResult> {
 export async function getSubjectsByClassForMarksEntry(classId: string): Promise<ActionResult> {
   try {
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "No school context" };
     const subjectClasses = await db.subjectClass.findMany({
       where: { classId, schoolId },
       select: { subject: { select: { id: true, name: true, code: true } } },
