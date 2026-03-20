@@ -25,7 +25,6 @@ import autoTable from "jspdf-autotable";
 import type {
   MultiTermReportCardData,
   TermSubjectResult,
-  CoScholasticResult,
   StudentInfoExtended,
   TermSlice,
   CBSEGradeEntry,
@@ -74,11 +73,22 @@ export async function generateCBSEReportCardPDF(
     schoolEmblem?: string;
     affiliationNo?: string;
     schoolCode?: string;
+    cbseLevel?: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR";
   } = {},
 ): Promise<Buffer> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const gradeScale = await getCBSEGradeScale(data.student.schoolId);
-  await renderPage(doc, data, options, gradeScale);
+
+  const level = options.cbseLevel ?? detectCBSELevel(data.student.class);
+
+  if (level === "CBSE_SECONDARY") {
+    await renderSecondaryPage(doc, data, options, gradeScale);
+  } else if (level === "CBSE_SENIOR") {
+    await renderSeniorPage(doc, data, options, gradeScale);
+  } else {
+    await renderPage(doc, data, options, gradeScale);
+  }
+
   return Buffer.from(doc.output("arraybuffer"));
 }
 
@@ -94,6 +104,7 @@ export async function generateBatchCBSEReportCards(
     schoolEmblem?: string;
     affiliationNo?: string;
     schoolCode?: string;
+    cbseLevel?: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR";
   } = {},
 ): Promise<Buffer> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -105,10 +116,33 @@ export async function generateBatchCBSEReportCards(
       gradeScaleCache = await getCBSEGradeScale(data.student.schoolId);
     }
     if (i > 0) doc.addPage();
-    await renderPage(doc, data, options, gradeScaleCache);
+
+    const level = options.cbseLevel ?? detectCBSELevel(data.student.class);
+    if (level === "CBSE_SECONDARY") {
+      await renderSecondaryPage(doc, data, options, gradeScaleCache);
+    } else if (level === "CBSE_SENIOR") {
+      await renderSeniorPage(doc, data, options, gradeScaleCache);
+    } else {
+      await renderPage(doc, data, options, gradeScaleCache);
+    }
   }
 
   return Buffer.from(doc.output("arraybuffer"));
+}
+
+/** Detect CBSE level from class name (e.g. "Class 9", "XI", "12") */
+function detectCBSELevel(className: string): "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR" {
+  const match = className.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 11) return "CBSE_SENIOR";
+    if (num >= 9) return "CBSE_SECONDARY";
+  }
+  // Roman numerals
+  const upper = className.toUpperCase();
+  if (upper.includes("XI") || upper.includes("XII") || upper.includes("11") || upper.includes("12")) return "CBSE_SENIOR";
+  if (upper.includes("IX") || upper.includes("X") || upper.includes("9") || upper.includes("10")) return "CBSE_SECONDARY";
+  return "CBSE_PRIMARY";
 }
 
 // ---------------------------------------------------------------------------
@@ -373,7 +407,7 @@ function infoCell(doc: jsPDF, label: string, value: string, x: number, y: number
 function renderScholasticTable(
   doc: jsPDF,
   data: MultiTermReportCardData,
-  gradeScale: CBSEGradeEntry[],
+  _gradeScale: CBSEGradeEntry[],
   startY: number,
 ): number {
   // Section header bar
@@ -471,14 +505,6 @@ function renderScholasticTable(
   return (doc as any).lastAutoTable.finalY + 2;
 }
 
-function getComponent(subj: TermSubjectResult | null, index: number): string {
-  if (!subj || subj.isAbsent) return subj?.isAbsent ? "AB" : "-";
-  const comp = subj.components?.[index];
-  if (!comp) return "-";
-  return comp.isAbsent ? "AB" : `${comp.obtainedMarks}`;
-}
-
-/** Look up a component by CBSE shortName (PT, MA, PORTFOLIO, HALF_YEARLY, ANNUAL) */
 function getComponentByName(subj: TermSubjectResult | null, ...names: string[]): string {
   if (!subj || subj.isAbsent) return subj?.isAbsent ? "AB" : "-";
   const comp = subj.components?.find((c) =>
@@ -790,3 +816,169 @@ function renderSignatures(doc: jsPDF, startY: number): void {
 }
 
 // (emblemH removed — logoH is used directly in renderHeader)
+
+// ---------------------------------------------------------------------------
+// CBSE Secondary (Class 9–10) renderer
+// Layout: Subject | Theory(80/70) | Practical/Internal(20/30) | Total(100) | Grade
+// Single annual exam, pass mark 33%
+// ---------------------------------------------------------------------------
+
+async function renderSecondaryPage(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  opts: Parameters<typeof renderPage>[2],
+  gradeScale: CBSEGradeEntry[],
+): Promise<void> {
+  renderDecorativeBorder(doc);
+  let y = MARGIN.top + 2;
+  y = renderHeader(doc, data, opts, y);
+  y = renderStudentInfo(doc, data.student, y);
+  y = renderSecondaryScholasticTable(doc, data, y);
+  y = renderSummaryBar(doc, data, y);
+  y = renderCoScholasticSection(doc, data, y);
+  y = renderGradeScaleTable(doc, gradeScale, y);
+  y = renderRemarks(doc, data, y);
+  renderSignatures(doc, y);
+}
+
+function renderSecondaryScholasticTable(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  startY: number,
+): number {
+  doc.setFillColor(...hex(C.sectionBg));
+  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
+  doc.setTextColor(...hex(C.white));
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Scholastic Subjects (Class 9–10)", MARGIN.left + 3, startY + 4.2);
+  const y = startY + 6;
+
+  const head: any[][] = [[
+    { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
+    { content: "Theory", styles: { halign: "center" } },
+    { content: "Practical / Internal", styles: { halign: "center" } },
+    { content: "Total (100)", styles: { halign: "center" } },
+    { content: "Grade", styles: { halign: "center" } },
+    { content: "Pass / Fail", styles: { halign: "center" } },
+  ]];
+
+  const subjects = data.annualSubjects;
+  const body = subjects.map((subj) => {
+    const theory = subj.theoryMarks != null ? `${subj.theoryMarks}` : (subj.isAbsent ? "AB" : "-");
+    const practical = subj.practicalMarks != null ? `${subj.practicalMarks}` : (subj.internalMarks != null ? `${subj.internalMarks}` : "-");
+    const total = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
+    const grade = subj.grade || "-";
+    const status = subj.isAbsent ? "AB" : (subj.percentage >= 33 ? "Pass" : "Fail");
+    return [subj.subjectName, theory, practical, total, grade, status];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head,
+    body,
+    theme: "grid",
+    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
+    columnStyles: { 0: { halign: "left", cellWidth: 40 } },
+    alternateRowStyles: { fillColor: hex(C.altRow) },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    margin: { left: MARGIN.left, right: MARGIN.right },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 5) {
+        const val = String(data.cell.raw);
+        if (val === "Fail") data.cell.styles.textColor = hex(C.fail);
+        else if (val === "Pass") data.cell.styles.textColor = hex(C.pass);
+      }
+    },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 2;
+}
+
+// ---------------------------------------------------------------------------
+// CBSE Senior Secondary (Class 11–12) renderer
+// Layout: Subject | Theory(70/80) | Practical/Internal(30/20) | Total(100) | Grade | Pass/Fail
+// Single annual exam, no PT/MA/Portfolio breakdown
+// ---------------------------------------------------------------------------
+
+async function renderSeniorPage(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  opts: Parameters<typeof renderPage>[2],
+  gradeScale: CBSEGradeEntry[],
+): Promise<void> {
+  renderDecorativeBorder(doc);
+  let y = MARGIN.top + 2;
+  y = renderHeader(doc, data, opts, y);
+  y = renderStudentInfo(doc, data.student, y);
+  y = renderSeniorScholasticTable(doc, data, y);
+  y = renderSummaryBar(doc, data, y);
+  y = renderGradeScaleTable(doc, gradeScale, y);
+  y = renderRemarks(doc, data, y);
+  renderSignatures(doc, y);
+}
+
+function renderSeniorScholasticTable(
+  doc: jsPDF,
+  data: MultiTermReportCardData,
+  startY: number,
+): number {
+  doc.setFillColor(...hex(C.sectionBg));
+  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
+  doc.setTextColor(...hex(C.white));
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Scholastic Subjects (Class 11–12)", MARGIN.left + 3, startY + 4.2);
+  const y = startY + 6;
+
+  const head: any[][] = [[
+    { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
+    { content: "Theory\n(70/80)", styles: { halign: "center" } },
+    { content: "Practical /\nInternal\n(30/20)", styles: { halign: "center" } },
+    { content: "Total\n(100)", styles: { halign: "center" } },
+    { content: "Grade", styles: { halign: "center" } },
+    { content: "Pass /\nFail", styles: { halign: "center" } },
+  ]];
+
+  const subjects = data.annualSubjects;
+  const body = subjects.map((subj) => {
+    const theory = subj.theoryMarks != null ? `${subj.theoryMarks}` : (subj.isAbsent ? "AB" : "-");
+    const practical = subj.practicalMarks != null
+      ? `${subj.practicalMarks}`
+      : (subj.internalMarks != null ? `${subj.internalMarks}` : "-");
+    const total = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
+    const grade = subj.grade || "-";
+    // Senior secondary pass: 33% in theory AND 33% in practical separately
+    const theoryPct = subj.theoryMaxMarks && subj.theoryMaxMarks > 0
+      ? ((subj.theoryMarks ?? 0) / subj.theoryMaxMarks) * 100
+      : subj.percentage;
+    const practPct = subj.practicalMaxMarks && subj.practicalMaxMarks > 0
+      ? ((subj.practicalMarks ?? 0) / subj.practicalMaxMarks) * 100
+      : 100;
+    const status = subj.isAbsent ? "AB" : (theoryPct >= 33 && practPct >= 33 ? "Pass" : "Fail");
+    return [subj.subjectName, theory, practical, total, grade, status];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head,
+    body,
+    theme: "grid",
+    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
+    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
+    columnStyles: { 0: { halign: "left", cellWidth: 45 } },
+    alternateRowStyles: { fillColor: hex(C.altRow) },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    margin: { left: MARGIN.left, right: MARGIN.right },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.column.index === 5) {
+        const val = String(data.cell.raw);
+        if (val === "Fail") data.cell.styles.textColor = hex(C.fail);
+        else if (val === "Pass") data.cell.styles.textColor = hex(C.pass);
+      }
+    },
+  });
+
+  return (doc as any).lastAutoTable.finalY + 2;
+}

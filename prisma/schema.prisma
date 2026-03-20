@@ -3487,6 +3487,10 @@ model ReportCardTemplate {
   name          String
   description   String?
   type          String
+  /// CBSE_PRIMARY (Class 1-8) | CBSE_SECONDARY (Class 9-10) | CBSE_SENIOR (Class 11-12) | null
+  cbseLevel     String?
+  /// true = seeded pre-built template, false = user-created
+  isPreBuilt    Boolean      @default(false)
   pageSize      String       @default("A4")
   orientation   String       @default("PORTRAIT")
   sections      Json
@@ -3510,6 +3514,7 @@ model ReportCardTemplate {
   @@unique([schoolId, name])
   @@index([type, isActive])
   @@index([isDefault])
+  @@index([cbseLevel])
   @@map("report_card_templates")
 }
 

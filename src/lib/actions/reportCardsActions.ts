@@ -846,7 +846,20 @@ export async function generateCBSEReportCardAction(params: {
       params.academicYearId,
     );
 
-    // 2. Generate PDF via CBSE renderer
+    // 2. Resolve cbseLevel from the class's assigned template (if any)
+    let cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR" | undefined;
+    if (data.templateId) {
+      const { db } = await import("@/lib/db");
+      const tpl = await db.reportCardTemplate.findUnique({
+        where: { id: data.templateId },
+        select: { cbseLevel: true },
+      });
+      if (tpl?.cbseLevel) {
+        cbseLevel = tpl.cbseLevel as typeof cbseLevel;
+      }
+    }
+
+    // 3. Generate PDF via CBSE renderer
     const pdfBuffer = await generateCBSEReportCardPDF(data, {
       schoolName: params.schoolName,
       schoolAddress: params.schoolAddress,
@@ -855,6 +868,7 @@ export async function generateCBSEReportCardAction(params: {
       schoolLogo: params.schoolLogo,
       affiliationNo: params.affiliationNo,
       schoolCode: params.schoolCode,
+      cbseLevel,
     });
 
     // 3. Return as base64 so the client can trigger a download

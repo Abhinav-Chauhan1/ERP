@@ -7,3 +7,4 @@
 export { GenerateReportCardDialog } from './generate-report-card-dialog';
 export { BatchGenerateReportCardsDialog } from './batch-generate-report-cards-dialog';
 export { TemplatePreview } from './template-preview';
+export { AssignTemplateButton } from './assign-template-button';

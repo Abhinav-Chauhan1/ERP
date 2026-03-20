@@ -516,3 +516,140 @@ export async function duplicateTemplate(id: string): Promise<ActionResult> {
     };
   }
 }
+
+/**
+ * Get only pre-built templates for the current school
+ */
+export async function getPreBuiltTemplates(): Promise<ActionResult> {
+  try {
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const templates = await db.reportCardTemplate.findMany({
+      where: { schoolId, isPreBuilt: true, isActive: true },
+      orderBy: { name: 'asc' },
+    });
+
+    return { success: true, data: templates };
+  } catch (error) {
+    console.error("Error fetching pre-built templates:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch pre-built templates",
+    };
+  }
+}
+
+/**
+ * Assign a pre-built template to a class (sets reportCardTemplateId on Class)
+ */
+export async function assignTemplateToClass(
+  templateId: string,
+  classId: string,
+): Promise<ActionResult> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Verify template belongs to this school
+    const template = await db.reportCardTemplate.findFirst({
+      where: { id: templateId, schoolId },
+    });
+    if (!template) return { success: false, error: "Template not found" };
+
+    // Verify class belongs to this school
+    const cls = await db.class.findFirst({ where: { id: classId, schoolId } });
+    if (!cls) return { success: false, error: "Class not found" };
+
+    await db.class.update({
+      where: { id: classId },
+      data: { reportCardTemplateId: templateId },
+    });
+
+    revalidatePath("/admin/assessment/report-cards/templates");
+    return { success: true };
+  } catch (error) {
+    console.error("Error assigning template to class:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to assign template",
+    };
+  }
+}
+
+/**
+ * Seed pre-built CBSE templates for a school (idempotent).
+ * Call this during school onboarding or from a setup script.
+ */
+export async function seedPreBuiltTemplates(schoolId: string, createdBy: string): Promise<ActionResult> {
+  const defaultSections = [
+    { id: "student-info", name: "Student Information", enabled: true, order: 1, fields: [] },
+    { id: "scholastic", name: "Scholastic Subjects", enabled: true, order: 2, fields: [] },
+    { id: "co-scholastic", name: "Co-Scholastic", enabled: true, order: 3, fields: [] },
+    { id: "remarks", name: "Remarks", enabled: true, order: 4, fields: [] },
+  ];
+  const defaultStyling = {
+    primaryColor: "#C0392B",
+    secondaryColor: "#1a3a6b",
+    fontFamily: "helvetica",
+    fontSize: 8,
+    headerHeight: 30,
+    footerHeight: 20,
+  };
+
+  const templates = [
+    {
+      name: "CBSE Primary (Class 1–8)",
+      description: "PT/MA/Portfolio/HY two-term layout with co-scholastic sections",
+      cbseLevel: "CBSE_PRIMARY",
+    },
+    {
+      name: "CBSE Secondary (Class 9–10)",
+      description: "Theory + Practical/Internal annual layout, 33% pass mark",
+      cbseLevel: "CBSE_SECONDARY",
+    },
+    {
+      name: "CBSE Senior Secondary (Class 11–12)",
+      description: "Theory (70/80) + Practical (30/20) annual layout",
+      cbseLevel: "CBSE_SENIOR",
+    },
+  ];
+
+  try {
+    for (const t of templates) {
+      await db.reportCardTemplate.upsert({
+        where: { schoolId_name: { schoolId, name: t.name } },
+        create: {
+          schoolId,
+          name: t.name,
+          description: t.description,
+          type: "CBSE",
+          cbseLevel: t.cbseLevel,
+          isPreBuilt: true,
+          isActive: true,
+          isDefault: t.cbseLevel === "CBSE_PRIMARY",
+          sections: defaultSections as any,
+          styling: defaultStyling as any,
+          createdBy,
+        },
+        update: {
+          cbseLevel: t.cbseLevel,
+          isPreBuilt: true,
+          isActive: true,
+        },
+      });
+    }
+
+    revalidatePath("/admin/assessment/report-cards/templates");
+    return { success: true };
+  } catch (error) {
+    console.error("Error seeding pre-built templates:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to seed templates",
+    };
+  }
+}
