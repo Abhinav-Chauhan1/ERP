@@ -524,17 +524,20 @@ export async function getExamsForMarksEntry(): Promise<ActionResult> {
       include: {
         subject: {
           select: {
+            id: true,
             name: true,
           },
         },
         examType: {
           select: {
+            id: true,
             name: true,
             cbseComponent: true,
           },
         },
         term: {
           select: {
+            id: true,
             name: true,
             academicYear: {
               select: {
@@ -740,5 +743,54 @@ export async function getExamResultLastModified(
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch last modified info",
     };
+  }
+}
+
+/**
+ * Get terms for marks entry filters
+ */
+export async function getTermsForMarksEntry(): Promise<ActionResult> {
+  try {
+    const terms = await db.term.findMany({
+      select: {
+        id: true,
+        name: true,
+        academicYear: { select: { name: true, isCurrent: true } },
+      },
+      orderBy: [{ academicYear: { isCurrent: "desc" } }, { startDate: "asc" }],
+    });
+    return { success: true, data: terms };
+  } catch (error) {
+    return { success: false, error: "Failed to fetch terms" };
+  }
+}
+
+/**
+ * Get exam types for marks entry filters
+ */
+export async function getExamTypesForMarksEntry(): Promise<ActionResult> {
+  try {
+    const examTypes = await db.examType.findMany({
+      select: { id: true, name: true, cbseComponent: true },
+      orderBy: { name: "asc" },
+    });
+    return { success: true, data: examTypes };
+  } catch (error) {
+    return { success: false, error: "Failed to fetch exam types" };
+  }
+}
+
+/**
+ * Get subjects for marks entry filters
+ */
+export async function getSubjectsForMarksEntry(): Promise<ActionResult> {
+  try {
+    const subjects = await db.subject.findMany({
+      select: { id: true, name: true, code: true },
+      orderBy: { name: "asc" },
+    });
+    return { success: true, data: subjects };
+  } catch (error) {
+    return { success: false, error: "Failed to fetch subjects" };
   }
 }

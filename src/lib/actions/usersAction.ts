@@ -333,7 +333,7 @@ export async function createStudent(data: CreateStudentFormData) {
       );
 
       revalidatePath('/admin/users');
-      return { success: true, id: user.id };
+      return { success: true, id: student.id };
     });
   } catch (error: any) {
     console.error('Error creating student:', error);

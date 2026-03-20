@@ -1,103 +1,91 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
+import { withSchoolAuth } from "@/lib/auth/security-wrapper";
 
-export async function POST(request: NextRequest) {
-    try {
-        // Get school context
-        const context = await getCurrentUserSchoolContext();
+// POST /api/students/enroll - Enroll a student into a class/section
+export const POST = withSchoolAuth(async (request: NextRequest, context) => {
+  try {
+    const body = await request.json();
+    const { studentId, classId, sectionId } = body;
 
-        if (!context?.schoolId) {
-            return NextResponse.json(
-                { error: "School context required" },
-                { status: 403 }
-            );
-        }
-
-        const body = await request.json();
-        const { studentId, classId, sectionId } = body;
-
-        if (!studentId || !classId || !sectionId) {
-            return NextResponse.json(
-                { error: "Missing required fields" },
-                { status: 400 }
-            );
-        }
-
-        // Verify student belongs to the same school
-        const student = await db.student.findFirst({
-            where: {
-                id: studentId,
-                schoolId: context.schoolId,
-            },
-        });
-
-        if (!student) {
-            return NextResponse.json(
-                { error: "Student not found or access denied" },
-                { status: 404 }
-            );
-        }
-
-        // Verify class and section belong to the same school
-        const classData = await db.class.findFirst({
-            where: {
-                id: classId,
-                schoolId: context.schoolId,
-            },
-        });
-
-        const section = await db.classSection.findFirst({
-            where: {
-                id: sectionId,
-                classId: classId,
-            },
-        });
-
-        if (!classData || !section) {
-            return NextResponse.json(
-                { error: "Class or section not found" },
-                { status: 404 }
-            );
-        }
-
-        // Check if enrollment already exists
-        const existingEnrollment = await db.classEnrollment.findFirst({
-            where: {
-                studentId,
-                classId,
-                sectionId,
-            },
-        });
-
-        if (existingEnrollment) {
-            return NextResponse.json(
-                { error: "Student is already enrolled in this class and section" },
-                { status: 400 }
-            );
-        }
-
-        // Create enrollment
-        const enrollment = await db.classEnrollment.create({
-            data: {
-                studentId,
-                classId,
-                sectionId,
-                enrollDate: new Date(),
-                status: "ACTIVE",
-                schoolId: context.schoolId,
-            },
-        });
-
-        return NextResponse.json(
-            { success: true, enrollment },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error("[Enrollment API] Error:", error);
-        return NextResponse.json(
-            { error: "Internal server error" },
-            { status: 500 }
-        );
+    if (!studentId || !classId || !sectionId) {
+      return NextResponse.json(
+        { error: "studentId, classId, and sectionId are required" },
+        { status: 400 }
+      );
     }
-}
+
+    // Verify student belongs to this school
+    const student = await db.student.findFirst({
+      where: { id: studentId, schoolId: context.schoolId },
+    });
+
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      );
+    }
+
+    // Verify class belongs to this school
+    const classRecord = await db.class.findFirst({
+      where: { id: classId, schoolId: context.schoolId },
+    });
+
+    if (!classRecord) {
+      return NextResponse.json(
+        { error: "Class not found" },
+        { status: 404 }
+      );
+    }
+
+    // Verify section belongs to this class
+    const section = await db.classSection.findFirst({
+      where: { id: sectionId, classId },
+    });
+
+    if (!section) {
+      return NextResponse.json(
+        { error: "Section not found" },
+        { status: 404 }
+      );
+    }
+
+    // Deactivate any existing active enrollments for this student
+    await db.classEnrollment.updateMany({
+      where: { studentId, schoolId: context.schoolId, status: "ACTIVE" },
+      data: { status: "INACTIVE" },
+    });
+
+    // Create the new enrollment
+    const enrollment = await db.classEnrollment.create({
+      data: {
+        studentId,
+        classId,
+        sectionId,
+        schoolId: context.schoolId,
+        status: "ACTIVE",
+        enrollDate: new Date(),
+      },
+      include: {
+        class: true,
+        section: true,
+      },
+    });
+
+    return NextResponse.json(enrollment, { status: 201 });
+  } catch (error: any) {
+    console.error("Error enrolling student:", error);
+    // Handle unique constraint violation (already enrolled in same class/section)
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Student is already enrolled in this class and section" },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Failed to enroll student" },
+      { status: 500 }
+    );
+  }
+});

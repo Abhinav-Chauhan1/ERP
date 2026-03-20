@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,11 +12,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, X } from "lucide-react";
 import {
   getExamsForMarksEntry,
   getClassesForMarksEntry,
   getEnrolledStudentsForMarks,
+  getTermsForMarksEntry,
+  getExamTypesForMarksEntry,
+  getSubjectsForMarksEntry,
 } from "@/lib/actions/marksEntryActions";
 import { MarksEntryGrid } from "./marks-entry-grid";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +31,10 @@ interface Exam {
   title: string;
   totalMarks: number;
   examDate: Date;
-  subject: { name: string };
-  examType: { name: string; cbseComponent?: string | null };
+  subject: { id: string; name: string };
+  examType: { id: string; name: string; cbseComponent?: string | null };
   term: {
+    id: string;
     name: string;
     academicYear: { name: string };
   };
@@ -51,51 +55,99 @@ interface Section {
   name: string;
 }
 
+interface Term {
+  id: string;
+  name: string;
+  academicYear: { name: string; isCurrent: boolean };
+}
+
+interface ExamType {
+  id: string;
+  name: string;
+  cbseComponent?: string | null;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+  code?: string | null;
+}
+
 export function MarksEntryForm() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [examTypes, setExamTypes] = useState<ExamType[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+
+  // Filter state
+  const [filterTermId, setFilterTermId] = useState<string>("");
+  const [filterExamTypeId, setFilterExamTypeId] = useState<string>("");
+  const [filterSubjectId, setFilterSubjectId] = useState<string>("");
+
+  // Selection state
   const [selectedExamId, setSelectedExamId] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [sections, setSections] = useState<Section[]>([]);
-  const [isLoadingExams, setIsLoadingExams] = useState(true);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentsData, setStudentsData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load exams and classes on mount
+  // Load all data on mount
   useEffect(() => {
     const loadData = async () => {
-      setIsLoadingExams(true);
-      setIsLoadingClasses(true);
+      setIsLoading(true);
+      const [examsResult, classesResult, termsResult, examTypesResult, subjectsResult] =
+        await Promise.all([
+          getExamsForMarksEntry(),
+          getClassesForMarksEntry(),
+          getTermsForMarksEntry(),
+          getExamTypesForMarksEntry(),
+          getSubjectsForMarksEntry(),
+        ]);
 
-      const [examsResult, classesResult] = await Promise.all([
-        getExamsForMarksEntry(),
-        getClassesForMarksEntry(),
-      ]);
-
-      if (examsResult.success) {
-        setExams(examsResult.data || []);
-      }
-
-      if (classesResult.success) {
-        setClasses(classesResult.data || []);
-      }
-
-      setIsLoadingExams(false);
-      setIsLoadingClasses(false);
+      if (examsResult.success) setExams(examsResult.data || []);
+      if (classesResult.success) setClasses(classesResult.data || []);
+      if (termsResult.success) setTerms(termsResult.data || []);
+      if (examTypesResult.success) setExamTypes(examTypesResult.data || []);
+      if (subjectsResult.success) setSubjects(subjectsResult.data || []);
+      setIsLoading(false);
     };
-
     loadData();
   }, []);
+
+  // Filtered exams based on active filters
+  const filteredExams = useMemo(() => {
+    return exams.filter((exam) => {
+      if (filterTermId && exam.term.id !== filterTermId) return false;
+      if (filterExamTypeId && exam.examType.id !== filterExamTypeId) return false;
+      if (filterSubjectId && exam.subject.id !== filterSubjectId) return false;
+      return true;
+    });
+  }, [exams, filterTermId, filterExamTypeId, filterSubjectId]);
+
+  // Reset exam selection when filters change
+  useEffect(() => {
+    setSelectedExamId("");
+    setStudentsData(null);
+  }, [filterTermId, filterExamTypeId, filterSubjectId]);
+
+  const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setFilterTermId("");
+    setFilterExamTypeId("");
+    setFilterSubjectId("");
+  };
 
   // Update sections when class changes
   useEffect(() => {
     if (selectedClassId) {
       const selectedClass = classes.find((c) => c.id === selectedClassId);
       setSections(selectedClass?.sections || []);
-      setSelectedSectionId(""); // Reset section selection
+      setSelectedSectionId("");
     } else {
       setSections([]);
       setSelectedSectionId("");
@@ -131,7 +183,7 @@ export function MarksEntryForm() {
     }
   };
 
-  const selectedExam = exams.find((e) => e.id === selectedExamId);
+  const selectedExam = filteredExams.find((e) => e.id === selectedExamId);
   const selectedClass = classes.find((c) => c.id === selectedClassId);
   const selectedSection = sections.find((s) => s.id === selectedSectionId);
 
@@ -140,26 +192,115 @@ export function MarksEntryForm() {
 
   return (
     <div className="space-y-6">
+      {/* Filters */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-muted-foreground">Narrow down exams</p>
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1">
+              <X className="h-3 w-3" />
+              Clear filters ({activeFilterCount})
+            </Button>
+          )}
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Term</Label>
+            <Select value={filterTermId} onValueChange={setFilterTermId} disabled={isLoading}>
+              <SelectTrigger className={filterTermId ? "border-primary" : ""}>
+                <SelectValue placeholder="All terms" />
+              </SelectTrigger>
+              <SelectContent>
+                {terms.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{term.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {term.academicYear.name}
+                      </span>
+                      {term.academicYear.isCurrent && (
+                        <Badge variant="secondary" className="text-xs py-0">Current</Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Exam Type</Label>
+            <Select value={filterExamTypeId} onValueChange={setFilterExamTypeId} disabled={isLoading}>
+              <SelectTrigger className={filterExamTypeId ? "border-primary" : ""}>
+                <SelectValue placeholder="All exam types" />
+              </SelectTrigger>
+              <SelectContent>
+                {examTypes.map((et) => (
+                  <SelectItem key={et.id} value={et.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{et.name}</span>
+                      {et.cbseComponent && (
+                        <Badge variant="outline" className="text-xs py-0 text-orange-700">
+                          {et.cbseComponent}
+                        </Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Subject</Label>
+            <Select value={filterSubjectId} onValueChange={setFilterSubjectId} disabled={isLoading}>
+              <SelectTrigger className={filterSubjectId ? "border-primary" : ""}>
+                <SelectValue placeholder="All subjects" />
+              </SelectTrigger>
+              <SelectContent>
+                {subjects.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    <span>{sub.name}</span>
+                    {sub.code && (
+                      <span className="ml-1 text-xs text-muted-foreground">({sub.code})</span>
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t" />
+
       {/* Selection Form */}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="exam">Exam</Label>
-          {isLoadingExams ? (
+          <Label htmlFor="exam">
+            Exam
+            {filteredExams.length < exams.length && (
+              <span className="ml-1 text-xs text-muted-foreground">
+                ({filteredExams.length} of {exams.length})
+              </span>
+            )}
+          </Label>
+          {isLoading ? (
             <div className="flex items-center justify-center h-10 border rounded-md">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
             <Select value={selectedExamId} onValueChange={setSelectedExamId}>
               <SelectTrigger id="exam">
-                <SelectValue placeholder="Select exam" />
+                <SelectValue placeholder={filteredExams.length === 0 ? "No exams match filters" : "Select exam"} />
               </SelectTrigger>
               <SelectContent>
-                {exams.map((exam) => (
+                {filteredExams.map((exam) => (
                   <SelectItem key={exam.id} value={exam.id}>
                     <div className="flex flex-col">
                       <span>{exam.title}</span>
                       <span className="text-xs text-muted-foreground">
-                        {exam.subject.name} - {exam.examType.name}
+                        {exam.subject.name} · {exam.examType.name} · {exam.term.name}
                       </span>
                     </div>
                   </SelectItem>
@@ -171,7 +312,7 @@ export function MarksEntryForm() {
 
         <div className="space-y-2">
           <Label htmlFor="class">Class</Label>
-          {isLoadingClasses ? (
+          {isLoading ? (
             <div className="flex items-center justify-center h-10 border rounded-md">
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
