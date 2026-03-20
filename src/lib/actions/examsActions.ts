@@ -16,6 +16,7 @@ import {
   updateCalendarEventFromExam,
   deleteCalendarEventFromExam
 } from "../services/exam-calendar-integration";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -713,3 +714,175 @@ export const getExamStatistics = withSchoolAuthAction(async (schoolId: string, u
     };
   }
 });
+
+// ---------------------------------------------------------------------------
+// CBSE Auto-Generate Exams
+// ---------------------------------------------------------------------------
+
+/**
+ * CBSE exam schedule template per term.
+ * Each entry defines one exam per subject for a given exam type.
+ * Dates are relative offsets (days from term start) — caller supplies actual dates.
+ */
+export interface CBSEExamScheduleEntry {
+  examTypeName: string;
+  cbseComponent: string;
+  totalMarks: number;
+  passingMarks: number;
+  /** Offset in days from term start date for the exam date */
+  dayOffset: number;
+  /** Duration in minutes */
+  durationMinutes: number;
+}
+
+export const CBSE_PRIMARY_SCHEDULE: CBSEExamScheduleEntry[] = [
+  { examTypeName: "Periodic Test",       cbseComponent: "PT",          totalMarks: 10,  passingMarks: 3,  dayOffset: 30,  durationMinutes: 60  },
+  { examTypeName: "Multiple Assessment", cbseComponent: "MA",          totalMarks: 5,   passingMarks: 2,  dayOffset: 45,  durationMinutes: 30  },
+  { examTypeName: "Portfolio",           cbseComponent: "PORTFOLIO",   totalMarks: 5,   passingMarks: 2,  dayOffset: 60,  durationMinutes: 30  },
+  { examTypeName: "Half Yearly Exam",    cbseComponent: "HALF_YEARLY", totalMarks: 80,  passingMarks: 26, dayOffset: 90,  durationMinutes: 180 },
+];
+
+export const CBSE_SECONDARY_SCHEDULE: CBSEExamScheduleEntry[] = [
+  { examTypeName: "Periodic Test",       cbseComponent: "PT",          totalMarks: 10,  passingMarks: 3,  dayOffset: 30,  durationMinutes: 60  },
+  { examTypeName: "Multiple Assessment", cbseComponent: "MA",          totalMarks: 5,   passingMarks: 2,  dayOffset: 45,  durationMinutes: 30  },
+  { examTypeName: "Portfolio",           cbseComponent: "PORTFOLIO",   totalMarks: 5,   passingMarks: 2,  dayOffset: 60,  durationMinutes: 30  },
+  { examTypeName: "Half Yearly Exam",    cbseComponent: "HALF_YEARLY", totalMarks: 80,  passingMarks: 26, dayOffset: 90,  durationMinutes: 180 },
+];
+
+export const CBSE_SENIOR_SCHEDULE: CBSEExamScheduleEntry[] = [
+  { examTypeName: "Annual Exam",         cbseComponent: "ANNUAL",      totalMarks: 100, passingMarks: 33, dayOffset: 90,  durationMinutes: 180 },
+];
+
+export interface AutoGenerateExamsInput {
+  termId: string;
+  classIds: string[];
+  /** If omitted, all subjects assigned to the class are used */
+  subjectIds?: string[];
+  cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR";
+  /** Term 1 uses PT/MA/Portfolio/HY; Term 2 uses PT/MA/Portfolio/Annual */
+  termNumber?: 1 | 2;
+}
+
+/**
+ * Auto-generate CBSE exams for selected classes and term.
+ * Creates one exam per (examType × subject × class) combination.
+ * Skips combinations that already have an exam of that type.
+ */
+export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // 1. Fetch term
+    const term = await db.term.findFirst({
+      where: { id: input.termId, schoolId },
+    });
+    if (!term) return { success: false, error: "Term not found" };
+
+    // 2. Determine schedule
+    let schedule = input.cbseLevel === "CBSE_SENIOR"
+      ? CBSE_SENIOR_SCHEDULE
+      : input.cbseLevel === "CBSE_SECONDARY"
+        ? CBSE_SECONDARY_SCHEDULE
+        : CBSE_PRIMARY_SCHEDULE;
+
+    // For Term 2 (primary/secondary), replace HALF_YEARLY with ANNUAL
+    if (input.termNumber === 2 && input.cbseLevel !== "CBSE_SENIOR") {
+      schedule = schedule.map((s) =>
+        s.cbseComponent === "HALF_YEARLY"
+          ? { ...s, examTypeName: "Annual Exam", cbseComponent: "ANNUAL" }
+          : s,
+      );
+    }
+
+    // 3. Fetch exam types by name
+    const examTypeNames = [...new Set(schedule.map((s) => s.examTypeName))];
+    const examTypes = await db.examType.findMany({
+      where: { schoolId, name: { in: examTypeNames } },
+    });
+    const examTypeMap = new Map(examTypes.map((et) => [et.name, et]));
+
+    const missingTypes = examTypeNames.filter((n) => !examTypeMap.has(n));
+    if (missingTypes.length > 0) {
+      return {
+        success: false,
+        error: `Missing exam types: ${missingTypes.join(", ")}. Run "Auto Generate Exam Types" first.`,
+      };
+    }
+
+    // 4. For each class, get subjects
+    let created = 0;
+    let skipped = 0;
+
+    for (const classId of input.classIds) {
+      // Verify class belongs to school
+      const cls = await db.class.findFirst({ where: { id: classId, schoolId } });
+      if (!cls) continue;
+
+      // Get subjects for this class
+      let subjectIds = input.subjectIds;
+      if (!subjectIds || subjectIds.length === 0) {
+        const classSubjects = await db.subject.findMany({
+          where: { schoolId, classes: { some: { id: classId } } },
+          select: { id: true },
+        });
+        subjectIds = classSubjects.map((s) => s.id);
+      }
+
+      if (subjectIds.length === 0) continue;
+
+      // 5. For each schedule entry × subject, create exam if not exists
+      for (const entry of schedule) {
+        const examType = examTypeMap.get(entry.examTypeName)!;
+
+        for (const subjectId of subjectIds) {
+          // Check if exam already exists
+          const existing = await db.exam.findFirst({
+            where: { schoolId, classId, subjectId, termId: input.termId, examTypeId: examType.id },
+          });
+          if (existing) { skipped++; continue; }
+
+          // Calculate exam date from term start + offset
+          const examDate = new Date(term.startDate);
+          examDate.setDate(examDate.getDate() + entry.dayOffset);
+
+          // Clamp to term end
+          if (examDate > term.endDate) examDate.setTime(term.endDate.getTime());
+
+          const startTime = new Date(examDate);
+          startTime.setHours(9, 0, 0, 0);
+          const endTime = new Date(startTime);
+          endTime.setMinutes(endTime.getMinutes() + entry.durationMinutes);
+
+          await db.exam.create({
+            data: {
+              schoolId,
+              classId,
+              subjectId,
+              termId: input.termId,
+              examTypeId: examType.id,
+              title: `${entry.examTypeName}`,
+              totalMarks: entry.totalMarks,
+              passingMarks: entry.passingMarks,
+              examDate,
+              startTime,
+              endTime,
+            },
+          });
+          created++;
+        }
+      }
+    }
+
+    revalidatePath("/admin/assessment/exams");
+    return {
+      success: true,
+      created,
+      skipped,
+      message: `Created ${created} exam${created !== 1 ? "s" : ""}${skipped > 0 ? `, skipped ${skipped} existing` : ""}`,
+    };
+  } catch (error) {
+    console.error("Error auto-generating CBSE exams:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to auto-generate exams" };
+  }
+}

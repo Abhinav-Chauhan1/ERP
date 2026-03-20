@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, PlusCircle, Edit, Trash2,
   MoreVertical, ClipboardList, BarChart,
-  AlertCircle, Loader2
+  AlertCircle, Loader2, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -58,7 +60,9 @@ import {
   createExamType,
   updateExamType,
   deleteExamType,
-  getExamStatsByType
+  getExamStatsByType,
+  getAvailableCBSEExamTypeTemplates,
+  autoGenerateCBSEExamTypes,
 } from "@/lib/actions/examTypesActions";
 import { getGrades } from "@/lib/actions/gradesActions";
 import { CBSE_COMPONENTS } from "@/lib/schemaValidation/examTypesSchemaValidation";
@@ -73,6 +77,12 @@ export default function ExamTypesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gradesLoading, setGradesLoading] = useState(true);
+
+  // Auto-generate state
+  const [autoGenDialogOpen, setAutoGenDialogOpen] = useState(false);
+  const [autoGenTemplates, setAutoGenTemplates] = useState<any[]>([]);
+  const [selectedAutoGen, setSelectedAutoGen] = useState<string[]>([]);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   // Initialize form
   const form = useForm<ExamTypeFormValues>({
@@ -217,6 +227,39 @@ export default function ExamTypesPage() {
     }
   }
 
+  async function handleAutoGenerate() {
+    const result = await getAvailableCBSEExamTypeTemplates();
+    if (result.success && result.data && result.data.length > 0) {
+      setAutoGenTemplates(result.data as any[]);
+      setSelectedAutoGen((result.data as any[]).map((t: any) => t.name));
+      setAutoGenDialogOpen(true);
+    } else {
+      toast.error(result.error || "All CBSE exam types already exist");
+    }
+  }
+
+  async function confirmAutoGenerate() {
+    if (selectedAutoGen.length === 0) {
+      toast.error("Select at least one exam type");
+      return;
+    }
+    setAutoGenerating(true);
+    try {
+      const result = await autoGenerateCBSEExamTypes(selectedAutoGen);
+      if (result.success) {
+        toast.success(`Created ${result.count} CBSE exam type${result.count !== 1 ? "s" : ""}`);
+        setAutoGenDialogOpen(false);
+        fetchExamTypes();
+      } else {
+        toast.error(result.error || "Failed to auto-generate");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setAutoGenerating(false);
+    }
+  }
+
   // Function to get grade color class
   const getGradeColorClass = (grade: string) => {
     const firstChar = grade.charAt(0).toUpperCase();
@@ -242,12 +285,16 @@ export default function ExamTypesPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Exam Types</h1>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCreateExamType} className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleAutoGenerate} className="w-full sm:w-auto">
+            <Sparkles className="mr-2 h-4 w-4" /> Auto Generate CBSE
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleCreateExamType} className="w-full sm:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Exam Type
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingExamType ? "Edit Exam Type" : "Create Exam Type"}</DialogTitle>
@@ -418,6 +465,7 @@ export default function ExamTypesPage() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {error && (
@@ -569,6 +617,72 @@ export default function ExamTypesPage() {
             </Button>
             <Button variant="destructive" onClick={confirmDeleteExamType}>
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-Generate CBSE Exam Types Dialog */}
+      <Dialog open={autoGenDialogOpen} onOpenChange={setAutoGenDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Auto-Generate CBSE Exam Types</DialogTitle>
+            <DialogDescription>
+              Select which standard CBSE exam types to create. Each maps to a report card column.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">
+                {selectedAutoGen.length} of {autoGenTemplates.length} selected
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedAutoGen(autoGenTemplates.map((t: any) => t.name))}>
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedAutoGen([])}>
+                  Clear
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className="h-[280px] border rounded-md p-3">
+              <div className="space-y-2">
+                {autoGenTemplates.map((t: any) => (
+                  <div
+                    key={t.name}
+                    className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                    onClick={() => setSelectedAutoGen((prev) =>
+                      prev.includes(t.name) ? prev.filter((n) => n !== t.name) : [...prev, t.name]
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedAutoGen.includes(t.name)}
+                      onCheckedChange={() => setSelectedAutoGen((prev) =>
+                        prev.includes(t.name) ? prev.filter((n) => n !== t.name) : [...prev, t.name]
+                      )}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm">{t.name}</p>
+                        <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                          CBSE: {t.cbseComponent}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">{t.weight}%</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAutoGenDialogOpen(false)} disabled={autoGenerating}>
+              Cancel
+            </Button>
+            <Button onClick={confirmAutoGenerate} disabled={autoGenerating || selectedAutoGen.length === 0}>
+              {autoGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate {selectedAutoGen.length} Type{selectedAutoGen.length !== 1 ? "s" : ""}
             </Button>
           </DialogFooter>
         </DialogContent>

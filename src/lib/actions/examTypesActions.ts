@@ -253,3 +253,91 @@ export async function getExamStatsByType(id: string) {
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// CBSE Auto-Generate
+// ---------------------------------------------------------------------------
+
+/** Standard CBSE exam types with their report card column mappings */
+export const CBSE_EXAM_TYPE_TEMPLATES = [
+  // Primary (Class 1–8) — two terms
+  { name: "Periodic Test",         cbseComponent: "PT",          weight: 10, description: "Periodic Test (10 marks) — Term 1 & 2" },
+  { name: "Multiple Assessment",   cbseComponent: "MA",          weight: 5,  description: "Multiple Assessment (5 marks) — Term 1 & 2" },
+  { name: "Portfolio",             cbseComponent: "PORTFOLIO",   weight: 5,  description: "Portfolio (5 marks) — Term 1 & 2" },
+  { name: "Half Yearly Exam",      cbseComponent: "HALF_YEARLY", weight: 80, description: "Half Yearly Exam (80 marks) — Term 1" },
+  { name: "Annual Exam",           cbseComponent: "ANNUAL",      weight: 80, description: "Annual Exam (80 marks) — Term 2" },
+] as const;
+
+/**
+ * Get which CBSE exam type templates don't yet exist for this school.
+ */
+export async function getAvailableCBSEExamTypeTemplates() {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const existing = await db.examType.findMany({
+      where: { schoolId },
+      select: { name: true },
+    });
+    const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
+
+    const available = CBSE_EXAM_TYPE_TEMPLATES.filter(
+      (t) => !existingNames.has(t.name.toLowerCase()),
+    );
+
+    return { success: true, data: available };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to fetch templates" };
+  }
+}
+
+/**
+ * Auto-generate CBSE exam types for the current school.
+ * @param selectedNames - subset of CBSE_EXAM_TYPE_TEMPLATES names to create (all if omitted)
+ */
+export async function autoGenerateCBSEExamTypes(selectedNames?: string[]) {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const existing = await db.examType.findMany({
+      where: { schoolId },
+      select: { name: true },
+    });
+    const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
+
+    let toCreate = CBSE_EXAM_TYPE_TEMPLATES.filter(
+      (t) => !existingNames.has(t.name.toLowerCase()),
+    );
+
+    if (selectedNames && selectedNames.length > 0) {
+      const sel = new Set(selectedNames.map((n) => n.toLowerCase()));
+      toCreate = toCreate.filter((t) => sel.has(t.name.toLowerCase()));
+    }
+
+    if (toCreate.length === 0) {
+      return { success: false, error: "All selected CBSE exam types already exist" };
+    }
+
+    await db.examType.createMany({
+      data: toCreate.map((t) => ({
+        schoolId,
+        name: t.name,
+        description: t.description,
+        cbseComponent: t.cbseComponent,
+        weight: t.weight,
+        isActive: true,
+        canRetest: false,
+        includeInGradeCard: true,
+      })),
+      skipDuplicates: true,
+    });
+
+    revalidatePath("/admin/assessment/exam-types");
+    return { success: true, count: toCreate.length };
+  } catch (error) {
+    console.error("Error auto-generating CBSE exam types:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to auto-generate exam types" };
+  }
+}
