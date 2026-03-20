@@ -248,7 +248,15 @@ function renderHeader(
   // School logo (left)
   if (opts.schoolLogo) {
     try {
-      doc.addImage(opts.schoolLogo, "PNG", MARGIN.left, y, logoW, logoH);
+      // Detect format from data URL prefix or URL extension
+      let format: "PNG" | "JPEG" | "WEBP" = "PNG";
+      const logoSrc = opts.schoolLogo;
+      if (logoSrc.startsWith("data:image/jpeg") || logoSrc.startsWith("data:image/jpg") || /\.(jpg|jpeg)(\?|$)/i.test(logoSrc)) {
+        format = "JPEG";
+      } else if (logoSrc.startsWith("data:image/webp") || /\.webp(\?|$)/i.test(logoSrc)) {
+        format = "WEBP";
+      }
+      doc.addImage(logoSrc, format, MARGIN.left, y, logoW, logoH);
     } catch { /* skip */ }
   } else {
     // Placeholder circle
@@ -264,7 +272,14 @@ function renderHeader(
   const emblemX = PAGE.width - MARGIN.right - emblemW;
   if (opts.schoolEmblem) {
     try {
-      doc.addImage(opts.schoolEmblem, "PNG", emblemX, y, emblemW, logoH);
+      let emblemFormat: "PNG" | "JPEG" | "WEBP" = "PNG";
+      const emblemSrc = opts.schoolEmblem;
+      if (emblemSrc.startsWith("data:image/jpeg") || emblemSrc.startsWith("data:image/jpg") || /\.(jpg|jpeg)(\?|$)/i.test(emblemSrc)) {
+        emblemFormat = "JPEG";
+      } else if (emblemSrc.startsWith("data:image/webp") || /\.webp(\?|$)/i.test(emblemSrc)) {
+        emblemFormat = "WEBP";
+      }
+      doc.addImage(emblemSrc, emblemFormat, emblemX, y, emblemW, logoH);
     } catch { /* skip */ }
   } else {
     doc.setDrawColor(...hex(C.red));
@@ -469,7 +484,7 @@ function renderScholasticTable(
     const overall = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
     const grade   = subj.grade || "-";
 
-    return [subj.subjectName, t1pt, t1ma, t1port, t1hy, t1tot, t2pt, t2ma, t2port, t2hy, t2tot, overall, grade];
+    return [subj.subjectName || subj.subjectCode || "Subject", t1pt, t1ma, t1port, t1hy, t1tot, t2pt, t2ma, t2port, t2hy, t2tot, overall, grade];
   });
 
   autoTable(doc, {
@@ -870,7 +885,7 @@ function renderSecondaryScholasticTable(
     const total = subj.isAbsent ? "AB" : `${subj.totalMarks}`;
     const grade = subj.grade || "-";
     const status = subj.isAbsent ? "AB" : (subj.percentage >= 33 ? "Pass" : "Fail");
-    return [subj.subjectName, theory, practical, total, grade, status];
+    return [subj.subjectName || subj.subjectCode || "Subject", theory, practical, total, grade, status];
   });
 
   autoTable(doc, {
@@ -957,7 +972,7 @@ function renderSeniorScholasticTable(
       ? ((subj.practicalMarks ?? 0) / subj.practicalMaxMarks) * 100
       : 100;
     const status = subj.isAbsent ? "AB" : (theoryPct >= 33 && practPct >= 33 ? "Pass" : "Fail");
-    return [subj.subjectName, theory, practical, total, grade, status];
+    return [subj.subjectName || subj.subjectCode || "Subject", theory, practical, total, grade, status];
   });
 
   autoTable(doc, {

@@ -846,11 +846,49 @@ export async function generateCBSEReportCardAction(params: {
       params.academicYearId,
     );
 
-    // 2. Resolve cbseLevel from the class's assigned template (if any)
+    // 2. Fetch school info from DB (callers rarely pass these, so always resolve from DB)
+    const { db: dbInst } = await import("@/lib/db");
+    const school = await dbInst.school.findUnique({
+      where: { id: data.student.schoolId },
+      select: {
+        name: true,
+        logo: true,
+        phone: true,
+        email: true,
+        address: true,
+        schoolCode: true,
+        metadata: true,
+      },
+    });
+
+    // Resolve logo URL — may be a relative path or R2 key; convert to absolute if needed
+    let logoUrl = params.schoolLogo ?? school?.logo ?? undefined;
+    if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+      logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+    }
+
+    // Fetch logo as base64 so jsPDF can embed it (it cannot load remote URLs directly)
+    if (logoUrl && logoUrl.startsWith("http")) {
+      try {
+        const res = await fetch(logoUrl);
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          const contentType = res.headers.get("content-type") || "image/png";
+          logoUrl = `data:${contentType};base64,${Buffer.from(buf).toString("base64")}`;
+        }
+      } catch {
+        logoUrl = undefined; // fall back to placeholder
+      }
+    }
+    // Extract affiliationNo from metadata if stored there
+    const meta = school?.metadata as Record<string, string> | null;
+    const affiliationNo = params.affiliationNo ?? meta?.affiliationNo ?? undefined;
+
+    // 3. Resolve cbseLevel from the class's assigned template (if any)
     let cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR" | undefined;
     if (data.templateId) {
-      const { db } = await import("@/lib/db");
-      const tpl = await db.reportCardTemplate.findUnique({
+      const tpl = await dbInst.reportCardTemplate.findUnique({
         where: { id: data.templateId },
         select: { cbseLevel: true },
       });
@@ -859,15 +897,15 @@ export async function generateCBSEReportCardAction(params: {
       }
     }
 
-    // 3. Generate PDF via CBSE renderer
+    // 4. Generate PDF via CBSE renderer
     const pdfBuffer = await generateCBSEReportCardPDF(data, {
-      schoolName: params.schoolName,
-      schoolAddress: params.schoolAddress,
-      schoolPhone: params.schoolPhone,
-      schoolEmail: params.schoolEmail,
-      schoolLogo: params.schoolLogo,
-      affiliationNo: params.affiliationNo,
-      schoolCode: params.schoolCode,
+      schoolName: params.schoolName ?? school?.name ?? undefined,
+      schoolAddress: params.schoolAddress ?? school?.address ?? undefined,
+      schoolPhone: params.schoolPhone ?? school?.phone ?? undefined,
+      schoolEmail: params.schoolEmail ?? school?.email ?? undefined,
+      schoolLogo: logoUrl,
+      affiliationNo,
+      schoolCode: params.schoolCode ?? school?.schoolCode ?? undefined,
       cbseLevel,
     });
 
@@ -910,15 +948,49 @@ export async function generateBatchCBSEReportCardsAction(params: {
       ),
     );
 
+    // Fetch school info from DB using the first student's schoolId
+    let resolvedSchoolName = params.schoolName;
+    let resolvedAddress = params.schoolAddress;
+    let resolvedPhone = params.schoolPhone;
+    let resolvedEmail = params.schoolEmail;
+    let resolvedLogo = params.schoolLogo;
+    let resolvedAffiliation = params.affiliationNo;
+    let resolvedCode = params.schoolCode;
+
+    if (dataList.length > 0) {
+      const { db: dbInst } = await import("@/lib/db");
+      const school = await dbInst.school.findUnique({
+        where: { id: dataList[0].student.schoolId },
+        select: { name: true, logo: true, phone: true, email: true, address: true, schoolCode: true, metadata: true },
+      });
+      if (school) {
+        resolvedSchoolName ??= school.name ?? undefined;
+        resolvedAddress ??= school.address ?? undefined;
+        resolvedPhone ??= school.phone ?? undefined;
+        resolvedEmail ??= school.email ?? undefined;
+        resolvedCode ??= school.schoolCode ?? undefined;
+        const meta = school.metadata as Record<string, string> | null;
+        resolvedAffiliation ??= meta?.affiliationNo ?? undefined;
+        if (!resolvedLogo && school.logo) {
+          let logoUrl = school.logo;
+          if (!logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+            logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          }
+          resolvedLogo = logoUrl;
+        }
+      }
+    }
+
     // 2. Generate combined PDF
     const pdfBuffer = await generateBatchCBSEReportCards(dataList, {
-      schoolName: params.schoolName,
-      schoolAddress: params.schoolAddress,
-      schoolPhone: params.schoolPhone,
-      schoolEmail: params.schoolEmail,
-      schoolLogo: params.schoolLogo,
-      affiliationNo: params.affiliationNo,
-      schoolCode: params.schoolCode,
+      schoolName: resolvedSchoolName,
+      schoolAddress: resolvedAddress,
+      schoolPhone: resolvedPhone,
+      schoolEmail: resolvedEmail,
+      schoolLogo: resolvedLogo,
+      affiliationNo: resolvedAffiliation,
+      schoolCode: resolvedCode,
     });
 
     return {
