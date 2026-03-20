@@ -7,7 +7,7 @@ import {
   ArrowLeft, Edit, Trash2, PlusCircle,
   Search, Calendar, Clock, BookOpen,
   MoreVertical, Download, Printer, FileText,
-  CheckCircle2, School, Loader2, AlertCircle
+  CheckCircle2, School, Loader2, AlertCircle, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -48,6 +48,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
@@ -67,7 +70,9 @@ import {
   createExam,
   updateExam,
   deleteExam,
-  getExamStatistics
+  getExamStatistics,
+  autoGenerateCBSEExams,
+  type AutoGenerateExamsInput,
 } from "@/lib/actions/examsActions";
 
 export default function ExamsPage() {
@@ -91,6 +96,14 @@ export default function ExamsPage() {
   const [terms, setTerms] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-generate CBSE exams state
+  const [autoGenOpen, setAutoGenOpen] = useState(false);
+  const [autoGenLoading, setAutoGenLoading] = useState(false);
+  const [autoGenTermId, setAutoGenTermId] = useState("");
+  const [autoGenClassIds, setAutoGenClassIds] = useState<string[]>([]);
+  const [autoGenLevel, setAutoGenLevel] = useState<"CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR">("CBSE_PRIMARY");
+  const [autoGenTermNumber, setAutoGenTermNumber] = useState<1 | 2>(1);
 
   // Initialize exam form
   const form = useForm<ExamFormValues>({
@@ -266,6 +279,32 @@ export default function ExamsPage() {
     }
   }
 
+  async function handleAutoGenerateExams() {
+    if (!autoGenTermId) { toast.error("Select a term"); return; }
+    if (autoGenClassIds.length === 0) { toast.error("Select at least one class"); return; }
+    setAutoGenLoading(true);
+    try {
+      const result = await autoGenerateCBSEExams({
+        termId: autoGenTermId,
+        classIds: autoGenClassIds,
+        cbseLevel: autoGenLevel,
+        termNumber: autoGenTermNumber,
+      });
+      if (result.success) {
+        toast.success(result.message ?? "Exams generated");
+        setAutoGenOpen(false);
+        fetchExams();
+        fetchStatistics();
+      } else {
+        toast.error(result.error || "Failed to generate exams");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setAutoGenLoading(false);
+    }
+  }
+
   async function confirmDelete() {
     if (selectedExamId) {
       try {
@@ -345,12 +384,16 @@ export default function ExamsPage() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Exam Management</h1>
         </div>
-        <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleCreateExam} className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={() => setAutoGenOpen(true)} className="w-full sm:w-auto">
+            <Sparkles className="mr-2 h-4 w-4" /> Auto Generate CBSE
+          </Button>
+          <Dialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleCreateExam} className="w-full sm:w-auto">
+                <PlusCircle className="mr-2 h-4 w-4" /> Create Exam
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>{selectedExamId ? "Edit Exam" : "Create New Exam"}</DialogTitle>
@@ -601,6 +644,7 @@ export default function ExamsPage() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {error && (
@@ -747,6 +791,114 @@ export default function ExamsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Auto-Generate CBSE Exams Dialog */}
+      <Dialog open={autoGenOpen} onOpenChange={setAutoGenOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Auto-Generate CBSE Exams</DialogTitle>
+            <DialogDescription>
+              Creates one exam per subject per class for each CBSE exam type in the selected term.
+              Existing exams are skipped automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>CBSE Level</Label>
+                <Select value={autoGenLevel} onValueChange={(v) => setAutoGenLevel(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CBSE_PRIMARY">Primary (Class 1–8)</SelectItem>
+                    <SelectItem value="CBSE_SECONDARY">Secondary (Class 9–10)</SelectItem>
+                    <SelectItem value="CBSE_SENIOR">Senior Secondary (Class 11–12)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Term Number</Label>
+                <Select value={String(autoGenTermNumber)} onValueChange={(v) => setAutoGenTermNumber(Number(v) as 1 | 2)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Term 1 (Half Yearly)</SelectItem>
+                    <SelectItem value="2">Term 2 (Annual)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Term</Label>
+              <Select value={autoGenTermId} onValueChange={setAutoGenTermId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select term..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name} ({term.academicYear.name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label>Classes ({autoGenClassIds.length} selected)</Label>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds(classes.map((c: any) => c.id))}>
+                    All
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setAutoGenClassIds([])}>
+                    Clear
+                  </Button>
+                </div>
+              </div>
+              <ScrollArea className="h-[180px] border rounded-md p-2">
+                <div className="space-y-1">
+                  {classes.map((cls: any) => (
+                    <div
+                      key={cls.id}
+                      className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => setAutoGenClassIds((prev) =>
+                        prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
+                      )}
+                    >
+                      <Checkbox
+                        checked={autoGenClassIds.includes(cls.id)}
+                        onCheckedChange={() => setAutoGenClassIds((prev) =>
+                          prev.includes(cls.id) ? prev.filter((id) => id !== cls.id) : [...prev, cls.id]
+                        )}
+                      />
+                      <span className="text-sm">{cls.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAutoGenOpen(false)} disabled={autoGenLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAutoGenerateExams}
+              disabled={autoGenLoading || !autoGenTermId || autoGenClassIds.length === 0}
+            >
+              {autoGenLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate Exams
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
