@@ -726,9 +726,6 @@ import {
   CBSE_SENIOR_SCHEDULE,
 } from "@/lib/constants/cbse-exam-schedules";
 
-// Re-export the type so callers can import it from here
-export type { AutoGenerateExamsInput };
-
 /**
  * Auto-generate CBSE exams for selected classes and term.
  * Creates one exam per (examType × subject × class) combination.

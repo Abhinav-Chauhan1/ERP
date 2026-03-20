@@ -72,8 +72,8 @@ import {
   deleteExam,
   getExamStatistics,
   autoGenerateCBSEExams,
-  type AutoGenerateExamsInput,
 } from "@/lib/actions/examsActions";
+import type { AutoGenerateExamsInput } from "@/lib/constants/cbse-exam-schedules";
 
 export default function ExamsPage() {
   const [searchTerm, setSearchTerm] = useState("");
