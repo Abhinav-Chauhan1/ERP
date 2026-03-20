@@ -121,87 +121,76 @@ export default function ExamsPage() {
   });
 
   useEffect(() => {
-    fetchExams();
-    fetchMetadata();
-    fetchStatistics();
+    loadAll();
   }, []);
 
-  // Fetch upcoming and past exams
-  async function fetchExams() {
+  async function loadAll() {
     setLoading(true);
+    setStatsLoading(true);
     setError(null);
-
     try {
-      // Fetch upcoming exams
-      const upcomingResult = await getUpcomingExams();
-      if (upcomingResult.success) {
-        setUpcomingExams(upcomingResult.data || []);
-      } else {
-        toast.error("Failed to fetch upcoming exams");
-      }
+      // Fire all requests in parallel — single round-trip
+      const [
+        upcomingResult,
+        pastResult,
+        typesResult,
+        subjectsResult,
+        classesResult,
+        termsResult,
+        allTermsResult,
+        statsResult,
+      ] = await Promise.all([
+        getUpcomingExams(),
+        getPastExams(),
+        getExamTypes(),
+        getSubjects(),
+        getClasses(),
+        getTerms(),
+        getAllTerms(),
+        getExamStatistics(),
+      ]);
 
-      // Fetch past exams
-      const pastResult = await getPastExams();
-      if (pastResult.success) {
-        setPastExams(pastResult.data || []);
-      } else {
-        toast.error("Failed to fetch past exams");
+      if (upcomingResult.success) setUpcomingExams(upcomingResult.data || []);
+      if (pastResult.success) setPastExams(pastResult.data || []);
+      if (typesResult.success) setExamTypes(typesResult.data || []);
+      if (subjectsResult.success) setSubjects(subjectsResult.data || []);
+      if (classesResult.success) setClasses(classesResult.data || []);
+      if (termsResult.success) setTerms(termsResult.data || []);
+      if (allTermsResult.success) setAllTerms(allTermsResult.data || []);
+      if (statsResult.success) setStatistics(statsResult.data);
+
+      if (!upcomingResult.success || !pastResult.success) {
+        setError("Failed to load exams");
       }
     } catch (err) {
       setError("An unexpected error occurred");
       toast.error("An unexpected error occurred");
     } finally {
       setLoading(false);
+      setStatsLoading(false);
     }
   }
 
-  // Fetch metadata (exam types, subjects, terms)
-  async function fetchMetadata() {
+  async function fetchExams() {
+    setLoading(true);
     try {
-      // Fetch exam types
-      const typesResult = await getExamTypes();
-      if (typesResult.success) {
-        setExamTypes(typesResult.data || []);
-      }
-
-      // Fetch subjects
-      const subjectsResult = await getSubjects();
-      if (subjectsResult.success) {
-        setSubjects(subjectsResult.data || []);
-      }
-
-      // Fetch classes
-      const classesResult = await getClasses();
-      if (classesResult.success) {
-        setClasses(classesResult.data || []);
-      }
-
-      // Fetch terms
-      const termsResult = await getTerms();
-      if (termsResult.success) {
-        setTerms(termsResult.data || []);
-      }
-
-      // Fetch all terms (for auto-generate dialog)
-      const allTermsResult = await getAllTerms();
-      if (allTermsResult.success) {
-        setAllTerms(allTermsResult.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching metadata:", err);
+      const [upcomingResult, pastResult] = await Promise.all([getUpcomingExams(), getPastExams()]);
+      if (upcomingResult.success) setUpcomingExams(upcomingResult.data || []);
+      if (pastResult.success) setPastExams(pastResult.data || []);
+    } catch {
+      toast.error("Failed to refresh exams");
+    } finally {
+      setLoading(false);
     }
   }
 
-  // Fetch exam statistics
   async function fetchStatistics() {
     setStatsLoading(true);
     try {
       const result = await getExamStatistics();
-      if (result.success) {
-        setStatistics(result.data);
-      }
-    } catch (err) {
-      console.error("Error fetching statistics:", err);
+      if (result.success) setStatistics(result.data);
+    } catch {
+      console.error("Error fetching statistics");
     } finally {
       setStatsLoading(false);
     }
