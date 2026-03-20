@@ -19,7 +19,7 @@ import {
   getEnrolledStudentsForMarks,
   getTermsForMarksEntry,
   getExamTypesForMarksEntry,
-  getSubjectsForMarksEntry,
+  getSubjectsByClassForMarksEntry,
 } from "@/lib/actions/marksEntryActions";
 import { MarksEntryGrid } from "./marks-entry-grid";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ interface Exam {
   title: string;
   totalMarks: number;
   examDate: Date;
+  classId: string;
   subject: { id: string; name: string };
   examType: { id: string; name: string; cbseComponent?: string | null };
   term: {
@@ -78,12 +79,13 @@ export function MarksEntryForm() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
 
   // Filter state
   const [filterTermId, setFilterTermId] = useState<string>("");
   const [filterExamTypeId, setFilterExamTypeId] = useState<string>("");
   const [filterSubjectId, setFilterSubjectId] = useState<string>("");
+  const [filterClassId, setFilterClassId] = useState<string>("");
+  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
 
   // Selection state
   const [selectedExamId, setSelectedExamId] = useState<string>("");
@@ -99,24 +101,32 @@ export function MarksEntryForm() {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      const [examsResult, classesResult, termsResult, examTypesResult, subjectsResult] =
+      const [examsResult, classesResult, termsResult, examTypesResult] =
         await Promise.all([
           getExamsForMarksEntry(),
           getClassesForMarksEntry(),
           getTermsForMarksEntry(),
           getExamTypesForMarksEntry(),
-          getSubjectsForMarksEntry(),
         ]);
 
       if (examsResult.success) setExams(examsResult.data || []);
       if (classesResult.success) setClasses(classesResult.data || []);
       if (termsResult.success) setTerms(termsResult.data || []);
       if (examTypesResult.success) setExamTypes(examTypesResult.data || []);
-      if (subjectsResult.success) setSubjects(subjectsResult.data || []);
       setIsLoading(false);
     };
     loadData();
   }, []);
+
+  // Load subjects when filter class changes
+  useEffect(() => {
+    setFilterSubjectId("");
+    setFilteredSubjects([]);
+    if (!filterClassId) return;
+    getSubjectsByClassForMarksEntry(filterClassId).then((result) => {
+      if (result.success) setFilteredSubjects(result.data || []);
+    });
+  }, [filterClassId]);
 
   // Filtered exams based on active filters
   const filteredExams = useMemo(() => {
@@ -124,22 +134,24 @@ export function MarksEntryForm() {
       if (filterTermId && exam.term.id !== filterTermId) return false;
       if (filterExamTypeId && exam.examType.id !== filterExamTypeId) return false;
       if (filterSubjectId && exam.subject.id !== filterSubjectId) return false;
+      if (filterClassId && exam.classId !== filterClassId) return false;
       return true;
     });
-  }, [exams, filterTermId, filterExamTypeId, filterSubjectId]);
+  }, [exams, filterTermId, filterExamTypeId, filterSubjectId, filterClassId]);
 
   // Reset exam selection when filters change
   useEffect(() => {
     setSelectedExamId("");
     setStudentsData(null);
-  }, [filterTermId, filterExamTypeId, filterSubjectId]);
+  }, [filterTermId, filterExamTypeId, filterSubjectId, filterClassId]);
 
-  const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId].filter(Boolean).length;
+  const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId, filterClassId].filter(Boolean).length;
 
   const clearFilters = () => {
     setFilterTermId("");
     setFilterExamTypeId("");
     setFilterSubjectId("");
+    setFilterClassId("");
   };
 
   // Update sections when class changes
@@ -203,7 +215,7 @@ export function MarksEntryForm() {
             </Button>
           )}
         </div>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Term</Label>
             <Select value={filterTermId} onValueChange={setFilterTermId} disabled={isLoading}>
@@ -252,13 +264,43 @@ export function MarksEntryForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Subject</Label>
-            <Select value={filterSubjectId} onValueChange={setFilterSubjectId} disabled={isLoading}>
-              <SelectTrigger className={filterSubjectId ? "border-primary" : ""}>
-                <SelectValue placeholder="All subjects" />
+            <Label className="text-xs text-muted-foreground">Class</Label>
+            <Select value={filterClassId} onValueChange={setFilterClassId} disabled={isLoading}>
+              <SelectTrigger className={filterClassId ? "border-primary" : ""}>
+                <SelectValue placeholder="All classes" />
               </SelectTrigger>
               <SelectContent>
-                {subjects.map((sub) => (
+                {classes.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{cls.name}</span>
+                      {cls.academicYear.isCurrent && (
+                        <Badge variant="secondary" className="text-xs py-0">Current</Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">
+              Subject
+              {!filterClassId && (
+                <span className="ml-1 text-xs text-muted-foreground/60">(select class first)</span>
+              )}
+            </Label>
+            <Select
+              value={filterSubjectId}
+              onValueChange={setFilterSubjectId}
+              disabled={isLoading || !filterClassId}
+            >
+              <SelectTrigger className={filterSubjectId ? "border-primary" : ""}>
+                <SelectValue placeholder={filterClassId ? "All subjects" : "Select class first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredSubjects.map((sub) => (
                   <SelectItem key={sub.id} value={sub.id}>
                     <span>{sub.name}</span>
                     {sub.code && (

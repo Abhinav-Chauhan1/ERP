@@ -794,3 +794,21 @@ export async function getSubjectsForMarksEntry(): Promise<ActionResult> {
     return { success: false, error: "Failed to fetch subjects" };
   }
 }
+
+/**
+ * Get subjects for a specific class (for marks entry filters)
+ */
+export async function getSubjectsByClassForMarksEntry(classId: string): Promise<ActionResult> {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    const subjectClasses = await db.subjectClass.findMany({
+      where: { classId, schoolId },
+      select: { subject: { select: { id: true, name: true, code: true } } },
+      orderBy: { subject: { name: "asc" } },
+    });
+    const subjects = subjectClasses.map((sc) => sc.subject);
+    return { success: true, data: subjects };
+  } catch (error) {
+    return { success: false, error: "Failed to fetch subjects for class" };
+  }
+}
