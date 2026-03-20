@@ -258,15 +258,7 @@ export async function getExamStatsByType(id: string) {
 // CBSE Auto-Generate
 // ---------------------------------------------------------------------------
 
-/** Standard CBSE exam types with their report card column mappings */
-export const CBSE_EXAM_TYPE_TEMPLATES = [
-  // Primary (Class 1–8) — two terms
-  { name: "Periodic Test",         cbseComponent: "PT",          weight: 10, description: "Periodic Test (10 marks) — Term 1 & 2" },
-  { name: "Multiple Assessment",   cbseComponent: "MA",          weight: 5,  description: "Multiple Assessment (5 marks) — Term 1 & 2" },
-  { name: "Portfolio",             cbseComponent: "PORTFOLIO",   weight: 5,  description: "Portfolio (5 marks) — Term 1 & 2" },
-  { name: "Half Yearly Exam",      cbseComponent: "HALF_YEARLY", weight: 80, description: "Half Yearly Exam (80 marks) — Term 1" },
-  { name: "Annual Exam",           cbseComponent: "ANNUAL",      weight: 80, description: "Annual Exam (80 marks) — Term 2" },
-] as const;
+import { CBSE_EXAM_TYPE_TEMPLATES } from "@/lib/constants/cbse-exam-schedules";
 
 /**
  * Get which CBSE exam type templates don't yet exist for this school.

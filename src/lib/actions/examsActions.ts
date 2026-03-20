@@ -719,49 +719,15 @@ export const getExamStatistics = withSchoolAuthAction(async (schoolId: string, u
 // CBSE Auto-Generate Exams
 // ---------------------------------------------------------------------------
 
-/**
- * CBSE exam schedule template per term.
- * Each entry defines one exam per subject for a given exam type.
- * Dates are relative offsets (days from term start) — caller supplies actual dates.
- */
-export interface CBSEExamScheduleEntry {
-  examTypeName: string;
-  cbseComponent: string;
-  totalMarks: number;
-  passingMarks: number;
-  /** Offset in days from term start date for the exam date */
-  dayOffset: number;
-  /** Duration in minutes */
-  durationMinutes: number;
-}
+import type { AutoGenerateExamsInput } from "@/lib/constants/cbse-exam-schedules";
+import {
+  CBSE_PRIMARY_SCHEDULE,
+  CBSE_SECONDARY_SCHEDULE,
+  CBSE_SENIOR_SCHEDULE,
+} from "@/lib/constants/cbse-exam-schedules";
 
-export const CBSE_PRIMARY_SCHEDULE: CBSEExamScheduleEntry[] = [
-  { examTypeName: "Periodic Test",       cbseComponent: "PT",          totalMarks: 10,  passingMarks: 3,  dayOffset: 30,  durationMinutes: 60  },
-  { examTypeName: "Multiple Assessment", cbseComponent: "MA",          totalMarks: 5,   passingMarks: 2,  dayOffset: 45,  durationMinutes: 30  },
-  { examTypeName: "Portfolio",           cbseComponent: "PORTFOLIO",   totalMarks: 5,   passingMarks: 2,  dayOffset: 60,  durationMinutes: 30  },
-  { examTypeName: "Half Yearly Exam",    cbseComponent: "HALF_YEARLY", totalMarks: 80,  passingMarks: 26, dayOffset: 90,  durationMinutes: 180 },
-];
-
-export const CBSE_SECONDARY_SCHEDULE: CBSEExamScheduleEntry[] = [
-  { examTypeName: "Periodic Test",       cbseComponent: "PT",          totalMarks: 10,  passingMarks: 3,  dayOffset: 30,  durationMinutes: 60  },
-  { examTypeName: "Multiple Assessment", cbseComponent: "MA",          totalMarks: 5,   passingMarks: 2,  dayOffset: 45,  durationMinutes: 30  },
-  { examTypeName: "Portfolio",           cbseComponent: "PORTFOLIO",   totalMarks: 5,   passingMarks: 2,  dayOffset: 60,  durationMinutes: 30  },
-  { examTypeName: "Half Yearly Exam",    cbseComponent: "HALF_YEARLY", totalMarks: 80,  passingMarks: 26, dayOffset: 90,  durationMinutes: 180 },
-];
-
-export const CBSE_SENIOR_SCHEDULE: CBSEExamScheduleEntry[] = [
-  { examTypeName: "Annual Exam",         cbseComponent: "ANNUAL",      totalMarks: 100, passingMarks: 33, dayOffset: 90,  durationMinutes: 180 },
-];
-
-export interface AutoGenerateExamsInput {
-  termId: string;
-  classIds: string[];
-  /** If omitted, all subjects assigned to the class are used */
-  subjectIds?: string[];
-  cbseLevel: "CBSE_PRIMARY" | "CBSE_SECONDARY" | "CBSE_SENIOR";
-  /** Term 1 uses PT/MA/Portfolio/HY; Term 2 uses PT/MA/Portfolio/Annual */
-  termNumber?: 1 | 2;
-}
+// Re-export the type so callers can import it from here
+export type { AutoGenerateExamsInput };
 
 /**
  * Auto-generate CBSE exams for selected classes and term.
