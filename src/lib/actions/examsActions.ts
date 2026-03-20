@@ -802,23 +802,25 @@ export async function autoGenerateCBSEExams(input: AutoGenerateExamsInput) {
       const cls = await db.class.findFirst({ where: { id: classId, schoolId } });
       if (!cls) continue;
 
-      // Get subjects for this class
-      let subjectIds = input.subjectIds;
-      if (!subjectIds || subjectIds.length === 0) {
-        const classSubjects = await db.subject.findMany({
-          where: { schoolId, classes: { some: { id: classId } } },
-          select: { id: true },
+      // Get subjects for this class — use SubjectClass join table
+      let classSubjectIds: string[];
+      if (input.subjectIds && input.subjectIds.length > 0) {
+        classSubjectIds = input.subjectIds;
+      } else {
+        const subjectClasses = await db.subjectClass.findMany({
+          where: { classId, schoolId },
+          select: { subjectId: true },
         });
-        subjectIds = classSubjects.map((s) => s.id);
+        classSubjectIds = [...new Set(subjectClasses.map((sc) => sc.subjectId))];
       }
 
-      if (subjectIds.length === 0) continue;
+      if (classSubjectIds.length === 0) continue;
 
       // 5. For each schedule entry × subject, create exam if not exists
       for (const entry of schedule) {
         const examType = examTypeMap.get(entry.examTypeName)!;
 
-        for (const subjectId of subjectIds) {
+        for (const subjectId of classSubjectIds) {
           // Check if exam already exists
           const existing = await db.exam.findFirst({
             where: { schoolId, classId, subjectId, termId: input.termId, examTypeId: examType.id },
