@@ -3,6 +3,9 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { revalidatePath } from "next/cache";
+import { syncUsageCounterLimits } from "@/lib/server/sync-usage-counter";
+import { syncSchoolPermissions } from "@/lib/server/sync-school-permissions";
+import { PlanType } from "@/lib/config/plan-features";
 
 export interface SchoolFilters {
   search?: string;
@@ -850,6 +853,14 @@ export async function updateSchoolSettings(schoolId: string, data: SchoolSetting
         updatedAt: new Date(),
       },
     });
+
+    // If plan changed, sync usage counter limits and permissions
+    if (data.plan && data.plan !== currentSchool.plan) {
+      await Promise.all([
+        syncUsageCounterLimits(schoolId, data.plan as PlanType),
+        syncSchoolPermissions(schoolId, data.plan as PlanType),
+      ]);
+    }
 
     // Log the action
     await db.auditLog.create({

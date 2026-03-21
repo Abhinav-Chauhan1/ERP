@@ -23,10 +23,17 @@ export type FeatureKey =
   | 'alumni'
   | 'audit_logs'
   | 'lms'
+  // study_tools: Flashcards, mind maps, notes — available on all plans.
+  // Included explicitly so it appears in plan documentation and can be
+  // gated in future if needed.
+  | 'study_tools'
 
 export const PLAN_FEATURES: Record<PlanType, FeatureKey[]> = {
-  STARTER: [],
+  STARTER: [
+    'study_tools',
+  ],
   GROWTH: [
+    'study_tools',
     'library',
     'transport',
     'admissions',
@@ -41,6 +48,7 @@ export const PLAN_FEATURES: Record<PlanType, FeatureKey[]> = {
     'certificates',
   ],
   DOMINATE: [
+    'study_tools',
     'library',
     'transport',
     'admissions',

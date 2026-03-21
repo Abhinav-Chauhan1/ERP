@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { School, SchoolStatus, PlanType, UserRole, Prisma, AuditAction } from "@prisma/client";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
+import { syncUsageCounterLimits } from "@/lib/server/sync-usage-counter";
+import { syncSchoolPermissions } from "@/lib/server/sync-school-permissions";
 
 // Types for school management operations
 export interface SchoolCreateData {
@@ -163,6 +165,13 @@ export class SchoolService {
       }
     });
 
+    // Sync usage counter limits and permissions to match the assigned plan
+    const schoolPlan = (data.plan || PlanType.STARTER) as PlanType;
+    await Promise.all([
+      syncUsageCounterLimits(school.id, schoolPlan),
+      syncSchoolPermissions(school.id, schoolPlan),
+    ]);
+
     return school;
   }
 
@@ -201,6 +210,14 @@ export class SchoolService {
         updatedAt: new Date(),
       }
     });
+
+    // If plan changed, sync usage counter limits and permissions
+    if (data.plan && data.plan !== existingSchool.plan) {
+      await Promise.all([
+        syncUsageCounterLimits(schoolId, data.plan as PlanType),
+        syncSchoolPermissions(schoolId, data.plan as PlanType),
+      ]);
+    }
 
     return updatedSchool;
   }
@@ -260,6 +277,10 @@ export class SchoolService {
               where: { id: school.id },
               data: { plan: operation.data.plan }
             });
+            await Promise.all([
+              syncUsageCounterLimits(school.id, operation.data.plan as PlanType),
+              syncSchoolPermissions(school.id, operation.data.plan as PlanType),
+            ]);
             results.success++;
             break;
 
@@ -1288,6 +1309,13 @@ export class SchoolService {
         }),
       },
     });
+
+    // Sync usage counter limits and permissions to match the assigned plan
+    const schoolPlan = (data.plan || PlanType.STARTER) as PlanType;
+    await Promise.all([
+      syncUsageCounterLimits(school.id, schoolPlan),
+      syncSchoolPermissions(school.id, schoolPlan),
+    ]);
 
     // Initialize DNS and SSL setup in background only if subdomain is provided
     if (school.subdomain) {

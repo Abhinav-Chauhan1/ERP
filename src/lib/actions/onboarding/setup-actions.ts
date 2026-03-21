@@ -7,6 +7,8 @@ import { getCurrentSchoolId } from "@/lib/auth/tenant";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/utils/email-service";
 import { getVerificationEmailHtml } from "@/lib/utils/email-templates";
+import { syncUsageCounterLimits } from "@/lib/server/sync-usage-counter";
+import { syncSchoolPermissions } from "@/lib/server/sync-school-permissions";
 
 interface SetupData {
     // School ID for super admin context
@@ -236,14 +238,14 @@ async function completeSystemSetup(data: SetupData) {
         // 5. Subscription is managed separately via EnhancedSubscription/billing flow
         // Schools start without a subscription and can be assigned a plan by super admin
 
-        // 6. Create usage counter
+        // 6. Create usage counter with correct STARTER plan limits
         await tx.usageCounter.create({
             data: {
                 schoolId: school.id,
                 month: new Date().toISOString().slice(0, 7), // YYYY-MM format
-                whatsappLimit: 100, // Starter plan limits
-                smsLimit: 100,
-                storageLimitMB: 1024, // 1GB
+                whatsappLimit: 0,    // STARTER: no WhatsApp
+                smsLimit: 500,       // STARTER: 500 SMS
+                storageLimitMB: 1024, // STARTER: 1GB
             },
         });
 
@@ -252,6 +254,9 @@ async function completeSystemSetup(data: SetupData) {
             adminUser,
         };
     });
+
+    // Sync school permissions to match STARTER plan
+    await syncSchoolPermissions(result.school.id, 'STARTER');
 
     // Now complete school setup
     const schoolSetupResult = await completeSchoolSetup(result.school.id, data);

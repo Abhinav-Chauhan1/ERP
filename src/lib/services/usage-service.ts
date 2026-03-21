@@ -108,25 +108,32 @@ export async function getUsageStats(schoolId?: string): Promise<UsageStats> {
     whatsappLimit: limits.whatsappLimit,
     smsLimit: limits.smsLimit,
     storageLimitMB: limits.storageLimitMB,
-    whatsappRemaining: Math.max(0, limits.whatsappLimit - currentUsage.whatsappUsed),
-    smsRemaining: Math.max(0, limits.smsLimit - currentUsage.smsUsed),
+    // -1 means unlimited — remaining is Infinity sentinel (use canSendWhatsApp/canSendSMS for checks)
+    whatsappRemaining: limits.whatsappLimit === -1 ? Infinity : Math.max(0, limits.whatsappLimit - currentUsage.whatsappUsed),
+    smsRemaining: limits.smsLimit === -1 ? Infinity : Math.max(0, limits.smsLimit - currentUsage.smsUsed),
     storageRemainingMB: Math.max(0, limits.storageLimitMB - currentUsage.storageUsedMB),
   };
 }
 
 /**
- * Check if a school can send WhatsApp messages
+ * Check if a school can send WhatsApp messages.
+ * -1 limit means unlimited — always returns true.
  */
 export async function canSendWhatsApp(count: number = 1, schoolId?: string): Promise<boolean> {
   const stats = await getUsageStats(schoolId);
+  // -1 = unlimited — never block
+  if (stats.whatsappLimit === -1) return true;
   return stats.whatsappRemaining >= count;
 }
 
 /**
- * Check if a school can send SMS messages
+ * Check if a school can send SMS messages.
+ * -1 limit means unlimited — always returns true.
  */
 export async function canSendSMS(count: number = 1, schoolId?: string): Promise<boolean> {
   const stats = await getUsageStats(schoolId);
+  // -1 = unlimited — never block
+  if (stats.smsLimit === -1) return true;
   return stats.smsRemaining >= count;
 }
 
