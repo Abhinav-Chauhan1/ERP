@@ -5,6 +5,7 @@ import { PermissionsProvider } from "@/context/permissions-context";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
+import { getSchoolPlan } from "@/lib/server/get-school-plan";
 
 export default async function AdminLayout({
   children
@@ -32,6 +33,12 @@ export default async function AdminLayout({
   // Get effective permissions including role defaults and DB overrides
   const permissions = await getUserPermissionNamesCached(session.user.id);
 
+  // Fetch school plan for feature gating in the sidebar
+  const schoolPlanInfo = session.user.schoolId
+    ? await getSchoolPlan(session.user.schoolId)
+    : null
+  const schoolPlan = schoolPlanInfo?.plan ?? 'STARTER'
+
   return (
     <PermissionsProvider permissions={permissions}>
       <UserThemeWrapper userRole="admin">
@@ -39,7 +46,7 @@ export default async function AdminLayout({
           className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50"
           aria-label="Admin navigation"
         >
-          <AdminSidebar userPermissions={permissions} />
+          <AdminSidebar userPermissions={permissions} schoolPlan={schoolPlan} />
         </nav>
         <div className="md:pl-72 h-full">
           <AdminHeader userPermissions={permissions} />

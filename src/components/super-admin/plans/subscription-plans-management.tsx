@@ -1,377 +1,369 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Plus, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Copy, 
-  Eye, 
-  EyeOff,
-  IndianRupee,
-  Users,
-  Check,
-  X
-} from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Copy, Users, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
+import { type FeatureKey, PLAN_FEATURES } from "@/lib/config/plan-features";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface PlanFeatures {
+  pricePerStudent:      number;
+  minimumMonthly:       number;
+  annualDiscountMonths: number;
+  storageGB:            number;
+  smsLimit:             number;
+  whatsappLimit:        number;
+  includedFeatures:     string[];
+  support: {
+    email:     boolean;
+    phone:     boolean;
+    priority:  boolean;
+    dedicated: boolean;
+  };
+}
 
 interface SubscriptionPlan {
-  id: string;
-  name: string;
+  id:          string;
+  name:        string;
   description: string | null;
-  razorpayPlanId: string | null;
-  amount: number;
-  currency: string;
-  interval: string;
-  features: any;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  _count?: {
-    subscriptions: number;
-  };
+  interval:    string;
+  features:    PlanFeatures;
+  isActive:    boolean;
+  createdAt:   string;
+  _count?: { subscriptions: number };
 }
 
-interface PlanFormData {
-  name: string;
+interface FormData {
+  name:        string;
   description: string;
-  amount: number;
-  interval: string;
-  features: {
-    maxStudents: number;
-    maxTeachers: number;
-    maxAdmins: number;
-    storageGB: number;
-    whatsappMessages: number;
-    smsMessages: number;
-    pricePerExtraStudent: number;
-    emailSupport: boolean;
-    phoneSupport: boolean;
-    prioritySupport: boolean;
-    customBranding: boolean;
-    apiAccess: boolean;
-    advancedReports: boolean;
-    multipleSchools: boolean;
-    backupFrequency: string;
-  };
-  isActive: boolean;
+  interval:    string;
+  isActive:    boolean;
+  features:    PlanFeatures;
 }
 
-const defaultFormData: PlanFormData = {
-  name: "",
-  description: "",
-  amount: 0,
-  interval: "monthly",
-  features: {
-    maxStudents: 100,
-    maxTeachers: 10,
-    maxAdmins: 2,
-    storageGB: 5,
-    whatsappMessages: 1000,
-    smsMessages: 500,
-    pricePerExtraStudent: 50,
-    emailSupport: true,
-    phoneSupport: false,
-    prioritySupport: false,
-    customBranding: false,
-    apiAccess: false,
-    advancedReports: false,
-    multipleSchools: false,
-    backupFrequency: "weekly",
-  },
-  isActive: true,
+const DEFAULT_FEATURES: PlanFeatures = {
+  pricePerStudent:      400,
+  minimumMonthly:       50000,
+  annualDiscountMonths: 2,
+  storageGB:            1,
+  smsLimit:             500,
+  whatsappLimit:        0,
+  includedFeatures:     [],
+  support: { email: true, phone: false, priority: false, dedicated: false },
 };
 
+const DEFAULT_FORM: FormData = {
+  name:        '',
+  description: '',
+  interval:    'monthly',
+  isActive:    true,
+  features:    DEFAULT_FEATURES,
+};
+
+// ── Feature groups for checkboxes ────────────────────────────────────────────
+
+const FEATURE_GROUPS: { label: string; keys: FeatureKey[] }[] = [
+  {
+    label: 'Growth features',
+    keys: ['library', 'transport', 'admissions', 'bulk_messaging', 'whatsapp',
+           'message_templates', 'payroll', 'budget', 'finance_analytics',
+           'advanced_reports', 'id_cards', 'certificates'],
+  },
+  {
+    label: 'Dominate features',
+    keys: ['hostel', 'alumni', 'audit_logs', 'lms'],
+  },
+];
+
+const FEATURE_LABELS: Record<FeatureKey, string> = {
+  library:          'Library',
+  transport:        'Transport',
+  admissions:       'Admissions Portal',
+  bulk_messaging:   'Bulk Messaging',
+  whatsapp:         'WhatsApp Integration',
+  message_templates:'Message Templates',
+  payroll:          'Payroll',
+  budget:           'Budget',
+  finance_analytics:'Finance Analytics',
+  advanced_reports: 'Advanced Reports',
+  id_cards:         'ID Cards',
+  certificates:     'Certificates',
+  hostel:           'Hostel',
+  alumni:           'Alumni',
+  audit_logs:       'Audit Logs',
+  lms:              'LMS / Courses',
+};
+
+// ── Price preview ─────────────────────────────────────────────────────────────
+
+function PricePreview({ features }: { features: PlanFeatures }) {
+  const pps = features.pricePerStudent / 100; // paise → rupees
+  const min = features.minimumMonthly / 100;
+  const samples = [100, 300, 500, 1000];
+
+  return (
+    <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+      <p className="text-xs font-medium text-muted-foreground mb-2">Monthly bill preview</p>
+      {samples.map(n => {
+        const bill = Math.max(n * pps, min);
+        return (
+          <div key={n} className="flex justify-between text-xs">
+            <span className="text-muted-foreground">{n} students</span>
+            <span className="font-medium">₹{bill.toLocaleString('en-IN')}/mo</span>
+          </div>
+        );
+      })}
+      <Separator className="my-1" />
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">Annual (×{12 - features.annualDiscountMonths} mo)</span>
+        <span className="font-medium text-emerald-600">
+          ₹{(Math.max(300 * pps, min) * (12 - features.annualDiscountMonths)).toLocaleString('en-IN')}/yr
+          <span className="text-muted-foreground ml-1">(300 students)</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function SubscriptionPlansManagement() {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [formData, setFormData] = useState<PlanFormData>(defaultFormData);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [plans, setPlans]           = useState<SubscriptionPlan[]>([]);
+  const [isLoading, setIsLoading]   = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing]       = useState<SubscriptionPlan | null>(null);
+  const [form, setForm]             = useState<FormData>(DEFAULT_FORM);
+  const [saving, setSaving]         = useState(false);
 
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  // Ensure form data is properly initialized
-  useEffect(() => {
-    if (!isDialogOpen && !editingPlan) {
-      setFormData(defaultFormData);
-    }
-  }, [isDialogOpen, editingPlan]);
-
-  const fetchPlans = async () => {
+  const fetchPlans = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/super-admin/plans");
-      if (response.ok) {
-        const data = await response.json();
-        setPlans(data.plans || []);
+      const res = await fetch('/api/super-admin/plans');
+      if (res.ok) {
+        const data = await res.json();
+        setPlans(data.plans ?? []);
       } else {
-        toast.error("Failed to fetch plans");
+        toast.error('Failed to fetch plans');
       }
-    } catch (error) {
-      toast.error("Failed to fetch plans");
+    } catch {
+      toast.error('Failed to fetch plans');
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  useEffect(() => { fetchPlans(); }, [fetchPlans]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(DEFAULT_FORM);
+    setDialogOpen(true);
   };
 
-  const handleCreatePlan = () => {
-    setEditingPlan(null);
-    setFormData({ ...defaultFormData });
-    setIsDialogOpen(true);
-  };
-
-  const handleEditPlan = (plan: SubscriptionPlan) => {
-    setEditingPlan(plan);
-    setFormData({
-      name: plan.name || "",
-      description: plan.description || "",
-      amount: plan.amount || 0,
-      interval: plan.interval || "monthly",
+  const openEdit = (plan: SubscriptionPlan) => {
+    setEditing(plan);
+    setForm({
+      name:        plan.name,
+      description: plan.description ?? '',
+      interval:    plan.interval,
+      isActive:    plan.isActive,
       features: {
-        maxStudents: plan.features?.maxStudents || 0,
-        maxTeachers: plan.features?.maxTeachers || 0,
-        maxAdmins: plan.features?.maxAdmins || 0,
-        storageGB: plan.features?.storageGB || 0,
-        whatsappMessages: plan.features?.whatsappMessages || 0,
-        smsMessages: plan.features?.smsMessages || 0,
-        pricePerExtraStudent: plan.features?.pricePerExtraStudent || 0,
-        emailSupport: plan.features?.emailSupport || false,
-        phoneSupport: plan.features?.phoneSupport || false,
-        prioritySupport: plan.features?.prioritySupport || false,
-        customBranding: plan.features?.customBranding || false,
-        apiAccess: plan.features?.apiAccess || false,
-        advancedReports: plan.features?.advancedReports || false,
-        multipleSchools: plan.features?.multipleSchools || false,
-        backupFrequency: plan.features?.backupFrequency || "weekly",
+        pricePerStudent:      plan.features.pricePerStudent      ?? 400,
+        minimumMonthly:       plan.features.minimumMonthly       ?? 50000,
+        annualDiscountMonths: plan.features.annualDiscountMonths ?? 2,
+        storageGB:            plan.features.storageGB            ?? 1,
+        smsLimit:             plan.features.smsLimit             ?? 500,
+        whatsappLimit:        plan.features.whatsappLimit        ?? 0,
+        includedFeatures:     plan.features.includedFeatures     ?? [],
+        support: {
+          email:     plan.features.support?.email     ?? true,
+          phone:     plan.features.support?.phone     ?? false,
+          priority:  plan.features.support?.priority  ?? false,
+          dedicated: plan.features.support?.dedicated ?? false,
+        },
       },
-      isActive: plan.isActive || false,
     });
-    setIsDialogOpen(true);
+    setDialogOpen(true);
+  };
+
+  const setField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  const setFeature = <K extends keyof PlanFeatures>(key: K, value: PlanFeatures[K]) => {
+    setForm(prev => ({ ...prev, features: { ...prev.features, [key]: value } }));
+  };
+
+  const toggleIncludedFeature = (key: FeatureKey, checked: boolean) => {
+    setForm(prev => {
+      const current = prev.features.includedFeatures;
+      const next = checked ? [...current, key] : current.filter(f => f !== key);
+      return { ...prev, features: { ...prev.features, includedFeatures: next } };
+    });
+  };
+
+  const applyPreset = (preset: 'STARTER' | 'GROWTH' | 'DOMINATE') => {
+    const presets: Record<string, Partial<PlanFeatures>> = {
+      STARTER:  { pricePerStudent: 400,  minimumMonthly: 50000,  storageGB: 1,  smsLimit: 500,  whatsappLimit: 0,    includedFeatures: [] },
+      GROWTH:   { pricePerStudent: 600,  minimumMonthly: 100000, storageGB: 5,  smsLimit: 2000, whatsappLimit: 1000, includedFeatures: [...PLAN_FEATURES.GROWTH] },
+      DOMINATE: { pricePerStudent: 900,  minimumMonthly: 250000, storageGB: 20, smsLimit: -1,   whatsappLimit: 5000, includedFeatures: [...PLAN_FEATURES.DOMINATE] },
+    };
+    setForm(prev => ({ ...prev, features: { ...prev.features, ...presets[preset] } }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    setSaving(true);
     try {
-      const url = editingPlan 
-        ? `/api/super-admin/plans/${editingPlan.id}`
-        : "/api/super-admin/plans";
-      
-      const method = editingPlan ? "PUT" : "POST";
-
-      const response = await fetch(url, {
+      const url    = editing ? `/api/super-admin/plans/${editing.id}` : '/api/super-admin/plans';
+      const method = editing ? 'PUT' : 'POST';
+      const res    = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
       });
-
-      if (response.ok) {
-        toast.success(editingPlan ? "Plan updated successfully" : "Plan created successfully");
-        setIsDialogOpen(false);
+      if (res.ok) {
+        toast.success(editing ? 'Plan updated' : 'Plan created');
+        setDialogOpen(false);
         fetchPlans();
       } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to save plan");
+        const err = await res.json();
+        toast.error(err.error ?? 'Failed to save plan');
       }
-    } catch (error) {
-      toast.error("Failed to save plan");
+    } catch {
+      toast.error('Failed to save plan');
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
-  const handleDeletePlan = async (planId: string) => {
-    if (!confirm("Are you sure you want to delete this plan? This action cannot be undone.")) {
-      return;
-    }
-
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this plan? This cannot be undone.')) return;
     try {
-      const response = await fetch(`/api/super-admin/plans/${planId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        toast.success("Plan deleted successfully");
-        fetchPlans();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to delete plan");
-      }
-    } catch (error) {
-      toast.error("Failed to delete plan");
-    }
+      const res = await fetch(`/api/super-admin/plans/${id}`, { method: 'DELETE' });
+      if (res.ok) { toast.success('Plan deleted'); fetchPlans(); }
+      else { const err = await res.json(); toast.error(err.error ?? 'Failed to delete'); }
+    } catch { toast.error('Failed to delete plan'); }
   };
 
-  const handleToggleActive = async (planId: string, isActive: boolean) => {
+  const handleToggleActive = async (id: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/super-admin/plans/${planId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(`/api/super-admin/plans/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive }),
       });
-
-      if (response.ok) {
-        toast.success(`Plan ${isActive ? "activated" : "deactivated"} successfully`);
-        fetchPlans();
-      } else {
-        toast.error("Failed to update plan status");
-      }
-    } catch (error) {
-      toast.error("Failed to update plan status");
-    }
+      if (res.ok) { toast.success(`Plan ${isActive ? 'activated' : 'deactivated'}`); fetchPlans(); }
+      else toast.error('Failed to update status');
+    } catch { toast.error('Failed to update status'); }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const updateFormData = (field: string, value: any) => {
-    if (field.startsWith('features.')) {
-      const featureKey = field.replace('features.', '');
-      setFormData(prev => ({
-        ...prev,
-        features: {
-          ...prev.features,
-          [featureKey]: value ?? (typeof prev.features[featureKey as keyof typeof prev.features] === 'boolean' ? false : 0),
-        },
-      }));
-    } else {
-      setFormData(prev => ({ 
-        ...prev, 
-        [field]: value ?? (field === 'name' || field === 'description' || field === 'interval' ? '' : 0)
-      }));
-    }
-  };
+  const fmt = (paise: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
+      .format(paise / 100);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Subscription Plans</h2>
-          <p className="text-sm text-gray-600">
-            Manage pricing plans and features for schools
-          </p>
+          <p className="text-sm text-muted-foreground">Per-student pricing with feature differentiation</p>
         </div>
-        <Button onClick={handleCreatePlan}>
+        <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Create Plan
         </Button>
       </div>
 
-      {/* Plans Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Plans ({plans.length})</CardTitle>
-          <CardDescription>
-            Manage subscription plans and their features
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading plans...</div>
+            <div className="text-center py-8 text-muted-foreground">Loading plans…</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Plan</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Interval</TableHead>
+                  <TableHead>Pricing</TableHead>
+                  <TableHead>Limits</TableHead>
                   <TableHead>Features</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Subscriptions</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Schools</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {plans.map((plan) => (
+                {plans.map(plan => (
                   <TableRow key={plan.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{plan.name}</div>
-                        {plan.description && (
-                          <div className="text-sm text-gray-500">{plan.description}</div>
-                        )}
+                      <div className="font-medium">{plan.name}</div>
+                      {plan.description && (
+                        <div className="text-xs text-muted-foreground">{plan.description}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm space-y-0.5">
+                        <div className="flex items-center gap-1">
+                          <IndianRupee className="h-3 w-3" />
+                          <span>{(plan.features.pricePerStudent / 100).toFixed(0)}/student/mo</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Min {fmt(plan.features.minimumMonthly)}/mo
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center">
-                        <IndianRupee className="h-4 w-4 mr-1" />
-                        {formatCurrency(plan.amount)}
+                      <div className="text-xs space-y-0.5">
+                        <div>{plan.features.storageGB}GB storage</div>
+                        <div>SMS: {plan.features.smsLimit === -1 ? '∞' : plan.features.smsLimit}</div>
+                        <div>WA: {plan.features.whatsappLimit === -1 ? '∞' : plan.features.whatsappLimit}</div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{plan.interval}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>Students: {plan.features?.maxStudents === -1 ? 'Unlimited' : plan.features?.maxStudents || 0}</div>
-                        <div>Teachers: {plan.features?.maxTeachers === -1 ? 'Unlimited' : plan.features?.maxTeachers || 0}</div>
-                        <div>Storage: {plan.features?.storageGB || 0}GB</div>
-                        {plan.features?.pricePerExtraStudent && (
-                          <div className="text-xs text-blue-600">
-                            +₹{plan.features.pricePerExtraStudent}/extra student
-                          </div>
-                        )}
+                      <div className="text-xs text-muted-foreground">
+                        {plan.features.includedFeatures.length === 0
+                          ? 'Core only'
+                          : `${plan.features.includedFeatures.length} features`}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={plan.isActive ? "default" : "secondary"}>
-                          {plan.isActive ? "Active" : "Inactive"}
+                      <div className="flex items-center gap-2">
+                        <Badge variant={plan.isActive ? 'default' : 'secondary'}>
+                          {plan.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                         <Switch
                           checked={plan.isActive}
-                          onCheckedChange={(checked) => handleToggleActive(plan.id, checked)}
+                          onCheckedChange={v => handleToggleActive(plan.id, v)}
                         />
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-1" />
-                        {plan._count?.subscriptions || 0}
+                      <div className="flex items-center gap-1 text-sm">
+                        <Users className="h-3.5 w-3.5" />
+                        {plan._count?.subscriptions ?? 0}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -382,21 +374,18 @@ export function SubscriptionPlansManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditPlan(plan)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                          <DropdownMenuItem onClick={() => openEdit(plan)}>
+                            <Edit className="h-4 w-4 mr-2" /> Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => navigator.clipboard.writeText(plan.id)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy ID
+                            <Copy className="h-4 w-4 mr-2" /> Copy ID
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => handleDeletePlan(plan.id)}
-                            className="text-red-600"
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(plan.id)}
+                            className="text-destructive"
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -409,277 +398,182 @@ export function SubscriptionPlansManagement() {
         </CardContent>
       </Card>
 
-      {/* Create/Edit Plan Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      {/* Create / Edit dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingPlan ? "Edit Plan" : "Create New Plan"}
-            </DialogTitle>
+            <DialogTitle>{editing ? 'Edit Plan' : 'Create Plan'}</DialogTitle>
             <DialogDescription>
-              {editingPlan ? "Update the subscription plan details" : "Create a new subscription plan for schools"}
+              {editing ? 'Update plan pricing and features' : 'Create a new per-student pricing plan'}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
+            {/* Preset buttons */}
+            <div className="flex gap-2">
+              <span className="text-xs text-muted-foreground self-center mr-1">Presets:</span>
+              {(['STARTER', 'GROWTH', 'DOMINATE'] as const).map(p => (
+                <Button key={p} type="button" variant="outline" size="sm"
+                  onClick={() => applyPreset(p)}>
+                  {p.charAt(0) + p.slice(1).toLowerCase()}
+                </Button>
+              ))}
+            </div>
+
+            {/* Basic info */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Basic Information</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
                     <Label htmlFor="name">Plan Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name || ""}
-                      onChange={(e) => updateFormData("name", e.target.value)}
-                      placeholder="e.g., Starter, Growth, Enterprise"
-                      required
-                    />
+                    <Input id="name" value={form.name}
+                      onChange={e => setField('name', e.target.value)} required />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Price (₹) *</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={formData.amount || 0}
-                      onChange={(e) => updateFormData("amount", parseInt(e.target.value) || 0)}
-                      placeholder="2999"
-                      required
-                    />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="interval">Billing Interval</Label>
+                    <select id="interval" value={form.interval}
+                      onChange={e => setField('interval', e.target.value)}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                      <option value="quarterly">Quarterly</option>
+                    </select>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="interval">Billing Interval *</Label>
-                    <Select
-                      value={formData.interval || "monthly"}
-                      onValueChange={(value) => updateFormData("interval", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
-                        <SelectItem value="quarterly">Quarterly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="isActive">Status</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="isActive"
-                        checked={formData.isActive || false}
-                        onCheckedChange={(checked) => updateFormData("isActive", checked)}
-                      />
-                      <Label htmlFor="isActive">
-                        {formData.isActive ? "Active" : "Inactive"}
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description || ""}
-                    onChange={(e) => updateFormData("description", e.target.value)}
-                    placeholder="Brief description of the plan..."
-                    rows={3}
-                  />
+                  <Textarea id="description" value={form.description} rows={2}
+                    onChange={e => setField('description', e.target.value)} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="isActive" checked={form.isActive}
+                    onCheckedChange={v => setField('isActive', v)} />
+                  <Label htmlFor="isActive">Active</Label>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Usage Limits */}
+            {/* Pricing */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Usage Limits</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-base">Pricing</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxStudents">Max Students</Label>
-                    <Input
-                      id="maxStudents"
-                      type="number"
-                      value={formData.features.maxStudents || 0}
-                      onChange={(e) => updateFormData("features.maxStudents", parseInt(e.target.value) || 0)}
-                      placeholder="100"
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pps">Price per student (paise) *</Label>
+                    <Input id="pps" type="number" min={1}
+                      value={form.features.pricePerStudent}
+                      onChange={e => setFeature('pricePerStudent', parseInt(e.target.value) || 0)}
+                      required />
+                    <p className="text-xs text-muted-foreground">
+                      = ₹{(form.features.pricePerStudent / 100).toFixed(2)}/student/mo
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxTeachers">Max Teachers</Label>
-                    <Input
-                      id="maxTeachers"
-                      type="number"
-                      value={formData.features.maxTeachers || 0}
-                      onChange={(e) => updateFormData("features.maxTeachers", parseInt(e.target.value) || 0)}
-                      placeholder="10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxAdmins">Max Admins</Label>
-                    <Input
-                      id="maxAdmins"
-                      type="number"
-                      value={formData.features.maxAdmins || 0}
-                      onChange={(e) => updateFormData("features.maxAdmins", parseInt(e.target.value) || 0)}
-                      placeholder="2"
-                    />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="minm">Minimum monthly (paise) *</Label>
+                    <Input id="minm" type="number" min={1}
+                      value={form.features.minimumMonthly}
+                      onChange={e => setFeature('minimumMonthly', parseInt(e.target.value) || 0)}
+                      required />
+                    <p className="text-xs text-muted-foreground">
+                      = ₹{(form.features.minimumMonthly / 100).toFixed(0)} minimum/mo
+                    </p>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="storageGB">Storage (GB)</Label>
-                    <Input
-                      id="storageGB"
-                      type="number"
-                      value={formData.features.storageGB || 0}
-                      onChange={(e) => updateFormData("features.storageGB", parseInt(e.target.value) || 0)}
-                      placeholder="5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsappMessages">WhatsApp Messages/Month</Label>
-                    <Input
-                      id="whatsappMessages"
-                      type="number"
-                      value={formData.features.whatsappMessages || 0}
-                      onChange={(e) => updateFormData("features.whatsappMessages", parseInt(e.target.value) || 0)}
-                      placeholder="1000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="smsMessages">SMS Messages/Month</Label>
-                    <Input
-                      id="smsMessages"
-                      type="number"
-                      value={formData.features.smsMessages || 0}
-                      onChange={(e) => updateFormData("features.smsMessages", parseInt(e.target.value) || 0)}
-                      placeholder="500"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="pricePerExtraStudent">Price Per Extra Student (₹/month)</Label>
-                  <Input
-                    id="pricePerExtraStudent"
-                    type="number"
-                    value={formData.features.pricePerExtraStudent || 0}
-                    onChange={(e) => updateFormData("features.pricePerExtraStudent", parseInt(e.target.value) || 0)}
-                    placeholder="50"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Additional cost per student beyond the plan's included limit
+                <div className="space-y-1.5">
+                  <Label htmlFor="adm">Annual discount months (free months)</Label>
+                  <Input id="adm" type="number" min={0} max={12}
+                    value={form.features.annualDiscountMonths}
+                    onChange={e => setFeature('annualDiscountMonths', parseInt(e.target.value) || 0)} />
+                  <p className="text-xs text-muted-foreground">
+                    Annual = monthly × {12 - form.features.annualDiscountMonths} months
                   </p>
+                </div>
+                <PricePreview features={form.features} />
+              </CardContent>
+            </Card>
+
+            {/* Limits */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Usage Limits</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="storage">Storage (GB)</Label>
+                  <Input id="storage" type="number" min={1}
+                    value={form.features.storageGB}
+                    onChange={e => setFeature('storageGB', parseInt(e.target.value) || 1)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sms">SMS/month (-1 = ∞)</Label>
+                  <Input id="sms" type="number" min={-1}
+                    value={form.features.smsLimit}
+                    onChange={e => setFeature('smsLimit', parseInt(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="wa">WhatsApp/month (-1 = ∞)</Label>
+                  <Input id="wa" type="number" min={-1}
+                    value={form.features.whatsappLimit}
+                    onChange={e => setFeature('whatsappLimit', parseInt(e.target.value) || 0)} />
                 </div>
               </CardContent>
             </Card>
 
             {/* Features */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Features</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-base">Included Features</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>Email Support</Label>
-                      <p className="text-sm text-gray-500">Basic email support</p>
+                <p className="text-xs text-muted-foreground">
+                  Core features (Dashboard, Users, Academic, Assessment, Attendance, Finance basics,
+                  Communication basics, Calendar, Events, Documents overview, Settings) are always included.
+                </p>
+                {FEATURE_GROUPS.map(group => (
+                  <div key={group.label}>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      {group.label}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {group.keys.map(key => (
+                        <div key={key} className="flex items-center gap-2">
+                          <Checkbox
+                            id={key}
+                            checked={form.features.includedFeatures.includes(key)}
+                            onCheckedChange={v => toggleIncludedFeature(key, !!v)}
+                          />
+                          <Label htmlFor={key} className="text-sm font-normal cursor-pointer">
+                            {FEATURE_LABELS[key]}
+                          </Label>
+                        </div>
+                      ))}
                     </div>
-                    <Switch
-                      checked={formData.features.emailSupport || false}
-                      onCheckedChange={(checked) => updateFormData("features.emailSupport", checked)}
-                    />
                   </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>Phone Support</Label>
-                      <p className="text-sm text-gray-500">Phone support during business hours</p>
-                    </div>
-                    <Switch
-                      checked={formData.features.phoneSupport || false}
-                      onCheckedChange={(checked) => updateFormData("features.phoneSupport", checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>Priority Support</Label>
-                      <p className="text-sm text-gray-500">24/7 priority support</p>
-                    </div>
-                    <Switch
-                      checked={formData.features.prioritySupport || false}
-                      onCheckedChange={(checked) => updateFormData("features.prioritySupport", checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>Custom Branding</Label>
-                      <p className="text-sm text-gray-500">Custom logo and colors</p>
-                    </div>
-                    <Switch
-                      checked={formData.features.customBranding || false}
-                      onCheckedChange={(checked) => updateFormData("features.customBranding", checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>API Access</Label>
-                      <p className="text-sm text-gray-500">REST API access</p>
-                    </div>
-                    <Switch
-                      checked={formData.features.apiAccess || false}
-                      onCheckedChange={(checked) => updateFormData("features.apiAccess", checked)}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <Label>Advanced Reports</Label>
-                      <p className="text-sm text-gray-500">Advanced analytics and reports</p>
-                    </div>
-                    <Switch
-                      checked={formData.features.advancedReports || false}
-                      onCheckedChange={(checked) => updateFormData("features.advancedReports", checked)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="backupFrequency">Backup Frequency</Label>
-                  <Select
-                    value={formData.features.backupFrequency || "weekly"}
-                    onValueChange={(value) => updateFormData("features.backupFrequency", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                ))}
               </CardContent>
             </Card>
 
-            {/* Actions */}
-            <div className="flex justify-end space-x-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+            {/* Support */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Support</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3">
+                {(['email', 'phone', 'priority', 'dedicated'] as const).map(key => (
+                  <div key={key} className="flex items-center justify-between p-2 border rounded-lg">
+                    <Label className="capitalize">{key} support</Label>
+                    <Switch
+                      checked={form.features.support[key]}
+                      onCheckedChange={v =>
+                        setFeature('support', { ...form.features.support, [key]: v })
+                      }
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : (editingPlan ? "Update Plan" : "Create Plan")}
+              <Button type="submit" disabled={saving}>
+                {saving ? 'Saving…' : editing ? 'Update Plan' : 'Create Plan'}
               </Button>
             </div>
           </form>

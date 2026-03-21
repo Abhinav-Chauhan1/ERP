@@ -7,14 +7,16 @@ import {
     teacherSidebarConfig, teacherHeaderConfig,
     studentSidebarConfig, studentHeaderConfig
 } from "./sidebar-routes";
+import { type PlanType } from "@/lib/config/plan-features";
 
 interface PortalWrapperProps {
     userPermissions?: string[];
+    schoolPlan?: PlanType;
 }
 
 // Admin Wrappers
-export function AdminSidebar({ userPermissions }: PortalWrapperProps) {
-    return <UnifiedSidebar config={adminSidebarConfig} userPermissions={userPermissions} />;
+export function AdminSidebar({ userPermissions, schoolPlan }: PortalWrapperProps) {
+    return <UnifiedSidebar config={adminSidebarConfig} userPermissions={userPermissions} schoolPlan={schoolPlan} />;
 }
 
 export function AdminHeader({ userPermissions }: PortalWrapperProps) {

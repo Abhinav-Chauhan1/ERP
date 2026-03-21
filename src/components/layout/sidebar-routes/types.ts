@@ -1,9 +1,11 @@
 import { LucideIcon } from "lucide-react";
+import { FeatureKey } from "@/lib/config/plan-features";
 
 export interface SubMenuItem {
     label: string;
     href: string;
-    permissions?: string[]; // Required permissions (OR logic: user needs at least one)
+    permissions?: string[];       // OR logic: user needs at least one
+    requiredFeature?: FeatureKey; // plan-gated: hidden if plan lacks this feature
 }
 
 export interface RouteItem {
@@ -11,7 +13,8 @@ export interface RouteItem {
     icon: LucideIcon;
     href?: string;
     submenu?: SubMenuItem[];
-    permissions?: string[]; // Required permissions (OR logic)
+    permissions?: string[];       // OR logic
+    requiredFeature?: FeatureKey; // plan-gated: hidden if plan lacks this feature
 }
 
 export interface SidebarConfig {

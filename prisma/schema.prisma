@@ -235,18 +235,35 @@ model School {
 
 
 model SubscriptionPlan {
-  id             String                 @id @default(cuid())
-  name           String
-  description    String?
-  razorpayPlanId String?                @unique
-  amount         Int
-  currency       String                 @default("inr")
-  interval       String
-  features       Json
-  isActive       Boolean                @default(true)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  subscriptions  EnhancedSubscription[]
+  id                   String                 @id @default(cuid())
+  name                 String
+  description          String?
+  razorpayPlanId       String?                @unique
+  /// @deprecated — kept for backward compat with existing Razorpay subscriptions
+  amount               Int                    @default(0)
+  currency             String                 @default("inr")
+  interval             String                 @default("monthly")
+  // Per-student pricing (in paise: 400 = ₹4, 600 = ₹6, 900 = ₹9)
+  pricePerStudent      Int                    @default(400)
+  // Minimum monthly charge (in paise: 50000 = ₹500)
+  minimumMonthly       Int                    @default(50000)
+  annualDiscountMonths Int                    @default(2)
+  // features Json stores the full plan config object:
+  // {
+  //   pricePerStudent: 400,        // paise
+  //   minimumMonthly: 50000,       // paise
+  //   annualDiscountMonths: 2,
+  //   storageGB: 1,
+  //   smsLimit: 500,               // -1 = unlimited
+  //   whatsappLimit: 0,            // -1 = unlimited
+  //   includedFeatures: ["library","transport"],
+  //   support: { email, phone, priority, dedicated }
+  // }
+  features             Json
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  subscriptions        EnhancedSubscription[]
 
   @@map("subscription_plans")
 }
