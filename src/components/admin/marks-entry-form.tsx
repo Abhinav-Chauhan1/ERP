@@ -145,6 +145,15 @@ export function MarksEntryForm() {
     setStudentsData(null);
   }, [filterTermId, filterExamTypeId, filterSubjectId, filterClassId]);
 
+  // Auto-select exam when filters narrow it to exactly one
+  useEffect(() => {
+    if (filteredExams.length === 1) {
+      setSelectedExamId(filteredExams[0].id);
+    } else {
+      setSelectedExamId("");
+    }
+  }, [filteredExams]);
+
   const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId, filterClassId, selectedSectionId].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -341,8 +350,8 @@ export function MarksEntryForm() {
 
       <div className="border-t" />
 
-      {/* Selection Form */}
-      <div className="grid gap-4 md:grid-cols-1">
+      {/* Selection Form — only show exam picker when there are multiple matches */}
+      {filteredExams.length !== 1 && (
         <div className="space-y-2">
           <Label htmlFor="exam">
             Exam
@@ -376,7 +385,7 @@ export function MarksEntryForm() {
             </Select>
           )}
         </div>
-      </div>
+      )}
 
       {/* Load Button, Import, and Export */}
       <div className="flex justify-end gap-2">
