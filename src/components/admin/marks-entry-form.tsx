@@ -145,26 +145,29 @@ export function MarksEntryForm() {
     setStudentsData(null);
   }, [filterTermId, filterExamTypeId, filterSubjectId, filterClassId]);
 
-  const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId, filterClassId].filter(Boolean).length;
+  const activeFilterCount = [filterTermId, filterExamTypeId, filterSubjectId, filterClassId, selectedSectionId].filter(Boolean).length;
 
   const clearFilters = () => {
     setFilterTermId("");
     setFilterExamTypeId("");
     setFilterSubjectId("");
     setFilterClassId("");
+    setSelectedSectionId("");
   };
 
-  // Update sections when class changes
+  // Update sections when filter class changes
   useEffect(() => {
-    if (selectedClassId) {
-      const selectedClass = classes.find((c) => c.id === selectedClassId);
+    if (filterClassId) {
+      const selectedClass = classes.find((c) => c.id === filterClassId);
       setSections(selectedClass?.sections || []);
       setSelectedSectionId("");
+      setSelectedClassId(filterClassId);
     } else {
       setSections([]);
       setSelectedSectionId("");
+      setSelectedClassId("");
     }
-  }, [selectedClassId, classes]);
+  }, [filterClassId, classes]);
 
   const handleLoadStudents = async () => {
     if (!selectedExamId || !selectedClassId || !selectedSectionId) {
@@ -215,7 +218,7 @@ export function MarksEntryForm() {
             </Button>
           )}
         </div>
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Term</Label>
             <Select value={filterTermId} onValueChange={setFilterTermId} disabled={isLoading}>
@@ -262,7 +265,9 @@ export function MarksEntryForm() {
               </SelectContent>
             </Select>
           </div>
+        </div>
 
+        <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Class</Label>
             <Select value={filterClassId} onValueChange={setFilterClassId} disabled={isLoading}>
@@ -278,6 +283,26 @@ export function MarksEntryForm() {
                         <Badge variant="secondary" className="text-xs py-0">Current</Badge>
                       )}
                     </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Section</Label>
+            <Select
+              value={selectedSectionId}
+              onValueChange={setSelectedSectionId}
+              disabled={isLoading || !filterClassId || sections.length === 0}
+            >
+              <SelectTrigger className={selectedSectionId ? "border-primary" : ""}>
+                <SelectValue placeholder={filterClassId ? "All sections" : "Select class first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((section) => (
+                  <SelectItem key={section.id} value={section.id}>
+                    {section.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -317,7 +342,7 @@ export function MarksEntryForm() {
       <div className="border-t" />
 
       {/* Selection Form */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-1">
         <div className="space-y-2">
           <Label htmlFor="exam">
             Exam
@@ -350,55 +375,6 @@ export function MarksEntryForm() {
               </SelectContent>
             </Select>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="class">Class</Label>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-10 border rounded-md">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          ) : (
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-              <SelectTrigger id="class">
-                <SelectValue placeholder="Select class" />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{cls.name}</span>
-                      {cls.academicYear.isCurrent && (
-                        <Badge variant="secondary" className="text-xs">
-                          Current
-                        </Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="section">Section</Label>
-          <Select
-            value={selectedSectionId}
-            onValueChange={setSelectedSectionId}
-            disabled={!selectedClassId || sections.length === 0}
-          >
-            <SelectTrigger id="section">
-              <SelectValue placeholder="Select section" />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((section) => (
-                <SelectItem key={section.id} value={section.id}>
-                  {section.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
