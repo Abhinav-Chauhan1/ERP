@@ -206,17 +206,59 @@ function formatDate(d: Date | string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 0. Decorative border
+// 0. Decorative border  (matches the ClassON ornamental red border)
 // ---------------------------------------------------------------------------
 
 function renderDecorativeBorder(doc: jsPDF): void {
-  // Outer red border
-  doc.setDrawColor(...hex(C.red));
-  doc.setLineWidth(1.5);
-  doc.rect(4, 4, PAGE.width - 8, PAGE.height - 8);
-  // Inner thin border
-  doc.setLineWidth(0.4);
-  doc.rect(5.5, 5.5, PAGE.width - 11, PAGE.height - 11);
+  const [r, g, b] = hex(C.red);
+
+  // ── Outermost thick red frame ──────────────────────────────────────────
+  doc.setDrawColor(r, g, b);
+  doc.setLineWidth(2);
+  doc.rect(3, 3, PAGE.width - 6, PAGE.height - 6);
+
+  // ── Second thin line just inside ──────────────────────────────────────
+  doc.setLineWidth(0.5);
+  doc.rect(5, 5, PAGE.width - 10, PAGE.height - 10);
+
+  // ── Dashed / dotted inner decorative line ─────────────────────────────
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([1, 1.2], 0);
+  doc.rect(6.5, 6.5, PAGE.width - 13, PAGE.height - 13);
+  doc.setLineDashPattern([], 0);          // reset dash
+
+  // ── Corner ornament squares ───────────────────────────────────────────
+  const cs = 4;   // corner square size
+  const corners = [
+    [3, 3], [PAGE.width - 3 - cs, 3],
+    [3, PAGE.height - 3 - cs], [PAGE.width - 3 - cs, PAGE.height - 3 - cs],
+  ] as [number, number][];
+
+  doc.setFillColor(r, g, b);
+  for (const [cx, cy] of corners) {
+    doc.rect(cx, cy, cs, cs, "F");
+  }
+
+  // ── Small diamond ornaments along each edge (every ~20 mm) ────────────
+  const drawDiamond = (cx: number, cy: number, size: number) => {
+    doc.setFillColor(r, g, b);
+    doc.triangle(cx, cy - size, cx + size, cy, cx, cy + size, "F");
+    doc.triangle(cx, cy - size, cx - size, cy, cx, cy + size, "F");
+  };
+
+  const edgeOffset = 4.5;   // distance from page edge to diamond centre
+  const step = 20;
+
+  // Top & bottom edges
+  for (let x = MARGIN.left + 15; x < PAGE.width - MARGIN.right - 10; x += step) {
+    drawDiamond(x, edgeOffset, 1.2);
+    drawDiamond(x, PAGE.height - edgeOffset, 1.2);
+  }
+  // Left & right edges
+  for (let y = MARGIN.top + 15; y < PAGE.height - MARGIN.bottom - 10; y += step) {
+    drawDiamond(edgeOffset, y, 1.2);
+    drawDiamond(PAGE.width - edgeOffset, y, 1.2);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -290,51 +332,62 @@ function renderHeader(
     doc.text("EMBLEM", emblemX + emblemW / 2, y + logoH / 2 + 1, { align: "center" });
   }
 
-  // School name
-  doc.setFontSize(15);
+  // School name  — large, bold, red (matches image)
+  doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...hex(C.red));
-  doc.text(opts.schoolName || "School Name", centerX, y + 6, { align: "center" });
+  doc.text(opts.schoolName || "School Name", centerX, y + 7, { align: "center" });
 
-  // Address
+  // Thin red underline beneath school name
+  const nameW = doc.getTextWidth(opts.schoolName || "School Name");
+  doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(0.4);
+  doc.line(centerX - nameW / 2, y + 8.5, centerX + nameW / 2, y + 8.5);
+
+  // Address — small, black
   if (opts.schoolAddress) {
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...hex(C.black));
-    doc.text(opts.schoolAddress, centerX, y + 11, { align: "center" });
+    doc.text(opts.schoolAddress, centerX, y + 12.5, { align: "center" });
   }
 
-  // Helpline / phone
+  // Helpline / phone — bold, magenta-red (matches image colour)
   if (opts.schoolPhone) {
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...hex(C.red));
-    doc.text(`Helpline ${opts.schoolPhone}`, centerX, y + 16, { align: "center" });
+    doc.setTextColor(192, 0, 128);   // magenta-red as in image
+    doc.text(`Helpline  ${opts.schoolPhone}`, centerX, y + 17.5, { align: "center" });
   }
 
-  // Email + website
+  // Email + website — small, black
   const contactParts: string[] = [];
   if (opts.schoolEmail) contactParts.push(`Email : ${opts.schoolEmail}`);
   if (opts.schoolWebsite) contactParts.push(`Website : ${opts.schoolWebsite}`);
   if (contactParts.length > 0) {
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...hex(C.black));
-    doc.text(contactParts.join("    "), centerX, y + 21, { align: "center" });
+    doc.text(contactParts.join("    "), centerX, y + 22, { align: "center" });
   }
 
   y += logoH + 3;
 
-  // "Annual Term (Session ...)" title bar
+  // ── "Annual Term (Session ...)" title bar ─────────────────────────────
+  // Thin red line above bar
+  doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(0.4);
+  doc.line(MARGIN.left, y, MARGIN.left + CONTENT_WIDTH, y);
+
   doc.setFillColor(...hex(C.red));
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 7, "F");
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 7.5, "F");
   doc.setTextColor(...hex(C.white));
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
   doc.text(
     `Annual Term (Session ${data.academicYear})`,
     PAGE.width / 2,
-    y + 4.8,
+    y + 5.2,
     { align: "center" },
   );
   y += 9;
@@ -352,15 +405,19 @@ function renderStudentInfo(
   startY: number,
 ): number {
   const y = startY;
-  const photoW = 25;
-  const photoH = 30;
-  const photoX = PAGE.width - MARGIN.right - photoW;
-  const infoW = CONTENT_WIDTH - photoW - 4;
+  const photoW = 26;
+  const photoH = 32;
+  const photoX = PAGE.width - MARGIN.right - photoW - 1;
+  const infoW = CONTENT_WIDTH - photoW - 5;
 
-  // Border around entire student info area
+  // Outer red border around entire student info block
   doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(0.5);
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, photoH + 3);
+
+  // Vertical divider between info and photo
   doc.setLineWidth(0.3);
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, photoH + 2);
+  doc.line(photoX - 1, y, photoX - 1, y + photoH + 3);
 
   // Photo box
   doc.setDrawColor(...hex(C.grey));
@@ -381,8 +438,8 @@ function renderStudentInfo(
 
   const col1X = MARGIN.left + 2;
   const col2X = MARGIN.left + infoW / 2 + 2;
-  const rowH = 5;
-  let iy = y + 5;
+  const rowH = 5.2;
+  let iy = y + 5.5;
 
   const fatherName = student.parent?.fatherName || "-";
   const motherName = student.parent?.motherName || "-";
@@ -398,10 +455,14 @@ function renderStudentInfo(
   for (const [l1, v1, l2, v2] of rows) {
     infoCell(doc, l1, v1, col1X, iy);
     infoCell(doc, l2, v2, col2X, iy);
+    // Subtle horizontal separator
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.1);
+    doc.line(MARGIN.left + 1, iy + 1.5, photoX - 2, iy + 1.5);
     iy += rowH;
   }
 
-  return y + photoH + 4;
+  return y + photoH + 5;
 }
 
 function infoCell(doc: jsPDF, label: string, value: string, x: number, y: number): void {
@@ -425,41 +486,43 @@ function renderScholasticTable(
   _gradeScale: CBSEGradeEntry[],
   startY: number,
 ): number {
-  // Section header bar
+  // ── Section header bar ────────────────────────────────────────────────
   doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
+  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6.5, "F");
   doc.setTextColor(...hex(C.white));
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
-  doc.text("Scholastic Subjects", MARGIN.left + 3, startY + 4.2);
-  let y = startY + 6;
+  doc.text("Scholastic Subjects", MARGIN.left + 3, startY + 4.5);
+  let y = startY + 6.5;
 
   const term1 = data.terms[0];
   const term2 = data.terms.length > 1 ? data.terms[1] : null;
   const t1Label = term1?.term.name || "Term 1";
   const t2Label = term2?.term.name || "Term 2";
 
-  // Build header rows (3 levels)
+  // ── 3-level header matching the image ─────────────────────────────────
+  // Row 1: Subjects(rowSpan3) | Term1(colSpan5) | Term2(colSpan5) | Overall(colSpan2)
+  // Row 2: sub-column labels
   const head: any[][] = [
     [
-      { content: "Subjects", rowSpan: 3, styles: { halign: "center", valign: "middle" } },
-      { content: t1Label, colSpan: 5, styles: { halign: "center" } },
-      { content: t2Label, colSpan: 5, styles: { halign: "center" } },
-      { content: "Overall", colSpan: 2, styles: { halign: "center" } },
+      { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle", fontStyle: "bold" } },
+      { content: t1Label, colSpan: 5, styles: { halign: "center", fontStyle: "bold" } },
+      { content: t2Label, colSpan: 5, styles: { halign: "center", fontStyle: "bold" } },
+      { content: "Overall", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
     ],
     [
-      { content: "Periodic\nTest\n(10)", styles: { halign: "center" } },
-      { content: "Multiple\nAssessment\n(5)", styles: { halign: "center" } },
-      { content: "Portfolio\n(5)", styles: { halign: "center" } },
-      { content: "Half\nYearly\n(80)", styles: { halign: "center" } },
-      { content: "Total\n(100)", styles: { halign: "center" } },
-      { content: "Periodic\nTest\n(10)", styles: { halign: "center" } },
-      { content: "Multiple\nAssessment\n(5)", styles: { halign: "center" } },
-      { content: "Portfolio\n(5)", styles: { halign: "center" } },
-      { content: "Final\n(80)", styles: { halign: "center" } },
-      { content: "Total\n(100)", styles: { halign: "center" } },
-      { content: "Marks\nObtained", styles: { halign: "center" } },
-      { content: "Grade", styles: { halign: "center" } },
+      { content: "Periodic\nTest\n(10)",          styles: { halign: "center", fontSize: 6 } },
+      { content: "Multiple\nAssessment\n(5)",      styles: { halign: "center", fontSize: 6 } },
+      { content: "Portfolio\n(5)",                 styles: { halign: "center", fontSize: 6 } },
+      { content: "Half\nYearly\n(80)",             styles: { halign: "center", fontSize: 6 } },
+      { content: "Total\n(100)",                   styles: { halign: "center", fontSize: 6 } },
+      { content: "Periodic\nTest\n(10)",           styles: { halign: "center", fontSize: 6 } },
+      { content: "Multiple\nAssessment\n(5)",      styles: { halign: "center", fontSize: 6 } },
+      { content: "Portfolio\n(5)",                 styles: { halign: "center", fontSize: 6 } },
+      { content: "Final\n(80)",                    styles: { halign: "center", fontSize: 6 } },
+      { content: "Total\n(100)",                   styles: { halign: "center", fontSize: 6 } },
+      { content: "Marks\nObtained",                styles: { halign: "center", fontSize: 6 } },
+      { content: "Grade",                          styles: { halign: "center", fontSize: 6 } },
     ],
   ];
 
@@ -468,7 +531,6 @@ function renderScholasticTable(
     const t1s = findTermSubject(term1, subj.subjectId);
     const t2s = term2 ? findTermSubject(term2, subj.subjectId) : null;
 
-    // Extract component marks by CBSE component name
     const t1pt   = getComponentByName(t1s, "PT", "PERIODIC TEST", "PERIODIC_TEST");
     const t1ma   = getComponentByName(t1s, "MA", "MULTIPLE ASSESSMENT", "MULTIPLE_ASSESSMENT");
     const t1port = getComponentByName(t1s, "PORTFOLIO");
@@ -497,22 +559,22 @@ function renderScholasticTable(
       textColor: hex(C.white),
       fontStyle: "bold",
       halign: "center",
-      fontSize: 6.5,
-      cellPadding: 1,
+      fontSize: 7,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
     bodyStyles: {
       fontSize: 7,
       textColor: hex(C.black),
       halign: "center",
-      cellPadding: 1.5,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 28 },
+      0: { halign: "left", cellWidth: 26, fontStyle: "normal" },
     },
     alternateRowStyles: { fillColor: hex(C.altRow) },
     styles: {
       lineColor: hex(C.border),
-      lineWidth: 0.2,
+      lineWidth: 0.25,
     },
     margin: { left: MARGIN.left, right: MARGIN.right },
   });
@@ -553,29 +615,28 @@ function renderSummaryBar(
   startY: number,
 ): number {
   const y = startY;
-  const barH = 8;
+  const barH = 9;
   const perf = data.overallPerformance;
 
-  // Total attendance across terms
-  const totalDays = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
+  const totalDays    = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
   const totalPresent = data.terms.reduce((s, t) => s + t.attendance.daysPresent, 0);
 
   const cells = [
-    { label: "Attendance", value: `${totalPresent}/${totalDays}` },
-    { label: "Total Marks", value: `${perf.obtainedMarks}/${perf.maxMarks}` },
-    { label: "Percentage", value: `${perf.percentage.toFixed(2)} %` },
-    { label: "Grade", value: perf.grade || "-" },
+    { label: "Attendance",   value: `${totalPresent}/${totalDays}` },
+    { label: "Total Marks",  value: `${perf.obtainedMarks}/${perf.maxMarks}` },
+    { label: "Percentage",   value: `${perf.percentage.toFixed(2)} %` },
+    { label: "Grade",        value: perf.grade || "-" },
   ];
 
   const cellW = CONTENT_WIDTH / cells.length;
 
-  doc.setLineWidth(0.3);
+  doc.setLineWidth(0.4);
   doc.setDrawColor(...hex(C.red));
 
   cells.forEach((cell, i) => {
     const cx = MARGIN.left + i * cellW;
 
-    // Alternating fill
+    // Alternating fill: even = light red, odd = white
     if (i % 2 === 0) {
       doc.setFillColor(...hex(C.redBg));
     } else {
@@ -583,17 +644,17 @@ function renderSummaryBar(
     }
     doc.rect(cx, y, cellW, barH, "FD");
 
-    // Label
+    // Label — bold red, small
     doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...hex(C.red));
-    doc.text(cell.label, cx + cellW / 2, y + 3, { align: "center" });
+    doc.text(cell.label, cx + cellW / 2, y + 3.2, { align: "center" });
 
-    // Value
-    doc.setFontSize(8);
+    // Value — bold black, slightly larger
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...hex(C.black));
-    doc.text(cell.value, cx + cellW / 2, y + 6.5, { align: "center" });
+    doc.text(cell.value, cx + cellW / 2, y + 7.2, { align: "center" });
   });
 
   return y + barH + 3;
@@ -652,21 +713,21 @@ function renderCoScholasticSection(
 
   const halfW = (CONTENT_WIDTH - 2) / 2;
 
-  // Left header
+  // ── Left header ────────────────────────────────────────────────────────
   doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, y, halfW, 6, "F");
+  doc.rect(MARGIN.left, y, halfW, 6.5, "F");
   doc.setTextColor(...hex(C.white));
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  doc.text("Co scholastic Subjects Area (on a 5 point grade scale)", MARGIN.left + 2, y + 4.2);
+  doc.text("Co scholastic Subjects Area (on a 5 point grade scale)", MARGIN.left + 2, y + 4.5);
 
-  // Right header
+  // ── Right header ───────────────────────────────────────────────────────
   const rightX = MARGIN.left + halfW + 2;
   doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(rightX, y, halfW, 6, "F");
-  doc.text("Activities/Skill Subjects Areas (on a 3 point grade scale)", rightX + 2, y + 4.2);
+  doc.rect(rightX, y, halfW, 6.5, "F");
+  doc.text("Activities/Skill Subjects Areas (on a 3 point grade scale)", rightX + 2, y + 4.5);
 
-  y += 6;
+  y += 6.5;
 
   // Left table
   const leftHead = [["SUBJECTS", t1Label, t2Label]];
@@ -720,20 +781,22 @@ function renderGradeScaleTable(
   gradeScale: CBSEGradeEntry[],
   startY: number,
 ): number {
-  let y = checkPageBreak(doc, startY, 20);
+  let y = checkPageBreak(doc, startY, 22);
 
-  // Section label
+  // Section label with red left accent bar
+  doc.setFillColor(...hex(C.red));
+  doc.rect(MARGIN.left, y, 2, 5, "F");
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...hex(C.black));
   doc.text(
     "Grade Scale For Scholastic Areas (Grades are awarded on 8 Point Grade Scale As Follows) :",
-    MARGIN.left,
-    y + 4,
+    MARGIN.left + 4,
+    y + 3.8,
   );
-  y += 6;
+  y += 7;
 
-  const head = [["Marks Range (%)", ...gradeScale.map((g) => g.minMarks + "-" + g.maxMarks)]];
+  const head = [["Marks Range (%)", ...gradeScale.map((g) => `${g.minMarks}-${g.maxMarks}`)]];
   const body = [["Grade", ...gradeScale.map((g) => g.grade)]];
 
   autoTable(doc, {
@@ -741,10 +804,24 @@ function renderGradeScaleTable(
     head,
     body,
     theme: "grid",
-    headStyles: { fillColor: hex(C.redBg), textColor: hex(C.black), fontStyle: "bold", fontSize: 7, cellPadding: 1.5, halign: "center" },
-    bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
+    headStyles: {
+      fillColor: hex(C.redBg),
+      textColor: hex(C.black),
+      fontStyle: "bold",
+      fontSize: 7,
+      cellPadding: 1.5,
+      halign: "center",
+      lineColor: hex(C.border),
+      lineWidth: 0.25,
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      textColor: hex(C.black),
+      halign: "center",
+      cellPadding: 1.5,
+    },
     columnStyles: { 0: { halign: "left", fontStyle: "bold" } },
-    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
+    styles: { lineColor: hex(C.border), lineWidth: 0.25 },
     margin: { left: MARGIN.left, right: MARGIN.right },
   });
 
@@ -760,27 +837,37 @@ function renderRemarks(
   data: MultiTermReportCardData,
   startY: number,
 ): number {
-  let y = checkPageBreak(doc, startY, 20);
+  let y = checkPageBreak(doc, startY, 22);
+
+  // Light red background box for remarks
+  const boxH = 16;
+  doc.setFillColor(...hex(C.redBg));
+  doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(0.3);
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, boxH, "FD");
 
   doc.setFontSize(8);
   doc.setTextColor(...hex(C.black));
+  let ry = y + 5;
 
   if (data.remarks.teacherRemarks) {
     doc.setFont("helvetica", "bold");
-    doc.text("Remarks: ", MARGIN.left, y);
+    doc.text("Remarks: ", MARGIN.left + 2, ry);
     const lw = doc.getTextWidth("Remarks: ");
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(data.remarks.teacherRemarks, CONTENT_WIDTH - lw - 2);
-    doc.text(lines, MARGIN.left + lw, y);
-    y += Math.max(lines.length * 4.5, 5) + 2;
+    const lines = doc.splitTextToSize(data.remarks.teacherRemarks, CONTENT_WIDTH - lw - 4);
+    doc.text(lines, MARGIN.left + 2 + lw, ry);
+    ry += Math.max(lines.length * 4.5, 5) + 1;
   }
 
   if (data.remarks.principalRemarks) {
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(data.remarks.principalRemarks, CONTENT_WIDTH - 2);
-    doc.text(lines, MARGIN.left, y);
-    y += Math.max(lines.length * 4.5, 5) + 2;
+    const lines = doc.splitTextToSize(data.remarks.principalRemarks, CONTENT_WIDTH - 4);
+    doc.text(lines, MARGIN.left + 2, ry);
+    ry += Math.max(lines.length * 4.5, 5) + 1;
   }
+
+  y += boxH + 2;
 
   // Promotion line
   const status = data.resultStatus;
@@ -788,6 +875,7 @@ function renderRemarks(
     const nextClass = getNextClass(data.student.class);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
+    doc.setTextColor(...hex(C.black));
     doc.text(`Congratulations! You are promoted to ${nextClass}`, MARGIN.left, y);
     y += 6;
   }
@@ -809,23 +897,25 @@ function getNextClass(currentClass: string): string {
 // ---------------------------------------------------------------------------
 
 function renderSignatures(doc: jsPDF, startY: number): void {
-  const y = Math.max(startY + 6, PAGE.height - 28);
-
-  doc.setFontSize(8.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...hex(C.black));
+  // Always pin signatures near the bottom of the page
+  const y = Math.max(startY + 8, PAGE.height - 26);
 
   const positions = [
-    { x: MARGIN.left + 20, label: "Parent's Signature" },
-    { x: PAGE.width / 2, label: "Class Incharge Signature" },
-    { x: PAGE.width - MARGIN.right - 20, label: "Principal Signature" },
+    { x: MARGIN.left + 22,          label: "Parent's Signature" },
+    { x: PAGE.width / 2,            label: "Class Incharge Signature" },
+    { x: PAGE.width - MARGIN.right - 22, label: "Principal Signature" },
   ];
 
   for (const pos of positions) {
     // Signature line
     doc.setDrawColor(...hex(C.black));
-    doc.setLineWidth(0.3);
-    doc.line(pos.x - 18, y, pos.x + 18, y);
+    doc.setLineWidth(0.4);
+    doc.line(pos.x - 20, y, pos.x + 20, y);
+
+    // Label below line
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...hex(C.black));
     doc.text(pos.label, pos.x, y + 5, { align: "center" });
   }
 }
