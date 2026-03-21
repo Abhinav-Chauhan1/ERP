@@ -2385,7 +2385,6 @@ model SchoolSettings {
   schoolWebsite       String?
   schoolFax           String?
   affiliationNumber   String?
-  schoolCode          String?
   board               String? @default("CBSE")
   timezone            String  @default("UTC")
   tagline             String?

@@ -59,7 +59,10 @@ async function generateIDCardPDF(
       compress: true,
     });
 
-    const settings = await db.schoolSettings.findFirst();
+    const settings = await db.schoolSettings.findFirst({
+      where: studentData.schoolId ? { schoolId: studentData.schoolId } : undefined,
+      include: { school: { select: { schoolCode: true } } },
+    });
     const schoolSettings: SchoolSettingsData = {
       schoolName: settings?.schoolName || 'School Name',
       schoolAddress: settings?.schoolAddress || undefined,
@@ -67,7 +70,7 @@ async function generateIDCardPDF(
       schoolEmail: settings?.schoolEmail || undefined,
       schoolLogo: settings?.schoolLogo || undefined,
       affiliationNumber: settings?.affiliationNumber || undefined,
-      schoolCode: settings?.schoolCode || undefined,
+      schoolCode: (settings as any)?.school?.schoolCode || undefined,
       board: settings?.board || undefined,
     };
 
@@ -97,7 +100,10 @@ export async function generateIDCardPreview(
       compress: true,
     });
 
-    const settings = await db.schoolSettings.findFirst();
+    const settings = await db.schoolSettings.findFirst({
+      where: studentData.schoolId ? { schoolId: studentData.schoolId } : undefined,
+      include: { school: { select: { schoolCode: true } } },
+    });
     const schoolSettings: SchoolSettingsData = {
       schoolName: settings?.schoolName || 'School Name',
       schoolAddress: settings?.schoolAddress || undefined,
@@ -105,7 +111,7 @@ export async function generateIDCardPreview(
       schoolEmail: settings?.schoolEmail || undefined,
       schoolLogo: settings?.schoolLogo || undefined,
       affiliationNumber: settings?.affiliationNumber || undefined,
-      schoolCode: settings?.schoolCode || undefined,
+      schoolCode: (settings as any)?.school?.schoolCode || undefined,
       board: settings?.board || undefined,
     };
 

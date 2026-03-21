@@ -35,8 +35,9 @@ interface SchoolInfoFormProps {
     linkedinUrl?: string | null;
     instagramUrl?: string | null;
     affiliationNumber?: string | null;
-    schoolCode?: string | null;
     board?: string | null;
+    // schoolCode is read-only — managed by super-admin only
+    schoolCode?: string | null;
   };
 }
 
@@ -56,7 +57,6 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
   const [linkedinUrl, setLinkedinUrl] = useState(initialData.linkedinUrl || "");
   const [instagramUrl, setInstagramUrl] = useState(initialData.instagramUrl || "");
   const [affiliationNumber, setAffiliationNumber] = useState(initialData.affiliationNumber || "");
-  const [schoolCode, setSchoolCode] = useState(initialData.schoolCode || "");
   const [board, setBoard] = useState(initialData.board || "CBSE");
 
   const handleLogoUpload = async (result: UploadResult) => {
@@ -107,7 +107,6 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
         linkedinUrl: linkedinUrl || undefined,
         instagramUrl: instagramUrl || undefined,
         affiliationNumber: affiliationNumber || undefined,
-        schoolCode: schoolCode || undefined,
         board: board || undefined,
       });
 
@@ -242,10 +241,13 @@ export function SchoolInfoForm({ initialData }: SchoolInfoFormProps) {
               <Label htmlFor="schoolCode">School Code</Label>
               <Input
                 id="schoolCode"
-                value={schoolCode}
-                onChange={(e) => setSchoolCode(e.target.value)}
-                placeholder="e.g. 50123"
+                value={initialData.schoolCode || ""}
+                readOnly
+                disabled
+                className="bg-muted cursor-not-allowed"
+                placeholder="Managed by super-admin"
               />
+              <p className="text-xs text-muted-foreground">School code is managed by the platform administrator.</p>
             </div>
           </div>
         </CardContent>

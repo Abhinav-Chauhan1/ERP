@@ -143,7 +143,6 @@ export async function updateSchoolInfo(data: {
   linkedinUrl?: string;
   instagramUrl?: string;
   affiliationNumber?: string;
-  schoolCode?: string;
   board?: string;
 }) {
   try {
@@ -192,13 +191,25 @@ export async function updateSchoolInfo(data: {
       linkedinUrl: data.linkedinUrl ? sanitizeUrl(data.linkedinUrl) : undefined,
       instagramUrl: data.instagramUrl ? sanitizeUrl(data.instagramUrl) : undefined,
       affiliationNumber: data.affiliationNumber ? sanitizeText(data.affiliationNumber) : undefined,
-      schoolCode: data.schoolCode ? sanitizeText(data.schoolCode) : undefined,
       board: data.board ? sanitizeText(data.board) : undefined,
     };
 
     const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data: sanitizedData,
+    });
+
+    // Sync key identity fields back to School model so both stay in sync
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        name: sanitizedData.schoolName,
+        email: sanitizedData.schoolEmail,
+        phone: sanitizedData.schoolPhone,
+        address: sanitizedData.schoolAddress,
+        logo: sanitizedData.schoolLogo,
+        tagline: sanitizedData.tagline,
+      },
     });
 
     // Invalidate cache after update
@@ -475,6 +486,17 @@ export async function updateAppearanceSettings(data: {
     const updated = await db.schoolSettings.update({
       where: { schoolId }, // CRITICAL: Update only current school
       data,
+    });
+
+    // Sync branding fields back to School model
+    await db.school.update({
+      where: { id: schoolId },
+      data: {
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor,
+        ...(data.logoUrl ? { logo: data.logoUrl } : {}),
+        ...(data.faviconUrl ? { favicon: data.faviconUrl } : {}),
+      },
     });
 
     // Invalidate cache after update

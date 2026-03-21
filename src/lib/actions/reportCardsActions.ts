@@ -861,8 +861,18 @@ export async function generateCBSEReportCardAction(params: {
       },
     });
 
-    // Resolve logo URL — may be a relative path or R2 key; convert to absolute if needed
+    // Resolve logo URL — check school.logo first, then SchoolSettings.schoolLogo
     let logoUrl = params.schoolLogo ?? school?.logo ?? undefined;
+
+    // If school.logo is null, fall back to SchoolSettings
+    if (!logoUrl) {
+      const schoolSettings = await dbInst.schoolSettings.findFirst({
+        where: { schoolId: data.student.schoolId },
+        select: { schoolLogo: true },
+      });
+      logoUrl = schoolSettings?.schoolLogo ?? undefined;
+    }
+
     if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
       logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
@@ -963,17 +973,23 @@ export async function generateBatchCBSEReportCardsAction(params: {
         where: { id: dataList[0].student.schoolId },
         select: { name: true, logo: true, phone: true, email: true, address: true, schoolCode: true, metadata: true },
       });
-      if (school) {
-        resolvedSchoolName ??= school.name ?? undefined;
-        resolvedAddress ??= school.address ?? undefined;
-        resolvedPhone ??= school.phone ?? undefined;
-        resolvedEmail ??= school.email ?? undefined;
-        resolvedCode ??= school.schoolCode ?? undefined;
-        const meta = school.metadata as Record<string, string> | null;
-        resolvedAffiliation ??= meta?.affiliationNo ?? undefined;
-        if (!resolvedLogo && school.logo) {
-          let logoUrl = school.logo;
-          if (!logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
+      // Always fetch SchoolSettings — admins update details there
+      const ss = await dbInst.schoolSettings.findFirst({
+        where: { schoolId: dataList[0].student.schoolId },
+        select: { schoolName: true, schoolAddress: true, schoolPhone: true, schoolEmail: true, schoolLogo: true, affiliationNumber: true },
+      });
+      if (school || ss) {
+        const meta = school?.metadata as Record<string, string> | null;
+        // School model is authoritative (kept in sync by settingsActions)
+        resolvedSchoolName ??= school?.name || ss?.schoolName || undefined;
+        resolvedAddress    ??= school?.address || ss?.schoolAddress || undefined;
+        resolvedPhone      ??= school?.phone || ss?.schoolPhone || undefined;
+        resolvedEmail      ??= school?.email || ss?.schoolEmail || undefined;
+        resolvedCode       ??= school?.schoolCode || undefined;
+        resolvedAffiliation ??= ss?.affiliationNumber ?? meta?.affiliationNo ?? undefined;
+        if (!resolvedLogo) {
+          let logoUrl = school?.logo ?? ss?.schoolLogo ?? undefined;
+          if (logoUrl && !logoUrl.startsWith("http") && !logoUrl.startsWith("data:")) {
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
             logoUrl = `${baseUrl}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
           }

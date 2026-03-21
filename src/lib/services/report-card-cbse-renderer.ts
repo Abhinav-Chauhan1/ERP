@@ -19,6 +19,9 @@
  * Requirements: 10.1, 10.2, 10.3
  */
 
+import fs from "fs";
+import path from "path";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -36,26 +39,85 @@ import { getCBSEGradeScale } from "./report-card-data-aggregation";
 // ---------------------------------------------------------------------------
 
 const PAGE = { width: 210, height: 297 } as const;
-const MARGIN = { left: 8, right: 8, top: 8, bottom: 8 } as const;
+const MARGIN = { left: 12, right: 12, top: 12, bottom: 12 } as const;
 const CONTENT_WIDTH = PAGE.width - MARGIN.left - MARGIN.right;
 
 const C = {
-  red:        "#C0392B",
-  redLight:   "#E74C3C",
-  redBg:      "#FDEDEC",
-  navy:       "#1a3a6b",
+  red:        "#C0392B",   // used only for school name text & helpline
   black:      "#1a1a1a",
   white:      "#FFFFFF",
   grey:       "#6b7280",
-  greyLight:  "#f5f5f5",
-  border:     "#C0392B",
-  headerBg:   "#C0392B",
-  sectionBg:  "#C0392B",
-  altRow:     "#FEF9F9",
+  greyLight:  "#f0f0f0",
+  border:     "#999999",   // neutral grid lines
+  altRow:     "#f9f9f9",
   pass:       "#16a34a",
   fail:       "#dc2626",
   compartment:"#d97706",
 } as const;
+
+// Cached border image base64
+let _borderImageCache: string | null = null;
+function getBorderImageBase64(): string | null {
+  if (_borderImageCache !== null) return _borderImageCache;
+  try {
+    const imgPath = path.join(process.cwd(), "public", "border.png");
+    const data = fs.readFileSync(imgPath);
+    _borderImageCache = `data:image/png;base64,${data.toString("base64")}`;
+    return _borderImageCache;
+  } catch {
+    _borderImageCache = "";
+    return null;
+  }
+}
+
+// Cached Sikshamitra logo (public/logo.png) used as emblem fallback
+let _sikshamitraLogoCache: string | null = null;
+function getSikshamitraLogoBase64(): string | null {
+  if (_sikshamitraLogoCache !== null) return _sikshamitraLogoCache;
+  try {
+    const imgPath = path.join(process.cwd(), "public", "logo.png");
+    const data = fs.readFileSync(imgPath);
+    _sikshamitraLogoCache = `data:image/png;base64,${data.toString("base64")}`;
+    return _sikshamitraLogoCache;
+  } catch {
+    _sikshamitraLogoCache = "";
+    return null;
+  }
+}
+
+/** Fetch a remote image URL and return a base64 data URI, or null on failure */
+async function fetchImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const ct = res.headers.get("content-type") || "image/jpeg";
+    return `data:${ct};base64,${Buffer.from(buf).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Detect jsPDF image format string from a data URI or URL */
+function detectImageFormat(src: string): "PNG" | "JPEG" | "WEBP" {
+  if (src.startsWith("data:image/png") || /\.png(\?|$)/i.test(src)) return "PNG";
+  if (src.startsWith("data:image/webp") || /\.webp(\?|$)/i.test(src)) return "WEBP";
+  return "JPEG";
+}
+
+/** Safe addImage wrapper — swallows errors so a bad image never crashes the PDF */
+function safeAddImage(
+  doc: jsPDF,
+  src: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  try {
+    doc.addImage(src, detectImageFormat(src), x, y, w, h);
+  } catch { /* skip */ }
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -165,11 +227,27 @@ async function renderPage(
   },
   gradeScale: CBSEGradeEntry[],
 ): Promise<void> {
+  // Resolve student avatar to base64 if it's a remote URL
+  let studentAvatar = data.student.avatar ?? undefined;
+  if (studentAvatar && studentAvatar.startsWith("http")) {
+    studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
+  }
+
+  // Resolve school logo to base64 if it's a remote URL
+  let schoolLogo = opts.schoolLogo;
+  if (schoolLogo && schoolLogo.startsWith("http")) {
+    schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
+  }
+
+  // Emblem: use passed value, else fall back to Sikshamitra logo
+  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+
   renderDecorativeBorder(doc);
 
+  const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
   let y = MARGIN.top + 2;
-  y = renderHeader(doc, data, opts, y);
-  y = renderStudentInfo(doc, data.student, y);
+  y = renderHeader(doc, data, resolvedOpts, y);
+  y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderScholasticTable(doc, data, gradeScale, y);
   y = renderSummaryBar(doc, data, y);
   y = renderCoScholasticSection(doc, data, y);
@@ -206,58 +284,15 @@ function formatDate(d: Date | string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 0. Decorative border  (matches the ClassON ornamental red border)
+// 0. Border — uses public/border.png as a full-page overlay
 // ---------------------------------------------------------------------------
 
 function renderDecorativeBorder(doc: jsPDF): void {
-  const [r, g, b] = hex(C.red);
-
-  // ── Outermost thick red frame ──────────────────────────────────────────
-  doc.setDrawColor(r, g, b);
-  doc.setLineWidth(2);
-  doc.rect(3, 3, PAGE.width - 6, PAGE.height - 6);
-
-  // ── Second thin line just inside ──────────────────────────────────────
-  doc.setLineWidth(0.5);
-  doc.rect(5, 5, PAGE.width - 10, PAGE.height - 10);
-
-  // ── Dashed / dotted inner decorative line ─────────────────────────────
-  doc.setLineWidth(0.3);
-  doc.setLineDashPattern([1, 1.2], 0);
-  doc.rect(6.5, 6.5, PAGE.width - 13, PAGE.height - 13);
-  doc.setLineDashPattern([], 0);          // reset dash
-
-  // ── Corner ornament squares ───────────────────────────────────────────
-  const cs = 4;   // corner square size
-  const corners = [
-    [3, 3], [PAGE.width - 3 - cs, 3],
-    [3, PAGE.height - 3 - cs], [PAGE.width - 3 - cs, PAGE.height - 3 - cs],
-  ] as [number, number][];
-
-  doc.setFillColor(r, g, b);
-  for (const [cx, cy] of corners) {
-    doc.rect(cx, cy, cs, cs, "F");
-  }
-
-  // ── Small diamond ornaments along each edge (every ~20 mm) ────────────
-  const drawDiamond = (cx: number, cy: number, size: number) => {
-    doc.setFillColor(r, g, b);
-    doc.triangle(cx, cy - size, cx + size, cy, cx, cy + size, "F");
-    doc.triangle(cx, cy - size, cx - size, cy, cx, cy + size, "F");
-  };
-
-  const edgeOffset = 4.5;   // distance from page edge to diamond centre
-  const step = 20;
-
-  // Top & bottom edges
-  for (let x = MARGIN.left + 15; x < PAGE.width - MARGIN.right - 10; x += step) {
-    drawDiamond(x, edgeOffset, 1.2);
-    drawDiamond(x, PAGE.height - edgeOffset, 1.2);
-  }
-  // Left & right edges
-  for (let y = MARGIN.top + 15; y < PAGE.height - MARGIN.bottom - 10; y += step) {
-    drawDiamond(edgeOffset, y, 1.2);
-    drawDiamond(PAGE.width - edgeOffset, y, 1.2);
+  const borderB64 = getBorderImageBase64();
+  if (borderB64) {
+    try {
+      doc.addImage(borderB64, "PNG", 0, 0, PAGE.width, PAGE.height);
+    } catch { /* skip if image fails */ }
   }
 }
 
@@ -282,24 +317,14 @@ function renderHeader(
   let y = startY;
   const logoW = 22;
   const logoH = 22;
-  const emblemW = 22;
+  const emblemW = 32;   // wider to fit Sikshamitra landscape logo
   const textX = MARGIN.left + logoW + 3;
   const textW = CONTENT_WIDTH - logoW - emblemW - 6;
   const centerX = textX + textW / 2;
 
   // School logo (left)
   if (opts.schoolLogo) {
-    try {
-      // Detect format from data URL prefix or URL extension
-      let format: "PNG" | "JPEG" | "WEBP" = "PNG";
-      const logoSrc = opts.schoolLogo;
-      if (logoSrc.startsWith("data:image/jpeg") || logoSrc.startsWith("data:image/jpg") || /\.(jpg|jpeg)(\?|$)/i.test(logoSrc)) {
-        format = "JPEG";
-      } else if (logoSrc.startsWith("data:image/webp") || /\.webp(\?|$)/i.test(logoSrc)) {
-        format = "WEBP";
-      }
-      doc.addImage(logoSrc, format, MARGIN.left, y, logoW, logoH);
-    } catch { /* skip */ }
+    safeAddImage(doc, opts.schoolLogo, MARGIN.left, y, logoW, logoH);
   } else {
     // Placeholder circle
     doc.setDrawColor(...hex(C.red));
@@ -310,26 +335,14 @@ function renderHeader(
     doc.text("LOGO", MARGIN.left + logoW / 2, y + logoH / 2 + 1, { align: "center" });
   }
 
-  // School emblem (right)
+  // School emblem (right) — Sikshamitra logo with white background
   const emblemX = PAGE.width - MARGIN.right - emblemW;
   if (opts.schoolEmblem) {
-    try {
-      let emblemFormat: "PNG" | "JPEG" | "WEBP" = "PNG";
-      const emblemSrc = opts.schoolEmblem;
-      if (emblemSrc.startsWith("data:image/jpeg") || emblemSrc.startsWith("data:image/jpg") || /\.(jpg|jpeg)(\?|$)/i.test(emblemSrc)) {
-        emblemFormat = "JPEG";
-      } else if (emblemSrc.startsWith("data:image/webp") || /\.webp(\?|$)/i.test(emblemSrc)) {
-        emblemFormat = "WEBP";
-      }
-      doc.addImage(emblemSrc, emblemFormat, emblemX, y, emblemW, logoH);
-    } catch { /* skip */ }
-  } else {
-    doc.setDrawColor(...hex(C.red));
-    doc.setLineWidth(0.5);
-    doc.circle(emblemX + emblemW / 2, y + logoH / 2, emblemW / 2 - 1);
-    doc.setFontSize(6);
-    doc.setTextColor(...hex(C.red));
-    doc.text("EMBLEM", emblemX + emblemW / 2, y + logoH / 2 + 1, { align: "center" });
+    // White background so the logo is readable against the border image
+    doc.setFillColor(255, 255, 255);
+    doc.rect(emblemX, y, emblemW, logoH, "F");
+    // Render logo slightly inset so it doesn't bleed to the edges
+    safeAddImage(doc, opts.schoolEmblem, emblemX + 1, y + 1, emblemW - 2, logoH - 2);
   }
 
   // School name  — large, bold, red (matches image)
@@ -373,24 +386,24 @@ function renderHeader(
 
   y += logoH + 3;
 
-  // ── "Annual Term (Session ...)" title bar ─────────────────────────────
-  // Thin red line above bar
-  doc.setDrawColor(...hex(C.red));
-  doc.setLineWidth(0.4);
-  doc.line(MARGIN.left, y, MARGIN.left + CONTENT_WIDTH, y);
+  // ── "Annual Term (Session ...)" title bar — gray bg, all four borders ──
+  const barH = 8;
+  doc.setFillColor(240, 240, 240);   // light gray background
+  doc.setDrawColor(...hex(C.border));
+  doc.setLineWidth(0.3);
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, barH, "FD");
 
-  doc.setFillColor(...hex(C.red));
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, 7.5, "F");
-  doc.setTextColor(...hex(C.white));
+  doc.setTextColor(...hex(C.black));
   doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
   doc.text(
     `Annual Term (Session ${data.academicYear})`,
     PAGE.width / 2,
-    y + 5.2,
+    y + 5.5,
     { align: "center" },
   );
-  y += 9;
+
+  y += barH + 2;
 
   return y;
 }
@@ -402,6 +415,7 @@ function renderHeader(
 function renderStudentInfo(
   doc: jsPDF,
   student: StudentInfoExtended,
+  avatar: string | undefined,
   startY: number,
 ): number {
   const y = startY;
@@ -410,23 +424,17 @@ function renderStudentInfo(
   const photoX = PAGE.width - MARGIN.right - photoW - 1;
   const infoW = CONTENT_WIDTH - photoW - 5;
 
-  // Outer red border around entire student info block
-  doc.setDrawColor(...hex(C.red));
-  doc.setLineWidth(0.5);
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, photoH + 3);
-
-  // Vertical divider between info and photo
+  // Outer border around entire student info block — neutral
+  doc.setDrawColor(...hex(C.border));
   doc.setLineWidth(0.3);
-  doc.line(photoX - 1, y, photoX - 1, y + photoH + 3);
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, photoH + 3);
 
   // Photo box
   doc.setDrawColor(...hex(C.grey));
   doc.setLineWidth(0.3);
   doc.rect(photoX, y + 1, photoW, photoH);
-  if (student.avatar) {
-    try {
-      doc.addImage(student.avatar, "JPEG", photoX + 0.5, y + 1.5, photoW - 1, photoH - 1);
-    } catch { /* skip */ }
+  if (avatar) {
+    safeAddImage(doc, avatar, photoX + 0.5, y + 1.5, photoW - 1, photoH - 1);
   } else {
     doc.setFontSize(6);
     doc.setTextColor(...hex(C.grey));
@@ -455,10 +463,6 @@ function renderStudentInfo(
   for (const [l1, v1, l2, v2] of rows) {
     infoCell(doc, l1, v1, col1X, iy);
     infoCell(doc, l2, v2, col2X, iy);
-    // Subtle horizontal separator
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.1);
-    doc.line(MARGIN.left + 1, iy + 1.5, photoX - 2, iy + 1.5);
     iy += rowH;
   }
 
@@ -486,24 +490,22 @@ function renderScholasticTable(
   _gradeScale: CBSEGradeEntry[],
   startY: number,
 ): number {
-  // ── Section header bar ────────────────────────────────────────────────
-  doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6.5, "F");
-  doc.setTextColor(...hex(C.white));
-  doc.setFontSize(8.5);
-  doc.setFont("helvetica", "bold");
-  doc.text("Scholastic Subjects", MARGIN.left + 3, startY + 4.5);
-  let y = startY + 6.5;
+  let y = startY;
 
   const term1 = data.terms[0];
   const term2 = data.terms.length > 1 ? data.terms[1] : null;
   const t1Label = term1?.term.name || "Term 1";
   const t2Label = term2?.term.name || "Term 2";
 
-  // ── 3-level header matching the image ─────────────────────────────────
-  // Row 1: Subjects(rowSpan3) | Term1(colSpan5) | Term2(colSpan5) | Overall(colSpan2)
-  // Row 2: sub-column labels
+  // Header: row 0 = full-width section title, row 1 = term groups, row 2 = sub-columns
   const head: any[][] = [
+    [
+      {
+        content: "Scholastic Subjects",
+        colSpan: 13,
+        styles: { halign: "left" as const, fontStyle: "bold" as const, fontSize: 8.5, cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } },
+      },
+    ],
     [
       { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle", fontStyle: "bold" } },
       { content: t1Label, colSpan: 5, styles: { halign: "center", fontStyle: "bold" } },
@@ -555,8 +557,8 @@ function renderScholasticTable(
     body,
     theme: "grid",
     headStyles: {
-      fillColor: hex(C.red),
-      textColor: hex(C.white),
+      fillColor: hex(C.white),
+      textColor: hex(C.black),
       fontStyle: "bold",
       halign: "center",
       fontSize: 7,
@@ -574,7 +576,7 @@ function renderScholasticTable(
     alternateRowStyles: { fillColor: hex(C.altRow) },
     styles: {
       lineColor: hex(C.border),
-      lineWidth: 0.25,
+      lineWidth: 0.2,
     },
     margin: { left: MARGIN.left, right: MARGIN.right },
   });
@@ -615,7 +617,7 @@ function renderSummaryBar(
   startY: number,
 ): number {
   const y = startY;
-  const barH = 9;
+  const rowH = 7; // single row height
   const perf = data.overallPerformance;
 
   const totalDays    = data.terms.reduce((s, t) => s + t.attendance.totalDays, 0);
@@ -628,36 +630,40 @@ function renderSummaryBar(
     { label: "Grade",        value: perf.grade || "-" },
   ];
 
-  const cellW = CONTENT_WIDTH / cells.length;
+  const gap     = 2;  // mm gap between cells
+  const cellW   = (CONTENT_WIDTH - gap * (cells.length - 1)) / cells.length;
+  const labelW  = cellW * 0.45; // label takes 45% of cell width
+  const valueW  = cellW - labelW;
 
-  doc.setLineWidth(0.4);
-  doc.setDrawColor(...hex(C.red));
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(...hex(C.border));
 
   cells.forEach((cell, i) => {
-    const cx = MARGIN.left + i * cellW;
+    const cx = MARGIN.left + i * (cellW + gap);
 
-    // Alternating fill: even = light red, odd = white
-    if (i % 2 === 0) {
-      doc.setFillColor(...hex(C.redBg));
-    } else {
-      doc.setFillColor(...hex(C.white));
-    }
-    doc.rect(cx, y, cellW, barH, "FD");
+    // Cell background
+    doc.setFillColor(...hex(C.greyLight));
+    doc.rect(cx, y, cellW, rowH, "FD");
 
-    // Label — bold red, small
-    doc.setFontSize(7);
+    // Divider between label and value sub-columns
+    doc.setDrawColor(...hex(C.border));
+    doc.setLineWidth(0.2);
+    doc.line(cx + labelW, y, cx + labelW, y + rowH);
+
+    // Label (left side) — bold, small
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...hex(C.red));
-    doc.text(cell.label, cx + cellW / 2, y + 3.2, { align: "center" });
+    doc.setTextColor(...hex(C.black));
+    doc.text(cell.label, cx + labelW / 2, y + rowH / 2 + 1.2, { align: "center" });
 
-    // Value — bold black, slightly larger
+    // Value (right side) — bold, slightly larger
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...hex(C.black));
-    doc.text(cell.value, cx + cellW / 2, y + 7.2, { align: "center" });
+    doc.text(cell.value, cx + labelW + valueW / 2, y + rowH / 2 + 1.2, { align: "center" });
   });
 
-  return y + barH + 3;
+  return y + rowH + 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -713,24 +719,11 @@ function renderCoScholasticSection(
 
   const halfW = (CONTENT_WIDTH - 2) / 2;
 
-  // ── Left header ────────────────────────────────────────────────────────
-  doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, y, halfW, 6.5, "F");
-  doc.setTextColor(...hex(C.white));
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.text("Co scholastic Subjects Area (on a 5 point grade scale)", MARGIN.left + 2, y + 4.5);
-
-  // ── Right header ───────────────────────────────────────────────────────
-  const rightX = MARGIN.left + halfW + 2;
-  doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(rightX, y, halfW, 6.5, "F");
-  doc.text("Activities/Skill Subjects Areas (on a 3 point grade scale)", rightX + 2, y + 4.5);
-
-  y += 6.5;
-
-  // Left table
-  const leftHead = [["SUBJECTS", t1Label, t2Label]];
+  // Left table — section title as first header row
+  const leftHead = [
+    [{ content: "Co scholastic Subjects Area (on a 5 point grade scale)", colSpan: 3, styles: { halign: "left" as const, fontStyle: "bold" as const, fontSize: 7, cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } } }],
+    ["SUBJECTS", t1Label, t2Label],
+  ];
   const leftBody = coScholastic.length > 0
     ? coScholastic.map((a) => [a.name, a.t1, a.t2])
     : [["—", "—", "—"]];
@@ -740,7 +733,7 @@ function renderCoScholasticSection(
     head: leftHead,
     body: leftBody,
     theme: "grid",
-    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: hex(C.white), textColor: hex(C.black), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
     bodyStyles: { fontSize: 7.5, textColor: hex(C.black), cellPadding: 1.5 },
     columnStyles: { 0: { cellWidth: halfW - 20, halign: "left" }, 1: { cellWidth: 10, halign: "center" }, 2: { cellWidth: 10, halign: "center" } },
     styles: { lineColor: hex(C.border), lineWidth: 0.2 },
@@ -749,8 +742,12 @@ function renderCoScholasticSection(
 
   const leftFinalY = (doc as any).lastAutoTable.finalY;
 
-  // Right table
-  const rightHead = [["SUBJECTS", t1Label, t2Label]];
+  // Right table — section title as first header row
+  const rightX = MARGIN.left + halfW + 2;
+  const rightHead = [
+    [{ content: "Activities/Skill Subjects Areas (on a 3 point grade scale)", colSpan: 3, styles: { halign: "left" as const, fontStyle: "bold" as const, fontSize: 7, cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } } }],
+    ["SUBJECTS", t1Label, t2Label],
+  ];
   const rightBody = skillActivities.length > 0
     ? skillActivities.map((a) => [a.name, a.t1, a.t2])
     : [["—", "—", "—"]];
@@ -760,7 +757,7 @@ function renderCoScholasticSection(
     head: rightHead,
     body: rightBody,
     theme: "grid",
-    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: hex(C.white), textColor: hex(C.black), fontStyle: "bold", fontSize: 7, cellPadding: 1.5 },
     bodyStyles: { fontSize: 7.5, textColor: hex(C.black), cellPadding: 1.5 },
     columnStyles: { 0: { cellWidth: halfW - 20, halign: "left" }, 1: { cellWidth: 10, halign: "center" }, 2: { cellWidth: 10, halign: "center" } },
     styles: { lineColor: hex(C.border), lineWidth: 0.2 },
@@ -783,20 +780,11 @@ function renderGradeScaleTable(
 ): number {
   let y = checkPageBreak(doc, startY, 22);
 
-  // Section label with red left accent bar
-  doc.setFillColor(...hex(C.red));
-  doc.rect(MARGIN.left, y, 2, 5, "F");
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...hex(C.black));
-  doc.text(
-    "Grade Scale For Scholastic Areas (Grades are awarded on 8 Point Grade Scale As Follows) :",
-    MARGIN.left + 4,
-    y + 3.8,
-  );
-  y += 7;
-
-  const head = [["Marks Range (%)", ...gradeScale.map((g) => `${g.minMarks}-${g.maxMarks}`)]];
+  const colCount = gradeScale.length + 1; // label col + one per grade entry
+  const head = [
+    [{ content: "Grade Scale For Scholastic Areas (Grades are awarded on 8 Point Grade Scale As Follows) :", colSpan: colCount, styles: { halign: "left" as const, fontStyle: "bold" as const, fontSize: 7.5, cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } } }],
+    ["Marks Range (%)", ...gradeScale.map((g) => `${g.minMarks}-${g.maxMarks}`)],
+  ];
   const body = [["Grade", ...gradeScale.map((g) => g.grade)]];
 
   autoTable(doc, {
@@ -805,14 +793,14 @@ function renderGradeScaleTable(
     body,
     theme: "grid",
     headStyles: {
-      fillColor: hex(C.redBg),
+      fillColor: hex(C.white),
       textColor: hex(C.black),
       fontStyle: "bold",
       fontSize: 7,
       cellPadding: 1.5,
       halign: "center",
       lineColor: hex(C.border),
-      lineWidth: 0.25,
+      lineWidth: 0.2,
     },
     bodyStyles: {
       fontSize: 7.5,
@@ -821,7 +809,7 @@ function renderGradeScaleTable(
       cellPadding: 1.5,
     },
     columnStyles: { 0: { halign: "left", fontStyle: "bold" } },
-    styles: { lineColor: hex(C.border), lineWidth: 0.25 },
+    styles: { lineColor: hex(C.border), lineWidth: 0.2 },
     margin: { left: MARGIN.left, right: MARGIN.right },
   });
 
@@ -839,12 +827,11 @@ function renderRemarks(
 ): number {
   let y = checkPageBreak(doc, startY, 22);
 
-  // Light red background box for remarks
+  // Plain remarks box — no fill, neutral border
   const boxH = 16;
-  doc.setFillColor(...hex(C.redBg));
-  doc.setDrawColor(...hex(C.red));
+  doc.setDrawColor(...hex(C.border));
   doc.setLineWidth(0.3);
-  doc.rect(MARGIN.left, y, CONTENT_WIDTH, boxH, "FD");
+  doc.rect(MARGIN.left, y, CONTENT_WIDTH, boxH, "D");
 
   doc.setFontSize(8);
   doc.setTextColor(...hex(C.black));
@@ -869,10 +856,11 @@ function renderRemarks(
 
   y += boxH + 2;
 
-  // Promotion line
+  // Promotion line — with top padding
   const status = data.resultStatus;
   if (status === "PASS") {
     const nextClass = getNextClass(data.student.class);
+    y += 4;   // top padding
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.setTextColor(...hex(C.black));
@@ -901,12 +889,15 @@ function renderSignatures(doc: jsPDF, startY: number): void {
   const y = Math.max(startY + 8, PAGE.height - 26);
 
   const positions = [
-    { x: MARGIN.left + 22,          label: "Parent's Signature" },
-    { x: PAGE.width / 2,            label: "Class Incharge Signature" },
-    { x: PAGE.width - MARGIN.right - 22, label: "Principal Signature" },
+    { x: PAGE.width / 3,       label: "Class Teacher" },
+    { x: PAGE.width * 2 / 3,   label: "Principal Signature" },
   ];
 
   for (const pos of positions) {
+    // White background behind signature area (covers border.png)
+    doc.setFillColor(255, 255, 255);
+    doc.rect(pos.x - 24, y - 16, 48, 24, "F");
+
     // Signature line
     doc.setDrawColor(...hex(C.black));
     doc.setLineWidth(0.4);
@@ -934,10 +925,21 @@ async function renderSecondaryPage(
   opts: Parameters<typeof renderPage>[2],
   gradeScale: CBSEGradeEntry[],
 ): Promise<void> {
+  let studentAvatar = data.student.avatar ?? undefined;
+  if (studentAvatar && studentAvatar.startsWith("http")) {
+    studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
+  }
+  let schoolLogo = opts.schoolLogo;
+  if (schoolLogo && schoolLogo.startsWith("http")) {
+    schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
+  }
+  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+  const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
+
   renderDecorativeBorder(doc);
   let y = MARGIN.top + 2;
-  y = renderHeader(doc, data, opts, y);
-  y = renderStudentInfo(doc, data.student, y);
+  y = renderHeader(doc, data, resolvedOpts, y);
+  y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderSecondaryScholasticTable(doc, data, y);
   y = renderSummaryBar(doc, data, y);
   y = renderCoScholasticSection(doc, data, y);
@@ -951,13 +953,14 @@ function renderSecondaryScholasticTable(
   data: MultiTermReportCardData,
   startY: number,
 ): number {
-  doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
-  doc.setTextColor(...hex(C.white));
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("Scholastic Subjects (Class 9–10)", MARGIN.left + 3, startY + 4.2);
-  const y = startY + 6;
+  doc.setTextColor(...hex(C.black));
+  doc.text("Scholastic Subjects (Class 9–10)", MARGIN.left, startY + 4.2);
+  doc.setDrawColor(...hex(C.border));
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN.left, startY + 6, MARGIN.left + CONTENT_WIDTH, startY + 6);
+  const y = startY + 8;
 
   const head: any[][] = [[
     { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
@@ -983,7 +986,7 @@ function renderSecondaryScholasticTable(
     head,
     body,
     theme: "grid",
-    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: hex(C.white), textColor: hex(C.black), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
     bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
     columnStyles: { 0: { halign: "left", cellWidth: 40 } },
     alternateRowStyles: { fillColor: hex(C.altRow) },
@@ -1013,10 +1016,21 @@ async function renderSeniorPage(
   opts: Parameters<typeof renderPage>[2],
   gradeScale: CBSEGradeEntry[],
 ): Promise<void> {
+  let studentAvatar = data.student.avatar ?? undefined;
+  if (studentAvatar && studentAvatar.startsWith("http")) {
+    studentAvatar = (await fetchImageAsBase64(studentAvatar)) ?? undefined;
+  }
+  let schoolLogo = opts.schoolLogo;
+  if (schoolLogo && schoolLogo.startsWith("http")) {
+    schoolLogo = (await fetchImageAsBase64(schoolLogo)) ?? undefined;
+  }
+  const schoolEmblem = opts.schoolEmblem ?? getSikshamitraLogoBase64() ?? undefined;
+  const resolvedOpts = { ...opts, schoolLogo, schoolEmblem };
+
   renderDecorativeBorder(doc);
   let y = MARGIN.top + 2;
-  y = renderHeader(doc, data, opts, y);
-  y = renderStudentInfo(doc, data.student, y);
+  y = renderHeader(doc, data, resolvedOpts, y);
+  y = renderStudentInfo(doc, data.student, studentAvatar, y);
   y = renderSeniorScholasticTable(doc, data, y);
   y = renderSummaryBar(doc, data, y);
   y = renderGradeScaleTable(doc, gradeScale, y);
@@ -1029,13 +1043,14 @@ function renderSeniorScholasticTable(
   data: MultiTermReportCardData,
   startY: number,
 ): number {
-  doc.setFillColor(...hex(C.sectionBg));
-  doc.rect(MARGIN.left, startY, CONTENT_WIDTH, 6, "F");
-  doc.setTextColor(...hex(C.white));
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("Scholastic Subjects (Class 11–12)", MARGIN.left + 3, startY + 4.2);
-  const y = startY + 6;
+  doc.setTextColor(...hex(C.black));
+  doc.text("Scholastic Subjects (Class 11–12)", MARGIN.left, startY + 4.2);
+  doc.setDrawColor(...hex(C.border));
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN.left, startY + 6, MARGIN.left + CONTENT_WIDTH, startY + 6);
+  const y = startY + 8;
 
   const head: any[][] = [[
     { content: "Subjects", rowSpan: 2, styles: { halign: "center", valign: "middle" } },
@@ -1070,7 +1085,7 @@ function renderSeniorScholasticTable(
     head,
     body,
     theme: "grid",
-    headStyles: { fillColor: hex(C.red), textColor: hex(C.white), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
+    headStyles: { fillColor: hex(C.white), textColor: hex(C.black), fontStyle: "bold", halign: "center", fontSize: 7, cellPadding: 1.5 },
     bodyStyles: { fontSize: 7.5, textColor: hex(C.black), halign: "center", cellPadding: 1.5 },
     columnStyles: { 0: { halign: "left", cellWidth: 45 } },
     alternateRowStyles: { fillColor: hex(C.altRow) },

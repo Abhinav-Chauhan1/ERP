@@ -32,11 +32,6 @@ export async function POST(request: NextRequest) {
         name: true,
         schoolCode: true,
         logo: true,
-        settings: {
-          select: {
-            schoolLogo: true
-          }
-        }
       }
     })
 
@@ -50,14 +45,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prefer settings.schoolLogo over School.logo
-    const { settings, ...schoolData } = school
     return NextResponse.json({
       success: true,
-      school: {
-        ...schoolData,
-        logo: settings?.schoolLogo || school.logo || null
-      }
+      school
     })
 
   } catch (error) {
