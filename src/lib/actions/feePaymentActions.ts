@@ -40,11 +40,9 @@ export async function getFeePayments(filters?: {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
-    const where: any = {
-      student: {
-        schoolId
-      }
-    };
+    const PAGE_SIZE = filters?.limit ?? 20;
+
+    const where: any = { schoolId };
 
     if (filters?.studentId) {
       where.studentId = filters.studentId;
@@ -78,9 +76,7 @@ export async function getFeePayments(filters?: {
             },
             enrollments: {
               take: 1,
-              orderBy: {
-                enrollDate: "desc",
-              },
+              orderBy: { enrollDate: "desc" },
               include: {
                 class: true,
                 section: true,
@@ -92,18 +88,14 @@ export async function getFeePayments(filters?: {
           include: {
             academicYear: true,
             items: {
-              include: {
-                feeType: true,
-              },
+              include: { feeType: true },
             },
           },
         },
       },
-      orderBy: {
-        paymentDate: "desc",
-      },
-      take: filters?.limit,
-      skip: filters?.offset,
+      orderBy: { paymentDate: "desc" },
+      take: PAGE_SIZE,
+      skip: filters?.offset ?? 0,
     });
 
     return { success: true, data: payments };
@@ -216,12 +208,12 @@ export async function recordPayment(data: any) {
     // Requirements: 7.3, 7.4, 7.5
     if (payment.status === PaymentStatus.COMPLETED || payment.status === PaymentStatus.PARTIAL) {
       try {
-        // Calculate outstanding balance for this student
-        const allPayments = await db.feePayment.findMany({
-          where: { studentId: data.studentId },
+        // Calculate outstanding balance for this student using aggregate (no N+1)
+        const outstandingAggregate = await db.feePayment.aggregate({
+          where: { studentId: data.studentId, schoolId },
+          _sum: { balance: true },
         });
-
-        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
+        const totalOutstanding = outstandingAggregate._sum.balance ?? 0;
 
         // Send notification to all parents
         for (const parentRelation of payment.student.parents) {
@@ -344,114 +336,65 @@ export async function getPendingFees(filters?: {
   studentId?: string;
   classId?: string;
   limit?: number;
+  offset?: number;
 }) {
   try {
     const { schoolId } = await requireSchoolAccess();
     if (!schoolId) return { success: false, error: "School context required" };
 
-    // Get all students with their enrollments and fee structures
-    const where: any = { schoolId };
+    const PAGE_SIZE = filters?.limit ?? 20;
 
-    if (filters?.studentId) {
-      where.id = filters.studentId;
-    }
-
-    if (filters?.classId) {
-      where.enrollments = {
-        some: {
-          classId: filters.classId,
-          status: "ACTIVE",
-        },
-      };
-    }
-
-    const students = await db.student.findMany({
-      where,
-      include: {
-        user: {
+    // Single query: fetch payments with PENDING/PARTIAL status scoped to school
+    const pendingPayments = await db.feePayment.findMany({
+      where: {
+        schoolId,
+        status: { in: ["PENDING", "PARTIAL"] },
+        balance: { gt: 0 },
+        ...(filters?.studentId ? { studentId: filters.studentId } : {}),
+      },
+      orderBy: { paymentDate: "desc" },
+      take: PAGE_SIZE,
+      skip: filters?.offset ?? 0,
+      select: {
+        id: true,
+        amount: true,
+        paidAmount: true,
+        balance: true,
+        dueDate: true,
+        status: true,
+        feeStructureId: true,
+        feeStructure: { select: { id: true, name: true } },
+        student: {
           select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-        enrollments: {
-          where: {
-            status: "ACTIVE",
-          },
-          include: {
-            class: {
-              include: {
-                academicYear: true,
+            id: true,
+            admissionId: true,
+            user: { select: { firstName: true, lastName: true } },
+            enrollments: {
+              where: { status: "ACTIVE" },
+              take: 1,
+              select: {
+                class: { select: { name: true } },
+                section: { select: { name: true } },
               },
             },
-            section: true,
-          },
-        },
-        feePayments: {
-          include: {
-            feeStructure: true,
           },
         },
       },
-      take: filters?.limit,
     });
 
-    // Calculate pending fees for each student
-    const pendingFees = [];
-
-    for (const student of students) {
-      const enrollment = student.enrollments[0];
-      if (!enrollment) continue;
-
-      // Get applicable fee structure
-      const feeStructure = await db.feeStructure.findFirst({
-        where: {
-          academicYearId: enrollment.class.academicYearId,
-          isActive: true,
-          OR: [
-            { applicableClasses: null },
-            { applicableClasses: { contains: enrollment.class.name } },
-          ],
-        },
-        include: {
-          items: {
-            include: {
-              feeType: true,
-            },
-          },
-        },
-      });
-
-      if (!feeStructure) continue;
-
-      // Calculate total fee amount
-      const totalAmount = feeStructure.items.reduce(
-        (sum, item) => sum + item.amount,
-        0
-      );
-
-      // Calculate total paid
-      const totalPaid = student.feePayments
-        .filter((payment) => payment.feeStructureId === feeStructure.id)
-        .reduce((sum, payment) => sum + payment.paidAmount, 0);
-
-      const balance = totalAmount - totalPaid;
-
-      if (balance > 0) {
-        pendingFees.push({
-          studentId: student.id,
-          studentName: `${student.user.firstName} ${student.user.lastName}`,
-          admissionId: student.admissionId,
-          class: enrollment.class.name,
-          section: enrollment.section.name,
-          totalAmount,
-          totalPaid,
-          balance,
-          feeStructureId: feeStructure.id,
-          feeStructureName: feeStructure.name,
-        });
-      }
-    }
+    const pendingFees = pendingPayments.map((payment) => ({
+      studentId: payment.student.id,
+      studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
+      admissionId: payment.student.admissionId,
+      class: payment.student.enrollments[0]?.class.name ?? "N/A",
+      section: payment.student.enrollments[0]?.section.name ?? "N/A",
+      totalAmount: payment.amount,
+      totalPaid: payment.paidAmount,
+      balance: payment.balance,
+      dueDate: payment.dueDate,
+      feeStructureId: payment.feeStructureId,
+      feeStructureName: payment.feeStructure?.name ?? "N/A",
+    }));
 
     return { success: true, data: pendingFees };
   } catch (error) {
@@ -486,40 +429,23 @@ export async function getPaymentStats(filters?: {
       }
     }
 
-    const [totalPayments, completedPayments, pendingPayments, partialPayments] =
-      await Promise.all([
-        db.feePayment.count({ where }),
-        db.feePayment.count({
-          where: { ...where, status: "COMPLETED" },
-        }),
-        db.feePayment.count({
-          where: { ...where, status: "PENDING" },
-        }),
-        db.feePayment.count({
-          where: { ...where, status: "PARTIAL" },
-        }),
-      ]);
-
-    const totalAmount = await db.feePayment.aggregate({
-      where,
-      _sum: {
-        amount: true,
-      },
-    });
-
-    const totalPaid = await db.feePayment.aggregate({
-      where,
-      _sum: {
-        paidAmount: true,
-      },
-    });
-
-    const totalBalance = await db.feePayment.aggregate({
-      where,
-      _sum: {
-        balance: true,
-      },
-    });
+    const [
+      totalPayments,
+      completedPayments,
+      pendingPayments,
+      partialPayments,
+      totalAmount,
+      totalPaid,
+      totalBalance,
+    ] = await Promise.all([
+      db.feePayment.count({ where }),
+      db.feePayment.count({ where: { ...where, status: "COMPLETED" } }),
+      db.feePayment.count({ where: { ...where, status: "PENDING" } }),
+      db.feePayment.count({ where: { ...where, status: "PARTIAL" } }),
+      db.feePayment.aggregate({ where, _sum: { amount: true } }),
+      db.feePayment.aggregate({ where, _sum: { paidAmount: true } }),
+      db.feePayment.aggregate({ where, _sum: { balance: true } }),
+    ]);
 
     return {
       success: true,
@@ -765,7 +691,7 @@ export async function getPaymentReceiptHTML(paymentId: string) {
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.schoolSettings.findFirst();
+    const systemSettings = await db.schoolSettings.findFirst({ where: { schoolId } });
     if (systemSettings) {
       (receiptData as any).school = {
         name: systemSettings.schoolName,
@@ -773,13 +699,11 @@ export async function getPaymentReceiptHTML(paymentId: string) {
         phone: systemSettings.schoolPhone,
         email: systemSettings.schoolEmail,
         website: systemSettings.schoolWebsite,
-        logo: systemSettings.schoolLogo
+        logo: systemSettings.schoolLogo,
       };
     }
 
-    // Generate the HTML receipt
     const html = getReceiptHTML(receiptData);
-
     return { success: true, data: { html, receiptData } };
   } catch (error) {
     console.error("Error generating receipt HTML:", error);
@@ -911,7 +835,7 @@ export async function getConsolidatedReceiptHTML(
     };
 
     // Fetch school info from SystemSettings
-    const systemSettings = await db.schoolSettings.findFirst();
+    const systemSettings = await db.schoolSettings.findFirst({ where: { schoolId } });
     if (systemSettings) {
       (receiptData as any).school = {
         name: systemSettings.schoolName,
@@ -919,20 +843,15 @@ export async function getConsolidatedReceiptHTML(
         phone: systemSettings.schoolPhone,
         email: systemSettings.schoolEmail,
         website: systemSettings.schoolWebsite,
-        logo: systemSettings.schoolLogo
+        logo: systemSettings.schoolLogo,
       };
     }
 
-    // Generate the HTML receipt
     const html = getReceiptHTML(receiptData);
 
     return {
       success: true,
-      data: {
-        html,
-        receiptData,
-        paymentCount: payments.length,
-      }
+      data: { html, receiptData, paymentCount: payments.length },
     };
   } catch (error) {
     console.error("Error generating consolidated receipt:", error);
@@ -941,61 +860,61 @@ export async function getConsolidatedReceiptHTML(
 }
 
 
-// Send fee reminders for due and overdue payments
 // Requirements: 7.1, 7.2, 7.4, 7.5
 export async function sendFeeReminders() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get all pending and partial payments
+    // Scoped to school — fetch all pending/partial payments with parents in one query
     const pendingPayments = await db.feePayment.findMany({
       where: {
-        status: {
-          in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL],
-        },
-        balance: {
-          gt: 0,
-        },
+        schoolId,
+        status: { in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL] },
+        balance: { gt: 0 },
       },
-      include: {
+      select: {
+        id: true,
+        studentId: true,
+        balance: true,
+        paymentDate: true,
+        feeStructure: { select: { validTo: true } },
         student: {
-          include: {
-            user: true,
-            parents: {
-              include: {
-                parent: true,
-              },
-            },
+          select: {
+            user: { select: { firstName: true, lastName: true } },
+            parents: { select: { parentId: true } },
           },
         },
-        feeStructure: true,
       },
     });
+
+    // Pre-aggregate outstanding balances per student in JS (avoids N+1)
+    const outstandingByStudent = pendingPayments.reduce<Record<string, number>>(
+      (acc, p) => {
+        acc[p.studentId] = (acc[p.studentId] ?? 0) + p.balance;
+        return acc;
+      },
+      {}
+    );
 
     let sentCount = 0;
     let failedCount = 0;
 
     for (const payment of pendingPayments) {
       try {
-        // Determine if payment is overdue
         const dueDate = payment.feeStructure.validTo || payment.paymentDate;
         const isOverdue = dueDate < today;
+        const totalOutstanding = outstandingByStudent[payment.studentId] ?? 0;
 
-        // Calculate total outstanding balance for this student
-        const allPayments = await db.feePayment.findMany({
-          where: { studentId: payment.studentId },
-        });
-
-        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
-
-        // Send notification to all parents
         for (const parentRelation of payment.student.parents) {
           await sendFeeReminder({
             studentId: payment.studentId,
             studentName: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
             amount: payment.balance,
-            dueDate: dueDate,
+            dueDate,
             isOverdue,
             outstandingBalance: totalOutstanding,
             parentId: parentRelation.parentId,
@@ -1010,11 +929,7 @@ export async function sendFeeReminders() {
 
     return {
       success: true,
-      data: {
-        totalPayments: pendingPayments.length,
-        sentCount,
-        failedCount,
-      },
+      data: { totalPayments: pendingPayments.length, sentCount, failedCount },
     };
   } catch (error) {
     console.error("Error sending fee reminders:", error);
@@ -1026,52 +941,51 @@ export async function sendFeeReminders() {
 // Requirements: 7.2, 7.4, 7.5
 export async function sendOverdueFeeAlerts() {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get all overdue payments
+    // Scoped to school — fetch overdue payments with parents in one query
     const overduePayments = await db.feePayment.findMany({
       where: {
-        status: {
-          in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL],
-        },
-        balance: {
-          gt: 0,
-        },
-        feeStructure: {
-          validTo: {
-            lt: today,
-          },
-        },
+        schoolId,
+        status: { in: [PaymentStatus.PENDING, PaymentStatus.PARTIAL] },
+        balance: { gt: 0 },
+        feeStructure: { validTo: { lt: today } },
       },
-      include: {
+      select: {
+        id: true,
+        studentId: true,
+        balance: true,
+        paymentDate: true,
+        feeStructure: { select: { validTo: true } },
         student: {
-          include: {
-            user: true,
-            parents: {
-              include: {
-                parent: true,
-              },
-            },
+          select: {
+            user: { select: { firstName: true, lastName: true } },
+            parents: { select: { parentId: true } },
           },
         },
-        feeStructure: true,
       },
     });
+
+    // Pre-aggregate outstanding balances per student in JS (avoids N+1)
+    const outstandingByStudent = overduePayments.reduce<Record<string, number>>(
+      (acc, p) => {
+        acc[p.studentId] = (acc[p.studentId] ?? 0) + p.balance;
+        return acc;
+      },
+      {}
+    );
 
     let sentCount = 0;
     let failedCount = 0;
 
     for (const payment of overduePayments) {
       try {
-        // Calculate total outstanding balance for this student
-        const allPayments = await db.feePayment.findMany({
-          where: { studentId: payment.studentId },
-        });
+        const totalOutstanding = outstandingByStudent[payment.studentId] ?? 0;
 
-        const totalOutstanding = allPayments.reduce((sum, p) => sum + p.balance, 0);
-
-        // Send notification to all parents
         for (const parentRelation of payment.student.parents) {
           await sendFeeReminder({
             studentId: payment.studentId,
@@ -1092,11 +1006,7 @@ export async function sendOverdueFeeAlerts() {
 
     return {
       success: true,
-      data: {
-        totalOverdue: overduePayments.length,
-        sentCount,
-        failedCount,
-      },
+      data: { totalOverdue: overduePayments.length, sentCount, failedCount },
     };
   } catch (error) {
     console.error("Error sending overdue fee alerts:", error);

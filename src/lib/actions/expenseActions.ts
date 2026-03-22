@@ -24,8 +24,10 @@ export const getExpenses = withSchoolAuthAction(async (schoolId: string, userId:
   dateFrom?: Date;
   dateTo?: Date;
   limit?: number;
+  offset?: number;
 }) => {
   try {
+    const PAGE_SIZE = filters?.limit ?? 20;
     const where: any = { schoolId };
 
     if (filters?.category) {
@@ -44,10 +46,9 @@ export const getExpenses = withSchoolAuthAction(async (schoolId: string, userId:
 
     const expenses = await db.expense.findMany({
       where,
-      orderBy: {
-        date: "desc",
-      },
-      take: filters?.limit,
+      orderBy: { date: "desc" },
+      take: PAGE_SIZE,
+      skip: filters?.offset ?? 0,
     });
 
     return { success: true, data: expenses };

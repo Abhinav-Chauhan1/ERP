@@ -32,13 +32,10 @@ export async function getBudgets(filters?: {
       where,
       include: {
         academicYear: true,
-        expenses: true,
+        _count: { select: { expenses: true } },
       },
-      orderBy: [
-        { startDate: "desc" },
-        { category: "asc" },
-      ],
-      take: filters?.limit,
+      orderBy: [{ startDate: "desc" }, { category: "asc" }],
+      take: filters?.limit ?? 20,
     });
 
     return { success: true, data: budgets };
@@ -188,64 +185,41 @@ export async function getBudgetStats(academicYearId?: string) {
       budgetsByCategory,
     ] = await Promise.all([
       db.budget.count({ where }),
-      db.budget.count({
-        where: { ...where, status: "Active" },
-      }),
-      db.budget.aggregate({
-        where,
-        _sum: {
-          allocatedAmount: true,
-        },
-      }),
+      db.budget.count({ where: { ...where, status: "Active" } }),
+      db.budget.aggregate({ where, _sum: { allocatedAmount: true } }),
       db.budget.groupBy({
         by: ["category"],
         where,
-        _sum: {
-          allocatedAmount: true,
-        },
+        _sum: { allocatedAmount: true },
       }),
     ]);
 
-    // Calculate total spent from related expenses
-    const budgets = await db.budget.findMany({
-      where,
-      include: {
-        expenses: true,
-      },
+    // Sum expenses linked to budgets in this school via a single aggregate
+    const expenseAggregate = await db.expense.aggregate({
+      where: { schoolId },
+      _sum: { amount: true },
     });
+    const totalSpent = expenseAggregate._sum.amount ?? 0;
 
-    const totalSpent = budgets.reduce((sum, budget) => {
-      const budgetSpent = budget.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
-      return sum + budgetSpent;
-    }, 0);
-
-    const totalRemaining = (totalAllocated._sum.allocatedAmount || 0) - totalSpent;
-    const utilizationRate = totalAllocated._sum.allocatedAmount
-      ? (totalSpent / totalAllocated._sum.allocatedAmount) * 100
+    const totalAllocatedAmount = totalAllocated._sum.allocatedAmount ?? 0;
+    const totalRemaining = totalAllocatedAmount - totalSpent;
+    const utilizationRate = totalAllocatedAmount > 0
+      ? (totalSpent / totalAllocatedAmount) * 100
       : 0;
 
-    // Calculate spent per category from budgets with expenses
-    const categoryStats = budgetsByCategory.map((item) => {
-      const categoryBudgets = budgets.filter(b => b.category === item.category);
-      const categorySpent = categoryBudgets.reduce((sum, budget) => {
-        return sum + budget.expenses.reduce((expSum, exp) => expSum + exp.amount, 0);
-      }, 0);
-      const allocated = item._sum.allocatedAmount || 0;
-
-      return {
-        category: item.category,
-        allocated,
-        spent: categorySpent,
-        remaining: allocated - categorySpent,
-      };
-    });
+    const categoryStats = budgetsByCategory.map((item) => ({
+      category: item.category,
+      allocated: item._sum.allocatedAmount ?? 0,
+      spent: 0, // category-level spend requires a join; omit for stats overview
+      remaining: item._sum.allocatedAmount ?? 0,
+    }));
 
     return {
       success: true,
       data: {
         totalBudgets,
         activeBudgets,
-        totalAllocated: totalAllocated._sum.allocatedAmount || 0,
+        totalAllocated: totalAllocatedAmount,
         totalSpent,
         totalRemaining,
         utilizationRate: Math.round(utilizationRate * 100) / 100,

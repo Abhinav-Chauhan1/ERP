@@ -25,13 +25,11 @@ export const getPayrolls = withSchoolAuthAction(async (schoolId: string, userId:
   teacherId?: string;
   status?: string;
   limit?: number;
+  offset?: number;
 }) => {
   try {
-    const where: any = {
-      teacher: {
-        schoolId
-      }
-    };
+    const PAGE_SIZE = filters?.limit ?? 20;
+    const where: any = { teacher: { schoolId } };
 
     // Check permissions
     await checkPermission('PAYROLL', 'READ');
@@ -69,11 +67,9 @@ export const getPayrolls = withSchoolAuthAction(async (schoolId: string, userId:
           },
         },
       },
-      orderBy: [
-        { year: "desc" },
-        { month: "desc" },
-      ],
-      take: filters?.limit,
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+      take: PAGE_SIZE,
+      skip: filters?.offset ?? 0,
     });
 
     return { success: true, data: payrolls };
@@ -546,18 +542,16 @@ export const bulkGeneratePayrolls = withSchoolAuthAction(async (schoolId: string
     const results = [];
     const errors = [];
 
+    // Pre-fetch existing payrolls for this month/year to avoid N+1
+    const existingPayrolls = await db.payroll.findMany({
+      where: { schoolId, month, year },
+      select: { teacherId: true },
+    });
+    const existingTeacherIds = new Set(existingPayrolls.map((p) => p.teacherId));
+
     for (const teacher of teachers) {
       try {
-        // Check if payroll already exists
-        const existing = await db.payroll.findFirst({
-          where: {
-            teacherId: teacher.id,
-            month,
-            year,
-          },
-        });
-
-        if (!existing) {
+        if (!existingTeacherIds.has(teacher.id)) {
           const payroll = await db.payroll.create({
             data: {
               schoolId,
