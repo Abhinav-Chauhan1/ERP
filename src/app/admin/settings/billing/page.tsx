@@ -320,7 +320,7 @@ export default async function BillingPage() {
                           className={
                             inv.status === "PAID"
                               ? "border-emerald-300 text-emerald-700"
-                              : inv.status === "PENDING"
+                              : inv.status === "OPEN" || inv.status === "DRAFT"
                               ? "border-amber-300 text-amber-700"
                               : "border-red-300 text-red-700"
                           }
