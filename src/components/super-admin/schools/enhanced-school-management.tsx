@@ -50,10 +50,10 @@ import {
 import { SchoolDetailsDialog } from "./school-details-dialog";
 import { useBreakpoint, mobileTableConfig, mobileClasses } from "@/lib/utils/mobile-responsive";
 import { aria, focus, screenReader, formAccessibility, tableAccessibility } from "@/lib/utils/accessibility";
+import { PLAN_LIMITS } from "@/lib/config/plan-features";
 
 // Plan pricing — per-student INR from PLAN_LIMITS config
 const getPlanPrice = (plan: string): string => {
-  const { PLAN_LIMITS } = require('@/lib/config/plan-features');
   const limits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
   if (!limits) return '0';
   return `₹${limits.pricePerStudent}/student`;
