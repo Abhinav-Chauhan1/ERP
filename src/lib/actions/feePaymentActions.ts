@@ -360,7 +360,7 @@ export async function getPendingFees(filters?: {
         amount: true,
         paidAmount: true,
         balance: true,
-        dueDate: true,
+        paymentDate: true,
         status: true,
         feeStructureId: true,
         feeStructure: { select: { id: true, name: true } },
@@ -391,7 +391,7 @@ export async function getPendingFees(filters?: {
       totalAmount: payment.amount,
       totalPaid: payment.paidAmount,
       balance: payment.balance,
-      dueDate: payment.dueDate,
+      paymentDate: payment.paymentDate,
       feeStructureId: payment.feeStructureId,
       feeStructureName: payment.feeStructure?.name ?? "N/A",
     }));
