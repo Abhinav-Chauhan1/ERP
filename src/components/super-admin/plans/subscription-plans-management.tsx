@@ -84,6 +84,10 @@ const DEFAULT_FORM: FormData = {
 
 const FEATURE_GROUPS: { label: string; keys: FeatureKey[] }[] = [
   {
+    label: 'Starter features',
+    keys: ['study_tools'],
+  },
+  {
     label: 'Growth features',
     keys: ['library', 'transport', 'admissions', 'bulk_messaging', 'whatsapp',
            'message_templates', 'payroll', 'budget', 'finance_analytics',
@@ -112,6 +116,7 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   alumni:           'Alumni',
   audit_logs:       'Audit Logs',
   lms:              'LMS / Courses',
+  study_tools:      'Study Tools',
 };
 
 // ── Price preview ─────────────────────────────────────────────────────────────
