@@ -9,27 +9,35 @@ import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/li
 // ── Server-side plan summary cards ───────────────────────────────────────────
 
 async function PlanSummaryCards() {
-  const rawPlans = await db.subscriptionPlan.findMany({
-    where: { isActive: true },
-    include: { _count: { select: { subscriptions: true } } },
-    orderBy: { createdAt: "asc" },
-  });
+  let rawPlans: Array<Record<string, unknown>> = [];
 
-  // Normalise to a stable shape — Prisma client may not reflect latest schema columns
-  // so we read pricing from features JSON first, then top-level fields, then PLAN_LIMITS.
+  try {
+    // Avoid _count include — Prisma client may not be regenerated after migration
+    rawPlans = await (db.subscriptionPlan.findMany as Function)({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (err) {
+    console.error("[PlanSummaryCards] DB error:", err);
+    return (
+      <div className="text-center py-8 text-amber-400 text-sm">
+        Could not load plans from database. Run{" "}
+        <code className="bg-black/30 px-1 rounded">prisma generate</code> then redeploy,
+        or use &quot;Seed default plans&quot; below.
+      </div>
+    );
+  }
+
   const plans = rawPlans.map((p) => {
-    const feat = (p.features ?? {}) as Record<string, unknown>;
+    const feat = ((p.features ?? {}) as Record<string, unknown>);
     return {
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      isActive: p.isActive,
+      id: p.id as string,
+      name: p.name as string,
+      description: p.description as string | null,
       features: feat,
-      // Prefer top-level DB columns (cast via unknown), fall back to features JSON
-      pricePerStudent: ((p as unknown as Record<string, number>).pricePerStudent ?? feat.pricePerStudent ?? 0) as number,
-      minimumMonthly:  ((p as unknown as Record<string, number>).minimumMonthly  ?? feat.minimumMonthly  ?? 0) as number,
-      annualDiscountMonths: ((p as unknown as Record<string, number>).annualDiscountMonths ?? feat.annualDiscountMonths ?? 2) as number,
-      _count: p._count,
+      pricePerStudent: (typeof p.pricePerStudent === "number" ? p.pricePerStudent : (feat.pricePerStudent as number | undefined) ?? 0),
+      minimumMonthly:  (typeof p.minimumMonthly  === "number" ? p.minimumMonthly  : (feat.minimumMonthly  as number | undefined) ?? 0),
+      annualDiscountMonths: (typeof p.annualDiscountMonths === "number" ? p.annualDiscountMonths : (feat.annualDiscountMonths as number | undefined) ?? 2),
     };
   });
 
@@ -73,7 +81,8 @@ async function PlanSummaryCards() {
           : (PLAN_LIMITS[plan.name as PlanType]?.minMonthly ?? 500);
         const features = PLAN_FEATURES[plan.name as PlanType] ?? [];
         const needsSeeding = plan.pricePerStudent === 0;
-        const bill300 = calcMonthlyBill(plan.name as PlanType, 300);
+        const validPlanType = (["STARTER", "GROWTH", "DOMINATE"] as string[]).includes(plan.name);
+        const bill300 = validPlanType ? calcMonthlyBill(plan.name as PlanType, 300) : Math.max(300 * (plan.pricePerStudent / 100), plan.minimumMonthly / 100);
 
         const featJson = plan.features;
         const storageGB = (featJson?.storageGB as number) ?? PLAN_LIMITS[plan.name as PlanType]?.storageGB ?? 1;
@@ -150,7 +159,7 @@ async function PlanSummaryCards() {
             </div>
 
             <div className="text-xs text-gray-500 pt-1">
-              {plan._count.subscriptions} active school{plan._count.subscriptions !== 1 ? "s" : ""}
+              Active on {plan.name} plan
             </div>
           </div>
         );
