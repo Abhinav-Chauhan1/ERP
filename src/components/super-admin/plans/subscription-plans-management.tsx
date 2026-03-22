@@ -48,7 +48,7 @@ interface SubscriptionPlan {
   name:        string;
   description: string | null;
   interval:    string;
-  features:    PlanFeatures;
+  features:    Partial<PlanFeatures>; // DB JSON — all fields may be missing
   isActive:    boolean;
   createdAt:   string;
   _count?: { subscriptions: number };
@@ -195,18 +195,18 @@ export function SubscriptionPlansManagement() {
       interval:    plan.interval,
       isActive:    plan.isActive,
       features: {
-        pricePerStudent:      plan.features.pricePerStudent      ?? 400,
-        minimumMonthly:       plan.features.minimumMonthly       ?? 50000,
-        annualDiscountMonths: plan.features.annualDiscountMonths ?? 2,
-        storageGB:            plan.features.storageGB            ?? 1,
-        smsLimit:             plan.features.smsLimit             ?? 500,
-        whatsappLimit:        plan.features.whatsappLimit        ?? 0,
-        includedFeatures:     plan.features.includedFeatures     ?? [],
+        pricePerStudent:      plan.features?.pricePerStudent      ?? 400,
+        minimumMonthly:       plan.features?.minimumMonthly       ?? 50000,
+        annualDiscountMonths: plan.features?.annualDiscountMonths ?? 2,
+        storageGB:            plan.features?.storageGB            ?? 1,
+        smsLimit:             plan.features?.smsLimit             ?? 500,
+        whatsappLimit:        plan.features?.whatsappLimit        ?? 0,
+        includedFeatures:     plan.features?.includedFeatures     ?? [],
         support: {
-          email:     plan.features.support?.email     ?? true,
-          phone:     plan.features.support?.phone     ?? false,
-          priority:  plan.features.support?.priority  ?? false,
-          dedicated: plan.features.support?.dedicated ?? false,
+          email:     plan.features?.support?.email     ?? true,
+          phone:     plan.features?.support?.phone     ?? false,
+          priority:  plan.features?.support?.priority  ?? false,
+          dedicated: plan.features?.support?.dedicated ?? false,
         },
       },
     });
@@ -354,14 +354,14 @@ export function SubscriptionPlansManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm space-y-0.5">
-                        {plan.features.pricePerStudent > 0 ? (
+                        {(plan.features?.pricePerStudent ?? 0) > 0 ? (
                           <>
                             <div className="flex items-center gap-1">
                               <IndianRupee className="h-3 w-3" />
-                              <span>{(plan.features.pricePerStudent / 100).toFixed(0)}/student/mo</span>
+                              <span>{((plan.features?.pricePerStudent ?? 0) / 100).toFixed(0)}/student/mo</span>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Min {fmt(plan.features.minimumMonthly)}/mo
+                              Min {fmt(plan.features?.minimumMonthly ?? 0)}/mo
                             </div>
                           </>
                         ) : (
@@ -373,16 +373,16 @@ export function SubscriptionPlansManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="text-xs space-y-0.5">
-                        <div>{plan.features.storageGB}GB storage</div>
-                        <div>SMS: {plan.features.smsLimit === -1 ? '∞' : plan.features.smsLimit}</div>
-                        <div>WA: {plan.features.whatsappLimit === -1 ? '∞' : plan.features.whatsappLimit}</div>
+                        <div>{plan.features?.storageGB ?? '?'}GB storage</div>
+                        <div>SMS: {plan.features?.smsLimit === -1 ? '∞' : (plan.features?.smsLimit ?? '?')}</div>
+                        <div>WA: {plan.features?.whatsappLimit === -1 ? '∞' : (plan.features?.whatsappLimit ?? '?')}</div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-xs text-muted-foreground">
-                        {plan.features.includedFeatures.length === 0
+                        {(plan.features?.includedFeatures?.length ?? 0) === 0
                           ? 'Core only'
-                          : `${plan.features.includedFeatures.length} features`}
+                          : `${plan.features?.includedFeatures?.length ?? 0} features`}
                       </div>
                     </TableCell>
                     <TableCell>

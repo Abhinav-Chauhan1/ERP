@@ -9,16 +9,29 @@ import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/li
 // ── Server-side plan summary cards ───────────────────────────────────────────
 
 async function PlanSummaryCards() {
-  const plans = await db.subscriptionPlan.findMany({
+  const rawPlans = await db.subscriptionPlan.findMany({
     where: { isActive: true },
     include: { _count: { select: { subscriptions: true } } },
     orderBy: { createdAt: "asc" },
-  }) as Array<{
-    id: string; name: string; description: string | null;
-    pricePerStudent: number; minimumMonthly: number; annualDiscountMonths: number;
-    features: Record<string, unknown>; isActive: boolean;
-    _count: { subscriptions: number };
-  }>;
+  });
+
+  // Normalise to a stable shape — Prisma client may not reflect latest schema columns
+  // so we read pricing from features JSON first, then top-level fields, then PLAN_LIMITS.
+  const plans = rawPlans.map((p) => {
+    const feat = (p.features ?? {}) as Record<string, unknown>;
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      isActive: p.isActive,
+      features: feat,
+      // Prefer top-level DB columns (cast via unknown), fall back to features JSON
+      pricePerStudent: ((p as unknown as Record<string, number>).pricePerStudent ?? feat.pricePerStudent ?? 0) as number,
+      minimumMonthly:  ((p as unknown as Record<string, number>).minimumMonthly  ?? feat.minimumMonthly  ?? 0) as number,
+      annualDiscountMonths: ((p as unknown as Record<string, number>).annualDiscountMonths ?? feat.annualDiscountMonths ?? 2) as number,
+      _count: p._count,
+    };
+  });
 
   const FEATURE_LABELS: Record<string, string> = {
     library: "Library", transport: "Transport", admissions: "Admissions",
