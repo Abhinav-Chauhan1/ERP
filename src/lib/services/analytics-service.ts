@@ -12,10 +12,9 @@ import { prisma } from '@/lib/db';
 import { 
   SubscriptionStatus, 
   PaymentStatus, 
-  InvoiceStatus,
-  PlanType,
   SchoolStatus 
 } from '@prisma/client';
+import { calcMonthlyBill, PlanType } from '@/lib/config/plan-features';
 
 // ============================================================================
 // Types and Interfaces
@@ -97,11 +96,17 @@ export interface UsageAnalytics {
     features: Record<string, number>;
     lastActivity: Date;
   }>;
-  resourceConsumption: {
-    storage: { total: number; average: number; peak: number };
-    bandwidth: { total: number; average: number; peak: number };
-    apiCalls: { total: number; average: number; peak: number };
-  };
+  resourceConsumption: Array<{
+    schoolId: string;
+    schoolName: string;
+    plan: string;
+    storageUsedMB: number;
+    storageLimitMB: number;
+    smsUsed: number;
+    smsLimit: number;
+    whatsappUsed: number;
+    whatsappLimit: number;
+  }>;
   geographicDistribution: Array<{
     region: string;
     schools: number;
@@ -198,11 +203,11 @@ export class AnalyticsService {
       // Parallelize all database queries to avoid sequential execution (fixes N+1)
       const [
         payments,
-        activeSubscriptions,
+        activeSchoolsForMRR,
         totalActiveSchools,
         previousPeriodPayments
       ] = await Promise.all([
-        // Current period payments
+        // Current period payments (real collected revenue)
         prisma.payment.findMany({
           where: {
             status: PaymentStatus.COMPLETED,
@@ -220,13 +225,12 @@ export class AnalyticsService {
             },
           },
         }),
-        // Active subscriptions for MRR/ARR calculation
-        prisma.enhancedSubscription.findMany({
-          where: {
-            status: SubscriptionStatus.ACTIVE,
-          },
-          include: {
+        // Active schools with student counts for calcMonthlyBill
+        prisma.school.findMany({
+          where: { status: SchoolStatus.ACTIVE },
+          select: {
             plan: true,
+            _count: { select: { students: true } },
           },
         }),
         // Total active schools count
@@ -245,22 +249,17 @@ export class AnalyticsService {
         })
       ]);
 
-      // Calculate total revenue
+      // Calculate total collected revenue (paise)
       const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
 
-      // Calculate MRR and ARR
-      const monthlyRevenue = activeSubscriptions
-        .filter(sub => sub.plan.interval === 'month')
-        .reduce((sum, sub) => sum + sub.plan.amount, 0);
-      
-      const yearlyRevenue = activeSubscriptions
-        .filter(sub => sub.plan.interval === 'year')
-        .reduce((sum, sub) => sum + (sub.plan.amount / 12), 0);
-
-      const monthlyRecurringRevenue = monthlyRevenue + yearlyRevenue;
+      // Calculate projected MRR/ARR via calcMonthlyBill (INR → paise)
+      const monthlyRecurringRevenue = activeSchoolsForMRR.reduce((sum, school) => {
+        const bill = calcMonthlyBill(school.plan as import('@/lib/config/plan-features').PlanType, school._count.students);
+        return sum + bill * 100; // INR → paise
+      }, 0);
       const annualRecurringRevenue = monthlyRecurringRevenue * 12;
 
-      // Calculate ARPU
+      // Calculate ARPU (projected MRR per active school)
       const averageRevenuePerUser = totalActiveSchools > 0 ? monthlyRecurringRevenue / totalActiveSchools : 0;
 
       // Calculate revenue growth rate
@@ -378,7 +377,7 @@ export class AnalyticsService {
    */
   async getUsageAnalytics(schoolId?: string): Promise<UsageAnalytics> {
     try {
-      const whereClause = schoolId ? { schoolId } : {};
+      const whereClause: Record<string, unknown> = schoolId ? { schoolId } : {};
 
       // Get school counts
       const totalSchools = await prisma.school.count();
@@ -771,12 +770,17 @@ export class AnalyticsService {
   }
 
   private async getCohortAnalysis() {
-    // Simplified cohort analysis - would need more complex implementation
-    return [
-      { cohort: '2024-01', month0: 100, month1: 85, month3: 70, month6: 60, month12: 50 },
-      { cohort: '2024-02', month0: 100, month1: 88, month3: 75, month6: 65, month12: 0 },
-      // Add more cohorts based on actual data
-    ];
+    // Cohort analysis requires Payment records spanning multiple months.
+    // Return empty array if insufficient data — do not return fake stubs.
+    const distinctMonths = await prisma.payment.findMany({
+      where: { status: PaymentStatus.COMPLETED, processedAt: { not: null } },
+      select: { processedAt: true },
+      distinct: ['processedAt'],
+      orderBy: { processedAt: 'asc' },
+    });
+    if (distinctMonths.length < 2) return [];
+    // Not enough payment history for meaningful cohort analysis yet.
+    return [];
   }
 
   private async getPredictiveChurnMetrics() {
@@ -890,22 +894,31 @@ export class AnalyticsService {
     return patterns;
   }
 
-  private async getResourceConsumption(whereClause: any) {
-    // Simplified resource consumption metrics
-    return {
-      storage: { total: 0, average: 0, peak: 0 },
-      bandwidth: { total: 0, average: 0, peak: 0 },
-      apiCalls: { total: 0, average: 0, peak: 0 },
-    };
+  private async getResourceConsumption(_whereClause: Record<string, unknown>) {
+    // Query real UsageCounter records for the current month
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const usage = await prisma.usageCounter.findMany({
+      where: { month: currentMonth },
+      include: { school: { select: { name: true, plan: true } } },
+      orderBy: { storageUsedMB: 'desc' },
+    });
+    return usage.map(u => ({
+      schoolId: u.schoolId,
+      schoolName: u.school.name,
+      plan: u.school.plan,
+      storageUsedMB: u.storageUsedMB,
+      storageLimitMB: u.storageLimitMB,
+      smsUsed: u.smsUsed,
+      smsLimit: u.smsLimit,         // -1 = unlimited
+      whatsappUsed: u.whatsappUsed,
+      whatsappLimit: u.whatsappLimit, // -1 = unlimited
+    }));
   }
 
   private async getGeographicDistribution() {
-    // Simplified geographic distribution
-    return [
-      { region: 'North America', schools: 0, revenue: 0 },
-      { region: 'Europe', schools: 0, revenue: 0 },
-      { region: 'Asia', schools: 0, revenue: 0 },
-    ];
+    // School.address is unstructured free text — cannot parse reliable geographic
+    // data from it. Return empty until structured location fields are added to schema.
+    return [];
   }
 
   private async generateCustomData(reportConfig: ReportConfig) {
@@ -983,17 +996,18 @@ export class AnalyticsService {
   }
 
   private async getAverageMonthlyRevenue() {
-    const activeSubscriptions = await prisma.enhancedSubscription.findMany({
-      where: { status: SubscriptionStatus.ACTIVE },
-      include: { plan: true },
+    // Use calcMonthlyBill per active school instead of deprecated plan.amount
+    const activeSchools = await prisma.school.findMany({
+      where: { status: SchoolStatus.ACTIVE },
+      select: {
+        plan: true,
+        _count: { select: { students: true } },
+      },
     });
-
-    const monthlyRevenue = activeSubscriptions.reduce((sum, sub) => {
-      const monthlyAmount = sub.plan.interval === 'year' ? sub.plan.amount / 12 : sub.plan.amount;
-      return sum + monthlyAmount;
-    }, 0);
-
-    return activeSubscriptions.length > 0 ? monthlyRevenue / activeSubscriptions.length : 0;
+    if (activeSchools.length === 0) return 0;
+    const totalMRR = activeSchools.reduce((sum, s) =>
+      sum + calcMonthlyBill(s.plan as PlanType, s._count.students) * 100, 0);
+    return totalMRR / activeSchools.length;
   }
 }
 

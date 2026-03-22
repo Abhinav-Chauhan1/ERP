@@ -3,48 +3,41 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
+import { calcMonthlyBill, PlanType } from "@/lib/config/plan-features";
 
 export async function getBillingDashboardData(timeRange: string = "30d") {
   await requireSuperAdminAccess();
 
   const now = new Date();
   let startDate: Date;
-  let endDate = now;
+  const endDate = now;
 
-  // Calculate date range
   switch (timeRange) {
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "1y":
-      startDate = subDays(now, 365);
-      break;
-    case "mtd":
-      startDate = startOfMonth(now);
-      break;
-    default:
-      startDate = subDays(now, 30);
+    case "7d":  startDate = subDays(now, 7);   break;
+    case "30d": startDate = subDays(now, 30);  break;
+    case "90d": startDate = subDays(now, 90);  break;
+    case "1y":  startDate = subDays(now, 365); break;
+    case "mtd": startDate = startOfMonth(now); break;
+    default:    startDate = subDays(now, 30);
   }
 
   try {
-    // OPTIMIZED: Single comprehensive query to get all subscription data
     const [
       subscriptionCounts,
       allSubscriptions,
-      monthlySubscriptions
+      monthlySubscriptions,
+      // Real collected revenue from Payment table
+      totalPaymentsAgg,
+      periodPaymentsAgg,
+      // Active schools with student counts for projected MRR
+      activeSchoolsForMRR,
+      // Monthly payment breakdown for trend chart
+      recentPayments,
     ] = await Promise.all([
-      // Get all subscription counts in a single query
       db.enhancedSubscription.groupBy({
-        by: ['status'],
+        by: ["status"],
         _count: { id: true },
       }),
-      // Get all subscriptions with school data for calculations
       db.enhancedSubscription.findMany({
         select: {
           id: true,
@@ -52,17 +45,12 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
           currentPeriodEnd: true,
           createdAt: true,
           school: {
-            select: {
-              name: true,
-              plan: true,
-              status: true,
-            },
+            select: { name: true, plan: true, status: true },
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 100, // Limit for performance
+        take: 100,
       }),
-      // Get subscriptions for the last 12 months for trend analysis
       db.enhancedSubscription.findMany({
         where: {
           createdAt: {
@@ -72,113 +60,134 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
         },
         select: {
           createdAt: true,
-          school: {
+          school: { select: { plan: true } },
+        },
+      }),
+      // All-time collected revenue (paise)
+      db.payment.aggregate({
+        where: { status: "COMPLETED" },
+        _sum: { amount: true },
+      }),
+      // Period collected revenue (paise)
+      db.payment.aggregate({
+        where: {
+          status: "COMPLETED",
+          processedAt: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      // Active schools with student counts for calcMonthlyBill
+      db.school.findMany({
+        where: { status: "ACTIVE" },
+        select: {
+          id: true,
+          name: true,
+          plan: true,
+          _count: { select: { students: true } },
+        },
+      }),
+      // Recent actual payments for the payments list
+      db.payment.findMany({
+        where: { status: "COMPLETED" },
+        orderBy: { processedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          processedAt: true,
+          paymentMethod: true,
+          subscription: {
             select: {
-              plan: true,
+              school: { select: { name: true, plan: true } },
             },
           },
         },
-      })
+      }),
     ]);
 
-    // Process subscription counts
-    const totalSubscriptions = subscriptionCounts.reduce((sum, stat) => sum + stat._count.id, 0);
+    // Subscription counts
+    const totalSubscriptions = subscriptionCounts.reduce((sum, s) => sum + s._count.id, 0);
     const activeSubscriptions = subscriptionCounts
-      .filter(s => s.status === 'ACTIVE')
-      .reduce((sum, stat) => sum + stat._count.id, 0);
+      .filter((s) => s.status === "ACTIVE")
+      .reduce((sum, s) => sum + s._count.id, 0);
     const expiredSubscriptions = subscriptionCounts
-      .filter(s => s.status !== 'ACTIVE')
-      .reduce((sum, stat) => sum + stat._count.id, 0);
+      .filter((s) => s.status !== "ACTIVE")
+      .reduce((sum, s) => sum + s._count.id, 0);
     const pendingSubscriptions = subscriptionCounts
-      .filter(s => s.status === 'TRIALING')
-      .reduce((sum, stat) => sum + stat._count.id, 0);
+      .filter((s) => s.status === "TRIALING")
+      .reduce((sum, s) => sum + s._count.id, 0);
 
-    // Calculate revenue metrics
-    const planPricing = {
-      STARTER: 2900, // ₹29 in paise
-      GROWTH: 4900,  // ₹49 in paise
-      DOMINATE: 9900, // ₹99 in paise
-    };
+    // --- Real collected revenue (from Payment table, in paise) ---
+    const totalCollectedPaise = totalPaymentsAgg._sum.amount ?? 0;
+    const periodCollectedPaise = periodPaymentsAgg._sum.amount ?? 0;
 
-    let totalRevenue = 0;
-    let monthlyRecurringRevenue = 0;
-    let revenueInPeriod = 0;
+    // --- Projected MRR via calcMonthlyBill (in INR) ---
+    // calcMonthlyBill returns INR; multiply by 100 to keep everything in paise
+    const projectedMRRPaise = activeSchoolsForMRR.reduce((sum, school) => {
+      const bill = calcMonthlyBill(school.plan as PlanType, school._count.students);
+      return sum + bill * 100; // INR → paise
+    }, 0);
+    const projectedARRPaise = projectedMRRPaise * 12;
 
-    // Calculate total revenue and MRR from all subscriptions
-    allSubscriptions.forEach((sub) => {
-      const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
-      totalRevenue += planPrice;
-      if (sub.status === 'ACTIVE') {
-        monthlyRecurringRevenue += planPrice;
-      }
-      // Calculate revenue for the selected period
-      if (sub.createdAt >= startDate && sub.createdAt <= endDate) {
-        revenueInPeriod += planPrice;
-      }
-    });
+    // Revenue by plan (projected, based on active schools)
+    const planGroups: Record<string, { revenue: number; subscriptions: number }> = {};
+    for (const school of activeSchoolsForMRR) {
+      const bill = calcMonthlyBill(school.plan as PlanType, school._count.students) * 100;
+      if (!planGroups[school.plan]) planGroups[school.plan] = { revenue: 0, subscriptions: 0 };
+      planGroups[school.plan].revenue += bill;
+      planGroups[school.plan].subscriptions += 1;
+    }
+    const revenueByPlan = Object.entries(planGroups).map(([plan, data]) => ({
+      plan,
+      revenue: data.revenue,
+      subscriptions: data.subscriptions,
+      percentage:
+        projectedMRRPaise > 0
+          ? ((data.revenue / projectedMRRPaise) * 100).toFixed(1)
+          : "0",
+    }));
 
-    // Get revenue by plan
-    const revenueByPlan = Object.entries(planPricing).map(([plan, price]) => {
-      const planSubscriptions = allSubscriptions.filter(sub => 
-        sub.school.plan === plan && sub.status === 'ACTIVE'
-      );
-      return {
-        plan,
-        revenue: planSubscriptions.length * price,
-        subscriptions: planSubscriptions.length,
-        percentage: totalRevenue > 0 ? ((planSubscriptions.length * price / totalRevenue) * 100).toFixed(1) : "0",
-      };
-    });
-
-    // Calculate monthly revenue data in memory (much faster than 12 DB queries)
+    // Monthly subscription trend (count only — no fake revenue)
     const monthlyRevenueData = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
-
-      // Filter in memory instead of querying database
-      const monthlySubscriptionsFiltered = monthlySubscriptions.filter(sub => 
-        sub.createdAt >= monthStart && sub.createdAt <= monthEnd
+      const monthSubs = monthlySubscriptions.filter(
+        (s) => s.createdAt >= monthStart && s.createdAt <= monthEnd
       );
-
-      let monthlyRevenue = 0;
-      monthlySubscriptionsFiltered.forEach((sub) => {
-        const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
-        monthlyRevenue += planPrice;
-      });
-
       monthlyRevenueData.push({
         month: format(monthStart, "MMM yyyy"),
-        revenue: monthlyRevenue,
-        subscriptions: monthlySubscriptionsFiltered.length,
+        subscriptions: monthSubs.length,
+        // No fake revenue — only show if real payment data exists
+        revenue: 0,
       });
     }
 
-    // Get recent payments/invoices (using subscription data)
-    const recentPayments = allSubscriptions
-      .filter(sub => sub.status === 'ACTIVE')
-      .slice(0, 10)
-      .map(sub => ({
-        id: sub.id,
-        schoolName: sub.school.name,
-        amount: planPricing[sub.school.plan as keyof typeof planPricing] || 0,
-        status: 'COMPLETED',
-        date: sub.createdAt,
-        plan: sub.school.plan,
-      }));
+    // Recent payments list from real Payment records
+    const recentPaymentsList = recentPayments.map((p) => ({
+      id: p.id,
+      schoolName: p.subscription?.school?.name ?? "Unknown",
+      amount: p.amount, // paise
+      status: p.status,
+      date: p.processedAt ?? new Date(),
+      plan: p.subscription?.school?.plan ?? "UNKNOWN",
+      paymentMethod: p.paymentMethod,
+    }));
 
-    // Calculate churn metrics
-    const churnedSubscriptions = allSubscriptions.filter(sub => 
-      sub.status !== 'ACTIVE' && 
-      sub.currentPeriodEnd && 
-      sub.currentPeriodEnd >= startDate && 
-      sub.currentPeriodEnd <= endDate
-    );
+    // Churn: subscriptions that ended in period
+    const churnedCount = allSubscriptions.filter(
+      (s) =>
+        s.status !== "ACTIVE" &&
+        s.currentPeriodEnd &&
+        s.currentPeriodEnd >= startDate &&
+        s.currentPeriodEnd <= endDate
+    ).length;
+    const churnRate =
+      totalSubscriptions > 0
+        ? Number(((churnedCount / totalSubscriptions) * 100).toFixed(2))
+        : 0;
 
-    const churnRate = totalSubscriptions > 0 ? 
-      ((churnedSubscriptions.length / totalSubscriptions) * 100) : 0;
-
-    // Get subscription status distribution
     const subscriptionsByStatus = [
       { status: "Active", count: activeSubscriptions, color: "green" },
       { status: "Expired", count: expiredSubscriptions, color: "red" },
@@ -189,34 +198,38 @@ export async function getBillingDashboardData(timeRange: string = "30d") {
       success: true,
       data: {
         metrics: {
-          totalRevenue,
-          monthlyRecurringRevenue,
-          revenueInPeriod,
+          // Collected (real payments)
+          totalCollected: totalCollectedPaise,       // paise
+          periodCollected: periodCollectedPaise,     // paise
+          // Projected (calcMonthlyBill)
+          projectedMRR: projectedMRRPaise,           // paise
+          projectedARR: projectedARRPaise,           // paise
+          // Legacy keys kept so existing UI doesn't break — mapped to real values
+          totalRevenue: totalCollectedPaise,
+          monthlyRecurringRevenue: projectedMRRPaise,
+          revenueInPeriod: periodCollectedPaise,
+          // Subscription counts
           totalSubscriptions,
           activeSubscriptions,
           expiredSubscriptions,
           pendingSubscriptions,
-          churnRate: Number(churnRate.toFixed(2)),
-          averageRevenuePerSubscription: totalSubscriptions > 0 ? 
-            Math.round(totalRevenue / totalSubscriptions) : 0,
+          churnRate,
+          averageRevenuePerSubscription:
+            activeSubscriptions > 0
+              ? Math.round(projectedMRRPaise / activeSubscriptions)
+              : 0,
+          hasPaymentData: totalCollectedPaise > 0,
         },
         revenueByPlan,
         monthlyRevenueData,
-        recentPayments,
+        recentPayments: recentPaymentsList,
         subscriptionsByStatus,
-        timeRange: {
-          startDate,
-          endDate,
-          label: timeRange,
-        },
+        timeRange: { startDate, endDate, label: timeRange },
       },
     };
   } catch (error) {
     console.error("Error fetching billing dashboard data:", error);
-    return {
-      success: false,
-      error: "Failed to fetch billing data",
-    };
+    return { success: false, error: "Failed to fetch billing data" };
   }
 }
 
@@ -224,45 +237,38 @@ export async function getPaymentHistory(limit: number = 50) {
   await requireSuperAdminAccess();
 
   try {
-    // Since we don't have actual payment records yet, we'll use subscription data
-    const subscriptions = await db.enhancedSubscription.findMany({
-      include: {
-        school: {
+    const payments = await db.payment.findMany({
+      where: { status: "COMPLETED" },
+      orderBy: { processedAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        amount: true,
+        status: true,
+        processedAt: true,
+        paymentMethod: true,
+        subscription: {
           select: {
-            name: true,
-            plan: true,
+            school: { select: { name: true, plan: true } },
           },
         },
       },
-      orderBy: { createdAt: "desc" },
-      take: limit,
     });
 
-    const planPricing = {
-      STARTER: 2900,
-      GROWTH: 4900,
-      DOMINATE: 9900,
-    };
-
-    const paymentHistory = subscriptions.map(sub => ({
-      id: sub.id,
-      schoolName: sub.school.name,
-      amount: planPricing[sub.school.plan as keyof typeof planPricing] || 0,
-      status: 'COMPLETED',
-      date: sub.createdAt,
-      plan: sub.school.plan,
-      subscriptionId: sub.id,
+    const paymentHistory = payments.map((p) => ({
+      id: p.id,
+      schoolName: p.subscription?.school?.name ?? "Unknown",
+      amount: p.amount, // paise — real value from Payment table
+      status: p.status,
+      date: p.processedAt ?? new Date(),
+      plan: p.subscription?.school?.plan ?? "UNKNOWN",
+      paymentMethod: p.paymentMethod,
+      subscriptionId: p.id,
     }));
 
-    return {
-      success: true,
-      data: paymentHistory,
-    };
+    return { success: true, data: paymentHistory };
   } catch (error) {
     console.error("Error fetching payment history:", error);
-    return {
-      success: false,
-      error: "Failed to fetch payment history",
-    };
+    return { success: false, error: "Failed to fetch payment history" };
   }
 }

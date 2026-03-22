@@ -3,13 +3,12 @@
 import { db } from "@/lib/db";
 import { requireSuperAdminAccess } from "@/lib/auth/tenant";
 import { subDays, startOfMonth, endOfMonth, format } from "date-fns";
-import { unstable_cache } from "next/cache";
-import { CACHE_DURATION, CACHE_TAGS } from "@/lib/utils/cache";
+import { calcMonthlyBill, PlanType } from "@/lib/config/plan-features";
 import {
   getCachedAuthAnalyticsDashboard,
   getCachedAuthenticationMetrics,
   getCachedSecurityMetrics,
-  getCachedUserActivityMetrics
+  getCachedUserActivityMetrics,
 } from "@/lib/utils/cached-auth-analytics";
 
 export async function getDashboardAnalytics(timeRange: string = "30d") {
@@ -17,96 +16,39 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
 
   const now = new Date();
   let startDate: Date;
-  let endDate = now;
+  const endDate = now;
 
-  // Calculate date range
   switch (timeRange) {
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "1y":
-      startDate = subDays(now, 365);
-      break;
-    case "mtd":
-      startDate = startOfMonth(now);
-      break;
-    default:
-      startDate = subDays(now, 30);
+    case "7d":  startDate = subDays(now, 7);   break;
+    case "30d": startDate = subDays(now, 30);  break;
+    case "90d": startDate = subDays(now, 90);  break;
+    case "1y":  startDate = subDays(now, 365); break;
+    case "mtd": startDate = startOfMonth(now); break;
+    default:    startDate = subDays(now, 30);
   }
 
   try {
-    // OPTIMIZED: Single comprehensive query to get all required data
     const [
       schoolStats,
       userStats,
       subscriptionStats,
       recentSchools,
-      subscriptionsWithSchools,
       recentActivity,
       userGrowthData,
       schoolsByPlan,
-      churnedSchools
+      // Active schools with student counts for real MRR via calcMonthlyBill
+      activeSchoolsForMRR,
+      // Real collected revenue from Payment table
+      totalPaymentsAgg,
     ] = await Promise.all([
-      // Single query for all school statistics
-      db.school.groupBy({
-        by: ['status'],
-        _count: { id: true },
-      }),
-      // Single query for all user statistics  
-      db.user.groupBy({
-        by: ['role'],
-        _count: { id: true },
-      }),
-      // Single query for subscription statistics
-      db.enhancedSubscription.groupBy({
-        by: ['status'],
-        _count: { id: true },
-      }),
-      // Recent schools count
-      db.school.count({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      }),
-      // Get subscriptions with school data for revenue calculations - OPTIMIZED
-      db.enhancedSubscription.findMany({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        select: {
-          id: true,
-          status: true,
-          createdAt: true,
-          school: {
-            select: {
-              name: true,
-              plan: true,
-            },
-          },
-        },
-      }),
-      // Get recent activity (audit logs) - OPTIMIZED with specific fields
+      db.school.groupBy({ by: ["status"], _count: { id: true } }),
+      db.user.groupBy({ by: ["role"], _count: { id: true } }),
+      db.enhancedSubscription.groupBy({ by: ["status"], _count: { id: true } }),
+      db.school.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
       db.auditLog.findMany({
         take: 5,
         orderBy: { createdAt: "desc" },
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
+        where: { createdAt: { gte: startDate, lte: endDate } },
         select: {
           id: true,
           action: true,
@@ -115,22 +57,10 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
           createdAt: true,
           changes: true,
           ipAddress: true,
-          user: {
-            select: {
-              name: true,
-              email: true,
-              role: true,
-            },
-          },
-          school: {
-            select: {
-              name: true,
-              schoolCode: true,
-            },
-          },
+          user: { select: { name: true, email: true, role: true } },
+          school: { select: { name: true, schoolCode: true } },
         },
       }),
-      // OPTIMIZED: Single query for user growth data
       db.user.findMany({
         where: {
           createdAt: {
@@ -138,97 +68,77 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
             lte: now,
           },
         },
+        select: { createdAt: true },
+      }),
+      db.school.groupBy({ by: ["plan"], _count: { id: true } }),
+      // Real MRR: active schools + student counts
+      db.school.findMany({
+        where: { status: "ACTIVE" },
         select: {
-          createdAt: true,
+          plan: true,
+          _count: { select: { students: true } },
         },
       }),
-      // School distribution by plan - MOVED INTO Promise.all
-      db.school.groupBy({
-        by: ["plan"],
-        _count: {
-          id: true,
-        },
+      // Real collected revenue (all-time, paise)
+      db.payment.aggregate({
+        where: { status: "COMPLETED" },
+        _sum: { amount: true },
       }),
-      // Churn rate calculation - MOVED INTO Promise.all
-      db.school.count({
-        where: {
-          status: "SUSPENDED",
-          updatedAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-      })
     ]);
 
-    // Process school statistics
-    const totalSchools = schoolStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const activeSchools = schoolStats.find(s => s.status === 'ACTIVE')?._count.id || 0;
-    const suspendedSchools = schoolStats.find(s => s.status === 'SUSPENDED')?._count.id || 0;
+    // School stats
+    const totalSchools = schoolStats.reduce((sum, s) => sum + s._count.id, 0);
+    const activeSchools = schoolStats.find((s) => s.status === "ACTIVE")?._count.id ?? 0;
+    const suspendedSchools = schoolStats.find((s) => s.status === "SUSPENDED")?._count.id ?? 0;
 
-    // Process user statistics
-    const totalUsers = userStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const totalStudents = userStats.find(u => u.role === 'STUDENT')?._count.id || 0;
-    const totalTeachers = userStats.find(u => u.role === 'TEACHER')?._count.id || 0;
-    const totalAdmins = userStats.find(u => u.role === 'ADMIN')?._count.id || 0;
+    // User stats
+    const totalUsers = userStats.reduce((sum, s) => sum + s._count.id, 0);
+    const totalStudents = userStats.find((u) => u.role === "STUDENT")?._count.id ?? 0;
+    const totalTeachers = userStats.find((u) => u.role === "TEACHER")?._count.id ?? 0;
+    const totalAdmins = userStats.find((u) => u.role === "ADMIN")?._count.id ?? 0;
 
-    // Process subscription statistics
-    const totalSubscriptions = subscriptionStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const activeSubscriptions = subscriptionStats.find(s => s.status === 'ACTIVE' === true)?._count.id || 0;
+    // Subscription stats
+    const totalSubscriptions = subscriptionStats.reduce((sum, s) => sum + s._count.id, 0);
+    const activeSubscriptions =
+      subscriptionStats.find((s) => s.status === "ACTIVE")?._count.id ?? 0;
 
-    // Calculate revenue metrics (mock calculation - in real app would use actual payment data)
-    const planPricing = {
-      STARTER: 2900, // ₹29 in paise
-      GROWTH: 4900,  // ₹49 in paise
-      DOMINATE: 9900, // ₹99 in paise
-    };
+    // --- Projected MRR via calcMonthlyBill (INR → paise) ---
+    const projectedMRRPaise = activeSchoolsForMRR.reduce((sum, school) => {
+      const bill = calcMonthlyBill(school.plan as PlanType, school._count.students);
+      return sum + bill * 100;
+    }, 0);
 
-    let totalRevenue = 0;
-    let monthlyRecurringRevenue = 0;
+    // --- Real collected revenue (paise) ---
+    const totalCollectedPaise = totalPaymentsAgg._sum.amount ?? 0;
 
-    subscriptionsWithSchools.forEach((sub) => {
-      const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
-      totalRevenue += planPrice;
-      if (sub.status === 'ACTIVE') {
-        monthlyRecurringRevenue += planPrice;
-      }
-    });
-
-    // Calculate user growth data in memory (much faster than multiple DB queries)
+    // User growth (cumulative, in-memory)
     const userGrowthDataProcessed = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
-
-      // Count users created up to this month end (cumulative)
-      const monthlyUsers = userGrowthData.filter(user => user.createdAt <= monthEnd).length;
-
+      const count = userGrowthData.filter((u) => u.createdAt <= monthEnd).length;
       userGrowthDataProcessed.push({
         month: format(monthStart, "MMM yyyy"),
-        users: monthlyUsers,
+        users: count,
       });
     }
 
-    // School distribution by plan (now from parallel fetch)
+    // School distribution by plan
     const schoolDistribution = schoolsByPlan.map((item) => ({
       plan: item.plan,
       count: item._count.id,
-      percentage: ((item._count.id / totalSchools) * 100).toFixed(1),
+      percentage:
+        totalSchools > 0
+          ? ((item._count.id / totalSchools) * 100).toFixed(1)
+          : "0",
     }));
 
-    // Churn rate calculation (now from parallel fetch)
-
-    const churnRate = totalSchools > 0 ? ((churnedSchools / totalSchools) * 100) : 0;
-
-    // Calculate average revenue per user
-    const averageRevenuePerUser = totalUsers > 0 ? Math.round(totalRevenue / totalUsers) : 0;
-
-    // Get authentication analytics summary
+    // Auth analytics (non-blocking)
     const authAnalytics = await getCachedAuthAnalyticsDashboard(
       { startDate, endDate },
       {}
-    ).catch(error => {
-      console.warn('Failed to get auth analytics:', error);
+    ).catch((err) => {
+      console.warn("Failed to get auth analytics:", err);
       return null;
     });
 
@@ -236,8 +146,16 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
       success: true,
       data: {
         kpiData: {
-          totalRevenue,
-          monthlyRecurringRevenue,
+          // Collected revenue (real Payment records, paise)
+          totalCollected: totalCollectedPaise,
+          hasPaymentData: totalCollectedPaise > 0,
+          // Projected MRR (calcMonthlyBill, paise)
+          projectedMRR: projectedMRRPaise,
+          projectedARR: projectedMRRPaise * 12,
+          // Legacy keys — mapped to real values so existing UI doesn't break
+          totalRevenue: totalCollectedPaise,
+          monthlyRecurringRevenue: projectedMRRPaise,
+          // School/user counts (real)
           totalSchools,
           activeSchools,
           suspendedSchools,
@@ -248,48 +166,45 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
           recentSchools,
           activeSubscriptions,
           totalSubscriptions,
-          churnRate: Number(churnRate.toFixed(2)),
-          averageRevenuePerUser,
-          customerLifetimeValue: averageRevenuePerUser * 12, // Simplified calculation
-          conversionRate: totalSchools > 0 ? ((activeSubscriptions / totalSchools) * 100) : 0,
+          // Churn: not enough data to compute reliably — omit fake value
+          churnRate: null,
+          averageRevenuePerUser:
+            activeSchools > 0
+              ? Math.round(projectedMRRPaise / activeSchools)
+              : 0,
         },
         userGrowthData: userGrowthDataProcessed,
         schoolDistribution,
         recentActivity: recentActivity.map((log) => ({
           id: log.id,
           action: log.action,
-          entityType: log.resource || 'UNKNOWN',
-          entityId: log.resourceId || "",
-          userName: log.user?.name || "System",
-          userEmail: log.user?.email || "",
-          userRole: log.user?.role || null,
-          schoolName: log.school?.name || null,
-          schoolCode: log.school?.schoolCode || null,
+          entityType: log.resource ?? "UNKNOWN",
+          entityId: log.resourceId ?? "",
+          userName: log.user?.name ?? "System",
+          userEmail: log.user?.email ?? "",
+          userRole: log.user?.role ?? null,
+          schoolName: log.school?.name ?? null,
+          schoolCode: log.school?.schoolCode ?? null,
           createdAt: log.createdAt,
           metadata: log.changes,
           ipAddress: log.ipAddress,
-          isAuthEvent: ['LOGIN', 'LOGOUT', 'CREATE', 'UPDATE'].includes(log.action),
+          isAuthEvent: ["LOGIN", "LOGOUT", "CREATE", "UPDATE"].includes(log.action),
         })),
-        authenticationAnalytics: authAnalytics ? {
-          overview: authAnalytics.overview,
-          totalAuthEvents: authAnalytics.overview.totalSessions,
-          authSuccessRate: authAnalytics.overview.successRate,
-          securityAlerts: authAnalytics.overview.securityAlerts,
-          insights: authAnalytics.insights.slice(0, 3), // Top 3 insights
-        } : null,
-        timeRange: {
-          startDate,
-          endDate,
-          label: timeRange,
-        },
+        authenticationAnalytics: authAnalytics
+          ? {
+              overview: authAnalytics.overview,
+              totalAuthEvents: authAnalytics.overview.totalSessions,
+              authSuccessRate: authAnalytics.overview.successRate,
+              securityAlerts: authAnalytics.overview.securityAlerts,
+              insights: authAnalytics.insights.slice(0, 3),
+            }
+          : null,
+        timeRange: { startDate, endDate, label: timeRange },
       },
     };
   } catch (error) {
     console.error("Error fetching dashboard analytics:", error);
-    return {
-      success: false,
-      error: "Failed to fetch analytics data",
-    };
+    return { success: false, error: "Failed to fetch analytics data" };
   }
 }
 
@@ -300,123 +215,75 @@ export async function getRevenueAnalytics(timeRange: string = "30d") {
   let startDate: Date;
 
   switch (timeRange) {
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "1y":
-      startDate = subDays(now, 365);
-      break;
-    default:
-      startDate = subDays(now, 30);
+    case "7d":  startDate = subDays(now, 7);   break;
+    case "30d": startDate = subDays(now, 30);  break;
+    case "90d": startDate = subDays(now, 90);  break;
+    case "1y":  startDate = subDays(now, 365); break;
+    default:    startDate = subDays(now, 30);
   }
 
   try {
-    // Get revenue data by month - OPTIMIZED SINGLE QUERY
-    const revenueData = [];
-    const planPricing = {
-      STARTER: 2900,
-      GROWTH: 4900,
-      DOMINATE: 9900,
-    };
-
-    // Single query to get all subscriptions for the time range
-    const allSubscriptions = await db.enhancedSubscription.findMany({
+    // Real collected payments in the period
+    const payments = await db.payment.findMany({
       where: {
-        createdAt: {
-          gte: startDate,
-          lte: now,
-        },
+        status: "COMPLETED",
+        processedAt: { gte: startDate, lte: now },
       },
-      include: {
-        school: {
-          select: {
-            plan: true,
-          },
-        },
-      },
+      select: { amount: true, processedAt: true },
+      orderBy: { processedAt: "asc" },
     });
 
-    // Group by month in memory instead of 12 separate queries
+    // Group by month in memory
+    const revenueData = [];
     for (let i = 11; i >= 0; i--) {
       const monthStart = startOfMonth(subDays(now, i * 30));
       const monthEnd = endOfMonth(monthStart);
-
-      // Filter in memory - much faster than DB query
-      const monthlySubscriptions = allSubscriptions.filter(sub =>
-        sub.createdAt >= monthStart && sub.createdAt <= monthEnd
+      const monthPayments = payments.filter(
+        (p) => p.processedAt && p.processedAt >= monthStart && p.processedAt <= monthEnd
       );
-
-      let monthlyRevenue = 0;
-      monthlySubscriptions.forEach((sub) => {
-        const planPrice = planPricing[sub.school.plan as keyof typeof planPricing] || 0;
-        monthlyRevenue += planPrice;
-      });
-
+      const revenue = monthPayments.reduce((sum, p) => sum + p.amount, 0);
       revenueData.push({
         month: format(monthStart, "MMM yyyy"),
-        revenue: monthlyRevenue,
-        subscriptions: monthlySubscriptions.length,
+        revenue, // paise — real collected
+        payments: monthPayments.length,
       });
     }
 
-    return {
-      success: true,
-      data: revenueData,
-    };
+    return { success: true, data: revenueData };
   } catch (error) {
     console.error("Error fetching revenue analytics:", error);
-    return {
-      success: false,
-      error: "Failed to fetch revenue data",
-    };
+    return { success: false, error: "Failed to fetch revenue data" };
   }
 }
 
-export async function getAuthenticationAnalytics(timeRange: string = "30d", schoolId?: string) {
+export async function getAuthenticationAnalytics(
+  timeRange: string = "30d",
+  schoolId?: string
+) {
   await requireSuperAdminAccess();
 
   const now = new Date();
   let startDate: Date;
 
   switch (timeRange) {
-    case "7d":
-      startDate = subDays(now, 7);
-      break;
-    case "30d":
-      startDate = subDays(now, 30);
-      break;
-    case "90d":
-      startDate = subDays(now, 90);
-      break;
-    case "1y":
-      startDate = subDays(now, 365);
-      break;
-    default:
-      startDate = subDays(now, 30);
+    case "7d":  startDate = subDays(now, 7);   break;
+    case "30d": startDate = subDays(now, 30);  break;
+    case "90d": startDate = subDays(now, 90);  break;
+    case "1y":  startDate = subDays(now, 365); break;
+    default:    startDate = subDays(now, 30);
   }
 
   try {
     const timeRangeObj = { startDate, endDate: now };
     const filters = schoolId ? { schoolId } : {};
 
-    // Get comprehensive authentication analytics
-    const [
-      dashboardData,
-      authMetrics,
-      securityMetrics,
-      activityMetrics
-    ] = await Promise.all([
-      getCachedAuthAnalyticsDashboard(timeRangeObj, filters),
-      getCachedAuthenticationMetrics(timeRangeObj, filters),
-      getCachedSecurityMetrics(timeRangeObj, filters),
-      getCachedUserActivityMetrics(timeRangeObj, filters)
-    ]);
+    const [dashboardData, authMetrics, securityMetrics, activityMetrics] =
+      await Promise.all([
+        getCachedAuthAnalyticsDashboard(timeRangeObj, filters),
+        getCachedAuthenticationMetrics(timeRangeObj, filters),
+        getCachedSecurityMetrics(timeRangeObj, filters),
+        getCachedUserActivityMetrics(timeRangeObj, filters),
+      ]);
 
     return {
       success: true,
@@ -425,18 +292,11 @@ export async function getAuthenticationAnalytics(timeRange: string = "30d", scho
         authentication: authMetrics,
         security: securityMetrics,
         activity: activityMetrics,
-        timeRange: {
-          startDate,
-          endDate: now,
-          label: timeRange
-        }
+        timeRange: { startDate, endDate: now, label: timeRange },
       },
     };
   } catch (error) {
     console.error("Error fetching authentication analytics:", error);
-    return {
-      success: false,
-      error: "Failed to fetch authentication analytics",
-    };
+    return { success: false, error: "Failed to fetch authentication analytics" };
   }
 }

@@ -69,17 +69,21 @@ export default async function SuperAdminDashboard() {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Revenue */}
+        {/* Projected MRR */}
         <Card className="bg-gradient-to-br from-red-600 to-red-700 border-0 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-200 text-sm font-medium">Total Revenue</p>
+                <p className="text-red-200 text-sm font-medium">Projected MRR</p>
                 <p className="text-2xl font-bold mt-1">
-                  {billing?.metrics?.totalRevenue ? formatCurrency(billing.metrics.totalRevenue) : "₹0"}
+                  {billing?.metrics?.projectedMRR
+                    ? formatCurrency(billing.metrics.projectedMRR)
+                    : "₹0"}
                 </p>
                 <p className="text-red-200 text-xs mt-1">
-                  MRR: {billing?.metrics?.monthlyRecurringRevenue ? formatCurrency(billing.metrics.monthlyRecurringRevenue) : "₹0"}
+                  {billing?.metrics?.hasPaymentData
+                    ? `Collected: ${formatCurrency(billing.metrics.totalCollected)}`
+                    : "No payment data yet — appears once schools pay via Razorpay"}
                 </p>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
@@ -139,7 +143,7 @@ export default async function SuperAdminDashboard() {
                   {billing?.metrics?.activeSubscriptions || 0}
                 </p>
                 <p className="text-gray-500 text-xs mt-1">
-                  Churn: {billing?.metrics?.churnRate || 0}%
+                  {billing?.metrics?.activeSubscriptions || 0} active subscriptions
                 </p>
               </div>
               <div className="p-3 bg-red-600/20 rounded-xl">
