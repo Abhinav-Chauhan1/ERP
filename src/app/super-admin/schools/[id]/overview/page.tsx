@@ -8,30 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { SubdomainManagement } from "@/components/super-admin/schools/subdomain-management";
 import Link from "next/link";
 import { 
-  ArrowLeft, 
-  Users, 
-  GraduationCap, 
-  BookOpen, 
-  Calendar,
-  Mail,
-  Phone,
-  MapPin,
-  Globe,
-  Building,
-  CreditCard,
-  BarChart3,
-  Settings,
-  Shield,
-  Activity,
-  FileText,
-  Database,
-  Bell,
-  Key,
-  DollarSign,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle
+  ArrowLeft, Users, GraduationCap, BookOpen, Calendar,
+  Mail, Phone, MapPin, Globe, Building, CreditCard,
+  BarChart3, Settings, Shield, Activity, FileText,
+  Database, Bell, Key, TrendingUp, AlertCircle, CheckCircle, Layers
 } from "lucide-react";
+import { PLAN_LIMITS, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
 
 interface SchoolOverviewPageProps {
   params: Promise<{ id: string }>;
@@ -83,6 +65,18 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
           parents: true,
         },
       },
+      enhancedSubscriptions: {
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
+          plan: { select: { name: true, features: true } },
+        },
+      },
     },
   });
 
@@ -98,18 +92,19 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
     );
   }
 
-  // Mock subscription data for demonstration
-  const currentSubscription = {
-    id: "sub_1",
-    status: "ACTIVE",
-    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-    plan: {
-      name: school.plan,
-      amount: 2999, // $29.99
-      currency: "usd",
-      interval: "month",
-    },
-  };
+  const currentSubscription = school.enhancedSubscriptions[0] ?? null;
+  const studentCount = school._count.students;
+
+  // Resolve per-student pricing from plan features JSON or PLAN_LIMITS fallback
+  const planLimits = PLAN_LIMITS[school.plan as PlanType];
+  const feat = (currentSubscription?.plan?.features ?? {}) as Record<string, unknown>;
+  const pps = typeof feat.pricePerStudent === "number"
+    ? feat.pricePerStudent / 100
+    : (planLimits?.pricePerStudent ?? 4);
+  const minMonthly = typeof feat.minimumMonthly === "number"
+    ? feat.minimumMonthly / 100
+    : (planLimits?.minMonthly ?? 500);
+  const estimatedMonthly = calcMonthlyBill(school.plan as PlanType, studentCount);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -257,7 +252,7 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Subscription Status
+              Plan Status
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -265,9 +260,9 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{currentSubscription.plan.name}</p>
+                    <p className="font-semibold capitalize">{school.plan.toLowerCase()} Plan</p>
                     <p className="text-sm text-muted-foreground">
-                      ${(currentSubscription.plan.amount / 100).toFixed(2)}/{currentSubscription.plan.interval}
+                      ₹{pps}/student/mo · Est. ₹{estimatedMonthly.toLocaleString("en-IN")}/mo
                     </p>
                   </div>
                   <Badge variant="default">
@@ -277,19 +272,25 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
                 </div>
                 <div className="text-sm">
                   <p className="text-muted-foreground">Next billing date</p>
-                  <p className="font-medium">{currentSubscription.currentPeriodEnd.toLocaleDateString()}</p>
+                  <p className="font-medium">{currentSubscription.currentPeriodEnd.toLocaleDateString("en-IN")}</p>
                 </div>
+                {currentSubscription.cancelAtPeriodEnd && (
+                  <Badge variant="destructive" className="text-xs">Cancels at period end</Badge>
+                )}
                 <Button asChild className="w-full">
-                  <Link href={`/super-admin/schools/${school.id}/billing`}>
-                    View Billing Details
+                  <Link href={`/super-admin/schools/${school.id}/subscription`}>
+                    Manage Plan
                   </Link>
                 </Button>
               </div>
             ) : (
               <div className="text-center py-4">
                 <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">No active subscription</p>
-                <Button size="sm">Create Subscription</Button>
+                <p className="text-sm text-muted-foreground mb-1 capitalize">{school.plan.toLowerCase()} plan</p>
+                <p className="text-xs text-muted-foreground mb-3">No active subscription record</p>
+                <Button size="sm" asChild>
+                  <Link href={`/super-admin/schools/${school.id}/subscription`}>Assign Plan</Link>
+                </Button>
               </div>
             )}
           </CardContent>
@@ -460,7 +461,7 @@ export default async function SchoolOverviewPage({ params }: SchoolOverviewPageP
             </Button>
             <Button variant="outline" asChild className="w-full justify-start">
               <Link href={`/super-admin/schools/${school.id}/subscription`}>
-                Manage Subscription
+                Manage Plan
               </Link>
             </Button>
             <Button variant="outline" asChild className="w-full justify-start">

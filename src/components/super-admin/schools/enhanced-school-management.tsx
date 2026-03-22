@@ -47,7 +47,6 @@ import {
   bulkResetOnboarding,
   bulkUpdateSchoolStatus
 } from "@/lib/actions/school-management-actions";
-import { SchoolDetailsDialog } from "./school-details-dialog";
 import { useBreakpoint, mobileTableConfig, mobileClasses } from "@/lib/utils/mobile-responsive";
 import { aria, focus, screenReader, formAccessibility, tableAccessibility } from "@/lib/utils/accessibility";
 import { PLAN_LIMITS } from "@/lib/config/plan-features";
@@ -130,7 +129,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
   const [error, setError] = useState<string | null>(null);
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [selectedSchoolForDetails, setSelectedSchoolForDetails] = useState<School | null>(null);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -629,7 +627,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => setSelectedSchoolForDetails(school)}
+                                onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
@@ -721,7 +719,7 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => setSelectedSchoolForDetails(school)}
+                                onClick={() => router.push(`/super-admin/schools/${school.id}/overview`)}
                               >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
@@ -828,20 +826,6 @@ export function EnhancedSchoolManagement({ initialSchools = [] }: EnhancedSchool
           )}
         </CardContent>
       </Card>
-
-      {/* School Details Dialog */}
-      <SchoolDetailsDialog
-        school={selectedSchoolForDetails}
-        open={!!selectedSchoolForDetails}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedSchoolForDetails(null);
-          }
-        }}
-        onSchoolUpdate={() => {
-          fetchSchools(filters);
-        }}
-      />
     </div>
   );
 }

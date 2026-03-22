@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { ArrowLeft, CreditCard, Calendar, AlertCircle, CheckCircle, Clock, Layers } from "lucide-react";
 import { PLAN_LIMITS, PLAN_FEATURES, calcMonthlyBill, type PlanType } from "@/lib/config/plan-features";
+import { ChangePlanDialog } from "@/components/super-admin/schools/change-plan-dialog";
 
 const FEATURE_LABELS: Record<string, string> = {
   library: "Library", transport: "Transport", admissions: "Admissions Portal",
@@ -179,9 +180,11 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
                     )}
 
                     <div className="mt-6 flex gap-2">
-                      <Button asChild>
-                        <Link href={`/super-admin/plans`}>Change Plan</Link>
-                      </Button>
+                      <ChangePlanDialog
+                        schoolId={school.id}
+                        currentPlan={school.plan}
+                        studentCount={studentCount}
+                      />
                       {!currentSub.cancelAtPeriodEnd && (
                         <Button variant="destructive">Cancel Subscription</Button>
                       )}
@@ -267,9 +270,11 @@ export default async function SubscriptionPage({ params }: { params: Promise<{ i
             <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Active Plan</h3>
             <p className="text-muted-foreground mb-4">This school does not have an active subscription.</p>
-            <Button asChild>
-              <Link href="/super-admin/plans">Assign a Plan</Link>
-            </Button>
+            <ChangePlanDialog
+              schoolId={school.id}
+              currentPlan={school.plan}
+              studentCount={studentCount}
+            />
           </CardContent>
         </Card>
       )}
