@@ -21,7 +21,7 @@ interface PendingPayment {
   id: string;
   balance: number;
   status: string;
-  dueDate: Date | null;
+  paymentDate: Date;
   student: {
     user: { firstName: string | null; lastName: string | null };
     enrollments: { class: { name: string } }[];
@@ -225,7 +225,7 @@ export function FinanceOverviewClient({
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Student</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Class</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Amount</th>
-                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Due Date</th>
+                        <th className="py-3 px-4 text-left font-medium text-muted-foreground">Payment Date</th>
                         <th className="py-3 px-4 text-left font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
@@ -240,7 +240,7 @@ export function FinanceOverviewClient({
                           </td>
                           <td className="py-3 px-4 align-middle">₹{payment.balance.toFixed(2)}</td>
                           <td className="py-3 px-4 align-middle">
-                            {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : "N/A"}
+                            {new Date(payment.paymentDate).toLocaleDateString()}
                           </td>
                           <td className="py-3 px-4 align-middle">
                             <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">

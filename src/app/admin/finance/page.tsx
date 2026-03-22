@@ -117,7 +117,7 @@ async function getFinanceDashboardData(schoolId: string) {
         id: true,
         balance: true,
         status: true,
-        dueDate: true,
+        paymentDate: true,
         student: {
           select: {
             user: { select: { firstName: true, lastName: true } },
