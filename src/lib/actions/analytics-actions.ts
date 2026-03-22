@@ -172,6 +172,16 @@ export async function getDashboardAnalytics(timeRange: string = "30d") {
             activeSchools > 0
               ? Math.round(projectedMRRPaise / activeSchools)
               : 0,
+          // CLV: projected MRR per school × 12-month assumed lifespan
+          customerLifetimeValue:
+            activeSchools > 0
+              ? Math.round((projectedMRRPaise / activeSchools) * 12)
+              : 0,
+          // Conversion rate: active subscriptions / total schools
+          conversionRate:
+            totalSchools > 0
+              ? parseFloat(((activeSubscriptions / totalSchools) * 100).toFixed(1))
+              : 0,
         },
         userGrowthData: userGrowthDataProcessed,
         schoolDistribution,

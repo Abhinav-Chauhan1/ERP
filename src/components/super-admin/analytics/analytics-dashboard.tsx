@@ -46,7 +46,7 @@ interface DashboardData {
     recentSchools: number;
     activeSubscriptions: number;
     totalSubscriptions: number;
-    churnRate: number;
+    churnRate: number | null;
     averageRevenuePerUser: number;
     customerLifetimeValue: number;
     conversionRate: number;
@@ -305,7 +305,7 @@ export function AnalyticsDashboard({ timeRange = "30d", initialData = null }: An
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900 dark:text-white">{data.kpiData.churnRate}%</div>
+                <div className="text-2xl font-bold text-slate-900 dark:text-white">{data.kpiData.churnRate ?? 'N/A'}{data.kpiData.churnRate !== null ? '%' : ''}</div>
                 <div className="flex items-center space-x-2 mt-1">
                   <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
                     <ArrowUpRight className="h-3 w-3 mr-1" />
