@@ -51,15 +51,12 @@ import { SchoolDetailsDialog } from "./school-details-dialog";
 import { useBreakpoint, mobileTableConfig, mobileClasses } from "@/lib/utils/mobile-responsive";
 import { aria, focus, screenReader, formAccessibility, tableAccessibility } from "@/lib/utils/accessibility";
 
-// Plan pricing mapping
+// Plan pricing — per-student INR from PLAN_LIMITS config
 const getPlanPrice = (plan: string): string => {
-  const planPricing = {
-    STARTER: 29,
-    GROWTH: 49,
-    DOMINATE: 99,
-  };
-  const price = planPricing[plan as keyof typeof planPricing] || 0;
-  return price.toLocaleString();
+  const { PLAN_LIMITS } = require('@/lib/config/plan-features');
+  const limits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS];
+  if (!limits) return '0';
+  return `₹${limits.pricePerStudent}/student`;
 };
 
 interface School {

@@ -20,9 +20,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Edit, Trash2, Copy, Users, IndianRupee } from "lucide-react";
+import { Plus, MoreHorizontal, Edit, Trash2, Copy, Users, IndianRupee, Sprout } from "lucide-react";
 import { toast } from "sonner";
 import { type FeatureKey, PLAN_FEATURES } from "@/lib/config/plan-features";
+import { seedDefaultPlans } from "@/lib/actions/seed-plans-action";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ export function SubscriptionPlansManagement() {
   const [editing, setEditing]       = useState<SubscriptionPlan | null>(null);
   const [form, setForm]             = useState<FormData>(DEFAULT_FORM);
   const [saving, setSaving]         = useState(false);
+  const [seeding, setSeeding]       = useState(false);
 
   const fetchPlans = useCallback(async () => {
     setIsLoading(true);
@@ -262,8 +264,23 @@ export function SubscriptionPlansManagement() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this plan? This cannot be undone.')) return;
+  const handleSeedPlans = async () => {
+    if (!confirm('Upsert STARTER, GROWTH, and DOMINATE plans with default pricing? Existing plans will be updated.')) return;
+    setSeeding(true);
+    try {
+      const result = await seedDefaultPlans();
+      if (result.success) {
+        toast.success(result.upserted.join(', '));
+        fetchPlans();
+      }
+    } catch {
+      toast.error('Failed to seed plans');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {    if (!confirm('Delete this plan? This cannot be undone.')) return;
     try {
       const res = await fetch(`/api/super-admin/plans/${id}`, { method: 'DELETE' });
       if (res.ok) { toast.success('Plan deleted'); fetchPlans(); }
@@ -294,10 +311,16 @@ export function SubscriptionPlansManagement() {
           <h2 className="text-xl font-semibold">Subscription Plans</h2>
           <p className="text-sm text-muted-foreground">Per-student pricing with feature differentiation</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Plan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSeedPlans} disabled={seeding}>
+            <Sprout className="h-4 w-4 mr-2" />
+            {seeding ? 'Seeding…' : 'Seed default plans'}
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Plan
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -331,13 +354,21 @@ export function SubscriptionPlansManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm space-y-0.5">
-                        <div className="flex items-center gap-1">
-                          <IndianRupee className="h-3 w-3" />
-                          <span>{(plan.features.pricePerStudent / 100).toFixed(0)}/student/mo</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Min {fmt(plan.features.minimumMonthly)}/mo
-                        </div>
+                        {plan.features.pricePerStudent > 0 ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <IndianRupee className="h-3 w-3" />
+                              <span>{(plan.features.pricePerStudent / 100).toFixed(0)}/student/mo</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Min {fmt(plan.features.minimumMonthly)}/mo
+                            </div>
+                          </>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-600 border-amber-400 text-xs">
+                            Needs seeding
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

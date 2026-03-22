@@ -44,6 +44,13 @@ interface BillingDashboardProps {
 
 interface BillingData {
   metrics: {
+    // Collected (real Payment records)
+    totalCollected: number;
+    periodCollected: number;
+    // Projected (calcMonthlyBill)
+    projectedMRR: number;
+    projectedARR: number;
+    // Legacy aliases
     totalRevenue: number;
     monthlyRecurringRevenue: number;
     revenueInPeriod: number;
@@ -53,6 +60,7 @@ interface BillingData {
     pendingSubscriptions: number;
     churnRate: number;
     averageRevenuePerSubscription: number;
+    hasPaymentData: boolean;
   };
   revenueByPlan: Array<{
     plan: string;
@@ -208,31 +216,41 @@ export function BillingDashboard({ showAllSchools = true, initialData = null }: 
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Projected MRR</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(data.metrics.totalRevenue)}
+                  {formatCurrency(data.metrics.projectedMRR ?? data.metrics.monthlyRecurringRevenue)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(data.metrics.revenueInPeriod)} this period
+                  Based on {data.metrics.activeSubscriptions} active schools
                 </p>
+                <p className="text-xs text-amber-600 mt-0.5">Projected — not yet collected</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Monthly Recurring Revenue</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Collected Revenue</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(data.metrics.monthlyRecurringRevenue)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  From {data.metrics.activeSubscriptions} active subscriptions
-                </p>
+                {data.metrics.hasPaymentData ? (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {formatCurrency(data.metrics.totalCollected ?? data.metrics.totalRevenue)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(data.metrics.periodCollected ?? data.metrics.revenueInPeriod)} this period
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-muted-foreground">₹0</div>
+                    <p className="text-xs text-muted-foreground">No payments processed yet</p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
