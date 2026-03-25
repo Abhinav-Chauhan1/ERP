@@ -64,7 +64,7 @@ export async function getStudentEvents() {
     }),
     db.eventParticipant.findMany({
       where: { userId: dbUser.id, schoolId },
-      select: { eventId: true, role: true, id: true },
+      select: { id: true, eventId: true, userId: true, role: true, attended: true, feedback: true, registrationDate: true, schoolId: true },
     }),
   ]);
 
