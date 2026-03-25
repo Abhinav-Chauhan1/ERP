@@ -289,7 +289,7 @@ export async function updateQuestion(
 
     // Update the question
     const question = await prisma.questionBank.update({
-      where: { id: questionId },
+      where: { id: questionId, schoolId },
       data: {
         ...(data.question && { question: data.question }),
         ...(data.questionType && { questionType: data.questionType }),
@@ -359,7 +359,7 @@ export async function deleteQuestion(questionId: string) {
 
     // Delete the question
     await prisma.questionBank.delete({
-      where: { id: questionId },
+      where: { id: questionId, schoolId },
     });
 
     revalidatePath("/teacher/assessments/question-bank");

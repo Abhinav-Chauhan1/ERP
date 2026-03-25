@@ -375,7 +375,10 @@ export const deleteSubject = withSchoolAuthAction(async (schoolId, userId, userR
 // Get available subjects to generate (those not already created)
 export async function getAvailableSubjectTemplates() {
   try {
+    const schoolId = await getRequiredSchoolId();
+
     const existingSubjects = await db.subject.findMany({
+      where: { schoolId },
       select: { code: true }
     });
     const existingCodes = new Set(existingSubjects.map(s => s.code.toUpperCase()));

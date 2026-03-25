@@ -134,9 +134,13 @@ export async function getEventCategoryById(
  * Gets all event categories
  */
 export async function getAllEventCategories(
-  includeInactive: boolean = false
+  includeInactive: boolean = false,
+  schoolId?: string // C29 FIX: scope to school
 ): Promise<CalendarEventCategory[]> {
-  const where = includeInactive ? {} : { isActive: true };
+  const where: any = includeInactive ? {} : { isActive: true };
+  if (schoolId) {
+    where.schoolId = schoolId;
+  }
   
   return await prisma.calendarEventCategory.findMany({
     where,

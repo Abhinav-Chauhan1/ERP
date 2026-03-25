@@ -209,11 +209,13 @@ export class FeeTypeService {
   /**
    * Get all fee types with optional class amounts
    * 
+   * @param schoolId - School ID to scope results
    * @param includeClassAmounts - Whether to include class-specific amounts
    * @returns Array of fee types
    */
-  async getFeeTypes(includeClassAmounts: boolean = false) {
+  async getFeeTypes(schoolId: string, includeClassAmounts: boolean = false) {
     const feeTypes = await db.feeType.findMany({
+      where: { schoolId },
       include: includeClassAmounts
         ? {
             classAmounts: {
@@ -232,15 +234,16 @@ export class FeeTypeService {
   }
 
   /**
-   * Get a single fee type by ID
+   * Get a single fee type by ID, scoped to school
    * 
    * @param id - Fee type ID
+   * @param schoolId - School ID to verify ownership
    * @param includeClassAmounts - Whether to include class-specific amounts
    * @returns Fee type with optional class amounts
    */
-  async getFeeTypeById(id: string, includeClassAmounts: boolean = true) {
+  async getFeeTypeById(id: string, schoolId: string, includeClassAmounts: boolean = true) {
     const feeType = await db.feeType.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: includeClassAmounts
         ? {
             classAmounts: {
@@ -264,12 +267,13 @@ export class FeeTypeService {
    * 
    * @param feeTypeId - Fee type ID
    * @param classId - Class ID
+   * @param schoolId - School ID to verify ownership
    * @returns Amount for the class (class-specific if exists, otherwise default)
    */
-  async getAmountForClass(feeTypeId: string, classId: string): Promise<number> {
-    // Get fee type with class amounts
+  async getAmountForClass(feeTypeId: string, classId: string, schoolId: string): Promise<number> {
+    // Get fee type with class amounts, scoped to school
     const feeType = await db.feeType.findUnique({
-      where: { id: feeTypeId },
+      where: { id: feeTypeId, schoolId },
       include: {
         classAmounts: {
           where: {
@@ -387,7 +391,13 @@ export class FeeTypeService {
    * 
    * @param id - Fee type ID
    */
-  async deleteFeeType(id: string) {
+  async deleteFeeType(id: string, schoolId?: string) {
+    // Verify ownership if schoolId provided
+    if (schoolId) {
+      const feeType = await db.feeType.findFirst({ where: { id, schoolId }, select: { id: true } });
+      if (!feeType) throw new Error("Fee type not found in this school");
+    }
+
     // Check if fee type is used in any fee structure items
     const itemsCount = await db.feeStructureItem.count({
       where: { feeTypeId: id },
@@ -404,12 +414,14 @@ export class FeeTypeService {
   }
 
   /**
-   * Get fee types with class-specific amount indicators
+   * Get fee types with class-specific amount indicators, scoped to school
    * 
+   * @param schoolId - School ID to scope results
    * @returns Fee types with count of class-specific amounts
    */
-  async getFeeTypesWithClassAmountInfo() {
+  async getFeeTypesWithClassAmountInfo(schoolId: string) {
     const feeTypes = await db.feeType.findMany({
+      where: { schoolId },
       include: {
         _count: {
           select: {

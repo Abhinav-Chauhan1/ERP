@@ -45,17 +45,21 @@ function verifyWebhookAuthenticity(request: NextRequest): boolean {
       }
     }
 
-    // Optional: Verify custom authentication token
+    // H5 FIX: Make token verification MANDATORY — reject if token not configured
     const authToken = request.nextUrl.searchParams.get('token');
     const expectedToken = process.env.MSG91_WEBHOOK_TOKEN;
     
-    if (expectedToken && authToken !== expectedToken) {
+    if (!expectedToken) {
+      console.error('MSG91_WEBHOOK_TOKEN is not configured. Rejecting webhook to prevent unauthenticated access.');
+      return false;
+    }
+
+    if (authToken !== expectedToken) {
       console.warn('MSG91 webhook authentication token mismatch');
       return false;
     }
 
-    // Optional: IP whitelisting
-    // MSG91 webhook IPs can be added to environment variables
+    // Optional: IP whitelisting (additional layer, not sole protection)
     const clientIp = request.headers.get('x-forwarded-for') || 
                      request.headers.get('x-real-ip');
     const whitelistedIps = process.env.MSG91_WEBHOOK_IPS?.split(',') || [];

@@ -8,7 +8,7 @@ import {
   LeaveApprovalFormValues
 } from "../schemaValidation/leaveApplicationsSchemaValidation";
 import { sendLeaveNotification } from "@/lib/services/communication-service";
-import { currentUser } from "@/lib/auth-helpers";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { hasPermission } from "@/lib/utils/permissions";
 import { PermissionAction } from "@prisma/client";
 import { withSchoolAuthAction } from "../auth/security-wrapper";
@@ -809,25 +809,23 @@ export const getLeaveApplicationById = withSchoolAuthAction(async (schoolId, use
 // Get leave applications for a specific student or teacher
 export async function getLeaveApplicationsForEntity(entityId: string, entityType: string) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return { success: false, error: "Unauthorized" };
-    }
+    const { schoolId, userId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Security Check: Owner or Admin
     let isAuthorized = false;
 
     // Check permission
-    const hasPerm = await hasPermission(user.id, "ATTENDANCE", PermissionAction.READ);
+    const hasPerm = await hasPermission(userId, "ATTENDANCE", PermissionAction.READ);
     if (hasPerm) isAuthorized = true;
 
     // Check ownership if not admin
     if (!isAuthorized) {
       if (entityType === "STUDENT") {
-        const student = await db.student.findUnique({ where: { userId: user.id } });
+        const student = await db.student.findFirst({ where: { userId, schoolId } });
         if (student && student.id === entityId) isAuthorized = true;
       } else if (entityType === "TEACHER") {
-        const teacher = await db.teacher.findUnique({ where: { userId: user.id } });
+        const teacher = await db.teacher.findFirst({ where: { userId, schoolId } });
         if (teacher && teacher.id === entityId) isAuthorized = true;
       }
     }
@@ -838,8 +836,9 @@ export async function getLeaveApplicationsForEntity(entityId: string, entityType
 
     const leaveApplications = await db.leaveApplication.findMany({
       where: {
+        schoolId,
         applicantId: entityId,
-        applicantType: entityType
+        applicantType: entityType,
       },
       orderBy: [
         { status: 'asc' },

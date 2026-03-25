@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { db } from "@/lib/db"
 import { hashPassword, validatePasswordStrength } from "@/lib/password"
 import { sendEmail } from "@/lib/utils/email-service"
@@ -15,21 +16,44 @@ import crypto from "crypto"
  * Updated to integrate with unified authentication system
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.8, 1.1, 2.1
  */
+
+// C-7: role is NOT in the schema — clients cannot set it
+const RegisterSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  schoolCode: z.string().optional(),
+  mobile: z
+    .string()
+    .regex(/^[+]?[\d\s\-()]{10,15}$/, "Invalid mobile number format")
+    .optional(),
+})
+
+/**
+ * Determine role server-side based on context.
+ * Never accept role from client.
+ */
+function determineRoleFromContext(schoolCode?: string): UserRole {
+  // If a school code is provided the user is registering as a student/parent
+  // Default to PARENT for school-less registrations
+  return schoolCode ? UserRole.STUDENT : UserRole.PARENT
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, schoolCode, mobile, role } = body
 
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName) {
+    // C-7: Validate with Zod — role field is absent from schema so it is silently stripped
+    const parsed = RegisterSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Email, password, first name, and last name are required"
-        },
+        { success: false, error: "Invalid input", details: parsed.error.flatten() },
         { status: 400 }
       )
     }
+
+    const { email, password, firstName, lastName, schoolCode, mobile } = parsed.data
 
     // Validate school code if provided (for school-based users)
     let schoolId: string | undefined
@@ -37,40 +61,11 @@ export async function POST(request: NextRequest) {
       const school = await schoolContextService.validateSchoolCode(schoolCode)
       if (!school) {
         return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid or inactive school code"
-          },
+          { success: false, error: "Invalid or inactive school code" },
           { status: 400 }
         )
       }
       schoolId = school.id
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid email format"
-        },
-        { status: 400 }
-      )
-    }
-
-    // Validate mobile format if provided
-    if (mobile) {
-      const mobileRegex = /^[+]?[\d\s\-()]{10,15}$/
-      if (!mobileRegex.test(mobile)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid mobile number format"
-          },
-          { status: 400 }
-        )
-      }
     }
 
     // Validate password strength (Requirement 3.2)
@@ -93,10 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "An account with this email already exists"
-        },
+        { success: false, error: "An account with this email already exists" },
         { status: 409 }
       )
     }
@@ -109,10 +101,7 @@ export async function POST(request: NextRequest) {
 
       if (existingMobileUser) {
         return NextResponse.json(
-          {
-            success: false,
-            error: "An account with this mobile number already exists"
-          },
+          { success: false, error: "An account with this mobile number already exists" },
           { status: 409 }
         )
       }
@@ -125,8 +114,8 @@ export async function POST(request: NextRequest) {
     const verificationToken = crypto.randomBytes(32).toString("hex")
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-    // Determine user role (default to STUDENT if not specified)
-    const userRole = role && Object.values(UserRole).includes(role) ? role : UserRole.STUDENT
+    // C-7: Determine role server-side — never from client input
+    const userRole = determineRoleFromContext(schoolCode)
 
     // Create user record with unified authentication support (Requirement 3.8)
     const user = await db.user.create({
@@ -221,10 +210,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      {
-        success: false,
-        error: "An error occurred during registration. Please try again."
-      },
+      { success: false, error: "An error occurred during registration. Please try again." },
       { status: 500 }
     )
   }

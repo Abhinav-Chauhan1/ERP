@@ -52,6 +52,7 @@ export interface AnalyticsFilters {
   isActive?: boolean;
   startDate?: Date;
   endDate?: Date;
+  schoolId?: string;
 }
 
 // ============================================================================
@@ -68,6 +69,10 @@ export class FeeStructureAnalyticsService {
   async getFeeStructureAnalytics(filters: AnalyticsFilters = {}): Promise<FeeStructureAnalytics> {
     // Build where clause for filters
     const where: Prisma.FeeStructureWhereInput = {};
+
+    if (filters.schoolId) {
+      where.schoolId = filters.schoolId;
+    }
 
     if (filters.academicYearId) {
       where.academicYearId = filters.academicYearId;
@@ -323,10 +328,14 @@ export class FeeStructureAnalyticsService {
    * @param academicYearId - Optional academic year filter
    * @returns Trend data for fee structure usage
    */
-  async getUsageTrends(academicYearId?: string) {
+  async getUsageTrends(academicYearId?: string, schoolId?: string) {
     const where: Prisma.FeeStructureWhereInput = {
       isTemplate: false,
     };
+
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
 
     if (academicYearId) {
       where.academicYearId = academicYearId;

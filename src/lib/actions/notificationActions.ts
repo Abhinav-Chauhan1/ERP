@@ -24,18 +24,16 @@ export async function getNotifications(filters?: {
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const where: any = {};
+    // M6 FIX: Get school context for scoping
+    const { schoolId } = await requireSchoolAccess();
 
-    if (filters?.type) {
-      where.type = filters.type;
-    }
-
-    if (filters?.recipientRole) {
-      where.recipientRole = filters.recipientRole;
-    }
-
+    // M6 FIX: Add schoolId filter so notifications are scoped to current school
     const notifications = await db.notification.findMany({
-      where,
+      where: {
+        ...(schoolId ? { schoolId } : {}),
+        ...(filters?.type ? { type: filters.type } : {}),
+        ...(filters?.recipientRole ? { recipientRole: filters.recipientRole } : {}),
+      },
       include: {
         user: {
           select: {
@@ -126,14 +124,15 @@ export async function createNotification(data: any) {
     let recipients: { id: string }[] = [];
 
     if (data.recipientRole && data.recipientRole !== "ALL") {
-      // Fetch users by role
+      // C17 FIX: Scope user lookup to current school
       recipients = await db.user.findMany({
-        where: { role: data.recipientRole },
+        where: { role: data.recipientRole, schoolId },
         select: { id: true }
       });
     } else if (data.recipientRole === "ALL") {
-      // Fetch all users
+      // C17 FIX: Scope to current school
       recipients = await db.user.findMany({
+        where: { schoolId },
         select: { id: true }
       });
     } else {
@@ -371,22 +370,20 @@ export async function sendBulkNotifications(userIds: string[], data: any) {
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
 
-    // Create a single notification that targets multiple users
-    // In a full implementation, you might create individual notifications
-    // or use a more sophisticated notification system
-    const notification = await db.notification.create({
-      data: {
+    // H4 FIX: Create individual notifications for each recipient, not just the sender
+    await db.notification.createMany({
+      data: userIds.map((recipientId) => ({
         title: data.title,
         message: data.message,
         type: data.type || "INFO",
         link: data.link || null,
-        userId: dbUser.id, // Notification belongs to a user
+        userId: recipientId,
         schoolId: schoolId || "",
-      },
+      })),
     });
 
     revalidatePath("/admin/communication/notifications");
-    return { success: true, data: notification };
+    return { success: true, count: userIds.length };
   } catch (error) {
     console.error("Error sending bulk notifications:", error);
     return { success: false, error: "Failed to send bulk notifications" };
@@ -456,7 +453,10 @@ export async function getUsersForNotifications(role?: string) {
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const where: any = {};
+    // C18 FIX: Scope user lookup to current school
+    const { schoolId } = await requireSchoolAccess();
+
+    const where: any = { schoolId };
 
     if (role && role !== "ALL") {
       where.role = role;

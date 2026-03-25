@@ -63,7 +63,7 @@ export const getFeeStructureById = withSchoolAuthAction(async (schoolId: string,
 // Get fee structures for a specific class
 export const getFeeStructuresForClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, classId: string, academicYearId?: string) => {
   try {
-    const feeStructures = await feeStructureService.getFeeStructuresForClass(classId, academicYearId);
+    const feeStructures = await feeStructureService.getFeeStructuresForClass(classId, schoolId, academicYearId);
     return { success: true, data: feeStructures };
   } catch (error) {
     console.error("Error fetching fee structures for class:", error);
@@ -120,7 +120,7 @@ export const deleteFeeStructure = withSchoolAuthAction(async (schoolId: string, 
 // Duplicate fee structure
 export const duplicateFeeStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, newData?: DuplicateFeeStructureInput) => {
   try {
-    const duplicate = await feeStructureService.duplicateFeeStructure(id, newData);
+    const duplicate = await feeStructureService.duplicateFeeStructure(id, schoolId, newData);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: duplicate };
   } catch (error) {
@@ -132,7 +132,7 @@ export const duplicateFeeStructure = withSchoolAuthAction(async (schoolId: strin
 // Get fee structure templates
 export const getFeeStructureTemplates = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
-    const templates = await feeStructureService.getTemplates();
+    const templates = await feeStructureService.getTemplates(schoolId);
     return { success: true, data: templates };
   } catch (error) {
     console.error("Error fetching templates:", error);
@@ -143,7 +143,7 @@ export const getFeeStructureTemplates = withSchoolAuthAction(async (schoolId: st
 // Create fee structure from template
 export const createFeeStructureFromTemplate = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, templateId: string, data: CreateFromTemplateInput) => {
   try {
-    const feeStructure = await feeStructureService.createFromTemplate(templateId, data);
+    const feeStructure = await feeStructureService.createFromTemplate(templateId, schoolId, data);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeStructure };
   } catch (error) {
@@ -155,7 +155,7 @@ export const createFeeStructureFromTemplate = withSchoolAuthAction(async (school
 // Get all fee types
 export const getFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, includeClassAmounts: boolean = false) => {
   try {
-    const feeTypes = await feeTypeService.getFeeTypes(includeClassAmounts);
+    const feeTypes = await feeTypeService.getFeeTypes(schoolId, includeClassAmounts);
     return { success: true, data: feeTypes };
   } catch (error) {
     console.error("Error fetching fee types:", error);
@@ -166,7 +166,7 @@ export const getFeeTypes = withSchoolAuthAction(async (schoolId: string, userId:
 // Get single fee type by ID
 export const getFeeTypeById = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string, includeClassAmounts: boolean = true) => {
   try {
-    const feeType = await feeTypeService.getFeeTypeById(id, includeClassAmounts);
+    const feeType = await feeTypeService.getFeeTypeById(id, schoolId, includeClassAmounts);
     return { success: true, data: feeType };
   } catch (error) {
     console.error("Error fetching fee type:", error);
@@ -177,7 +177,7 @@ export const getFeeTypeById = withSchoolAuthAction(async (schoolId: string, user
 // Get fee types with class amount info
 export const getFeeTypesWithClassAmountInfo = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
-    const feeTypes = await feeTypeService.getFeeTypesWithClassAmountInfo();
+    const feeTypes = await feeTypeService.getFeeTypesWithClassAmountInfo(schoolId);
     return { success: true, data: feeTypes };
   } catch (error) {
     console.error("Error fetching fee types with class amount info:", error);
@@ -195,7 +195,7 @@ export const createFeeType = withSchoolAuthAction(async (schoolId: string, userI
       frequency: data.frequency,
       isOptional: data.isOptional ?? false,
       classAmounts: data.classAmounts || [],
-    });
+    }, schoolId);
 
     revalidatePath("/admin/finance/fee-structure");
     return { success: true, data: feeType };
@@ -228,7 +228,7 @@ export const updateFeeType = withSchoolAuthAction(async (schoolId: string, userI
 // Delete fee type
 export const deleteFeeType = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, id: string) => {
   try {
-    await feeTypeService.deleteFeeType(id);
+    await feeTypeService.deleteFeeType(id, schoolId);
     revalidatePath("/admin/finance/fee-structure");
     return { success: true };
   } catch (error) {
@@ -240,7 +240,7 @@ export const deleteFeeType = withSchoolAuthAction(async (schoolId: string, userI
 // Get amount for specific class
 export const getAmountForClass = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeTypeId: string, classId: string) => {
   try {
-    const amount = await feeTypeService.getAmountForClass(feeTypeId, classId);
+    const amount = await feeTypeService.getAmountForClass(feeTypeId, classId, schoolId);
     return { success: true, data: amount };
   } catch (error) {
     console.error("Error getting amount for class:", error);
@@ -309,7 +309,7 @@ export const getFeeStructureStats = withSchoolAuthAction(async (schoolId: string
  */
 export const getFeeStructureAnalytics = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, filters?: AnalyticsFilters) => {
   try {
-    const analytics = await feeStructureAnalyticsService.getFeeStructureAnalytics(filters || {});
+    const analytics = await feeStructureAnalyticsService.getFeeStructureAnalytics({ ...(filters || {}), schoolId });
     return { success: true, data: analytics };
   } catch (error) {
     console.error("Error fetching fee structure analytics:", error);
@@ -324,6 +324,9 @@ export const getFeeStructureAnalytics = withSchoolAuthAction(async (schoolId: st
  */
 export const getStudentsAffectedByStructure = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeStructureId: string) => {
   try {
+    // Verify fee structure belongs to this school
+    const fs = await db.feeStructure.findFirst({ where: { id: feeStructureId, schoolId }, select: { id: true } });
+    if (!fs) return { success: false, error: "Fee structure not found" };
     const result = await feeStructureAnalyticsService.getStudentsAffectedByStructure(feeStructureId);
     return { success: true, data: result };
   } catch (error) {
@@ -339,6 +342,9 @@ export const getStudentsAffectedByStructure = withSchoolAuthAction(async (school
  */
 export const calculateRevenueProjection = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, feeStructureId: string) => {
   try {
+    // Verify fee structure belongs to this school
+    const fs = await db.feeStructure.findFirst({ where: { id: feeStructureId, schoolId }, select: { id: true } });
+    if (!fs) return { success: false, error: "Fee structure not found" };
     const projection = await feeStructureAnalyticsService.calculateRevenueProjection(feeStructureId);
     return { success: true, data: projection };
   } catch (error) {
@@ -354,7 +360,7 @@ export const calculateRevenueProjection = withSchoolAuthAction(async (schoolId: 
  */
 export const getFeeStructureUsageTrends = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, academicYearId?: string) => {
   try {
-    const trends = await feeStructureAnalyticsService.getUsageTrends(academicYearId);
+    const trends = await feeStructureAnalyticsService.getUsageTrends(academicYearId, schoolId);
     return { success: true, data: trends };
   } catch (error) {
     console.error("Error fetching usage trends:", error);
@@ -377,6 +383,13 @@ export const bulkAssignFeeStructuresToClass = withSchoolAuthAction(async (school
   academicYearId: string
 ) => {
   try {
+    // Verify class belongs to this school
+    const cls = await db.class.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+    if (!cls) return { success: false, error: "Class not found" };
+    // Verify all fee structures belong to this school
+    const fsCount = await db.feeStructure.count({ where: { id: { in: feeStructureIds }, schoolId } });
+    if (fsCount !== feeStructureIds.length) return { success: false, error: "One or more fee structures not found" };
+
     const result = await feeStructureService.bulkAssignToClass(
       classId,
       feeStructureIds,
@@ -404,6 +417,10 @@ export const bulkRemoveFeeStructuresFromClass = withSchoolAuthAction(async (scho
   feeStructureIds: string[]
 ) => {
   try {
+    // Verify class belongs to this school
+    const cls = await db.class.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+    if (!cls) return { success: false, error: "Class not found" };
+
     const result = await feeStructureService.bulkRemoveFromClass(classId, feeStructureIds);
     revalidatePath("/admin/finance/fee-structure");
     revalidatePath("/admin/finance/bulk-operations");
@@ -427,6 +444,10 @@ export const getAvailableFeeStructuresForBulkAssignment = withSchoolAuthAction(a
   academicYearId: string
 ) => {
   try {
+    // Verify class belongs to this school
+    const cls = await db.class.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+    if (!cls) return { success: false, error: "Class not found" };
+
     const result = await feeStructureService.getAvailableForBulkAssignment(
       classId,
       academicYearId
@@ -451,8 +472,9 @@ export const getAvailableFeeStructuresForBulkAssignment = withSchoolAuthAction(a
  */
 export const autoGenerateFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string, selectedNames?: string[]) => {
   try {
-    // Get existing fee types
+    // Get existing fee types scoped to school
     const existingFeeTypes = await db.feeType.findMany({
+      where: { schoolId },
       select: { name: true }
     });
     const existingNames = new Set(existingFeeTypes.map(ft => ft.name.toLowerCase()));
@@ -503,8 +525,9 @@ export const autoGenerateFeeTypes = withSchoolAuthAction(async (schoolId: string
  */
 export const getAvailableStandardFeeTypes = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
-    // Get existing fee types
+    // Get existing fee types scoped to school
     const existingFeeTypes = await db.feeType.findMany({
+      where: { schoolId },
       select: { name: true }
     });
     const existingNames = new Set(existingFeeTypes.map(ft => ft.name.toLowerCase()));

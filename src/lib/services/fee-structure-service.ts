@@ -324,14 +324,16 @@ export class FeeStructureService {
   }
 
   /**
-   * Get fee structures for a specific class
+   * Get fee structures for a specific class, scoped to school
    * 
    * @param classId - Class ID
+   * @param schoolId - School ID to scope results
    * @param academicYearId - Optional academic year filter
    * @returns Fee structures associated with the class
    */
-  async getFeeStructuresForClass(classId: string, academicYearId?: string) {
+  async getFeeStructuresForClass(classId: string, schoolId: string, academicYearId?: string) {
     const where: Prisma.FeeStructureWhereInput = {
+      schoolId,
       classes: {
         some: {
           classId,
@@ -368,16 +370,17 @@ export class FeeStructureService {
   }
 
   /**
-   * Duplicate an existing fee structure
+   * Duplicate an existing fee structure (H-8: ownership verified)
    * 
    * @param id - Fee structure ID to duplicate
+   * @param schoolId - School ID to verify ownership and scope the duplicate
    * @param newData - Optional data to override in the duplicate
    * @returns Newly created duplicate fee structure
    */
-  async duplicateFeeStructure(id: string, newData: DuplicateFeeStructureInput = {}) {
-    // Get original fee structure
+  async duplicateFeeStructure(id: string, schoolId: string, newData: DuplicateFeeStructureInput = {}) {
+    // Verify source belongs to school (H-8 ownership check)
     const original = await db.feeStructure.findUnique({
-      where: { id },
+      where: { id, schoolId },
       include: {
         classes: true,
         items: true,
@@ -405,21 +408,23 @@ export class FeeStructureService {
       })),
     };
 
-    // Create duplicate
-    const duplicate = await this.createFeeStructure(duplicateData);
+    // Create duplicate scoped to same school
+    const duplicate = await this.createFeeStructure(duplicateData, schoolId);
 
     return duplicate;
   }
 
   /**
-   * Get all fee structure templates
+   * Get all fee structure templates scoped to school
    * 
+   * @param schoolId - School ID to scope results
    * @returns Array of template fee structures
    */
-  async getTemplates() {
+  async getTemplates(schoolId: string) {
     const templates = await db.feeStructure.findMany({
       where: {
         isTemplate: true,
+        schoolId,
       },
       include: {
         academicYear: true,
@@ -443,16 +448,17 @@ export class FeeStructureService {
   }
 
   /**
-   * Create a new fee structure from a template
+   * Create a new fee structure from a template (H-8: ownership verified)
    * 
    * @param templateId - Template fee structure ID
+   * @param schoolId - School ID to verify template ownership and scope new structure
    * @param data - Data for the new fee structure
    * @returns Newly created fee structure
    */
-  async createFromTemplate(templateId: string, data: CreateFromTemplateInput) {
-    // Get template
+  async createFromTemplate(templateId: string, schoolId: string, data: CreateFromTemplateInput) {
+    // Verify template belongs to school (H-8 ownership check)
     const template = await db.feeStructure.findUnique({
-      where: { id: templateId },
+      where: { id: templateId, schoolId },
       include: {
         items: true,
       },
@@ -466,7 +472,7 @@ export class FeeStructureService {
       throw new Error("Specified fee structure is not a template");
     }
 
-    // Create new fee structure from template
+    // Create new fee structure from template, scoped to same school
     const createData: CreateFeeStructureInput = {
       name: data.name,
       academicYearId: data.academicYearId,
@@ -483,7 +489,7 @@ export class FeeStructureService {
       })),
     };
 
-    const feeStructure = await this.createFeeStructure(createData);
+    const feeStructure = await this.createFeeStructure(createData, schoolId);
 
     return feeStructure;
   }

@@ -23,15 +23,20 @@ import { revalidatePath } from "next/cache";
 import { getReceiptHTML } from "@/lib/utils/pdf-generator";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 
-/**
- * Helper function to get current parent and verify authentication
- */
-async function getCurrentParent() {
-  const clerkUser = await currentUser();
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-  if (!clerkUser) {
-    return null;
-  }
+interface ParentContext {
+  id: string;
+  schoolId: string;
+  userId: string;
+  [key: string]: unknown;
+}
+
+// ─── Auth helper ──────────────────────────────────────────────────────────────
+
+async function getCurrentParent(): Promise<ParentContext | null> {
+  const clerkUser = await currentUser();
+  if (!clerkUser) return null;
 
   const { schoolId } = await requireSchoolAccess();
   if (!schoolId) return null;
@@ -39,13 +44,9 @@ async function getCurrentParent() {
   const dbUser = await db.user.findFirst({
     where: {
       id: clerkUser.id,
-      parent: {
-        schoolId
-      }
+      parent: { schoolId }
     },
-    include: {
-      parent: true
-    }
+    include: { parent: true }
   });
 
   if (!dbUser || dbUser.role !== UserRole.PARENT || !dbUser.parent) {
@@ -55,104 +56,91 @@ async function getCurrentParent() {
   return { ...dbUser.parent, schoolId };
 }
 
-/**
- * Helper function to verify parent-child relationship
- */
+// ─── Relationship check ───────────────────────────────────────────────────────
+
 async function verifyParentChildRelationship(
   parentId: string,
   childId: string,
   schoolId: string
 ): Promise<boolean> {
   const relationship = await db.studentParent.findFirst({
-    where: {
-      parentId,
-      studentId: childId,
-      schoolId
-    }
+    where: { parentId, studentId: childId, schoolId }
   });
   return !!relationship;
 }
 
-/**
- * Helper function to get the correct fee amount for a fee type based on class
- * Checks for class-specific amount first, falls back to default amount
- * Requirements: 12.2, 12.3
- */
-async function getFeeAmountForClass(feeTypeId: string, classId: string | undefined): Promise<number> {
-  if (!classId) {
-    // If no class ID, get default amount
-    const feeType = await db.feeType.findUnique({
-      where: { id: feeTypeId }
-    });
-    return feeType?.amount || 0;
-  }
+// ─── Ownership check for fee structures ──────────────────────────────────────
 
-  // Check for class-specific amount
-  const classAmount = await db.feeTypeClassAmount.findUnique({
-    where: {
-      feeTypeId_classId: {
-        feeTypeId,
-        classId
-      }
-    }
+async function verifyFeeStructureOwnership(
+  feeStructureId: string,
+  schoolId: string
+): Promise<boolean> {
+  const feeStructure = await db.feeStructure.findUnique({
+    where: { id: feeStructureId },
+    select: { schoolId: true, isActive: true }
   });
-
-  if (classAmount) {
-    return classAmount.amount;
-  }
-
-  // Fall back to default amount
-  const feeType = await db.feeType.findUnique({
-    where: { id: feeTypeId }
-  });
-
-  return feeType?.amount || 0;
+  return !!feeStructure && feeStructure.schoolId === schoolId && feeStructure.isActive;
 }
 
+// ─── Batched fee amount lookup ────────────────────────────────────────────────
+
 /**
- * Get fee overview for a child including breakdown and payment status
- * Requirements: 12.1, 12.4
+ * Fetch class-specific amounts for multiple feeTypeIds in one query.
+ * Falls back to the feeType default amount when no class-specific row exists.
  */
+async function getFeeAmountsForClass(
+  feeTypeIds: string[],
+  classId: string | undefined,
+  schoolId: string
+): Promise<Map<string, number>> {
+  const [classAmounts, feeTypes] = await Promise.all([
+    classId
+      ? db.feeTypeClassAmount.findMany({
+          where: {
+            schoolId,
+            feeTypeId: { in: feeTypeIds },
+            classId
+          }
+        })
+      : Promise.resolve([]),
+    db.feeType.findMany({
+      where: { id: { in: feeTypeIds } },
+      select: { id: true, amount: true }
+    })
+  ]);
+
+  const classAmountMap = new Map(classAmounts.map(ca => [ca.feeTypeId, ca.amount]));
+  const defaultAmountMap = new Map(feeTypes.map(ft => [ft.id, ft.amount]));
+
+  const result = new Map<string, number>();
+  for (const id of feeTypeIds) {
+    result.set(id, classAmountMap.get(id) ?? defaultAmountMap.get(id) ?? 0);
+  }
+  return result;
+}
+
+// ─── getFeeOverview ───────────────────────────────────────────────────────────
+
 export async function getFeeOverview(input: FeeOverviewInput) {
   try {
-    // Validate input
     const validated = feeOverviewSchema.parse(input);
 
-    // Get current parent
     const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
+    if (!parent) return { success: false, message: "Unauthorized" };
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // Get student with current enrollment
     const student = await db.student.findFirst({
-      where: {
-        id: validated.childId,
-        schoolId: (parent as any).schoolId
-      },
+      where: { id: validated.childId, schoolId: parent.schoolId },
       include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true
-          }
-        },
+        user: { select: { firstName: true, lastName: true } },
         enrollments: {
           where: { status: "ACTIVE" },
           orderBy: { enrollDate: 'desc' },
           take: 1,
           include: {
-            class: {
-              include: {
-                academicYear: true
-              }
-            }
+            class: { include: { academicYear: true } }
           }
         }
       }
@@ -166,51 +154,25 @@ export async function getFeeOverview(input: FeeOverviewInput) {
     const academicYearId = currentEnrollment.class.academicYearId;
     const classId = currentEnrollment.class.id;
 
-    // Get active fee structure for the student's class using FeeStructureClass junction table
-    // This supports the new class-based system while maintaining backward compatibility
-    // Requirements: 12.1, 12.4
     const feeStructure = await db.feeStructure.findFirst({
       where: {
         academicYearId,
+        schoolId: parent.schoolId,
         isActive: true,
         OR: [
-          // New system: Query via FeeStructureClass junction table
-          {
-            classes: {
-              some: {
-                classId: classId
-              }
-            }
-          },
-          // Backward compatibility: Fall back to text-based search if no junction table entries exist
+          { classes: { some: { classId } } },
           {
             AND: [
-              {
-                classes: {
-                  none: {}
-                }
-              },
-              {
-                applicableClasses: {
-                  contains: currentEnrollment.class.name
-                }
-              }
+              { classes: { none: {} } },
+              { applicableClasses: { contains: currentEnrollment.class.name } }
             ]
           }
         ]
       },
       include: {
-        items: {
-          include: {
-            feeType: true
-          }
-        },
+        items: { include: { feeType: true } },
         academicYear: true,
-        classes: {
-          include: {
-            class: true
-          }
-        }
+        classes: { include: { class: true } }
       }
     });
 
@@ -235,21 +197,24 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       };
     }
 
-    // Get all payments for this student and fee structure
-    const payments = await db.feePayment.findMany({
-      where: {
-        studentId: validated.childId,
-        feeStructureId: feeStructure.id,
-        schoolId: (parent as any).schoolId
-      }
-    });
+    const [payments, amountMap] = await Promise.all([
+      db.feePayment.findMany({
+        where: {
+          studentId: validated.childId,
+          feeStructureId: feeStructure.id,
+          schoolId: parent.schoolId
+        }
+      }),
+      getFeeAmountsForClass(
+        feeStructure.items.map(i => i.feeTypeId),
+        classId,
+        parent.schoolId
+      )
+    ]);
 
-    // Calculate totals using class-specific amounts
-    // Requirements: 12.2, 12.3
     let totalFees = 0;
     for (const item of feeStructure.items) {
-      const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
-      totalFees += correctAmount;
+      totalFees += amountMap.get(item.feeTypeId) ?? 0;
     }
 
     const paidAmount = payments
@@ -257,52 +222,39 @@ export async function getFeeOverview(input: FeeOverviewInput) {
       .reduce((sum, p) => sum + p.paidAmount, 0);
     const pendingAmount = totalFees - paidAmount;
 
-    // Calculate fee items with status using class-specific amounts
-    // Requirements: 12.2, 12.3
     const now = new Date();
-    const feeItems = await Promise.all(
-      feeStructure.items.map(async (item) => {
-        const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
-        const itemPayments = payments.filter(p =>
-          p.status === PaymentStatus.COMPLETED
-        );
-        const itemPaidAmount = itemPayments.reduce((sum, p) => sum + p.paidAmount, 0);
-        const itemBalance = correctAmount - itemPaidAmount;
+    const feeItems = feeStructure.items.map(item => {
+      const correctAmount = amountMap.get(item.feeTypeId) ?? 0;
+      const itemPaidAmount = payments
+        .filter(p => p.status === PaymentStatus.COMPLETED)
+        .reduce((sum, p) => sum + p.paidAmount, 0);
+      const itemBalance = correctAmount - itemPaidAmount;
 
-        let status: "PAID" | "PENDING" | "OVERDUE" | "PARTIAL";
-        if (itemBalance <= 0) {
-          status = "PAID";
-        } else if (itemPaidAmount > 0) {
-          status = "PARTIAL";
-        } else if (item.dueDate && item.dueDate < now) {
-          status = "OVERDUE";
-        } else {
-          status = "PENDING";
-        }
+      let status: "PAID" | "PENDING" | "OVERDUE" | "PARTIAL";
+      if (itemBalance <= 0) status = "PAID";
+      else if (itemPaidAmount > 0) status = "PARTIAL";
+      else if (item.dueDate && item.dueDate < now) status = "OVERDUE";
+      else status = "PENDING";
 
-        return {
-          id: item.id,
-          name: item.feeType.name,
-          amount: correctAmount,
-          dueDate: item.dueDate,
-          status,
-          paidAmount: itemPaidAmount,
-          balance: itemBalance > 0 ? itemBalance : 0
-        };
-      })
-    );
+      return {
+        id: item.id,
+        name: item.feeType.name,
+        amount: correctAmount,
+        dueDate: item.dueDate,
+        status,
+        paidAmount: itemPaidAmount,
+        balance: itemBalance > 0 ? itemBalance : 0
+      };
+    });
 
-    // Calculate overdue amount
     const overdueAmount = feeItems
       .filter(item => item.status === "OVERDUE")
       .reduce((sum, item) => sum + item.balance, 0);
 
-    // Find next due date
-    const upcomingDueDates = feeStructure.items
+    const nextDueDate = feeStructure.items
       .filter(item => item.dueDate && item.dueDate >= now)
       .map(item => item.dueDate!)
-      .sort((a, b) => a.getTime() - b.getTime());
-    const nextDueDate = upcomingDueDates[0] || null;
+      .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
     return {
       success: true,
@@ -329,94 +281,46 @@ export async function getFeeOverview(input: FeeOverviewInput) {
   }
 }
 
-/**
- * Get payment history for a child with pagination and filtering
- * Requirements: 12.2, 12.3
- */
+// ─── getPaymentHistory ────────────────────────────────────────────────────────
+
 export async function getPaymentHistory(filters: PaymentHistoryFilter) {
   try {
-    // Validate input
     const validated = paymentHistoryFilterSchema.parse(filters);
 
-    // Get current parent
     const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
+    if (!parent) return { success: false, message: "Unauthorized" };
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // Get student's class for class-specific amount calculations
-    const student = await db.student.findFirst({
-      where: {
-        id: validated.childId,
-        schoolId: (parent as any).schoolId
-      },
-      include: {
-        enrollments: {
-          where: { status: "ACTIVE" },
-          orderBy: { enrollDate: 'desc' },
-          take: 1,
-          include: {
-            class: true
-          }
-        }
-      }
-    });
-
-    const classId = student?.enrollments[0]?.class?.id;
-
-    // Build where clause
-    const where: any = {
+    const where: Record<string, unknown> = {
       studentId: validated.childId,
-      schoolId: (parent as any).schoolId
+      schoolId: parent.schoolId
     };
 
-    if (validated.status) {
-      where.status = validated.status;
-    }
-
-    if (validated.paymentMethod) {
-      where.paymentMethod = validated.paymentMethod;
-    }
+    if (validated.status) where.status = validated.status;
+    if (validated.paymentMethod) where.paymentMethod = validated.paymentMethod;
 
     if (validated.dateFrom || validated.dateTo) {
-      where.paymentDate = {};
-      if (validated.dateFrom) {
-        where.paymentDate.gte = validated.dateFrom;
-      }
-      if (validated.dateTo) {
-        where.paymentDate.lte = validated.dateTo;
-      }
+      const paymentDate: Record<string, Date> = {};
+      if (validated.dateFrom) paymentDate.gte = validated.dateFrom;
+      if (validated.dateTo) paymentDate.lte = validated.dateTo;
+      where.paymentDate = paymentDate;
     }
 
-    // Get total count
     const totalCount = await db.feePayment.count({ where });
 
-    // Get paginated payments
     const skip = (validated.page - 1) * validated.limit;
     const payments = await db.feePayment.findMany({
       where,
       include: {
-        feeStructure: {
-          include: {
-            academicYear: true
-          }
-        }
+        feeStructure: { include: { academicYear: true } }
       },
-      orderBy: {
-        paymentDate: 'desc'
-      },
+      orderBy: { paymentDate: 'desc' },
       skip,
       take: validated.limit
     });
 
-    // Format payment records with class-specific amounts reflected
-    // Requirements: 12.2, 12.3
     const paymentRecords = payments.map(payment => ({
       id: payment.id,
       amount: payment.amount,
@@ -450,100 +354,50 @@ export async function getPaymentHistory(filters: PaymentHistoryFilter) {
   }
 }
 
-/**
- * Create a payment record to initiate payment process
- * Requirements: 12.2, 12.3
- */
+// ─── createPayment ────────────────────────────────────────────────────────────
+
 export async function createPayment(input: CreatePaymentInput & { csrfToken?: string }) {
   try {
-    // Verify CSRF token
     if (input.csrfToken) {
       const isCsrfValid = await verifyCsrfToken(input.csrfToken);
-      if (!isCsrfValid) {
-        return { success: false, message: "Invalid CSRF token" };
-      }
+      if (!isCsrfValid) return { success: false, message: "Invalid CSRF token" };
     }
 
-    // Validate input
     const validated = createPaymentSchema.parse(input);
 
-    // Get current parent
     const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
+    if (!parent) return { success: false, message: "Unauthorized" };
 
-    // Rate limiting for payment operations
-    const rateLimitKey = `payment:${parent.id}`;
-    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
+    const rateLimitResult = checkRateLimit(`payment:${parent.id}`, RateLimitPresets.PAYMENT);
     if (!rateLimitResult) {
       return { success: false, message: "Too many payment requests. Please try again later." };
     }
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // Get student's class for class-specific amount calculations
-    // Requirements: 12.2, 12.3
-    const student = await db.student.findFirst({
-      where: {
-        id: validated.childId,
-        schoolId: (parent as any).schoolId
-      },
-      include: {
-        enrollments: {
-          where: { status: "ACTIVE" },
-          orderBy: { enrollDate: 'desc' },
-          take: 1,
-          include: {
-            class: true
-          }
-        }
-      }
-    });
+    // H-1: Verify feeStructure belongs to this school and is active
+    const feeStructureValid = await verifyFeeStructureOwnership(validated.feeStructureId, parent.schoolId);
+    if (!feeStructureValid) return { success: false, message: "Invalid fee structure" };
 
-    const classId = student?.enrollments[0]?.class?.id;
-
-    // Verify fee structure exists and is active
     const feeStructure = await db.feeStructure.findUnique({
       where: { id: validated.feeStructureId },
-      include: {
-        items: {
-          include: {
-            feeType: true
-          }
-        }
-      }
+      include: { items: { include: { feeType: true } } }
     });
 
-    if (!feeStructure || !feeStructure.isActive) {
-      return { success: false, message: "Invalid fee structure" };
-    }
-
-    // Verify fee type IDs are valid and calculate correct amounts
-    // Requirements: 12.2, 12.3
-    const validFeeTypeIds = feeStructure.items.map(item => item.feeTypeId);
+    // feeStructureValid already confirmed it exists and is active
+    const validFeeTypeIds = feeStructure!.items.map(item => item.feeTypeId);
     const invalidFeeTypes = validated.feeTypeIds.filter(id => !validFeeTypeIds.includes(id));
     if (invalidFeeTypes.length > 0) {
       return { success: false, message: "Invalid fee types selected" };
     }
 
-    // Generate receipt number
     const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-
-    // Sanitize transaction ID and remarks
     const sanitizedTransactionId = validated.transactionId
       ? sanitizeAlphanumeric(validated.transactionId, "-_")
       : null;
-    const sanitizedRemarks = validated.remarks
-      ? sanitizeText(validated.remarks)
-      : null;
+    const sanitizedRemarks = validated.remarks ? sanitizeText(validated.remarks) : null;
 
-    // Create payment record with class-specific amounts
-    // Requirements: 12.2, 12.3
     const payment = await db.feePayment.create({
       data: {
         studentId: validated.childId,
@@ -559,11 +413,10 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
           ? PaymentStatus.PENDING
           : PaymentStatus.COMPLETED,
         remarks: sanitizedRemarks,
-        schoolId: (parent as any).schoolId
+        schoolId: parent.schoolId
       }
     });
 
-    // Revalidate fee pages
     revalidatePath("/parent/fees");
 
     return {
@@ -581,50 +434,36 @@ export async function createPayment(input: CreatePaymentInput & { csrfToken?: st
   }
 }
 
-/**
- * Verify payment after gateway confirmation
- * Requirements: 1.3, 10.1, 10.2
- */
+// ─── verifyPayment ────────────────────────────────────────────────────────────
+
 export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: string }) {
   try {
-    // Verify CSRF token
     if (input.csrfToken) {
       const isCsrfValid = await verifyCsrfToken(input.csrfToken);
-      if (!isCsrfValid) {
-        return { success: false, message: "Invalid CSRF token" };
-      }
+      if (!isCsrfValid) return { success: false, message: "Invalid CSRF token" };
     }
 
-    // Validate input
     const validated = verifyPaymentSchema.parse(input);
 
-    // Get current parent
     const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
+    if (!parent) return { success: false, message: "Unauthorized" };
 
-    // Rate limiting for payment verification
-    const rateLimitKey = `payment-verify:${parent.id}`;
-    const rateLimitResult = checkRateLimit(rateLimitKey, RateLimitPresets.PAYMENT);
+    const rateLimitResult = checkRateLimit(`payment-verify:${parent.id}`, RateLimitPresets.PAYMENT);
     if (!rateLimitResult) {
       return { success: false, message: "Too many verification requests. Please try again later." };
     }
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // Note: Actual signature verification would be done by payment gateway utility
-    // For now, we'll create/update the payment record
+    // H-1: Verify feeStructure belongs to this school
+    const feeStructureValid = await verifyFeeStructureOwnership(validated.feeStructureId, parent.schoolId);
+    if (!feeStructureValid) return { success: false, message: "Invalid fee structure" };
 
-    // Check if payment already exists with this transaction ID
     const existingPayment = await db.feePayment.findFirst({
       where: {
         transactionId: validated.paymentId,
-        schoolId: (parent as any).schoolId
+        schoolId: parent.schoolId
       }
     });
 
@@ -641,19 +480,12 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         };
       }
 
-      // Sanitize payment ID
       const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
-
-      // Update existing payment
       const updatedPayment = await db.feePayment.update({
         where: { id: existingPayment.id },
-        data: {
-          status: PaymentStatus.COMPLETED,
-          transactionId: sanitizedPaymentId
-        }
+        data: { status: PaymentStatus.COMPLETED, transactionId: sanitizedPaymentId }
       });
 
-      // Revalidate fee pages
       revalidatePath("/parent/fees");
 
       return {
@@ -667,10 +499,7 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
       };
     }
 
-    // Create new payment record
     const receiptNumber = `RCP-${Date.now()}-${validated.childId.slice(-6)}`;
-
-    // Sanitize payment and order IDs
     const sanitizedPaymentId = sanitizeAlphanumeric(validated.paymentId, "-_");
     const sanitizedOrderId = sanitizeAlphanumeric(validated.orderId, "-_");
 
@@ -687,11 +516,10 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
         receiptNumber,
         status: PaymentStatus.COMPLETED,
         remarks: `Online payment verified. Order ID: ${sanitizedOrderId}`,
-        schoolId: (parent as any).schoolId
+        schoolId: parent.schoolId
       }
     });
 
-    // Revalidate fee pages
     revalidatePath("/parent/fees");
 
     return {
@@ -709,98 +537,67 @@ export async function verifyPayment(input: VerifyPaymentInput & { csrfToken?: st
   }
 }
 
-/**
- * Generate and download receipt for a payment
- * Requirements: 12.2, 12.3
- */
+// ─── downloadReceipt ──────────────────────────────────────────────────────────
+
 export async function downloadReceipt(input: DownloadReceiptInput) {
   try {
-    // Validate input
     const validated = downloadReceiptSchema.parse(input);
 
-    // Get current parent
     const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
+    if (!parent) return { success: false, message: "Unauthorized" };
 
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, (parent as any).schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
+    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, parent.schoolId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
 
-    // Get payment details
     const payment = await db.feePayment.findFirst({
       where: {
         id: validated.paymentId,
-        schoolId: (parent as any).schoolId
+        schoolId: parent.schoolId
       },
       include: {
         student: {
           include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            },
+            user: { select: { firstName: true, lastName: true, email: true } },
             enrollments: {
               where: { status: "ACTIVE" },
               orderBy: { enrollDate: 'desc' },
               take: 1,
-              include: {
-                class: true,
-                section: true
-              }
+              include: { class: true, section: true }
             }
           }
         },
         feeStructure: {
           include: {
             academicYear: true,
-            items: {
-              include: {
-                feeType: true
-              }
-            }
+            items: { include: { feeType: true } }
           }
         }
       }
     });
 
-    if (!payment) {
-      return { success: false, message: "Payment not found" };
-    }
+    if (!payment) return { success: false, message: "Payment not found" };
 
-    // Verify the payment belongs to the specified child
     if (payment.studentId !== validated.childId) {
       return { success: false, message: "Access denied" };
     }
 
-    // Get class ID for class-specific amounts
-    // Requirements: 12.2, 12.3
     const classId = payment.student.enrollments[0]?.class?.id;
 
-    // Prepare fee items with class-specific amounts
-    const feeItems = await Promise.all(
-      payment.feeStructure.items.map(async (item) => {
-        const correctAmount = await getFeeAmountForClass(item.feeTypeId, classId);
-        return {
-          name: item.feeType.name,
-          amount: correctAmount
-        };
-      })
-    );
+    // Batch fee amount lookups for receipt
+    const feeTypeIds = payment.feeStructure.items.map(i => i.feeTypeId);
+    const amountMap = await getFeeAmountsForClass(feeTypeIds, classId, parent.schoolId);
 
-    // Prepare receipt data
+    const feeItems = payment.feeStructure.items.map(item => ({
+      name: item.feeType.name,
+      amount: amountMap.get(item.feeTypeId) ?? 0
+    }));
+
     const receiptData = {
       receiptNumber: payment.receiptNumber,
       paymentDate: payment.paymentDate,
       student: {
         name: `${payment.student.user.firstName} ${payment.student.user.lastName}`,
-        email: payment.student.user.email,
+        email: payment.student.user.email ?? '',
         class: payment.student.enrollments[0]?.class.name || "N/A",
         section: payment.student.enrollments[0]?.section.name || "N/A",
         admissionId: payment.student.admissionId
@@ -820,12 +617,13 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
       feeItems
     };
 
-    // Fetch school info from SystemSettings
+    // C-5 fix: use schoolId field, not id
     const systemSettings = await db.schoolSettings.findFirst({
-      where: { id: (parent as any).schoolId }
+      where: { schoolId: parent.schoolId }
     });
+
     if (systemSettings) {
-      (receiptData as any).school = {
+      (receiptData as Record<string, unknown>).school = {
         name: systemSettings.schoolName,
         address: systemSettings.schoolAddress,
         phone: systemSettings.schoolPhone,
@@ -835,21 +633,11 @@ export async function downloadReceipt(input: DownloadReceiptInput) {
       };
     }
 
-    // Generate the printable HTML receipt
-    const receiptHTML = getReceiptHTML({
-      ...receiptData,
-      student: {
-        ...receiptData.student,
-        email: receiptData.student.email || '', // Convert null to empty string
-      }
-    });
+    const receiptHTML = getReceiptHTML(receiptData);
 
     return {
       success: true,
-      data: {
-        ...receiptData,
-        html: receiptHTML
-      },
+      data: { ...receiptData, html: receiptHTML },
       message: "Receipt generated successfully"
     };
   } catch (error) {

@@ -20,19 +20,20 @@ import { requireSchoolAccess } from "@/lib/auth/tenant";
  * Generate unique reference number for receipt
  * Format: RCP-YYYYMMDD-XXXX
  */
-async function generateReferenceNumber(): Promise<string> {
+async function generateReferenceNumber(schoolId: string): Promise<string> {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const dateStr = `${year}${month}${day}`;
 
-  // Get count of receipts created today
+  // Get count of receipts created today for this school only
   const startOfDay = new Date(year, now.getMonth(), now.getDate(), 0, 0, 0);
   const endOfDay = new Date(year, now.getMonth(), now.getDate(), 23, 59, 59);
 
   const count = await db.paymentReceipt.count({
     where: {
+      schoolId,
       createdAt: {
         gte: startOfDay,
         lte: endOfDay,
@@ -173,23 +174,6 @@ export async function uploadPaymentReceipt(
     if (!uploadResult.success) {
       throw new Error(uploadResult.error || 'Failed to upload receipt image');
     }
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, "0");
-    const folder = `receipts/${year}/${month}`;
-
-    try {
-      console.warn("Receipt upload temporarily disabled during migration to R2 storage");
-      return {
-        success: false,
-        error: "Receipt upload temporarily disabled during migration to R2 storage",
-      };
-    } catch (uploadError) {
-      console.error("R2 upload error:", uploadError);
-      return {
-        success: false,
-        error: "Failed to upload receipt image. Please try again.",
-      };
-    }
 
     // Get school context
     const { schoolId } = await requireSchoolAccess();
@@ -198,8 +182,8 @@ export async function uploadPaymentReceipt(
       return { success: false, error: "School context required" };
     }
 
-    // Generate unique reference number
-    const referenceNumber = await generateReferenceNumber();
+    // Generate unique reference number scoped to school
+    const referenceNumber = await generateReferenceNumber(schoolId);
 
     // Create payment receipt record with sanitized data
     const receipt = await db.paymentReceipt.create({
@@ -339,9 +323,10 @@ export async function getStudentReceipts(
       };
     }
 
-    // Build where clause
+    // Build where clause — always scoped to school
     const where: any = {
       studentId,
+      schoolId: student.schoolId,
     };
 
     if (filters?.status) {
@@ -438,7 +423,7 @@ export async function getReceiptById(receiptId: string) {
       return { success: false, error: "User not found" };
     }
 
-    // Fetch receipt
+    // Fetch receipt with student info for ownership + school scoping
     const receipt = await db.paymentReceipt.findUnique({
       where: { id: receiptId },
       include: {
@@ -508,7 +493,13 @@ export async function getReceiptById(receiptId: string) {
           error: "You do not have permission to view this receipt",
         };
       }
-    } else if (user.role !== "ADMIN") {
+    } else if (user.role === "ADMIN") {
+      // Admin must belong to the same school as the receipt
+      const { schoolId } = await requireSchoolAccess();
+      if (!schoolId || receipt.schoolId !== schoolId) {
+        return { success: false, error: "You do not have permission to view this receipt" };
+      }
+    } else {
       return {
         success: false,
         error: "Unauthorized to view this receipt",
@@ -610,7 +601,13 @@ export async function getReceiptByReference(referenceNumber: string) {
           error: "You do not have permission to view this receipt",
         };
       }
-    } else if (user.role !== "ADMIN") {
+    } else if (user.role === "ADMIN") {
+      // Admin must belong to the same school as the receipt
+      const { schoolId } = await requireSchoolAccess();
+      if (!schoolId || receipt.schoolId !== schoolId) {
+        return { success: false, error: "You do not have permission to view this receipt" };
+      }
+    } else {
       return {
         success: false,
         error: "Unauthorized to view this receipt",

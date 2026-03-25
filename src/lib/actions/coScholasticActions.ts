@@ -302,8 +302,19 @@ export async function toggleCoScholasticActivityStatus(id: string): Promise<Acti
  */
 export async function getCoScholasticGrades(studentId: string, termId: string): Promise<ActionResult> {
   try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify student belongs to this school
+    const studentExists = await db.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true },
+    });
+    if (!studentExists) return { success: false, error: "Student not found in this school" };
+
     const grades = await db.coScholasticGrade.findMany({
       where: {
+        schoolId,
         studentId,
         termId,
       },
@@ -370,6 +381,7 @@ export async function getCoScholasticGradesByClass(
 
     const grades = await db.coScholasticGrade.findMany({
       where: {
+        schoolId,
         studentId: { in: studentIds },
         termId,
         ...(activityId && { activityId }),
@@ -428,6 +440,15 @@ export async function saveCoScholasticGrade(input: CoScholasticGradeInput): Prom
 
     if (!activity) {
       return { success: false, error: "Activity not found" };
+    }
+
+    // Verify student belongs to this school before saving
+    const studentExists = await db.student.findFirst({
+      where: { id: input.studentId, schoolId },
+      select: { id: true },
+    });
+    if (!studentExists) {
+      return { success: false, error: "Student not found in this school" };
     }
 
     // Validate based on assessment type

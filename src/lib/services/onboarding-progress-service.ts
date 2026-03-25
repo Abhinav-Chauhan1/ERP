@@ -247,6 +247,7 @@ export class OnboardingProgressService {
         action: "UPDATE",
         resource: "SCHOOL",
         resourceId: schoolId,
+        userId: resetBy || null,
         changes: {
           action: "onboarding_reset",
           resetBy,

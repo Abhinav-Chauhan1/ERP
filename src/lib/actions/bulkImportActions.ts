@@ -273,9 +273,9 @@ export async function importStudents(
         continue;
       }
 
-      // Verify class exists
+      // Verify class exists and belongs to this school (H-5)
       const classExists = await db.class.findUnique({
-        where: { id: classId },
+        where: { id: classId, schoolId },
       });
 
       if (!classExists) {
@@ -300,7 +300,7 @@ export async function importStudents(
       }
 
       const sectionExists = await db.classSection.findUnique({
-        where: { id: sectionId },
+        where: { id: sectionId, schoolId },
       });
 
       if (!sectionExists) {
@@ -313,9 +313,11 @@ export async function importStudents(
         continue;
       }
 
-      // Generate default password: {firstName}@123
-      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
-      const hashedPassword = await hashPassword(defaultPassword);
+      // L-7: Generate secure random temporary password instead of predictable default
+      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
+      const { randomBytes } = await import("crypto");
+      const tempPassword = randomBytes(12).toString("base64url");
+      const hashedPassword = await hashPassword(tempPassword);
 
       // Create new student with user and enrollment
       const newStudent = await db.student.create({
@@ -454,9 +456,11 @@ export async function importTeachers(
         }
       }
 
-      // Generate default password: {firstName}@123
-      const defaultPassword = `${validated.firstName.toLowerCase()}@123`;
-      const hashedTeacherPassword = await hashPassword(defaultPassword);
+      // L-7: Generate secure random temporary password instead of predictable default
+      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
+      const { randomBytes: randomBytesTeacher } = await import("crypto");
+      const tempPassword = randomBytesTeacher(12).toString("base64url");
+      const hashedTeacherPassword = await hashPassword(tempPassword);
 
       // Create new teacher with user
       await db.teacher.create({
@@ -589,9 +593,11 @@ export async function importParents(
         }
       }
 
-      // Generate default password: {firstName}@123
-      const defaultParentPassword = `${validated.firstName.toLowerCase()}@123`;
-      const hashedParentPassword = await hashPassword(defaultParentPassword);
+      // L-7: Generate secure random temporary password instead of predictable default
+      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
+      const { randomBytes: randomBytesParent } = await import("crypto");
+      const tempParentPassword = randomBytesParent(12).toString("base64url");
+      const hashedParentPassword = await hashPassword(tempParentPassword);
 
       // Create new parent with user
       const newParent = await db.parent.create({

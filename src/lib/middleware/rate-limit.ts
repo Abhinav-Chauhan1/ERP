@@ -63,24 +63,28 @@ if (!redis) {
 }
 
 /**
- * Get client identifier for rate limiting
+ * Get client identifier for rate limiting.
+ * Uses IP only — not User-Agent — to prevent bypass by rotating UA strings.
+ * For authenticated routes, prefer using userId (set by auth middleware as x-user-id).
+ *
+ * IMPORTANT: In-memory rate limiting does not work across multiple server instances.
+ * Ensure REDIS_URL is set in production environment variables.
+ * See: src/lib/middleware/rate-limit.ts
  */
 function getClientId(request: NextRequest): string {
   // Try to get real IP from various headers (for proxies/load balancers)
   const forwarded = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
   const cfConnectingIp = request.headers.get('cf-connecting-ip'); // Cloudflare
-  
-  const ip = forwarded?.split(',')[0].trim() || 
-             realIp || 
-             cfConnectingIp || 
+
+  const ip = forwarded?.split(',')[0].trim() ||
+             realIp ||
+             cfConnectingIp ||
              'unknown';
 
-  // Include user agent for additional uniqueness
-  const userAgent = request.headers.get('user-agent') || 'unknown';
-  
-  // Create a hash of IP + User Agent for better rate limiting
-  return `${ip}:${userAgent.substring(0, 50)}`;
+  // Prefer authenticated user ID when available (set by auth middleware)
+  const userId = request.headers.get('x-user-id');
+  return userId ? `user-${userId}` : `ip-${ip}`;
 }
 
 /**

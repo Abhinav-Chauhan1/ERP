@@ -38,6 +38,7 @@ export interface AlumniReportFilters {
   graduationYearFrom?: number;
   graduationYearTo?: number;
   finalClass?: string;
+  schoolId: string; // required — always scope to school
 }
 
 export interface AlumniProfileUpdateData {
@@ -173,19 +174,20 @@ export class AlumniService {
    * 
    * @returns Alumni statistics object
    */
-  async calculateStatistics(): Promise<AlumniStatistics> {
-    // Check cache first
-    const cacheKey = "alumni:statistics:all";
+  async calculateStatistics(schoolId: string): Promise<AlumniStatistics> {
+    // Check cache first (per-school cache key)
+    const cacheKey = `alumni:statistics:school:${schoolId}`;
     const cached = memoryCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // Get total alumni count
-    const totalAlumni = await db.alumni.count();
+    // C20 FIX: Scope all queries to current school
+    const totalAlumni = await db.alumni.count({ where: { schoolId } });
 
     // Get all alumni with relevant fields for aggregation
     const alumni = await db.alumni.findMany({
+      where: { schoolId },
       select: {
         graduationDate: true,
         currentOccupation: true,
@@ -253,6 +255,9 @@ export class AlumniService {
   async generateReportData(filters: AlumniReportFilters): Promise<any[]> {
     // Build where clause from filters
     const where: Prisma.AlumniWhereInput = {};
+
+    // Always scope to school
+    where.schoolId = filters.schoolId;
 
     // Graduation year range
     if (filters.graduationYearFrom || filters.graduationYearTo) {

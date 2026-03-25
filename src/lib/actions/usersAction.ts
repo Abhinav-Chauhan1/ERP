@@ -419,18 +419,26 @@ export async function createParent(data: CreateParentFormData) {
 // Associate a student with a parent
 export async function associateStudentWithParent(studentId: string, parentId: string, isPrimary: boolean = false) {
   try {
-    // Get current school context
     const context = await getCurrentUserSchoolContext();
     if (!context?.schoolId && !context?.isSuperAdmin) {
       throw new Error('School context required');
     }
+    const schoolId = context.schoolId!;
+
+    // Verify both student and parent belong to the current school
+    const [student, parent] = await Promise.all([
+      db.student.findFirst({ where: { id: studentId, schoolId }, select: { id: true } }),
+      db.parent.findFirst({ where: { id: parentId, schoolId }, select: { id: true } }),
+    ]);
+    if (!student) throw new Error('Student not found in this school');
+    if (!parent) throw new Error('Parent not found in this school');
 
     const studentParent = await db.studentParent.create({
       data: {
         studentId,
         parentId,
         isPrimary,
-        schoolId: context.schoolId!, // Add required schoolId
+        schoolId,
       }
     });
 
@@ -454,20 +462,23 @@ export async function updateUserDetails(userId: string, userData: {
 }) {
   try {
     // Permission check: require USER:UPDATE
-    await checkPermission('USER', 'UPDATE', 'You do not have permission to update users');
+    const actorId = await checkPermission('USER', 'UPDATE', 'You do not have permission to update users');
 
-    const user = await db.user.findUnique({
-      where: { id: userId }
-    });
+    // Verify the target user belongs to the current school
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    if (!schoolId && !context?.isSuperAdmin) throw new Error('School context required');
 
-    if (!user) {
-      throw new Error('User not found');
+    if (schoolId) {
+      const membership = await db.userSchool.findFirst({
+        where: { userId, schoolId },
+      });
+      if (!membership) throw new Error('User not found in this school');
     }
 
-    // Update in our database
     const updatedUser = await db.user.update({
       where: { id: userId },
-      data: userData
+      data: userData,
     });
 
     revalidatePath('/admin/users');
@@ -481,9 +492,18 @@ export async function updateUserDetails(userId: string, userData: {
 // Update role-specific details
 export async function updateAdministrator(administratorId: string, data: Partial<CreateAdministratorFormData> & { password?: string }) {
   try {
-    const administrator = await db.administrator.findUnique({
-      where: { id: administratorId },
-      include: { user: true }
+    await checkPermission('USER', 'UPDATE', 'You do not have permission to update administrators');
+
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    if (!schoolId && !context?.isSuperAdmin) throw new Error('School context required');
+
+    const administrator = await db.administrator.findFirst({
+      where: {
+        id: administratorId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
 
     if (!administrator) {
@@ -536,9 +556,18 @@ export async function updateAdministrator(administratorId: string, data: Partial
 // Update Teacher
 export async function updateTeacher(teacherId: string, data: Partial<CreateTeacherFormData> & { password?: string }) {
   try {
-    const teacher = await db.teacher.findUnique({
-      where: { id: teacherId },
-      include: { user: true }
+    await checkPermission('TEACHER', 'UPDATE', 'You do not have permission to update teachers');
+
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    if (!schoolId && !context?.isSuperAdmin) throw new Error('School context required');
+
+    const teacher = await db.teacher.findFirst({
+      where: {
+        id: teacherId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
 
     if (!teacher) {
@@ -594,9 +623,18 @@ export async function updateTeacher(teacherId: string, data: Partial<CreateTeach
 // Update Student
 export async function updateStudent(studentId: string, data: Partial<CreateStudentFormData>) {
   try {
-    const student = await db.student.findUnique({
-      where: { id: studentId },
-      include: { user: true }
+    await checkPermission('STUDENT', 'UPDATE', 'You do not have permission to update students');
+
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    if (!schoolId && !context?.isSuperAdmin) throw new Error('School context required');
+
+    const student = await db.student.findFirst({
+      where: {
+        id: studentId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
 
     if (!student) {
@@ -681,9 +719,18 @@ export async function updateStudent(studentId: string, data: Partial<CreateStude
 // Update Parent
 export async function updateParent(parentId: string, data: Partial<CreateParentFormData>) {
   try {
-    const parent = await db.parent.findUnique({
-      where: { id: parentId },
-      include: { user: true }
+    await checkPermission('PARENT', 'UPDATE', 'You do not have permission to update parents');
+
+    const context = await getCurrentUserSchoolContext();
+    const schoolId = context?.schoolId;
+    if (!schoolId && !context?.isSuperAdmin) throw new Error('School context required');
+
+    const parent = await db.parent.findFirst({
+      where: {
+        id: parentId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
 
     if (!parent) {
@@ -737,41 +784,34 @@ export async function syncClerkUser(clerkId: string, userData: {
   avatar?: string;
 }) {
   try {
-    // This function is kept for backward compatibility but might need refactoring
-    // if we are fully moving away from Clerk. For now, we will query by id if it matches
-    // or just return if it's purely Clerk specific.
-
-    // Check if user already exists - using a raw query or assumption that clerkId might be stored as an external ID
-    // If clerkId column exists, we can use it. If not, we should probably ignore this sync
-    // or map it to email.
+    // Require authentication — this must only be called by authenticated server-side code
+    const session = await auth();
+    if (!session?.user?.id) throw new Error('Unauthorized');
 
     const existingUser = await db.user.findFirst({
       where: { email: userData.email }
     });
 
     if (existingUser) {
-      // Update existing user
       return await db.user.update({
         where: { id: existingUser.id },
         data: {
           firstName: userData.firstName,
           lastName: userData.lastName,
-          //   email: userData.email, // Don't typically update email on sync unless verified
           phone: userData.phone,
           avatar: userData.avatar,
         }
       });
     } else {
-      // Create new user if not found by email
       return await db.user.create({
         data: {
-          name: `${userData.firstName} ${userData.lastName}`, // Add required name field
+          name: `${userData.firstName} ${userData.lastName}`,
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: userData.email,
           phone: userData.phone,
           avatar: userData.avatar,
-          role: UserRole.STUDENT, // Default role
+          role: UserRole.STUDENT,
         }
       });
     }
@@ -840,17 +880,21 @@ export async function getCurrentUser() {
 // Get Student by ID
 export async function getStudentById(studentId: string) {
   try {
-    const student = await db.student.findUnique({
-      where: { id: studentId },
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.user?.id) return null;
+    const schoolId = context.schoolId;
+
+    const student = await db.student.findFirst({
+      where: {
+        id: studentId,
+        ...(schoolId ? { schoolId } : {}),
+      },
       include: {
         user: true,
         enrollments: {
-          include: {
-            class: true,
-            section: true,
-          }
-        }
-      }
+          include: { class: true, section: true },
+        },
+      },
     });
     return student;
   } catch (error) {
@@ -862,9 +906,16 @@ export async function getStudentById(studentId: string) {
 // Get Teacher by ID
 export async function getTeacherById(teacherId: string) {
   try {
-    const teacher = await db.teacher.findUnique({
-      where: { id: teacherId },
-      include: { user: true }
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.user?.id) return null;
+    const schoolId = context.schoolId;
+
+    const teacher = await db.teacher.findFirst({
+      where: {
+        id: teacherId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
     return teacher;
   } catch (error) {
@@ -876,9 +927,16 @@ export async function getTeacherById(teacherId: string) {
 // Get Administrator by ID
 export async function getAdministratorById(administratorId: string) {
   try {
-    const administrator = await db.administrator.findUnique({
-      where: { id: administratorId },
-      include: { user: true }
+    const context = await getCurrentUserSchoolContext();
+    if (!context?.user?.id) return null;
+    const schoolId = context.schoolId;
+
+    const administrator = await db.administrator.findFirst({
+      where: {
+        id: administratorId,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { user: true },
     });
     return administrator;
   } catch (error) {

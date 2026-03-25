@@ -362,9 +362,9 @@ export async function allocateRoom(data: {
     if (!schoolId) return { success: false, error: "School context required" };
     const userId = user.id;
 
-    // Check if room has capacity
-    const room = await prisma.hostelRoom.findUnique({
-      where: { id: data.roomId },
+    // C1 FIX: Verify room belongs to current school
+    const room = await prisma.hostelRoom.findFirst({
+      where: { id: data.roomId, schoolId },
     });
 
     if (!room) {
@@ -375,10 +375,11 @@ export async function allocateRoom(data: {
       return { success: false, error: "Room is at full capacity" };
     }
 
-    // Check if student already has an active allocation
+    // C1 FIX: Scope existing allocation check to current school
     const existingAllocation = await prisma.hostelRoomAllocation.findFirst({
       where: {
         studentId: data.studentId,
+        schoolId,
         status: AllocationStatus.ACTIVE,
       },
     });
@@ -424,8 +425,9 @@ export async function vacateRoom(allocationId: string, remarks?: string) {
     if (!schoolId) return { success: false, error: "School context required" };
     const userId = user.id;
 
-    const allocation = await prisma.hostelRoomAllocation.findUnique({
-      where: { id: allocationId },
+    // C2 FIX: Verify allocation belongs to current school
+    const allocation = await prisma.hostelRoomAllocation.findFirst({
+      where: { id: allocationId, schoolId },
       include: { room: true },
     });
 
@@ -462,8 +464,12 @@ export async function vacateRoom(allocationId: string, remarks?: string) {
 
 export async function getRoomAllocations(roomId: string) {
   try {
+    // C3 FIX: Add auth and schoolId filter
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const allocations = await prisma.hostelRoomAllocation.findMany({
-      where: { roomId },
+      where: { roomId, schoolId },
       include: {
         student: {
           include: {
@@ -490,9 +496,14 @@ export async function getRoomAllocations(roomId: string) {
 
 export async function getStudentAllocation(studentId: string) {
   try {
+    // C4 FIX: Add auth and schoolId filter
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const allocation = await prisma.hostelRoomAllocation.findFirst({
       where: {
         studentId,
+        schoolId,
         status: AllocationStatus.ACTIVE,
       },
       include: {
@@ -576,7 +587,11 @@ export async function logVisitorExit(visitorId: string) {
 
 export async function getVisitors(studentId?: string, date?: Date) {
   try {
-    const where: any = {};
+    // C5 FIX: Add auth and schoolId filter
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const where: any = { schoolId };
     if (studentId) {
       where.studentId = studentId;
     }
@@ -694,13 +709,14 @@ export async function recordHostelFeePayment(
       include: { allocation: true }
     });
 
-    // Check school access via allocation
-    if (fee && fee.allocation.schoolId !== schoolId) {
-      return { success: false, error: "Access denied" };
-    }
-
+    // H1 FIX: Check null before accessing nested property
     if (!fee) {
       return { success: false, error: "Fee record not found" };
+    }
+
+    // Check school access via allocation
+    if (fee.allocation.schoolId !== schoolId) {
+      return { success: false, error: "Access denied" };
     }
 
     const newPaidAmount = fee.paidAmount + data.paidAmount;
@@ -829,10 +845,17 @@ export async function updateComplaintStatus(
   }
 ) {
   try {
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) {
-      return { success: false, error: "Unauthorized" };
+    // C6 FIX: Use requireSchoolAccess to get schoolId and verify ownership
+    const { schoolId, user } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+    const userId = user.id;
+
+    // Verify complaint belongs to current school before updating
+    const existing = await prisma.hostelComplaint.findFirst({
+      where: { id: complaintId, schoolId },
+    });
+    if (!existing) {
+      return { success: false, error: "Complaint not found or access denied" };
     }
 
     const updateData: any = {
@@ -870,7 +893,11 @@ export async function getHostelComplaints(
   studentId?: string
 ) {
   try {
-    const where: any = {};
+    // C7 FIX: Add auth and schoolId filter
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const where: any = { schoolId };
     if (hostelId) {
       where.hostelId = hostelId;
     }
@@ -914,8 +941,12 @@ export async function getHostelComplaints(
 
 export async function getComplaintById(complaintId: string) {
   try {
-    const complaint = await prisma.hostelComplaint.findUnique({
-      where: { id: complaintId },
+    // C8 FIX: Add auth and schoolId filter
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const complaint = await prisma.hostelComplaint.findFirst({
+      where: { id: complaintId, schoolId },
       include: {
         hostel: true,
         student: {

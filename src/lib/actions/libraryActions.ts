@@ -432,7 +432,9 @@ export async function getBookCategories() {
   }) {
     try {
       const returnDate = data.returnDate || new Date();
-      const dailyFineRate = data.dailyFineRate || 5; // Default fine rate: 5 per day
+      // M3 FIX: Validate and cap dailyFineRate to prevent inflated fines
+      const rawRate = typeof data.dailyFineRate === 'number' ? data.dailyFineRate : 5;
+      const dailyFineRate = Math.min(Math.max(rawRate, 0), 500); // clamp 0–500
 
       const { schoolId } = await requireSchoolAccess();
       if (!schoolId) return { success: false, error: "School context required" };
@@ -610,8 +612,12 @@ export async function getBookCategories() {
   // Get a single book issue by ID
   export async function getBookIssueById(id: string) {
     try {
-      const issue = await db.bookIssue.findUnique({
-        where: { id },
+      // C11 FIX: Add auth and schoolId filter via book relation
+      const { schoolId } = await requireSchoolAccess();
+      if (!schoolId) throw new Error("School context required");
+
+      const issue = await db.bookIssue.findFirst({
+        where: { id, book: { schoolId } },
         include: {
           book: true,
           student: {
@@ -731,7 +737,9 @@ export async function getBookCategories() {
       const { schoolId } = await requireSchoolAccess();
       if (!schoolId) throw new Error("School context required");
 
-      const recentIssues = await db.bookIssue.findMany({
+      // L2 FIX: Run both queries in parallel
+      const [recentIssues, recentReturns] = await Promise.all([
+        db.bookIssue.findMany({
         where: { book: { schoolId } },
         take: limit,
         orderBy: { issueDate: "desc" },
@@ -757,9 +765,8 @@ export async function getBookCategories() {
             },
           },
         },
-      });
-
-      const recentReturns = await db.bookIssue.findMany({
+      }),
+        db.bookIssue.findMany({
         where: {
           book: { schoolId },
           status: "RETURNED",
@@ -789,7 +796,8 @@ export async function getBookCategories() {
             },
           },
         },
-      });
+      }),
+      ]);
 
       return {
         recentIssues,
@@ -815,9 +823,9 @@ export async function getBookCategories() {
       const { schoolId } = await requireSchoolAccess();
       if (!schoolId) return { success: false, error: "School context required" };
 
-      // Validate that book exists
+      // C12 FIX: Validate that book exists AND belongs to current school
       const book = await db.book.findUnique({
-        where: { id: data.bookId },
+        where: { id: data.bookId, schoolId },
       });
 
       if (!book) {
@@ -835,9 +843,9 @@ export async function getBookCategories() {
         };
       }
 
-      // Validate that student exists
+      // C12 FIX: Validate that student exists AND belongs to current school
       const student = await db.student.findUnique({
-        where: { id: data.studentId },
+        where: { id: data.studentId, schoolId },
         include: {
           user: true,
         },

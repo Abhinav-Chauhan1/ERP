@@ -401,9 +401,18 @@ export async function selectRandomQuestions(criteria: {
       };
     }
 
-    // Randomly select questions
-    const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, criteria.count);
+    // Fisher-Yates shuffle using crypto for unbiased randomness
+    function cryptoShuffle<T>(array: T[]): T[] {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const randomBuffer = new Uint32Array(1);
+        crypto.getRandomValues(randomBuffer);
+        const j = randomBuffer[0] % (i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    const selected = cryptoShuffle(allQuestions).slice(0, criteria.count);
 
     return { success: true, questions: selected };
   } catch (error) {
@@ -434,12 +443,12 @@ export async function gradeEssayQuestions(
       return { success: false, error: "Teacher not found" };
     }
 
-    // Get exam attempt
-    // Verify attempt belongs to school via exam -> subject -> etc OR explicitly check exam.schoolId
-    // Since we'll check exam ownership by teacher (who is school scoped), strict transitive check is good.
-    // But better to check exam.schoolId directly if possible.
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
+    // Get exam attempt — verify it belongs to this school via exam.schoolId
+    const attempt = await prisma.examAttempt.findFirst({
+      where: {
+        id: attemptId,
+        exam: { schoolId },
+      },
       include: {
         exam: true,
       },
@@ -447,11 +456,6 @@ export async function gradeEssayQuestions(
 
     if (!attempt) {
       return { success: false, error: "Exam attempt not found" };
-    }
-
-    // Verify school scope
-    if (attempt.exam.schoolId !== schoolId) {
-      return { success: false, error: "Unauthorized to access this exam attempt" };
     }
 
     // Verify teacher owns this exam

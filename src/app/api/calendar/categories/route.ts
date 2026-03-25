@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    // Get all categories
-    const categories = await getAllEventCategories(includeInactive);
+    // Get all categories scoped to current school
+    const categories = await getAllEventCategories(includeInactive, schoolId);
 
     return NextResponse.json(
       {

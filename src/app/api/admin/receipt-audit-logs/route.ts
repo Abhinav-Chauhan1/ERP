@@ -36,6 +36,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get schoolId from session for mandatory school isolation
+    const schoolId = session?.user?.schoolId as string | undefined;
+    if (!schoolId) {
+      return NextResponse.json(
+        { success: false, error: "School context required" },
+        { status: 403 }
+      );
+    }
+
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get("action") as AuditAction | null;
@@ -48,6 +57,7 @@ export async function GET(request: NextRequest) {
     const filters: any = {
       limit,
       offset,
+      schoolId, // mandatory school isolation
     };
 
     if (action) {

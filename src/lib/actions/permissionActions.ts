@@ -5,6 +5,7 @@ import { PrismaClient, UserRole, PermissionAction } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { hasPermission } from '@/lib/utils/permissions';
 import { DEFAULT_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '@/lib/utils/permission-defaults';
+import { requireSchoolAccess } from '@/lib/auth/tenant';
 
 const prisma = new PrismaClient();
 
@@ -303,13 +304,17 @@ export async function assignPermissionToUser(
       return { success: false, error: 'Permission not found' };
     }
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { id: targetUserId },
+    // Check if user exists and belongs to this school
+    const { schoolId } = await requireSchoolAccess();
+    const user = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        schools: { some: { schoolId, isActive: true } },
+      },
     });
 
     if (!user) {
-      return { success: false, error: 'User not found' };
+      return { success: false, error: 'User not found in this school' };
     }
 
     // Upsert user permission
@@ -356,6 +361,19 @@ export async function removePermissionFromUser(targetUserId: string, permissionI
       return { success: false, error: 'You do not have permission to remove permissions from users' };
     }
 
+    // Verify target user belongs to this school
+    const { schoolId } = await requireSchoolAccess();
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        schools: { some: { schoolId, isActive: true } },
+      },
+      select: { id: true },
+    });
+    if (!targetUser) {
+      return { success: false, error: 'User not found in this school' };
+    }
+
     await prisma.userPermission.delete({
       where: {
         userId_permissionId: {
@@ -388,7 +406,14 @@ export async function getUsersForPermissionManagement() {
       return { success: false, error: 'You do not have permission to view users' };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+
     const users = await prisma.user.findMany({
+      where: {
+        schools: {
+          some: { schoolId, isActive: true },
+        },
+      },
       select: {
         id: true,
         email: true,

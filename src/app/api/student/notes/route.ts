@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getStudentNotes, createStudentNote, searchStudentNotes } from "@/lib/actions/student-notes-actions";
 
 export async function GET(request: NextRequest) {
+  // C25 FIX: Require authentication
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
@@ -23,23 +30,23 @@ export async function GET(request: NextRequest) {
       result = await getStudentNotes(studentId || undefined);
     }
     
-    return NextResponse.json({
-      success: true,
-      data: result
-    });
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Error in notes API:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : "Failed to get notes"
-      },
+      { success: false, message: error instanceof Error ? error.message : "Failed to get notes" },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
+  // C25 FIX: Require authentication
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { title, content, subject, tags, folder, isPublic } = body;
@@ -51,23 +58,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createStudentNote({
-      title,
-      content,
-      subject,
-      tags,
-      folder,
-      isPublic
-    });
+    const result = await createStudentNote({ title, content, subject, tags, folder, isPublic });
     
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error in create note API:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : "Failed to create note"
-      },
+      { success: false, message: error instanceof Error ? error.message : "Failed to create note" },
       { status: 500 }
     );
   }

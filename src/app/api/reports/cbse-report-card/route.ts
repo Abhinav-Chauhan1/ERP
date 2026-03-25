@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { aggregateMultiTermReportCardData } from "@/lib/services/report-card-data-aggregation";
 import {
@@ -14,6 +15,14 @@ import {
  */
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!["ADMIN", "TEACHER"].includes(session.user.role as string)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const sessionSchoolId = session.user.schoolId as string | undefined;
     const { searchParams } = req.nextUrl;
     const studentId = searchParams.get("studentId");
     const studentIds = searchParams.get("studentIds"); // comma-separated for batch
@@ -75,6 +84,10 @@ export async function GET(req: NextRequest) {
       const dataList = await Promise.all(
         ids.map((id) => aggregateMultiTermReportCardData(id, academicYearId)),
       );
+      // Verify all students belong to the session's school
+      if (sessionSchoolId && dataList.some((d) => d.student.schoolId !== sessionSchoolId)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const opts = dataList.length > 0
         ? await resolveSchoolOptions(dataList[0].student.schoolId)
         : {};
@@ -82,6 +95,10 @@ export async function GET(req: NextRequest) {
       fileName = `CBSE_Report_Cards_Batch.pdf`;
     } else if (studentId) {
       const data = await aggregateMultiTermReportCardData(studentId, academicYearId);
+      // Verify student belongs to the session's school
+      if (sessionSchoolId && data.student.schoolId !== sessionSchoolId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const opts = await resolveSchoolOptions(data.student.schoolId);
       pdfBuffer = await generateCBSEReportCardPDF(data, opts);
       fileName = `CBSE_Report_Card_${data.student.name.replace(/\s+/g, "_")}.pdf`;

@@ -53,12 +53,13 @@ export async function bulkGenerateCertificates(
     // Get school context
     const schoolId = await getRequiredSchoolId();
 
-    // Fetch student data
+    // Fetch student data — scoped to school
     const students = await db.student.findMany({
       where: {
         id: {
           in: studentIds,
         },
+        schoolId,
       },
       include: {
         user: {
@@ -176,9 +177,9 @@ export async function generateCertificateForStudent(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    // Fetch student data
+    // Fetch student data — scoped to school
     const student = await db.student.findUnique({
-      where: { id: studentId },
+      where: { id: studentId, schoolId },
       include: {
         user: {
           select: {
@@ -278,8 +279,12 @@ export async function getGeneratedCertificates(filters?: {
       return { success: false, error: "User not found" };
     }
 
-    // Build where clause
-    const where: any = {};
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Build where clause — always scoped to school
+    const where: any = { schoolId };
 
     if (filters?.templateId) {
       where.templateId = filters.templateId;
@@ -340,6 +345,18 @@ export async function getCertificatesForStudent(studentId: string) {
     const user = await currentUser();
     if (!user) {
       return { success: false, error: "Unauthorized" };
+    }
+
+    // Get school context and verify student belongs to this school
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const student = await db.student.findUnique({
+      where: { id: studentId, schoolId },
+      select: { id: true },
+    });
+    if (!student) {
+      return { success: false, error: "Student not found" };
     }
 
     const result = await getStudentCertificates(studentId);

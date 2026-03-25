@@ -29,7 +29,7 @@ export const getPayrolls = withSchoolAuthAction(async (schoolId: string, userId:
 }) => {
   try {
     const PAGE_SIZE = filters?.limit ?? 20;
-    const where: any = { teacher: { schoolId } };
+    const where: any = { schoolId };
 
     // Check permissions
     await checkPermission('PAYROLL', 'READ');
@@ -306,7 +306,7 @@ export const updatePayroll = withSchoolAuthAction(async (schoolId: string, userI
     if (data.netSalary) updateData.netSalary = parseFloat(data.netSalary);
 
     const payroll = await db.payroll.update({
-      where: { id },
+      where: { id, schoolId },
       data: updateData,
       include: {
         teacher: {
@@ -337,7 +337,7 @@ export const processPayment = withSchoolAuthAction(async (schoolId: string, user
     if (!existing) return { success: false, error: "Payroll not found" };
 
     const payroll = await db.payroll.update({
-      where: { id },
+      where: { id, schoolId },
       data: {
         status: "COMPLETED" as any,
         paymentDate: paymentDate || new Date(),
@@ -367,7 +367,7 @@ export const deletePayroll = withSchoolAuthAction(async (schoolId: string, userI
 
     // Check if payroll is already paid
     const payroll = await db.payroll.findFirst({
-      where: { id, teacher: { schoolId } },
+      where: { id, schoolId },
     });
 
     if (payroll?.status === "COMPLETED") {
@@ -375,7 +375,7 @@ export const deletePayroll = withSchoolAuthAction(async (schoolId: string, userI
     }
 
     await db.payroll.delete({
-      where: { id },
+      where: { id, schoolId },
     });
 
     revalidatePath("/admin/finance/payroll");
@@ -549,31 +549,38 @@ export const bulkGeneratePayrolls = withSchoolAuthAction(async (schoolId: string
     });
     const existingTeacherIds = new Set(existingPayrolls.map((p) => p.teacherId));
 
-    for (const teacher of teachers) {
-      try {
-        if (!existingTeacherIds.has(teacher.id)) {
-          const payroll = await db.payroll.create({
-            data: {
-              schoolId,
-              teacherId: teacher.id,
-              month,
-              year,
-              basicSalary: defaultSalary,
-              allowances: 0,
-              deductions: 0,
-              netSalary: defaultSalary,
-              status: "PENDING",
-            },
-          });
-          results.push(payroll);
-        }
-      } catch (error) {
-        errors.push({
-          teacherId: teacher.id,
-          teacherName: `${teacher.user.firstName} ${teacher.user.lastName}`,
-          error: "Failed to generate payroll",
-        });
-      }
+    // M-3: build batch data for teachers that don't already have a payroll this period
+    const newTeachers = teachers.filter((t) => !existingTeacherIds.has(t.id));
+
+    if (newTeachers.length > 0) {
+      const payrollData = newTeachers.map((teacher) => ({
+        schoolId,
+        teacherId: teacher.id,
+        month,
+        year,
+        basicSalary: defaultSalary,
+        allowances: 0,
+        deductions: 0,
+        netSalary: defaultSalary,
+        status: "PENDING" as const,
+      }));
+
+      await db.payroll.createMany({
+        data: payrollData,
+        skipDuplicates: true, // idempotent re-run protection
+      });
+
+      // createMany doesn't return records in PostgreSQL — fetch them after
+      const created = await db.payroll.findMany({
+        where: {
+          schoolId,
+          month,
+          year,
+          teacherId: { in: newTeachers.map((t) => t.id) },
+        },
+        select: { id: true, teacherId: true },
+      });
+      results.push(...created);
     }
 
     revalidatePath("/admin/finance/payroll");

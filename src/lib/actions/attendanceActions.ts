@@ -649,6 +649,7 @@ export async function getStudentAttendanceReport(
         },
       },
       orderBy: { date: "desc" },
+      take: 500,
     });
 
     const totalDays = records.length;
@@ -886,6 +887,12 @@ export async function markBulkTeacherAttendance(data: {
   markedBy?: string;
 }) {
   try {
+    const { user, schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const hasPerm = await hasPermission(user.id, 'ATTENDANCE', 'CREATE');
+    if (!hasPerm) return { success: false, error: 'Permission denied: Cannot CREATE ATTENDANCE' };
+
     const results = await Promise.all(
       data.attendanceRecords.map((record) =>
         markTeacherAttendance({

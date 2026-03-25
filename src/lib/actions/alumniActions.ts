@@ -506,9 +506,13 @@ export async function updateAlumniProfile(
 
     const { alumniId, ...updateData } = validation.data;
 
-    // Check if alumni exists
+    // C19 FIX: Get school context and verify alumni belongs to current school
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Check if alumni exists AND belongs to current school
     const existingAlumni = await db.alumni.findUnique({
-      where: { id: alumniId },
+      where: { id: alumniId, schoolId },
     });
 
     if (!existingAlumni) {
@@ -612,8 +616,12 @@ export async function getAlumniStatistics(): Promise<AlumniStatisticsResult> {
     // Initialize alumni service
     const alumniService = new AlumniService();
 
-    // Calculate statistics
-    const statistics = await alumniService.calculateStatistics();
+    // C20 FIX: Pass schoolId to calculateStatistics
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Calculate statistics scoped to current school
+    const statistics = await alumniService.calculateStatistics(schoolId);
 
     return {
       success: true,
@@ -660,11 +668,16 @@ export async function generateAlumniReport(
     // Initialize alumni service
     const alumniService = new AlumniService();
 
-    // Generate report data
+    // M7 FIX: Get school context and pass to generateReportData
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Generate report data scoped to current school
     const reportData = await alumniService.generateReportData({
       graduationYearFrom,
       graduationYearTo,
       finalClass,
+      schoolId,
     });
 
     // Log audit event for alumni report generation
@@ -767,7 +780,11 @@ export async function exportAlumniDirectory(
     // Initialize alumni service
     const alumniService = new AlumniService();
 
-    // Build search query
+    // C21 FIX: Get school context and pass to buildSearchQuery
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Build search query with schoolId
     const where = alumniService.buildSearchQuery({
       searchTerm,
       graduationYearFrom,
@@ -777,6 +794,9 @@ export async function exportAlumniDirectory(
       currentOccupation,
       collegeName,
     });
+
+    // C21 FIX: Always scope export to current school
+    where.schoolId = schoolId;
 
     // Build order by clause
     let orderBy: any = {};
@@ -934,10 +954,15 @@ export async function sendAlumniMessage(
 
     const { alumniIds, subject, message, channels } = validation.data;
 
-    // Fetch alumni with communication preferences
+    // C22 FIX: Get school context and scope alumni lookup to current school
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    // Fetch alumni with communication preferences, scoped to current school
     const alumni = await db.alumni.findMany({
       where: {
         id: { in: alumniIds },
+        schoolId,
       },
       include: {
         student: {
@@ -1108,6 +1133,10 @@ export async function getAlumniForCommunication(
     // Initialize alumni service
     const alumniService = new AlumniService();
 
+    // C23 FIX: Get school context and scope query to current school
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     // Build search query
     const where = alumniService.buildSearchQuery({
       graduationYearFrom,
@@ -1115,6 +1144,9 @@ export async function getAlumniForCommunication(
       finalClass,
       currentCity,
     });
+
+    // C23 FIX: Always scope to current school
+    where.schoolId = schoolId;
 
     // Add communication preference filter
     if (allowCommunicationOnly) {

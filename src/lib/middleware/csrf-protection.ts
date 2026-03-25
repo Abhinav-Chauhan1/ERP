@@ -98,30 +98,25 @@ export async function csrfProtection(request: NextRequest): Promise<NextResponse
 
   const pathname = request.nextUrl.pathname;
   
-  // Skip CSRF for Next.js Server Actions
-  // Server Actions are POST requests with specific headers
+  // Skip CSRF for real Next.js Server Actions only
+  // Server Actions send the 'next-action' header; do NOT blanket-skip multipart/form-data
   const isServerAction = request.headers.get('next-action') !== null ||
-                        request.headers.get('content-type')?.includes('multipart/form-data') ||
                         pathname.startsWith('/_next/');
-  
+
   if (isServerAction) {
     return null; // Allow Server Actions to proceed
   }
 
-  // Skip CSRF for API routes that use other authentication methods
+  // Skip CSRF only for endpoints that use their own request authentication:
+  // - NextAuth (manages its own CSRF)
+  // - Webhooks (use HMAC signature verification)
+  // - Truly public endpoints (no state mutation risk)
   const skipPaths = [
     '/api/auth/', // NextAuth handles its own CSRF
-    '/api/webhooks/', // Webhooks use signature verification
+    '/api/webhooks/', // Webhooks use HMAC signature verification
     '/api/public/', // Public APIs don't need CSRF
     '/api/schools/validate', // School code validation (public endpoint)
     '/api/otp/', // OTP generation and verification (public endpoints)
-    '/api/super-admin/', // Super admin routes use session authentication
-    '/api/admin/', // Admin routes use session authentication
-    '/api/teacher/', // Teacher routes use session authentication
-    '/api/student/', // Student routes use session authentication
-    '/api/students/', // Student management routes use session authentication
-    '/api/parent/', // Parent routes use session authentication
-    '/api/parents/', // Parent management routes use session authentication
   ];
 
   if (skipPaths.some(path => pathname.startsWith(path) || pathname === path)) {

@@ -304,10 +304,6 @@ async function uploadPDFToStorage(
     }
 
     return uploadResult.url!;
-    
-    // Return a fallback local path if upload fails
-    // This allows the system to still generate records even if storage is not configured
-    return `/api/certificates/${certificateNumber}/download`;
   } catch (error) {
     console.error('Failed to upload certificate to R2 storage:', error);
     // Return a fallback local path if upload fails
@@ -471,11 +467,12 @@ export async function generateBulkCertificates(
 /**
  * Get generated certificates for a student
  */
-export async function getStudentCertificates(studentId: string) {
+export async function getStudentCertificates(studentId: string, schoolId: string) {
   try {
     const certificates = await db.generatedCertificate.findMany({
       where: {
         studentId,
+        schoolId,
         status: CertificateStatus.ACTIVE,
       },
       include: {
@@ -558,9 +555,19 @@ export async function verifyCertificate(verificationCode: string) {
 export async function revokeCertificate(
   certificateId: string,
   revokedBy: string,
-  reason: string
+  reason: string,
+  schoolId: string
 ) {
   try {
+    // Verify ownership before revoking
+    const existing = await db.generatedCertificate.findFirst({
+      where: { id: certificateId, schoolId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return { success: false, error: "Certificate not found" };
+    }
+
     const certificate = await db.generatedCertificate.update({
       where: { id: certificateId },
       data: {

@@ -529,6 +529,13 @@ export async function addParticipant(participantData: EventParticipantData) {
 
 export async function removeParticipant(eventId: string, userId: string) {
   try {
+    // C15 FIX: Add auth and verify event belongs to current school
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
+    const event = await db.event.findUnique({ where: { id: eventId, schoolId } });
+    if (!event) return { success: false, error: "Event not found", data: null };
+
     // Check if the participant exists
     const existingParticipant = await db.eventParticipant.findUnique({
       where: {
@@ -564,6 +571,13 @@ export async function removeParticipant(eventId: string, userId: string) {
 
 export async function markAttendance(eventId: string, userId: string, attended: boolean) {
   try {
+    // C16 FIX: Add auth and verify event belongs to current school
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", data: null };
+
+    const event = await db.event.findUnique({ where: { id: eventId, schoolId } });
+    if (!event) return { success: false, error: "Event not found", data: null };
+
     // Check if the participant exists
     const existingParticipant = await db.eventParticipant.findUnique({
       where: {

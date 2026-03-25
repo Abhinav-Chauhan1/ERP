@@ -549,6 +549,7 @@ export async function getFeeStructuresForStudent(studentId: string) {
 
     const feeStructures = await db.feeStructure.findMany({
       where: {
+        schoolId,
         academicYearId: enrollment.class.academicYearId,
         isActive: true,
         OR: [

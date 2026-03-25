@@ -54,7 +54,7 @@ export const getAnnouncements = withSchoolAuthAction(async (schoolId: string, us
       orderBy: {
         createdAt: "desc",
       },
-      take: filters?.limit,
+      take: filters?.limit ?? 50,
       skip: filters?.offset,
     });
 

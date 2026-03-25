@@ -5,6 +5,11 @@ import { UserRole } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { logCreate } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { z } from "zod";
+
+const applicationIdSchema = z.string().cuid("Invalid application ID");
+const applicationIdsSchema = z.array(z.string().cuid("Invalid application ID")).min(1, "At least one application ID required").max(100, "Cannot convert more than 100 applications at once");
 
 /**
  * Generate a unique admission ID for the student
@@ -52,9 +57,19 @@ export async function convertAdmissionToStudent(
   }
 ) {
   try {
-    // 1. Get the admission application
+    // Auth + school context check (ADMIN only)
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Validate input
+    const idValidation = applicationIdSchema.safeParse(applicationId);
+    if (!idValidation.success) {
+      return { success: false, error: idValidation.error.errors[0]?.message || "Invalid application ID" };
+    }
+
+    // 1. Get the admission application — scoped to school
     const application = await db.admissionApplication.findUnique({
-      where: { id: applicationId },
+      where: { id: applicationId, schoolId },
       include: {
         appliedClass: true,
       },
@@ -307,6 +322,16 @@ export async function bulkConvertAdmissionsToStudents(
     sendCredentials?: boolean;
   }
 ) {
+  // Auth + school context check (ADMIN only)
+  const { schoolId } = await requireSchoolAccess();
+  if (!schoolId) return { success: false, error: "School context required" };
+
+  // Validate input
+  const idsValidation = applicationIdsSchema.safeParse(applicationIds);
+  if (!idsValidation.success) {
+    return { success: false, error: idsValidation.error.errors[0]?.message || "Invalid application IDs" };
+  }
+
   const results = {
     successful: [] as string[],
     failed: [] as { id: string; error: string }[],
@@ -339,8 +364,18 @@ export async function bulkConvertAdmissionsToStudents(
  */
 export async function getStudentFromApplication(applicationId: string) {
   try {
+    // Auth + school context check
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Validate input
+    const idValidation = applicationIdSchema.safeParse(applicationId);
+    if (!idValidation.success) {
+      return { success: false, error: idValidation.error.errors[0]?.message || "Invalid application ID" };
+    }
+
     const application = await db.admissionApplication.findUnique({
-      where: { id: applicationId },
+      where: { id: applicationId, schoolId },
       include: {
         student: {
           include: {

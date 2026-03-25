@@ -535,9 +535,12 @@ export async function getBulkMessageProgress(
       };
     }
 
-    // Get audit log entry
-    const auditLog = await db.auditLog.findUnique({
-      where: { id: auditLogId },
+    // Get audit log entry — scoped to current school via userId
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
+    const auditLog = await db.auditLog.findFirst({
+      where: { id: auditLogId, userId: session.user.id },
     });
 
     if (!auditLog) {
@@ -643,13 +646,17 @@ export async function getBulkMessageHistory(
     // Validate limit
     const validLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
 
-    // Get bulk message audit logs
+    // Get bulk message audit logs scoped to current school (via userId)
+    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
+    const schoolId = await getRequiredSchoolId();
+
     const auditLogs = await db.auditLog.findMany({
       where: {
         action: AuditAction.CREATE,
         resource: {
           in: ["BULK_MESSAGE_CLASS", "BULK_MESSAGE_ALL_PARENTS"],
         },
+        userId: session.user.id,
       },
       include: {
         user: {

@@ -36,10 +36,11 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Find the document
+    // Find the document scoped to the teacher's school
     const document = await db.document.findUnique({
       where: {
         id,
+        schoolId: user.teacher.schoolId,
       },
     });
 
@@ -127,10 +128,11 @@ export async function GET(
 
     const { id } = await params;
 
-    // Find the document
+    // Find the document scoped to the teacher's school
     const document = await db.document.findUnique({
       where: {
         id,
+        schoolId: user.teacher.schoolId,
       },
       include: {
         documentType: true,

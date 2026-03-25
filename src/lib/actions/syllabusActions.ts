@@ -166,12 +166,11 @@ export const validateSyllabusScope = withSchoolAuthAction(async (schoolId: strin
     if (scope.academicYearId) {
       const academicYear = await db.academicYear.findFirst({
         where: {
-          id: scope.academicYearId // Assuming global/shared or need check? Safest is findFirst with potentially schoolId if user passed valid one from dropdown
+          id: scope.academicYearId,
+          schoolId,
         },
         select: { id: true }
       });
-      // Note: AcademicYear might be school-scoped. If so, add schoolId check.
-      // But let's assume existence check by ID is sufficient if dropdowns filtered correctly.
 
       if (!academicYear) {
         return {

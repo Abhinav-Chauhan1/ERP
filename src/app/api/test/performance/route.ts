@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import { getDashboardAnalytics } from '@/lib/actions/analytics-actions';
 import { getBillingDashboardData } from '@/lib/actions/billing-actions';
 
 /**
  * Performance Test API Endpoint
  * Tests the optimized dashboard queries and reports performance metrics
+ * Restricted to authenticated ADMIN users only.
  */
 export async function GET(request: NextRequest) {
+  // Auth check — only admins can run performance tests
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const startTime = Date.now();
   const queryMetrics: Array<{
     operation: string;

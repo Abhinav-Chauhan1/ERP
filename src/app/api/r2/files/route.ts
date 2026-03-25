@@ -78,6 +78,11 @@ export async function GET(req: NextRequest) {
           }, { status: 400 });
         }
 
+        // Validate the file key belongs to this school
+        if (!params.key.startsWith(`school-${schoolId}/`)) {
+          return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+        }
+
         const result = await fileManager.retrieveFile(params.key, {
           includeMetadata: params.includeMetadata,
           generatePresignedUrl: params.generatePresignedUrl,
@@ -121,6 +126,11 @@ export async function GET(req: NextRequest) {
           }, { status: 400 });
         }
 
+        // Validate the file key belongs to this school
+        if (!key.startsWith(`school-${schoolId}/`)) {
+          return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+        }
+
         const result = await fileManager.checkFileExists(key);
         return NextResponse.json({
           success: true,
@@ -135,6 +145,11 @@ export async function GET(req: NextRequest) {
             success: false,
             error: 'File key is required',
           }, { status: 400 });
+        }
+
+        // Validate the file key belongs to this school
+        if (!key.startsWith(`school-${schoolId}/`)) {
+          return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
         }
 
         const metadata = await fileManager.getFileMetadata(key);
@@ -173,7 +188,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Verify school access
-    await requireSchoolAccess();
+    const { schoolId } = await requireSchoolAccess();
 
     const body = await req.json();
     const { action } = body;
@@ -195,6 +210,14 @@ export async function POST(req: NextRequest) {
           }, { status: 400 });
         }
 
+        // Validate all keys belong to this school
+        const invalidKeys = (body.keys as string[]).filter(
+          (k: string) => !k.startsWith(`school-${schoolId}/`)
+        );
+        if (invalidKeys.length > 0) {
+          return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+        }
+
         const result = await fileManager.batchRetrieveFiles(body.keys, {
           includeMetadata: body.includeMetadata,
           generatePresignedUrl: body.generatePresignedUrl,
@@ -212,6 +235,14 @@ export async function POST(req: NextRequest) {
             error: 'Invalid parameters',
             details: validation.error.errors,
           }, { status: 400 });
+        }
+
+        // Validate all keys belong to this school
+        const invalidDeleteKeys = (body.keys as string[]).filter(
+          (k: string) => !k.startsWith(`school-${schoolId}/`)
+        );
+        if (invalidDeleteKeys.length > 0) {
+          return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
         }
 
         const result = await fileManager.batchDeleteFiles(body.keys);
@@ -260,6 +291,11 @@ export async function DELETE(req: NextRequest) {
         success: false,
         error: 'File key is required',
       }, { status: 400 });
+    }
+
+    // Validate the file key belongs to this school
+    if (!key.startsWith(`school-${schoolId}/`)) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
     }
 
     // Delete the file using R2 storage service directly

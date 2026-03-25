@@ -505,46 +505,45 @@ export async function createTimetableSlot(data: TimetableSlotFormValues) {
     const sectionId = data.sectionId === "none" ? null : data.sectionId;
     const roomId = data.roomId === "none" ? null : data.roomId;
 
-    // Check if a slot already exists for this class/section at this time
-    const conflictingSlot = await checkSlotConflict({
-      timetableId: data.timetableId,
-      classId: data.classId,
-      sectionId: sectionId,
-      day: data.day,
-      startTime: data.startTime,
-      endTime: data.endTime
-    });
+    // M4 FIX: Run all three conflict checks in parallel
+    const [conflictingSlot, teacherConflict, roomConflict] = await Promise.all([
+      checkSlotConflict({
+        timetableId: data.timetableId,
+        classId: data.classId,
+        sectionId: sectionId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        schoolId,
+      }),
+      checkTeacherAvailability({
+        timetableId: data.timetableId,
+        subjectTeacherId: data.subjectTeacherId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        schoolId,
+      }),
+      roomId ? checkRoomAvailability({
+        timetableId: data.timetableId,
+        roomId: roomId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        schoolId,
+      }) : Promise.resolve(null),
+    ]);
 
     if (conflictingSlot) {
       return { success: false, error: conflictingSlot };
     }
 
-    // Check if teacher is available at this time
-    const teacherConflict = await checkTeacherAvailability({
-      timetableId: data.timetableId,
-      subjectTeacherId: data.subjectTeacherId,
-      day: data.day,
-      startTime: data.startTime,
-      endTime: data.endTime
-    });
-
     if (teacherConflict) {
       return { success: false, error: teacherConflict };
     }
 
-    // Check if room is available at this time
-    if (roomId) {
-      const roomConflict = await checkRoomAvailability({
-        timetableId: data.timetableId,
-        roomId: roomId,
-        day: data.day,
-        startTime: data.startTime,
-        endTime: data.endTime
-      });
-
-      if (roomConflict) {
-        return { success: false, error: roomConflict };
-      }
+    if (roomConflict) {
+      return { success: false, error: roomConflict };
     }
 
     // Use the schoolId already obtained from requireSchoolAccess above
@@ -595,49 +594,48 @@ export async function updateTimetableSlot(data: TimetableSlotUpdateFormValues) {
       return { success: false, error: "Timetable slot not found or access denied" };
     }
 
-    // Check if a slot already exists for this class/section at this time (excluding current slot)
-    const conflictingSlot = await checkSlotConflict({
-      timetableId: data.timetableId,
-      classId: data.classId,
-      sectionId: sectionId,
-      day: data.day,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      excludeSlotId: data.id
-    });
-
-    if (conflictingSlot) {
-      return { success: false, error: conflictingSlot };
-    }
-
-    // Check if teacher is available at this time (excluding current slot)
-    const teacherConflict = await checkTeacherAvailability({
-      timetableId: data.timetableId,
-      subjectTeacherId: data.subjectTeacherId,
-      day: data.day,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      excludeSlotId: data.id
-    });
-
-    if (teacherConflict) {
-      return { success: false, error: teacherConflict };
-    }
-
-    // Check if room is available at this time (excluding current slot)
-    if (roomId) {
-      const roomConflict = await checkRoomAvailability({
+    // M4 FIX: Run all three conflict checks in parallel (excluding current slot)
+    const [conflictingSlot, teacherConflict, roomConflict] = await Promise.all([
+      checkSlotConflict({
+        timetableId: data.timetableId,
+        classId: data.classId,
+        sectionId: sectionId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        excludeSlotId: data.id,
+        schoolId,
+      }),
+      checkTeacherAvailability({
+        timetableId: data.timetableId,
+        subjectTeacherId: data.subjectTeacherId,
+        day: data.day,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        excludeSlotId: data.id,
+        schoolId,
+      }),
+      roomId ? checkRoomAvailability({
         timetableId: data.timetableId,
         roomId: roomId,
         day: data.day,
         startTime: data.startTime,
         endTime: data.endTime,
-        excludeSlotId: data.id
-      });
+        excludeSlotId: data.id,
+        schoolId,
+      }) : Promise.resolve(null),
+    ]);
 
-      if (roomConflict) {
-        return { success: false, error: roomConflict };
-      }
+    if (conflictingSlot) {
+      return { success: false, error: conflictingSlot };
+    }
+
+    if (teacherConflict) {
+      return { success: false, error: teacherConflict };
+    }
+
+    if (roomConflict) {
+      return { success: false, error: roomConflict };
     }
 
     const slot = await db.timetableSlot.update({
@@ -703,10 +701,13 @@ export async function deleteTimetableSlot(id: string) {
 // Get all classes for dropdown
 export async function getClassesForTimetable() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    // C13 FIX: Use requireSchoolAccess and filter by schoolId
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const classes = await db.class.findMany({
       where: {
+        schoolId,
         academicYear: {
           isCurrent: true
         }
@@ -755,9 +756,14 @@ export async function getRoomsForTimetable() {
 // Get all subject-teacher combinations for dropdown
 export async function getSubjectTeachersForTimetable() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    // C14 FIX: Use requireSchoolAccess and filter by schoolId
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     const subjectTeachers = await db.subjectTeacher.findMany({
+      where: {
+        schoolId,
+      },
       include: {
         subject: true,
         teacher: {
@@ -812,7 +818,8 @@ async function checkSlotConflict({
   day,
   startTime,
   endTime,
-  excludeSlotId
+  excludeSlotId,
+  schoolId,
 }: {
   timetableId: string;
   classId: string;
@@ -821,12 +828,14 @@ async function checkSlotConflict({
   startTime: Date;
   endTime: Date;
   excludeSlotId?: string;
+  schoolId: string; // H3 FIX: require schoolId
 }) {
   // Build the where clause
   const whereClause: any = {
     timetableId,
     classId,
     day,
+    schoolId, // H3 FIX: scope to current school
     OR: [
       // New slot starts during an existing slot
       {
@@ -881,7 +890,8 @@ async function checkTeacherAvailability({
   day,
   startTime,
   endTime,
-  excludeSlotId
+  excludeSlotId,
+  schoolId,
 }: {
   timetableId: string;
   subjectTeacherId: string;
@@ -889,11 +899,13 @@ async function checkTeacherAvailability({
   startTime: Date;
   endTime: Date;
   excludeSlotId?: string;
+  schoolId: string; // H3 FIX: require schoolId
 }) {
   const whereClause: any = {
     timetableId,
     subjectTeacherId,
     day,
+    schoolId, // H3 FIX: scope to current school
     OR: [
       // New slot starts during an existing slot
       {
@@ -951,7 +963,8 @@ async function checkRoomAvailability({
   day,
   startTime,
   endTime,
-  excludeSlotId
+  excludeSlotId,
+  schoolId,
 }: {
   timetableId: string;
   roomId: string;
@@ -959,11 +972,13 @@ async function checkRoomAvailability({
   startTime: Date;
   endTime: Date;
   excludeSlotId?: string;
+  schoolId: string; // H3 FIX: require schoolId
 }) {
   const whereClause: any = {
     timetableId,
     roomId,
     day,
+    schoolId, // H3 FIX: scope to current school
     OR: [
       // New slot starts during an existing slot
       {

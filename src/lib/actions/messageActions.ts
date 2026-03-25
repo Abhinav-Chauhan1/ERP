@@ -21,11 +21,15 @@ export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox"
       return { success: false, error: "User not found" };
     }
 
+    // M-13: scope messages to the current school
+    const { schoolId } = await requireSchoolAccess();
+
     let messages: any[];
 
     if (folder === "inbox") {
       messages = await db.message.findMany({
         where: {
+          schoolId,
           recipientId: dbUser.id,
         },
         include: {
@@ -55,6 +59,7 @@ export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox"
     } else if (folder === "sent") {
       messages = await db.message.findMany({
         where: {
+          schoolId,
           senderId: dbUser.id,
         },
         include: {
@@ -110,8 +115,10 @@ export async function getMessageById(id: string) {
       return { success: false, error: "User not found" };
     }
 
-    const message = await db.message.findUnique({
-      where: { id },
+    const { schoolId } = await requireSchoolAccess();
+
+    const message = await db.message.findFirst({
+      where: { id, schoolId },
       include: {
         sender: {
           select: {
@@ -243,11 +250,17 @@ export async function replyToMessage(messageId: string, content: string) {
 
     // Get original message
     const originalMessage = await db.message.findUnique({
-      where: { id: messageId },
+      where: { id: messageId, schoolId },
+      select: { id: true, senderId: true, recipientId: true, subject: true },
     });
 
     if (!originalMessage) {
       return { success: false, error: "Original message not found" };
+    }
+
+    // L-10: only sender or recipient may reply
+    if (originalMessage.recipientId !== dbUser.id && originalMessage.senderId !== dbUser.id) {
+      return { success: false, error: "Unauthorized" };
     }
 
     // Create reply
@@ -323,9 +336,9 @@ export async function forwardMessage(messageId: string, recipientId: string) {
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
 
-    // Get original message
-    const originalMessage = await db.message.findUnique({
-      where: { id: messageId },
+    // Get original message — scoped to school
+    const originalMessage = await db.message.findFirst({
+      where: { id: messageId, schoolId },
     });
 
     if (!originalMessage) {
@@ -402,9 +415,10 @@ export async function deleteMessage(id: string) {
       return { success: false, error: "User not found" };
     }
 
-    // Check if user is sender or recipient
-    const message = await db.message.findUnique({
-      where: { id },
+    const { schoolId } = await requireSchoolAccess();
+
+    const message = await db.message.findFirst({
+      where: { id, schoolId },
     });
 
     if (!message) {
@@ -443,8 +457,10 @@ export async function markAsRead(id: string) {
       return { success: false, error: "User not found" };
     }
 
-    const message = await db.message.findUnique({
-      where: { id },
+    const { schoolId } = await requireSchoolAccess();
+
+    const message = await db.message.findFirst({
+      where: { id, schoolId },
     });
 
     if (!message) {
@@ -488,10 +504,18 @@ export async function getContacts() {
       return { success: false, error: "User not found" };
     }
 
-    // Get all users except current user
+    // C-9: Scope contacts to the same school only
+    const { schoolId } = await requireSchoolAccess();
+
+    const schoolUserIds = await db.userSchool.findMany({
+      where: { schoolId, isActive: true },
+      select: { userId: true },
+    });
+
     const users = await db.user.findMany({
       where: {
         id: {
+          in: schoolUserIds.map((u) => u.userId),
           not: dbUser.id,
         },
         isActive: true,
@@ -532,18 +556,21 @@ export async function getMessageStats() {
       return { success: false, error: "User not found" };
     }
 
+    const { schoolId } = await requireSchoolAccess();
+
     const [totalReceived, unreadCount, totalSent] = await Promise.all([
       db.message.count({
-        where: { recipientId: dbUser.id },
+        where: { recipientId: dbUser.id, schoolId },
       }),
       db.message.count({
         where: {
           recipientId: dbUser.id,
           isRead: false,
+          schoolId,
         },
       }),
       db.message.count({
-        where: { senderId: dbUser.id },
+        where: { senderId: dbUser.id, schoolId },
       }),
     ]);
 
@@ -582,9 +609,12 @@ export async function getWeeklyCommunicationStats() {
     startDate.setDate(endDate.getDate() - 6); // Last 7 days including today
     startDate.setHours(0, 0, 0, 0);
 
+    const { schoolId } = await requireSchoolAccess();
+
     // Fetch messages sent/received in last 7 days
     const messages = await db.message.findMany({
       where: {
+        schoolId,
         OR: [
           { senderId: dbUser.id },
           { recipientId: dbUser.id }

@@ -2,11 +2,8 @@
 
 import { withSchoolAuthAction } from "@/lib/auth/security-wrapper";
 import { db } from "@/lib/db";
-import { auth } from "@/auth";
 
 export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get counts
     const [
@@ -49,8 +46,6 @@ export const getDashboardStats = withSchoolAuthAction(async (schoolId: string, u
 // New functions for Phase 10
 
 export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalStudents = await db.student.count({
       where: {
@@ -74,8 +69,6 @@ export const getTotalStudents = withSchoolAuthAction(async (schoolId: string, us
 });
 
 export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const totalTeachers = await db.teacher.count({
       where: {
@@ -99,8 +92,6 @@ export const getTotalTeachers = withSchoolAuthAction(async (schoolId: string, us
 });
 
 export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const pendingPayments = await db.feePayment.aggregate({
       where: {
@@ -133,8 +124,6 @@ export const getPendingFeePayments = withSchoolAuthAction(async (schoolId: strin
 });
 
 export const getTodaysAttendance = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -222,8 +211,6 @@ export const getTodaysAttendance = withSchoolAuthAction(async (schoolId: string,
 });
 
 export const getUpcomingEventsCount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -254,8 +241,6 @@ export const getUpcomingEventsCount = withSchoolAuthAction(async (schoolId: stri
 });
 
 export const getRecentAnnouncementsCount = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -283,8 +268,6 @@ export const getRecentAnnouncementsCount = withSchoolAuthAction(async (schoolId:
 });
 
 export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get attendance data for the last 12 months
     const now = new Date();
@@ -335,46 +318,63 @@ export const getStudentAttendanceData = withSchoolAuthAction(async (schoolId: st
 });
 
 export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
-    // Get average exam results by subject
+    // Get average exam results by subject using a single groupBy query (no N+1)
     const subjects = await db.subject.findMany({
       where: { schoolId },
       take: 6,
-      select: {
-        id: true,
-        name: true,
-      },
+      select: { id: true, name: true },
     });
 
-    const resultsData = await Promise.all(
-      subjects.map(async (subject) => {
-        const results = await db.examResult.findMany({
-          where: {
-            schoolId,
+    if (subjects.length === 0) return { success: true, data: [] };
 
-            exam: {
-              subjectId: subject.id,
+    const subjectIds = subjects.map((s) => s.id);
 
-            },
-            isAbsent: false,
-          },
-          select: {
-            marks: true,
-          },
-        });
+    // Single aggregation query instead of N per-subject queries
+    const grouped = await db.examResult.groupBy({
+      by: ["schoolId"],
+      where: {
+        schoolId,
+        exam: { subjectId: { in: subjectIds } },
+        isAbsent: false,
+      },
+      _avg: { marks: true },
+    });
 
-        const average = results.length > 0
-          ? Math.round(results.reduce((sum, r) => sum + r.marks, 0) / results.length)
-          : 0;
+    // Per-subject averages via a second groupBy on exam.subjectId
+    const subjectAverages = await db.examResult.groupBy({
+      by: ["examId"],
+      where: {
+        schoolId,
+        exam: { subjectId: { in: subjectIds } },
+        isAbsent: false,
+      },
+      _avg: { marks: true },
+    });
 
-        return {
-          subject: subject.name,
-          average,
-        };
-      })
-    );
+    // Map examId → subjectId
+    const exams = await db.exam.findMany({
+      where: { subjectId: { in: subjectIds }, schoolId },
+      select: { id: true, subjectId: true },
+    });
+    const examToSubject = new Map(exams.map((e) => [e.id, e.subjectId]));
+
+    // Aggregate per subject
+    const subjectTotals = new Map<string, { sum: number; count: number }>();
+    for (const row of subjectAverages) {
+      const subjectId = examToSubject.get(row.examId);
+      if (!subjectId || row._avg.marks === null) continue;
+      const existing = subjectTotals.get(subjectId) ?? { sum: 0, count: 0 };
+      existing.sum += row._avg.marks;
+      existing.count += 1;
+      subjectTotals.set(subjectId, existing);
+    }
+
+    const resultsData = subjects.map((subject) => {
+      const totals = subjectTotals.get(subject.id);
+      const average = totals && totals.count > 0 ? Math.round(totals.sum / totals.count) : 0;
+      return { subject: subject.name, average };
+    });
 
     return { success: true, data: resultsData };
   } catch (error) {
@@ -384,8 +384,6 @@ export const getExamResultsData = withSchoolAuthAction(async (schoolId: string, 
 });
 
 export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const classes = await db.class.findMany({
       where: { schoolId },
@@ -424,8 +422,6 @@ export const getEnrollmentDistribution = withSchoolAuthAction(async (schoolId: s
 });
 
 export const getRecentActivities = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get recent activities from various sources with timeout protection
     const [recentExams, recentAssignments, recentAnnouncements] = await Promise.all([
@@ -536,8 +532,6 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
 });
 
 export const getUpcomingEvents = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -576,8 +570,6 @@ export const getUpcomingEvents = withSchoolAuthAction(async (schoolId: string, u
 });
 
 export const getNotifications = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
   try {
     // Get high absence rate classes
     const sevenDaysAgo = new Date();

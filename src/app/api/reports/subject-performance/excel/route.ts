@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { getSubjectPerformanceReport } from "@/lib/actions/subjectPerformanceActions";
 import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!["ADMIN", "TEACHER"].includes(session.user.role as string)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // CRITICAL: Get school context first
     const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
     const schoolId = await getRequiredSchoolId();

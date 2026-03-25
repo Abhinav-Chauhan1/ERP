@@ -127,8 +127,22 @@ export async function getStudentsForPromotion(
 
     const { classId, sectionId, academicYearId } = validation.data;
 
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Verify classId belongs to this school
+    const classRecord = await db.class.findUnique({
+      where: { id: classId, schoolId },
+      select: { id: true },
+    });
+    if (!classRecord) {
+      return { success: false, error: "Class not found" };
+    }
+
     // Build query filters
     const enrollmentFilters: any = {
+      schoolId,
       classId,
       status: EnrollmentStatus.ACTIVE,
     };
@@ -143,7 +157,7 @@ export async function getStudentsForPromotion(
       };
     }
 
-    // Fetch students with active enrollments
+    // Fetch students with active enrollments — scoped to school
     const enrollments = await db.classEnrollment.findMany({
       where: enrollmentFilters,
       include: {
@@ -223,6 +237,10 @@ export async function previewPromotion(
       targetSectionId,
     } = validation.data;
 
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Initialize promotion service
     const promotionService = new PromotionService();
 
@@ -239,10 +257,11 @@ export async function previewPromotion(
       validationResult.eligible
     );
 
-    // Fetch student details
+    // Fetch student details — scoped to school
     const students = await db.student.findMany({
       where: {
         id: { in: studentIds },
+        schoolId,
       },
       include: {
         user: true,
@@ -625,8 +644,12 @@ export async function getPromotionHistory(
       pageSize,
     } = validation.data as any;
 
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Build query filters
-    const whereFilters: any = {};
+    const whereFilters: any = { schoolId };
 
     if (academicYear) {
       whereFilters.OR = [
@@ -786,9 +809,13 @@ export async function getPromotionDetails(
 
     const { historyId } = validation.data;
 
-    // Fetch promotion history
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Fetch promotion history — scoped to school
     const history = await db.promotionHistory.findUnique({
-      where: { id: historyId },
+      where: { id: historyId, schoolId },
       include: {
         records: {
           include: {
@@ -933,8 +960,12 @@ export async function exportPromotionHistory(
       endDate,
     } = validation.data as any;
 
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
     // Build query filters
-    const whereFilters: any = {};
+    const whereFilters: any = { schoolId };
 
     if (academicYear) {
       whereFilters.OR = [
@@ -1083,9 +1114,13 @@ export async function rollbackPromotion(
 
     const { historyId, reason } = validation.data;
 
-    // Fetch promotion history
+    // Get school context for isolation
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    // Fetch promotion history — scoped to school
     const history = await db.promotionHistory.findUnique({
-      where: { id: historyId },
+      where: { id: historyId, schoolId },
       include: {
         records: {
           where: {
