@@ -7,13 +7,12 @@
  * Requirements: 1.1, 1.3
  */
 
-import { PrismaClient, CalendarEvent, EventSourceType } from '@prisma/client';
+import { CalendarEvent, EventSourceType } from '@prisma/client';
 import { RRule, RRuleSet, rrulestr } from 'rrule';
 import { sortEvents, SortOptions } from '@/lib/utils/calendar-sorting';
 import { synchronizeRemindersOnEventUpdate } from './event-reminder-service';
 import { invalidateCalendarEventCache } from '@/lib/utils/cache-invalidation';
-
-const prisma = new PrismaClient();
+import { db as prisma } from '@/lib/db';
 
 // Types for event creation and updates
 export interface CreateCalendarEventInput {

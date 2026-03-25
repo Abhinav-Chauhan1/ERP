@@ -5,6 +5,7 @@ import { currentUser } from "@/lib/auth-helpers";
 import { UserRole, EventStatus } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { requireSchoolAccess } from "@/lib/auth/tenant";
 
 /**
  * Schema for event filters
@@ -30,30 +31,20 @@ const eventRegistrationSchema = z.object({
 type EventRegistration = z.infer<typeof eventRegistrationSchema>;
 
 /**
- * Helper function to get current parent and verify authentication
+ * Helper function to get current parent, verify authentication, and return schoolId.
+ * Single auth round-trip — reuses requireSchoolAccess which already calls auth().
  */
-async function getCurrentParent() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
-    return null;
-  }
-  
-  const dbUser = await db.user.findUnique({
-    where: { id: clerkUser.id }
-  });
-  
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    return null;
-  }
-  
-  const parent = await db.parent.findUnique({
-    where: {
-      userId: dbUser.id
-    }
-  });
-  
-  return parent;
+async function getCurrentParentWithSchool() {
+  const { schoolId, userId } = await requireSchoolAccess();
+  if (!schoolId || !userId) return null;
+
+  const dbUser = await db.user.findUnique({ where: { id: userId } });
+  if (!dbUser || dbUser.role !== UserRole.PARENT) return null;
+
+  const parent = await db.parent.findUnique({ where: { userId: dbUser.id } });
+  if (!parent) return null;
+
+  return { parent, schoolId };
 }
 
 /**
@@ -75,81 +66,35 @@ async function verifyParentChildRelationship(
  */
 export async function getEvents(filters?: EventFilter) {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
-    // Validate filters if provided
-    let validated = {};
-    if (filters) {
-      validated = eventFilterSchema.parse(filters);
-    }
-    
-    // Build query filters
-    const where: any = {
-      isPublic: true // Parents can only see public events
-    };
-    
-    // Add type filter
-    if (filters?.type) {
-      where.type = filters.type;
-    }
-    
-    // Add status filter
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-    
-    // Add date range filter
-    if (filters?.startDate) {
-      where.startDate = {
-        gte: filters.startDate
-      };
-    }
-    
-    if (filters?.endDate) {
-      where.endDate = {
-        lte: filters.endDate
-      };
-    }
-    
-    // Add search filter
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
+
+    if (filters) eventFilterSchema.parse(filters);
+
+    const where: any = { schoolId: ctx.schoolId, isPublic: true };
+    if (filters?.type) where.type = filters.type;
+    if (filters?.status) where.status = filters.status;
+    if (filters?.startDate) where.startDate = { gte: filters.startDate };
+    if (filters?.endDate) where.endDate = { lte: filters.endDate };
     if (filters?.searchTerm) {
       where.OR = [
-        { title: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { description: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { location: { contains: filters.searchTerm, mode: 'insensitive' } },
-        { organizer: { contains: filters.searchTerm, mode: 'insensitive' } },
+        { title: { contains: filters.searchTerm, mode: "insensitive" } },
+        { description: { contains: filters.searchTerm, mode: "insensitive" } },
+        { location: { contains: filters.searchTerm, mode: "insensitive" } },
+        { organizer: { contains: filters.searchTerm, mode: "insensitive" } },
       ];
     }
-    
-    // Fetch events
+
     const events = await db.event.findMany({
       where,
-      include: {
-        _count: {
-          select: {
-            participants: true
-          }
-        }
-      },
-      orderBy: {
-        startDate: 'asc'
-      }
+      include: { _count: { select: { participants: true } } },
+      orderBy: { startDate: "asc" },
     });
-    
+
     return { success: true, data: events };
   } catch (error) {
     console.error("Failed to fetch events:", error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        message: error.errors[0].message || "Invalid filter data",
-        data: []
-      };
-    }
+    if (error instanceof z.ZodError) return { success: false, message: error.errors[0].message, data: [] };
     return { success: false, message: "Failed to fetch events", data: [] };
   }
 }
@@ -160,118 +105,53 @@ export async function getEvents(filters?: EventFilter) {
  */
 export async function registerForEvent(data: EventRegistration, schoolId: string) {
   try {
-    // Validate input
     const validated = eventRegistrationSchema.parse(data);
-    
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
-    
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
-    
-    // Get student user ID
+
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized" };
+
+    const hasAccess = await verifyParentChildRelationship(ctx.parent.id, validated.childId);
+    if (!hasAccess) return { success: false, message: "Access denied" };
+
     const student = await db.student.findUnique({
       where: { id: validated.childId },
-      select: { userId: true, user: { select: { firstName: true, lastName: true } } }
+      select: { userId: true, user: { select: { firstName: true, lastName: true } } },
     });
-    
-    if (!student) {
-      return { success: false, message: "Student not found" };
-    }
-    
-    // Get the event
+    if (!student) return { success: false, message: "Student not found" };
+
     const event = await db.event.findUnique({
-      where: { id: validated.eventId },
-      include: {
-        _count: {
-          select: {
-            participants: true
-          }
-        }
-      }
+      where: { id: validated.eventId, schoolId: ctx.schoolId },
+      include: { _count: { select: { participants: true } } },
     });
-    
-    if (!event) {
-      return { success: false, message: "Event not found" };
-    }
-    
-    // Check if event is public
-    if (!event.isPublic) {
-      return { success: false, message: "This event is not open for registration" };
-    }
-    
-    // Check if registration deadline has passed
+    if (!event) return { success: false, message: "Event not found" };
+    if (!event.isPublic) return { success: false, message: "This event is not open for registration" };
+
     const now = new Date();
-    if (event.registrationDeadline && event.registrationDeadline < now) {
+    if (event.registrationDeadline && event.registrationDeadline < now)
       return { success: false, message: "Registration deadline has passed" };
-    }
-    
-    // Check if event is full
-    if (event.maxParticipants && event._count.participants >= event.maxParticipants) {
+    if (event.maxParticipants && event._count.participants >= event.maxParticipants)
       return { success: false, message: "Event has reached maximum capacity" };
-    }
-    
-    // Check if event is cancelled or completed
-    if (event.status === EventStatus.CANCELLED) {
-      return { success: false, message: "This event has been cancelled" };
-    }
-    
-    if (event.status === EventStatus.COMPLETED) {
-      return { success: false, message: "This event has already been completed" };
-    }
-    
-    // Check if student is already registered
-    const existingRegistration = await db.eventParticipant.findUnique({
-      where: {
-        eventId_userId: {
-          eventId: validated.eventId,
-          userId: student.userId
-        }
-      }
+    if (event.status === EventStatus.CANCELLED) return { success: false, message: "This event has been cancelled" };
+    if (event.status === EventStatus.COMPLETED) return { success: false, message: "This event has already been completed" };
+
+    const existing = await db.eventParticipant.findUnique({
+      where: { eventId_userId: { eventId: validated.eventId, userId: student.userId } },
     });
-    
-    if (existingRegistration) {
-      return { success: false, message: "Student is already registered for this event" };
-    }
-    
-    // Create registration
+    if (existing) return { success: false, message: "Student is already registered for this event" };
+
     await db.eventParticipant.create({
-      data: {
-        eventId: validated.eventId,
-        userId: student.userId,
-        role: "ATTENDEE",
-        registrationDate: new Date(),
-        schoolId,
-      }
+      data: { eventId: validated.eventId, userId: student.userId, role: "ATTENDEE", registrationDate: new Date(), schoolId: ctx.schoolId },
     });
-    
-    // Create notification for student
+
     await db.notification.create({
-      data: {
-        userId: student.userId,
-        title: "Event Registration Confirmed",
-        message: `You have been registered for ${event.title}`,
-        type: "INFO",
-        schoolId,
-      }
+      data: { userId: student.userId, title: "Event Registration Confirmed", message: `You have been registered for ${event.title}`, type: "INFO", schoolId: ctx.schoolId },
     });
-    
+
     revalidatePath("/parent/events");
     return { success: true, message: "Successfully registered for the event" };
   } catch (error) {
     console.error("Failed to register for event:", error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        message: error.errors[0].message || "Invalid registration data"
-      };
-    }
+    if (error instanceof z.ZodError) return { success: false, message: error.errors[0].message };
     return { success: false, message: "Failed to register for event" };
   }
 }
@@ -282,64 +162,30 @@ export async function registerForEvent(data: EventRegistration, schoolId: string
  */
 export async function cancelEventRegistration(registrationId: string, schoolId: string) {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized" };
-    }
-    
-    // Get registration with event and student details
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized" };
+
     const registration = await db.eventParticipant.findUnique({
       where: { id: registrationId },
-      include: {
-        event: true
-      }
+      include: { event: true },
     });
-    
-    if (!registration) {
-      return { success: false, message: "Registration not found" };
-    }
-    
-    // Get student from userId
-    const student = await db.student.findFirst({
-      where: { userId: registration.userId }
-    });
-    
-    if (!student) {
-      return { success: false, message: "Student not found" };
-    }
-    
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, student.id);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied" };
-    }
-    
-    // Check if event has already started or completed
-    const now = new Date();
-    if (registration.event.startDate < now) {
-      return { 
-        success: false, 
-        message: "Cannot cancel registration for an event that has already started" 
-      };
-    }
-    
-    // Delete the registration
-    await db.eventParticipant.delete({
-      where: { id: registrationId }
-    });
-    
-    // Create notification for student
+    if (!registration) return { success: false, message: "Registration not found" };
+
+    const student = await db.student.findFirst({ where: { userId: registration.userId } });
+    if (!student) return { success: false, message: "Student not found" };
+
+    const hasAccess = await verifyParentChildRelationship(ctx.parent.id, student.id);
+    if (!hasAccess) return { success: false, message: "Access denied" };
+
+    if (registration.event.startDate < new Date())
+      return { success: false, message: "Cannot cancel registration for an event that has already started" };
+
+    await db.eventParticipant.delete({ where: { id: registrationId } });
+
     await db.notification.create({
-      data: {
-        userId: registration.userId,
-        title: "Event Registration Cancelled",
-        message: `Your registration for ${registration.event.title} has been cancelled`,
-        type: "INFO",
-        schoolId,
-      }
+      data: { userId: registration.userId, title: "Event Registration Cancelled", message: `Your registration for ${registration.event.title} has been cancelled`, type: "INFO", schoolId: ctx.schoolId },
     });
-    
+
     revalidatePath("/parent/events");
     return { success: true, message: "Registration cancelled successfully" };
   } catch (error) {
@@ -354,61 +200,29 @@ export async function cancelEventRegistration(registrationId: string, schoolId: 
  */
 export async function getRegisteredEvents(childId: string) {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, childId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied", data: [] };
-    }
-    
-    // Get student user ID
-    const student = await db.student.findUnique({
-      where: { id: childId },
-      select: { userId: true }
-    });
-    
-    if (!student) {
-      return { success: false, message: "Student not found", data: [] };
-    }
-    
-    // Fetch registered events
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
+
+    const hasAccess = await verifyParentChildRelationship(ctx.parent.id, childId);
+    if (!hasAccess) return { success: false, message: "Access denied", data: [] };
+
+    const student = await db.student.findUnique({ where: { id: childId }, select: { userId: true } });
+    if (!student) return { success: false, message: "Student not found", data: [] };
+
     const registrations = await db.eventParticipant.findMany({
-      where: {
-        userId: student.userId
-      },
-      include: {
-        event: {
-          include: {
-            _count: {
-              select: {
-                participants: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        registrationDate: 'desc'
-      }
+      where: { userId: student.userId, schoolId: ctx.schoolId },
+      include: { event: { include: { _count: { select: { participants: true } } } } },
+      orderBy: { registrationDate: "desc" },
     });
-    
-    // Categorize events
+
     const now = new Date();
-    const upcoming = registrations.filter(r => r.event.startDate > now);
-    const past = registrations.filter(r => r.event.endDate < now);
-    
-    return { 
-      success: true, 
+    return {
+      success: true,
       data: {
         all: registrations,
-        upcoming,
-        past
-      }
+        upcoming: registrations.filter(r => r.event.startDate > now),
+        past: registrations.filter(r => r.event.endDate < now),
+      },
     };
   } catch (error) {
     console.error("Failed to fetch registered events:", error);
@@ -422,64 +236,32 @@ export async function getRegisteredEvents(childId: string) {
  */
 export async function getEventDetails(eventId: string, childId?: string) {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: null };
-    }
-    
-    // Get event
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: null };
+
     const event = await db.event.findUnique({
-      where: { id: eventId },
-      include: {
-        _count: {
-          select: {
-            participants: true
-          }
-        }
-      }
+      where: { id: eventId, schoolId: ctx.schoolId },
+      include: { _count: { select: { participants: true } } },
     });
-    
-    if (!event) {
-      return { success: false, message: "Event not found", data: null };
-    }
-    
-    // If childId is provided, check if child is registered
+    if (!event) return { success: false, message: "Event not found", data: null };
+
     let isRegistered = false;
     let registration = null;
-    
+
     if (childId) {
-      // Verify parent-child relationship
-      const hasAccess = await verifyParentChildRelationship(parent.id, childId);
+      const hasAccess = await verifyParentChildRelationship(ctx.parent.id, childId);
       if (hasAccess) {
-        // Get student user ID
-        const student = await db.student.findUnique({
-          where: { id: childId },
-          select: { userId: true }
-        });
-        
+        const student = await db.student.findUnique({ where: { id: childId }, select: { userId: true } });
         if (student) {
           registration = await db.eventParticipant.findUnique({
-            where: {
-              eventId_userId: {
-                eventId,
-                userId: student.userId
-              }
-            }
+            where: { eventId_userId: { eventId, userId: student.userId } },
           });
           isRegistered = !!registration;
         }
       }
     }
-    
-    return { 
-      success: true, 
-      data: {
-        event,
-        isRegistered,
-        registration
-      }
-    };
+
+    return { success: true, data: { event, isRegistered, registration } };
   } catch (error) {
     console.error("Failed to fetch event details:", error);
     return { success: false, message: "Failed to fetch event details", data: null };
@@ -492,38 +274,21 @@ export async function getEventDetails(eventId: string, childId?: string) {
  */
 export async function getUpcomingEvents(limit: number = 5) {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
-    const now = new Date();
-    
-    // Get upcoming public events
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
+
     const events = await db.event.findMany({
       where: {
+        schoolId: ctx.schoolId,
         isPublic: true,
-        startDate: {
-          gte: now
-        },
-        status: {
-          in: [EventStatus.UPCOMING, EventStatus.ONGOING]
-        }
+        startDate: { gte: new Date() },
+        status: { in: [EventStatus.UPCOMING, EventStatus.ONGOING] },
       },
-      include: {
-        _count: {
-          select: {
-            participants: true
-          }
-        }
-      },
-      orderBy: {
-        startDate: 'asc'
-      },
-      take: limit
+      include: { _count: { select: { participants: true } } },
+      orderBy: { startDate: "asc" },
+      take: limit,
     });
-    
+
     return { success: true, data: events };
   } catch (error) {
     console.error("Failed to fetch upcoming events:", error);
@@ -537,31 +302,16 @@ export async function getUpcomingEvents(limit: number = 5) {
  */
 export async function getEventTypes() {
   try {
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
-    // Get distinct event types
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
+
     const events = await db.event.findMany({
-      where: {
-        isPublic: true,
-        type: {
-          not: null
-        }
-      },
-      select: {
-        type: true
-      },
-      distinct: ['type']
+      where: { schoolId: ctx.schoolId, isPublic: true, type: { not: null } },
+      select: { type: true },
+      distinct: ["type"],
     });
-    
-    const types = events
-      .map(e => e.type)
-      .filter((type): type is string => type !== null)
-      .sort();
-    
+
+    const types = events.map(e => e.type).filter((t): t is string => t !== null).sort();
     return { success: true, data: types };
   } catch (error) {
     console.error("Failed to fetch event types:", error);

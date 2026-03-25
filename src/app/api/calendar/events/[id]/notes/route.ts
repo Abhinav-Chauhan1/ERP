@@ -64,8 +64,7 @@ const userId = session?.user?.id;
     }
     
     // Get user role from database
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
+    const { db: prisma } = await import('@/lib/db');
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -202,8 +201,7 @@ const userId = session?.user?.id;
     }
     
     // Get user from database
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
+    const { db: prisma } = await import('@/lib/db');
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
