@@ -443,34 +443,38 @@ export async function getEventParticipants(eventId: string) {
     const event = await db.event.findUnique({ where: { id: eventId, schoolId } });
     if (!event) return { success: false, error: "Event not found", data: [] };
 
-    // Single query with join instead of N+1
     const participants = await db.eventParticipant.findMany({
       where: { eventId, schoolId },
       orderBy: { registrationDate: "desc" },
-      include: {
-        user: {
+    });
+
+    // Batch-fetch all users in one query (avoids N+1)
+    const userIds = participants.map(p => p.userId);
+    const users = await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        avatar: true,
+        student: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            role: true,
-            avatar: true,
-            student: {
-              select: {
-                enrollments: {
-                  where: { status: "ACTIVE" },
-                  take: 1,
-                  include: { class: true, section: true },
-                },
-              },
+            enrollments: {
+              where: { status: "ACTIVE" },
+              take: 1,
+              include: { class: true, section: true },
             },
           },
         },
       },
     });
 
-    return { success: true, data: participants };
+    const userMap = new Map(users.map(u => [u.id, u]));
+    const data = participants.map(p => ({ ...p, user: userMap.get(p.userId) ?? null }));
+
+    return { success: true, data };
   } catch (error) {
     console.error(`Failed to fetch participants for event ${eventId}:`, error);
     return { success: false, error: "Failed to fetch event participants", data: [] };
