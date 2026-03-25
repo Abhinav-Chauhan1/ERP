@@ -38,78 +38,37 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Apply rate limiting
     const rateLimitResult = await checkCalendarRateLimit(request, 'EVENT_QUERY');
-    
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        createRateLimitError(rateLimitResult.limit, rateLimitResult.reset),
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-          },
-        }
-      );
+      return NextResponse.json(createRateLimitError(rateLimitResult.limit, rateLimitResult.reset), {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+        },
+      });
     }
 
     const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get user from database
-    const user = await db.user.findUnique({
-      where: { id: session.user.id }
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Await params
     const { id } = await params;
 
-    // Get the event
-    const event = await db.calendarEvent.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        notes: {
-          where: {
-            userId: user.id
-          }
-        }
-      }
-    });
+    // Fetch user and event in parallel
+    const [user, event] = await Promise.all([
+      db.user.findUnique({ where: { id: session.user.id }, select: { id: true, role: true } }),
+      db.calendarEvent.findUnique({
+        where: { id },
+        include: { category: true, notes: { where: { userId: session.user.id } } },
+      }),
+    ]);
 
-    if (!event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
-    }
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
-    // Check visibility
-    const hasAccess = 
-      user.role === UserRole.ADMIN ||
-      event.visibleToRoles.includes(user.role);
-
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: 'Event not found or you don\'t have access' },
-        { status: 404 }
-      );
-    }
+    const hasAccess = user.role === UserRole.ADMIN || event.visibleToRoles.includes(user.role);
+    if (!hasAccess) return NextResponse.json({ error: 'Event not found or you don\'t have access' }, { status: 404 });
 
     return NextResponse.json(
       { event },
@@ -123,10 +82,7 @@ export async function GET(
     );
   } catch (error) {
     console.error('Error fetching calendar event:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch calendar event' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch calendar event' }, { status: 500 });
   }
 }
 

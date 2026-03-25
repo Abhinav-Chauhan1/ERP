@@ -60,49 +60,40 @@ export default function AdminCalendarPage() {
   const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEventWithCategory | null>(null);
 
-  // Track if categories have been loaded
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  // Re-fetch when category filter changes (after initial load)
+  const isFirstRender = useState(true);
+  useEffect(() => {
+    if (isFirstRender[0]) { isFirstRender[1](false); return; }
+    fetchEvents();
+  }, [selectedCategories]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Track if categories have been loaded — no longer needed (parallel fetch on mount)
+
 
   /**
-   * Fetch all event categories
+   * Fetch calendar events with filters — always scoped to a date range.
    */
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch("/api/calendar/categories");
-      if (!response.ok) {
-        throw new Error("Failed to fetch categories");
-      }
-      const data = await response.json();
-      setCategories(data.categories || []);
-      setCategoriesLoaded(true);
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-      setError("Failed to load categories");
-      toast.error("Failed to load categories");
-      setCategoriesLoaded(true); // Mark as loaded even on error to stop spinner
-    }
-  }, []);
-
-  /**
-   * Fetch calendar events with filters
-   */
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (startDate?: Date, endDate?: Date) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams();
+      params.set('limit', '200');
 
-      // Add category filter if any selected
       if (selectedCategories.length > 0) {
         params.append("categories", selectedCategories.join(","));
       }
 
-      const response = await fetch(`/api/calendar/events?${params.toString()}`);
+      // Default to current month if no range provided
+      const now = new Date();
+      const start = startDate ?? new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = endDate ?? new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      params.set('startDate', start.toISOString());
+      params.set('endDate', end.toISOString());
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch events");
-      }
+      const response = await fetch(`/api/calendar/events?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch events");
 
       const data = await response.json();
       setEvents(data.events || []);
@@ -115,17 +106,27 @@ export default function AdminCalendarPage() {
     }
   }, [selectedCategories]);
 
-  // Fetch categories on mount
+  // Fetch categories on mount — parallel with initial events fetch
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-  // Fetch events after categories are loaded
-  useEffect(() => {
-    if (categoriesLoaded) {
-      fetchEvents();
-    }
-  }, [categoriesLoaded, selectedCategories, fetchEvents]);
+    // Fetch categories and current-month events in parallel
+    Promise.all([
+      fetch("/api/calendar/categories").then(r => r.json()),
+      fetch(`/api/calendar/events?startDate=${startOfMonth}&endDate=${endOfMonth}&limit=200`).then(r => r.json()),
+    ]).then(([catData, evtData]) => {
+      setCategories(catData.categories || []);
+      setEvents(evtData.events || []);
+    }).catch(err => {
+      console.error("Error loading calendar data:", err);
+      setError("Failed to load calendar data");
+      toast.error("Failed to load calendar data");
+    }).finally(() => {
+      setIsLoading(false);
+    });
+  }, []);
 
   /**
    * Handle event click - show detail modal
@@ -238,17 +239,11 @@ export default function AdminCalendarPage() {
     setSelectedCategories([]);
   };
 
-  /**
-   * Handle category management success
-   */
   const handleCategoryManagementSuccess = () => {
-    fetchCategories();
+    fetch("/api/calendar/categories").then(r => r.json()).then(d => setCategories(d.categories || []));
     fetchEvents();
   };
 
-  /**
-   * Handle import success
-   */
   const handleImportSuccess = () => {
     fetchEvents();
   };

@@ -6,9 +6,8 @@
  * Requirements: 8.1
  */
 
-import { PrismaClient, CalendarEventCategory } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { CalendarEventCategory } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 
 // Types for category creation and updates
 export interface CreateEventCategoryInput {

@@ -10,18 +10,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withSchoolAuth } from '@/lib/auth/security-wrapper';
-import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import {
   createCalendarEvent,
-  getCalendarEvents,
   ValidationError
 } from '@/lib/services/calendar-service';
-import {
-  getEventsForUser,
-  getUserContext
-} from '@/lib/services/event-visibility-service';
-import { getPaginatedCalendarEvents } from '@/lib/services/cached-calendar-service';
+import { getEventsForUser } from '@/lib/services/event-visibility-service';
 import { parseSortOptions } from '@/lib/utils/calendar-sorting';
 import { UserRole } from '@prisma/client';
 import {
@@ -51,47 +45,30 @@ import {
  */
 export const GET = withSchoolAuth(async (request, context) => {
   try {
-    // Apply rate limiting for event queries
+    // Rate limiting
     const rateLimitResult = await checkCalendarRateLimit(request, 'EVENT_QUERY');
-
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        createRateLimitError(rateLimitResult.limit, rateLimitResult.reset),
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
-      );
+      return NextResponse.json(createRateLimitError(rateLimitResult.limit, rateLimitResult.reset), {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+          'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+        },
+      });
     }
 
-    const session = await auth();
+    // context.userId is already resolved by withSchoolAuth — no second auth() call needed
+    const { userId, schoolId } = context;
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
-    const user = await db.user.findFirst({
-      where: {
-        id: session.user.id,      }
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -99,72 +76,38 @@ export const GET = withSchoolAuth(async (request, context) => {
     const searchTerm = searchParams.get('search');
     const sortBy = searchParams.get('sortBy');
     const sortOrder = searchParams.get('sortOrder');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const childId = searchParams.get('childId'); // For parent filtering by specific child
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50')));
+    const childId = searchParams.get('childId');
 
-    // Build filter options
     const options: any = {};
+    if (startDateParam) options.startDate = new Date(startDateParam);
+    if (endDateParam) options.endDate = new Date(endDateParam);
+    if (categoriesParam) options.categoryIds = categoriesParam.split(',').filter(Boolean);
+    if (searchTerm) options.searchTerm = searchTerm;
+    options.sortOptions = parseSortOptions(sortBy, sortOrder);
 
-    if (startDateParam) {
-      options.startDate = new Date(startDateParam);
-    }
-
-    if (endDateParam) {
-      options.endDate = new Date(endDateParam);
-    }
-
-    if (categoriesParam) {
-      options.categoryIds = categoriesParam.split(',').filter(id => id.trim());
-    }
-
-    if (searchTerm) {
-      options.searchTerm = searchTerm;
-    }
-
-    // Parse sorting options
-    const sortOptions = parseSortOptions(sortBy, sortOrder);
-    options.sortOptions = sortOptions;
-
-    // Get events with visibility filtering
     let allEvents;
 
-    // For parents filtering by specific child (Requirement 4.2)
     if (childId && user.role === UserRole.PARENT) {
-      const parent = await db.parent.findFirst({
-        where: {          userId: user.id
-        }
-      });
-
-      if (!parent) {
-        return NextResponse.json(
-          { error: 'Parent record not found' },
-          { status: 404 }
-        );
-      }
-
-      // Import getEventsForParentChild
+      const parent = await db.parent.findFirst({ where: { userId: user.id }, select: { id: true } });
+      if (!parent) return NextResponse.json({ error: 'Parent record not found' }, { status: 404 });
       const { getEventsForParentChild } = await import('@/lib/services/event-visibility-service');
       allEvents = await getEventsForParentChild(parent.id, childId, options);
     } else {
       allEvents = await getEventsForUser(user.id, options);
     }
 
-    // Apply pagination
+    // Paginate in memory (events already filtered by visibility)
+    const total = allEvents.length;
     const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedEvents = allEvents.slice(startIndex, endIndex);
+    const paginatedEvents = allEvents.slice(startIndex, startIndex + limit);
 
     return NextResponse.json(
       {
         events: paginatedEvents,
-        pagination: {
-          page,
-          limit,
-          total: allEvents.length,
-          totalPages: Math.ceil(allEvents.length / limit)
-        },
-        sorting: sortOptions
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        sorting: options.sortOptions,
       },
       {
         headers: {
@@ -176,10 +119,7 @@ export const GET = withSchoolAuth(async (request, context) => {
     );
   } catch (error) {
     console.error('Error fetching calendar events:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch calendar events' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch calendar events' }, { status: 500 });
   }
 });
 
@@ -209,73 +149,40 @@ export const GET = withSchoolAuth(async (request, context) => {
  */
 export const POST = withSchoolAuth(async (request, context) => {
   try {
-    // Apply rate limiting for event creation
     const rateLimitResult = await checkCalendarRateLimit(request, 'EVENT_CREATE');
-
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        createRateLimitError(rateLimitResult.limit, rateLimitResult.reset),
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': rateLimitResult.reset.toString(),
-            'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
-          },
-        }
-      );
+      return NextResponse.json(createRateLimitError(rateLimitResult.limit, rateLimitResult.reset), {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+          'Retry-After': Math.ceil((rateLimitResult.reset - Date.now()) / 1000).toString(),
+        },
+      });
     }
 
-    const session = await auth();
+    const { userId } = context;
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get user from database - CRITICAL: Filter by school (context.schoolId from withSchoolAuth)
-    const user = await db.user.findFirst({
-      where: {
-        id: session.user.id,      }
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (user.role !== UserRole.ADMIN) return NextResponse.json({ error: 'Insufficient permissions. Admin access required.' }, { status: 403 });
 
-    // Check if user is admin
-    if (user.role !== UserRole.ADMIN) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions. Admin access required.' },
-        { status: 403 }
-      );
-    }
-
-    // Parse request body
     const body = await request.json();
-
-    // Sanitize input data
     const sanitizedData = sanitizeEventData(body);
-
-    // Convert date strings to Date objects
     const eventData = {
       ...sanitizedData,
       startDate: new Date(body.startDate),
       endDate: new Date(body.endDate),
       exceptionDates: body.exceptionDates?.map((d: string) => new Date(d)),
-      createdBy: user.id
+      createdBy: user.id,
     };
 
-    // Create the event
     const event = await createCalendarEvent(eventData);
-
-    // Log event creation for audit trail
     await logEventCreation(user.id, event.id, eventData);
 
     return NextResponse.json(
@@ -291,17 +198,7 @@ export const POST = withSchoolAuth(async (request, context) => {
     );
   } catch (error) {
     console.error('Error creating calendar event:', error);
-
-    if (error instanceof ValidationError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to create calendar event' },
-      { status: 500 }
-    );
+    if (error instanceof ValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: 'Failed to create calendar event' }, { status: 500 });
   }
 });
