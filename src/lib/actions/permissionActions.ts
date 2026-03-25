@@ -306,10 +306,11 @@ export async function assignPermissionToUser(
 
     // Check if user exists and belongs to this school
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: 'School context required' };
     const user = await prisma.user.findFirst({
       where: {
         id: targetUserId,
-        schools: { some: { schoolId, isActive: true } },
+        userSchools: { some: { schoolId, isActive: true } },
       },
     });
 
@@ -363,10 +364,11 @@ export async function removePermissionFromUser(targetUserId: string, permissionI
 
     // Verify target user belongs to this school
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: 'School context required' };
     const targetUser = await prisma.user.findFirst({
       where: {
         id: targetUserId,
-        schools: { some: { schoolId, isActive: true } },
+        userSchools: { some: { schoolId, isActive: true } },
       },
       select: { id: true },
     });
@@ -407,10 +409,11 @@ export async function getUsersForPermissionManagement() {
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: 'School context required' };
 
     const users = await prisma.user.findMany({
       where: {
-        schools: {
+        userSchools: {
           some: { schoolId, isActive: true },
         },
       },

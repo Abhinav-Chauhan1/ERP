@@ -23,6 +23,7 @@ export async function getMessages(folder: "inbox" | "sent" | "archive" = "inbox"
 
     // M-13: scope messages to the current school
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     let messages: any[];
 
@@ -116,6 +117,7 @@ export async function getMessageById(id: string) {
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const message = await db.message.findFirst({
       where: { id, schoolId },
@@ -176,6 +178,7 @@ export async function sendMessage(data: any) {
 
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const message = await db.message.create({
       data: {
@@ -247,6 +250,7 @@ export async function replyToMessage(messageId: string, content: string) {
 
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Get original message
     const originalMessage = await db.message.findUnique({
@@ -335,6 +339,7 @@ export async function forwardMessage(messageId: string, recipientId: string) {
 
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Get original message — scoped to school
     const originalMessage = await db.message.findFirst({
@@ -416,6 +421,7 @@ export async function deleteMessage(id: string) {
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const message = await db.message.findFirst({
       where: { id, schoolId },
@@ -458,6 +464,7 @@ export async function markAsRead(id: string) {
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const message = await db.message.findFirst({
       where: { id, schoolId },
@@ -506,6 +513,7 @@ export async function getContacts() {
 
     // C-9: Scope contacts to the same school only
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const schoolUserIds = await db.userSchool.findMany({
       where: { schoolId, isActive: true },
@@ -557,6 +565,7 @@ export async function getMessageStats() {
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     const [totalReceived, unreadCount, totalSent] = await Promise.all([
       db.message.count({
@@ -610,6 +619,7 @@ export async function getWeeklyCommunicationStats() {
     startDate.setHours(0, 0, 0, 0);
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Fetch messages sent/received in last 7 days
     const messages = await db.message.findMany({

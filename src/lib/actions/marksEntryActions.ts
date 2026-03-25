@@ -151,6 +151,7 @@ export async function saveExamMarks(input: SaveMarksInput): Promise<ActionResult
     }
 
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return createErrorResponse("School context required", "SCHOOL_REQUIRED");
 
     const canCreateMarks = await hasPermission(userId, 'MARKS', 'CREATE');
     if (!canCreateMarks) {

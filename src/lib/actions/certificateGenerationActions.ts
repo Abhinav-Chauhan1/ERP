@@ -359,7 +359,7 @@ export async function getCertificatesForStudent(studentId: string) {
       return { success: false, error: "Student not found" };
     }
 
-    const result = await getStudentCertificates(studentId);
+    const result = await getStudentCertificates(studentId, schoolId);
     return result;
   } catch (error: any) {
     console.error("Error in getCertificatesForStudent:", error);
@@ -412,7 +412,10 @@ export async function revokeCertificateById(
       return { success: false, error: "Insufficient permissions" };
     }
 
-    const result = await revokeCertificate(certificateId, dbUser.id, reason);
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
+
+    const result = await revokeCertificate(certificateId, dbUser.id, reason, schoolId);
 
     // Revalidate certificates page
     revalidatePath("/admin/certificates");

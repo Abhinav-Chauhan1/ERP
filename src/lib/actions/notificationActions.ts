@@ -119,20 +119,31 @@ export async function createNotification(data: any) {
 
     // Get schoolId from current user context
     const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required" };
 
     // Determine recipients
     let recipients: { id: string }[] = [];
 
     if (data.recipientRole && data.recipientRole !== "ALL") {
-      // C17 FIX: Scope user lookup to current school
+      // C17 FIX: Scope user lookup to current school via UserSchool join
+      const schoolUsers = await db.userSchool.findMany({
+        where: { schoolId, isActive: true },
+        select: { userId: true },
+      });
+      const schoolUserIds = schoolUsers.map((u) => u.userId);
       recipients = await db.user.findMany({
-        where: { role: data.recipientRole, schoolId },
+        where: { role: data.recipientRole, id: { in: schoolUserIds } },
         select: { id: true }
       });
     } else if (data.recipientRole === "ALL") {
-      // C17 FIX: Scope to current school
+      // C17 FIX: Scope to current school via UserSchool join
+      const schoolUsers = await db.userSchool.findMany({
+        where: { schoolId, isActive: true },
+        select: { userId: true },
+      });
+      const schoolUserIds = schoolUsers.map((u) => u.userId);
       recipients = await db.user.findMany({
-        where: { schoolId },
+        where: { id: { in: schoolUserIds } },
         select: { id: true }
       });
     } else {

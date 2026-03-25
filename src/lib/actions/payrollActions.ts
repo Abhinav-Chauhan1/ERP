@@ -539,8 +539,8 @@ export const bulkGeneratePayrolls = withSchoolAuthAction(async (schoolId: string
       },
     });
 
-    const results = [];
-    const errors = [];
+    const results: { id: string; teacherId: string }[] = [];
+    const errors: string[] = [];
 
     // Pre-fetch existing payrolls for this month/year to avoid N+1
     const existingPayrolls = await db.payroll.findMany({
