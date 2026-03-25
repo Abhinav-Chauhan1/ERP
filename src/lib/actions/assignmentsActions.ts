@@ -604,13 +604,15 @@ export async function gradeSubmission(data: SubmissionGradeValues) {
     const submission = await db.assignmentSubmission.findUnique({
       where: { id: data.submissionId },
       include: {
-        assignment: {
-          where: { schoolId },
-        },
+        assignment: true,
       },
     });
 
     if (!submission || !submission.assignment) {
+      return { success: false, error: "Submission not found" };
+    }
+
+    if (submission.assignment.schoolId !== schoolId) {
       return { success: false, error: "Submission not found" };
     }
 
