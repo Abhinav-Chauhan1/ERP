@@ -168,31 +168,17 @@ export async function deleteDocumentType(id: string) {
 }
 
 // Document Actions
-export async function getDocuments(filter?: DocumentFilterData) {
+export async function getDocuments(filter?: DocumentFilterData & { page?: number; limit?: number }) {
   try {
-    // Validate the filter if provided
-    let validatedFilter = {};
-    if (filter) {
-      validatedFilter = documentFilterSchema.parse(filter);
-    }
-
-    // Construct the database query based on filter
     const { schoolId } = await requireSchoolAccess();
-    if (!schoolId) return { success: false, error: "School context required", data: [] };
+    if (!schoolId) return { success: false, error: "School context required", data: [], total: 0 };
+
+    if (filter) documentFilterSchema.parse(filter);
+
     const where: any = { schoolId };
-
-    if (filter?.documentTypeId) {
-      where.documentTypeId = filter.documentTypeId;
-    }
-
-    if (filter?.userId) {
-      where.userId = filter.userId;
-    }
-
-    if (filter?.isPublic !== undefined) {
-      where.isPublic = filter.isPublic;
-    }
-
+    if (filter?.documentTypeId) where.documentTypeId = filter.documentTypeId;
+    if (filter?.userId) where.userId = filter.userId;
+    if (filter?.isPublic !== undefined) where.isPublic = filter.isPublic;
     if (filter?.searchTerm) {
       where.OR = [
         { title: { contains: filter.searchTerm, mode: 'insensitive' } },
@@ -202,28 +188,28 @@ export async function getDocuments(filter?: DocumentFilterData) {
       ];
     }
 
-    // Query the database
-    const documents = await db.document.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        documentType: true,
-      },
-    });
+    const page = filter?.page ?? 1;
+    const limit = filter?.limit ?? 20;
+    const skip = (page - 1) * limit;
 
-    return { success: true, data: documents };
+    const [documents, total] = await Promise.all([
+      db.document.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          documentType: true,
+        },
+        take: limit,
+        skip,
+      }),
+      db.document.count({ where }),
+    ]);
+
+    return { success: true, data: documents, total, page, limit };
   } catch (error) {
     console.error("Failed to fetch documents:", error);
-    return { success: false, error: "Failed to fetch documents", data: [] };
+    return { success: false, error: "Failed to fetch documents", data: [], total: 0 };
   }
 }
 
@@ -389,16 +375,9 @@ export async function getRecentDocuments(limit: number = 5) {
     const documents = await db.document.findMany({
       where: { schoolId },
       take: limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
+        user: { select: { firstName: true, lastName: true } },
         documentType: true,
       },
     });
@@ -407,5 +386,68 @@ export async function getRecentDocuments(limit: number = 5) {
   } catch (error) {
     console.error("Failed to fetch recent documents:", error);
     return { success: false, error: "Failed to fetch recent documents", data: [] };
+  }
+}
+
+/**
+ * Fetches documents, document types, and recent docs in a single auth round-trip.
+ * Used by the admin documents page to avoid triple auth overhead.
+ */
+export async function getDocumentsPageData(filter?: DocumentFilterData & { page?: number; limit?: number }) {
+  try {
+    const { schoolId } = await requireSchoolAccess();
+    if (!schoolId) return { success: false, error: "School context required", documents: [], documentTypes: [], recentDocs: [], total: 0 };
+
+    if (filter) documentFilterSchema.parse(filter);
+
+    const where: any = { schoolId };
+    if (filter?.documentTypeId) where.documentTypeId = filter.documentTypeId;
+    if (filter?.userId) where.userId = filter.userId;
+    if (filter?.isPublic !== undefined) where.isPublic = filter.isPublic;
+    if (filter?.searchTerm) {
+      where.OR = [
+        { title: { contains: filter.searchTerm, mode: 'insensitive' } },
+        { description: { contains: filter.searchTerm, mode: 'insensitive' } },
+        { fileName: { contains: filter.searchTerm, mode: 'insensitive' } },
+        { tags: { contains: filter.searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    const page = filter?.page ?? 1;
+    const limit = filter?.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [documents, total, documentTypes, recentDocs] = await Promise.all([
+      db.document.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          documentType: true,
+        },
+        take: limit,
+        skip,
+      }),
+      db.document.count({ where }),
+      db.documentType.findMany({
+        where: { schoolId },
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { documents: true } } },
+      }),
+      db.document.findMany({
+        where: { schoolId },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true } },
+          documentType: true,
+        },
+      }),
+    ]);
+
+    return { success: true, documents, total, page, limit, documentTypes, recentDocs };
+  } catch (error) {
+    console.error("Failed to fetch documents page data:", error);
+    return { success: false, error: "Failed to fetch data", documents: [], documentTypes: [], recentDocs: [], total: 0 };
   }
 }

@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { currentUser } from "@/lib/auth-helpers";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
 
@@ -21,50 +20,21 @@ const documentFilterSchema = z.object({
 type DocumentFilter = z.infer<typeof documentFilterSchema>;
 
 /**
- * Helper function to get current parent and verify authentication
+ * Helper function to get current parent, verify authentication, and return schoolId.
+ * Single auth round-trip using requireSchoolAccess.
  */
-async function getCurrentParent() {
-  const clerkUser = await currentUser();
-  
-  if (!clerkUser) {
-    return null;
-  }
-  
-  const dbUser = await db.user.findUnique({
-    where: { id: clerkUser.id }
-  });
-  
-  if (!dbUser || dbUser.role !== UserRole.PARENT) {
-    return null;
-  }
-  
-  const parent = await db.parent.findUnique({
-    where: {
-      userId: dbUser.id
-    }
-  });
-  
-  return parent;
-}
+async function getCurrentParentWithSchool() {
+  const { requireSchoolAccess } = await import('@/lib/auth/tenant');
+  const { schoolId, userId } = await requireSchoolAccess();
+  if (!schoolId || !userId) return null;
 
-/**
- * Helper function to verify parent-child relationship with school isolation
- */
-async function verifyParentChildRelationship(
-  parentId: string,
-  childId: string,
-  schoolId: string
-): Promise<boolean> {
-  const relationship = await db.studentParent.findFirst({
-    where: { 
-      parentId, 
-      studentId: childId,
-      student: {
-        schoolId // Add school isolation
-      }
-    }
-  });
-  return !!relationship;
+  const dbUser = await db.user.findUnique({ where: { id: userId }, select: { id: true, role: true } });
+  if (!dbUser || dbUser.role !== UserRole.PARENT) return null;
+
+  const parent = await db.parent.findUnique({ where: { userId: dbUser.id } });
+  if (!parent) return null;
+
+  return { parent, schoolId };
 }
 
 /**
@@ -73,62 +43,25 @@ async function verifyParentChildRelationship(
  */
 export async function getDocuments(filters: DocumentFilter) {
   try {
-    // Add school isolation
-    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-    const schoolId = await getRequiredSchoolId();
-
-    // Validate input
     const validated = documentFilterSchema.parse(filters);
-    
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
-    // Verify parent-child relationship
-    const hasAccess = await verifyParentChildRelationship(parent.id, validated.childId, schoolId);
-    if (!hasAccess) {
-      return { success: false, message: "Access denied", data: [] };
-    }
-    
-    // Get student user ID
-    const student = await db.student.findFirst({
-      where: { 
-        id: validated.childId,
-        schoolId // Add school isolation
-      },
-      select: { userId: true }
+
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
+
+    // Verify relationship and get student userId in one query
+    const studentParent = await db.studentParent.findFirst({
+      where: { parentId: ctx.parent.id, studentId: validated.childId, student: { schoolId: ctx.schoolId } },
+      select: { student: { select: { userId: true } } },
     });
-    
-    if (!student) {
-      return { success: false, message: "Student not found", data: [] };
-    }
-    
-    // Build query filters
-    const where: any = {
-      userId: student.userId
-    };
-    
-    // Add category filter
-    if (validated.category) {
-      where.documentType = {
-        name: validated.category
-      };
-    }
-    
-    // Add date range filter
+    if (!studentParent) return { success: false, message: "Access denied", data: [] };
+
+    const where: any = { userId: studentParent.student.userId };
+    if (validated.category) where.documentType = { name: validated.category };
     if (validated.startDate || validated.endDate) {
       where.createdAt = {};
-      if (validated.startDate) {
-        where.createdAt.gte = validated.startDate;
-      }
-      if (validated.endDate) {
-        where.createdAt.lte = validated.endDate;
-      }
+      if (validated.startDate) where.createdAt.gte = validated.startDate;
+      if (validated.endDate) where.createdAt.lte = validated.endDate;
     }
-    
-    // Add search filter
     if (validated.searchTerm) {
       where.OR = [
         { title: { contains: validated.searchTerm, mode: 'insensitive' } },
@@ -136,51 +69,28 @@ export async function getDocuments(filters: DocumentFilter) {
         { fileName: { contains: validated.searchTerm, mode: 'insensitive' } },
       ];
     }
-    
-    // Calculate pagination
+
     const skip = (validated.page - 1) * validated.limit;
-    
-    // Fetch documents with pagination
+
     const [documents, total] = await Promise.all([
       db.document.findMany({
         where,
-        include: {
-          documentType: {
-            select: {
-              id: true,
-              name: true,
-              description: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
+        include: { documentType: { select: { id: true, name: true, description: true } } },
+        orderBy: { createdAt: 'desc' },
         take: validated.limit,
         skip,
       }),
       db.document.count({ where }),
     ]);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: documents,
-      pagination: {
-        total,
-        page: validated.page,
-        limit: validated.limit,
-        totalPages: Math.ceil(total / validated.limit),
-      }
+      pagination: { total, page: validated.page, limit: validated.limit, totalPages: Math.ceil(total / validated.limit) },
     };
   } catch (error) {
     console.error("Failed to fetch documents:", error);
-    if (error instanceof z.ZodError) {
-      return { 
-        success: false, 
-        message: error.errors[0].message || "Invalid filter data",
-        data: []
-      };
-    }
+    if (error instanceof z.ZodError) return { success: false, message: error.errors[0].message, data: [] };
     return { success: false, message: "Failed to fetch documents", data: [] };
   }
 }
@@ -191,56 +101,25 @@ export async function getDocuments(filters: DocumentFilter) {
  */
 export async function downloadDocument(documentId: string) {
   try {
-    // Add school isolation
-    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-    const schoolId = await getRequiredSchoolId();
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", url: null };
 
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", url: null };
-    }
-    
-    // Get document
     const document = await db.document.findFirst({
-      where: { 
-        id: documentId,
-        schoolId // Add school isolation
-      },
-      include: {
-        user: {
-          include: {
-            student: true
-          }
-        }
-      }
+      where: { id: documentId, schoolId: ctx.schoolId },
+      include: { user: { include: { student: { select: { id: true } } } } },
     });
-    
-    if (!document) {
-      return { success: false, message: "Document not found", url: null };
-    }
-    
-    // Verify parent has access to this document
+    if (!document) return { success: false, message: "Document not found", url: null };
+
     if (document.user.student) {
-      const hasAccess = await verifyParentChildRelationship(
-        parent.id, 
-        document.user.student.id,
-        schoolId // Add school isolation
-      );
-      if (!hasAccess) {
-        return { success: false, message: "Access denied", url: null };
-      }
+      const rel = await db.studentParent.findFirst({
+        where: { parentId: ctx.parent.id, studentId: document.user.student.id },
+      });
+      if (!rel) return { success: false, message: "Access denied", url: null };
     } else {
       return { success: false, message: "Document not associated with a student", url: null };
     }
-    
-    // Return the file URL (in production, this would be a signed URL)
-    return { 
-      success: true, 
-      url: document.fileUrl,
-      fileName: document.fileName,
-      fileType: document.fileType
-    };
+
+    return { success: true, url: document.fileUrl, fileName: document.fileName, fileType: document.fileType };
   } catch (error) {
     console.error("Failed to download document:", error);
     return { success: false, message: "Failed to download document", url: null };
@@ -253,77 +132,30 @@ export async function downloadDocument(documentId: string) {
  */
 export async function previewDocument(documentId: string) {
   try {
-    // Add school isolation
-    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-    const schoolId = await getRequiredSchoolId();
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: null };
 
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: null };
-    }
-    
-    // Get document
     const document = await db.document.findFirst({
-      where: { 
-        id: documentId,
-        schoolId // Add school isolation
-      },
-      include: {
-        documentType: true,
-        user: {
-          include: {
-            student: true
-          }
-        }
-      }
+      where: { id: documentId, schoolId: ctx.schoolId },
+      include: { documentType: true, user: { include: { student: { select: { id: true } } } } },
     });
-    
-    if (!document) {
-      return { success: false, message: "Document not found", data: null };
-    }
-    
-    // Verify parent has access to this document
+    if (!document) return { success: false, message: "Document not found", data: null };
+
     if (document.user.student) {
-      const hasAccess = await verifyParentChildRelationship(
-        parent.id, 
-        document.user.student.id,
-        schoolId // Add school isolation
-      );
-      if (!hasAccess) {
-        return { success: false, message: "Access denied", data: null };
-      }
+      const rel = await db.studentParent.findFirst({
+        where: { parentId: ctx.parent.id, studentId: document.user.student.id },
+      });
+      if (!rel) return { success: false, message: "Access denied", data: null };
     } else {
       return { success: false, message: "Document not associated with a student", data: null };
     }
-    
-    // Check if file type is previewable (PDF, images)
-    const previewableTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp'
-    ];
-    
-    const isPreviewable = document.fileType && 
-      previewableTypes.includes(document.fileType.toLowerCase());
-    
-    return { 
-      success: true, 
-      data: {
-        id: document.id,
-        title: document.title,
-        description: document.description,
-        fileName: document.fileName,
-        fileUrl: document.fileUrl,
-        fileType: document.fileType,
-        fileSize: document.fileSize,
-        isPreviewable,
-        documentType: document.documentType,
-        createdAt: document.createdAt
-      }
+
+    const previewableTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const isPreviewable = !!document.fileType && previewableTypes.includes(document.fileType.toLowerCase());
+
+    return {
+      success: true,
+      data: { id: document.id, title: document.title, description: document.description, fileName: document.fileName, fileUrl: document.fileUrl, fileType: document.fileType, fileSize: document.fileSize, isPreviewable, documentType: document.documentType, createdAt: document.createdAt },
     };
   } catch (error) {
     console.error("Failed to preview document:", error);
@@ -337,25 +169,14 @@ export async function previewDocument(documentId: string) {
  */
 export async function getDocumentCategories() {
   try {
-    // Add school isolation
-    const { getRequiredSchoolId } = await import('@/lib/utils/school-context-helper');
-    const schoolId = await getRequiredSchoolId();
+    const ctx = await getCurrentParentWithSchool();
+    if (!ctx) return { success: false, message: "Unauthorized", data: [] };
 
-    // Get current parent
-    const parent = await getCurrentParent();
-    if (!parent) {
-      return { success: false, message: "Unauthorized", data: [] };
-    }
-    
     const categories = await db.documentType.findMany({
-      where: {
-        schoolId // Add school isolation
-      },
-      orderBy: {
-        name: 'asc'
-      }
+      where: { schoolId: ctx.schoolId },
+      orderBy: { name: 'asc' },
     });
-    
+
     return { success: true, data: categories };
   } catch (error) {
     console.error("Failed to fetch document categories:", error);

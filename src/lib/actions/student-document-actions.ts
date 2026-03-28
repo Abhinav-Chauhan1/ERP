@@ -23,102 +23,62 @@ const documentUploadSchema = z.object({
 type DocumentUploadValues = z.infer<typeof documentUploadSchema>;
 
 /**
- * Get the current student
+ * Get the current student — single auth call, returns schoolId from session.
  */
 async function getCurrentStudent() {
   const session = await auth();
-  const clerkUser = session?.user;
+  const userId = session?.user?.id;
+  if (!userId) return null;
 
-  if (!clerkUser) {
-    return null;
-  }
-
-  // Get user from database
   const dbUser = await db.user.findUnique({
-    where: { id: clerkUser.id }
+    where: { id: userId },
+    select: { id: true, role: true, student: { select: { id: true, schoolId: true } } },
   });
 
-  if (!dbUser || dbUser.role !== UserRole.STUDENT) {
-    return null;
-  }
+  if (!dbUser || dbUser.role !== UserRole.STUDENT) return null;
 
-  const student = await db.student.findUnique({
-    where: {
-      userId: dbUser.id
-    }
-  });
+  const schoolId = (session.user as any).schoolId as string | undefined;
 
-  return { student, dbUser };
+  return { dbUser, student: dbUser.student, schoolId };
 }
 
 /**
- * Get student documents
+ * Get student documents — single auth call, school-scoped, parallel queries.
  */
 export async function getStudentDocuments() {
   const result = await getCurrentStudent();
+  if (!result) redirect("/login");
 
-  if (!result) {
-    redirect("/login");
-  }
+  const { dbUser, schoolId } = result;
 
-  const { dbUser } = result;
+  // All three queries in parallel, scoped to school
+  const [documentTypes, personalDocuments, rawSchoolDocuments] = await Promise.all([
+    db.documentType.findMany({
+      where: schoolId ? { schoolId } : {},
+      orderBy: { name: 'asc' },
+    }),
+    db.document.findMany({
+      where: { userId: dbUser.id, ...(schoolId ? { schoolId } : {}) },
+      include: { documentType: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    db.document.findMany({
+      where: { isPublic: true, ...(schoolId ? { schoolId } : {}) },
+      include: {
+        documentType: true,
+        user: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+  ]);
 
-  // Get document types
-  const documentTypes = await db.documentType.findMany({
-    orderBy: {
-      name: 'asc'
-    }
-  });
-
-  // Get student's personal documents
-  const personalDocuments = await db.document.findMany({
-    where: {
-      userId: dbUser.id
-    },
-    include: {
-      documentType: true
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  });
-
-  // Get school documents (public)
-  const rawSchoolDocuments = await db.document.findMany({
-    where: {
-      isPublic: true
-    },
-    include: {
-      documentType: true,
-      user: {
-        select: {
-          firstName: true,
-          lastName: true
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-    take: 20
-  });
-
-  // Transform school documents to ensure firstName and lastName are strings
   const schoolDocuments = rawSchoolDocuments.map(doc => ({
     ...doc,
-    user: {
-      ...doc.user,
-      firstName: doc.user.firstName || '',
-      lastName: doc.user.lastName || '',
-    }
+    user: { ...doc.user, firstName: doc.user.firstName || '', lastName: doc.user.lastName || '' },
   }));
 
-  return {
-    user: dbUser,
-    documentTypes,
-    personalDocuments,
-    schoolDocuments
-  };
+  return { user: dbUser, documentTypes, personalDocuments, schoolDocuments };
 }
 
 /**
@@ -126,18 +86,13 @@ export async function getStudentDocuments() {
  */
 export async function uploadDocument(values: DocumentUploadValues) {
   const result = await getCurrentStudent();
+  if (!result) return { success: false, message: "Authentication required" };
 
-  if (!result) {
-    return { success: false, message: "Authentication required" };
-  }
-
-  const { dbUser, student } = result;
+  const { dbUser, student, schoolId } = result;
 
   try {
-    // Validate data
     const validatedData = documentUploadSchema.parse(values);
 
-    // Create document record
     await db.document.create({
       data: {
         title: validatedData.title,
@@ -150,25 +105,15 @@ export async function uploadDocument(values: DocumentUploadValues) {
         tags: validatedData.tags,
         userId: dbUser.id,
         documentTypeId: validatedData.documentTypeId,
-        schoolId: student?.schoolId || '', // Add required schoolId
-      }
+        schoolId: schoolId || student?.schoolId || '',
+      },
     });
 
     revalidatePath("/student/documents");
     return { success: true, message: "Document uploaded successfully" };
-
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        message: error.errors[0].message || "Invalid document data"
-      };
-    }
-
-    return {
-      success: false,
-      message: "Failed to upload document"
-    };
+    if (error instanceof z.ZodError) return { success: false, message: error.errors[0].message };
+    return { success: false, message: "Failed to upload document" };
   }
 }
 
@@ -177,41 +122,20 @@ export async function uploadDocument(values: DocumentUploadValues) {
  */
 export async function deleteDocument(documentId: string) {
   const result = await getCurrentStudent();
-
-  if (!result) {
-    return { success: false, message: "Authentication required" };
-  }
+  if (!result) return { success: false, message: "Authentication required" };
 
   const { dbUser } = result;
 
   try {
-    // Find the document
-    const document = await db.document.findUnique({
-      where: { id: documentId }
-    });
+    const document = await db.document.findUnique({ where: { id: documentId } });
+    if (!document) return { success: false, message: "Document not found" };
+    if (document.userId !== dbUser.id) return { success: false, message: "You can only delete your own documents" };
 
-    if (!document) {
-      return { success: false, message: "Document not found" };
-    }
-
-    // Ensure it belongs to the student
-    if (document.userId !== dbUser.id) {
-      return { success: false, message: "You can only delete your own documents" };
-    }
-
-    // Delete the document
-    await db.document.delete({
-      where: { id: documentId }
-    });
-
+    await db.document.delete({ where: { id: documentId } });
     revalidatePath("/student/documents");
     return { success: true, message: "Document deleted successfully" };
-
-  } catch (error) {
-    return {
-      success: false,
-      message: "Failed to delete document"
-    };
+  } catch {
+    return { success: false, message: "Failed to delete document" };
   }
 }
 

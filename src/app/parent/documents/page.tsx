@@ -2,13 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-// Note: Replace currentUser() calls with auth() and access session.user
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 import { DocumentsPageClient } from "./documents-page-client";
-
-// Enable caching with revalidation
-export const revalidate = 1800; // Revalidate every 30 minutes
 
 interface PageProps {
   searchParams: Promise<{
