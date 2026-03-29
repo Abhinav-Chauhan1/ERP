@@ -30,13 +30,12 @@ export default async function AdminLayout({
     redirect("/super-admin");
   }
 
-  // Get effective permissions including role defaults and DB overrides
-  const permissions = await getUserPermissionNamesCached(session.user.id);
+  // Parallel fetch permissions and school plan for better performance
+  const [permissions, schoolPlanInfo] = await Promise.all([
+    getUserPermissionNamesCached(session.user.id),
+    session.user.schoolId ? getSchoolPlan(session.user.schoolId) : Promise.resolve(null)
+  ]);
 
-  // Fetch school plan for feature gating in the sidebar
-  const schoolPlanInfo = session.user.schoolId
-    ? await getSchoolPlan(session.user.schoolId)
-    : null
   const schoolPlan = schoolPlanInfo?.plan ?? 'STARTER'
 
   return (

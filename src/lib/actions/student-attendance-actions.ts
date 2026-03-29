@@ -240,7 +240,8 @@ export async function getStudentLeaveApplications() {
     },
     orderBy: {
       createdAt: 'desc'
-    }
+    },
+    take: 50, // Add limit to prevent unbounded query
   });
 
   return leaveApplications;

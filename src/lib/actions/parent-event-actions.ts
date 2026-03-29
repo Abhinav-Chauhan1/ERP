@@ -89,6 +89,7 @@ export async function getEvents(filters?: EventFilter) {
       where,
       include: { _count: { select: { participants: true } } },
       orderBy: { startDate: "asc" },
+      take: 100, // Add limit to prevent unbounded query
     });
 
     return { success: true, data: events };

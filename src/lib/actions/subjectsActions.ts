@@ -341,11 +341,13 @@ export const updateSubject = withSchoolAuthAction(async (schoolId, userId, userR
 // Delete a subject
 export const deleteSubject = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    // Check for dependencies before deleting
-    const hasSyllabus = await db.syllabus.findFirst({ where: { subjectId: id, schoolId } });
-    const hasTeachers = await db.subjectTeacher.findFirst({ where: { subjectId: id, subject: { schoolId } } });
-    const hasExams = await db.exam.findFirst({ where: { subjectId: id, schoolId } });
-    const hasAssignments = await db.assignment.findFirst({ where: { subjectId: id, schoolId } });
+    // Check for dependencies before deleting - PARALLELIZED
+    const [hasSyllabus, hasTeachers, hasExams, hasAssignments] = await Promise.all([
+      db.syllabus.findFirst({ where: { subjectId: id, schoolId } }),
+      db.subjectTeacher.findFirst({ where: { subjectId: id, subject: { schoolId } } }),
+      db.exam.findFirst({ where: { subjectId: id, schoolId } }),
+      db.assignment.findFirst({ where: { subjectId: id, schoolId } })
+    ]);
 
     if (hasSyllabus || hasTeachers || hasExams || hasAssignments) {
       return {

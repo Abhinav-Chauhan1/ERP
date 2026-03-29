@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-// Note: Replace currentUser() calls with auth() and access session.user
+import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
@@ -65,10 +65,10 @@ const getCachedDashboardData = unstable_cache(
 );
 
 /**
- * Get parent data and children
- * Cached for 5 minutes (300 seconds) as per requirements 9.5
+ * Get parent data and children - CACHED at request level
+ * This prevents multiple calls to the same data within a single request
  */
-async function getParentData() {
+const getParentData = cache(async () => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -98,7 +98,7 @@ async function getParentData() {
   const children = await getCachedDashboardData(parent.id);
 
   return { dbUser, parent, children };
-}
+});
 
 /**
  * Header section with parent and children info

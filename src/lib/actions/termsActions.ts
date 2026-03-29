@@ -256,9 +256,11 @@ export const updateTerm = withSchoolAuthAction(async (schoolId, userId, userRole
 // Delete a term
 export const deleteTerm = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    // Check if term has any dependent records
-    const hasExams = await db.exam.findFirst({ where: { termId: id, schoolId } });
-    const hasReportCards = await db.reportCard.findFirst({ where: { termId: id, schoolId } });
+    // Check if term has any dependent records - PARALLELIZED
+    const [hasExams, hasReportCards] = await Promise.all([
+      db.exam.findFirst({ where: { termId: id, schoolId } }),
+      db.reportCard.findFirst({ where: { termId: id, schoolId } })
+    ]);
 
     if (hasExams || hasReportCards) {
       return {

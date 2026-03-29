@@ -275,8 +275,10 @@ export const removeClassAmount = withSchoolAuthAction(async (schoolId: string, u
 // Get fee structure statistics
 export const getFeeStructureStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string,) => {
   try {
-    const totalStructures = await db.feeStructure.count({ where: { schoolId } });
-    const activeStructures = await db.feeStructure.count({
+    // PARALLELIZED: Fetch all stats at once
+    const [totalStructures, activeStructures] = await Promise.all([
+      db.feeStructure.count({ where: { schoolId } }),
+      db.feeStructure.count({
       where: {
         academicYear: { schoolId },
         isActive: true

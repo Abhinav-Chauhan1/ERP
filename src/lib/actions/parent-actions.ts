@@ -149,7 +149,7 @@ export async function getParentDashboardData() {
   }
 
   const studentIds = children.map(child => child.id);
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Reduced from 90 to 30 days
 
   // Fetch all independent queries in parallel
   const [upcomingMeetings, recentAnnouncements, feePayments, attendanceRecords] =
@@ -161,10 +161,16 @@ export async function getParentDashboardData() {
           scheduledDate: { gte: new Date() }
         },
         orderBy: { scheduledDate: 'asc' },
-        take: 3,
-        include: {
+        take: 5, // Increased from 3 for better UX
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          scheduledDate: true,
+          status: true,
+          duration: true,
           teacher: {
-            include: {
+            select: {
               user: {
                 select: { firstName: true, lastName: true }
               }
@@ -186,9 +192,14 @@ export async function getParentDashboardData() {
         },
         orderBy: { createdAt: 'desc' },
         take: 5,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          startDate: true,
+          createdAt: true,
           publisher: {
-            include: {
+            select: {
               user: {
                 select: { firstName: true, lastName: true }
               }
@@ -203,9 +214,16 @@ export async function getParentDashboardData() {
           schoolId
         },
         orderBy: { paymentDate: 'desc' },
-        include: {
+        take: 50, // Add limit for performance
+        select: {
+          id: true,
+          amount: true,
+          balance: true,
+          status: true,
+          paymentDate: true,
+          paymentMethod: true,
           student: {
-            include: {
+            select: {
               user: {
                 select: { firstName: true, lastName: true }
               }
@@ -218,13 +236,17 @@ export async function getParentDashboardData() {
         where: {
           studentId: { in: studentIds },
           schoolId,
-          date: { gte: ninetyDaysAgo }
+          date: { gte: thirtyDaysAgo }
         },
         orderBy: { date: 'desc' },
-        take: 90,
-        include: {
+        take: 100, // Limit total records (30 days * 3 children max)
+        select: {
+          id: true,
+          studentId: true,
+          date: true,
+          status: true,
           student: {
-            include: {
+            select: {
               user: {
                 select: { firstName: true, lastName: true }
               }

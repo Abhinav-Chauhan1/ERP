@@ -70,7 +70,7 @@ export async function getStudentDashboardData() {
   const presentDays = attendanceData.filter(a => a.status === "PRESENT").length;
   const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
-  // Get upcoming exams
+  // Get upcoming exams (limited to 10 for performance)
   const upcomingExams = await db.exam.findMany({
     where: {
       examDate: {
@@ -91,16 +91,16 @@ export async function getStudentDashboardData() {
       },
     },
     include: {
-      subject: true,
-      examType: true,
+      subject: { select: { name: true, id: true } },
+      examType: { select: { name: true, id: true } },
     },
-    take: 5,
+    take: 10,
     orderBy: {
       examDate: "asc",
     },
   });
 
-  // Get pending assignments
+  // Get pending assignments (limited to 10 for performance)
   const pendingAssignments = await db.assignment.findMany({
     where: {
       dueDate: {
@@ -124,15 +124,15 @@ export async function getStudentDashboardData() {
       },
     },
     include: {
-      subject: true,
+      subject: { select: { name: true, id: true } },
     },
-    take: 5,
+    take: 10,
     orderBy: {
       dueDate: "asc",
     },
   });
 
-  // Get recent announcements
+  // Get recent announcements (limited to 5 for performance)
   const recentAnnouncements = await db.announcement.findMany({
     where: {
       isActive: true,
@@ -141,14 +141,19 @@ export async function getStudentDashboardData() {
         { targetAudience: { has: "ALL" } },
       ],
     },
-    take: 3,
+    take: 5,
     orderBy: {
       createdAt: "desc",
     },
     include: {
       publisher: {
-        include: {
-          user: true,
+        select: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
         },
       },
     },
@@ -185,7 +190,7 @@ export async function getStudentSubjectPerformance(studentId: string) {
 
   // If student, they can only view their own performance
   if (session.user.role === "STUDENT" && targetStudent.userId !== session.user.id) {
-    return [];
+    throw new Error("Unauthorized: You can only view your own performance");
   }
 
   // Get the student's current class enrollment
@@ -363,12 +368,10 @@ export async function updateStudentProfile(studentId: string, data: {
       return { success: false, error: "Student not found" };
     }
 
-    // Verify ownership (IDOR check)
-    // Only allow update if the session user owns this student record
-    if (student.userId !== session.user.id) {
-      // Also allow admins/teachers? The function name implies student updating OWN profile.
-      // Safe bet: Restrict to owner for now.
-      return { success: false, error: "Unauthorized access" };
+    // Verify ownership (IDOR check) - Only students can update their own profile
+    // Admins and teachers should use separate admin actions
+    if (session.user.role !== "STUDENT" || student.userId !== session.user.id) {
+      return { success: false, error: "Unauthorized: You can only update your own profile" };
     }
 
     if (!student) {

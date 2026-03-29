@@ -202,9 +202,11 @@ export const updateAcademicYear = withSchoolAuthAction(async (schoolId, userId, 
 // Delete an academic year
 export const deleteAcademicYear = withSchoolAuthAction(async (schoolId, userId, userRole, id: string) => {
   try {
-    // Check if the academic year has any related records
-    const hasTerms = await db.term.findFirst({ where: { academicYearId: id, schoolId } });
-    const hasClasses = await db.class.findFirst({ where: { academicYearId: id, schoolId } });
+    // Check if the academic year has any related records - PARALLELIZED
+    const [hasTerms, hasClasses] = await Promise.all([
+      db.term.findFirst({ where: { academicYearId: id, schoolId } }),
+      db.class.findFirst({ where: { academicYearId: id, schoolId } })
+    ]);
 
     if (hasTerms || hasClasses) {
       return {

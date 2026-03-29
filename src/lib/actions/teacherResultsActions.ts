@@ -72,88 +72,107 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
     // Filter by classId if provided
     const finalClassIds = classId ? classIds.filter(id => id === classId) : classIds;
 
-    // Get all exams for these subjects
+    // OPTIMIZED: Fetch exams without nested includes (eliminate N+1)
     const exams = await db.exam.findMany({
       where: {
-        schoolId, // Add school isolation
-        subjectId: {
-          in: subjectIds,
-        },
+        schoolId,
+        subjectId: { in: subjectIds },
       },
-      include: {
-        subject: true,
-        examType: true,
-        results: {
-          include: {
-            student: {
-              include: {
-                user: true,
-                enrollments: {
-                  where: {
-                    classId: {
-                      in: finalClassIds,
-                    },
-                  },
-                  include: {
-                    class: true,
-                    section: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+      select: {
+        id: true,
+        title: true,
+        examDate: true,
+        totalMarks: true,
+        passingMarks: true,
+        subjectId: true,
+        subject: { select: { name: true } },
+        examType: { select: { name: true } },
       },
-      orderBy: {
-        examDate: 'desc',
+      orderBy: { examDate: 'desc' },
+      take: 50, // Add limit to prevent unbounded query
+    });
+
+    // OPTIMIZED: Fetch exam results with aggregation
+    const examIds = exams.map(e => e.id);
+    const examResults = await db.examResult.findMany({
+      where: { examId: { in: examIds } },
+      select: {
+        id: true,
+        examId: true,
+        studentId: true,
+        marks: true,
+        isAbsent: true,
       },
     });
 
-    // Get all assignments for these subjects
+    // OPTIMIZED: Get unique student IDs from results
+    const studentIdsFromExams = Array.from(new Set(examResults.map(r => r.studentId)));
+    
+    // OPTIMIZED: Fetch student info once for all students
+    const studentsForExams = await db.student.findMany({
+      where: { 
+        id: { in: studentIdsFromExams },
+        schoolId,
+      },
+      select: {
+        id: true,
+        enrollments: {
+          where: {
+            classId: { in: finalClassIds },
+            status: 'ACTIVE',
+          },
+          take: 1,
+          select: {
+            class: { select: { name: true } },
+            section: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    // Create lookup map for student enrollments
+    const studentEnrollmentMap = new Map(
+      studentsForExams.map(s => [s.id, s.enrollments[0]])
+    );
+
+    // OPTIMIZED: Fetch assignments without nested includes
     const assignments = await db.assignment.findMany({
       where: {
-        schoolId, // Add school isolation
-        subjectId: {
-          in: subjectIds,
-        },
+        schoolId,
+        subjectId: { in: subjectIds },
         classes: {
           some: {
-            classId: {
-              in: finalClassIds,
-            },
+            classId: { in: finalClassIds },
           },
         },
       },
-      include: {
-        subject: true,
-        submissions: {
-          include: {
-            student: {
-              include: {
-                user: true,
-                enrollments: {
-                  where: {
-                    classId: {
-                      in: finalClassIds,
-                    },
-                  },
-                  include: {
-                    class: true,
-                    section: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        totalMarks: true,
+        subjectId: true,
+        subject: { select: { name: true } },
         classes: {
-          include: {
-            class: true,
+          select: {
+            class: { select: { name: true } },
           },
         },
       },
-      orderBy: {
-        dueDate: 'desc',
+      orderBy: { dueDate: 'desc' },
+      take: 50, // Add limit
+    });
+
+    // OPTIMIZED: Fetch assignment submissions
+    const assignmentIds = assignments.map(a => a.id);
+    const assignmentSubmissions = await db.assignmentSubmission.findMany({
+      where: { assignmentId: { in: assignmentIds } },
+      select: {
+        id: true,
+        assignmentId: true,
+        studentId: true,
+        marks: true,
+        status: true,
       },
     });
 
@@ -168,22 +187,28 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
       },
     });
 
-    // Format the exam results data
+    // OPTIMIZED: Format the exam results data using pre-fetched data
     const formattedExams = exams.map(exam => {
-      const totalStudents = exam.results.length;
-      const submittedCount = exam.results.filter(r => !r.isAbsent).length;
-      const passedCount = exam.results.filter(r => r.marks >= exam.passingMarks).length;
+      const results = examResults.filter(r => r.examId === exam.id);
+      const totalStudents = results.length;
+      const submittedCount = results.filter(r => !r.isAbsent).length;
+      const passedCount = results.filter(r => !r.isAbsent && r.marks >= exam.passingMarks).length;
       const failedCount = submittedCount - passedCount;
       const absentCount = totalStudents - submittedCount;
 
-      const totalMarks = exam.results.reduce((sum, result) => sum + (result.isAbsent ? 0 : result.marks), 0);
+      const totalMarks = results.reduce((sum, result) => sum + (result.isAbsent ? 0 : result.marks), 0);
       const avgMarks = submittedCount > 0 ? totalMarks / submittedCount : 0;
-      const highestMarks = Math.max(...exam.results.map(r => r.isAbsent ? 0 : r.marks));
+      const highestMarks = submittedCount > 0 ? Math.max(...results.filter(r => !r.isAbsent).map(r => r.marks)) : 0;
 
-      // Class names where this exam was conducted
-      const classNames = Array.from(new Set(exam.results.flatMap(r =>
-        r.student.enrollments.map(e => `${e.class.name}-${e.section.name}`)
-      ))).join(", ");
+      // Get class names from student enrollments
+      const uniqueClassNames = new Set<string>();
+      results.forEach(result => {
+        const enrollment = studentEnrollmentMap.get(result.studentId);
+        if (enrollment) {
+          uniqueClassNames.add(`${enrollment.class.name}-${enrollment.section.name}`);
+        }
+      });
+      const classNames = Array.from(uniqueClassNames).join(", ") || "N/A";
 
       return {
         id: exam.id,
@@ -205,14 +230,15 @@ export async function getTeacherResults(classId?: string, subjectId?: string) {
       };
     });
 
-    // Format the assignment results data
+    // OPTIMIZED: Format the assignment results data using pre-fetched data
     const formattedAssignments = assignments.map(assignment => {
-      const totalStudents = assignment.submissions.length;
-      const submittedCount = assignment.submissions.filter(s => s.status !== "PENDING").length;
-      const gradedCount = assignment.submissions.filter(s => s.status === "GRADED").length;
+      const submissions = assignmentSubmissions.filter(s => s.assignmentId === assignment.id);
+      const totalStudents = submissions.length;
+      const submittedCount = submissions.filter(s => s.status !== "PENDING").length;
+      const gradedCount = submissions.filter(s => s.status === "GRADED").length;
       const pendingCount = totalStudents - submittedCount;
 
-      const totalMarks = assignment.submissions.reduce((sum, submission) =>
+      const totalMarks = submissions.reduce((sum, submission) =>
         sum + (submission.marks || 0), 0);
       const avgMarks = gradedCount > 0 ? totalMarks / gradedCount : 0;
 

@@ -61,11 +61,22 @@ export async function getPendingAssignments(teacherId: string) {
           },
         },
       },
-      include: {
-        subject: true,
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        subject: {
+          select: {
+            name: true,
+          },
+        },
         classes: {
-          include: {
-            class: true,
+          select: {
+            class: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
         submissions: {
@@ -73,10 +84,17 @@ export async function getPendingAssignments(teacherId: string) {
             status: "SUBMITTED",
             marks: null,
           },
-          include: {
+          select: {
+            id: true,
+            status: true,
             student: {
-              include: {
-                user: true,
+              select: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
               },
             },
           },
@@ -85,6 +103,7 @@ export async function getPendingAssignments(teacherId: string) {
       orderBy: {
         dueDate: "asc",
       },
+      take: 20, // Add limit for performance
     });
 
     const count = await db.assignment.count({
@@ -137,14 +156,31 @@ export async function getUpcomingExams(teacherId: string) {
           lte: nextWeek,
         },
       },
-      include: {
-        subject: true,
-        examType: true,
-        term: true,
+      select: {
+        id: true,
+        title: true,
+        examDate: true,
+        totalMarks: true,
+        subject: {
+          select: {
+            name: true,
+          },
+        },
+        examType: {
+          select: {
+            name: true,
+          },
+        },
+        term: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         examDate: "asc",
       },
+      take: 10, // Add limit for performance
     });
 
     const count = upcomingExams.length;
@@ -189,15 +225,36 @@ export async function getTodaysClasses(teacherId: string) {
           isActive: true,
         },
       },
-      include: {
-        class: true,
-        section: true,
-        subjectTeacher: {
-          include: {
-            subject: true,
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        classId: true,
+        sectionId: true,
+        class: {
+          select: {
+            name: true,
           },
         },
-        room: true,
+        section: {
+          select: {
+            name: true,
+          },
+        },
+        subjectTeacher: {
+          select: {
+            subject: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        room: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         startTime: "asc",
@@ -274,10 +331,20 @@ export async function getRecentAnnouncements() {
           has: "TEACHER",
         },
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        startDate: true,
+        createdAt: true,
         publisher: {
-          include: {
-            user: true,
+          select: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         },
       },
@@ -521,7 +588,7 @@ export async function getTeacherDashboardData() {
       take: 4,
     });
 
-    // Get class performance data with school isolation
+    // Get class performance data with school isolation (OPTIMIZED - no N+1)
     const classes = await db.class.findMany({
       where: {
         schoolId, // Add school isolation
@@ -531,43 +598,77 @@ export async function getTeacherDashboardData() {
           },
         },
       },
-      include: {
-        sections: {
-          include: {
-            enrollments: {
-              include: {
-                student: {
-                  include: {
-                    examResults: {
-                      include: {
-                        exam: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
+      select: {
+        id: true,
+        name: true,
+      },
+      take: 10, // Limit for performance
+    });
+
+    // Fetch exam results in a single aggregated query instead of N+1
+    const classIds = classes.map(cls => cls.id);
+    const examResults = await db.examResult.groupBy({
+      by: ['exam'],
+      where: {
+        schoolId,
+        exam: {
+          subject: {
+            classes: {
+              some: {
+                classId: { in: classIds }
+              }
+            }
+          }
+        },
+        isAbsent: false,
+      },
+      _avg: {
+        marks: true,
+      },
+    });
+
+    // Get exam details to map to subjects
+    const examIds = examResults.map(r => r.exam);
+    const exams = await db.exam.findMany({
+      where: {
+        id: { in: examIds },
+        schoolId,
+      },
+      select: {
+        id: true,
+        totalMarks: true,
+        subject: {
+          select: {
+            name: true,
           },
         },
       },
     });
 
-    // Calculate average performance per class
-    const classPerformanceData = classes.map((cls) => {
-      const allResults = cls.sections.flatMap((section) =>
-        section.enrollments.flatMap((enrollment) =>
-          enrollment.student.examResults
-        )
-      );
+    // Map exam results to subjects
+    const examMap = new Map(exams.map(e => [e.id, e]));
+    const subjectScores = new Map<string, { total: number; count: number }>();
 
-      const totalMarks = allResults.reduce((sum, result) => sum + result.marks, 0);
-      const average = allResults.length > 0 ? totalMarks / allResults.length : 0;
+    examResults.forEach(result => {
+      const exam = examMap.get(result.exam);
+      if (!exam || !result._avg.marks) return;
 
-      return {
-        subject: cls.name,
-        average: Math.round(average),
-      };
+      const subjectName = exam.subject.name;
+      const percentage = (result._avg.marks / exam.totalMarks) * 100;
+
+      const existing = subjectScores.get(subjectName) || { total: 0, count: 0 };
+      existing.total += percentage;
+      existing.count += 1;
+      subjectScores.set(subjectName, existing);
     });
+
+    // Calculate average performance per class/subject
+    const classPerformanceData = Array.from(subjectScores.entries())
+      .map(([subject, scores]) => ({
+        subject,
+        average: Math.round(scores.total / scores.count),
+      }))
+      .slice(0, 6); // Limit to 6 for chart readability
 
     // Get student attendance data for chart (optimized to prevent N+1 query) with school isolation
     const classIds = classes.slice(0, 4).map(cls => cls.id);

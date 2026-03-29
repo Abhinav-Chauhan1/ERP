@@ -275,8 +275,10 @@ export const toggleAnnouncementStatus = withSchoolAuthAction(async (schoolId: st
 // Get announcement statistics
 export const getAnnouncementStats = withSchoolAuthAction(async (schoolId: string, userId: string, userRole: string) => {
   try {
-    const totalAnnouncements = await db.announcement.count({ where: { schoolId } });
-    const activeAnnouncements = await db.announcement.count({
+    // PARALLELIZED: Fetch all stats at once
+    const [totalAnnouncements, activeAnnouncements] = await Promise.all([
+      db.announcement.count({ where: { schoolId } }),
+      db.announcement.count({
       where: {
         schoolId,
         isActive: true,

@@ -36,31 +36,30 @@ export default async function StudentLayout({
     redirect("/dashboard");
   }
 
-  // Get effective permissions including role defaults and DB overrides
-  const permissions = await getUserPermissionNamesCached(session.user.id);
-
-  // Fetch school information from the database
+  // Parallel fetch permissions, school, and student data for better performance
   const schoolId = session.user.schoolId;
-  const school = schoolId ? await prisma.school.findUnique({
-    where: { id: schoolId },
-    select: { name: true, logo: true }
-  }) : null;
-
-  // Get student's class information from active enrollment
-  const student = await prisma.student.findUnique({
-    where: { userId: session.user.id },
-    include: {
-      enrollments: {
-        where: { status: 'ACTIVE' },
-        include: {
-          class: { select: { name: true } },
-          section: { select: { name: true } }
-        },
-        take: 1,
-        orderBy: { createdAt: 'desc' }
+  
+  const [permissions, school, student] = await Promise.all([
+    getUserPermissionNamesCached(session.user.id),
+    schoolId ? prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true, logo: true }
+    }) : Promise.resolve(null),
+    prisma.student.findUnique({
+      where: { userId: session.user.id },
+      include: {
+        enrollments: {
+          where: { status: 'ACTIVE' },
+          include: {
+            class: { select: { name: true } },
+            section: { select: { name: true } }
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' }
+        }
       }
-    }
-  });
+    })
+  ]);
 
   const activeEnrollment = student?.enrollments[0];
   const studentClass = activeEnrollment

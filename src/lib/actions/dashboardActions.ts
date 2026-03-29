@@ -446,7 +446,10 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
             },
           },
         },
-      }).catch(() => [] as any),
+      }).catch(err => {
+        console.error('[Dashboard] Failed to fetch recent exams:', err);
+        return [] as any;
+      }),
       db.assignment.findMany({
         where: { schoolId },
         take: 2,
@@ -468,7 +471,10 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
             },
           },
         },
-      }).catch(() => [] as any),
+      }).catch(err => {
+        console.error('[Dashboard] Failed to fetch recent assignments:', err);
+        return [] as any;
+      }),
       db.announcement.findMany({
         take: 1,
         orderBy: { createdAt: 'desc' },
@@ -484,7 +490,10 @@ export const getRecentActivities = withSchoolAuthAction(async (schoolId: string,
             },
           },
         },
-      }).catch(() => [] as any),
+      }).catch(err => {
+        console.error('[Dashboard] Failed to fetch recent announcements:', err);
+        return [] as any;
+      }),
     ]);
 
     const activities = [

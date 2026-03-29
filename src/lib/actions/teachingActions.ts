@@ -14,8 +14,11 @@ export const getTeachingStats = withSchoolAuthAction(async (schoolId) => {
         user: { isActive: true }
       }
     });
-    const classCount = await db.class.count({ where: { schoolId } });
-    const subjectCount = await db.subject.count({ where: { schoolId } });
+    // PARALLELIZED: Fetch all stats at once
+    const [classCount, subjectCount] = await Promise.all([
+      db.class.count({ where: { schoolId } }),
+      db.subject.count({ where: { schoolId } })
+    ]);
 
     return {
       success: true,
