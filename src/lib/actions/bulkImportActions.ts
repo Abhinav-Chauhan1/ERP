@@ -6,6 +6,7 @@ import { parse, isValid } from "date-fns";
 import { hashPassword } from "@/lib/password";
 import { UserRole } from "@prisma/client";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
+import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 
 /**
  * Helper to parse dates from various formats
@@ -201,6 +202,10 @@ export async function importStudents(
     };
   }
 
+  // Fetch school name once for welcome emails
+  const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  const schoolName = school?.name || "Your School";
+
   const result = initImportResult(data.length);
 
   for (let i = 0; i < data.length; i++) {
@@ -313,10 +318,8 @@ export async function importStudents(
         continue;
       }
 
-      // L-7: Generate secure random temporary password instead of predictable default
-      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
-      const { randomBytes } = await import("crypto");
-      const tempPassword = randomBytes(12).toString("base64url");
+      // Use firstName@123 as the temporary password (consistent with manual creation)
+      const tempPassword = `${validated.firstName.toLowerCase()}@123`;
       const hashedPassword = await hashPassword(tempPassword);
 
       // Create new student with user and enrollment
@@ -331,7 +334,8 @@ export async function importStudents(
               phone: validated.phone,
               role: "STUDENT" as UserRole,
               passwordHash: hashedPassword,
-              emailVerified: new Date(), // Admin-imported users are pre-verified
+              emailVerified: new Date(),
+              mustChangePassword: true,
             }
           },
           admissionId: validated.admissionId,
@@ -347,6 +351,17 @@ export async function importStudents(
           },
         },
       });
+
+      // Send welcome email with credentials
+      if (validated.email) {
+        sendStudentWelcomeEmail({
+          to: validated.email,
+          studentName: `${validated.firstName} ${validated.lastName}`,
+          email: validated.email,
+          password: tempPassword,
+          schoolName,
+        }).catch((err) => console.error("Failed to send student welcome email:", err));
+      }
 
       // Create class enrollment
       await db.classEnrollment.create({

@@ -17,6 +17,7 @@ const publicRoutes = [
   /^\/forgot-password/,
   /^\/reset-password/,
   /^\/verify-email/,
+  /^\/auth\/change-password/,   // forced first-login password change
   /^\/setup/,
   /^\/select-school/,
   /^\/select-child/,
@@ -197,6 +198,15 @@ export default auth(async (req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Force password change on first login
+  if (
+    session.user.mustChangePassword &&
+    !pathname.startsWith("/auth/change-password") &&
+    !pathname.startsWith("/api/")
+  ) {
+    return NextResponse.redirect(new URL("/auth/change-password", req.url));
   }
 
   // Role-based route protection

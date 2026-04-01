@@ -235,6 +235,56 @@ function baseEmailTemplate({ title, children }: BaseTemplateOptions): string {
 }
 
 /**
+ * Generate HTML for Student Welcome / Credentials Email
+ */
+export function getStudentWelcomeEmailHtml(params: {
+  studentName: string;
+  email: string;
+  password: string;
+  schoolName: string;
+  loginUrl: string;
+}): string {
+  const { studentName, email, password, schoolName, loginUrl } = params;
+
+  const content = `
+    <h1>Welcome to ${schoolName}!</h1>
+    <p>Dear ${studentName},</p>
+    <p>Your student account has been created on <strong>SikshaMitra</strong>. You can now log in to access your portal.</p>
+
+    <div class="info-box">
+      <div class="info-row">
+        <span class="info-label">Login Email / ID:</span>
+        <span class="info-value">${email}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Temporary Password:</span>
+        <span class="info-value" style="font-family: monospace; font-size: 18px; letter-spacing: 2px; color: #FF3333;">${password}</span>
+      </div>
+    </div>
+
+    <div class="info-box" style="background-color: #fef3c7; border-color: #f59e0b;">
+      <p style="margin: 0; color: #92400e;">
+        <strong>⚠️ Important:</strong> You will be asked to change your password on your first login.
+        Please keep this email safe until then.
+      </p>
+    </div>
+
+    <div class="btn-container">
+      <a href="${loginUrl}" class="btn">Login to Your Portal</a>
+    </div>
+
+    <p>Or visit: <a href="${loginUrl}" class="link-text">${loginUrl}</a></p>
+
+    <p>Best regards,<br>${schoolName} Administration</p>
+  `;
+
+  return baseEmailTemplate({
+    title: `Welcome to ${schoolName} - SikshaMitra`,
+    children: content,
+  });
+}
+
+/**
  * Generate HTML for Email Verification
  */
 export function getVerificationEmailHtml(params: {

@@ -69,8 +69,31 @@ export function isEmailConfigured(): boolean {
 
 import {
   getAdmissionConfirmationEmailHtml,
-  getScheduledReportEmailHtml
+  getScheduledReportEmailHtml,
+  getStudentWelcomeEmailHtml,
 } from "./email-templates";
+
+export async function sendStudentWelcomeEmail(params: {
+  to: string;
+  studentName: string;
+  email: string;
+  password: string;
+  schoolName: string;
+}) {
+  const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || "http://localhost:3000"}/login`;
+  const html = getStudentWelcomeEmailHtml({
+    studentName: params.studentName,
+    email: params.email,
+    password: params.password,
+    schoolName: params.schoolName,
+    loginUrl,
+  });
+  return sendEmail({
+    to: [params.to],
+    subject: `Welcome to ${params.schoolName} — Your Login Credentials`,
+    html,
+  });
+}
 
 export async function sendAdmissionConfirmationEmail(
   parentEmail: string,

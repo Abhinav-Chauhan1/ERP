@@ -16,6 +16,7 @@ declare module "next-auth" {
             schoolCode?: string | null
             isSuperAdmin?: boolean
             activeStudentId?: string | null
+            mustChangePassword?: boolean
             authorizedSchools?: string[]
             availableChildren?: Array<{
                 id: string
@@ -34,6 +35,7 @@ declare module "next-auth" {
         schoolId?: string | null
         schoolName?: string | null
         schoolCode?: string | null
+        mustChangePassword?: boolean
         authorizedSchools?: string[]
     }
 }
@@ -53,6 +55,7 @@ declare module "next-auth/jwt" {
         schoolId?: string | null
         schoolName?: string | null
         schoolCode?: string | null
+        mustChangePassword?: boolean
         authorizedSchools?: string[]
     }
 }

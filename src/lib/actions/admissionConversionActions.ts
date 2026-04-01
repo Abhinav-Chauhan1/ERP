@@ -7,6 +7,7 @@ import { logCreate } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { z } from "zod";
+import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 
 const applicationIdSchema = z.string().cuid("Invalid application ID");
 const applicationIdsSchema = z.array(z.string().cuid("Invalid application ID")).min(1, "At least one application ID required").max(100, "Cannot convert more than 100 applications at once");
@@ -112,7 +113,8 @@ export async function convertAdmissionToStudent(
 
     // 2. Generate credentials
     const { firstName, lastName } = splitName(application.studentName);
-    const temporaryPassword = generateTemporaryPassword();
+    // Use firstName@123 as the temporary password (consistent with manual creation)
+    const temporaryPassword = `${firstName.toLowerCase()}@123`;
     let admissionId = generateAdmissionId();
 
     // Ensure admission ID is unique
@@ -142,7 +144,8 @@ export async function convertAdmissionToStudent(
           role: UserRole.STUDENT,
           isActive: true,
           passwordHash: hashedPassword,
-          emailVerified: new Date(), // Admin-converted users are pre-verified
+          emailVerified: new Date(),
+          mustChangePassword: true,
         },
       });
 
@@ -244,49 +247,14 @@ export async function convertAdmissionToStudent(
       return { user, student, temporaryPassword };
     });
 
-    // 5. Send credentials email (optional)
-    if (options?.sendCredentials) {
-      try {
-        const { sendEmail, isEmailConfigured } = await import('@/lib/services/email-service');
-
-        if (isEmailConfigured()) {
-          await sendEmail({
-            to: application.parentEmail,
-            subject: 'Student Account Created - Login Credentials',
-            html: `
-              <h1>Welcome to Our School</h1>
-              <p>Dear Parent/Guardian,</p>
-              <p>The student account for <strong>${application.studentName}</strong> has been created successfully.</p>
-              
-              <h2>Login Credentials</h2>
-              <table style="border-collapse: collapse; margin: 20px 0;">
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Email:</strong></td>
-                  <td style="padding: 8px; border: 1px solid #ddd;">${application.parentEmail}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Temporary Password:</strong></td>
-                  <td style="padding: 8px; border: 1px solid #ddd;">${result.temporaryPassword}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #ddd;"><strong>Admission ID:</strong></td>
-                  <td style="padding: 8px; border: 1px solid #ddd;">${admissionId}</td>
-                </tr>
-              </table>
-              
-              <p><strong>Important:</strong> Please change the password after your first login.</p>
-              <p>You can access the student portal to view academic information, attendance, and more.</p>
-              
-              <br>
-              <p>Best regards,<br>School Administration</p>
-            `
-          });
-        }
-      } catch (emailError) {
-        console.error('Failed to send credentials email:', emailError);
-        // Don't fail the conversion if email fails
-      }
-    }
+    // Always send welcome email with credentials
+    sendStudentWelcomeEmail({
+      to: application.parentEmail,
+      studentName: application.studentName,
+      email: application.parentEmail,
+      password: result.temporaryPassword,
+      schoolName: application.appliedClass?.name ? `Class ${application.appliedClass.name}` : "Your School",
+    }).catch((err) => console.error("Failed to send student welcome email:", err));
 
     revalidatePath('/admin/admissions');
     revalidatePath('/admin/students');

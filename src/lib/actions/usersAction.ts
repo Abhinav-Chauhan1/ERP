@@ -15,6 +15,7 @@ import { logCreate, logUpdate, logDelete } from "@/lib/utils/audit-log";
 import { hashPassword } from "@/lib/password";
 import { hasPermission } from "@/lib/utils/permissions";
 import { getCurrentUserSchoolContext } from "@/lib/auth/tenant";
+import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 
 // Helper to check permission and throw if denied
 async function checkPermission(resource: string, action: PermissionAction, errorMessage?: string) {
@@ -42,26 +43,23 @@ const createBaseUser = async (userData: {
   avatar?: string;
   role: UserRole;
   password?: string;
+  schoolName?: string; // used for welcome email
 }, tx: Prisma.TransactionClient | typeof db = db) => {
-  // Hash provided password, or generate a default one for all roles
-  let hashedPassword: string | undefined;
-  if (userData.password) {
-    hashedPassword = await hashPassword(userData.password);
-  } else {
-    // Default password for all roles when none is provided: {firstName}@123
-    const defaultPassword = `${userData.firstName.toLowerCase()}@123`;
-    hashedPassword = await hashPassword(defaultPassword);
-  }
+  // Always fall back to firstName@123 if no password provided
+  const plainPassword = userData.password || `${userData.firstName.toLowerCase()}@123`;
+  const hashedPassword = await hashPassword(plainPassword);
 
   // Sanitize inputs
   const sanitizedData: any = {
     name: `${userData.firstName} ${userData.lastName}`,
     firstName: sanitizeText(userData.firstName),
     lastName: sanitizeText(userData.lastName),
-    mobile: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined, // Use 'mobile' not 'phone'
+    mobile: userData.phone ? sanitizePhoneNumber(userData.phone) : undefined,
     avatar: userData.avatar,
     role: userData.role,
     emailVerified: new Date(), // Admin-created users are pre-verified
+    passwordHash: hashedPassword,
+    mustChangePassword: userData.role === UserRole.STUDENT, // force reset on first login
   };
 
   // Only include email if provided
@@ -69,14 +67,20 @@ const createBaseUser = async (userData: {
     sanitizedData.email = sanitizeEmail(userData.email);
   }
 
-  // Only include passwordHash if generated
-  if (hashedPassword) {
-    sanitizedData.passwordHash = hashedPassword;
+  const user = await tx.user.create({ data: sanitizedData });
+
+  // Send welcome email with credentials if student has an email
+  if (userData.role === UserRole.STUDENT && userData.email) {
+    sendStudentWelcomeEmail({
+      to: userData.email,
+      studentName: `${userData.firstName} ${userData.lastName}`,
+      email: userData.email,
+      password: plainPassword,
+      schoolName: userData.schoolName || "Your School",
+    }).catch((err) => console.error("Failed to send student welcome email:", err));
   }
 
-  return await tx.user.create({
-    data: sanitizedData
-  });
+  return user;
 };
 
 // Create Administrator
@@ -245,6 +249,9 @@ export async function createStudent(data: CreateStudentFormData) {
     const actorId = context?.user?.id;
     if (!actorId) throw new Error('Unauthorized');
 
+    // Fetch school name for welcome email
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+
     // Start a transaction to ensure data consistency
     return await db.$transaction(async (tx) => {
       // Create the base user (email optional, password required for login)
@@ -256,6 +263,7 @@ export async function createStudent(data: CreateStudentFormData) {
         avatar: data.avatar,
         role: UserRole.STUDENT,
         password: data.password,
+        schoolName: school?.name,
       }, tx);
 
       // Create the student profile

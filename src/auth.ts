@@ -258,6 +258,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             schoolCode: activeUserSchools[0]?.school?.schoolCode || undefined,
             schoolName: activeUserSchools[0]?.school?.name || undefined,
             authorizedSchools: activeUserSchools.map((us) => us.schoolId),
+            mustChangePassword: user.mustChangePassword ?? false,
           }
         } catch (error) {
           console.error("NextAuth authorization error:", error)
@@ -303,6 +304,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.schoolCode = user.schoolCode
         token.schoolName = user.schoolName
         token.authorizedSchools = user.authorizedSchools
+        token.mustChangePassword = user.mustChangePassword ?? false
       }
 
       if ((trigger === "update" || user) && token.id) {
@@ -321,6 +323,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.mobile = dbUser.mobile ?? undefined
           token.name = dbUser.name
           token.picture = dbUser.avatar ?? undefined
+          token.mustChangePassword = dbUser.mustChangePassword ?? false
 
           if (dbUser.role === UserRole.SUPER_ADMIN) {
             token.role = UserRole.SUPER_ADMIN
@@ -373,6 +376,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.schoolName = (token.schoolName as string | null) ?? null
         session.user.authorizedSchools = (token.authorizedSchools as string[]) ?? []
         session.user.isSuperAdmin = token.role === UserRole.SUPER_ADMIN
+        session.user.mustChangePassword = (token.mustChangePassword as boolean) ?? false
       }
       return session
     },
