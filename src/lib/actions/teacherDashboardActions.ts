@@ -608,7 +608,7 @@ export async function getTeacherDashboardData() {
     // Fetch exam results in a single aggregated query instead of N+1
     const classIds = classes.map(cls => cls.id);
     const examResults = await db.examResult.groupBy({
-      by: ['exam'],
+      by: ['examId'],
       where: {
         schoolId,
         exam: {
@@ -628,7 +628,7 @@ export async function getTeacherDashboardData() {
     });
 
     // Get exam details to map to subjects
-    const examIds = examResults.map(r => r.exam);
+    const examIds = examResults.map(r => r.examId);
     const exams = await db.exam.findMany({
       where: {
         id: { in: examIds },
@@ -650,7 +650,7 @@ export async function getTeacherDashboardData() {
     const subjectScores = new Map<string, { total: number; count: number }>();
 
     examResults.forEach(result => {
-      const exam = examMap.get(result.exam);
+      const exam = examMap.get(result.examId);
       if (!exam || !result._avg.marks) return;
 
       const subjectName = exam.subject.name;
@@ -671,7 +671,7 @@ export async function getTeacherDashboardData() {
       .slice(0, 6); // Limit to 6 for chart readability
 
     // Get student attendance data for chart (optimized to prevent N+1 query) with school isolation
-    const classIds = classes.slice(0, 4).map(cls => cls.id);
+    const attendanceClassIds = classes.slice(0, 4).map(cls => cls.id);
     const classAttendanceRecords = await db.studentAttendance.findMany({
       where: {
         schoolId, // Add school isolation
@@ -682,7 +682,7 @@ export async function getTeacherDashboardData() {
         section: {
           schoolId, // Add school isolation
           classId: {
-            in: classIds,
+            in: attendanceClassIds,
           },
         },
       },

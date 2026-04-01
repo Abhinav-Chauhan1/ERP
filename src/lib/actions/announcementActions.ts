@@ -279,18 +279,19 @@ export const getAnnouncementStats = withSchoolAuthAction(async (schoolId: string
     const [totalAnnouncements, activeAnnouncements] = await Promise.all([
       db.announcement.count({ where: { schoolId } }),
       db.announcement.count({
-      where: {
-        schoolId,
-        isActive: true,
-        startDate: {
-          lte: new Date(),
+        where: {
+          schoolId,
+          isActive: true,
+          startDate: {
+            lte: new Date(),
+          },
+          OR: [
+            { endDate: null },
+            { endDate: { gte: new Date() } },
+          ],
         },
-        OR: [
-          { endDate: null },
-          { endDate: { gte: new Date() } },
-        ],
-      },
-    });
+      }),
+    ]);
     const archivedAnnouncements = await db.announcement.count({
       where: {
         schoolId,

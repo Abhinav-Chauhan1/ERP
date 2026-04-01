@@ -279,11 +279,12 @@ export const getFeeStructureStats = withSchoolAuthAction(async (schoolId: string
     const [totalStructures, activeStructures] = await Promise.all([
       db.feeStructure.count({ where: { schoolId } }),
       db.feeStructure.count({
-      where: {
-        academicYear: { schoolId },
-        isActive: true
-      },
-    });
+        where: {
+          academicYear: { schoolId },
+          isActive: true
+        },
+      }),
+    ]);
     const totalFeeTypes = await db.feeType.count({ where: { schoolId } });
 
     return {
