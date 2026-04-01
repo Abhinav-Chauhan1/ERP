@@ -8,26 +8,26 @@ import { UserRole } from "@prisma/client";
 import { requireSchoolAccess } from "@/lib/auth/tenant";
 import { sendStudentWelcomeEmail } from "@/lib/utils/email-service";
 
+const BATCH_SIZE = 10;
+
 /**
  * Helper to parse dates from various formats
  */
 function parseImportDate(dateStr: string): Date {
   if (!dateStr) return new Date();
 
-  // Try standard constructor first (handles ISO strings YYYY-MM-DD)
   const date = new Date(dateStr);
   if (isValid(date)) return date;
 
-  // Try common CSV formats
   const formats = [
-    'd/M/yyyy',
-    'dd/MM/yyyy',
-    'M/d/yyyy',
-    'MM/dd/yyyy',
-    'dd-MM-yyyy',
-    'd-M-yyyy',
-    'yyyy/MM/dd',
-    'yyyy.MM.dd'
+    "d/M/yyyy",
+    "dd/MM/yyyy",
+    "M/d/yyyy",
+    "MM/dd/yyyy",
+    "dd-MM-yyyy",
+    "d-M-yyyy",
+    "yyyy/MM/dd",
+    "yyyy.MM.dd",
   ];
 
   const now = new Date();
@@ -58,23 +58,55 @@ export type ImportResult = {
 
 export type DuplicateHandling = "skip" | "update" | "create";
 
-// Validation schemas for different import types
+// Expanded student import schema — all fields from studentSchema (optional except required ones)
 const studentImportSchema = z.object({
+  // Required
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email format"),
-  phone: z.string().optional(),
   admissionId: z.string().min(1, "Admission ID is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"], {
     errorMap: () => ({ message: "Gender must be MALE, FEMALE, or OTHER" }),
   }),
-  address: z.string().optional(),
-  bloodGroup: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  classId: z.string().optional(), // Optional - can be provided via UI selector
-  sectionId: z.string().optional(), // Optional - can be provided via UI selector
-  rollNumber: z.string().optional(),
+  // Basic optional
+  phone: z.string().optional().default(""),
+  rollNumber: z.string().optional().default(""),
+  address: z.string().optional().default(""),
+  bloodGroup: z.string().optional().default(""),
+  emergencyContact: z.string().optional().default(""),
+  emergencyPhone: z.string().optional().default(""),
+  height: z.string().optional().default(""),
+  weight: z.string().optional().default(""),
+  // Indian-specific optional
+  aadhaarNumber: z.string().max(12).optional().default(""),
+  apaarId: z.string().max(50).optional().default(""),
+  pen: z.string().max(50).optional().default(""),
+  abcId: z.string().max(50).optional().default(""),
+  nationality: z.string().optional().default(""),
+  religion: z.string().optional().default(""),
+  caste: z.string().optional().default(""),
+  category: z.string().optional().default(""),
+  motherTongue: z.string().optional().default(""),
+  birthPlace: z.string().optional().default(""),
+  previousSchool: z.string().optional().default(""),
+  previousClass: z.string().optional().default(""),
+  tcNumber: z.string().optional().default(""),
+  medicalConditions: z.string().optional().default(""),
+  specialNeeds: z.string().optional().default(""),
+  // Parent/Guardian optional
+  fatherName: z.string().optional().default(""),
+  fatherOccupation: z.string().optional().default(""),
+  fatherPhone: z.string().optional().default(""),
+  fatherAadhaar: z.string().max(12).optional().default(""),
+  motherName: z.string().optional().default(""),
+  motherOccupation: z.string().optional().default(""),
+  motherPhone: z.string().optional().default(""),
+  motherAadhaar: z.string().max(12).optional().default(""),
+  guardianName: z.string().optional().default(""),
+  guardianRelation: z.string().optional().default(""),
+  guardianPhone: z.string().optional().default(""),
+  guardianAadhaar: z.string().max(12).optional().default(""),
 });
 
 const teacherImportSchema = z.object({
@@ -105,7 +137,6 @@ type ParentImportData = z.infer<typeof parentImportSchema>;
 
 /**
  * Validate CSV data before import
- * Requirement 26.1: Validate data format and display errors before import
  */
 export async function validateImportData(
   data: any[],
@@ -124,8 +155,7 @@ export async function validateImportData(
         : parentImportSchema;
 
   data.forEach((row, index) => {
-    const rowNumber = index + 2; // +2 because index starts at 0 and row 1 is header
-
+    const rowNumber = index + 2;
     try {
       schema.parse(row);
     } catch (error) {
@@ -141,15 +171,9 @@ export async function validateImportData(
     }
   });
 
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  return { valid: errors.length === 0, errors };
 }
 
-/**
- * Helper to initialize import result
- */
 function initImportResult(total: number): ImportResult {
   return {
     success: true,
@@ -158,18 +182,11 @@ function initImportResult(total: number): ImportResult {
   };
 }
 
-/**
- * Helper to handle import row errors
- */
 function handleImportError(error: unknown, rowNumber: number, result: ImportResult) {
   result.summary.failed++;
   if (error instanceof z.ZodError) {
     error.errors.forEach((err) => {
-      result.errors.push({
-        row: rowNumber,
-        field: err.path.join("."),
-        message: err.message,
-      });
+      result.errors.push({ row: rowNumber, field: err.path.join("."), message: err.message });
     });
   } else if (error instanceof Error) {
     result.errors.push({ row: rowNumber, message: error.message });
@@ -178,12 +195,175 @@ function handleImportError(error: unknown, rowNumber: number, result: ImportResu
   }
 }
 
+/** Process a single student row — returns "created" | "updated" | "skipped" or throws */
+async function processStudentRow(
+  validated: StudentImportData,
+  rowNumber: number,
+  schoolId: string,
+  schoolName: string,
+  classId: string,
+  sectionId: string,
+  duplicateHandling: DuplicateHandling
+): Promise<"created" | "updated" | "skipped"> {
+  const existingStudent = await db.student.findFirst({
+    where: {
+      schoolId,
+      OR: [{ user: { email: validated.email } }, { admissionId: validated.admissionId }],
+    },
+  });
+
+  if (existingStudent) {
+    if (duplicateHandling === "skip") return "skipped";
+    if (duplicateHandling === "update") {
+      await db.student.update({
+        where: { id: existingStudent.id },
+        data: {
+          user: {
+            update: {
+              firstName: validated.firstName,
+              lastName: validated.lastName,
+              email: validated.email,
+              phone: validated.phone || undefined,
+            },
+          },
+          dateOfBirth: parseImportDate(validated.dateOfBirth),
+          gender: validated.gender,
+          address: validated.address || undefined,
+          bloodGroup: validated.bloodGroup || undefined,
+          emergencyContact: validated.emergencyContact || undefined,
+          emergencyPhone: validated.emergencyPhone || undefined,
+          rollNumber: validated.rollNumber || undefined,
+          height: validated.height ? parseFloat(validated.height) : undefined,
+          weight: validated.weight ? parseFloat(validated.weight) : undefined,
+          aadhaarNumber: validated.aadhaarNumber || undefined,
+          apaarId: validated.apaarId || undefined,
+          pen: validated.pen || undefined,
+          abcId: validated.abcId || undefined,
+          nationality: validated.nationality || undefined,
+          religion: validated.religion || undefined,
+          caste: validated.caste || undefined,
+          category: validated.category || undefined,
+          motherTongue: validated.motherTongue || undefined,
+          birthPlace: validated.birthPlace || undefined,
+          previousSchool: validated.previousSchool || undefined,
+          previousClass: validated.previousClass || undefined,
+          tcNumber: validated.tcNumber || undefined,
+          medicalConditions: validated.medicalConditions || undefined,
+          specialNeeds: validated.specialNeeds || undefined,
+          fatherName: validated.fatherName || undefined,
+          fatherOccupation: validated.fatherOccupation || undefined,
+          fatherPhone: validated.fatherPhone || undefined,
+          fatherAadhaar: validated.fatherAadhaar || undefined,
+          motherName: validated.motherName || undefined,
+          motherOccupation: validated.motherOccupation || undefined,
+          motherPhone: validated.motherPhone || undefined,
+          motherAadhaar: validated.motherAadhaar || undefined,
+          guardianName: validated.guardianName || undefined,
+          guardianRelation: validated.guardianRelation || undefined,
+          guardianPhone: validated.guardianPhone || undefined,
+          guardianAadhaar: validated.guardianAadhaar || undefined,
+        },
+      });
+      return "updated";
+    }
+    // "create" falls through
+  }
+
+  // Verify class/section belong to this school
+  const classExists = await db.class.findUnique({ where: { id: classId, schoolId } });
+  if (!classExists) throw new Error(`Class with ID ${classId} not found`);
+
+  const sectionExists = await db.classSection.findUnique({ where: { id: sectionId, schoolId } });
+  if (!sectionExists) throw new Error(`Section with ID ${sectionId} not found`);
+
+  const tempPassword = `${validated.firstName.toLowerCase()}@123`;
+  const hashedPassword = await hashPassword(tempPassword);
+
+  const newStudent = await db.student.create({
+    data: {
+      user: {
+        create: {
+          name: `${validated.firstName} ${validated.lastName}`,
+          firstName: validated.firstName,
+          lastName: validated.lastName,
+          email: validated.email,
+          phone: validated.phone || undefined,
+          role: "STUDENT" as UserRole,
+          passwordHash: hashedPassword,
+          emailVerified: new Date(),
+          mustChangePassword: true,
+        },
+      },
+      admissionId: validated.admissionId,
+      admissionDate: new Date(),
+      dateOfBirth: parseImportDate(validated.dateOfBirth),
+      gender: validated.gender,
+      address: validated.address || undefined,
+      bloodGroup: validated.bloodGroup || undefined,
+      emergencyContact: validated.emergencyContact || undefined,
+      emergencyPhone: validated.emergencyPhone || undefined,
+      rollNumber: validated.rollNumber || undefined,
+      height: validated.height ? parseFloat(validated.height) : undefined,
+      weight: validated.weight ? parseFloat(validated.weight) : undefined,
+      aadhaarNumber: validated.aadhaarNumber || undefined,
+      apaarId: validated.apaarId || undefined,
+      pen: validated.pen || undefined,
+      abcId: validated.abcId || undefined,
+      nationality: validated.nationality || "Indian",
+      religion: validated.religion || undefined,
+      caste: validated.caste || undefined,
+      category: validated.category || undefined,
+      motherTongue: validated.motherTongue || undefined,
+      birthPlace: validated.birthPlace || undefined,
+      previousSchool: validated.previousSchool || undefined,
+      previousClass: validated.previousClass || undefined,
+      tcNumber: validated.tcNumber || undefined,
+      medicalConditions: validated.medicalConditions || undefined,
+      specialNeeds: validated.specialNeeds || undefined,
+      fatherName: validated.fatherName || undefined,
+      fatherOccupation: validated.fatherOccupation || undefined,
+      fatherPhone: validated.fatherPhone || undefined,
+      fatherAadhaar: validated.fatherAadhaar || undefined,
+      motherName: validated.motherName || undefined,
+      motherOccupation: validated.motherOccupation || undefined,
+      motherPhone: validated.motherPhone || undefined,
+      motherAadhaar: validated.motherAadhaar || undefined,
+      guardianName: validated.guardianName || undefined,
+      guardianRelation: validated.guardianRelation || undefined,
+      guardianPhone: validated.guardianPhone || undefined,
+      guardianAadhaar: validated.guardianAadhaar || undefined,
+      school: { connect: { id: schoolId } },
+    },
+  });
+
+  if (validated.email) {
+    sendStudentWelcomeEmail({
+      to: validated.email,
+      studentName: `${validated.firstName} ${validated.lastName}`,
+      email: validated.email,
+      password: tempPassword,
+      schoolName,
+    }).catch((err) => console.error("Failed to send student welcome email:", err));
+  }
+
+  await db.classEnrollment.create({
+    data: {
+      studentId: newStudent.id,
+      classId,
+      sectionId,
+      rollNumber: validated.rollNumber || undefined,
+      enrollDate: new Date(),
+      status: "ACTIVE",
+      schoolId,
+    },
+  });
+
+  return "created";
+}
+
 /**
- * Import students in bulk
- * Requirement 26.2: Support bulk student enrollment with class assignments
- * Requirement 26.3: Provide detailed error messages with row numbers
- * Requirement 26.4: Display summary of records created, updated, and skipped
- * Requirement 26.5: Provide options to skip, update, or create new records
+ * Import students in bulk with batch processing.
+ * Returns partial results per batch so the client can show progress.
  */
 export async function importStudents(
   data: StudentImportData[],
@@ -202,188 +382,115 @@ export async function importStudents(
     };
   }
 
-  // Fetch school name once for welcome emails
   const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
   const schoolName = school?.name || "Your School";
 
   const result = initImportResult(data.length);
 
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const rowNumber = i + 2; // +2 because index starts at 0 and row 1 is header
+  // Process in batches
+  for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
+    const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
 
-    try {
-      // Validate the row
-      const validated = studentImportSchema.parse(row);
+    await Promise.allSettled(
+      batch.map(async (row, batchIndex) => {
+        const i = batchStart + batchIndex;
+        const rowNumber = i + 2;
 
-      // Use provided values or fall back to defaults
-      const classId = validated.classId || defaultClassId;
-      const sectionId = validated.sectionId || defaultSectionId;
+        try {
+          const validated = studentImportSchema.parse(row);
+          const classId = defaultClassId;
+          const sectionId = defaultSectionId;
 
-      // Check if student already exists
-      const existingStudent = await db.student.findFirst({
-        where: {
-          schoolId,
-          OR: [
-            {
-              user: {
-                email: validated.email
-              }
-            },
-            { admissionId: validated.admissionId },
-          ],
-        },
-      });
+          if (!classId) {
+            result.errors.push({ row: rowNumber, field: "classId", message: "Class is required — select from the dropdown" });
+            result.summary.failed++;
+            return;
+          }
+          if (!sectionId) {
+            result.errors.push({ row: rowNumber, field: "sectionId", message: "Section is required — select from the dropdown" });
+            result.summary.failed++;
+            return;
+          }
 
-      if (existingStudent) {
-        // Handle duplicate based on strategy
-        if (duplicateHandling === "skip") {
-          result.summary.skipped++;
-          continue;
-        } else if (duplicateHandling === "update") {
-          // Update existing student and user
-          await db.student.update({
-            where: { id: existingStudent.id },
-            data: {
-              user: {
-                update: {
-                  firstName: validated.firstName,
-                  lastName: validated.lastName,
-                  email: validated.email,
-                  phone: validated.phone,
-                }
-              },
-              dateOfBirth: parseImportDate(validated.dateOfBirth),
-              gender: validated.gender,
-              address: validated.address,
-              bloodGroup: validated.bloodGroup,
-              emergencyContact: validated.emergencyContact,
-              rollNumber: validated.rollNumber,
-            },
-          });
-          result.summary.updated++;
-          continue;
+          const outcome = await processStudentRow(
+            validated, rowNumber, schoolId, schoolName, classId, sectionId, duplicateHandling
+          );
+          result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
+        } catch (error) {
+          handleImportError(error, rowNumber, result);
         }
-        // If "create", fall through to create a new record with different ID
-      }
-
-      // Verify class ID is available (either from CSV or defaults)
-      if (!classId) {
-        result.errors.push({
-          row: rowNumber,
-          field: "classId",
-          message: "Class ID is required - provide in CSV or select from dropdown",
-        });
-        result.summary.failed++;
-        continue;
-      }
-
-      // Verify class exists and belongs to this school (H-5)
-      const classExists = await db.class.findUnique({
-        where: { id: classId, schoolId },
-      });
-
-      if (!classExists) {
-        result.errors.push({
-          row: rowNumber,
-          field: "classId",
-          message: `Class with ID ${classId} not found`,
-        });
-        result.summary.failed++;
-        continue;
-      }
-
-      // Verify section ID is available
-      if (!sectionId) {
-        result.errors.push({
-          row: rowNumber,
-          field: "sectionId",
-          message: "Section ID is required - provide in CSV or select from dropdown",
-        });
-        result.summary.failed++;
-        continue;
-      }
-
-      const sectionExists = await db.classSection.findUnique({
-        where: { id: sectionId, schoolId },
-      });
-
-      if (!sectionExists) {
-        result.errors.push({
-          row: rowNumber,
-          field: "sectionId",
-          message: `Section with ID ${sectionId} not found`,
-        });
-        result.summary.failed++;
-        continue;
-      }
-
-      // Use firstName@123 as the temporary password (consistent with manual creation)
-      const tempPassword = `${validated.firstName.toLowerCase()}@123`;
-      const hashedPassword = await hashPassword(tempPassword);
-
-      // Create new student with user and enrollment
-      const newStudent = await db.student.create({
-        data: {
-          user: {
-            create: {
-              name: `${validated.firstName} ${validated.lastName}`,
-              firstName: validated.firstName,
-              lastName: validated.lastName,
-              email: validated.email,
-              phone: validated.phone,
-              role: "STUDENT" as UserRole,
-              passwordHash: hashedPassword,
-              emailVerified: new Date(),
-              mustChangePassword: true,
-            }
-          },
-          admissionId: validated.admissionId,
-          admissionDate: new Date(),
-          dateOfBirth: parseImportDate(validated.dateOfBirth),
-          gender: validated.gender,
-          address: validated.address,
-          bloodGroup: validated.bloodGroup,
-          emergencyContact: validated.emergencyContact,
-          rollNumber: validated.rollNumber,
-          school: {
-            connect: { id: schoolId }
-          },
-        },
-      });
-
-      // Send welcome email with credentials
-      if (validated.email) {
-        sendStudentWelcomeEmail({
-          to: validated.email,
-          studentName: `${validated.firstName} ${validated.lastName}`,
-          email: validated.email,
-          password: tempPassword,
-          schoolName,
-        }).catch((err) => console.error("Failed to send student welcome email:", err));
-      }
-
-      // Create class enrollment
-      await db.classEnrollment.create({
-        data: {
-          studentId: newStudent.id,
-          classId: classId,
-          sectionId: sectionId,
-          rollNumber: validated.rollNumber,
-          enrollDate: new Date(),
-          status: "ACTIVE",
-          schoolId,
-        },
-      });
-
-      result.summary.created++;
-    } catch (error) {
-      handleImportError(error, rowNumber, result);
-    }
+      })
+    );
   }
 
   result.success = result.summary.failed === 0;
   return result;
+}
+
+/**
+ * Import students in batches, returning progress after each batch.
+ * Used by the streaming progress endpoint.
+ */
+export async function importStudentsBatched(
+  data: StudentImportData[],
+  duplicateHandling: DuplicateHandling = "skip",
+  defaultClassId?: string,
+  defaultSectionId?: string,
+  batchIndex: number = 0
+): Promise<ImportResult & { nextBatch: number | null }> {
+  const { schoolId, user } = await requireSchoolAccess();
+  const userId = user?.id;
+
+  if (!userId || !schoolId) {
+    return {
+      success: false,
+      summary: { total: data.length, created: 0, updated: 0, skipped: 0, failed: 0 },
+      errors: [{ row: 0, message: "Unauthorized or School Context Missing" }],
+      nextBatch: null,
+    };
+  }
+
+  const school = await db.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  const schoolName = school?.name || "Your School";
+
+  const batchStart = batchIndex * BATCH_SIZE;
+  const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
+  const result = initImportResult(data.length);
+
+  await Promise.allSettled(
+    batch.map(async (row, idx) => {
+      const rowNumber = batchStart + idx + 2;
+      try {
+        const validated = studentImportSchema.parse(row);
+        const classId = defaultClassId;
+        const sectionId = defaultSectionId;
+
+        if (!classId) {
+          result.errors.push({ row: rowNumber, field: "classId", message: "Class is required — select from the dropdown" });
+          result.summary.failed++;
+          return;
+        }
+        if (!sectionId) {
+          result.errors.push({ row: rowNumber, field: "sectionId", message: "Section is required — select from the dropdown" });
+          result.summary.failed++;
+          return;
+        }
+
+        const outcome = await processStudentRow(
+          validated, rowNumber, schoolId, schoolName, classId, sectionId, duplicateHandling
+        );
+        result.summary[outcome === "created" ? "created" : outcome === "updated" ? "updated" : "skipped"]++;
+      } catch (error) {
+        handleImportError(error, rowNumber, result);
+      }
+    })
+  );
+
+  const nextBatchStart = batchStart + BATCH_SIZE;
+  const nextBatch = nextBatchStart < data.length ? batchIndex + 1 : null;
+  result.success = result.summary.failed === 0;
+
+  return { ...result, nextBatch };
 }
 
 /**
@@ -406,106 +513,79 @@ export async function importTeachers(
 
   const result = initImportResult(data.length);
 
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const rowNumber = i + 2;
+  for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
+    const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
 
-    try {
-      const validated = teacherImportSchema.parse(row);
+    await Promise.allSettled(
+      batch.map(async (row, batchIndex) => {
+        const rowNumber = batchStart + batchIndex + 2;
+        try {
+          const validated = teacherImportSchema.parse(row);
 
-      // Check if teacher already exists
-      const existingTeacher = await db.teacher.findFirst({
-        where: {
-          schoolId,
-          OR: [
-            {
-              user: {
-                email: validated.email
-              }
+          const existingTeacher = await db.teacher.findFirst({
+            where: {
+              schoolId,
+              OR: [{ user: { email: validated.email } }, { employeeId: validated.employeeId }],
             },
-            { employeeId: validated.employeeId },
-          ],
-        },
-      });
+          });
 
-      if (existingTeacher) {
-        if (duplicateHandling === "skip") {
-          result.summary.skipped++;
-          continue;
-        } else if (duplicateHandling === "update") {
-          await db.teacher.update({
-            where: { id: existingTeacher.id },
+          if (existingTeacher) {
+            if (duplicateHandling === "skip") { result.summary.skipped++; return; }
+            if (duplicateHandling === "update") {
+              await db.teacher.update({
+                where: { id: existingTeacher.id },
+                data: {
+                  user: { update: { firstName: validated.firstName, lastName: validated.lastName, email: validated.email, phone: validated.phone } },
+                  qualification: validated.qualification,
+                  joinDate: parseImportDate(validated.joinDate),
+                  salary: validated.salary ? parseFloat(validated.salary) : undefined,
+                },
+              });
+              result.summary.updated++;
+              return;
+            }
+          }
+
+          if (validated.departmentId) {
+            const departmentExists = await db.department.findUnique({ where: { id: validated.departmentId } });
+            if (!departmentExists) {
+              result.errors.push({ row: rowNumber, field: "departmentId", message: `Department with ID ${validated.departmentId} not found` });
+              result.summary.failed++;
+              return;
+            }
+          }
+
+          const { randomBytes } = await import("crypto");
+          const tempPassword = randomBytes(12).toString("base64url");
+          const hashedPassword = await hashPassword(tempPassword);
+
+          await db.teacher.create({
             data: {
               user: {
-                update: {
+                create: {
+                  name: `${validated.firstName} ${validated.lastName}`,
                   firstName: validated.firstName,
                   lastName: validated.lastName,
                   email: validated.email,
                   phone: validated.phone,
-                }
+                  role: "TEACHER" as UserRole,
+                  passwordHash: hashedPassword,
+                  emailVerified: new Date(),
+                },
               },
+              employeeId: validated.employeeId,
               qualification: validated.qualification,
               joinDate: parseImportDate(validated.joinDate),
               salary: validated.salary ? parseFloat(validated.salary) : undefined,
+              school: { connect: { id: schoolId } },
             },
           });
-          result.summary.updated++;
-          continue;
+          result.summary.created++;
+        } catch (error) {
+          handleImportError(error, rowNumber, result);
         }
-      }
-
-      // Verify department exists if provided
-      if (validated.departmentId) {
-        const departmentExists = await db.department.findUnique({
-          where: { id: validated.departmentId },
-        });
-
-        if (!departmentExists) {
-          result.errors.push({
-            row: rowNumber,
-            field: "departmentId",
-            message: `Department with ID ${validated.departmentId} not found`,
-          });
-          result.summary.failed++;
-          continue;
-        }
-      }
-
-      // L-7: Generate secure random temporary password instead of predictable default
-      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
-      const { randomBytes: randomBytesTeacher } = await import("crypto");
-      const tempPassword = randomBytesTeacher(12).toString("base64url");
-      const hashedTeacherPassword = await hashPassword(tempPassword);
-
-      // Create new teacher with user
-      await db.teacher.create({
-        data: {
-          user: {
-            create: {
-              name: `${validated.firstName} ${validated.lastName}`,
-              firstName: validated.firstName,
-              lastName: validated.lastName,
-              email: validated.email,
-              phone: validated.phone,
-              role: "TEACHER" as UserRole,
-              passwordHash: hashedTeacherPassword,
-              emailVerified: new Date(), // Admin-imported users are pre-verified
-            }
-          },
-          employeeId: validated.employeeId,
-          qualification: validated.qualification,
-          joinDate: parseImportDate(validated.joinDate),
-          salary: validated.salary ? parseFloat(validated.salary) : undefined,
-          school: {
-            connect: { id: schoolId }
-          },
-        },
-      });
-
-      result.summary.created++;
-    } catch (error) {
-      handleImportError(error, rowNumber, result);
-    }
+      })
+    );
   }
 
   result.success = result.summary.failed === 0;
@@ -532,124 +612,85 @@ export async function importParents(
 
   const result = initImportResult(data.length);
 
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const rowNumber = i + 2;
+  for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
+    const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
 
-    try {
-      const validated = parentImportSchema.parse(row);
+    await Promise.allSettled(
+      batch.map(async (row, batchIndex) => {
+        const rowNumber = batchStart + batchIndex + 2;
+        try {
+          const validated = parentImportSchema.parse(row);
 
-      // Find the student by admission ID
-      const student = await db.student.findUnique({
-        where: { admissionId: validated.studentAdmissionId, schoolId },
-      });
+          const student = await db.student.findUnique({
+            where: { admissionId: validated.studentAdmissionId, schoolId },
+          });
 
-      if (!student) {
-        result.errors.push({
-          row: rowNumber,
-          field: "studentAdmissionId",
-          message: `Student with admission ID ${validated.studentAdmissionId} not found`,
-        });
-        result.summary.failed++;
-        continue;
-      }
-
-      // Check if parent already exists
-      const existingParent = await db.parent.findFirst({
-        where: {
-          schoolId,
-          user: {
-            email: validated.email
+          if (!student) {
+            result.errors.push({ row: rowNumber, field: "studentAdmissionId", message: `Student with admission ID ${validated.studentAdmissionId} not found` });
+            result.summary.failed++;
+            return;
           }
-        },
-      });
 
-      if (existingParent) {
-        if (duplicateHandling === "skip") {
-          result.summary.skipped++;
-          continue;
-        } else if (duplicateHandling === "update") {
-          await db.parent.update({
-            where: { id: existingParent.id },
+          const existingParent = await db.parent.findFirst({
+            where: { schoolId, user: { email: validated.email } },
+          });
+
+          if (existingParent) {
+            if (duplicateHandling === "skip") { result.summary.skipped++; return; }
+            if (duplicateHandling === "update") {
+              await db.parent.update({
+                where: { id: existingParent.id },
+                data: {
+                  user: { update: { firstName: validated.firstName, lastName: validated.lastName, phone: validated.phone } },
+                  occupation: validated.occupation,
+                },
+              });
+              const existingAssoc = await db.studentParent.findFirst({
+                where: { schoolId, parentId: existingParent.id, studentId: student.id },
+              });
+              if (!existingAssoc) {
+                await db.studentParent.create({
+                  data: { parentId: existingParent.id, studentId: student.id, isPrimary: false, schoolId },
+                });
+              }
+              result.summary.updated++;
+              return;
+            }
+          }
+
+          const { randomBytes } = await import("crypto");
+          const tempPassword = randomBytes(12).toString("base64url");
+          const hashedPassword = await hashPassword(tempPassword);
+
+          const newParent = await db.parent.create({
             data: {
               user: {
-                update: {
+                create: {
+                  name: `${validated.firstName} ${validated.lastName}`,
                   firstName: validated.firstName,
                   lastName: validated.lastName,
+                  email: validated.email,
                   phone: validated.phone,
-                }
+                  role: "PARENT" as UserRole,
+                  passwordHash: hashedPassword,
+                  emailVerified: new Date(),
+                },
               },
               occupation: validated.occupation,
+              school: { connect: { id: schoolId } },
             },
           });
 
-          // Create parent-student association if it doesn't exist
-          const existingAssociation = await db.studentParent.findFirst({
-            where: {
-              schoolId,
-              parentId: existingParent.id,
-              studentId: student.id,
-            },
+          await db.studentParent.create({
+            data: { parentId: newParent.id, studentId: student.id, isPrimary: false, schoolId },
           });
 
-          if (!existingAssociation) {
-            await db.studentParent.create({
-              data: {
-                parentId: existingParent.id,
-                studentId: student.id,
-                isPrimary: false,
-                schoolId,
-              },
-            });
-          }
-
-          result.summary.updated++;
-          continue;
+          result.summary.created++;
+        } catch (error) {
+          handleImportError(error, rowNumber, result);
         }
-      }
-
-      // L-7: Generate secure random temporary password instead of predictable default
-      // TODO: implement requiresPasswordChange: true on first login once field is added to User model
-      const { randomBytes: randomBytesParent } = await import("crypto");
-      const tempParentPassword = randomBytesParent(12).toString("base64url");
-      const hashedParentPassword = await hashPassword(tempParentPassword);
-
-      // Create new parent with user
-      const newParent = await db.parent.create({
-        data: {
-          user: {
-            create: {
-              name: `${validated.firstName} ${validated.lastName}`,
-              firstName: validated.firstName,
-              lastName: validated.lastName,
-              email: validated.email,
-              phone: validated.phone,
-              role: "PARENT" as UserRole,
-              passwordHash: hashedParentPassword,
-              emailVerified: new Date(), // Admin-imported users are pre-verified
-            }
-          },
-          occupation: validated.occupation,
-          school: {
-            connect: { id: schoolId }
-          },
-        },
-      });
-
-      // Create parent-student association
-      await db.studentParent.create({
-        data: {
-          parentId: newParent.id,
-          studentId: student.id,
-          isPrimary: false,
-          schoolId,
-        },
-      });
-
-      result.summary.created++;
-    } catch (error) {
-      handleImportError(error, rowNumber, result);
-    }
+      })
+    );
   }
 
   result.success = result.summary.failed === 0;
