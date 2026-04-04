@@ -58,77 +58,109 @@ export type ImportResult = {
 
 export type DuplicateHandling = "skip" | "update" | "create";
 
+// Helper: coerce undefined/null/empty strings to undefined for optional CSV fields
+const optStr = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((v) => (v == null ? undefined : v.trim() || undefined))
+  .optional();
+const optStrMax = (max: number) =>
+  z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? undefined : v.trim() || undefined))
+    .pipe(z.string().max(max).optional());
+
+// Required string from CSV — coerces undefined/null to empty string so Zod gives a clear message
+const reqStr = (msg: string) =>
+  z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? "" : v.trim()))
+    .pipe(z.string().min(1, msg));
+
 // Expanded student import schema — all fields from studentSchema (optional except required ones)
 const studentImportSchema = z.object({
   // Required
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email format"),
-  admissionId: z.string().min(1, "Admission ID is required"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"], {
-    errorMap: () => ({ message: "Gender must be MALE, FEMALE, or OTHER" }),
-  }),
+  firstName: reqStr("First name is required"),
+  lastName: reqStr("Last name is required"),
+  email: z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? "" : v.trim()))
+    .pipe(z.string().email("Invalid email format")),
+  admissionId: reqStr("Admission ID is required"),
+  dateOfBirth: reqStr("Date of birth is required"),
+  gender: z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? "" : v.trim().toUpperCase()))
+    .pipe(
+      z.enum(["MALE", "FEMALE", "OTHER"], {
+        errorMap: () => ({ message: "Gender must be MALE, FEMALE, or OTHER" }),
+      })
+    ),
   // Basic optional
-  phone: z.string().optional().default(""),
-  rollNumber: z.string().optional().default(""),
-  address: z.string().optional().default(""),
-  bloodGroup: z.string().optional().default(""),
-  emergencyContact: z.string().optional().default(""),
-  emergencyPhone: z.string().optional().default(""),
-  height: z.string().optional().default(""),
-  weight: z.string().optional().default(""),
+  phone: optStr,
+  rollNumber: optStr,
+  address: optStr,
+  bloodGroup: optStr,
+  emergencyContact: optStr,
+  emergencyPhone: optStr,
+  height: optStr,
+  weight: optStr,
   // Indian-specific optional
-  aadhaarNumber: z.string().max(12).optional().default(""),
-  apaarId: z.string().max(50).optional().default(""),
-  pen: z.string().max(50).optional().default(""),
-  abcId: z.string().max(50).optional().default(""),
-  nationality: z.string().optional().default(""),
-  religion: z.string().optional().default(""),
-  caste: z.string().optional().default(""),
-  category: z.string().optional().default(""),
-  motherTongue: z.string().optional().default(""),
-  birthPlace: z.string().optional().default(""),
-  previousSchool: z.string().optional().default(""),
-  previousClass: z.string().optional().default(""),
-  tcNumber: z.string().optional().default(""),
-  medicalConditions: z.string().optional().default(""),
-  specialNeeds: z.string().optional().default(""),
+  aadhaarNumber: optStrMax(12),
+  apaarId: optStrMax(50),
+  pen: optStrMax(50),
+  abcId: optStrMax(50),
+  nationality: optStr,
+  religion: optStr,
+  caste: optStr,
+  category: optStr,
+  motherTongue: optStr,
+  birthPlace: optStr,
+  previousSchool: optStr,
+  previousClass: optStr,
+  tcNumber: optStr,
+  medicalConditions: optStr,
+  specialNeeds: optStr,
   // Parent/Guardian optional
-  fatherName: z.string().optional().default(""),
-  fatherOccupation: z.string().optional().default(""),
-  fatherPhone: z.string().optional().default(""),
-  fatherAadhaar: z.string().max(12).optional().default(""),
-  motherName: z.string().optional().default(""),
-  motherOccupation: z.string().optional().default(""),
-  motherPhone: z.string().optional().default(""),
-  motherAadhaar: z.string().max(12).optional().default(""),
-  guardianName: z.string().optional().default(""),
-  guardianRelation: z.string().optional().default(""),
-  guardianPhone: z.string().optional().default(""),
-  guardianAadhaar: z.string().max(12).optional().default(""),
+  fatherName: optStr,
+  fatherOccupation: optStr,
+  fatherPhone: optStr,
+  fatherAadhaar: optStrMax(12),
+  motherName: optStr,
+  motherOccupation: optStr,
+  motherPhone: optStr,
+  motherAadhaar: optStrMax(12),
+  guardianName: optStr,
+  guardianRelation: optStr,
+  guardianPhone: optStr,
+  guardianAadhaar: optStrMax(12),
 });
 
 const teacherImportSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email format"),
-  phone: z.string().optional(),
-  employeeId: z.string().min(1, "Employee ID is required"),
-  qualification: z.string().optional(),
-  joinDate: z.string().min(1, "Join date is required"),
-  salary: z.string().optional(),
-  departmentId: z.string().optional(),
+  firstName: reqStr("First name is required"),
+  lastName: reqStr("Last name is required"),
+  email: z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? "" : v.trim()))
+    .pipe(z.string().email("Invalid email format")),
+  phone: optStr,
+  employeeId: reqStr("Employee ID is required"),
+  qualification: optStr,
+  joinDate: reqStr("Join date is required"),
+  salary: optStr,
+  departmentId: optStr,
 });
 
 const parentImportSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email format"),
-  phone: z.string().optional(),
-  occupation: z.string().optional(),
-  address: z.string().optional(),
-  studentAdmissionId: z.string().min(1, "Student admission ID is required"),
+  firstName: reqStr("First name is required"),
+  lastName: reqStr("Last name is required"),
+  email: z
+    .union([z.string(), z.undefined(), z.null()])
+    .transform((v) => (v == null ? "" : v.trim()))
+    .pipe(z.string().email("Invalid email format")),
+  phone: optStr,
+  occupation: optStr,
+  address: optStr,
+  studentAdmissionId: reqStr("Student admission ID is required"),
 });
 
 type StudentImportData = z.infer<typeof studentImportSchema>;

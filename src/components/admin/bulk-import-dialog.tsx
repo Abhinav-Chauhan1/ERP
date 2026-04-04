@@ -266,18 +266,33 @@ export function BulkImportDialog({
     if (importType === "student") {
       const headers = [...STUDENT_REQUIRED_HEADERS, ...STUDENT_OPTIONAL_HEADERS];
       const sample = headers.map((h) => STUDENT_SAMPLE[h] ?? "");
-      const csv = [headers.join(","), sample.join(",")].join("\n");
-      triggerDownload(csv, "student_import_template.csv");
+      triggerDownload(buildCsv(headers, sample), "student_import_template.csv");
     } else if (importType === "teacher") {
       const headers = ["firstName", "lastName", "email", "phone", "employeeId", "qualification", "joinDate", "salary", "departmentId"];
       const sample = ["Jane", "Smith", "jane.smith@example.com", "+919876543210", "EMP001", "M.Ed", "2020-01-15", "50000", ""];
-      triggerDownload([headers.join(","), sample.join(",")].join("\n"), "teacher_import_template.csv");
+      triggerDownload(buildCsv(headers, sample), "teacher_import_template.csv");
     } else {
       const headers = ["firstName", "lastName", "email", "phone", "occupation", "address", "studentAdmissionId"];
       const sample = ["Robert", "Doe", "robert.doe@example.com", "+919876543210", "Engineer", "123 Main St", "STU001"];
-      triggerDownload([headers.join(","), sample.join(",")].join("\n"), "parent_import_template.csv");
+      triggerDownload(buildCsv(headers, sample), "parent_import_template.csv");
     }
   };
+
+  /** Quote a CSV field if it contains commas, quotes, or whitespace */
+  function csvField(value: string): string {
+    if (value === "") return "";
+    if (value.includes(",") || value.includes('"') || value.includes("\n") || value.includes(" ")) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  }
+
+  function buildCsv(headers: string[], sample: string[]): string {
+    return [
+      headers.join(","),
+      sample.map(csvField).join(","),
+    ].join("\n");
+  }
 
   function triggerDownload(csv: string, filename: string) {
     const blob = new Blob([csv], { type: "text/csv" });
